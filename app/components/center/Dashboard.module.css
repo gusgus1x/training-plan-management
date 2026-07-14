@@ -1,0 +1,651 @@
+.page {
+  min-height: 100vh;
+  background: #2f343b;
+  color: #0f172a;
+}
+
+.workspace {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 24px 0 56px;
+}
+
+.topRow {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.employeePanel,
+.calendarPanel,
+.menuPanel {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
+}
+
+.employeePanel {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  min-height: 210px;
+  padding: 18px;
+}
+
+.employeeProfile {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.photoBox {
+  display: grid;
+  width: 64px;
+  min-height: 64px;
+  place-items: center;
+  border: 1px solid rgba(215, 25, 32, 0.28);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #e0f2fe 0%, #ffe4e6 100%);
+  color: #d71920;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 12px;
+  text-align: center;
+}
+
+.employeeTitle {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.employeeTitle span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.employeeTitle strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.employeeTitle p {
+  margin: 0;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.employeeStatus {
+  align-self: start;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+
+.employeeDetails {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+
+.employeeDetails p {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 8px 10px;
+}
+
+.employeeDetails span {
+  color: #64748b;
+  font-weight: 800;
+  font-size: 11px;
+}
+
+.employeeDetails strong {
+  min-width: 0;
+  color: #0f172a;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.employeeSummary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.employeeSummary article {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid rgba(215, 25, 32, 0.14);
+  border-radius: 8px;
+  background: #f0fdfa;
+  padding: 10px;
+}
+
+.employeeSummary span,
+.employeeSummary small {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.employeeSummary strong {
+  color: #d71920;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.calendarPanel {
+  min-height: 210px;
+  padding: 16px;
+}
+
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.calendarHeader div {
+  display: grid;
+  gap: 4px;
+}
+
+.calendarHeader span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.calendarHeader strong {
+  color: #d71920;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.calendarHeader p {
+  margin: 0;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 7px 9px;
+  white-space: nowrap;
+}
+
+.calendarFilters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.calendarFilters label {
+  display: grid;
+  gap: 5px;
+}
+
+.calendarFilters span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.calendarFilters select {
+  width: 100%;
+  height: 34px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 0 9px;
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.calendarGrid b {
+  display: grid;
+  min-height: 22px;
+  place-items: center;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.calendarGrid b {
+  color: #64748b;
+}
+
+.calendarDay {
+  display: grid;
+  min-height: 44px;
+  align-content: start;
+  gap: 5px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #334155;
+  padding: 6px;
+}
+
+.calendarDay span {
+  color: #334155;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.calendarDay small {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 5px;
+  background: rgba(215, 25, 32, 0.1);
+  color: #d71920;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1.2;
+  padding: 3px 4px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingDay {
+  border-color: rgba(215, 25, 32, 0.28);
+  background: #f0fdfa;
+}
+
+.today {
+  border-color: rgba(37, 99, 235, 0.34);
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.16);
+}
+
+.trainingList {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.trainingItem {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 8px;
+}
+
+.trainingItem time {
+  color: #d71920;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.trainingItem div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.trainingItem strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingItem span {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingItem b {
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 6px 7px;
+  white-space: nowrap;
+}
+
+.menuPanel {
+  margin-top: 24px;
+  padding: 24px;
+}
+
+.menuPanel h1 {
+  margin: 0 0 18px;
+  color: #0f172a;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.menuRow {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.menuBox {
+  appearance: none;
+  display: grid;
+  gap: 16px;
+  min-height: 190px;
+  align-content: start;
+  border: 1.5px solid rgba(15, 23, 42, 0.22);
+  border-left: 4px solid rgba(215, 25, 32, 0.68);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+  cursor: pointer;
+  font: inherit;
+  padding: 24px;
+  text-align: left;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.menuBox:hover {
+  background: #f8fafc;
+  border-color: rgba(215, 25, 32, 0.68);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+  transform: translateY(-2px);
+}
+
+.menuBox:nth-child(1),
+.menuBox:nth-child(2),
+.menuBox:nth-child(3) {
+  grid-column: span 2;
+}
+
+.menuBox:nth-child(4) {
+  grid-column: 2 / span 2;
+}
+
+.menuBox:nth-child(5) {
+  grid-column: 4 / span 2;
+}
+
+.menuBox:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.24);
+  outline-offset: 3px;
+}
+
+.menuBox span {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 34px;
+  align-items: center;
+  border: 1px solid rgba(215, 25, 32, 0.2);
+  border-radius: 8px;
+  background: #fff1f2;
+  color: #d71920;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.2;
+  padding: 0 12px;
+}
+
+.menuBox strong {
+  color: #020617;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.menuBox small {
+  color: #334155;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.7;
+}
+
+@media (max-width: 840px) {
+  .topRow {
+    grid-template-columns: 1fr;
+  }
+
+  .menuRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .menuBox:nth-child(1),
+  .menuBox:nth-child(2),
+  .menuBox:nth-child(3),
+  .menuBox:nth-child(4),
+  .menuBox:nth-child(5) {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 560px) {
+  .workspace {
+    width: min(100% - 24px, 520px);
+    padding-top: 18px;
+  }
+
+  .employeePanel {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .employeeProfile {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  .photoBox {
+    width: 56px;
+    min-height: 56px;
+    font-size: 16px;
+  }
+
+  .employeeTitle strong {
+    font-size: 16px;
+  }
+
+  .employeeTitle p {
+    font-size: 11px;
+  }
+
+  .employeeStatus {
+    grid-column: 2;
+    width: fit-content;
+  }
+
+  .employeeDetails,
+  .employeeSummary {
+    grid-template-columns: 1fr;
+  }
+
+  .employeeDetails p {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .menuPanel {
+    padding: 18px;
+  }
+
+  .calendarPanel {
+    padding: 12px;
+  }
+
+  .calendarHeader strong {
+    font-size: 14px;
+  }
+
+  .calendarDay {
+    min-height: 40px;
+    padding: 4px;
+  }
+
+  .calendarDay small {
+    font-size: 8px;
+    padding: 3px;
+  }
+
+  .trainingItem {
+    grid-template-columns: 50px minmax(0, 1fr);
+  }
+
+  .trainingItem b {
+    grid-column: 2;
+    width: fit-content;
+  }
+
+  .menuRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.workspace {
+  padding: 14px 0 36px;
+}
+
+.topRow {
+  gap: 12px;
+}
+
+.employeePanel,
+.calendarPanel,
+.menuPanel {
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.employeePanel,
+.calendarPanel {
+  min-height: 180px;
+}
+
+.employeePanel {
+  padding: 14px;
+}
+
+.calendarPanel {
+  padding: 14px;
+}
+
+.menuPanel {
+  margin-top: 14px;
+  padding: 16px;
+}
+
+.menuPanel h1 {
+  margin-bottom: 12px;
+  font-size: 20px;
+}
+
+.menuRow {
+  gap: 10px;
+}
+
+.menuBox {
+  gap: 10px;
+  min-height: 132px;
+  padding: 16px;
+}
+
+.menuBox:hover {
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.menuBox span {
+  min-height: 30px;
+  font-size: 12px;
+  padding: 0 10px;
+}
+
+.menuBox strong {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.menuBox small {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.workspace {
+  width: min(1120px, calc(100% - 32px));
+}
+
+.menuBox {
+  min-height: 156px;
+}
+
+.menuBox {
+  border: 1.5px solid rgba(15, 23, 42, 0.2);
+  border-left: 4px solid rgba(215, 25, 32, 0.68);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.menuBox:hover {
+  border-color: rgba(215, 25, 32, 0.62);
+  border-left-color: rgba(215, 25, 32, 0.78);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
+}

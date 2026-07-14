@@ -1,0 +1,1518 @@
+.page {
+  min-height: 100vh;
+  background: #2f343b;
+  color: #0f172a;
+}
+
+.workspace {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 24px 0 56px;
+}
+
+.employeePanel,
+.profilePanel,
+.calendarPanel,
+.modulePanel,
+.modulePage,
+.employeeListPanel,
+.historyPanel {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
+}
+
+.topRow {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(430px, 1.1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.employeePanel {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-height: 210px;
+  padding: 18px;
+}
+
+.employeeProfile {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 128px;
+}
+
+.employeeStatus {
+  align-self: start;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 7px 9px;
+  white-space: nowrap;
+}
+
+.profilePanel {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) minmax(360px, 0.9fr);
+  gap: 16px;
+  align-items: center;
+  padding: 18px;
+}
+
+.avatar {
+  display: grid;
+  width: 64px;
+  min-height: 64px;
+  place-items: center;
+  border: 1px solid rgba(215, 25, 32, 0.28);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #e0f2fe 0%, #ffe4e6 100%);
+  color: #d71920;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 12px;
+  text-align: center;
+}
+
+.profileCopy,
+.trainingItem div,
+.historyList div,
+.roadmapGrid article > div,
+.approvalTimeline div {
+  min-width: 0;
+}
+
+.profileCopy span,
+.panelHeader p,
+.moduleHeader p,
+.moduleCard small,
+.trainingItem small,
+.requestPreview p,
+.reportHero p {
+  margin: 0 0 6px;
+  color: #d71920;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.profileCopy span {
+  color: #64748b;
+  font-size: 10px;
+  letter-spacing: 0;
+  margin-bottom: 0;
+}
+
+.profileCopy h1,
+.panelHeader h2,
+.moduleHeader h1,
+.requestPreview h3,
+.reportHero h2 {
+  margin: 0;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.profileCopy h1,
+.panelHeader h2,
+.requestPreview h3 {
+  font-size: 18px;
+}
+
+.moduleHeader h1 {
+  font-size: 24px;
+}
+
+.panelHeader p,
+.panelHeader > span,
+.courseDetailPanel p,
+.requestPreview p,
+.flowSteps,
+.recordWorkflow {
+  display: none;
+}
+
+.profileCopy p,
+.moduleHeader span,
+.moduleCard span,
+.trainingItem span,
+.historyList span,
+.roadmapGrid span,
+.requestPreview span,
+.approvalTimeline span,
+.reportHero span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.profileCopy p {
+  margin: 4px 0 0;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.profileStats,
+.recordSummary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.profileStats article,
+.recordSummary article {
+  display: grid;
+  gap: 4px;
+  min-height: 86px;
+  align-content: center;
+  border: 1px solid rgba(215, 25, 32, 0.14);
+  border-radius: 8px;
+  background: #f0fdfa;
+  padding: 10px;
+}
+
+.profileStats span,
+.recordSummary span,
+.employeeProfileGrid span {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profileStats strong,
+.recordSummary strong {
+  color: #d71920;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.modulePanel,
+.calendarPanel,
+.modulePage,
+.employeeListPanel,
+.historyPanel {
+  padding: 18px;
+}
+
+.calendarPanel {
+  padding: 16px;
+}
+
+.employeeListPanel,
+.contentGrid {
+  margin-top: 18px;
+}
+
+.modulePanel {
+  margin-top: 24px;
+  padding: 24px;
+}
+
+.modulePanel .panelHeader {
+  display: block;
+  margin-bottom: 18px;
+}
+
+.modulePanel .panelHeader p,
+.modulePanel .panelHeader > span {
+  display: none;
+}
+
+.modulePanel .panelHeader h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 0.75fr);
+  gap: 18px;
+}
+
+.panelHeader,
+.moduleHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.panelHeader {
+  margin-bottom: 14px;
+}
+
+.panelHeader > span {
+  border-radius: 999px;
+  border: 1px solid rgba(37, 99, 235, 0.18);
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 7px 9px;
+  white-space: nowrap;
+}
+
+.calendarPanel .panelHeader {
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.calendarPanel .panelHeader div {
+  display: grid;
+  gap: 4px;
+}
+
+.calendarPanel .panelHeader p {
+  margin: 0;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.calendarPanel .panelHeader h2 {
+  color: #d71920;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.calendarFilters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.calendarFilters label {
+  display: grid;
+  gap: 5px;
+}
+
+.calendarFilters span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.calendarFilters select {
+  width: 100%;
+  height: 34px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 0 9px;
+}
+
+.moduleHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto;
+  align-items: center;
+  gap: 5px 18px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
+  padding: 16px 18px 18px;
+}
+
+.moduleHeader p {
+  grid-column: 1;
+  grid-row: 1;
+  margin: 0;
+}
+
+.moduleHeader h1 {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: clamp(24px, 2.9vw, 34px);
+  line-height: 1.15;
+}
+
+.moduleHeader span {
+  grid-column: 1;
+  grid-row: 3;
+  max-width: 900px;
+  margin-top: 2px;
+}
+
+.moduleHeader button,
+.trainingItem button,
+.requestForm button {
+  min-height: 38px;
+  border: 1px solid rgba(215, 25, 32, 0.2);
+  border-radius: 8px;
+  background: #d71920;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+.moduleHeader button {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
+  justify-self: end;
+  background: #ffffff;
+  color: #d71920;
+}
+
+.moduleGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.moduleCard {
+  appearance: none;
+  display: grid;
+  gap: 14px;
+  min-height: 156px;
+  align-content: start;
+  border: 1.5px solid rgba(15, 23, 42, 0.22);
+  border-left: 4px solid rgba(215, 25, 32, 0.68);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+  cursor: pointer;
+  font: inherit;
+  padding: 18px 20px;
+  text-align: left;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.moduleCard:hover {
+  border-color: rgba(215, 25, 32, 0.68);
+  background: #f8fafc;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+  transform: translateY(-2px);
+}
+
+.moduleCard:nth-child(1),
+.moduleCard:nth-child(2),
+.moduleCard:nth-child(3) {
+  grid-column: span 2;
+}
+
+.moduleCard:nth-child(4) {
+  grid-column: 2 / span 2;
+}
+
+.moduleCard:nth-child(5) {
+  grid-column: 4 / span 2;
+}
+
+.moduleCard strong,
+.trainingItem strong,
+.historyList strong,
+.roadmapGrid strong,
+.approvalTimeline strong,
+.reportRows strong,
+.employeeProfileGrid strong {
+  display: block;
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.moduleCard strong {
+  color: #020617;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.25;
+  overflow: visible;
+  text-overflow: initial;
+  white-space: normal;
+}
+
+.moduleCard small {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 34px;
+  align-items: center;
+  border: 1px solid rgba(215, 25, 32, 0.2);
+  border-radius: 8px;
+  background: #fff1f2;
+  color: #d71920;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.2;
+  margin: 0;
+  padding: 0 12px;
+  text-transform: none;
+}
+
+.moduleCard span {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+.moduleCard b,
+.trainingItem b,
+.approvalTimeline b,
+.reportRows b {
+  width: fit-content;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 7px 8px;
+  white-space: nowrap;
+}
+
+.moduleCard b,
+.trainingItem b,
+.approvalTimeline b {
+  align-self: end;
+  background: #fff1f2;
+  color: #d71920;
+}
+
+.modulePage {
+  display: grid;
+  gap: 18px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.trainingList,
+.calendarTrainingList,
+.historyList,
+.approvalTimeline,
+.reportRows {
+  display: grid;
+  gap: 12px;
+}
+
+.modulePage > .trainingList,
+.modulePage > .flowSteps,
+.modulePage > .roadmapGrid,
+.modulePage > .recordSummary,
+.modulePage > .recordWorkflow {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
+  padding: 18px;
+}
+
+.courseDetailPanel {
+  border: 1px solid rgba(248, 113, 113, 0.38);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(240, 253, 250, 0.82), rgba(255, 255, 255, 0.96)),
+    #ffffff;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
+  padding: 16px;
+}
+
+.courseDetailPanel p {
+  margin: 0 0 14px;
+  color: #d71920;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.courseDetailPanel > span {
+  display: block;
+  margin-bottom: 8px;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.courseDetailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.courseDetailGrid div {
+  min-height: 68px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-left: 3px solid rgba(248, 113, 113, 0.85);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px 14px;
+}
+
+.courseDetailGrid dt {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.courseDetailGrid dd {
+  margin: 9px 0 0;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.calendarGrid b {
+  display: grid;
+  min-height: 24px;
+  place-items: center;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.calendarDay {
+  display: grid;
+  min-height: 44px;
+  align-content: start;
+  gap: 5px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 6px;
+  background: #f8fafc;
+  padding: 6px;
+}
+
+.calendarDay span {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.calendarDay small {
+  overflow: hidden;
+  border-radius: 5px;
+  background: rgba(215, 25, 32, 0.1);
+  color: #d71920;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1.2;
+  padding: 4px 5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingDay {
+  border-color: rgba(215, 25, 32, 0.28);
+  background: #f0fdfa;
+}
+
+.calendarTrainingList {
+  margin-top: 12px;
+}
+
+.calendarTrainingList article {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 8px;
+}
+
+.calendarTrainingList time {
+  color: #d71920;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.calendarTrainingList div {
+  min-width: 0;
+}
+
+.calendarTrainingList strong {
+  display: block;
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendarTrainingList span {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendarTrainingList b {
+  width: fit-content;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 7px 8px;
+  white-space: nowrap;
+}
+
+.trainingItem {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 14px;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.trainingItem:hover {
+  border-color: rgba(215, 25, 32, 0.35);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.activeTrainingItem {
+  border-color: rgba(215, 25, 32, 0.55) !important;
+  background: linear-gradient(180deg, rgba(255, 241, 242, 0.7), #ffffff) !important;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
+}
+
+.trainingItem span,
+.historyList span {
+  overflow: hidden;
+  margin-top: 4px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flowSteps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  list-style: none;
+  counter-reset: steps;
+}
+
+.flowSteps li {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  min-height: 48px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 8px 10px;
+}
+
+.flowSteps li::before {
+  display: grid;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  content: counter(steps);
+  counter-increment: steps;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.currentStep {
+  border-color: rgba(215, 25, 32, 0.22) !important;
+  background: #fff1f2 !important;
+  color: #d71920 !important;
+}
+
+.currentStep::before {
+  background: #d71920 !important;
+  color: #ffffff !important;
+}
+
+.employeeProfileGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.employeeProfileGrid article,
+.historyList article,
+.roadmapGrid article,
+.requestPreview > article,
+.approvalTimeline article,
+.reportRows article {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 12px;
+}
+
+.employeeProfileGrid article {
+  min-height: 72px;
+  align-content: center;
+  padding: 12px 10px;
+}
+
+.employeeProfileGrid strong {
+  white-space: normal;
+}
+
+.historyList article,
+.approvalTimeline article,
+.reportRows article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.historyList b {
+  color: #d71920;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.roadmapGrid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr;
+}
+
+.roadmapGrid article {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 150px 190px;
+  gap: 16px;
+  align-items: center;
+  min-height: 86px;
+  overflow: hidden;
+  border-color: rgba(15, 23, 42, 0.1);
+  background: #ffffff;
+  padding: 16px 14px 16px 18px;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.roadmapGrid article:hover {
+  border-color: rgba(215, 25, 32, 0.26);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.roadmapGrid article::before {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 0;
+  width: 3px;
+  border-radius: 0 999px 999px 0;
+  background: transparent;
+  content: "";
+}
+
+.activeRoadmapItem {
+  border-color: rgba(215, 25, 32, 0.48) !important;
+  background: linear-gradient(90deg, rgba(255, 241, 242, 0.7), #ffffff 44%) !important;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
+}
+
+.activeRoadmapItem::before {
+  background: #d71920 !important;
+}
+
+.roadmapQuarter {
+  display: grid;
+  min-height: 34px;
+  place-items: center;
+  border: 1px solid rgba(215, 25, 32, 0.18);
+  border-radius: 8px;
+  background: #fff1f2;
+  color: #d71920;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 0 8px;
+  text-align: center;
+}
+
+.roadmapContent {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.roadmapContent small {
+  color: #d71920;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.roadmapContent strong {
+  color: #0f172a;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.roadmapMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0;
+}
+
+.roadmapMeta b,
+.roadmapMeta em {
+  width: fit-content;
+  border-radius: 999px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1;
+  padding: 7px 8px;
+  white-space: nowrap;
+}
+
+.roadmapMeta b {
+  background: #fff1f2;
+  color: #d71920;
+}
+
+.roadmapMeta em {
+  display: none;
+}
+
+.roadmapGrid .trainingActions button {
+  width: fit-content;
+  min-height: 38px;
+  margin-top: 4px;
+  border: 1px solid #d71920;
+  border-radius: 8px;
+  background: #d71920;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 0 14px;
+}
+
+.trainingActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  align-self: center;
+}
+
+.roadmapGrid .trainingActions {
+  flex-wrap: nowrap;
+}
+
+.trainingItem .trainingActions button,
+.roadmapGrid .trainingActions button {
+  margin-top: 0;
+}
+
+.secondaryActionButton {
+  border-color: rgba(215, 25, 32, 0.2) !important;
+  background: #ffffff !important;
+  color: #d71920 !important;
+}
+
+.secondaryActionButton:hover {
+  border-color: rgba(215, 25, 32, 0.45) !important;
+  background: #fff1f2 !important;
+}
+
+.progressTrack {
+  height: 8px;
+  overflow: hidden;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.progressTrack i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #d71920;
+}
+
+.requestLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 16px;
+}
+
+.requestForm,
+.requestPreview {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
+  padding: 18px;
+}
+
+.requestPreview > article {
+  padding: 16px;
+}
+
+.requestForm label {
+  display: grid;
+  gap: 6px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.requestForm input,
+.requestForm textarea,
+.recordRequestForm input,
+.recordRequestForm select,
+.recordRequestForm textarea {
+  width: 100%;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  outline: none;
+  padding: 11px 12px;
+}
+
+.requestForm textarea,
+.recordRequestForm textarea {
+  min-height: 108px;
+  resize: vertical;
+}
+
+.recordWorkflow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.recordWorkflow article,
+.recordPanel {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.recordWorkflow article {
+  display: grid;
+  gap: 8px;
+  min-height: 132px;
+  padding: 16px;
+}
+
+.recordWorkflow small {
+  color: #d71920;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.recordWorkflow strong,
+.recordCourseList strong,
+.externalRecordList strong {
+  display: block;
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recordWorkflow span,
+.recordCourseList span,
+.externalRecordList span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.recordLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
+  gap: 16px;
+}
+
+.recordPanel {
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
+  padding: 18px;
+}
+
+.recordCourseList,
+.externalRecordList,
+.recordRequestForm {
+  display: grid;
+  gap: 10px;
+}
+
+.recordFilters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.recordFilters label {
+  display: grid;
+  gap: 6px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.recordFilters select {
+  width: 100%;
+  height: 38px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0 10px;
+}
+
+.recordCourseList article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(150px, 0.7fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.recordCourseList b,
+.externalRecordList b {
+  width: fit-content;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 7px 8px;
+  white-space: nowrap;
+}
+
+.recordCourseList button,
+.recordRequestForm button {
+  min-height: 38px;
+  border: 1px solid rgba(215, 25, 32, 0.2);
+  border-radius: 8px;
+  background: #d71920;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.recordRequestForm {
+  margin-bottom: 12px;
+}
+
+.recordRequestForm label {
+  display: grid;
+  gap: 6px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.recordReasonBox,
+.recordEmpty {
+  border: 1px solid rgba(215, 25, 32, 0.18);
+  border-left: 4px solid rgba(215, 25, 32, 0.6);
+  border-radius: 8px;
+  background: #fff1f2;
+  color: #0f172a;
+  padding: 12px;
+}
+
+.recordReasonBox span {
+  display: block;
+  color: #d71920;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.recordReasonBox strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.45;
+}
+
+.recordEmpty {
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.externalRecordList article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.approvalTimeline article {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.reportHero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  gap: 16px;
+  align-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 18px;
+}
+
+.reportHero h2 {
+  font-size: 42px;
+}
+
+.reportDonut {
+  display: grid;
+  width: 118px;
+  height: 118px;
+  place-items: center;
+  justify-self: end;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, #ffffff 0 52%, transparent 53%),
+    conic-gradient(#d71920 0 68%, #dbeafe 68% 100%);
+  color: #d71920;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.reportRows article {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.reportRows span {
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.reportRows b {
+  background: #fff1f2;
+  color: #d71920;
+}
+
+.reportFlowGrid,
+.reportWorkspace {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.reportFlowPanel,
+.reportControlPanel,
+.reportResultPanel {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
+  padding: 18px;
+}
+
+.reportStepList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: report-steps;
+}
+
+.reportStepList li {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  min-height: 36px;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 8px 10px;
+}
+
+.reportStepList li::before {
+  display: grid;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  content: counter(report-steps);
+  counter-increment: report-steps;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.reportResultPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.savedReportList {
+  display: grid;
+  gap: 10px;
+}
+
+.savedReportList article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.savedReportList strong {
+  display: block;
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.savedReportList span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.savedReportList b {
+  width: fit-content;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 7px 8px;
+  white-space: nowrap;
+}
+
+@media (max-width: 980px) {
+  .topRow,
+  .profilePanel,
+  .contentGrid,
+  .requestLayout,
+  .recordLayout,
+  .reportFlowGrid,
+  .reportWorkspace,
+  .reportHero {
+    grid-template-columns: 1fr;
+  }
+
+  .reportDonut {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 760px) {
+  .workspace {
+    width: min(100% - 24px, 560px);
+    padding-top: 18px;
+  }
+
+  .recordWorkflow,
+  .moduleGrid,
+  .calendarTrainingList article,
+  .employeeProfile,
+  .trainingItem,
+  .recordFilters,
+  .roadmapGrid,
+  .roadmapGrid article,
+  .flowSteps,
+  .recordCourseList article,
+  .reportRows article,
+  .courseDetailGrid,
+  .savedReportList article {
+    grid-template-columns: 1fr;
+  }
+
+  .moduleCard:nth-child(1),
+  .moduleCard:nth-child(2),
+  .moduleCard:nth-child(3),
+  .moduleCard:nth-child(4),
+  .moduleCard:nth-child(5) {
+    grid-column: auto;
+  }
+
+  .profilePanel,
+  .panelHeader {
+    display: grid;
+  }
+
+  .moduleHeader {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .moduleHeader p,
+  .moduleHeader h1,
+  .moduleHeader span,
+  .moduleHeader button {
+    grid-column: 1;
+  }
+
+  .moduleHeader button {
+    grid-row: 4;
+    justify-self: start;
+    margin-top: 8px;
+  }
+
+  .panelHeader > span,
+  .moduleHeader button,
+  .trainingItem b,
+  .trainingItem button,
+  .calendarTrainingList b,
+  .recordCourseList b,
+  .recordCourseList button,
+  .externalRecordList b,
+  .savedReportList b,
+  .reportRows b {
+    width: fit-content;
+  }
+
+  .moduleCard {
+    min-height: 136px;
+  }
+
+  .calendarDay {
+    min-height: 48px;
+    padding: 5px;
+  }
+
+  .calendarDay small {
+    font-size: 9px;
+    padding: 3px;
+  }
+}
+
+.panelHeader p,
+.panelHeader > span,
+.courseDetailPanel p,
+.requestPreview p,
+.flowSteps,
+.recordWorkflow {
+  display: none !important;
+}

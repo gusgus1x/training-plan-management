@@ -1,0 +1,249 @@
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.1);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 12px 30px rgba(17, 24, 39, 0.07);
+}
+
+.navbar::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, #007a3d 0%, #007a3d 34%, #d71920 34%, #d71920 100%);
+  content: "";
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: min(1180px, calc(100% - 32px));
+  min-height: 76px;
+  margin: 0 auto;
+}
+
+.brand,
+.brandButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.brandButton {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.brandButton:hover .groupName {
+  color: #d71920;
+}
+
+.brandLogo {
+  flex: 0 0 auto;
+  width: 132px;
+  height: auto;
+  object-fit: contain;
+}
+
+.groupName {
+  color: #111827;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  transition: color 160ms ease;
+  white-space: nowrap;
+}
+
+.userArea {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  border: 1px solid rgba(215, 25, 32, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #a90f16;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.16);
+}
+
+.userInfo {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  box-sizing: border-box;
+  min-width: 0;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.98)),
+    #ffffff;
+  padding: 9px 14px 9px 9px;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
+}
+
+.avatar {
+  display: grid;
+  flex: 0 0 auto;
+  width: 38px;
+  min-height: 54px;
+  place-items: center;
+  border-radius: 8px;
+  background: #fff1f2;
+  color: #d71920;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.userDetails {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.userRow {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+  align-items: baseline;
+  line-height: 1.2;
+}
+
+.userLabel {
+  color: #d71920;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.userValue {
+  color: #111827;
+  font-size: 12px;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.logoutButton {
+  height: 38px;
+  border: 1px solid #d71920;
+  border-radius: 8px;
+  background: #d71920;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 900;
+  padding: 0 16px;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.logoutButton:hover {
+  border-color: #a90f16;
+  background: #a90f16;
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(215, 25, 32, 0.22);
+  transform: translateY(-1px);
+}
+
+.brandButton:focus-visible,
+.logoutButton:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.24);
+  outline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  .inner {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 14px 0;
+  }
+
+  .userArea {
+    width: 100%;
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: 1fr auto;
+  }
+
+  .statusPill {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+
+  .userInfo {
+    width: 100%;
+  }
+}
+
+@media (max-width: 560px) {
+  .inner {
+    width: min(100% - 24px, 520px);
+  }
+
+  .brand,
+  .brandButton {
+    gap: 10px;
+  }
+
+  .brandLogo {
+    width: 104px;
+  }
+
+  .groupName {
+    font-size: 10px;
+    white-space: normal;
+  }
+
+  .userArea {
+    grid-template-columns: 1fr;
+  }
+
+  .userInfo {
+    padding: 9px 12px 9px 9px;
+  }
+
+  .avatar {
+    display: none;
+  }
+
+  .userRow {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .logoutButton {
+    width: 100%;
+  }
+}
