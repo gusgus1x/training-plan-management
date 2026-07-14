@@ -8,7 +8,7 @@ import Navbar from "./Navbar";
 import styles from "./LoginPage.module.css";
 
 type LoginPageProps = {
-  onLogin: (role?: "admin" | "user") => void;
+  onLogin: (role?: "admin" | "factory" | "user") => void;
 };
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
@@ -118,6 +118,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             <button className={styles.quickLoginButton} type="button" onClick={() => onLogin("user")}>
               Employee User
               <span>emp.user / training</span>
+            </button>
+            <button className={styles.quickLoginButton} type="button" onClick={() => onLogin("factory")}>
+              HRD Factory
+              <span>HRD-FACTORY / training</span>
             </button>
           </div>
         </form>

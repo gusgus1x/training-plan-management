@@ -115,7 +115,7 @@ const initialRollingTrainings = [
     preTest: "Pre-test",
     postTest: "Post-test",
     evaluation: "แบบประเมินหลังอบรม",
-    owner: "HRD-CENTER",
+    owner: "HRD-FACTORY",
     budget: "฿62,000",
   },
   {
@@ -134,7 +134,7 @@ const initialRollingTrainings = [
     preTest: "Pre-test",
     postTest: "Post-test",
     evaluation: "แบบประเมินหลังอบรม",
-    owner: "HRD-CENTER",
+    owner: "HRD-FACTORY",
     budget: "฿38,500",
   },
   {
@@ -153,7 +153,7 @@ const initialRollingTrainings = [
     preTest: "Pre-test",
     postTest: "Post-test",
     evaluation: "แบบประเมินหลังอบรม",
-    owner: "HRD-CENTER",
+    owner: "HRD-FACTORY",
     budget: "฿45,000",
   },
   {
@@ -173,7 +173,7 @@ const initialRollingTrainings = [
     preTest: "Pre-test",
     postTest: "Post-test",
     evaluation: "แบบประเมินหลังอบรม",
-    owner: "HRD-CENTER",
+    owner: "HRD-FACTORY",
     budget: "฿85,000",
   },
   {
@@ -192,7 +192,7 @@ const initialRollingTrainings = [
     preTest: "Pre-test",
     postTest: "Post-test",
     evaluation: "แบบประเมินหลังอบรม",
-    owner: "HRD-CENTER",
+    owner: "HRD-FACTORY",
     budget: "฿48,500",
   },
   {
@@ -211,7 +211,7 @@ const initialRollingTrainings = [
     preTest: "Pre-test",
     postTest: "Post-test",
     evaluation: "แบบประเมินหลังอบรม",
-    owner: "HRD-CENTER",
+    owner: "HRD-FACTORY",
     budget: "฿52,000",
   },
 ] as const;
@@ -353,7 +353,7 @@ const acceptSurveyPlans = [
 ] as const;
 
 const employeeDirectory = [
-  { id: "HRD-001", name: "HRD-CENTER", department: "HRD", company: "ATA" },
+  { id: "HRD-001", name: "HRD-FACTORY", department: "HRD", company: "ATA" },
   { id: "EMP-004", name: "Somchai P.", department: "Operations", company: "ATFB" },
   { id: "EMP-005", name: "Kanda S.", department: "Production", company: "SNF" },
   { id: "EMP-009", name: "Wichai T.", department: "Maintenance", company: "NIC" },
@@ -682,7 +682,7 @@ export default function TrainingPlanManagement({
           ? `${rollingTrainingForm.startTime} - ${rollingTrainingForm.endTime}`
           : "09:00 - 16:00",
       participants: Number(rollingTrainingForm.participants) || 0,
-      trainer: rollingTrainingForm.trainer.trim() || "HRD-CENTER",
+      trainer: rollingTrainingForm.trainer.trim() || "HRD-FACTORY",
       room: rollingTrainingForm.room.trim() || "Training Room",
       status: rollingTrainingForm.status,
       objective: rollingTrainingForm.objective.trim() || "รายการอบรมประจำเดือนที่เพิ่มใหม่",

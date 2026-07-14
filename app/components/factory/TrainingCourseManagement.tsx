@@ -40,7 +40,7 @@ const extraCourseItems = [
   },
 ] as const;
 
-const centerCourseItems = [...courseItems, ...extraCourseItems] as const;
+const factoryCourseItems = [...courseItems, ...extraCourseItems] as const;
 
 const assessmentTemplates = [
   { title: "Safety Basic Pre/Post Test", scope: "Central", questions: 12, status: "Published", version: "v1.0" },
@@ -65,7 +65,7 @@ export default function TrainingCourseManagement({
   onHome,
   onLogout,
 }: TrainingCourseManagementProps) {
-  const [selectedCourseItem, setSelectedCourseItem] = useState<(typeof centerCourseItems)[number] | null>(
+  const [selectedCourseItem, setSelectedCourseItem] = useState<(typeof factoryCourseItems)[number] | null>(
     null,
   );
   const [assessmentQuestion, setAssessmentQuestion] = useState("");
@@ -447,7 +447,7 @@ export default function TrainingCourseManagement({
         </section>
       ) : (
         <section className={styles.courseGrid} aria-label="Training course management menu">
-          {centerCourseItems.map((item) => (
+          {factoryCourseItems.map((item) => (
             <button
               key={item.title}
               className={`${styles.courseCard} ${styles.clickableCard}`}

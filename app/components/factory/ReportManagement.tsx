@@ -30,7 +30,7 @@ const extraReportItems = [
   },
 ] as const;
 
-const centerReportItems = [...reportItems, ...extraReportItems] as const;
+const factoryReportItems = [...reportItems, ...extraReportItems] as const;
 
 const calendarYears = ["2026", "2027"] as const;
 
@@ -216,7 +216,7 @@ export default function ReportManagement({
   onHome,
   onLogout,
 }: ReportManagementProps) {
-  const [selectedReport, setSelectedReport] = useState<(typeof centerReportItems)[number] | null>(null);
+  const [selectedReport, setSelectedReport] = useState<(typeof factoryReportItems)[number] | null>(null);
   const [selectedCalendarYear, setSelectedCalendarYear] = useState<(typeof calendarYears)[number]>("2026");
   const [selectedCalendarMonth, setSelectedCalendarMonth] = useState("07");
   const [selectedReportYear, setSelectedReportYear] = useState<(typeof calendarYears)[number]>("2026");
@@ -578,7 +578,7 @@ export default function ReportManagement({
         </section>
       ) : (
         <section className={styles.reportGrid} aria-label="Report management menu">
-          {centerReportItems.map((item) => (
+          {factoryReportItems.map((item) => (
             <button
               key={item.title}
               className={`${styles.reportCard} ${styles.clickableCard}`}
