@@ -325,8 +325,8 @@ const acceptSurveyPlans = [
         key: "course-b",
         title: "Course B",
         year: "2026",
-        month: "08",
-        date: "21 Aug 2026",
+        month: "07",
+        date: "21 Jul 2026",
         detail: "คอร์สเสริมสำหรับกลุ่มที่ต้องเข้าร่วมเพิ่มเติม",
         employees: ["emp.005", "emp.012", "emp.019"],
       },
@@ -372,15 +372,13 @@ const employeeDirectory = [
 const targetGroups = ["all", ...Array.from(new Set(employeeDirectory.map((employee) => employee.department)))] as const;
 const employeeCompanies = ["all", "ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
 
-const initialAcceptSurveyEmployees = acceptSurveyPlans.reduce<Record<string, string[]>>((planMap, plan) => {
-  plan.courses.forEach((course) => {
-    planMap[course.key] = [...course.employees];
-  });
-
-  return planMap;
-}, {});
-
 type AcceptSurveyCourseKey = (typeof acceptSurveyPlans)[number]["courses"][number]["key"];
+type AcceptSurveyApprovalStatus = "draft" | "sent" | "waiting" | "approved" | "rejected" | "directApproved";
+type SentSurveyParticipant = {
+  name: string;
+  company: string;
+  status: "draft" | "waiting" | "approved";
+};
 type OapTargetUser = {
   id: string;
   name: string;
@@ -521,9 +519,13 @@ export default function TrainingPlanManagement({
   );
   const [selectedAcceptSurveyYear, setSelectedAcceptSurveyYear] = useState<RollingYear>("2026");
   const [selectedAcceptSurveyMonth, setSelectedAcceptSurveyMonth] = useState<AcceptSurveyMonth>("07");
-  const [acceptSurveyEmployees, setAcceptSurveyEmployees] = useState<Record<string, string[]>>({
-    ...initialAcceptSurveyEmployees,
-  });
+  const [acceptSurveyEmployees, setAcceptSurveyEmployees] = useState<Record<string, string[]>>({});
+  const [acceptSurveyApprovalStatus, setAcceptSurveyApprovalStatus] = useState<
+    Record<string, AcceptSurveyApprovalStatus>
+  >({});
+  const [sentSurveyParticipants, setSentSurveyParticipants] = useState<
+    Record<string, SentSurveyParticipant[]>
+  >({});
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [selectedTargetGroup, setSelectedTargetGroup] = useState<(typeof targetGroups)[number]>("all");
   const [selectedEmployeeCompany, setSelectedEmployeeCompany] =
@@ -550,6 +552,37 @@ export default function TrainingPlanManagement({
     acceptSurveyCourses[0];
 
   const selectedSurveyEmployees = acceptSurveyEmployees[selectedSurveyCourse.key] ?? [];
+  const selectedSurveyApprovalStatus =
+    acceptSurveyApprovalStatus[selectedSurveyCourse.key] ?? "draft";
+  const selectedSentSurveyParticipants = sentSurveyParticipants[selectedSurveyCourse.key] ?? [];
+  const selectedFactoryCourseParticipants = selectedSurveyEmployees.map((employeeName) => {
+    const employee = employeeDirectory.find((item) => item.name === employeeName);
+
+    return {
+      name: employeeName,
+      company: employee?.company ?? "ATA",
+      department: employee?.department ?? "General",
+    };
+  });
+  const selectedSurveyCompanyRepresentatives = selectedSurveyEmployees.reduce<
+    { name: string; company: string }[]
+  >((representatives, employeeName) => {
+    const employee = employeeDirectory.find((item) => item.name === employeeName);
+    const company = employee?.company ?? "ATA";
+
+    if (representatives.some((item) => item.company === company)) {
+      return representatives;
+    }
+
+    return [
+      ...representatives,
+      {
+        name: employeeName,
+        company,
+      },
+    ];
+  }, []);
+  const isHrdCenterCourse = selectedSurveyCourse.key === "course-a" || selectedSurveyCourse.key === "course-d";
 
   const filteredEmployees = employeeDirectory.filter((employee) => {
     const searchValue = employeeSearch.trim().toLowerCase();
@@ -584,6 +617,53 @@ export default function TrainingPlanManagement({
         employeeName,
       ],
     }));
+  };
+
+  const handleRemoveSurveyEmployee = (employeeName: string) => {
+    setAcceptSurveyEmployees((current) => ({
+      ...current,
+      [selectedSurveyCourse.key]: (current[selectedSurveyCourse.key] ?? []).filter(
+        (name) => name !== employeeName,
+      ),
+    }));
+    setSentSurveyParticipants((current) => ({
+      ...current,
+      [selectedSurveyCourse.key]: (current[selectedSurveyCourse.key] ?? []).filter(
+        (participant) => participant.name !== employeeName,
+      ),
+    }));
+  };
+
+  const handleSetAcceptSurveyStatus = (nextStatus: AcceptSurveyApprovalStatus) => {
+    setAcceptSurveyApprovalStatus((current) => ({
+      ...current,
+      [selectedSurveyCourse.key]: nextStatus,
+    }));
+  };
+
+  const handleSendSurveyParticipants = () => {
+    const submittedParticipants = selectedSurveyCompanyRepresentatives.map((participant) => ({
+      name: participant.name,
+      company: participant.company,
+      status: "waiting" as const,
+    }));
+
+    setSentSurveyParticipants((current) => ({
+      ...current,
+      [selectedSurveyCourse.key]: submittedParticipants,
+    }));
+    handleSetAcceptSurveyStatus("waiting");
+  };
+
+  const handleMarkSurveyApprovedByCenter = () => {
+    setSentSurveyParticipants((current) => ({
+      ...current,
+      [selectedSurveyCourse.key]: (current[selectedSurveyCourse.key] ?? []).map((participant) => ({
+        ...participant,
+        status: "approved",
+      })),
+    }));
+    handleSetAcceptSurveyStatus("approved");
   };
 
   const handleAcceptSurveyFilterChange = (nextYear: RollingYear, nextMonth: AcceptSurveyMonth) => {
@@ -926,6 +1006,297 @@ export default function TrainingPlanManagement({
                 <p>{selectedSurveyCourse.detail}</p>
               </div>
 
+              <section className={styles.factoryAcceptSimple} aria-label="Factory sent participant approval">
+                <div className={styles.factorySimpleHeader}>
+                  <div>
+                    <p className={styles.panelKicker}>
+                      {isHrdCenterCourse ? "HRD Center approval" : "Factory course roster"}
+                    </p>
+                    <h3 className={styles.factoryDynamicTitle}>
+                      {isHrdCenterCourse
+                        ? "ส่งรายชื่อให้ Center อนุมัติ"
+                        : "รายชื่อผู้เข้าอบรมของ Factory"}
+                    </h3>
+                    <h3>ส่งรายชื่อให้ Center อนุมัติ</h3>
+                  </div>
+                  <span className={styles.panelTag}>
+                    {isHrdCenterCourse ? "Center course" : "Factory course"}
+                  </span>
+                </div>
+
+                {isHrdCenterCourse ? (
+                  <>
+                    <div className={styles.factorySimpleActions}>
+                      <div>
+                        <span>ตัวแทนบริษัทที่จะส่ง</span>
+                        <strong>{selectedSurveyCompanyRepresentatives.length} บริษัท</strong>
+                      </div>
+                      <button className={styles.oapInlineButton} type="button" onClick={handleSendSurveyParticipants}>
+                        ส่งรายชื่อ
+                      </button>
+                    </div>
+
+                    <div className={styles.companyRepresentativeList}>
+                      {(selectedSentSurveyParticipants.length > 0
+                        ? selectedSentSurveyParticipants
+                        : selectedSurveyCompanyRepresentatives.map((participant) => ({
+                            ...participant,
+                            status: "draft" as const,
+                          }))
+                      ).length > 0 ? (
+                        (selectedSentSurveyParticipants.length > 0
+                          ? selectedSentSurveyParticipants
+                          : selectedSurveyCompanyRepresentatives.map((participant) => ({
+                              ...participant,
+                              status: "draft" as const,
+                            }))
+                        ).map((participant) => (
+                          <article key={`${participant.company}-${participant.name}`}>
+                            <div>
+                              <span>{participant.company}</span>
+                              <strong>{participant.name}</strong>
+                            </div>
+                            <b
+                              className={
+                                participant.status === "approved"
+                                  ? styles.approvedStatus
+                                  : participant.status === "waiting"
+                                    ? styles.waitingStatus
+                                    : styles.draftStatus
+                              }
+                            >
+                              {participant.status === "approved"
+                                ? "อนุมัติแล้ว"
+                                : participant.status === "waiting"
+                                  ? "รออนุมัติ"
+                                  : "เตรียมส่ง"}
+                            </b>
+                            <button
+                              className={styles.removeParticipantButton}
+                              type="button"
+                              onClick={() => handleRemoveSurveyEmployee(participant.name)}
+                            >
+                              ถอน
+                            </button>
+                          </article>
+                        ))
+                      ) : (
+                        <div className={styles.factoryResultBox}>เลือกรายชื่อก่อนส่งให้ Center อนุมัติ</div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className={styles.factorySimpleActions}>
+                      <div>
+                        <span>รายชื่อในคอร์ส Factory</span>
+                        <strong>{selectedFactoryCourseParticipants.length} คน</strong>
+                      </div>
+                    </div>
+
+                    <div className={styles.companyRepresentativeList}>
+                      {selectedFactoryCourseParticipants.length > 0 ? (
+                        selectedFactoryCourseParticipants.map((participant) => (
+                          <article key={`${participant.company}-${participant.name}`}>
+                            <div>
+                              <span>{participant.company}</span>
+                              <strong>{participant.name}</strong>
+                              <small>{participant.department}</small>
+                            </div>
+                            <b className={styles.directStatus}>ลงชื่อแล้ว</b>
+                            <button
+                              className={styles.removeParticipantButton}
+                              type="button"
+                              onClick={() => handleRemoveSurveyEmployee(participant.name)}
+                            >
+                              ถอน
+                            </button>
+                          </article>
+                        ))
+                      ) : (
+                        <div className={styles.factoryResultBox}>
+                          เลือกรายชื่อผู้เข้าอบรมของ Factory จากด้านล่าง รายชื่อจะแสดงที่นี่ทันที
+                        </div>
+                      )}
+                    </div>
+                  <div className={styles.factoryResultBox}>คอร์สนี้เป็นของ Factory ไม่ต้องส่งให้ Center อนุมัติ</div>
+                  </>
+                )}
+              </section>
+
+              <section className={`${styles.factoryAcceptFlow} ${styles.factoryAcceptFlowHidden}`} aria-label="Factory sent participant approval">
+                <div className={styles.factoryFlowHeader}>
+                  <div>
+                    <p className={styles.panelKicker}>HRD Center approval</p>
+                    <h3>ส่งรายชื่อผู้เข้าอบรมให้ Center อนุมัติ</h3>
+                  </div>
+                  <span className={styles.panelTag}>
+                    {isHrdCenterCourse ? "Center course" : "Factory course"}
+                  </span>
+                </div>
+
+                {isHrdCenterCourse ? (
+                  <>
+                    <div className={styles.factorySubmitBox}>
+                      <div>
+                        <span>รายชื่อที่เลือกไว้</span>
+                        <strong>{selectedSurveyEmployees.length} คน</strong>
+                      </div>
+                      <button
+                        className={styles.oapInlineButton}
+                        type="button"
+                        onClick={handleSendSurveyParticipants}
+                      >
+                        ส่งรายชื่อให้ Center อนุมัติ
+                      </button>
+                      <button
+                        className={styles.oapInlineButton}
+                        type="button"
+                        onClick={handleMarkSurveyApprovedByCenter}
+                      >
+                        อัปเดตผลอนุมัติจาก Center
+                      </button>
+                    </div>
+
+                    <div className={styles.sentParticipantList} aria-label="Submitted participants">
+                      {selectedSentSurveyParticipants.length > 0 ? (
+                        selectedSentSurveyParticipants.map((participant) => (
+                          <article key={participant.name}>
+                            <strong>{participant.name}</strong>
+                            <span
+                              className={
+                                participant.status === "approved"
+                                  ? styles.approvedStatus
+                                  : styles.waitingStatus
+                              }
+                            >
+                              {participant.status === "approved" ? "อนุมัติแล้ว" : "กำลังรออนุมัติ"}
+                            </span>
+                          </article>
+                        ))
+                      ) : (
+                        <div className={styles.factoryResultBox}>
+                          ยังไม่ได้ส่งรายชื่อให้ Center อนุมัติ
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className={styles.factoryResultBox}>
+                    คอร์สนี้เป็นของ Factory จึงไม่ต้องส่งรายชื่อให้ Center อนุมัติ
+                  </div>
+                )}
+              </section>
+
+              <section className={`${styles.factoryAcceptFlow} ${styles.factoryAcceptFlowHidden}`} aria-label="Factory accept survey workflow">
+                <div className={styles.factoryFlowHeader}>
+                  <div>
+                    <p className={styles.panelKicker}>Factory workflow</p>
+                    <h3>สำรวจผู้เข้าอบรม</h3>
+                  </div>
+                  <span className={styles.panelTag}>
+                    {isHrdCenterCourse ? "HRD Center course" : "Factory course"}
+                  </span>
+                </div>
+
+                <div className={styles.factoryFlowSteps}>
+                  <article>
+                    <span>1</span>
+                    <strong>ส่งรายชื่อผู้เข้าอบรม</strong>
+                  </article>
+                  <article>
+                    <span>2</span>
+                    <strong>ดูรายงานแบบอบรม</strong>
+                  </article>
+                  <article>
+                    <span>3</span>
+                    <strong>ตรวจสอบผู้ลงทะเบียน</strong>
+                  </article>
+                  <article>
+                    <span>4</span>
+                    <strong>เพิ่มรายชื่อผู้เข้าอบรม</strong>
+                  </article>
+                </div>
+
+                <div className={styles.factoryDecisionPanel}>
+                  <div>
+                    <span>เป็นคอร์สที่ HRD Center สร้างไหม</span>
+                    <strong>{isHrdCenterCourse ? "Yes" : "No"}</strong>
+                  </div>
+                  <div>
+                    <span>สถานะ</span>
+                    <strong>
+                      {selectedSurveyApprovalStatus === "draft"
+                        ? "เตรียมรายชื่อ"
+                        : selectedSurveyApprovalStatus === "sent"
+                          ? "ส่งรายชื่อให้ HRD Center"
+                          : selectedSurveyApprovalStatus === "waiting"
+                            ? "รอการอนุมัติจาก HRD Center"
+                            : selectedSurveyApprovalStatus === "approved"
+                              ? "Approved ยืนยันผู้เข้าอบรม"
+                              : selectedSurveyApprovalStatus === "rejected"
+                                ? "Rejected"
+                                : "อนุมัติทันที"}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className={styles.factoryAcceptActions}>
+                  {isHrdCenterCourse ? (
+                    <>
+                      <button
+                        className={styles.oapInlineButton}
+                        type="button"
+                        onClick={() => handleSetAcceptSurveyStatus("sent")}
+                      >
+                        ส่งรายชื่อไป HRD Center
+                      </button>
+                      <button
+                        className={styles.oapInlineButton}
+                        type="button"
+                        onClick={() => handleSetAcceptSurveyStatus("waiting")}
+                      >
+                        รอการอนุมัติ
+                      </button>
+                      <button
+                        className={styles.oapInlineButton}
+                        type="button"
+                        onClick={() => handleSetAcceptSurveyStatus("approved")}
+                      >
+                        HRD Center อนุมัติ
+                      </button>
+                      <button
+                        className={styles.oapInlineButton}
+                        type="button"
+                        onClick={() => handleSetAcceptSurveyStatus("rejected")}
+                      >
+                        Rejected
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      className={styles.oapInlineButton}
+                      type="button"
+                      onClick={() => handleSetAcceptSurveyStatus("directApproved")}
+                    >
+                      อนุมัติทันที
+                    </button>
+                  )}
+                </div>
+
+                <div className={styles.factoryResultBox}>
+                  แสดงผลการอนุมัติจาก HRD:{" "}
+                  <strong>
+                    {selectedSurveyApprovalStatus === "approved" ||
+                    selectedSurveyApprovalStatus === "directApproved"
+                      ? "Approved"
+                      : selectedSurveyApprovalStatus === "rejected"
+                        ? "Rejected"
+                        : "Pending"}
+                  </strong>
+                </div>
+              </section>
+
               <label className={styles.employeeSearchBox}>
                 <span>ค้นหาชื่อพนักงาน</span>
                 <input
@@ -999,7 +1370,7 @@ export default function TrainingPlanManagement({
                 ) : null}
               </div>
 
-              <div className={styles.respondentList}>
+              <div className={styles.factoryHiddenRespondentList}>
                 {selectedSurveyEmployees.map((employee, index) => (
                   <article className={styles.respondentItem} key={employee}>
                     <div>

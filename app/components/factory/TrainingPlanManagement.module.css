@@ -1811,6 +1811,312 @@
   padding: 0 10px;
 }
 
+.factoryAcceptFlow {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  border: 1.5px solid rgba(249, 115, 22, 0.24);
+  border-radius: 8px;
+  background: #fff7ed;
+  padding: 14px;
+}
+
+.factoryAcceptFlowHidden {
+  display: none;
+}
+
+.factoryAcceptSimple {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.factorySimpleHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.factorySimpleHeader h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.factoryDynamicTitle + h3 {
+  display: none;
+}
+
+.factoryAcceptSimple > .factoryResultBox {
+  display: none;
+}
+
+.factorySimpleActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 12px;
+}
+
+.factorySimpleActions span {
+  display: block;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.factorySimpleActions strong {
+  display: block;
+  margin-top: 4px;
+  color: #0f172a;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.companyRepresentativeList {
+  display: grid;
+  gap: 8px;
+}
+
+.companyRepresentativeList article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px 12px;
+}
+
+.companyRepresentativeList div {
+  min-width: 0;
+}
+
+.companyRepresentativeList span {
+  display: block;
+  color: #d71920;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.companyRepresentativeList strong {
+  display: block;
+  margin-top: 3px;
+  color: #0f172a;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.companyRepresentativeList small {
+  display: block;
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.removeParticipantButton {
+  min-height: 32px;
+  border: 1px solid rgba(215, 25, 32, 0.18);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #d71920;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 0 12px;
+}
+
+.factoryHiddenRespondentList {
+  display: none !important;
+}
+
+.factoryFlowHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.factoryFlowHeader h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.factoryFlowSteps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.factoryFlowSteps article {
+  display: grid;
+  gap: 8px;
+  min-height: 88px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px;
+}
+
+.factoryFlowSteps span {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #ffedd5;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.factoryFlowSteps strong {
+  color: #0f172a;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.factoryDecisionPanel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.factoryDecisionPanel div,
+.factoryResultBox {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px 12px;
+}
+
+.factoryDecisionPanel span {
+  display: block;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.factoryDecisionPanel strong,
+.factoryResultBox strong {
+  display: block;
+  margin-top: 5px;
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.factoryAcceptActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.factoryResultBox {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.factorySubmitBox {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.factorySubmitBox span {
+  display: block;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.factorySubmitBox strong {
+  display: block;
+  margin-top: 4px;
+  color: #0f172a;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.sentParticipantList {
+  display: grid;
+  gap: 8px;
+}
+
+.sentParticipantList article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-left: 4px solid rgba(249, 115, 22, 0.72);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px 12px;
+}
+
+.sentParticipantList strong {
+  min-width: 0;
+  color: #0f172a;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.waitingStatus,
+.draftStatus,
+.directStatus,
+.approvedStatus {
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 7px 10px;
+  white-space: nowrap;
+}
+
+.waitingStatus {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.draftStatus {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.directStatus {
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.approvedStatus {
+  background: #ecfdf5;
+  color: #047857;
+}
+
 .coursePickerCard h4 {
   margin: 0;
   color: #0f172a;
@@ -2064,7 +2370,15 @@
   .oapGrid,
   .oapDetailGrid,
   .oapTargetList,
-  .oapNewCourseForm {
+  .oapNewCourseForm,
+  .factoryFlowSteps,
+  .factoryDecisionPanel,
+  .factorySubmitBox,
+  .factorySimpleActions {
+    grid-template-columns: 1fr;
+  }
+
+  .companyRepresentativeList article {
     grid-template-columns: 1fr;
   }
 

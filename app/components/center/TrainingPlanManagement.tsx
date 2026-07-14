@@ -380,7 +380,55 @@ const initialAcceptSurveyEmployees = acceptSurveyPlans.reduce<Record<string, str
   return planMap;
 }, {});
 
+const initialFactoryAcceptRequests = [
+  {
+    key: "factory-course-a-ata",
+    courseKey: "course-a",
+    courseTitle: "Course A",
+    factory: "HRD Factory",
+    company: "ATA",
+    submittedAt: "14 Jul 2026",
+    status: "waiting",
+    participants: [
+      { name: "HRD-FACTORY", department: "HRD", company: "ATA" },
+      { name: "Noppadon A.", department: "Operations", company: "ATA" },
+      { name: "Pimjai K.", department: "Quality", company: "ATA" },
+    ],
+  },
+  {
+    key: "factory-course-a-snf",
+    courseKey: "course-a",
+    courseTitle: "Course A",
+    factory: "HRD Factory",
+    company: "SNF",
+    submittedAt: "14 Jul 2026",
+    status: "waiting",
+    participants: [
+      { name: "Kanda S.", department: "Production", company: "SNF" },
+      { name: "Worawit C.", department: "Maintenance", company: "SNF" },
+      { name: "Suda N.", department: "Logistics", company: "SNF" },
+    ],
+  },
+  {
+    key: "factory-course-a-nic",
+    courseKey: "course-a",
+    courseTitle: "Course A",
+    factory: "HRD Factory",
+    company: "NIC",
+    submittedAt: "14 Jul 2026",
+    status: "waiting",
+    participants: [
+      { name: "Wichai T.", department: "Maintenance", company: "NIC" },
+      { name: "Thanakorn S.", department: "Quality", company: "NIC" },
+    ],
+  },
+] as const;
+
 type AcceptSurveyCourseKey = (typeof acceptSurveyPlans)[number]["courses"][number]["key"];
+type FactoryAcceptRequestStatus = "waiting" | "approved" | "rejected";
+type FactoryAcceptRequest = Omit<(typeof initialFactoryAcceptRequests)[number], "status"> & {
+  status: FactoryAcceptRequestStatus;
+};
 type OapTargetUser = {
   id: string;
   name: string;
@@ -524,6 +572,9 @@ export default function TrainingPlanManagement({
   const [acceptSurveyEmployees, setAcceptSurveyEmployees] = useState<Record<string, string[]>>({
     ...initialAcceptSurveyEmployees,
   });
+  const [factoryAcceptRequests, setFactoryAcceptRequests] = useState<FactoryAcceptRequest[]>(
+    initialFactoryAcceptRequests.map((request) => ({ ...request })),
+  );
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [selectedTargetGroup, setSelectedTargetGroup] = useState<(typeof targetGroups)[number]>("all");
   const [selectedEmployeeCompany, setSelectedEmployeeCompany] =
@@ -550,6 +601,32 @@ export default function TrainingPlanManagement({
     acceptSurveyCourses[0];
 
   const selectedSurveyEmployees = acceptSurveyEmployees[selectedSurveyCourse.key] ?? [];
+  const selectedFactoryAcceptRequests = factoryAcceptRequests.filter(
+    (request) => request.courseKey === selectedSurveyCourse.key,
+  );
+  const selectedWaitingFactoryRequests = selectedFactoryAcceptRequests.filter(
+    (request) => request.status === "waiting",
+  );
+  const selectedWaitingFactoryParticipantCount = selectedWaitingFactoryRequests.reduce(
+    (total, request) => total + request.participants.length,
+    0,
+  );
+  const selectedApprovedFactoryParticipantDetails = selectedFactoryAcceptRequests
+    .filter((request) => request.status === "approved")
+    .flatMap((request) => request.participants);
+  const selectedSurveyEmployeeDetails = selectedSurveyEmployees.map((employeeName) => {
+    const employee = employeeDirectory.find((item) => item.name === employeeName);
+    const factoryParticipant = selectedApprovedFactoryParticipantDetails.find(
+      (participant) => participant.name === employeeName,
+    );
+
+    return {
+      name: employeeName,
+      id: employee?.id ?? "FACTORY",
+      department: employee?.department ?? factoryParticipant?.department ?? "Factory submitted",
+      company: employee?.company ?? factoryParticipant?.company ?? "Factory",
+    };
+  });
 
   const filteredEmployees = employeeDirectory.filter((employee) => {
     const searchValue = employeeSearch.trim().toLowerCase();
@@ -584,6 +661,49 @@ export default function TrainingPlanManagement({
         employeeName,
       ],
     }));
+  };
+
+  const handleRemoveSurveyEmployee = (employeeName: string) => {
+    setAcceptSurveyEmployees((current) => ({
+      ...current,
+      [selectedSurveyCourse.key]: (current[selectedSurveyCourse.key] ?? []).filter(
+        (name) => name !== employeeName,
+      ),
+    }));
+  };
+
+  const handleFactoryAcceptRequestStatus = (
+    requestKey: string,
+    nextStatus: FactoryAcceptRequestStatus,
+  ) => {
+    const targetRequest = factoryAcceptRequests.find((request) => request.key === requestKey);
+
+    setFactoryAcceptRequests((current) =>
+      current.map((request) =>
+        request.key === requestKey
+          ? {
+              ...request,
+              status: nextStatus,
+            }
+          : request,
+      ),
+    );
+
+    if (!targetRequest || nextStatus !== "approved") {
+      return;
+    }
+
+    setAcceptSurveyEmployees((current) => {
+      const currentEmployees = current[targetRequest.courseKey] ?? [];
+      const incomingEmployees = targetRequest.participants
+        .map((participant) => participant.name)
+        .filter((participantName) => !currentEmployees.includes(participantName));
+
+      return {
+        ...current,
+        [targetRequest.courseKey]: [...currentEmployees, ...incomingEmployees],
+      };
+    });
   };
 
   const handleAcceptSurveyFilterChange = (nextYear: RollingYear, nextMonth: AcceptSurveyMonth) => {
@@ -926,6 +1046,136 @@ export default function TrainingPlanManagement({
                 <p>{selectedSurveyCourse.detail}</p>
               </div>
 
+              <div className={styles.acceptSurveyOverview} aria-label="Accept survey overview">
+                <article>
+                  <span>รออนุมัติ</span>
+                  <strong>{selectedWaitingFactoryRequests.length}</strong>
+                  <small>ชุดคำขอ</small>
+                </article>
+                <article>
+                  <span>คนที่รอ</span>
+                  <strong>{selectedWaitingFactoryParticipantCount}</strong>
+                  <small>คน</small>
+                </article>
+                <article>
+                  <span>ในคอร์สแล้ว</span>
+                  <strong>{selectedSurveyEmployeeDetails.length}</strong>
+                  <small>คน</small>
+                </article>
+              </div>
+
+              <section className={styles.factoryApprovalPanel} aria-label="Factory approval requests">
+                <div className={styles.factoryApprovalHeader}>
+                  <div>
+                    <p className={styles.panelKicker}>Factory request</p>
+                    <h3>รายชื่อที่ Factory ส่งให้อนุมัติ</h3>
+                  </div>
+                  <span className={styles.panelTag}>{selectedFactoryAcceptRequests.length} requests</span>
+                </div>
+
+                <div className={styles.factoryApprovalList}>
+                  {selectedFactoryAcceptRequests.length > 0 ? (
+                    selectedFactoryAcceptRequests.map((request) => (
+                      <article
+                        className={`${styles.factoryApprovalCard} ${
+                          request.status === "approved"
+                            ? styles.factoryApprovalCardApproved
+                            : request.status === "rejected"
+                              ? styles.factoryApprovalCardRejected
+                              : ""
+                        }`}
+                        key={request.key}
+                      >
+                        <div className={styles.factoryApprovalTopline}>
+                          <div>
+                            <span>{request.factory}</span>
+                            <strong>{request.company}</strong>
+                            <small>{request.participants.length} คนที่ส่งมา</small>
+                          </div>
+                          <b
+                            className={
+                              request.status === "approved"
+                                ? styles.factoryApprovedStatus
+                                : request.status === "rejected"
+                                  ? styles.factoryRejectedStatus
+                                  : styles.factoryWaitingStatus
+                            }
+                          >
+                            {request.status === "approved"
+                              ? "อนุมัติแล้ว"
+                              : request.status === "rejected"
+                                ? "ไม่อนุมัติ"
+                                : "รออนุมัติ"}
+                          </b>
+                        </div>
+
+                        <div className={styles.factorySubmittedPeople}>
+                          {request.participants.map((participant) => (
+                            <div key={`${request.key}-${participant.name}`}>
+                              <strong>{participant.name}</strong>
+                              <span>{participant.department} / {participant.company}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className={styles.factoryApprovalActions}>
+                          <button
+                            className={styles.oapInlineButton}
+                            type="button"
+                            onClick={() => handleFactoryAcceptRequestStatus(request.key, "approved")}
+                          >
+                            อนุมัติ
+                          </button>
+                          <button
+                            className={styles.factoryRejectButton}
+                            type="button"
+                            onClick={() => handleFactoryAcceptRequestStatus(request.key, "rejected")}
+                          >
+                            ไม่อนุมัติ
+                          </button>
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <div className={styles.employeeEmpty}>ยังไม่มีรายชื่อจาก Factory สำหรับคอร์สนี้</div>
+                  )}
+                </div>
+              </section>
+
+              <section className={styles.courseParticipantPanel} aria-label="Course participants">
+                <div className={styles.factoryApprovalHeader}>
+                  <div>
+                    <p className={styles.panelKicker}>Course roster</p>
+                    <h3>คนที่เพิ่มเข้า Course แล้ว</h3>
+                  </div>
+                  <span className={styles.panelTag}>{selectedSurveyEmployeeDetails.length} people</span>
+                </div>
+
+                <div className={styles.courseParticipantList}>
+                  {selectedSurveyEmployeeDetails.length > 0 ? (
+                    selectedSurveyEmployeeDetails.map((employee) => (
+                      <article className={styles.courseParticipantCard} key={employee.name}>
+                        <div>
+                          <strong>{employee.name}</strong>
+                          <span>{employee.department} / {employee.company}</span>
+                        </div>
+                        <div className={styles.courseParticipantActions}>
+                          <button
+                            className={styles.removeParticipantButton}
+                            type="button"
+                            onClick={() => handleRemoveSurveyEmployee(employee.name)}
+                          >
+                            ถอน
+                          </button>
+                        </div>
+                      </article>
+                    ))
+                  ) : (
+                    <div className={styles.employeeEmpty}>ยังไม่มีรายชื่อในคอร์สนี้</div>
+                  )}
+                </div>
+              </section>
+
               <label className={styles.employeeSearchBox}>
                 <span>ค้นหาชื่อพนักงาน</span>
                 <input
@@ -1000,13 +1250,12 @@ export default function TrainingPlanManagement({
               </div>
 
               <div className={styles.respondentList}>
-                {selectedSurveyEmployees.map((employee, index) => (
-                  <article className={styles.respondentItem} key={employee}>
+                {selectedSurveyEmployeeDetails.map((employee) => (
+                  <article className={styles.respondentItem} key={employee.name}>
                     <div>
-                      <strong>{employee}</strong>
-                      <span>Target participant #{index + 1}</span>
+                      <strong>{employee.name}</strong>
+                      <span>{employee.department} / {employee.company}</span>
                     </div>
-                    <b>Survey</b>
                   </article>
                 ))}
               </div>
