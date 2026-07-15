@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Navbar from "../Navbar";
-import styles from "./MasterDataManagement.module.css";
+import styles from "./Factory_MasterDataManagement.module.css";
 
 const masterDataItems = [
   {

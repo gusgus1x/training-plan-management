@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Navbar from "../Navbar";
-import styles from "./TrainingRecordManagement.module.css";
+import styles from "./Factory_TrainingRecordManagement.module.css";
 
 const recordItems = [
   {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Navbar from "../Navbar";
-import styles from "./Dashboard.module.css";
+import styles from "./Factory_Dashboard.module.css";
 
 const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 

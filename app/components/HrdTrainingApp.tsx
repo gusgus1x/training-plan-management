@@ -7,12 +7,12 @@ import ReportManagement from "./center/ReportManagement";
 import TrainingCourseManagement from "./center/TrainingCourseManagement";
 import TrainingPlanManagement from "./center/TrainingPlanManagement";
 import TrainingRecordManagement from "./center/TrainingRecordManagement";
-import FactoryDashboard from "./factory/Dashboard";
-import FactoryMasterDataManagement from "./factory/MasterDataManagement";
-import FactoryReportManagement from "./factory/ReportManagement";
-import FactoryTrainingCourseManagement from "./factory/TrainingCourseManagement";
-import FactoryTrainingPlanManagement from "./factory/TrainingPlanManagement";
-import FactoryTrainingRecordManagement from "./factory/TrainingRecordManagement";
+import FactoryDashboard from "./factory/Factory_Dashboard";
+import FactoryMasterDataManagement from "./factory/Factory_MasterDataManagement";
+import FactoryReportManagement from "./factory/Factory_ReportManagement";
+import FactoryTrainingCourseManagement from "./factory/Factory_TrainingCourseManagement";
+import FactoryTrainingPlanManagement from "./factory/Factory_TrainingPlanManagement";
+import FactoryTrainingRecordManagement from "./factory/Factory_TrainingRecordManagement";
 import UserDashboard from "./employee/UserDashboard";
 import LoginPage from "./LoginPage";
 
