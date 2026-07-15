@@ -1516,3 +1516,125 @@
 .recordWorkflow {
   display: none !important;
 }
+
+.reportWorkspace {
+  grid-template-columns: 1fr;
+}
+
+.reportControlPanel,
+.reportResultPanel {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  border: 1.5px solid rgba(15, 23, 42, 0.18);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.reportControlPanel .panelHeader,
+.reportResultPanel .panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 0;
+}
+
+.reportControlPanel .panelHeader p,
+.reportResultPanel .panelHeader p {
+  display: block !important;
+  margin: 0 0 6px;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.reportControlPanel .panelHeader h2,
+.reportResultPanel .panelHeader h2 {
+  color: #0f172a;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.reportControlPanel .panelHeader > span,
+.reportResultPanel .panelHeader > span {
+  display: inline-flex !important;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 7px 9px;
+  white-space: nowrap;
+}
+
+.reportControlPanel .recordRequestForm {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 0;
+}
+
+.reportControlPanel .recordRequestForm label {
+  display: grid;
+  gap: 6px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.reportControlPanel .recordRequestForm label:has(textarea) {
+  grid-column: 1 / -1;
+}
+
+.reportControlPanel .recordRequestForm input,
+.reportControlPanel .recordRequestForm select,
+.reportControlPanel .recordRequestForm textarea {
+  border: 1.5px solid rgba(15, 23, 42, 0.16);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.reportControlPanel .recordRequestForm input,
+.reportControlPanel .recordRequestForm select {
+  height: 40px;
+}
+
+.reportControlPanel .recordRequestForm textarea {
+  min-height: 104px;
+}
+
+.reportControlPanel .recordRequestForm button {
+  grid-column: 1 / -1;
+  justify-self: end;
+  min-height: 40px;
+  border-color: #d71920;
+  background: #d71920;
+  font-size: 13px;
+  padding: 0 18px;
+}
+
+.savedReportList article {
+  border-left: 4px solid rgba(215, 25, 32, 0.62);
+  background: #ffffff;
+}
+
+.savedReportList b {
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  padding: 7px 9px;
+}
+
+@media (max-width: 760px) {
+  .reportControlPanel .panelHeader,
+  .reportResultPanel .panelHeader {
+    display: grid;
+  }
+
+  .reportControlPanel .recordRequestForm {
+    grid-template-columns: 1fr;
+  }
+}

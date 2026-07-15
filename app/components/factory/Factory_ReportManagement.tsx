@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import Navbar from "../Navbar";
-import styles from "./ReportManagement.module.css";
+import styles from "./Factory_ReportManagement.module.css";
+
+const resultReportTitle = "Keep Pre/Post Test and Evaluation";
+const internalReportTitle = "Report";
 
 const reportItems = [
   {
@@ -11,9 +14,9 @@ const reportItems = [
     description: "เปิดมุมมองกำหนดการอบรมแบบแยกหัวข้อ",
   },
   {
-    title: "Monthly score",
-    subtitle: "คะแนนรายเดือน",
-    description: "เปิดมุมมองสรุปคะแนนรายเดือน",
+    title: resultReportTitle,
+    subtitle: "Pre/Post test & Evaluation",
+    description: "เก็บ Pre/Post test และ Evaluation",
   },
   {
     title: "Training Expense",
@@ -24,9 +27,9 @@ const reportItems = [
 
 const extraReportItems = [
   {
-    title: "HRD Factory Export",
-    subtitle: "รายงานรวมให้ HRD Factory",
-    description: "เลือกส่งข้อมูลรายงานรวมแยกบริษัทให้ HRD Factory จัดเก็บลงฐานข้อมูล",
+    title: internalReportTitle,
+    subtitle: "ส่งข้อมูลภายใน",
+    description: "ส่งข้อมูลให้พนักงานหรือ HRD Center โดยระบุบริษัท แผนก และหมายเหตุ พร้อมติดตามข้อมูลตอบกลับ",
   },
 ] as const;
 
@@ -56,7 +59,12 @@ const trainingCalendar = [
     title: "Leadership Essentials",
     code: "OAP-TRN-001",
     time: "09:00 - 16:00",
-    company: "ATFB",
+    company: "ATFB / SNF / NIC",
+    companyBreakdown: [
+      { company: "ATFB", participants: 10, completed: 10, evaluation: 10 },
+      { company: "SNF", participants: 8, completed: 7, evaluation: 7 },
+      { company: "NIC", participants: 6, completed: 6, evaluation: 6 },
+    ],
     status: "Planned",
   },
   {
@@ -65,7 +73,12 @@ const trainingCalendar = [
     title: "Safety & Compliance Basics",
     code: "OAP-TRN-022",
     time: "10:00 - 12:00",
-    company: "SNF",
+    company: "SNF / ATA / TEP",
+    companyBreakdown: [
+      { company: "SNF", participants: 20, completed: 19, evaluation: 19 },
+      { company: "ATA", participants: 12, completed: 12, evaluation: 11 },
+      { company: "TEP", participants: 10, completed: 9, evaluation: 9 },
+    ],
     status: "Completed",
   },
   {
@@ -74,7 +87,11 @@ const trainingCalendar = [
     title: "Service Mind for Frontline",
     code: "OAP-TRN-014",
     time: "13:00 - 16:30",
-    company: "SATI",
+    company: "SATI / ATFB",
+    companyBreakdown: [
+      { company: "SATI", participants: 10, completed: 10, evaluation: 10 },
+      { company: "ATFB", participants: 8, completed: 8, evaluation: 8 },
+    ],
     status: "Planned",
   },
   {
@@ -101,7 +118,12 @@ const trainingCalendar = [
     title: "Annual Compliance Refresh",
     code: "OAP-TRN-101",
     time: "09:00 - 12:00",
-    company: "ATFB",
+    company: "ATFB / SNF / NIC",
+    companyBreakdown: [
+      { company: "ATFB", participants: 20, completed: 20, evaluation: 0 },
+      { company: "SNF", participants: 16, completed: 16, evaluation: 0 },
+      { company: "NIC", participants: 12, completed: 12, evaluation: 0 },
+    ],
     status: "Planned",
   },
 ] as const;
@@ -114,12 +136,17 @@ const reportCourses = [
     date: "2026-07-02",
     title: "Leadership Essentials",
     code: "OAP-TRN-001",
-    company: "ATFB",
+    company: "ATFB / SNF / NIC",
+    companyBreakdown: [
+      { company: "ATFB", participants: 10, completed: 10, evaluation: 10 },
+      { company: "SNF", participants: 8, completed: 7, evaluation: 7 },
+      { company: "NIC", participants: 6, completed: 6, evaluation: 6 },
+    ],
     participants: 24,
     completed: 23,
     preTest: "74%",
     postTest: "91%",
-    evaluation: "4.7/5",
+    evaluation: 23,
     resultStatus: "Verified",
     instructor: 35000,
     room: 12000,
@@ -132,12 +159,17 @@ const reportCourses = [
     date: "2026-07-08",
     title: "Safety & Compliance Basics",
     code: "OAP-TRN-022",
-    company: "SNF",
+    company: "SNF / ATA / TEP",
+    companyBreakdown: [
+      { company: "SNF", participants: 20, completed: 19, evaluation: 19 },
+      { company: "ATA", participants: 12, completed: 12, evaluation: 11 },
+      { company: "TEP", participants: 10, completed: 9, evaluation: 9 },
+    ],
     participants: 42,
     completed: 40,
     preTest: "68%",
     postTest: "89%",
-    evaluation: "4.5/5",
+    evaluation: 39,
     resultStatus: "Verified",
     instructor: 22000,
     room: 15000,
@@ -150,12 +182,16 @@ const reportCourses = [
     date: "2026-09-08",
     title: "Service Mind for Frontline",
     code: "OAP-TRN-014",
-    company: "SATI",
+    company: "SATI / ATFB",
+    companyBreakdown: [
+      { company: "SATI", participants: 10, completed: 10, evaluation: 10 },
+      { company: "ATFB", participants: 8, completed: 8, evaluation: 8 },
+    ],
     participants: 18,
     completed: 18,
     preTest: "71%",
     postTest: "93%",
-    evaluation: "4.8/5",
+    evaluation: 18,
     resultStatus: "Checked",
     instructor: 28000,
     room: 9000,
@@ -168,12 +204,17 @@ const reportCourses = [
     date: "2027-01-14",
     title: "Annual Compliance Refresh",
     code: "OAP-TRN-101",
-    company: "ATFB",
+    company: "ATFB / SNF / NIC",
+    companyBreakdown: [
+      { company: "ATFB", participants: 20, completed: 20, evaluation: 0 },
+      { company: "SNF", participants: 16, completed: 16, evaluation: 0 },
+      { company: "NIC", participants: 12, completed: 12, evaluation: 0 },
+    ],
     participants: 48,
     completed: 48,
     preTest: "76%",
     postTest: "94%",
-    evaluation: "4.6/5",
+    evaluation: 0,
     resultStatus: "Planned",
     instructor: 18000,
     room: 0,
@@ -186,12 +227,16 @@ const reportCourses = [
     date: "2026-07-24",
     title: "HRD Policy Refresh",
     code: "ATA-TRN-001",
-    company: "ATA",
+    company: "ATA / SATI",
+    companyBreakdown: [
+      { company: "ATA", participants: 9, completed: 9, evaluation: 9 },
+      { company: "SATI", participants: 7, completed: 7, evaluation: 7 },
+    ],
     participants: 16,
     completed: 16,
     preTest: "79%",
     postTest: "95%",
-    evaluation: "4.9/5",
+    evaluation: 16,
     resultStatus: "Verified",
     instructor: 12000,
     room: 0,
@@ -201,7 +246,74 @@ const reportCourses = [
   },
 ] as const;
 
-const factoryCompanies = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
+const csvColumns = [
+  "course_id",
+  "course_code",
+  "course_title",
+  "company",
+  "training_date",
+  "participants",
+  "completed",
+  "pre_test_pass_percent",
+  "post_test_pass_percent",
+  "evaluation_completed",
+  "evaluation_pending",
+  "status",
+] as const;
+
+const escapeCsvValue = (value: string | number) => {
+  const csvValue = String(value);
+
+  if (/[",\n\r]/.test(csvValue)) {
+    return `"${csvValue.replaceAll("\"", "\"\"")}"`;
+  }
+
+  return csvValue;
+};
+
+type ReportCourse = (typeof reportCourses)[number];
+
+type SentFactoryMessage = {
+  id: string;
+  sender: string;
+  recipient: string;
+  company: string;
+  department: string;
+  subject: string;
+  message: string;
+  sentAt: string;
+};
+
+const factoryMessageCompanies = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
+const factoryMessageDepartments = ["HRD", "Production", "Operations", "Quality", "Maintenance", "Safety"] as const;
+
+const buildEvaluationCsv = (
+  courses: readonly ReportCourse[],
+  companyFilter?: string,
+) => {
+  const rows = courses.flatMap((course) =>
+    course.companyBreakdown
+      .filter((companyReport) => !companyFilter || companyReport.company === companyFilter)
+      .map((companyReport) => [
+        course.id,
+        course.code,
+        course.title,
+        companyReport.company,
+        course.date,
+        companyReport.participants,
+        companyReport.completed,
+        course.preTest,
+        course.postTest,
+        companyReport.evaluation,
+        companyReport.participants - companyReport.evaluation,
+        course.resultStatus,
+      ]),
+  );
+
+  return [csvColumns, ...rows]
+    .map((row) => row.map(escapeCsvValue).join(","))
+    .join("\r\n");
+};
 
 type ReportManagementProps = {
   username: string;
@@ -221,8 +333,15 @@ export default function ReportManagement({
   const [selectedCalendarMonth, setSelectedCalendarMonth] = useState("07");
   const [selectedReportYear, setSelectedReportYear] = useState<(typeof calendarYears)[number]>("2026");
   const [selectedReportMonth, setSelectedReportMonth] = useState("07");
-  const [selectedFactoryCompany, setSelectedFactoryCompany] =
-    useState<(typeof factoryCompanies)[number]>("ATA");
+  const [factoryMessageRecipient, setFactoryMessageRecipient] = useState("Employee");
+  const [factoryMessageCompany, setFactoryMessageCompany] = useState<(typeof factoryMessageCompanies)[number]>("ATA");
+  const [factoryMessageDepartment, setFactoryMessageDepartment] =
+    useState<(typeof factoryMessageDepartments)[number]>("HRD");
+  const [factoryMessageSubject, setFactoryMessageSubject] = useState("");
+  const [factoryMessageBody, setFactoryMessageBody] = useState("");
+  const [sentFactoryMessages, setSentFactoryMessages] = useState<SentFactoryMessage[]>([]);
+  const shouldShowFactoryCompany = factoryMessageRecipient !== "HRD Center";
+  const shouldShowFactoryDepartment = factoryMessageRecipient === "Employee";
 
   const selectedMonthLabel =
     calendarMonths.find((month) => month.value === selectedCalendarMonth)?.label ?? calendarMonths[0].label;
@@ -233,14 +352,10 @@ export default function ReportManagement({
   const visibleReportCourses = reportCourses.filter((course) =>
     course.date.startsWith(`${selectedReportYear}-${selectedReportMonth}`),
   );
-  const visibleFactoryCourses = visibleReportCourses.filter(
-    (course) => course.company === selectedFactoryCompany,
-  );
   const totalReportExpense = visibleReportCourses.reduce(
     (total, course) => total + course.instructor + course.room + course.material + course.food + course.travel,
     0,
   );
-  const totalFactoryRecords = visibleFactoryCourses.length;
 
   const firstDayOfMonth = new Date(Number(selectedCalendarYear), Number(selectedCalendarMonth) - 1, 1);
   const daysInMonth = new Date(Number(selectedCalendarYear), Number(selectedCalendarMonth), 0).getDate();
@@ -264,6 +379,52 @@ export default function ReportManagement({
     }
 
     onBack();
+  };
+
+  const downloadEvaluationFile = (
+    courses: readonly ReportCourse[],
+    fileScope: string,
+    companyFilter?: string,
+  ) => {
+    const csv = buildEvaluationCsv(courses, companyFilter);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = `hrd-factory-evaluation-${fileScope}-${selectedReportYear}-${selectedReportMonth}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleSendFactoryMessage = () => {
+    if (!factoryMessageSubject.trim() || !factoryMessageBody.trim()) {
+      return;
+    }
+
+    const sentAt = new Intl.DateTimeFormat("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date());
+
+    setSentFactoryMessages((current) => [
+      {
+        id: `MSG-${Date.now()}`,
+        sender: "HRD Factory",
+        recipient: factoryMessageRecipient,
+        company: shouldShowFactoryCompany ? factoryMessageCompany : "",
+        department: shouldShowFactoryDepartment ? factoryMessageDepartment : "",
+        subject: factoryMessageSubject,
+        message: factoryMessageBody,
+        sentAt,
+      },
+      ...current,
+    ]);
+    setFactoryMessageSubject("");
+    setFactoryMessageBody("");
   };
 
   return (
@@ -366,38 +527,48 @@ export default function ReportManagement({
             </div>
           </section>
         </section>
-      ) : selectedReport?.title === "Monthly score" ? (
+      ) : selectedReport?.title === resultReportTitle ? (
         <section className={styles.reportWorkspace} aria-label="Training result report">
           <section className={styles.reportToolbar}>
             <div>
-              <p className={styles.panelKicker}>Training result</p>
-              <h2>รายงานผลอบรม ผลสอบ และผลประเมิน</h2>
+              <p className={styles.panelKicker}>Keep result</p>
+              <h2>{resultReportTitle}</h2>
             </div>
-            <div className={styles.calendarFilters}>
-              <label>
-                <span>Year</span>
-                <select
-                  value={selectedReportYear}
-                  onChange={(event) =>
-                    setSelectedReportYear(event.target.value as (typeof calendarYears)[number])
-                  }
-                >
-                  {calendarYears.map((year) => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>Month</span>
-                <select
-                  value={selectedReportMonth}
-                  onChange={(event) => setSelectedReportMonth(event.target.value)}
-                >
-                  {calendarMonths.map((month) => (
-                    <option key={month.value} value={month.value}>{month.label}</option>
-                  ))}
-                </select>
-              </label>
+            <div className={styles.toolbarActions}>
+              <div className={styles.calendarFilters}>
+                <label>
+                  <span>Year</span>
+                  <select
+                    value={selectedReportYear}
+                    onChange={(event) =>
+                      setSelectedReportYear(event.target.value as (typeof calendarYears)[number])
+                    }
+                  >
+                    {calendarYears.map((year) => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Month</span>
+                  <select
+                    value={selectedReportMonth}
+                    onChange={(event) => setSelectedReportMonth(event.target.value)}
+                  >
+                    {calendarMonths.map((month) => (
+                      <option key={month.value} value={month.value}>{month.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <button
+                className={styles.exportButton}
+                type="button"
+                onClick={() => downloadEvaluationFile(visibleReportCourses, "all-company")}
+                disabled={visibleReportCourses.length === 0}
+              >
+                Download Evaluation File
+              </button>
             </div>
           </section>
 
@@ -407,6 +578,13 @@ export default function ReportManagement({
                 <div>
                   <strong>{course.title}</strong>
                   <span>{course.code} / {course.date} / {course.company}</span>
+                  <button
+                    className={styles.inlineExportButton}
+                    type="button"
+                    onClick={() => downloadEvaluationFile([course], course.code.toLowerCase())}
+                  >
+                    Download Course Evaluation
+                  </button>
                 </div>
                 <p>
                   <span>Pre-test</span>
@@ -418,7 +596,7 @@ export default function ReportManagement({
                 </p>
                 <p>
                   <span>Evaluation</span>
-                  <b>{course.evaluation}</b>
+                  <b>{course.evaluation}/{course.participants} คน</b>
                 </p>
                 <em>{course.resultStatus}</em>
               </article>
@@ -492,88 +670,130 @@ export default function ReportManagement({
             ) : null}
           </div>
         </section>
-      ) : selectedReport?.title === "HRD Factory Export" ? (
+      ) : selectedReport?.title === internalReportTitle ? (
         <section className={styles.reportWorkspace} aria-label="HRD Factory export">
           <section className={styles.reportToolbar}>
             <div>
               <p className={styles.panelKicker}>HRD Factory</p>
-              <h2>ระบบส่งรายงานรวมแต่ละบริษัท</h2>
-              <span>{visibleFactoryCourses.length} records ready</span>
-            </div>
-            <div className={styles.calendarFilters}>
-              <label>
-                <span>Company</span>
-                <select
-                  value={selectedFactoryCompany}
-                  onChange={(event) =>
-                    setSelectedFactoryCompany(event.target.value as (typeof factoryCompanies)[number])
-                  }
-                >
-                  {factoryCompanies.map((company) => (
-                    <option key={company} value={company}>{company}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>Year</span>
-                <select
-                  value={selectedReportYear}
-                  onChange={(event) =>
-                    setSelectedReportYear(event.target.value as (typeof calendarYears)[number])
-                  }
-                >
-                  {calendarYears.map((year) => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>Month</span>
-                <select
-                  value={selectedReportMonth}
-                  onChange={(event) => setSelectedReportMonth(event.target.value)}
-                >
-                  {calendarMonths.map((month) => (
-                    <option key={month.value} value={month.value}>{month.label}</option>
-                  ))}
-                </select>
-              </label>
+              <h2>ระบบส่งข้อความ</h2>
+              <span>{sentFactoryMessages.length} messages</span>
             </div>
           </section>
 
           <section className={styles.factoryPanel}>
-            <div className={styles.factorySteps}>
-              <article>
-                <span>1</span>
-                <strong>เลือกส่งข้อมูลให้ HRD Factory</strong>
-              </article>
-              <article>
-                <span>2</span>
-                <strong>กรอกแบบรายงาน</strong>
-              </article>
-              <article>
-                <span>3</span>
-                <strong>ส่งข้อมูล</strong>
-              </article>
-              <article>
-                <span>4</span>
-                <strong>จัดเก็บลงฐานข้อมูล</strong>
-              </article>
-            </div>
-            <div className={styles.factoryPayload}>
-              {visibleFactoryCourses.map((course) => (
-                <article key={course.id}>
-                  <strong>{course.title}</strong>
-                  <span>{course.code} / {course.date} / {course.resultStatus}</span>
-                </article>
-              ))}
-              {visibleFactoryCourses.length === 0 ? (
-                <div className={styles.emptyMonth}>No factory export records for this filter</div>
-              ) : null}
-            </div>
-            <button className={styles.sendButton} type="button">
-              ส่งข้อมูล {totalFactoryRecords} records
-            </button>
+            <section className={styles.factoryFormPanel} aria-label="Send internal report message">
+              <div className={styles.factoryPanelHeader}>
+                <div>
+                <p className={styles.panelKicker}>Compose</p>
+                <h3>ส่งข้อความ</h3>
+                </div>
+              </div>
+
+              <form className={styles.messageFormGrid}>
+                <label>
+                  <span>ส่งให้ใคร</span>
+                  <select
+                    value={factoryMessageRecipient}
+                    onChange={(event) => setFactoryMessageRecipient(event.target.value)}
+                  >
+                    <option value="Employee">Employee</option>
+                    <option value="HRD Factory">HRD Factory</option>
+                    <option value="HRD Center">HRD Center</option>
+                  </select>
+                </label>
+
+                {shouldShowFactoryCompany ? (
+                  <label>
+                    <span>เธเธฃเธดเธฉเธฑเธ—</span>
+                    <select
+                      value={factoryMessageCompany}
+                      onChange={(event) =>
+                        setFactoryMessageCompany(event.target.value as (typeof factoryMessageCompanies)[number])
+                      }
+                    >
+                      {factoryMessageCompanies.map((company) => (
+                        <option key={company} value={company}>{company}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+
+                {shouldShowFactoryDepartment ? (
+                  <label>
+                    <span>เนเธเธเธ</span>
+                    <select
+                      value={factoryMessageDepartment}
+                      onChange={(event) =>
+                        setFactoryMessageDepartment(event.target.value as (typeof factoryMessageDepartments)[number])
+                      }
+                    >
+                      {factoryMessageDepartments.map((department) => (
+                        <option key={department} value={department}>{department}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+
+                <label>
+                  <span>หัวข้อเรื่อง</span>
+                  <input
+                    type="text"
+                    value={factoryMessageSubject}
+                    onChange={(event) => setFactoryMessageSubject(event.target.value)}
+                    placeholder="ระบุหัวข้อเรื่อง"
+                  />
+                </label>
+              <label>
+                <span>ข้อความ</span>
+                <textarea
+                  value={factoryMessageBody}
+                  onChange={(event) => setFactoryMessageBody(event.target.value)}
+                  placeholder="พิมพ์ข้อความที่ต้องการส่ง"
+                />
+              </label>
+
+              
+                <button
+                  className={styles.sendButton}
+                  type="button"
+                  disabled={!factoryMessageSubject.trim() || !factoryMessageBody.trim()}
+                  onClick={handleSendFactoryMessage}
+                >
+                  ส่งข้อความ
+                </button>
+              </form>
+            </section>
+
+            <section className={styles.factoryReplyPanel} aria-label="Sent report replies">
+              <div className={styles.factoryPanelHeader}>
+                <div>
+                <p className={styles.panelKicker}>Inbox</p>
+                <h3>ข้อมูลที่ส่งมา</h3>
+                </div>
+                <span>{sentFactoryMessages.length} messages</span>
+              </div>
+
+              <div className={styles.factoryReplyList}>
+                {sentFactoryMessages.length > 0 ? (
+                  sentFactoryMessages.map((message) => (
+                    <article className={styles.factoryReplyItem} key={message.id}>
+                      <div>
+                        <strong>{message.subject}</strong>
+                        <span className={styles.replyMeta}>
+                          From: {message.sender} / To: {message.recipient}
+                          {message.company ? ` / Company: ${message.company}` : ""}
+                          {message.department ? ` / Department: ${message.department}` : ""}
+                        </span>
+                        <p>{message.message}</p>
+                      </div>
+                      <time>{message.sentAt}</time>
+                    </article>
+                  ))
+                ) : (
+                  <div className={styles.emptyMonth}>ยังไม่มีข้อความ</div>
+                )}
+              </div>
+            </section>
           </section>
         </section>
       ) : (

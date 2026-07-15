@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Navbar from "../Navbar";
-import styles from "./TrainingCourseManagement.module.css";
+import styles from "./Factory_TrainingCourseManagement.module.css";
 
 const courseItems = [
   {

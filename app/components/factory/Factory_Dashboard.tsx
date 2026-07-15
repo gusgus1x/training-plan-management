@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import DashboardLayout from "../DashboardLayout";
-import styles from "./Dashboard.module.css";
+import styles from "./Factory_Dashboard.module.css";
+
 
 const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
