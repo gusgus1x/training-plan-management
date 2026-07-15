@@ -1,61 +1,134 @@
-type SqlServerEnv = Record<string, string | undefined>;
+import type { config as SqlServerConfig } from "mssql";
 
-export type SqlServerExpressConfig = {
-  server: string;
-  database: string;
-  user: string;
-  password: string;
-  port?: number;
-  options: {
-    encrypt: boolean;
-    trustServerCertificate: boolean;
-    instanceName?: string;
-  };
-};
+type DatabaseEnvironment = Record<string, string | undefined>;
 
-export const sqlServerRequiredEnvKeys = [
-  "SQLSERVER_HOST",
-  "SQLSERVER_DATABASE",
-  "SQLSERVER_USER",
-  "SQLSERVER_PASSWORD",
+const requiredDatabaseEnvironmentKeys = [
+  "DB_SERVER",
+  "DB_INSTANCE",
+  "DB_DATABASE",
+  "DB_USER",
+  "DB_PASSWORD",
 ] as const;
 
-const readBoolean = (value: string | undefined, fallback: boolean) => {
-  if (value === undefined) {
+const prohibitedDatabaseUsers = new Set(["sa", "sysadmin"]);
+
+export class DatabaseEnvironmentError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DatabaseEnvironmentError";
+  }
+}
+
+const readRequiredValue = (
+  environment: DatabaseEnvironment,
+  key: (typeof requiredDatabaseEnvironmentKeys)[number],
+) => {
+  const value = environment[key]?.trim();
+
+  if (!value) {
+    throw new DatabaseEnvironmentError(`Missing required environment variable: ${key}`);
+  }
+
+  return value;
+};
+
+const readBoolean = (
+  environment: DatabaseEnvironment,
+  key: string,
+  fallback: boolean,
+) => {
+  const value = environment[key]?.trim().toLowerCase();
+
+  if (!value) {
     return fallback;
   }
 
-  return ["1", "true", "yes", "y"].includes(value.toLowerCase());
-};
-
-const readPort = (value: string | undefined) => {
-  if (!value) {
-    return undefined;
+  if (["1", "true", "yes"].includes(value)) {
+    return true;
   }
 
-  const port = Number(value);
-  return Number.isInteger(port) && port > 0 ? port : undefined;
+  if (["0", "false", "no"].includes(value)) {
+    return false;
+  }
+
+  throw new DatabaseEnvironmentError(`${key} must be a boolean value`);
 };
 
-export const getSqlServerExpressConfig = (
-  env: SqlServerEnv = process.env,
-): SqlServerExpressConfig => {
-  const port = readPort(env.SQLSERVER_PORT);
-  const instanceName = env.SQLSERVER_INSTANCE || "SQLEXPRESS";
+const readPositiveInteger = (
+  environment: DatabaseEnvironment,
+  key: string,
+  fallback: number,
+) => {
+  const value = environment[key]?.trim();
+
+  if (!value) {
+    return fallback;
+  }
+
+  const parsedValue = Number(value);
+
+  if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
+    throw new DatabaseEnvironmentError(`${key} must be a positive integer`);
+  }
+
+  return parsedValue;
+};
+
+export const getMissingDatabaseEnvironmentKeys = (
+  environment: DatabaseEnvironment = process.env,
+) =>
+  requiredDatabaseEnvironmentKeys.filter(
+    (key) => !environment[key]?.trim(),
+  );
+
+export const getSqlServerConfig = (
+  environment: DatabaseEnvironment = process.env,
+): SqlServerConfig => {
+  const server = readRequiredValue(environment, "DB_SERVER");
+  const instanceName = readRequiredValue(environment, "DB_INSTANCE");
+  const database = readRequiredValue(environment, "DB_DATABASE");
+  const user = readRequiredValue(environment, "DB_USER");
+  const password = readRequiredValue(environment, "DB_PASSWORD");
+
+  if (prohibitedDatabaseUsers.has(user.toLowerCase())) {
+    throw new DatabaseEnvironmentError(
+      "DB_USER must be a least-privilege application account",
+    );
+  }
 
   return {
-    server: env.SQLSERVER_HOST || "localhost",
-    database: env.SQLSERVER_DATABASE || "HRDTraining",
-    user: env.SQLSERVER_USER || "sa",
-    password: env.SQLSERVER_PASSWORD || "",
-    ...(port ? { port } : {}),
+    server,
+    database,
+    user,
+    password,
+    connectionTimeout: readPositiveInteger(
+      environment,
+      "DB_CONNECTION_TIMEOUT_MS",
+      15_000,
+    ),
+    requestTimeout: readPositiveInteger(
+      environment,
+      "DB_REQUEST_TIMEOUT_MS",
+      15_000,
+    ),
+    pool: {
+      max: readPositiveInteger(environment, "DB_POOL_MAX", 10),
+      min: 0,
+      idleTimeoutMillis: readPositiveInteger(
+        environment,
+        "DB_POOL_IDLE_TIMEOUT_MS",
+        30_000,
+      ),
+    },
     options: {
-      encrypt: readBoolean(env.SQLSERVER_ENCRYPT, false),
-      trustServerCertificate: readBoolean(env.SQLSERVER_TRUST_CERT, true),
-      ...(port ? {} : { instanceName }),
+      instanceName,
+      encrypt: readBoolean(environment, "DB_ENCRYPT", false),
+      trustServerCertificate: readBoolean(
+        environment,
+        "DB_TRUST_SERVER_CERTIFICATE",
+        true,
+      ),
+      enableArithAbort: true,
     },
   };
 };
-
-export const getMissingSqlServerEnvKeys = (env: SqlServerEnv = process.env) =>
-  sqlServerRequiredEnvKeys.filter((key) => !env[key]);

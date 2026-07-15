@@ -1,23 +1,18 @@
-# SQL Server Express 2022 placeholder
+# SQL Server foundation
 
-ไฟล์นี้เตรียมไว้สำหรับเชื่อม SQL Server Express 2022 ภายหลัง ยังไม่ได้ผูกเข้ากับหน้า UI หรือ API ใด ๆ
+The application uses a server-only `mssql` connection pool. Runtime credentials
+must be supplied through environment variables and must belong to a
+least-privilege application account.
 
-## Env ที่ควรใส่ใน `.env.local`
+Copy the keys from `.env.example` into a local environment file and provide the
+credential values outside source control. Do not use `sa`, a `sysadmin` account,
+or a hardcoded connection string.
 
-```env
-SQLSERVER_HOST=localhost
-SQLSERVER_INSTANCE=SQLEXPRESS
-SQLSERVER_DATABASE=HRDTraining
-SQLSERVER_USER=sa
-SQLSERVER_PASSWORD=your_password
-SQLSERVER_ENCRYPT=false
-SQLSERVER_TRUST_CERT=true
+The Phase 1 health route is `GET /api/health/database`. It executes only:
+
+```sql
+SELECT 1 AS ok
 ```
 
-ถ้า SQL Server ใช้ port ตรงแทน instance ให้เพิ่ม:
-
-```env
-SQLSERVER_PORT=1433
-```
-
-เมื่อจะเชื่อมจริง ค่อยติดตั้ง driver เช่น `mssql` แล้วนำ config จาก `getSqlServerExpressConfig()` ไปใช้ใน server-side code หรือ API route เท่านั้น
+The response exposes only whether the database is reachable. Connection details
+and raw driver errors are never returned.
