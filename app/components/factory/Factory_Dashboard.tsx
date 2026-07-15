@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Navbar from "../Navbar";
+import DashboardLayout from "../DashboardLayout";
 import styles from "./Factory_Dashboard.module.css";
+
 
 const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -195,10 +196,14 @@ export default function Dashboard({
   ];
 
   return (
-    <main className={styles.page}>
-      <Navbar username={username} onHome={onHome} onLogout={onLogout} />
-
-      <section className={styles.workspace} aria-label="Dashboard">
+    <DashboardLayout
+      pageClassName={styles.page}
+      workspaceClassName={styles.workspace}
+      workspaceLabel="HRD Factory dashboard"
+      username={username}
+      onHome={onHome}
+      onLogout={onLogout}
+    >
         <div className={styles.topRow}>
           <section className={styles.employeePanel} aria-label="Employee">
             <div className={styles.employeeProfile}>
@@ -346,7 +351,6 @@ export default function Dashboard({
             ))}
           </div>
         </section>
-      </section>
-    </main>
+    </DashboardLayout>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Navbar from "../Navbar";
+import DashboardLayout from "../DashboardLayout";
 import {
   availableCourses,
   employeeCalendarTrainings,
@@ -104,10 +104,15 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
   };
 
   return (
-    <main className={styles.page}>
-      <Navbar username={username} userLevel="User" onHome={handleHome} onLogout={onLogout} />
-
-      <section className={styles.workspace} aria-label="User dashboard">
+    <DashboardLayout
+      pageClassName={styles.page}
+      workspaceClassName={styles.workspace}
+      workspaceLabel="User dashboard"
+      username={username}
+      userLevel="User"
+      onHome={handleHome}
+      onLogout={onLogout}
+    >
         {activeModule ? (
           <>
             {activeModule === "register" ? (
@@ -291,7 +296,6 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
             </section>
           </>
         )}
-      </section>
-    </main>
+    </DashboardLayout>
   );
 }

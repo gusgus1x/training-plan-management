@@ -380,6 +380,24 @@ const initialAcceptSurveyEmployees = acceptSurveyPlans.reduce<Record<string, str
   return planMap;
 }, {});
 
+type AcceptSurveyCourseKey = (typeof acceptSurveyPlans)[number]["courses"][number]["key"];
+type FactoryAcceptRequestStatus = "waiting" | "approved" | "rejected";
+type FactoryParticipant = {
+  name: string;
+  department: string;
+  company: string;
+};
+type FactoryAcceptRequest = {
+  key: string;
+  courseKey: AcceptSurveyCourseKey;
+  courseTitle: string;
+  factory: string;
+  company: string;
+  submittedAt: string;
+  status: FactoryAcceptRequestStatus;
+  participants: readonly FactoryParticipant[];
+};
+
 const initialFactoryAcceptRequests = [
   {
     key: "factory-course-a-ata",
@@ -422,13 +440,7 @@ const initialFactoryAcceptRequests = [
       { name: "Thanakorn S.", department: "Quality", company: "NIC" },
     ],
   },
-] as const;
-
-type AcceptSurveyCourseKey = (typeof acceptSurveyPlans)[number]["courses"][number]["key"];
-type FactoryAcceptRequestStatus = "waiting" | "approved" | "rejected";
-type FactoryAcceptRequest = Omit<(typeof initialFactoryAcceptRequests)[number], "status"> & {
-  status: FactoryAcceptRequestStatus;
-};
+] satisfies readonly FactoryAcceptRequest[];
 type OapTargetUser = {
   id: string;
   name: string;
