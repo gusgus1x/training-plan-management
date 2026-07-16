@@ -1,5 +1,6 @@
 import Image from "next/image";
 import logoImage from "../photo/logo.png";
+import { profileValue, useAuthenticatedUser } from "./AuthenticatedUserContext";
 import styles from "./Navbar.module.css";
 
 type NavbarProps = {
@@ -17,9 +18,19 @@ export default function Navbar({
   onHome,
   onLogout,
 }: NavbarProps) {
-  const displayLevel = userLevel === "Admin" ? "เจ้าหน้าที่จัดอบรมกลาง" : userLevel;
+  const user = useAuthenticatedUser();
+  const displayUsername = user?.username ?? username;
+  const displayLevel = user?.roleCode ?? userLevel;
   const displayCompany =
-    company ?? (userLevel === "Admin" ? "ALL" : "ATTG Training plan management");
+    user?.roleCode === "HRD_CENTER"
+      ? "ทุกบริษัท"
+      : profileValue(user?.companyName ?? user?.companyCode ?? company);
+  const avatar =
+    user?.roleCode === "EMPLOYEE"
+      ? "EU"
+      : user?.roleCode === "HRD_FACTORY"
+        ? "HF"
+        : "HC";
 
   const BrandContent = (
     <>
@@ -49,23 +60,21 @@ export default function Navbar({
           <div className={styles.brand}>{BrandContent}</div>
         )}
 
-        {username ? (
+        {displayUsername ? (
           <div className={styles.userArea}>
             <div className={styles.statusPill}>
               <span className={styles.statusDot} aria-hidden="true" />
               Active session
             </div>
             <div className={styles.userInfo}>
-              <div className={styles.avatar} aria-hidden="true">
-                {userLevel === "Admin" ? "HA" : "EU"}
-              </div>
+              <div className={styles.avatar} aria-hidden="true">{avatar}</div>
               <div className={styles.userDetails}>
                 <div className={styles.userRow}>
                   <span className={styles.userLabel}>Name :</span>
-                  <span className={styles.userValue}>{username}</span>
+                  <span className={styles.userValue}>{displayUsername}</span>
                 </div>
                 <div className={styles.userRow}>
-                  <span className={styles.userLabel}>Level :</span>
+                  <span className={styles.userLabel}>Role :</span>
                   <span className={styles.userValue}>{displayLevel}</span>
                 </div>
                 <div className={styles.userRow}>

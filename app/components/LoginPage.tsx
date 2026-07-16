@@ -1,4 +1,7 @@
+"use client";
+
 import Image from "next/image";
+import { useState, type FormEvent } from "react";
 import atfbImage from "../photo/ATFB.jpg";
 import nicImage from "../photo/NIC.png";
 import satiImage from "../photo/SATI.jpg";
@@ -8,10 +11,41 @@ import Navbar from "./Navbar";
 import styles from "./LoginPage.module.css";
 
 type LoginPageProps = {
-  onLogin: (role?: "admin" | "factory" | "user") => void;
+  onLogin: (username: string, password: string) => Promise<void>;
+  sessionMessage?: string | null;
 };
 
-export default function LoginPage({ onLogin }: LoginPageProps) {
+const GENERIC_LOGIN_ERROR = "Unable to sign in. Check your username and password.";
+
+export default function LoginPage({
+  onLogin,
+  sessionMessage = null,
+}: LoginPageProps) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (isSubmitting) {
+      return;
+    }
+
+    setErrorMessage(null);
+    setIsSubmitting(true);
+
+    try {
+      await onLogin(username, password);
+    } catch {
+      setErrorMessage(GENERIC_LOGIN_ERROR);
+    } finally {
+      setPassword("");
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <main className={styles.page}>
       <Navbar />
@@ -88,10 +122,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
         <form
           className={styles.loginCard}
-          onSubmit={(event) => {
-            event.preventDefault();
-            onLogin("admin");
-          }}
+          onSubmit={handleSubmit}
         >
           <div className={styles.formHeader}>
             <p className={styles.formEyebrow}>Sign in</p>
@@ -101,29 +132,53 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
           <label className={styles.field}>
             <span>Username</span>
-            <input type="text" defaultValue="HRD-CENTER" />
+            <input
+              name="username"
+              type="text"
+              autoComplete="username"
+              value={username}
+              maxLength={100}
+              required
+              disabled={isSubmitting}
+              onChange={(event) => setUsername(event.target.value)}
+            />
           </label>
 
           <label className={styles.field}>
             <span>Password</span>
-            <input type="password" defaultValue="training" />
+            <input
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              maxLength={1024}
+              required
+              disabled={isSubmitting}
+              aria-describedby={
+                errorMessage || sessionMessage ? "login-error" : undefined
+              }
+              onChange={(event) => setPassword(event.target.value)}
+            />
           </label>
 
-          <button className={styles.loginButton} type="submit">
-            Login
-          </button>
+          {errorMessage || sessionMessage ? (
+            <p
+              className={styles.errorMessage}
+              id="login-error"
+              role="alert"
+              aria-live="polite"
+            >
+              {errorMessage ?? sessionMessage}
+            </p>
+          ) : null}
 
-          <div className={styles.quickLoginPanel}>
-            <p>Login as test account</p>
-            <button className={styles.quickLoginButton} type="button" onClick={() => onLogin("user")}>
-              Employee User
-              <span>emp.user / training</span>
-            </button>
-            <button className={styles.quickLoginButton} type="button" onClick={() => onLogin("factory")}>
-              HRD Factory
-              <span>HRD-FACTORY / training</span>
-            </button>
-          </div>
+          <button
+            className={styles.loginButton}
+            type="submit"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Signing in..." : "Login"}
+          </button>
         </form>
       </section>
     </main>

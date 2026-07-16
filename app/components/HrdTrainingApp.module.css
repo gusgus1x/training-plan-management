@@ -1,0 +1,63 @@
+.statusPage {
+  min-height: 100vh;
+  background: #f1f5f9;
+  color: #111827;
+}
+
+.statusCard {
+  width: min(560px, calc(100% - 32px));
+  margin: 72px auto 0;
+  border: 1px solid #dbe2ea;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 32px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.1);
+}
+
+.statusCard h1 {
+  margin: 0;
+  font-size: clamp(24px, 4vw, 34px);
+  line-height: 1.2;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: #d71920;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.demoBadge {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1000;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #475569;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 8px 12px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+}
+
+.logoutError {
+  position: fixed;
+  top: 84px;
+  right: 16px;
+  z-index: 1001;
+  max-width: min(360px, calc(100% - 32px));
+  margin: 0;
+  border: 1px solid #fecdca;
+  border-radius: 8px;
+  background: #fef3f2;
+  color: #b42318;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 12px 16px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
+}
+

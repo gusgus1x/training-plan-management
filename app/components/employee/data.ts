@@ -1,14 +1,5 @@
 export type UserModule = "register" | "roadmap" | "request" | "record" | "report";
 
-export const employeeProfile = [
-  { label: "รหัสพนักงาน", value: "EMP-001" },
-  { label: "ตำแหน่ง", value: "Production Staff" },
-  { label: "แผนก", value: "Production" },
-  { label: "บริษัท", value: "ATTG Training plan management" },
-  { label: "หัวหน้างาน", value: "Somchai P." },
-  { label: "อีเมล", value: "emp.user@company.com" },
-] as const;
-
 export const moduleCards: Array<{
   key: UserModule;
   eyebrow: string;

@@ -5,7 +5,6 @@ import DashboardLayout from "../DashboardLayout";
 import {
   availableCourses,
   employeeCalendarTrainings,
-  employeeProfile,
   history,
   moduleCards,
   type UserModule,
@@ -16,6 +15,11 @@ import ReportModule from "./ReportModule";
 import RequestTrainingModule from "./RequestTrainingModule";
 import RoadmapModule from "./RoadmapModule";
 import styles from "./UserDashboard.module.css";
+import {
+  buildProfileItems,
+  profileValue,
+  useAuthenticatedUser,
+} from "../AuthenticatedUserContext";
 
 type UserDashboardProps = {
   username: string;
@@ -44,6 +48,8 @@ const calendarMonths = [
 ] as const;
 
 export default function UserDashboard({ username, onHome, onLogout }: UserDashboardProps) {
+  const authenticatedUser = useAuthenticatedUser();
+  const employeeProfile = buildProfileItems(authenticatedUser);
   const [activeModule, setActiveModule] = useState<UserModule | null>(null);
   const [trainingNeed, setTrainingNeed] = useState("Advanced Quality Control");
   const [reason, setReason] = useState("ต้องการเพิ่มทักษะสำหรับงานตรวจสอบคุณภาพในไลน์ผลิต");
@@ -148,7 +154,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                   <div className={styles.profileCopy}>
                     <span>Employee Profile</span>
                     <h1>{username}</h1>
-                    <p>Production Staff / Production</p>
+                    <p>{profileValue(authenticatedUser?.positionName)} / {profileValue(authenticatedUser?.functionName)}</p>
                   </div>
                   <b className={styles.employeeStatus}>Online</b>
                 </div>

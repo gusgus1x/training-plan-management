@@ -1,20 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import {
+  getCurrentSession,
+  loginWithCredentials,
+  logoutCurrentSession,
+  type ClientSessionUser,
+} from "../lib/auth/client";
 import Dashboard from "./center/Dashboard";
 import MasterDataManagement from "./center/MasterDataManagement";
 import ReportManagement from "./center/ReportManagement";
 import TrainingCourseManagement from "./center/TrainingCourseManagement";
 import TrainingPlanManagement from "./center/TrainingPlanManagement";
 import TrainingRecordManagement from "./center/TrainingRecordManagement";
+import UserDashboard from "./employee/UserDashboard";
 import FactoryDashboard from "./factory/Factory_Dashboard";
 import FactoryMasterDataManagement from "./factory/Factory_MasterDataManagement";
 import FactoryReportManagement from "./factory/Factory_ReportManagement";
 import FactoryTrainingCourseManagement from "./factory/Factory_TrainingCourseManagement";
 import FactoryTrainingPlanManagement from "./factory/Factory_TrainingPlanManagement";
 import FactoryTrainingRecordManagement from "./factory/Factory_TrainingRecordManagement";
-import UserDashboard from "./employee/UserDashboard";
 import LoginPage from "./LoginPage";
+import Navbar from "./Navbar";
+import { AuthenticatedUserProvider } from "./AuthenticatedUserContext";
+import styles from "./HrdTrainingApp.module.css";
 
 type AppView =
   | "dashboard"
@@ -24,175 +33,238 @@ type AppView =
   | "report"
   | "training-course";
 
-type UserRole = "admin" | "factory" | "user";
+type AuthenticationState =
+  | { status: "checking" }
+  | { status: "anonymous"; message?: string }
+  | { status: "authenticated"; user: ClientSessionUser };
+
+const SESSION_CHECK_ERROR =
+  "Unable to verify your previous session. Please sign in again.";
+const LOGOUT_ERROR = "Unable to sign out. Please try again.";
 
 export default function HrdTrainingApp() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [role, setRole] = useState<UserRole>("admin");
+  const [authentication, setAuthentication] =
+    useState<AuthenticationState>({ status: "checking" });
   const [view, setView] = useState<AppView>("dashboard");
-  const centerUsername = "HRD-CENTER";
-  const factoryUsername = "HRD-FACTORY";
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutMessage, setLogoutMessage] = useState<string | null>(null);
 
-  const handleLogin = (nextRole: UserRole = "admin") => {
-    setRole(nextRole);
-    setIsLoggedIn(true);
+  useEffect(() => {
+    let active = true;
+
+    getCurrentSession()
+      .then((user) => {
+        if (!active) {
+          return;
+        }
+
+        setAuthentication(
+          user ? { status: "authenticated", user } : { status: "anonymous" },
+        );
+      })
+      .catch(() => {
+        if (active) {
+          setAuthentication({
+            status: "anonymous",
+            message: SESSION_CHECK_ERROR,
+          });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const handleLogin = async (username: string, password: string) => {
+    const user = await loginWithCredentials(username, password);
     setView("dashboard");
+    setLogoutMessage(null);
+    setAuthentication({ status: "authenticated", user });
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setView("dashboard");
+  const handleLogout = async () => {
+    if (isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+    setLogoutMessage(null);
+
+    try {
+      await logoutCurrentSession();
+      setView("dashboard");
+      setAuthentication({ status: "anonymous" });
+    } catch {
+      setLogoutMessage(LOGOUT_ERROR);
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
-  if (!isLoggedIn) {
-    return <LoginPage onLogin={handleLogin} />;
+  if (authentication.status === "checking") {
+    return (
+      <main className={styles.statusPage} aria-busy="true">
+        <Navbar />
+        <section className={styles.statusCard}>
+          <p className={styles.eyebrow}>Authentication</p>
+          <h1>Checking your session...</h1>
+        </section>
+      </main>
+    );
   }
 
-  if (role === "user") {
+  if (authentication.status === "anonymous") {
     return (
-      <UserDashboard
-        onHome={() => setView("dashboard")}
-        onLogout={handleLogout}
-        username="emp.user"
+      <LoginPage
+        onLogin={handleLogin}
+        sessionMessage={authentication.message}
       />
     );
   }
 
-  if (role === "factory") {
+  const { user } = authentication;
+  const goHome = () => setView("dashboard");
+  const logout = () => void handleLogout();
+  let application: ReactNode;
+
+  if (user.roleCode === "EMPLOYEE") {
+    application = (
+      <UserDashboard
+        onHome={goHome}
+        onLogout={logout}
+        username={user.username}
+      />
+    );
+  } else if (user.roleCode === "HRD_FACTORY") {
     if (view === "training-plan") {
-      return (
+      application = (
         <FactoryTrainingPlanManagement
-          onBack={() => setView("dashboard")}
-          onHome={() => setView("dashboard")}
-          onLogout={handleLogout}
-          username={factoryUsername}
+          onBack={goHome}
+          onHome={goHome}
+          onLogout={logout}
+          username={user.username}
         />
       );
-    }
-
-    if (view === "training-record") {
-      return (
+    } else if (view === "training-record") {
+      application = (
         <FactoryTrainingRecordManagement
-          onBack={() => setView("dashboard")}
-          onHome={() => setView("dashboard")}
-          onLogout={handleLogout}
-          username={factoryUsername}
+          onBack={goHome}
+          onHome={goHome}
+          onLogout={logout}
+          username={user.username}
         />
       );
-    }
-
-    if (view === "training-course") {
-      return (
+    } else if (view === "training-course") {
+      application = (
         <FactoryTrainingCourseManagement
-          onBack={() => setView("dashboard")}
-          onHome={() => setView("dashboard")}
-          onLogout={handleLogout}
-          username={factoryUsername}
+          onBack={goHome}
+          onHome={goHome}
+          onLogout={logout}
+          username={user.username}
         />
       );
-    }
-
-    if (view === "master-data") {
-      return (
+    } else if (view === "master-data") {
+      application = (
         <FactoryMasterDataManagement
-          onBack={() => setView("dashboard")}
-          onHome={() => setView("dashboard")}
-          onLogout={handleLogout}
-          username={factoryUsername}
+          onBack={goHome}
+          onHome={goHome}
+          onLogout={logout}
+          username={user.username}
         />
       );
-    }
-
-    if (view === "report") {
-      return (
+    } else if (view === "report") {
+      application = (
         <FactoryReportManagement
-          onBack={() => setView("dashboard")}
-          onHome={() => setView("dashboard")}
-          onLogout={handleLogout}
-          username={factoryUsername}
+          onBack={goHome}
+          onHome={goHome}
+          onLogout={logout}
+          username={user.username}
+        />
+      );
+    } else {
+      application = (
+        <FactoryDashboard
+          onOpenTrainingPlan={() => setView("training-plan")}
+          onOpenTrainingRecord={() => setView("training-record")}
+          onOpenTrainingCourse={() => setView("training-course")}
+          onOpenMasterData={() => setView("master-data")}
+          onOpenReport={() => setView("report")}
+          onHome={goHome}
+          onLogout={logout}
+          username={user.username}
         />
       );
     }
-
-    return (
-      <FactoryDashboard
+  } else if (view === "training-plan") {
+    application = (
+      <TrainingPlanManagement
+        onBack={goHome}
+        onHome={goHome}
+        onLogout={logout}
+        username={user.username}
+      />
+    );
+  } else if (view === "training-record") {
+    application = (
+      <TrainingRecordManagement
+        onBack={goHome}
+        onHome={goHome}
+        onLogout={logout}
+        username={user.username}
+      />
+    );
+  } else if (view === "training-course") {
+    application = (
+      <TrainingCourseManagement
+        onBack={goHome}
+        onHome={goHome}
+        onLogout={logout}
+        username={user.username}
+      />
+    );
+  } else if (view === "master-data") {
+    application = (
+      <MasterDataManagement
+        onBack={goHome}
+        onHome={goHome}
+        onLogout={logout}
+        username={user.username}
+      />
+    );
+  } else if (view === "report") {
+    application = (
+      <ReportManagement
+        onBack={goHome}
+        onHome={goHome}
+        onLogout={logout}
+        username={user.username}
+      />
+    );
+  } else {
+    application = (
+      <Dashboard
         onOpenTrainingPlan={() => setView("training-plan")}
         onOpenTrainingRecord={() => setView("training-record")}
         onOpenTrainingCourse={() => setView("training-course")}
         onOpenMasterData={() => setView("master-data")}
         onOpenReport={() => setView("report")}
-        onHome={() => setView("dashboard")}
-        onLogout={handleLogout}
-        username={factoryUsername}
-      />
-    );
-  }
-
-  if (view === "training-plan") {
-    return (
-      <TrainingPlanManagement
-        onBack={() => setView("dashboard")}
-        onHome={() => setView("dashboard")}
-        onLogout={handleLogout}
-        username={centerUsername}
-      />
-    );
-  }
-
-  if (view === "training-record") {
-    return (
-      <TrainingRecordManagement
-        onBack={() => setView("dashboard")}
-        onHome={() => setView("dashboard")}
-        onLogout={handleLogout}
-        username={centerUsername}
-      />
-    );
-  }
-
-  if (view === "training-course") {
-    return (
-      <TrainingCourseManagement
-        onBack={() => setView("dashboard")}
-        onHome={() => setView("dashboard")}
-        onLogout={handleLogout}
-        username={centerUsername}
-      />
-    );
-  }
-
-  if (view === "master-data") {
-    return (
-      <MasterDataManagement
-        onBack={() => setView("dashboard")}
-        onHome={() => setView("dashboard")}
-        onLogout={handleLogout}
-        username={centerUsername}
-      />
-    );
-  }
-
-  if (view === "report") {
-    return (
-      <ReportManagement
-        onBack={() => setView("dashboard")}
-        onHome={() => setView("dashboard")}
-        onLogout={handleLogout}
-        username={centerUsername}
+        onHome={goHome}
+        onLogout={logout}
+        username={user.username}
       />
     );
   }
 
   return (
-    <Dashboard
-      onOpenTrainingPlan={() => setView("training-plan")}
-      onOpenTrainingRecord={() => setView("training-record")}
-      onOpenTrainingCourse={() => setView("training-course")}
-      onOpenMasterData={() => setView("master-data")}
-      onOpenReport={() => setView("report")}
-      onHome={() => setView("dashboard")}
-      onLogout={handleLogout}
-      username={centerUsername}
-    />
+    <AuthenticatedUserProvider user={user}>
+      {logoutMessage ? (
+        <p className={styles.logoutError} role="alert">
+          {logoutMessage}
+        </p>
+      ) : null}
+      {application}
+      <div className={styles.demoBadge}>ข้อมูลตัวอย่างสำหรับการพัฒนา</div>
+    </AuthenticatedUserProvider>
   );
 }

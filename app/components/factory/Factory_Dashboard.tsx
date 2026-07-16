@@ -3,6 +3,11 @@
 import { useState } from "react";
 import DashboardLayout from "../DashboardLayout";
 import styles from "./Factory_Dashboard.module.css";
+import {
+  buildProfileItems,
+  profileValue,
+  useAuthenticatedUser,
+} from "../AuthenticatedUserContext";
 
 
 const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -84,15 +89,6 @@ const trainingSchedule = [
   },
 ] as const;
 
-const employeeInfo = [
-  { label: "รหัสพนักงาน", value: "HRD-001" },
-  { label: "ตำแหน่ง", value: "เจ้าหน้าที่จัดอบรมกลาง" },
-  { label: "แผนก", value: "HRD" },
-  { label: "บริษัท", value: "ATA" },
-  { label: "หัวหน้างาน", value: "Nattapong K." },
-  { label: "อีเมล", value: "hrd.factory@company.com" },
-] as const;
-
 const employeeTrainingSummary = [
   { label: "อบรมเดือนนี้", value: "4", helper: "หลักสูตร" },
   { label: "ชั่วโมงสะสม", value: "22", helper: "ชั่วโมง" },
@@ -120,6 +116,8 @@ export default function Dashboard({
   onOpenMasterData,
   onOpenReport,
 }: DashboardProps) {
+  const authenticatedUser = useAuthenticatedUser();
+  const employeeInfo = buildProfileItems(authenticatedUser);
   const [selectedCalendarYear, setSelectedCalendarYear] = useState<(typeof calendarYears)[number]>("2026");
   const [selectedCalendarMonth, setSelectedCalendarMonth] = useState<(typeof calendarMonths)[number]["value"]>("07");
 
@@ -211,7 +209,7 @@ export default function Dashboard({
               <div className={styles.employeeTitle}>
                 <span>Employee Profile</span>
                 <strong>{username}</strong>
-                <p>เจ้าหน้าที่จัดอบรมกลาง / HRD</p>
+                <p>{profileValue(authenticatedUser?.positionName)} / {profileValue(authenticatedUser?.functionName)}</p>
               </div>
               <b className={styles.employeeStatus}>Online</b>
             </div>
