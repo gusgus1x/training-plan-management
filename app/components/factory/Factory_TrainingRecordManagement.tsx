@@ -11,14 +11,9 @@ const recordItems = [
     description: "บันทึกอบรมที่สำเร็จ จำนวนผู้เข้าอบรมจริง และค่าใช้จ่ายจริงของหลักสูตร",
   },
   {
-    title: "Training Evaluation",
-    subtitle: "บันทึกผลการประเมิน/ผลสอบ",
-    description: "กรอกคะแนนสอบ ผลประเมินความพึงพอใจ และสรุปผลผ่าน/ไม่ผ่านของผู้เข้าอบรม",
-  },
-  {
     title: "Training Record",
-    subtitle: "ประวัติการอบรม",
-    description: "สรุปและจัดเก็บประวัติอบรมทั้งหมดของแต่ละหลักสูตร",
+    subtitle: "ประวัติ ผลทดสอบ และค่าใช้จ่าย",
+    description: "รวมประวัติการอบรม Pre/Post Test & Evaluation และ Training Expense ของแต่ละหลักสูตรไว้ในที่เดียว",
   },
 ];
 
@@ -168,6 +163,63 @@ const getTotalActualCost = (costs: (typeof actualTrainings)[number]["costs"]) =>
 
 type ActualTrainingKey = (typeof actualTrainings)[number]["key"];
 
+type EvaluationCompany = {
+  company: string;
+  employees: Array<{
+    id: string;
+    name: string;
+    department: string;
+    contentScore: number;
+    trainerScore: number;
+    applicationScore: number;
+    comment: string;
+  }>;
+};
+
+const assessmentResults: Record<ActualTrainingKey, { prePassed: number; preTotal: number; postPassed: number; postTotal: number }> = {
+  "actual-001": { prePassed: 14, preTotal: 23, postPassed: 21, postTotal: 23 },
+  "actual-002": { prePassed: 25, preTotal: 40, postPassed: 37, postTotal: 40 },
+  "actual-003": { prePassed: 11, preTotal: 18, postPassed: 17, postTotal: 18 },
+};
+
+const evaluationCompanies: Record<ActualTrainingKey, EvaluationCompany[]> = {
+  "actual-001": [{ company: "ATFB", employees: [
+    { id: "EMP-001", name: "Somchai P.", department: "Operations", contentScore: 5, trainerScore: 5, applicationScore: 4, comment: "นำไปใช้กับทีมได้" },
+    { id: "EMP-014", name: "Naree T.", department: "Operations", contentScore: 4, trainerScore: 5, applicationScore: 5, comment: "กิจกรรมชัดเจน" },
+    { id: "EMP-031", name: "Maliwan P.", department: "Customer Service", contentScore: 5, trainerScore: 4, applicationScore: 4, comment: "ต้องการ workshop เพิ่ม" },
+  ] }],
+  "actual-002": [{ company: "ATFB", employees: [
+    { id: "EMP-044", name: "Suda M.", department: "Safety", contentScore: 5, trainerScore: 5, applicationScore: 5, comment: "เข้าใจข้อกำหนดมากขึ้น" },
+    { id: "EMP-052", name: "Prawit C.", department: "Production", contentScore: 4, trainerScore: 5, applicationScore: 4, comment: "ตัวอย่างใช้งานได้จริง" },
+    { id: "EMP-063", name: "Warin T.", department: "Maintenance", contentScore: 4, trainerScore: 4, applicationScore: 5, comment: "ควรเพิ่มเวลาอบรม" },
+  ] }],
+  "actual-003": [{ company: "ATSB", employees: [
+    { id: "EMP-082", name: "Ploy S.", department: "Customer Service", contentScore: 5, trainerScore: 5, applicationScore: 5, comment: "ฝึกสถานการณ์ได้ดี" },
+    { id: "EMP-084", name: "Thanawat B.", department: "Frontline", contentScore: 4, trainerScore: 5, applicationScore: 5, comment: "พร้อมนำไปใช้" },
+    { id: "EMP-091", name: "Siriporn A.", department: "Customer Service", contentScore: 5, trainerScore: 4, applicationScore: 4, comment: "เนื้อหากระชับ" },
+  ] }],
+};
+
+const escapeExcelText = (value: string | number) =>
+  String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+
+const downloadEvaluationExcel = (
+  training: (typeof actualTrainings)[number],
+  evaluationCompany: EvaluationCompany,
+) => {
+  const rows = evaluationCompany.employees.map((employee) => {
+    const average = ((employee.contentScore + employee.trainerScore + employee.applicationScore) / 3).toFixed(2);
+    return `<tr><td>${escapeExcelText(employee.id)}</td><td>${escapeExcelText(employee.name)}</td><td>${escapeExcelText(employee.department)}</td><td>${employee.contentScore}</td><td>${employee.trainerScore}</td><td>${employee.applicationScore}</td><td>${average}</td><td>${escapeExcelText(employee.comment)}</td></tr>`;
+  }).join("");
+  const workbook = `\ufeff<html><head><meta charset="UTF-8"></head><body><h2>${escapeExcelText(training.courseName)}</h2><p>Company: ${escapeExcelText(evaluationCompany.company)} | Course: ${escapeExcelText(training.courseCode)} | Date: ${escapeExcelText(training.date)}</p><table border="1"><thead><tr><th>Employee ID</th><th>Employee name</th><th>Department</th><th>Content</th><th>Trainer</th><th>Application</th><th>Average</th><th>Comment</th></tr></thead><tbody>${rows}</tbody></table></body></html>`;
+  const url = URL.createObjectURL(new Blob([workbook], { type: "application/vnd.ms-excel;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${training.courseCode}-${evaluationCompany.company}-evaluation.xls`;
+  link.click();
+  URL.revokeObjectURL(url);
+};
+
 export default function TrainingRecordManagement({
   username,
   onBack,
@@ -290,6 +342,10 @@ export default function TrainingRecordManagement({
     const [year, month] = training.month.split("-");
     const actualUsers = training.registeredUsers.filter((user) => user.attended);
     const allAttendees = [...actualUsers, ...training.walkInUsers];
+    const assessment = assessmentResults[training.key];
+    const prePercentage = Math.round((assessment.prePassed / assessment.preTotal) * 100);
+    const postPercentage = Math.round((assessment.postPassed / assessment.postTotal) * 100);
+    const companyEvaluations = evaluationCompanies[training.key];
 
     return (
       <>
@@ -329,6 +385,60 @@ export default function TrainingRecordManagement({
             <dd>{allAttendees.length} people</dd>
           </div>
         </dl>
+
+        <section className={styles.recordIntegratedPanel} aria-label="Pre and post test with evaluation">
+          <div className={styles.recordSectionHeader}>
+            <div>
+              <p className={styles.panelKicker}>Assessment &amp; Evaluation</p>
+              <h3>Keep Pre/Post Test and Evaluation</h3>
+            </div>
+            <span>Completed</span>
+          </div>
+          <div className={styles.assessmentChartGrid}>
+            <article className={styles.assessmentChartCard}>
+              <div className={styles.pieChart} style={{ background: `conic-gradient(#16a34a 0 ${prePercentage}%, #fee2e2 ${prePercentage}% 100%)` }}><strong>{prePercentage}%</strong></div>
+              <div><span>Pre-test</span><strong>{assessment.prePassed}/{assessment.preTotal} ผ่านเกณฑ์</strong><p>{training.preTest}</p></div>
+            </article>
+            <article className={styles.assessmentChartCard}>
+              <div className={styles.pieChart} style={{ background: `conic-gradient(#16a34a 0 ${postPercentage}%, #fee2e2 ${postPercentage}% 100%)` }}><strong>{postPercentage}%</strong></div>
+              <div><span>Post-test</span><strong>{assessment.postPassed}/{assessment.postTotal} ผ่านเกณฑ์</strong><p>{training.postTest}</p></div>
+            </article>
+          </div>
+        </section>
+
+        <section className={styles.recordIntegratedPanel} aria-label="Evaluation Excel downloads by company">
+          <div className={styles.recordSectionHeader}>
+            <div><p className={styles.panelKicker}>Evaluation</p><h3>ดาวน์โหลดแบบประเมินแยกตามบริษัท</h3></div>
+            <span>{companyEvaluations.length} companies</span>
+          </div>
+          <p className={styles.evaluationDescription}>{training.evaluation}</p>
+          <div className={styles.companyDownloadGrid}>
+            {companyEvaluations.map((item) => (
+              <article key={item.company}>
+                <div><strong>{item.company}</strong><span>{item.employees.length} employees</span></div>
+                <button type="button" onClick={() => downloadEvaluationExcel(training, item)}>Download {item.company} Excel</button>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.recordIntegratedPanel} aria-label="Training expense">
+          <div className={styles.recordSectionHeader}>
+            <div>
+              <p className={styles.panelKicker}>Training Expense</p>
+              <h3>สรุปค่าใช้จ่ายฝึกอบรม</h3>
+            </div>
+            <b>฿{getTotalActualCost(training.costs).toLocaleString("en-US")}</b>
+          </div>
+          <div className={styles.recordExpenseGrid}>
+            {training.costs.map((item) => (
+              <article key={item.label}>
+                <span>{item.label}</span>
+                <strong>฿{Number(item.amount).toLocaleString("en-US")}</strong>
+              </article>
+            ))}
+          </div>
+        </section>
 
         <section className={styles.recordAttendeePanel}>
           <div className={styles.peopleHeader}>
@@ -647,7 +757,7 @@ export default function TrainingRecordManagement({
           <section className={styles.recordArchiveHeader}>
             <div>
               <p className={styles.panelKicker}>Training Record</p>
-              <h2>สรุปประวัติการอบรมทั้งหมด</h2>
+              <h2>ประวัติ ผลทดสอบ การประเมิน และค่าใช้จ่าย</h2>
               <span>{visibleRecordTrainings.length} courses archived</span>
             </div>
             <div className={styles.actualMonthControl}>

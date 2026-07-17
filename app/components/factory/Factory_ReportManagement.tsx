@@ -13,16 +13,6 @@ const reportItems = [
     subtitle: "กำหนดการอบรม",
     description: "เปิดมุมมองกำหนดการอบรมแบบแยกหัวข้อ",
   },
-  {
-    title: resultReportTitle,
-    subtitle: "Pre/Post test & Evaluation",
-    description: "เก็บ Pre/Post test และ Evaluation",
-  },
-  {
-    title: "Training Expense",
-    subtitle: "ค่าใช้จ่ายฝึกอบรม",
-    description: "เปิดมุมมองค่าใช้จ่ายสำหรับการฝึกอบรม",
-  },
 ] as const;
 
 const extraReportItems = [
@@ -328,7 +318,11 @@ export default function ReportManagement({
   onHome,
   onLogout,
 }: ReportManagementProps) {
-  const [selectedReport, setSelectedReport] = useState<(typeof factoryReportItems)[number] | null>(null);
+  const [selectedReport, setSelectedReport] = useState<{
+    readonly title: string;
+    readonly subtitle: string;
+    readonly description: string;
+  } | null>(null);
   const [selectedCalendarYear, setSelectedCalendarYear] = useState<(typeof calendarYears)[number]>("2026");
   const [selectedCalendarMonth, setSelectedCalendarMonth] = useState("07");
   const [selectedReportYear, setSelectedReportYear] = useState<(typeof calendarYears)[number]>("2026");
