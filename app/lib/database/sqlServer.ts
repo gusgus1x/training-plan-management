@@ -4,7 +4,6 @@ type DatabaseEnvironment = Record<string, string | undefined>;
 
 const requiredDatabaseEnvironmentKeys = [
   "DB_SERVER",
-  "DB_INSTANCE",
   "DB_DATABASE",
   "DB_USER",
   "DB_PASSWORD",
@@ -74,6 +73,25 @@ const readPositiveInteger = (
   return parsedValue;
 };
 
+const readOptionalPositiveInteger = (
+  environment: DatabaseEnvironment,
+  key: string,
+) => {
+  const value = environment[key]?.trim();
+
+  if (!value) {
+    return undefined;
+  }
+
+  const parsedValue = Number(value);
+
+  if (!Number.isInteger(parsedValue) || parsedValue <= 0) {
+    throw new DatabaseEnvironmentError(`${key} must be a positive integer`);
+  }
+
+  return parsedValue;
+};
+
 export const getMissingDatabaseEnvironmentKeys = (
   environment: DatabaseEnvironment = process.env,
 ) =>
@@ -85,7 +103,8 @@ export const getSqlServerConfig = (
   environment: DatabaseEnvironment = process.env,
 ): SqlServerConfig => {
   const server = readRequiredValue(environment, "DB_SERVER");
-  const instanceName = readRequiredValue(environment, "DB_INSTANCE");
+  const instanceName = environment.DB_INSTANCE?.trim();
+  const port = readOptionalPositiveInteger(environment, "DB_PORT");
   const database = readRequiredValue(environment, "DB_DATABASE");
   const user = readRequiredValue(environment, "DB_USER");
   const password = readRequiredValue(environment, "DB_PASSWORD");
@@ -98,6 +117,7 @@ export const getSqlServerConfig = (
 
   return {
     server,
+    ...(port ? { port } : {}),
     database,
     user,
     password,
@@ -121,7 +141,7 @@ export const getSqlServerConfig = (
       ),
     },
     options: {
-      instanceName,
+      ...(instanceName ? { instanceName } : {}),
       encrypt: readBoolean(environment, "DB_ENCRYPT", false),
       trustServerCertificate: readBoolean(
         environment,

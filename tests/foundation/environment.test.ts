@@ -34,10 +34,29 @@ describe("database environment validation", () => {
     });
   });
 
+  it("supports remote SQL Server connections by port without an instance", () => {
+    const config = getSqlServerConfig({
+      ...validEnvironment,
+      DB_SERVER: "10.123.23.163",
+      DB_PORT: "1433",
+      DB_INSTANCE: "",
+    });
+
+    expect(config).toMatchObject({
+      server: "10.123.23.163",
+      port: 1433,
+      database: "TrainingPlanManagementDB",
+      options: {
+        encrypt: false,
+        trustServerCertificate: true,
+      },
+    });
+    expect(config.options).not.toHaveProperty("instanceName");
+  });
+
   it("reports missing required keys without using fallback credentials", () => {
     expect(getMissingDatabaseEnvironmentKeys({})).toEqual([
       "DB_SERVER",
-      "DB_INSTANCE",
       "DB_DATABASE",
       "DB_USER",
       "DB_PASSWORD",
@@ -64,5 +83,11 @@ describe("database environment validation", () => {
         DB_REQUEST_TIMEOUT_MS: "0",
       }),
     ).toThrow("DB_REQUEST_TIMEOUT_MS must be a positive integer");
+    expect(() =>
+      getSqlServerConfig({
+        ...validEnvironment,
+        DB_PORT: "tcp",
+      }),
+    ).toThrow("DB_PORT must be a positive integer");
   });
 });

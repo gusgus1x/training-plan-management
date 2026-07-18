@@ -1,0 +1,382 @@
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 18px 24px 48px;
+  color: #172033;
+  font-size: 0.88rem;
+}
+
+.hero,
+.workspace,
+.formPanel,
+.detailPanel {
+  background: #ffffff;
+  border: 1px solid #dce4ef;
+  border-radius: 8px;
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.07);
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.kicker {
+  margin: 0 0 6px;
+  color: #315fbb;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.hero h2,
+.panelHeader h3 {
+  margin: 0;
+  font-size: 1.28rem;
+  letter-spacing: 0;
+}
+
+.panelHeader h3 {
+  font-size: 0.98rem;
+}
+
+.hero p {
+  margin: 8px 0 0;
+  color: #66758b;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.metrics {
+  min-width: 320px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(90px, 1fr));
+  gap: 10px;
+}
+
+.metrics div {
+  border: 1px solid #d8e2f0;
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 10px;
+}
+
+.metrics span {
+  display: block;
+  color: #65758b;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.metrics strong {
+  display: block;
+  margin-top: 4px;
+  color: #1f4c9a;
+  font-size: 1.15rem;
+}
+
+.workspace,
+.formPanel,
+.detailPanel {
+  padding: 12px;
+}
+
+.monthPanel {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-end;
+  border: 1px solid #dce4ef;
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+
+.monthPanel h3 {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.monthControls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.monthControls label {
+  display: grid;
+  gap: 5px;
+  color: #526176;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.monthControls select {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #172033;
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 0.78rem;
+  outline: none;
+}
+
+.toolbar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #e5ebf2;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.toolbar input {
+  flex: 1 1 320px;
+  max-width: 520px;
+}
+
+.toolbar input,
+.formGrid input,
+.formGrid select {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #172033;
+  min-height: 36px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  outline: none;
+}
+
+.formGrid input:disabled {
+  background: #f7f9fc;
+  color: #526176;
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton,
+.detailButton,
+.closeButton {
+  min-height: 34px;
+  border-radius: 8px;
+  padding: 7px 11px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primaryButton {
+  border: 0;
+  background: #2458b8;
+  color: #ffffff;
+}
+
+.secondaryButton,
+.detailButton,
+.closeButton {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #26364d;
+}
+
+.dangerButton {
+  border: 1px solid #f0b8b8;
+  background: #fff5f5;
+  color: #b42318;
+}
+
+.formPanel {
+  box-shadow: none;
+  background: #fbfdff;
+  margin-bottom: 12px;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.formGrid label {
+  display: grid;
+  gap: 5px;
+  color: #526176;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.coursePreview {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #dce4ef;
+  border-radius: 8px;
+  background: #ffffff;
+  margin-top: 10px;
+  padding: 10px;
+}
+
+.coursePreview span {
+  color: #66758b;
+  font-size: 0.76rem;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.tableWrap {
+  border: 1px solid #e1e8f2;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 34%);
+  padding: 10px;
+  overflow-x: auto;
+}
+
+.rollingTable {
+  width: 100%;
+  min-width: 1060px;
+  border-collapse: separate;
+  border-spacing: 0 10px;
+}
+
+.rollingTable th {
+  padding: 0 12px 4px;
+  color: #65758b;
+  font-size: 0.66rem;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.rollingTable td {
+  border-top: 1px solid #dce6f3;
+  border-bottom: 1px solid #dce6f3;
+  background: #ffffff;
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  box-shadow: 0 8px 18px rgba(24, 36, 56, 0.04);
+}
+
+.rollingTable td:first-child {
+  border-left: 1px solid #dce6f3;
+  border-radius: 8px 0 0 8px;
+  color: #315fbb;
+  font-weight: 800;
+}
+
+.rollingTable td:last-child {
+  border-right: 1px solid #dce6f3;
+  border-radius: 0 8px 8px 0;
+}
+
+.rollingTable td strong {
+  display: block;
+  font-size: 0.82rem;
+}
+
+.rollingTable td span {
+  display: block;
+  margin-top: 4px;
+  color: #66758b;
+  font-size: 0.72rem;
+}
+
+.statusPill,
+.jobPill {
+  display: inline-flex;
+  border-radius: 999px;
+  background: #eaf2ff;
+  color: #2458b8;
+  padding: 3px 8px;
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.jobPill {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.actionCell {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.detailRow td {
+  background: #f8fbff;
+  padding: 0;
+}
+
+.detailRow .detailPanel {
+  margin: 12px;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.detailGrid div {
+  border: 1px solid #dce4ef;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px;
+}
+
+.detailGrid span {
+  display: block;
+  color: #65758b;
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.detailGrid strong,
+.detailGrid p {
+  display: block;
+  margin: 5px 0 0;
+  color: #172033;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+@media (max-width: 900px) {
+  .hero,
+  .formGrid,
+  .detailGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .metrics {
+    min-width: 0;
+    grid-template-columns: 1fr;
+  }
+
+  .monthPanel {
+    display: grid;
+  }
+}

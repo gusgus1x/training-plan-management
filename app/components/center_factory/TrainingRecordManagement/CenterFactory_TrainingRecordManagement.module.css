@@ -1,0 +1,79 @@
+.page {
+  min-height: 100vh;
+  background: #f6f7f9;
+  color: #172033;
+}
+
+.header {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 24px 14px;
+}
+
+.backButton {
+  border: 1px solid #c8d1dc;
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #26364d;
+  cursor: pointer;
+}
+
+.kicker {
+  margin: 18px 0 6px;
+  color: #607089;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
+  letter-spacing: 0;
+}
+
+.moduleGrid {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 18px 24px 48px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+
+.moduleCard {
+  min-height: 96px;
+  border: 1px solid #d9e0e8;
+  background: #fff;
+  border-radius: 8px;
+  padding: 18px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 10px 24px rgba(30, 42, 62, 0.06);
+}
+
+.moduleCard:hover {
+  border-color: #4f7fcf;
+  transform: translateY(-1px);
+}
+
+.moduleCard span {
+  color: #4f6f9f;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.moduleCard h3 {
+  margin: 0;
+  font-size: 1.08rem;
+}
+
+.moduleCard p {
+  margin: 0;
+  color: #66758c;
+  line-height: 1.5;
+}

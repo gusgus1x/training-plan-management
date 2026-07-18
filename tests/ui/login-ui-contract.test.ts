@@ -32,12 +32,12 @@ describe("login UI contract", () => {
     expect(appSource).toContain("logoutCurrentSession()");
   });
 
-  it("maps each server role to the existing mockup application", () => {
+  it("maps employees separately and shares the center/factory application", () => {
     expect(appSource).toContain('user.roleCode === "EMPLOYEE"');
-    expect(appSource).toContain('user.roleCode === "HRD_FACTORY"');
     expect(appSource).toContain("<UserDashboard");
-    expect(appSource).toContain("<FactoryDashboard");
-    expect(appSource).toContain("<Dashboard");
+    expect(appSource).toContain("<CenterFactoryDashboard");
+    expect(appSource).not.toContain('user.roleCode === "HRD_FACTORY"');
+    expect(appSource).not.toContain("<FactoryDashboard");
   });
 
   it("preserves mockup page navigation without mock authentication", () => {

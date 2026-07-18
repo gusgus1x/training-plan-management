@@ -65,8 +65,7 @@ describe("database-backed profile display", () => {
     const sources = [
       "../../app/components/employee/UserDashboard.tsx",
       "../../app/components/employee/data.ts",
-      "../../app/components/center/Dashboard.tsx",
-      "../../app/components/factory/Factory_Dashboard.tsx",
+      "../../app/components/center_factory/CenterFactory_Dashboard.tsx",
       "../../app/components/Navbar.tsx",
     ]
       .map((path) => readFileSync(new URL(path, import.meta.url), "utf8"))

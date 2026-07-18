@@ -1,0 +1,498 @@
+.page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 18px 24px 48px;
+  color: #172033;
+}
+
+.hero,
+.toolbar,
+.listPanel,
+.formPanel {
+  background: #ffffff;
+  border: 1px solid #dce4ef;
+  border-radius: 8px;
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.07);
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+  margin-bottom: 14px;
+}
+
+.kicker {
+  margin: 0 0 6px;
+  color: #315fbb;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.hero h2,
+.panelHeader h3 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.hero p {
+  margin: 8px 0 0;
+  color: #66758b;
+  line-height: 1.5;
+}
+
+.metrics {
+  min-width: 320px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(90px, 1fr));
+  gap: 10px;
+}
+
+.metrics div {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 12px;
+}
+
+.metrics span,
+.panelHeader span {
+  display: block;
+  color: #65758b;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.metrics strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.35rem;
+}
+
+.toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.topDropPanel {
+  margin-bottom: 14px;
+}
+
+.toolbar input {
+  flex: 1 1 320px;
+}
+
+.toolbar input,
+.formGrid input,
+.formGrid select,
+.formGrid textarea {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #172033;
+  min-height: 40px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.toolbar input:focus,
+.formGrid input:focus,
+.formGrid select:focus,
+.formGrid textarea:focus {
+  border-color: #315fbb;
+  box-shadow: 0 0 0 3px rgba(49, 95, 187, 0.14);
+}
+
+.formGrid input:disabled,
+.formGrid select:disabled,
+.formGrid textarea:disabled {
+  background: #f7f9fc;
+  color: #43526a;
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton {
+  min-height: 40px;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primaryButton {
+  border: 0;
+  background: #2458b8;
+  color: #ffffff;
+}
+
+.secondaryButton {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #26364d;
+}
+
+.dangerButton {
+  border: 1px solid #f0b8b8;
+  background: #fff5f5;
+  color: #b42318;
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.dangerButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.contentGrid {
+  display: grid;
+  gap: 14px;
+  align-items: start;
+}
+
+.listPanel,
+.formPanel {
+  min-width: 0;
+  padding: 16px;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.panelActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.courseTable {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+}
+
+.courseTable th,
+.courseTable td {
+  border-bottom: 1px solid #e5ebf2;
+  padding: 12px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.courseTable th {
+  color: #65758b;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  background: #f8fafc;
+}
+
+.courseTable tr:hover td,
+.selectedRow td {
+  background: #eef5ff;
+}
+
+.courseTable td strong {
+  display: block;
+  font-size: 0.92rem;
+}
+
+.courseTable td span {
+  display: block;
+  margin-top: 4px;
+  color: #65758b;
+  font-size: 0.8rem;
+}
+
+.detailRow td {
+  background: #f8fbff;
+  padding: 0;
+}
+
+.inlinePanel {
+  padding: 14px;
+}
+
+.inlinePanel .formPanel,
+.topDropPanel .formPanel {
+  box-shadow: none;
+  border-color: #cbdcf3;
+  background: #fbfdff;
+}
+
+.statusPill {
+  display: inline-flex;
+  border-radius: 999px;
+  background: #eaf2ff;
+  color: #2458b8;
+  padding: 4px 9px;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.actionCell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.detailButton {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #2458b8;
+  min-height: 34px;
+  padding: 7px 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.detailButton:hover {
+  border-color: #2458b8;
+  background: #eef5ff;
+}
+
+.closeButton {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #4b5b73;
+  min-height: 34px;
+  padding: 7px 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  border-color: #8aa4cc;
+  background: #f3f7fc;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.formGrid label {
+  display: grid;
+  gap: 6px;
+  color: #526176;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.formGrid textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+.formActions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+@media (max-width: 980px) {
+  .hero,
+  .contentGrid {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .metrics {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding-inline: 14px;
+  }
+
+  .metrics,
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .fullWidth {
+    grid-column: auto;
+  }
+}
+
+/* Compact readability pass */
+.page {
+  font-size: 0.88rem;
+}
+
+.hero {
+  padding: 16px;
+  gap: 12px;
+}
+
+.hero h2 {
+  font-size: 1.28rem;
+  line-height: 1.2;
+}
+
+.hero p {
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.kicker {
+  font-size: 0.68rem;
+}
+
+.summaryCard,
+.metrics div {
+  padding: 10px;
+}
+
+.summaryCard strong,
+.metrics strong {
+  font-size: 1.15rem;
+}
+
+.workspace,
+.listPanel,
+.formPanel,
+.editorPanel,
+.detailPanel {
+  padding: 12px;
+}
+
+.toolbar {
+  gap: 6px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.toolbar button,
+.primaryButton,
+.secondaryButton,
+.dangerButton,
+.detailButton,
+.closeButton,
+.saveButton,
+.cancelButton {
+  min-height: 34px;
+  padding: 7px 11px;
+  font-size: 0.76rem;
+}
+
+.toolbar input,
+.editor input,
+.formGrid input,
+.formGrid select,
+.formGrid textarea,
+.questionGrid input,
+.questionGrid select,
+.questionGrid textarea {
+  min-height: 36px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+}
+
+.panelHeader {
+  margin-bottom: 10px;
+}
+
+.panelHeader h3,
+.checkSection h4 {
+  font-size: 0.98rem;
+}
+
+.panelHeader span,
+.metrics span,
+.summaryCard span {
+  font-size: 0.68rem;
+}
+
+.formGrid,
+.questionGrid {
+  gap: 10px;
+}
+
+.formGrid label,
+.questionGrid label,
+.editor label {
+  gap: 5px;
+  font-size: 0.76rem;
+}
+
+.tableWrap {
+  padding: 10px;
+}
+
+.courseTable th,
+.courseTypeTable th,
+.courseGroupTable th,
+.standardTable th,
+.assessmentTable th {
+  padding: 0 12px 4px;
+  font-size: 0.66rem;
+}
+
+.courseTable td,
+.courseTypeTable td,
+.courseGroupTable td,
+.standardTable td,
+.assessmentTable td {
+  padding: 10px 12px;
+  font-size: 0.8rem;
+}
+
+.courseTable td strong,
+.courseTypeTable td:last-child,
+.courseGroupTable td:last-child {
+  font-size: 0.84rem;
+}
+
+.courseTable td span,
+.questionList span,
+.questionList p,
+.emptyState {
+  font-size: 0.74rem;
+}
+
+.statusPill,
+.questionList b {
+  padding: 3px 8px;
+  font-size: 0.66rem;
+}
+
+.checkItem {
+  padding: 8px;
+  font-size: 0.76rem;
+}
+
+.checkMark {
+  width: 20px;
+  height: 20px;
+  font-size: 0.78rem;
+}
+
+.formActions {
+  gap: 6px;
+  margin-top: 12px;
+}

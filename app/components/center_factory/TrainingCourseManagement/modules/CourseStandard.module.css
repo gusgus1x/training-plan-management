@@ -1,0 +1,453 @@
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 18px 24px 48px;
+  color: #172033;
+}
+
+.hero,
+.workspace,
+.formPanel {
+  background: #ffffff;
+  border: 1px solid #dce4ef;
+  border-radius: 8px;
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.07);
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 20px;
+  margin-bottom: 14px;
+}
+
+.kicker {
+  margin: 0 0 6px;
+  color: #315fbb;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.hero h2,
+.panelHeader h3,
+.checkSection h4 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.hero p {
+  margin: 8px 0 0;
+  color: #66758b;
+  line-height: 1.5;
+}
+
+.summaryCard {
+  min-width: 150px;
+  border: 1px solid #d8e2f0;
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 14px;
+}
+
+.summaryCard span {
+  display: block;
+  color: #65758b;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.summaryCard strong {
+  display: block;
+  margin-top: 4px;
+  color: #1f4c9a;
+  font-size: 1.45rem;
+}
+
+.workspace {
+  padding: 16px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #e5ebf2;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+}
+
+.toolbar input {
+  flex: 1 1 320px;
+  max-width: 520px;
+}
+
+.toolbar input,
+.formGrid input,
+.formGrid select {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #172033;
+  min-height: 40px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.toolbar input:focus,
+.formGrid input:focus,
+.formGrid select:focus {
+  border-color: #315fbb;
+  box-shadow: 0 0 0 3px rgba(49, 95, 187, 0.14);
+}
+
+.primaryButton,
+.secondaryButton,
+.closeButton {
+  min-height: 38px;
+  border-radius: 8px;
+  padding: 9px 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primaryButton {
+  border: 0;
+  background: #2458b8;
+  color: #ffffff;
+}
+
+.secondaryButton,
+.closeButton {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #26364d;
+}
+
+.formPanel {
+  box-shadow: none;
+  background: #fbfdff;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.formGrid label {
+  display: grid;
+  gap: 6px;
+  color: #526176;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.checkSection {
+  display: grid;
+  gap: 14px;
+}
+
+.checkSection h4 {
+  color: #172033;
+  font-size: 0.95rem;
+}
+
+.checkGrid,
+.levelGrid {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.checkGrid {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.levelGrid {
+  grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
+}
+
+.checkItem {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #dce6f3;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px;
+  color: #26364d;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.checkItem input {
+  accent-color: #2458b8;
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.tableWrap {
+  border: 1px solid #e1e8f2;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 34%);
+  padding: 12px;
+  overflow-x: auto;
+}
+
+.standardTable {
+  width: 100%;
+  min-width: 1820px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.standardTable th,
+.standardTable td {
+  border-bottom: 1px solid #e1e8f2;
+  background: #ffffff;
+  padding: 12px 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.standardTable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: #65758b;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  background: #f8fafc;
+}
+
+.standardTable td:first-child,
+.standardTable th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+.standardTable th:first-child {
+  background: #f8fafc;
+}
+
+.standardTable td:first-child {
+  color: #315fbb;
+  font-weight: 800;
+  background: #ffffff;
+}
+
+.standardTable tbody tr:hover td {
+  background: #f7fbff;
+}
+
+.centerCell {
+  text-align: center;
+}
+
+.checkMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #e8f3ff;
+  color: #2458b8;
+  font-weight: 900;
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding-inline: 14px;
+  }
+
+  .hero,
+  .formGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .summaryCard {
+    min-width: 0;
+  }
+}
+
+/* Compact readability pass */
+.page {
+  font-size: 0.88rem;
+}
+
+.hero {
+  padding: 16px;
+  gap: 12px;
+}
+
+.hero h2 {
+  font-size: 1.28rem;
+  line-height: 1.2;
+}
+
+.hero p {
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.kicker {
+  font-size: 0.68rem;
+}
+
+.summaryCard,
+.metrics div {
+  padding: 10px;
+}
+
+.summaryCard strong,
+.metrics strong {
+  font-size: 1.15rem;
+}
+
+.workspace,
+.listPanel,
+.formPanel,
+.editorPanel,
+.detailPanel {
+  padding: 12px;
+}
+
+.toolbar {
+  gap: 6px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.toolbar button,
+.primaryButton,
+.secondaryButton,
+.dangerButton,
+.detailButton,
+.closeButton,
+.saveButton,
+.cancelButton {
+  min-height: 34px;
+  padding: 7px 11px;
+  font-size: 0.76rem;
+}
+
+.toolbar input,
+.editor input,
+.formGrid input,
+.formGrid select,
+.formGrid textarea,
+.questionGrid input,
+.questionGrid select,
+.questionGrid textarea {
+  min-height: 36px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+}
+
+.panelHeader {
+  margin-bottom: 10px;
+}
+
+.panelHeader h3,
+.checkSection h4 {
+  font-size: 0.98rem;
+}
+
+.panelHeader span,
+.metrics span,
+.summaryCard span {
+  font-size: 0.68rem;
+}
+
+.formGrid,
+.questionGrid {
+  gap: 10px;
+}
+
+.formGrid label,
+.questionGrid label,
+.editor label {
+  gap: 5px;
+  font-size: 0.76rem;
+}
+
+.tableWrap {
+  padding: 10px;
+}
+
+.courseTable th,
+.courseTypeTable th,
+.courseGroupTable th,
+.standardTable th,
+.assessmentTable th {
+  padding: 0 12px 4px;
+  font-size: 0.66rem;
+}
+
+.courseTable td,
+.courseTypeTable td,
+.courseGroupTable td,
+.standardTable td,
+.assessmentTable td {
+  padding: 10px 12px;
+  font-size: 0.8rem;
+}
+
+.courseTable td strong,
+.courseTypeTable td:last-child,
+.courseGroupTable td:last-child {
+  font-size: 0.84rem;
+}
+
+.courseTable td span,
+.questionList span,
+.questionList p,
+.emptyState {
+  font-size: 0.74rem;
+}
+
+.statusPill,
+.questionList b {
+  padding: 3px 8px;
+  font-size: 0.66rem;
+}
+
+.checkItem {
+  padding: 8px;
+  font-size: 0.76rem;
+}
+
+.checkMark {
+  width: 20px;
+  height: 20px;
+  font-size: 0.78rem;
+}
+
+.formActions {
+  gap: 6px;
+  margin-top: 12px;
+}

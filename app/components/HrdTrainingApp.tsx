@@ -7,19 +7,13 @@ import {
   logoutCurrentSession,
   type ClientSessionUser,
 } from "../lib/auth/client";
-import Dashboard from "./center/Dashboard";
-import MasterDataManagement from "./center/MasterDataManagement";
-import ReportManagement from "./center/ReportManagement";
-import TrainingCourseManagement from "./center/TrainingCourseManagement";
-import TrainingPlanManagement from "./center/TrainingPlanManagement";
-import TrainingRecordManagement from "./center/TrainingRecordManagement";
+import CenterFactoryDashboard from "./center_factory/CenterFactory_Dashboard";
+import CenterFactoryMasterDataManagement from "./center_factory/MasterDataManagement/CenterFactory_MasterDataManagement";
+import CenterFactoryReportManagement from "./center_factory/ReportManagement/CenterFactory_ReportManagement";
+import CenterFactoryTrainingCourseManagement from "./center_factory/TrainingCourseManagement/CenterFactory_TrainingCourseManagement";
+import CenterFactoryTrainingPlanManagement from "./center_factory/TrainingPlanManagement/CenterFactory_TrainingPlanManagement";
+import CenterFactoryTrainingRecordManagement from "./center_factory/TrainingRecordManagement/CenterFactory_TrainingRecordManagement";
 import UserDashboard from "./employee/UserDashboard";
-import FactoryDashboard from "./factory/Factory_Dashboard";
-import FactoryMasterDataManagement from "./factory/Factory_MasterDataManagement";
-import FactoryReportManagement from "./factory/Factory_ReportManagement";
-import FactoryTrainingCourseManagement from "./factory/Factory_TrainingCourseManagement";
-import FactoryTrainingPlanManagement from "./factory/Factory_TrainingPlanManagement";
-import FactoryTrainingRecordManagement from "./factory/Factory_TrainingRecordManagement";
 import LoginPage from "./LoginPage";
 import Navbar from "./Navbar";
 import { AuthenticatedUserProvider } from "./AuthenticatedUserContext";
@@ -136,69 +130,9 @@ export default function HrdTrainingApp() {
         username={user.username}
       />
     );
-  } else if (user.roleCode === "HRD_FACTORY") {
-    if (view === "training-plan") {
-      application = (
-        <FactoryTrainingPlanManagement
-          onBack={goHome}
-          onHome={goHome}
-          onLogout={logout}
-          username={user.username}
-        />
-      );
-    } else if (view === "training-record") {
-      application = (
-        <FactoryTrainingRecordManagement
-          onBack={goHome}
-          onHome={goHome}
-          onLogout={logout}
-          username={user.username}
-        />
-      );
-    } else if (view === "training-course") {
-      application = (
-        <FactoryTrainingCourseManagement
-          onBack={goHome}
-          onHome={goHome}
-          onLogout={logout}
-          username={user.username}
-        />
-      );
-    } else if (view === "master-data") {
-      application = (
-        <FactoryMasterDataManagement
-          onBack={goHome}
-          onHome={goHome}
-          onLogout={logout}
-          username={user.username}
-        />
-      );
-    } else if (view === "report") {
-      application = (
-        <FactoryReportManagement
-          onBack={goHome}
-          onHome={goHome}
-          onLogout={logout}
-          username={user.username}
-        />
-      );
-    } else {
-      application = (
-        <FactoryDashboard
-          onOpenTrainingPlan={() => setView("training-plan")}
-          onOpenTrainingRecord={() => setView("training-record")}
-          onOpenTrainingCourse={() => setView("training-course")}
-          onOpenMasterData={() => setView("master-data")}
-          onOpenReport={() => setView("report")}
-          onHome={goHome}
-          onLogout={logout}
-          username={user.username}
-        />
-      );
-    }
   } else if (view === "training-plan") {
     application = (
-      <TrainingPlanManagement
+      <CenterFactoryTrainingPlanManagement
         onBack={goHome}
         onHome={goHome}
         onLogout={logout}
@@ -207,7 +141,7 @@ export default function HrdTrainingApp() {
     );
   } else if (view === "training-record") {
     application = (
-      <TrainingRecordManagement
+      <CenterFactoryTrainingRecordManagement
         onBack={goHome}
         onHome={goHome}
         onLogout={logout}
@@ -216,7 +150,7 @@ export default function HrdTrainingApp() {
     );
   } else if (view === "training-course") {
     application = (
-      <TrainingCourseManagement
+      <CenterFactoryTrainingCourseManagement
         onBack={goHome}
         onHome={goHome}
         onLogout={logout}
@@ -225,7 +159,7 @@ export default function HrdTrainingApp() {
     );
   } else if (view === "master-data") {
     application = (
-      <MasterDataManagement
+      <CenterFactoryMasterDataManagement
         onBack={goHome}
         onHome={goHome}
         onLogout={logout}
@@ -234,7 +168,7 @@ export default function HrdTrainingApp() {
     );
   } else if (view === "report") {
     application = (
-      <ReportManagement
+      <CenterFactoryReportManagement
         onBack={goHome}
         onHome={goHome}
         onLogout={logout}
@@ -243,7 +177,7 @@ export default function HrdTrainingApp() {
     );
   } else {
     application = (
-      <Dashboard
+      <CenterFactoryDashboard
         onOpenTrainingPlan={() => setView("training-plan")}
         onOpenTrainingRecord={() => setView("training-record")}
         onOpenTrainingCourse={() => setView("training-course")}
