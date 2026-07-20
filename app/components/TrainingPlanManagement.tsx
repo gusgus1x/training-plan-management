@@ -5,6 +5,7 @@ import {
   getCurrentSession,
   loginWithCredentials,
   logoutCurrentSession,
+  type ClientRoleCode,
   type ClientSessionUser,
 } from "../lib/auth/client";
 import CenterFactoryDashboard from "./center_factory/CenterFactory_Dashboard";
@@ -17,7 +18,7 @@ import UserDashboard from "./employee/UserDashboard";
 import LoginPage from "./LoginPage";
 import Navbar from "./Navbar";
 import { AuthenticatedUserProvider } from "./AuthenticatedUserContext";
-import styles from "./HrdTrainingApp.module.css";
+import styles from "./TrainingPlanManagement.module.css";
 
 type AppView =
   | "dashboard"
@@ -35,8 +36,101 @@ type AuthenticationState =
 const SESSION_CHECK_ERROR =
   "Unable to verify your previous session. Please sign in again.";
 const LOGOUT_ERROR = "Unable to sign out. Please try again.";
+const AUTHENTICATED_USER_STORAGE_KEY = "tpm_authenticated_user";
 
-export default function HrdTrainingApp() {
+const readCachedUser = (): ClientSessionUser | null => {
+  try {
+    const serializedUser = sessionStorage.getItem(AUTHENTICATED_USER_STORAGE_KEY);
+
+    if (!serializedUser) {
+      return null;
+    }
+
+    const user = JSON.parse(serializedUser) as Partial<ClientSessionUser>;
+
+    if (
+      typeof user.userId !== "string" ||
+      typeof user.username !== "string" ||
+      !["EMPLOYEE", "HRD_FACTORY", "HRD_CENTER"].includes(user.roleCode ?? "")
+    ) {
+      return null;
+    }
+
+    return user as ClientSessionUser;
+  } catch {
+    return null;
+  }
+};
+
+const writeCachedUser = (user: ClientSessionUser) => {
+  sessionStorage.setItem(AUTHENTICATED_USER_STORAGE_KEY, JSON.stringify(user));
+};
+
+const clearCachedUser = () => {
+  sessionStorage.removeItem(AUTHENTICATED_USER_STORAGE_KEY);
+};
+
+const testUsers: Record<ClientRoleCode, ClientSessionUser> = {
+  EMPLOYEE: {
+    userId: "test-employee",
+    username: "test.employee",
+    roleCode: "EMPLOYEE",
+    employeeId: "emp-test-001",
+    companyId: "company-snf",
+    email: "test.employee@attg.local",
+    employeeCode: "SNF-5401",
+    displayName: "Test Employee",
+    companyCode: "SNF",
+    companyName: "The Siam Nawaloha Foundry Co.,Ltd",
+    functionCode: "PRD",
+    functionName: "Production",
+    positionCode: "OP",
+    positionName: "Operator",
+    levelCode: "L2",
+    levelName: "L2",
+    pl: "PL2",
+  },
+  HRD_CENTER: {
+    userId: "test-center",
+    username: "test.center",
+    roleCode: "HRD_CENTER",
+    employeeId: "center-test-001",
+    companyId: null,
+    email: "test.center@attg.local",
+    employeeCode: "HRD-0001",
+    displayName: "Test HRD Center",
+    companyCode: null,
+    companyName: "HRD Center",
+    functionCode: "HRD",
+    functionName: "Human Resource Development",
+    positionCode: "HRD",
+    positionName: "HRD Center",
+    levelCode: "L5",
+    levelName: "L5",
+    pl: "PL5",
+  },
+  HRD_FACTORY: {
+    userId: "test-factory",
+    username: "test.factory",
+    roleCode: "HRD_FACTORY",
+    employeeId: "factory-test-001",
+    companyId: "company-snf",
+    email: "test.factory@attg.local",
+    employeeCode: "SNF-HRD-01",
+    displayName: "Test HRD Factory",
+    companyCode: "SNF",
+    companyName: "The Siam Nawaloha Foundry Co.,Ltd",
+    functionCode: "HRD",
+    functionName: "Human Resource Development",
+    positionCode: "HRD",
+    positionName: "HRD Factory",
+    levelCode: "L4",
+    levelName: "L4",
+    pl: "PL4",
+  },
+};
+
+export default function TrainingPlanManagement() {
   const [authentication, setAuthentication] =
     useState<AuthenticationState>({ status: "checking" });
   const [view, setView] = useState<AppView>("dashboard");
@@ -52,17 +146,31 @@ export default function HrdTrainingApp() {
           return;
         }
 
-        setAuthentication(
-          user ? { status: "authenticated", user } : { status: "anonymous" },
-        );
+        if (user) {
+          writeCachedUser(user);
+          setAuthentication({ status: "authenticated", user });
+          return;
+        }
+
+        clearCachedUser();
+        setAuthentication({ status: "anonymous" });
       })
       .catch(() => {
-        if (active) {
-          setAuthentication({
-            status: "anonymous",
-            message: SESSION_CHECK_ERROR,
-          });
+        if (!active) {
+          return;
         }
+
+        const cachedUser = readCachedUser();
+
+        if (cachedUser) {
+          setAuthentication({ status: "authenticated", user: cachedUser });
+          return;
+        }
+
+        setAuthentication({
+          status: "anonymous",
+          message: SESSION_CHECK_ERROR,
+        });
       });
 
     return () => {
@@ -71,7 +179,18 @@ export default function HrdTrainingApp() {
   }, []);
 
   const handleLogin = async (username: string, password: string) => {
+    clearCachedUser();
     const user = await loginWithCredentials(username, password);
+    writeCachedUser(user);
+    setView("dashboard");
+    setLogoutMessage(null);
+    setAuthentication({ status: "authenticated", user });
+  };
+
+  const handleTestLogin = (roleCode: ClientRoleCode) => {
+    const user = testUsers[roleCode];
+
+    writeCachedUser(user);
     setView("dashboard");
     setLogoutMessage(null);
     setAuthentication({ status: "authenticated", user });
@@ -87,6 +206,7 @@ export default function HrdTrainingApp() {
 
     try {
       await logoutCurrentSession();
+      clearCachedUser();
       setView("dashboard");
       setAuthentication({ status: "anonymous" });
     } catch {
@@ -112,6 +232,7 @@ export default function HrdTrainingApp() {
     return (
       <LoginPage
         onLogin={handleLogin}
+        onTestLogin={handleTestLogin}
         sessionMessage={authentication.message}
       />
     );

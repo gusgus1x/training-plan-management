@@ -7,6 +7,13 @@ type NavbarProps = {
   username?: string;
   userLevel?: "Admin" | "User";
   company?: string;
+  contextTitle?: string;
+  contextItems?: Array<{
+    title: string;
+    active: boolean;
+    onClick: () => void;
+  }>;
+  onBack?: () => void;
   onHome?: () => void;
   onLogout?: () => void;
 };
@@ -15,6 +22,9 @@ export default function Navbar({
   username,
   userLevel = "Admin",
   company,
+  contextTitle,
+  contextItems = [],
+  onBack,
   onHome,
   onLogout,
 }: NavbarProps) {
@@ -23,7 +33,7 @@ export default function Navbar({
   const displayLevel = user?.roleCode ?? userLevel;
   const displayCompany =
     user?.roleCode === "HRD_CENTER"
-      ? "ทุกบริษัท"
+      ? "All Companies"
       : profileValue(user?.companyName ?? user?.companyCode ?? company);
   const avatar =
     user?.roleCode === "EMPLOYEE"
@@ -47,46 +57,72 @@ export default function Navbar({
   return (
     <header className={styles.navbar}>
       <div className={styles.inner}>
-        {onHome ? (
-          <button
-            className={styles.brandButton}
-            type="button"
-            onClick={onHome}
-            aria-label="Back to main dashboard"
-          >
-            {BrandContent}
-          </button>
-        ) : (
-          <div className={styles.brand}>{BrandContent}</div>
-        )}
+        <div className={styles.topBar}>
+          {onHome ? (
+            <button
+              className={styles.brandButton}
+              type="button"
+              onClick={onHome}
+              aria-label="Back to main dashboard"
+            >
+              {BrandContent}
+            </button>
+          ) : (
+            <div className={styles.brand}>{BrandContent}</div>
+          )}
 
-        {displayUsername ? (
-          <div className={styles.userArea}>
-            <div className={styles.statusPill}>
-              <span className={styles.statusDot} aria-hidden="true" />
-              Active session
-            </div>
-            <div className={styles.userInfo}>
-              <div className={styles.avatar} aria-hidden="true">{avatar}</div>
-              <div className={styles.userDetails}>
-                <div className={styles.userRow}>
-                  <span className={styles.userLabel}>Name :</span>
-                  <span className={styles.userValue}>{displayUsername}</span>
-                </div>
-                <div className={styles.userRow}>
-                  <span className={styles.userLabel}>Role :</span>
-                  <span className={styles.userValue}>{displayLevel}</span>
-                </div>
-                <div className={styles.userRow}>
-                  <span className={styles.userLabel}>Company :</span>
-                  <span className={styles.userValue}>{displayCompany}</span>
+          {displayUsername ? (
+            <div className={styles.userArea}>
+              <div className={styles.userInfo}>
+                <div className={styles.avatar} aria-hidden="true">{avatar}</div>
+                <div className={styles.userDetails}>
+                  <div className={styles.userRow}>
+                    <span className={styles.userLabel}>Name :</span>
+                    <span className={styles.userValue}>{displayUsername}</span>
+                  </div>
+                  <div className={styles.userRow}>
+                    <span className={styles.userLabel}>Role :</span>
+                    <span className={styles.userValue}>{displayLevel}</span>
+                  </div>
+                  <div className={styles.userRow}>
+                    <span className={styles.userLabel}>Company :</span>
+                    <span className={styles.userValue}>{displayCompany}</span>
+                  </div>
                 </div>
               </div>
+              <button className={styles.logoutButton} type="button" onClick={onLogout}>
+                Logout
+              </button>
             </div>
-            <button className={styles.logoutButton} type="button" onClick={onLogout}>
-              Logout
-            </button>
-          </div>
+          ) : null}
+        </div>
+
+        {contextTitle ? (
+          <nav className={styles.contextNav} aria-label="Current module navigation">
+            {onBack ? (
+              <button className={styles.backButton} type="button" onClick={onBack}>
+                Back
+              </button>
+            ) : null}
+            <div className={styles.contextTitle}>
+              <span>Current workspace</span>
+              <strong>{contextTitle}</strong>
+            </div>
+            {contextItems.length > 0 ? (
+              <div className={styles.contextItems}>
+                {contextItems.map((item) => (
+                  <button
+                    className={item.active ? styles.activeContextItem : styles.contextItem}
+                    key={item.title}
+                    type="button"
+                    onClick={item.onClick}
+                  >
+                    {item.title}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </nav>
         ) : null}
       </div>
     </header>

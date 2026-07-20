@@ -5,7 +5,10 @@ import type { ClientSessionUser } from "../lib/auth/client";
 
 const AuthenticatedUserContext = createContext<ClientSessionUser | null>(null);
 
-export function AuthenticatedUserProvider({ user, children }: {
+export function AuthenticatedUserProvider({
+  user,
+  children,
+}: {
   user: ClientSessionUser;
   children: ReactNode;
 }) {
@@ -22,20 +25,21 @@ export const profileValue = (value: string | null | undefined) =>
   value?.trim() || "-";
 
 export const buildProfileItems = (user: ClientSessionUser | null) => [
-  { label: "รหัสพนักงาน", value: profileValue(user?.employeeCode) },
-  { label: "ตำแหน่ง", value: profileValue(user?.positionName) },
-  { label: "แผนก", value: profileValue(user?.functionName) },
+  { label: "Employee Code", value: profileValue(user?.employeeCode) },
+  { label: "Position", value: profileValue(user?.positionName) },
+  { label: "Function", value: profileValue(user?.functionName) },
   {
-    label: "บริษัท",
-    value: user?.roleCode === "HRD_CENTER"
-      ? "ทุกบริษัท"
-      : profileValue(user?.companyName ?? user?.companyCode),
+    label: "Company",
+    value:
+      user?.roleCode === "HRD_CENTER"
+        ? "All Companies"
+        : profileValue(user?.companyName ?? user?.companyCode),
   },
   {
-    label: "ระดับพนักงาน",
+    label: "Level",
     value: profileValue(
       [user?.levelName, user?.pl].filter(Boolean).join(" / ") || null,
     ),
   },
-  { label: "อีเมล", value: profileValue(user?.email) },
+  { label: "Email", value: profileValue(user?.email) },
 ];

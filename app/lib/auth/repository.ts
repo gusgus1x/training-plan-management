@@ -1,5 +1,5 @@
 import { BigInt, NVarChar, type ConnectionPool } from "mssql";
-import { getSqlServerPool } from "../database/pool";
+import { getSqlServerPool, resetSqlServerPool } from "../database/pool";
 import type { AuthenticationAccount } from "./types";
 
 type AuthenticationRow = {
@@ -43,6 +43,22 @@ type AuthenticationPoolProvider = () => Promise<AuthenticationPool>;
 export type AuthenticationRepository = {
   findByUsername(username: string): Promise<AuthenticationAccount | null>;
   findByUserId(userId: string): Promise<AuthenticationAccount | null>;
+};
+
+const runWithPoolRetry = async <Result>(
+  operation: (pool: AuthenticationPool) => Promise<Result>,
+  getPool: AuthenticationPoolProvider,
+) => {
+  try {
+    return await operation(await getPool());
+  } catch (error) {
+    if (getPool === getSqlServerPool) {
+      await resetSqlServerPool();
+      return operation(await getPool());
+    }
+
+    throw error;
+  }
 };
 
 const AUTHENTICATION_COLUMNS = `
@@ -144,21 +160,27 @@ export const createAuthenticationRepository = (
   getPool: AuthenticationPoolProvider = getSqlServerPool,
 ): AuthenticationRepository => ({
   async findByUsername(username) {
-    const pool = await getPool();
-    const result = await pool
-      .request()
-      .input("username", NVarChar(100), username)
-      .query<AuthenticationRow>(FIND_AUTHENTICATION_ACCOUNT_BY_USERNAME_QUERY);
+    const result = await runWithPoolRetry(
+      (pool) =>
+        pool
+          .request()
+          .input("username", NVarChar(100), username)
+          .query<AuthenticationRow>(FIND_AUTHENTICATION_ACCOUNT_BY_USERNAME_QUERY),
+      getPool,
+    );
 
     return mapAuthenticationRow(result.recordset[0]);
   },
 
   async findByUserId(userId) {
-    const pool = await getPool();
-    const result = await pool
-      .request()
-      .input("userId", BigInt, userId)
-      .query<AuthenticationRow>(FIND_AUTHENTICATION_ACCOUNT_BY_USER_ID_QUERY);
+    const result = await runWithPoolRetry(
+      (pool) =>
+        pool
+          .request()
+          .input("userId", BigInt, userId)
+          .query<AuthenticationRow>(FIND_AUTHENTICATION_ACCOUNT_BY_USER_ID_QUERY),
+      getPool,
+    );
 
     return mapAuthenticationRow(result.recordset[0]);
   },

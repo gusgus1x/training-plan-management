@@ -206,15 +206,11 @@ export default function EvaluationManagement() {
           <h2>{evaluationManagementModule.title}</h2>
           <p>{evaluationManagementModule.description}</p>
         </div>
-        <div className={styles.metrics}>
-          <div><span>Total</span><strong>{evaluations.length}</strong></div>
-          <div><span>Published</span><strong>{evaluations.filter((item) => item.status === "Published").length}</strong></div>
-          <div><span>Draft</span><strong>{evaluations.filter((item) => item.status === "Draft").length}</strong></div>
-        </div>
       </section>
 
       <section className={styles.workspace}>
         <div className={styles.toolbar}>
+          <span className={styles.listMeta}>{visibleEvaluations.length} / {evaluations.length} evaluations</span>
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search evaluation, scope, company, status" />
           <button className={styles.primaryButton} type="button" onClick={handleNew}>New</button>
           <button className={styles.secondaryButton} type="button" onClick={handleEdit} disabled={!selectedEvaluation}>Edit</button>

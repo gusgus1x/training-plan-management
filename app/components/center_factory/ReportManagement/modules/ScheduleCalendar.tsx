@@ -50,20 +50,6 @@ export default function ScheduleCalendar() {
           <h2>{scheduleCalendarModule.title}</h2>
           <p>{scheduleCalendarModule.description}</p>
         </div>
-        <div className={styles.heroStats}>
-          <div className={styles.statCard}>
-            <span>Total</span>
-            <strong>{rows.length}</strong>
-          </div>
-          <div className={styles.statCard}>
-            <span>Visible</span>
-            <strong>{visibleRows.length}</strong>
-          </div>
-          <div className={styles.statCard}>
-            <span>Draft</span>
-            <strong>{draftRows.length}</strong>
-          </div>
-        </div>
       </section>
 
       <section className={styles.panel}>

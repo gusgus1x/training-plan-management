@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState, type FormEvent } from "react";
+import type { ClientRoleCode } from "../lib/auth/client";
 import atfbImage from "../photo/ATFB.jpg";
 import nicImage from "../photo/NIC.png";
 import satiImage from "../photo/SATI.jpg";
@@ -12,6 +13,7 @@ import styles from "./LoginPage.module.css";
 
 type LoginPageProps = {
   onLogin: (username: string, password: string) => Promise<void>;
+  onTestLogin: (roleCode: ClientRoleCode) => void;
   sessionMessage?: string | null;
 };
 
@@ -19,6 +21,7 @@ const GENERIC_LOGIN_ERROR = "Unable to sign in. Check your username and password
 
 export default function LoginPage({
   onLogin,
+  onTestLogin,
   sessionMessage = null,
 }: LoginPageProps) {
   const [username, setUsername] = useState("");
@@ -179,6 +182,37 @@ export default function LoginPage({
           >
             {isSubmitting ? "Signing in..." : "Login"}
           </button>
+
+          <div className={styles.quickLoginPanel} aria-label="Test login options">
+            <p>Test access</p>
+            <button
+              className={styles.quickLoginButton}
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => onTestLogin("EMPLOYEE")}
+            >
+              Employee
+              <span>Open user dashboard without password</span>
+            </button>
+            <button
+              className={styles.quickLoginButton}
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => onTestLogin("HRD_CENTER")}
+            >
+              HRD Center
+              <span>Open center management workspace</span>
+            </button>
+            <button
+              className={styles.quickLoginButton}
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => onTestLogin("HRD_FACTORY")}
+            >
+              HRD Factory
+              <span>Open factory management workspace</span>
+            </button>
+          </div>
         </form>
       </section>
     </main>

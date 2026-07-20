@@ -25,6 +25,7 @@ export default function CourseType() {
   const [courseTypes, setCourseTypes] = useState<CourseTypeRecord[]>(initialCourseTypes);
   const [selectedId, setSelectedId] = useState("");
   const [draftName, setDraftName] = useState("");
+  const [query, setQuery] = useState("");
   const [mode, setMode] = useState<"idle" | "new" | "edit">("idle");
   const [exportMessage, setExportMessage] = useState("");
 
@@ -32,6 +33,16 @@ export default function CourseType() {
     () => courseTypes.find((courseType) => courseType.id === selectedId) ?? null,
     [courseTypes, selectedId],
   );
+
+  const filteredCourseTypes = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return courseTypes;
+    }
+
+    return courseTypes.filter((courseType) => courseType.name.toLowerCase().includes(normalizedQuery));
+  }, [courseTypes, query]);
 
   const handleNew = () => {
     setSelectedId("");
@@ -66,6 +77,7 @@ export default function CourseType() {
     setCourseTypes(initialCourseTypes);
     setSelectedId("");
     setDraftName("");
+    setQuery("");
     setMode("idle");
     setExportMessage("");
   };
@@ -104,38 +116,56 @@ export default function CourseType() {
   return (
     <section className={styles.page} aria-label="Course Type management">
       <section className={styles.hero}>
-        <div>
+        <div className={styles.heroCopy}>
           <p className={styles.kicker}>{courseTypeModule.subtitle}</p>
           <h2>{courseTypeModule.title}</h2>
-          <p>{courseTypeModule.description}</p>
-        </div>
-        <div className={styles.summaryCard}>
-          <span>Total</span>
-          <strong>{courseTypes.length}</strong>
         </div>
       </section>
 
       <section className={styles.workspace}>
+        <div className={styles.workspaceHeader}>
+          <div>
+            <span>Master List</span>
+            <h3>Course type library</h3>
+          </div>
+          <span className={styles.listMeta}>{filteredCourseTypes.length} / {courseTypes.length} types</span>
+        </div>
+
         <div className={styles.toolbar} aria-label="Course type actions">
-          <button className={styles.newButton} type="button" onClick={handleNew}>
-            New
-          </button>
-          <button className={styles.editButton} type="button" onClick={handleEdit} disabled={!selectedCourseType}>
-            Edit
-          </button>
-          <button className={styles.deleteButton} type="button" onClick={handleDelete} disabled={!selectedCourseType}>
-            Delete
-          </button>
-          <button className={styles.refreshButton} type="button" onClick={handleRefresh}>
-            Refresh
-          </button>
-          <button className={styles.exportButton} type="button" onClick={handleExport}>
-            Export
-          </button>
+          <label className={styles.searchBox}>
+            <span>Search</span>
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search course type"
+              type="search"
+            />
+          </label>
+          <div className={styles.actionGroup}>
+            <button className={styles.primaryButton} type="button" onClick={handleNew}>
+              New
+            </button>
+            <button className={styles.secondaryButton} type="button" onClick={handleEdit} disabled={!selectedCourseType}>
+              Edit
+            </button>
+            <button className={styles.dangerButton} type="button" onClick={handleDelete} disabled={!selectedCourseType}>
+              Delete
+            </button>
+            <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>
+              Refresh
+            </button>
+            <button className={styles.secondaryButton} type="button" onClick={handleExport}>
+              Export
+            </button>
+          </div>
         </div>
 
         {mode !== "idle" ? (
           <div className={styles.editor}>
+            <div className={styles.editorHeader}>
+              <span>{mode === "edit" ? "Edit record" : "New record"}</span>
+              <strong>{mode === "edit" ? selectedCourseType?.name : "Course Type"}</strong>
+            </div>
             <label>
               Course Type
               <input
@@ -144,41 +174,53 @@ export default function CourseType() {
                 placeholder="Enter course type"
               />
             </label>
-            <button className={styles.saveButton} type="button" onClick={handleSave}>
-              Save
-            </button>
-            <button className={styles.cancelButton} type="button" onClick={() => setMode("idle")}>
-              Cancel
-            </button>
+            <div className={styles.formActions}>
+              <button className={styles.saveButton} type="button" onClick={handleSave}>
+                Save
+              </button>
+              <button className={styles.cancelButton} type="button" onClick={() => setMode("idle")}>
+                Cancel
+              </button>
+            </div>
           </div>
         ) : null}
 
         {exportMessage ? <p className={styles.exportMessage}>{exportMessage}</p> : null}
 
-        <div className={styles.tableWrap}>
-          <table className={styles.courseTypeTable}>
-            <thead>
-              <tr>
-                <th>No.</th>
-                <th>Course Type</th>
-              </tr>
-            </thead>
-            <tbody>
-              {courseTypes.map((courseType, index) => (
-                <tr
-                  className={courseType.id === selectedId ? styles.selectedRow : undefined}
-                  key={courseType.id}
-                  onClick={() => {
-                    setSelectedId(courseType.id);
-                    setExportMessage("");
-                  }}
-                >
-                  <td>{index + 1}</td>
-                  <td>{courseType.name}</td>
+        <div className={styles.contentGrid}>
+          <div className={styles.tableWrap}>
+            <table className={styles.courseTypeTable}>
+              <thead>
+                <tr>
+                  <th>No.</th>
+                  <th>Course Type</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredCourseTypes.map((courseType, index) => (
+                  <tr
+                    className={courseType.id === selectedId ? styles.selectedRow : undefined}
+                    key={courseType.id}
+                    onClick={() => {
+                      setSelectedId(courseType.id);
+                      setExportMessage("");
+                    }}
+                  >
+                    <td>{index + 1}</td>
+                    <td>
+                      <strong>{courseType.name}</strong>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredCourseTypes.length === 0 ? (
+              <div className={styles.emptyState}>
+                <strong>No course type found</strong>
+                <span>Try a different keyword or add a new course type.</span>
+              </div>
+            ) : null}
+          </div>
         </div>
       </section>
     </section>

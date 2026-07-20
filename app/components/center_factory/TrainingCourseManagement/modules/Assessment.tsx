@@ -378,24 +378,11 @@ export default function Assessment() {
           <h2>{assessmentModule.title}</h2>
           <p>{assessmentModule.description}</p>
         </div>
-        <div className={styles.metrics}>
-          <div>
-            <span>Total</span>
-            <strong>{assessments.length}</strong>
-          </div>
-          <div>
-            <span>Published</span>
-            <strong>{assessments.filter((assessment) => assessment.status === "Published").length}</strong>
-          </div>
-          <div>
-            <span>Draft</span>
-            <strong>{assessments.filter((assessment) => assessment.status === "Draft").length}</strong>
-          </div>
-        </div>
       </section>
 
       <section className={styles.workspace}>
         <div className={styles.toolbar}>
+          <span className={styles.listMeta}>{visibleAssessments.length} / {assessments.length} assessments</span>
           <input
             aria-label="Search assessment"
             value={search}

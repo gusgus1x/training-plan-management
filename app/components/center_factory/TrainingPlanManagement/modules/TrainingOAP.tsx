@@ -139,6 +139,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const [editingId, setEditingId] = useState("");
   const [openDetailId, setOpenDetailId] = useState("");
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | OapStatus>("all");
 
   const selectedCourse = courseMasterOptions.find((course) => course.code === form.courseCode) ?? courseMasterOptions[0];
   const visiblePlans = useMemo(
@@ -148,8 +149,9 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
           .join(" ")
           .toLowerCase()
           .includes(search.toLowerCase()),
-      ),
-    [plans, search],
+      )
+      .filter((plan) => statusFilter === "all" || plan.status === statusFilter),
+    [plans, search, statusFilter],
   );
 
   const updateForm = (field: keyof typeof emptyForm, value: string) => {
@@ -233,6 +235,14 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     setEditingId("");
     setOpenDetailId("");
     setSearch("");
+    setStatusFilter("all");
+  };
+
+  const handleNew = () => {
+    setEditingId("");
+    setForm(emptyForm);
+    setOpenDetailId("");
+    setIsNewOpen(true);
   };
 
   return (
@@ -243,18 +253,35 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
           <h2>{trainingOapModule.title}</h2>
           <p>{trainingOapModule.description}</p>
         </div>
-        <div className={styles.metrics}>
-          <div><span>Total</span><strong>{plans.length}</strong></div>
-          <div><span>Planning</span><strong>{plans.filter((plan) => plan.status === "Planning").length}</strong></div>
-          <div><span>Planned</span><strong>{plans.filter((plan) => plan.status === "Planned").length}</strong></div>
-        </div>
       </section>
 
       <section className={styles.workspace}>
+        <div className={styles.workspaceHeader}>
+          <div>
+            <p className={styles.kicker}>Annual plan list</p>
+            <h3>Training OAP records</h3>
+          </div>
+          <span>{visiblePlans.length} shown</span>
+        </div>
+
         <div className={styles.toolbar}>
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search course, trainer, provider, status" />
-          <button className={styles.primaryButton} type="button" onClick={() => setIsNewOpen(true)}>New</button>
-          <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>Refresh</button>
+          <label className={styles.searchBox}>
+            <span>Search</span>
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Course, trainer, provider, status" />
+          </label>
+          <label className={styles.filterBox}>
+            <span>Status</span>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | OapStatus)}>
+              <option value="all">All status</option>
+              <option value="Planning">Planning</option>
+              <option value="Planned">Planned</option>
+              <option value="Cancel">Cancel</option>
+            </select>
+          </label>
+          <div className={styles.toolbarActions}>
+            <button className={styles.primaryButton} type="button" onClick={handleNew}>New</button>
+            <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>Refresh</button>
+          </div>
         </div>
 
         {isNewOpen ? (
@@ -267,7 +294,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               <button className={styles.closeButton} type="button" onClick={() => setIsNewOpen(false)}>Close</button>
             </div>
             <div className={styles.formGrid}>
-              <label>
+              <label className={styles.fullField}>
                 Course Name
                 <select value={form.courseCode} onChange={(event) => updateForm("courseCode", event.target.value)}>
                   {courseMasterOptions.map((course) => <option key={course.code} value={course.code}>{course.name}</option>)}
@@ -321,7 +348,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                       <td>{plan.trainer}</td>
                       <td>{plan.provider}</td>
                       <td>{plan.createdBy}</td>
-                      <td><span className={styles.statusPill}>{plan.status}</span></td>
+                      <td><span className={`${styles.statusPill} ${styles[`status${plan.status}`]}`}>{plan.status}</span></td>
                       <td className={styles.actionCell}>
                         <button className={styles.detailButton} type="button" onClick={() => setOpenDetailId(isOpen ? "" : plan.id)}>
                           {isOpen ? "Hide" : "Details"}
@@ -375,6 +402,12 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               })}
             </tbody>
           </table>
+          {visiblePlans.length === 0 ? (
+            <div className={styles.emptyState}>
+              <strong>No training plans found</strong>
+              <span>Try changing the search text or status filter.</span>
+            </div>
+          ) : null}
         </div>
       </section>
     </section>

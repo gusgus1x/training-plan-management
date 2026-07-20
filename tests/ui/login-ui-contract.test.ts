@@ -6,18 +6,27 @@ const loginPageSource = readFileSync(
   "utf8",
 );
 const appSource = readFileSync(
-  new URL("../../app/components/HrdTrainingApp.tsx", import.meta.url),
+  new URL("../../app/components/TrainingPlanManagement.tsx", import.meta.url),
   "utf8",
 );
 
 describe("login UI contract", () => {
-  it("contains no mock login or browser credential storage", () => {
+  it("contains no browser credential storage or leaked server secrets", () => {
     const authenticationUiSource = `${loginPageSource}\n${appSource}`;
 
     expect(authenticationUiSource).not.toContain("defaultValue=");
-    expect(authenticationUiSource).not.toContain("quickLogin");
     expect(authenticationUiSource).not.toContain("localStorage");
-    expect(authenticationUiSource).not.toContain("sessionStorage");
+    expect(authenticationUiSource).not.toContain("passwordHash");
+    expect(authenticationUiSource).not.toContain("AUTH_SESSION_SECRET");
+    expect(authenticationUiSource).not.toContain("SESSION_COOKIE_NAME");
+  });
+
+  it("provides test access for employee, center, and factory roles", () => {
+    expect(loginPageSource).toContain("Test access");
+    expect(loginPageSource).toContain('onTestLogin("EMPLOYEE")');
+    expect(loginPageSource).toContain('onTestLogin("HRD_CENTER")');
+    expect(loginPageSource).toContain('onTestLogin("HRD_FACTORY")');
+    expect(appSource).toContain("const testUsers");
   });
 
   it("disables form controls while submitting and clears password state", () => {

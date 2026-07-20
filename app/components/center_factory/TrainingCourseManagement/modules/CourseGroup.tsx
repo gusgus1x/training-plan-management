@@ -12,30 +12,32 @@ export const courseGroupModule = {
 type CourseGroupRecord = {
   id: string;
   name: string;
+  groupId: string;
 };
 
 const initialCourseGroups: CourseGroupRecord[] = [
-  { id: "group-001", name: "Quality" },
-  { id: "group-002", name: "Safety" },
-  { id: "group-003", name: "Casting" },
-  { id: "group-004", name: "Management" },
-  { id: "group-005", name: "Die Quenching" },
-  { id: "group-006", name: "Promotion" },
-  { id: "group-007", name: "Maintenance" },
-  { id: "group-008", name: "Production" },
-  { id: "group-009", name: "AL Prod." },
-  { id: "group-010", name: "System" },
-  { id: "group-011", name: "Machining" },
-  { id: "group-012", name: "Special" },
-  { id: "group-013", name: "Cost" },
-  { id: "group-014", name: "Moral" },
-  { id: "group-015", name: "Other" },
+  { id: "group-001", name: "Quality", groupId: "QT" },
+  { id: "group-002", name: "Safety", groupId: "ST" },
+  { id: "group-003", name: "Casting", groupId: "CT" },
+  { id: "group-004", name: "Management", groupId: "MG" },
+  { id: "group-005", name: "Die Quenching", groupId: "DQ" },
+  { id: "group-006", name: "Promotion", groupId: "PT" },
+  { id: "group-007", name: "Maintenance", groupId: "MT" },
+  { id: "group-008", name: "Production", groupId: "PD" },
+  { id: "group-009", name: "AL Prod.", groupId: "AL" },
+  { id: "group-010", name: "System", groupId: "SY" },
+  { id: "group-011", name: "Machining", groupId: "MC" },
+  { id: "group-012", name: "Special", groupId: "SP" },
+  { id: "group-013", name: "Cost", groupId: "CO" },
+  { id: "group-014", name: "Moral", groupId: "MR" },
+  { id: "group-015", name: "Other", groupId: "OT" },
 ];
 
 export default function CourseGroup() {
   const [courseGroups, setCourseGroups] = useState<CourseGroupRecord[]>(initialCourseGroups);
   const [selectedId, setSelectedId] = useState("");
   const [draftName, setDraftName] = useState("");
+  const [draftGroupId, setDraftGroupId] = useState("");
   const [mode, setMode] = useState<"idle" | "new" | "edit">("idle");
   const [exportMessage, setExportMessage] = useState("");
 
@@ -47,6 +49,7 @@ export default function CourseGroup() {
   const handleNew = () => {
     setSelectedId("");
     setDraftName("");
+    setDraftGroupId("");
     setMode("new");
     setExportMessage("");
   };
@@ -57,6 +60,7 @@ export default function CourseGroup() {
     }
 
     setDraftName(selectedCourseGroup.name);
+    setDraftGroupId(selectedCourseGroup.groupId);
     setMode("edit");
     setExportMessage("");
   };
@@ -69,6 +73,7 @@ export default function CourseGroup() {
     setCourseGroups((current) => current.filter((courseGroup) => courseGroup.id !== selectedId));
     setSelectedId("");
     setDraftName("");
+    setDraftGroupId("");
     setMode("idle");
     setExportMessage("");
   };
@@ -77,6 +82,7 @@ export default function CourseGroup() {
     setCourseGroups(initialCourseGroups);
     setSelectedId("");
     setDraftName("");
+    setDraftGroupId("");
     setMode("idle");
     setExportMessage("");
   };
@@ -87,6 +93,7 @@ export default function CourseGroup() {
 
   const handleSave = () => {
     const nextName = draftName.trim();
+    const nextGroupId = draftGroupId.trim().toUpperCase();
     if (!nextName) {
       return;
     }
@@ -94,22 +101,25 @@ export default function CourseGroup() {
     if (mode === "edit" && selectedId) {
       setCourseGroups((current) =>
         current.map((courseGroup) =>
-          courseGroup.id === selectedId ? { ...courseGroup, name: nextName } : courseGroup,
+          courseGroup.id === selectedId ? { ...courseGroup, name: nextName, groupId: nextGroupId } : courseGroup,
         ),
       );
       setMode("idle");
       setDraftName("");
+      setDraftGroupId("");
       return;
     }
 
     const nextRecord: CourseGroupRecord = {
       id: `group-${Date.now()}`,
       name: nextName,
+      groupId: nextGroupId,
     };
     setCourseGroups((current) => [...current, nextRecord]);
     setSelectedId(nextRecord.id);
     setMode("idle");
     setDraftName("");
+    setDraftGroupId("");
   };
 
   return (
@@ -120,14 +130,11 @@ export default function CourseGroup() {
           <h2>{courseGroupModule.title}</h2>
           <p>{courseGroupModule.description}</p>
         </div>
-        <div className={styles.summaryCard}>
-          <span>Total</span>
-          <strong>{courseGroups.length}</strong>
-        </div>
       </section>
 
       <section className={styles.workspace}>
         <div className={styles.toolbar} aria-label="Course group actions">
+          <span className={styles.listMeta}>{courseGroups.length} groups</span>
           <button className={styles.newButton} type="button" onClick={handleNew}>
             New
           </button>
@@ -155,6 +162,15 @@ export default function CourseGroup() {
                 placeholder="Enter course group"
               />
             </label>
+            <label>
+              Group ID
+              <input
+                maxLength={4}
+                value={draftGroupId}
+                onChange={(event) => setDraftGroupId(event.target.value.toUpperCase())}
+                placeholder="QT"
+              />
+            </label>
             <button className={styles.saveButton} type="button" onClick={handleSave}>
               Save
             </button>
@@ -172,6 +188,7 @@ export default function CourseGroup() {
               <tr>
                 <th>No.</th>
                 <th>Course Group</th>
+                <th>Group ID</th>
               </tr>
             </thead>
             <tbody>
@@ -186,6 +203,7 @@ export default function CourseGroup() {
                 >
                   <td>{index + 1}</td>
                   <td>{courseGroup.name}</td>
+                  <td>{courseGroup.groupId}</td>
                 </tr>
               ))}
             </tbody>

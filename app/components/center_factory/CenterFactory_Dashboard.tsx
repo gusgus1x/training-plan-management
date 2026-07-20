@@ -2,19 +2,17 @@
 
 import { useState } from "react";
 import DashboardLayout from "../DashboardLayout";
-import styles from "./CenterFactory_Dashboard.module.css";
 import {
   buildProfileItems,
   profileValue,
   useAuthenticatedUser,
 } from "../AuthenticatedUserContext";
+import styles from "./CenterFactory_Dashboard.module.css";
 
 const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
 const calendarYears = ["2026", "2027"] as const;
-
 const calendarMonths = [
-  { value: "all", label: "ทั้งปี" },
+  { value: "all", label: "All year" },
   { value: "01", label: "January" },
   { value: "02", label: "February" },
   { value: "03", label: "March" },
@@ -89,9 +87,9 @@ const trainingSchedule = [
 ] as const;
 
 const employeeTrainingSummary = [
-  { label: "อบรมเดือนนี้", value: "4", helper: "หลักสูตร" },
-  { label: "ชั่วโมงสะสม", value: "22", helper: "ชั่วโมง" },
-  { label: "สถานะ", value: "Active", helper: "พร้อมอบรม" },
+  { label: "This Month", value: "4", helper: "courses" },
+  { label: "Training Hours", value: "22", helper: "hours" },
+  { label: "Readiness", value: "Active", helper: "available" },
 ] as const;
 
 type DashboardProps = {
@@ -117,15 +115,21 @@ export default function Dashboard({
 }: DashboardProps) {
   const authenticatedUser = useAuthenticatedUser();
   const employeeInfo = buildProfileItems(authenticatedUser);
-  const [selectedCalendarYear, setSelectedCalendarYear] = useState<(typeof calendarYears)[number]>("2026");
-  const [selectedCalendarMonth, setSelectedCalendarMonth] = useState<(typeof calendarMonths)[number]["value"]>("07");
+  const [selectedCalendarYear, setSelectedCalendarYear] =
+    useState<(typeof calendarYears)[number]>("2026");
+  const [selectedCalendarMonth, setSelectedCalendarMonth] =
+    useState<(typeof calendarMonths)[number]["value"]>("07");
 
   const selectedMonthLabel =
-    calendarMonths.find((month) => month.value === selectedCalendarMonth)?.label ?? "July";
+    calendarMonths.find((month) => month.value === selectedCalendarMonth)?.label ??
+    "July";
 
   const filteredTrainingSchedule = trainingSchedule.filter((item) => {
     const [year, month] = item.date.split("-");
-    return year === selectedCalendarYear && (selectedCalendarMonth === "all" || month === selectedCalendarMonth);
+    return (
+      year === selectedCalendarYear &&
+      (selectedCalendarMonth === "all" || month === selectedCalendarMonth)
+    );
   });
 
   const calendarDays =
@@ -137,18 +141,21 @@ export default function Dashboard({
           const firstDay = new Date(year, month - 1, 1);
           const daysInMonth = new Date(year, month, 0).getDate();
           const leadingBlankDays = (firstDay.getDay() + 6) % 7;
-          const baseDays = Array.from({ length: leadingBlankDays + daysInMonth }, (_, index) => {
-            if (index < leadingBlankDays) {
-              return { day: null, trainings: [] as typeof trainingSchedule[number][] };
-            }
+          const baseDays = Array.from(
+            { length: leadingBlankDays + daysInMonth },
+            (_, index) => {
+              if (index < leadingBlankDays) {
+                return { day: null, trainings: [] as typeof trainingSchedule[number][] };
+              }
 
-            const day = index - leadingBlankDays + 1;
-            const trainings = filteredTrainingSchedule.filter(
-              (item) => Number(item.date.slice(8, 10)) === day,
-            );
+              const day = index - leadingBlankDays + 1;
+              const trainings = filteredTrainingSchedule.filter(
+                (item) => Number(item.date.slice(8, 10)) === day,
+              );
 
-            return { day, trainings };
-          });
+              return { day, trainings };
+            },
+          );
 
           return [
             ...baseDays,
@@ -161,34 +168,34 @@ export default function Dashboard({
 
   const menuItems = [
     {
-      badge: "แผนอบรม",
-      title: "Training Management",
-      description: "วางแผนอบรมประจำปี กำหนดหลักสูตร งบประมาณ และผู้รับผิดชอบ",
+      badge: "PLAN",
+      title: "Training Plan",
+      description: "Annual plans, training needs, acceptance surveys, OAP, and rolling plans.",
       onClick: onOpenTrainingPlan,
     },
     {
-      badge: "บันทึกประวัติอบรม",
-      title: "Training Record Management",
-      description: "บันทึกและตรวจสอบประวัติอบรมของพนักงาน พร้อมติดตามผลการเข้าร่วมหลักสูตร",
+      badge: "RECORD",
+      title: "Training Record",
+      description: "Actual training results, attendance records, and employee history.",
       onClick: onOpenTrainingRecord,
     },
     {
-      badge: "รายงาน",
-      title: "Training Report Management",
-      description: "ดูรายงานสรุปผล แผนอบรม ปฏิทิน และข้อมูลสำหรับติดตามงาน",
-      onClick: onOpenReport,
-    },
-    {
-      badge: "แผน",
-      title: "Course Type",
-      description: "จัดการประเภทหลักสูตร รุ่นอบรม หัวข้อเรียน และรายละเอียดการฝึกอบรม",
+      badge: "COURSE",
+      title: "Training Course",
+      description: "Course type, course group, master courses, standards, and assessments.",
       onClick: onOpenTrainingCourse,
     },
     {
-      badge: "ข้อมูลหลัก",
+      badge: "MASTER",
       title: "Master Data",
-      description: "ดูแลข้อมูลตั้งต้นของระบบ เช่น หน่วยงาน ตำแหน่ง และข้อมูลอ้างอิง",
+      description: "Companies, employees, instructors, levels, positions, and functions.",
       onClick: onOpenMasterData,
+    },
+    {
+      badge: "REPORT",
+      title: "Reports",
+      description: "Training schedules, result reports, expenses, and internal reports.",
+      onClick: onOpenReport,
     },
   ];
 
@@ -201,153 +208,175 @@ export default function Dashboard({
       onHome={onHome}
       onLogout={onLogout}
     >
-        <div className={styles.topRow}>
-          <section className={styles.employeePanel} aria-label="Employee">
-            <div className={styles.employeeProfile}>
-              <div className={styles.photoBox} aria-hidden="true">HA</div>
-              <div className={styles.employeeTitle}>
-                <span>Employee Profile</span>
-                <strong>{username}</strong>
-                <p>{profileValue(authenticatedUser?.positionName)} / {profileValue(authenticatedUser?.functionName)}</p>
-              </div>
-              <b className={styles.employeeStatus}>Online</b>
-            </div>
+      <section className={styles.heroPanel} aria-label="Dashboard overview">
+        <div className={styles.heroCopy}>
+          <span>HRD Training Center</span>
+          <h1>Training Plan Management</h1>
+          <p>
+            Manage training plans, course data, records, and reports across the
+            AISIN TAKAOKA Thailand group.
+          </p>
+        </div>
+      </section>
 
-            <div className={styles.employeeDetails}>
-              {employeeInfo.map((item) => (
-                <p key={item.label}>
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                </p>
-              ))}
+      <div className={styles.topRow}>
+        <section className={styles.employeePanel} aria-label="Employee profile">
+          <div className={styles.panelHeader}>
+            <div>
+              <span>Current User</span>
+              <h2>Profile</h2>
             </div>
+            <b>Online</b>
+          </div>
 
-            <div className={styles.employeeSummary} aria-label="Employee training summary">
-              {employeeTrainingSummary.map((item) => (
-                <article key={item.label}>
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                  <small>{item.helper}</small>
-                </article>
-              ))}
+          <div className={styles.employeeProfile}>
+            <div className={styles.photoBox} aria-hidden="true">HC</div>
+            <div className={styles.employeeTitle}>
+              <strong>{username}</strong>
+              <p>
+                {profileValue(authenticatedUser?.positionName)} /{" "}
+                {profileValue(authenticatedUser?.functionName)}
+              </p>
             </div>
-          </section>
+          </div>
 
-          <section className={styles.calendarPanel} aria-label="Calendar">
-            <div className={styles.calendarHeader}>
-              <div>
-                <span>{selectedMonthLabel} {selectedCalendarYear}</span>
-                <strong>Training Calendar</strong>
-              </div>
-              <p>{filteredTrainingSchedule.length} courses</p>
+          <div className={styles.employeeDetails}>
+            {employeeInfo.map((item) => (
+              <p key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+              </p>
+            ))}
+          </div>
+
+          <div className={styles.employeeSummary} aria-label="Training summary">
+            {employeeTrainingSummary.map((item) => (
+              <article key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+                <small>{item.helper}</small>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.calendarPanel} aria-label="Training calendar">
+          <div className={styles.panelHeader}>
+            <div>
+              <span>{selectedMonthLabel} {selectedCalendarYear}</span>
+              <h2>Training Calendar</h2>
             </div>
+            <b>{filteredTrainingSchedule.length} courses</b>
+          </div>
 
-            <div className={styles.calendarFilters}>
-              <label>
-                <span>Year</span>
-                <select
-                  value={selectedCalendarYear}
-                  onChange={(event) =>
-                    setSelectedCalendarYear(event.target.value as (typeof calendarYears)[number])
-                  }
-                >
-                  {calendarYears.map((year) => (
-                    <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>Month</span>
-                <select
-                  value={selectedCalendarMonth}
-                  onChange={(event) =>
-                    setSelectedCalendarMonth(event.target.value as (typeof calendarMonths)[number]["value"])
-                  }
-                >
-                  {calendarMonths.map((month) => (
-                    <option key={month.value} value={month.value}>{month.label}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            {selectedCalendarMonth === "all" ? null : (
-              <div className={styles.calendarGrid} aria-label={`Training schedule in ${selectedMonthLabel} ${selectedCalendarYear}`}>
-                {weekDays.map((day, index) => (
-                  <b key={`${day}-${index}`}>{day}</b>
+          <div className={styles.calendarFilters}>
+            <label>
+              <span>Year</span>
+              <select
+                value={selectedCalendarYear}
+                onChange={(event) =>
+                  setSelectedCalendarYear(event.target.value as (typeof calendarYears)[number])
+                }
+              >
+                {calendarYears.map((year) => (
+                  <option key={year} value={year}>{year}</option>
                 ))}
-                {calendarDays.map((item, index) => {
-                  const className = [
-                    styles.calendarDay,
-                    item.trainings.length > 0 ? styles.trainingDay : "",
-                    item.day === 9 ? styles.today : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ");
+              </select>
+            </label>
+            <label>
+              <span>Month</span>
+              <select
+                value={selectedCalendarMonth}
+                onChange={(event) =>
+                  setSelectedCalendarMonth(event.target.value as (typeof calendarMonths)[number]["value"])
+                }
+              >
+                {calendarMonths.map((month) => (
+                  <option key={month.value} value={month.value}>{month.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
 
-                  return (
-                    <div
-                      className={className}
-                      key={`${item.day ?? "empty"}-${index}`}
-                      aria-label={
-                        item.day
-                          ? item.trainings.length > 0
-                            ? `${selectedMonthLabel} ${item.day}: ${item.trainings.map((training) => training.course).join(", ")}`
-                            : `${selectedMonthLabel} ${item.day}: no training`
-                          : "Empty calendar day"
-                      }
-                    >
-                      {item.day ? (
-                        <>
-                          <span>{item.day}</span>
-                          {item.trainings.map((training) => (
-                            <small key={training.course}>{training.shortName}</small>
-                          ))}
-                        </>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            <div className={styles.trainingList} aria-label="Upcoming training courses">
-              {filteredTrainingSchedule.map((item) => {
-                const date = new Date(`${item.date}T00:00:00`);
-                const dateLabel = date.toLocaleDateString("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                });
+          {selectedCalendarMonth === "all" ? null : (
+            <div
+              className={styles.calendarGrid}
+              aria-label={`Training schedule in ${selectedMonthLabel} ${selectedCalendarYear}`}
+            >
+              {weekDays.map((day, index) => (
+                <b key={`${day}-${index}`}>{day}</b>
+              ))}
+              {calendarDays.map((item, index) => {
+                const className = [
+                  styles.calendarDay,
+                  item.trainings.length > 0 ? styles.trainingDay : "",
+                  item.day === 9 ? styles.today : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ");
 
                 return (
+                  <div className={className} key={`${item.day ?? "empty"}-${index}`}>
+                    {item.day ? (
+                      <>
+                        <span>{item.day}</span>
+                        {item.trainings.map((training) => (
+                          <small key={training.course}>{training.shortName}</small>
+                        ))}
+                      </>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className={styles.trainingList} aria-label="Upcoming training courses">
+            {filteredTrainingSchedule.map((item) => {
+              const date = new Date(`${item.date}T00:00:00`);
+              const dateLabel = date.toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+              });
+
+              return (
                 <article className={styles.trainingItem} key={item.course}>
-                  <time dateTime={item.date}>
-                    {dateLabel}
-                  </time>
+                  <time dateTime={item.date}>{dateLabel}</time>
                   <div>
                     <strong>{item.course}</strong>
                     <span>{item.time} / {item.room}</span>
                   </div>
                   <b>{item.status}</b>
                 </article>
-                );
-              })}
-            </div>
-          </section>
-        </div>
-
-        <section className={styles.menuPanel} aria-label="Main menu">
-          <h1>เมนูหลัก</h1>
-          <div className={styles.menuRow}>
-            {menuItems.map((item) => (
-              <button className={styles.menuBox} key={item.title} type="button" onClick={item.onClick}>
-                <span>{item.badge}</span>
-                <strong>{item.title}</strong>
-                <small>{item.description}</small>
-              </button>
-            ))}
+              );
+            })}
           </div>
         </section>
+      </div>
+
+      <section className={styles.menuPanel} aria-label="Main menu">
+        <div className={styles.menuHeader}>
+          <div>
+            <span>Workspaces</span>
+            <h2>Main Menu</h2>
+          </div>
+          <p>{menuItems.length} modules</p>
+        </div>
+        <div className={styles.menuRow}>
+          {menuItems.map((item) => (
+            <button
+              className={styles.menuBox}
+              key={item.title}
+              type="button"
+              onClick={item.onClick}
+            >
+              <span>{item.badge}</span>
+              <strong>{item.title}</strong>
+              <small>{item.description}</small>
+            </button>
+          ))}
+        </div>
+      </section>
     </DashboardLayout>
   );
 }

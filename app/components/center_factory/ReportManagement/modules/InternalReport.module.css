@@ -47,33 +47,6 @@
   line-height: 1.5;
 }
 
-.heroStats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(84px, 1fr));
-  gap: 10px;
-  min-width: 300px;
-}
-
-.statCard {
-  border: 1px solid #e1e7ef;
-  border-radius: 8px;
-  padding: 12px;
-  background: #f9fbfd;
-}
-
-.statCard span {
-  display: block;
-  color: #6a788c;
-  font-size: 0.76rem;
-  font-weight: 700;
-}
-
-.statCard strong {
-  display: block;
-  margin-top: 4px;
-  font-size: 1.35rem;
-}
-
 .toolbar {
   display: flex;
   gap: 10px;
@@ -198,10 +171,5 @@
 @media (max-width: 760px) {
   .moduleHero {
     display: grid;
-  }
-
-  .heroStats {
-    min-width: 0;
-    grid-template-columns: 1fr;
   }
 }

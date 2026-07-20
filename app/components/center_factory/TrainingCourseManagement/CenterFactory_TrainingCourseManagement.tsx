@@ -32,30 +32,68 @@ export default function TrainingCourseManagement({
 
   return (
     <main className={styles.page}>
-      <Navbar username={username} onHome={onHome} onLogout={onLogout} />
+      <Navbar
+        username={username}
+        contextTitle={
+          selectedItem
+            ? `Training Course Management / ${selectedItem.title}`
+            : "Training Course Management"
+        }
+        contextItems={centerCourseItems.map((item) => ({
+          title: item.title,
+          active: item.title === selectedItem?.title,
+          onClick: () => setSelectedItem(item),
+        }))}
+        onBack={handleBack}
+        onHome={onHome}
+        onLogout={onLogout}
+      />
 
       <section className={styles.header}>
-        <button className={styles.backButton} type="button" onClick={handleBack}>
-          Back
-        </button>
-        <p className={styles.kicker}>Training Course</p>
-        <h1>{selectedItem ? selectedItem.title : "Training Course Management"}</h1>
+        <div className={styles.headerTop}>
+          <span className={styles.sectionBadge}>Center Factory</span>
+        </div>
+        <div className={styles.heroPanel}>
+          <div>
+            <p className={styles.kicker}>Training Course</p>
+            <h1>{selectedItem ? selectedItem.title : "Training Course Management"}</h1>
+            <p>
+              Build and maintain course classifications, standards, assessments, and evaluation forms from one place.
+            </p>
+          </div>
+        </div>
       </section>
 
       {SelectedModule ? (
         <SelectedModule />
       ) : (
-        <section className={styles.moduleGrid} aria-label="Training Course Management modules">
-          {centerCourseItems.map((item) => (
-            <button
-              className={styles.moduleCard}
-              key={item.title}
-              type="button"
-              onClick={() => setSelectedItem(item)}
-            >
-              <h3>{item.title}</h3>
-            </button>
-          ))}
+        <section className={styles.moduleSection} aria-label="Training Course Management modules">
+          <div className={styles.moduleHeader}>
+            <div>
+              <span>Course Setup</span>
+              <h2>Select a workspace</h2>
+            </div>
+            <p>Choose the area you want to manage.</p>
+          </div>
+
+          <div className={styles.moduleGrid}>
+            {centerCourseItems.map((item, index) => (
+              <button
+                className={styles.moduleCard}
+                key={item.title}
+                type="button"
+                onClick={() => setSelectedItem(item)}
+              >
+                <span className={styles.cardIndex}>{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  <span className={styles.cardSubtitle}>{item.subtitle}</span>
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
+                </div>
+                <strong>Open</strong>
+              </button>
+            ))}
+          </div>
         </section>
       )}
     </main>

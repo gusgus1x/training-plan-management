@@ -198,6 +198,7 @@ export default function TrainingRolling() {
   const [search, setSearch] = useState("");
   const [selectedYear, setSelectedYear] = useState("2026");
   const [selectedMonth, setSelectedMonth] = useState("07");
+  const [statusFilter, setStatusFilter] = useState<"all" | RollingStatus>("all");
 
   const selectedOap = oapSources.find((source) => source.id === form.oapId) ?? oapSources[0];
   const selectedMonthLabel = monthOptions.find((month) => month.value === selectedMonth)?.label ?? "Selected month";
@@ -208,6 +209,7 @@ export default function TrainingRolling() {
         .map((plan, index) => ({ ...plan, sequence: index + 1 }))
         .filter((plan) =>
           plan.trainingDate.startsWith(`${selectedYear}-${selectedMonth}`) &&
+          (statusFilter === "all" || plan.status === statusFilter) &&
           [
             plan.course.name,
             plan.course.code,
@@ -221,7 +223,7 @@ export default function TrainingRolling() {
             .toLowerCase()
             .includes(search.toLowerCase()),
         ),
-    [rollingPlans, search, selectedMonth, selectedYear],
+    [rollingPlans, search, selectedMonth, selectedYear, statusFilter],
   );
 
   const updateForm = (field: keyof typeof emptyForm, value: string) => {
@@ -309,6 +311,14 @@ export default function TrainingRolling() {
     setSearch("");
     setSelectedYear("2026");
     setSelectedMonth("07");
+    setStatusFilter("all");
+  };
+
+  const handleNew = () => {
+    setEditingId("");
+    setForm(emptyForm);
+    setOpenDetailId("");
+    setIsNewOpen(true);
   };
 
   return (
@@ -319,39 +329,46 @@ export default function TrainingRolling() {
           <h2>{trainingRollingModule.title}</h2>
           <p>{trainingRollingModule.description}</p>
         </div>
-        <div className={styles.metrics}>
-          <div><span>Total</span><strong>{rollingPlans.length}</strong></div>
-          <div><span>{selectedMonthLabel}</span><strong>{visiblePlans.length}</strong></div>
-          <div><span>Rolling</span><strong>{visiblePlans.filter((plan) => getJobStatus(plan.trainingDate) === "Rolling").length}</strong></div>
-        </div>
       </section>
 
       <section className={styles.workspace}>
-        <section className={styles.monthPanel} aria-label="Monthly rolling plan filter">
+        <div className={styles.workspaceHeader}>
           <div>
             <p className={styles.kicker}>Monthly view</p>
-            <h3>{selectedMonthLabel} {selectedYear}</h3>
+            <h3>{selectedMonthLabel} {selectedYear} rolling schedule</h3>
           </div>
-          <div className={styles.monthControls}>
-            <label>
-              Year
-              <select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
-                {yearOptions.map((year) => <option key={year}>{year}</option>)}
-              </select>
-            </label>
-            <label>
-              Month
-              <select value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)}>
-                {monthOptions.map((month) => <option key={month.value} value={month.value}>{month.label}</option>)}
-              </select>
-            </label>
-          </div>
-        </section>
+          <span>{visiblePlans.length} shown</span>
+        </div>
 
         <div className={styles.toolbar}>
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search course, company, location, status" />
-          <button className={styles.primaryButton} type="button" onClick={() => setIsNewOpen(true)}>New</button>
-          <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>Refresh</button>
+          <label className={styles.filterBox}>
+            <span>Year</span>
+            <select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
+              {yearOptions.map((year) => <option key={year}>{year}</option>)}
+            </select>
+          </label>
+          <label className={styles.filterBox}>
+            <span>Month</span>
+            <select value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)}>
+              {monthOptions.map((month) => <option key={month.value} value={month.value}>{month.label}</option>)}
+            </select>
+          </label>
+          <label className={styles.filterBox}>
+            <span>Status</span>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | RollingStatus)}>
+              <option value="all">All status</option>
+              <option value="Planning">Planning</option>
+              <option value="Planned">Planned</option>
+            </select>
+          </label>
+          <label className={styles.searchBox}>
+            <span>Search</span>
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Course, company, location, status" />
+          </label>
+          <div className={styles.toolbarActions}>
+            <button className={styles.primaryButton} type="button" onClick={handleNew}>New</button>
+            <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>Refresh</button>
+          </div>
         </div>
 
         {isNewOpen ? (
@@ -364,7 +381,7 @@ export default function TrainingRolling() {
               <button className={styles.closeButton} type="button" onClick={() => setIsNewOpen(false)}>Close</button>
             </div>
             <div className={styles.formGrid}>
-              <label>
+              <label className={styles.fullField}>
                 Course Name
                 <select value={form.oapId} onChange={(event) => updateForm("oapId", event.target.value)}>
                   {oapSources.map((source) => <option key={source.id} value={source.id}>{source.course.name}</option>)}
@@ -424,8 +441,8 @@ export default function TrainingRolling() {
                       <td><strong>{plan.course.name}</strong><span>{plan.course.code}</span></td>
                       <td>{plan.batch}</td>
                       <td>{plan.company}</td>
-                      <td><span className={styles.statusPill}>{plan.status}</span></td>
-                      <td><span className={styles.jobPill}>{getJobStatus(plan.trainingDate)}</span></td>
+                      <td><span className={`${styles.statusPill} ${styles[`status${plan.status}`]}`}>{plan.status}</span></td>
+                      <td><span className={`${styles.jobPill} ${styles[`job${getJobStatus(plan.trainingDate)}`]}`}>{getJobStatus(plan.trainingDate)}</span></td>
                       <td className={styles.actionCell}>
                         <button className={styles.detailButton} type="button" onClick={() => setOpenDetailId(isOpen ? "" : plan.rollingId)}>
                           {isOpen ? "Hide" : "Details"}
@@ -483,6 +500,12 @@ export default function TrainingRolling() {
               })}
             </tbody>
           </table>
+          {visiblePlans.length === 0 ? (
+            <div className={styles.emptyState}>
+              <strong>No rolling plans found</strong>
+              <span>Try changing the month, year, status, or search text.</span>
+            </div>
+          ) : null}
         </div>
       </section>
     </section>

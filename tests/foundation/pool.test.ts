@@ -27,4 +27,45 @@ describe("SQL Server pool provider", () => {
     await expect(getPool()).resolves.toBe(pool);
     expect(connect).toHaveBeenCalledTimes(2);
   });
+
+  it("replaces a disconnected pool instead of reusing it", async () => {
+    const disconnectedPool = {
+      connected: false,
+      close: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ConnectionPool;
+    const connectedPool = {
+      connected: true,
+      close: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ConnectionPool;
+    const connect = vi
+      .fn<() => Promise<ConnectionPool>>()
+      .mockResolvedValueOnce(disconnectedPool)
+      .mockResolvedValueOnce(connectedPool);
+    const getPool = createPoolProvider(connect);
+
+    await expect(getPool()).resolves.toBe(connectedPool);
+    expect(disconnectedPool.close).toHaveBeenCalledTimes(1);
+    expect(connect).toHaveBeenCalledTimes(2);
+  });
+
+  it("can reset the cached pool manually", async () => {
+    const firstPool = {
+      close: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ConnectionPool;
+    const secondPool = {
+      close: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ConnectionPool;
+    const connect = vi
+      .fn<() => Promise<ConnectionPool>>()
+      .mockResolvedValueOnce(firstPool)
+      .mockResolvedValueOnce(secondPool);
+    const getPool = createPoolProvider(connect);
+
+    await expect(getPool()).resolves.toBe(firstPool);
+    await getPool.reset?.();
+    await expect(getPool()).resolves.toBe(secondPool);
+
+    expect(firstPool.close).toHaveBeenCalledTimes(1);
+    expect(connect).toHaveBeenCalledTimes(2);
+  });
 });

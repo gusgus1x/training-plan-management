@@ -1,5 +1,5 @@
-import HrdTrainingApp from "./components/HrdTrainingApp";
+import TrainingPlanManagement from "./components/TrainingPlanManagement";
 
 export default function Home() {
-  return <HrdTrainingApp />;
+  return <TrainingPlanManagement />;
 }

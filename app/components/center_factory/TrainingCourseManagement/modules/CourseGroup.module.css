@@ -78,6 +78,18 @@
   margin-bottom: 14px;
 }
 
+.listMeta {
+  margin-right: auto;
+  border: 1px solid #d7e7dd;
+  border-radius: 999px;
+  background: #f1fbf5;
+  color: #007a3d;
+  padding: 6px 10px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .toolbar button,
 .saveButton,
 .cancelButton {
@@ -136,10 +148,14 @@
 .editor label {
   display: grid;
   gap: 6px;
-  min-width: 280px;
+  min-width: 180px;
   color: #526176;
   font-size: 0.82rem;
   font-weight: 800;
+}
+
+.editor label:first-child {
+  min-width: 280px;
 }
 
 .editor input {
@@ -182,7 +198,8 @@
 }
 
 .courseGroupTable {
-  width: 100%;
+  width: auto;
+  min-width: 420px;
   border-collapse: separate;
   border-spacing: 0 10px;
 }
@@ -197,8 +214,14 @@
 
 .courseGroupTable th:first-child,
 .courseGroupTable td:first-child {
-  width: 84px;
+  width: 64px;
   text-align: center;
+}
+
+.courseGroupTable th:last-child,
+.courseGroupTable td:last-child {
+  width: 96px;
+  text-align: left;
 }
 
 .courseGroupTable td {
@@ -213,15 +236,22 @@
   border-left: 1px solid #dce6f3;
   border-radius: 8px 0 0 8px;
   color: #315fbb;
-  font-weight: 800;
+  font-weight: 400;
 }
 
 .courseGroupTable td:last-child {
   border-right: 1px solid #dce6f3;
   border-radius: 0 8px 8px 0;
   color: #172033;
-  font-size: 0.98rem;
-  font-weight: 800;
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+.courseGroupTable td:nth-child(2) {
+  width: 220px;
+  color: #172033;
+  font-size: 0.9rem;
+  font-weight: 400;
 }
 
 .courseGroupTable tbody tr {
@@ -281,15 +311,7 @@
 }
 
 .summaryCard,
-.metrics div {
-  padding: 10px;
-}
-
 .summaryCard strong,
-.metrics strong {
-  font-size: 1.15rem;
-}
-
 .workspace,
 .listPanel,
 .formPanel,
@@ -340,7 +362,6 @@
 }
 
 .panelHeader span,
-.metrics span,
 .summaryCard span {
   font-size: 0.68rem;
 }
@@ -412,4 +433,148 @@
 .formActions {
   gap: 6px;
   margin-top: 12px;
+}
+
+/* Premium dark-shell treatment */
+.page {
+  max-width: 1180px;
+  padding-top: 8px;
+  color: #172033;
+}
+
+.hero,
+.workspace {
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24);
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, #ffffff 0%, #ffffff 62%, #f1f5f9 100%);
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: #d71920;
+}
+
+.kicker {
+  color: #007a3d;
+}
+
+.summaryCard {
+  border-color: #e4ebf4;
+  background: #f8fafc;
+}
+
+.summaryCard strong {
+  color: #111827;
+}
+
+.workspace {
+  background: #ffffff;
+}
+
+.newButton,
+.saveButton {
+  background: #d71920;
+  box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
+}
+
+.editButton:hover,
+.refreshButton:hover,
+.exportButton:hover,
+.cancelButton:hover {
+  border-color: #8aa4cc;
+  background: #f8fbff;
+}
+
+.tableWrap {
+  border-color: #dbe4ef;
+  background: #ffffff;
+  padding: 0;
+}
+
+.courseGroupTable {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.courseGroupTable th,
+.courseGroupTable td {
+  border-bottom: 1px solid #e5ebf2;
+  box-shadow: none;
+}
+
+.courseGroupTable th {
+  background: #f8fafc;
+  padding: 12px;
+}
+
+.courseGroupTable td {
+  border-top: 0;
+}
+
+.courseGroupTable td:first-child,
+.courseGroupTable td:last-child {
+  border-left: 0;
+  border-right: 0;
+  border-radius: 0;
+}
+
+.selectedRow td {
+  background: #f8fbff;
+  box-shadow: inset 3px 0 0 #d71920;
+}
+
+/* Unified alignment with the Training Course hub */
+.page {
+  width: min(1180px, calc(100% - 48px));
+  max-width: none;
+  padding: 8px 0 48px;
+}
+
+@media (max-width: 640px) {
+  .page {
+    width: min(100% - 28px, 560px);
+    padding-inline: 0;
+  }
+}
+
+/* Final Course Group table sizing */
+.courseGroupTable {
+  width: auto;
+  min-width: 420px;
+}
+
+.courseGroupTable th:first-child,
+.courseGroupTable td:first-child {
+  width: 56px;
+}
+
+.courseGroupTable th:nth-child(2),
+.courseGroupTable td:nth-child(2) {
+  width: 210px;
+}
+
+.courseGroupTable th:last-child,
+.courseGroupTable td:last-child {
+  width: 88px;
+  text-align: left;
+}
+
+.courseGroupTable td {
+  font-weight: 400;
+}
+
+.courseGroupTable td:first-child,
+.courseGroupTable td:nth-child(2),
+.courseGroupTable td:last-child {
+  font-size: 0.86rem;
+  font-weight: 400;
 }

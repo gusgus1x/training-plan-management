@@ -329,21 +329,6 @@ export default function CourseMaster() {
           <h2>{courseMasterModule.title}</h2>
           <p>{courseMasterModule.description}</p>
         </div>
-
-        <div className={styles.metrics}>
-          <div>
-            <span>Total courses</span>
-            <strong>{courses.length}</strong>
-          </div>
-          <div>
-            <span>Active</span>
-            <strong>{courses.filter((course) => course.status === "Active").length}</strong>
-          </div>
-          <div>
-            <span>Draft</span>
-            <strong>{courses.filter((course) => course.status === "Draft").length}</strong>
-          </div>
-        </div>
       </section>
 
       <section className={styles.toolbar} aria-label="Course actions">

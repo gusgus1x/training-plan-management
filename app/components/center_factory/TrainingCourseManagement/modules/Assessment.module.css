@@ -43,34 +43,11 @@
   color: #66758b;
   line-height: 1.5;
 }
-
-.metrics {
-  min-width: 320px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(90px, 1fr));
-  gap: 10px;
-}
-
-.metrics div {
-  border: 1px solid #d8e2f0;
-  border-radius: 8px;
-  background: #f8fbff;
-  padding: 14px;
-}
-
-.metrics span,
 .panelHeader span {
   display: block;
   color: #65758b;
   font-size: 0.76rem;
   font-weight: 800;
-}
-
-.metrics strong {
-  display: block;
-  margin-top: 4px;
-  color: #1f4c9a;
-  font-size: 1.45rem;
 }
 
 .workspace {
@@ -86,6 +63,18 @@
   border-bottom: 1px solid #e5ebf2;
   padding-bottom: 14px;
   margin-bottom: 14px;
+}
+
+.listMeta {
+  margin-right: auto;
+  border: 1px solid #d7e7dd;
+  border-radius: 999px;
+  background: #f1fbf5;
+  color: #007a3d;
+  padding: 6px 10px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .toolbar input {
@@ -344,11 +333,6 @@
     display: grid;
     grid-template-columns: 1fr;
   }
-
-  .metrics {
-    min-width: 0;
-    grid-template-columns: 1fr;
-  }
 }
 
 /* Compact readability pass */
@@ -376,15 +360,7 @@
 }
 
 .summaryCard,
-.metrics div {
-  padding: 10px;
-}
-
 .summaryCard strong,
-.metrics strong {
-  font-size: 1.15rem;
-}
-
 .workspace,
 .listPanel,
 .formPanel,
@@ -435,7 +411,6 @@
 }
 
 .panelHeader span,
-.metrics span,
 .summaryCard span {
   font-size: 0.68rem;
 }
@@ -507,4 +482,135 @@
 .formActions {
   gap: 6px;
   margin-top: 12px;
+}
+
+/* Premium dark-shell treatment */
+.page {
+  max-width: 1280px;
+  padding-top: 8px;
+  color: #172033;
+}
+
+.hero,
+.workspace,
+.editorPanel,
+.detailPanel {
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24);
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, #ffffff 0%, #ffffff 62%, #f1f5f9 100%);
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: #d71920;
+}
+
+.kicker {
+  color: #007a3d;
+}
+
+.workspace,
+.editorPanel,
+.detailPanel {
+  background: #ffffff;
+}
+
+.editorPanel,
+.detailPanel {
+  box-shadow: none;
+}
+
+.primaryButton {
+  background: #d71920;
+  box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
+}
+
+.secondaryButton:hover,
+.detailButton:hover,
+.closeButton:hover {
+  border-color: #8aa4cc;
+  background: #f8fbff;
+}
+
+.questionBuilder,
+.previewPanel,
+.questionList article,
+.emptyState {
+  border-color: #dbe4ef;
+}
+
+.questionBuilder,
+.previewPanel {
+  background: #fbfdff;
+}
+
+.tableWrap {
+  border-color: #dbe4ef;
+  background: #ffffff;
+  padding: 0;
+}
+
+.assessmentTable {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.assessmentTable th,
+.assessmentTable td {
+  border-bottom: 1px solid #e5ebf2;
+  box-shadow: none;
+}
+
+.assessmentTable th {
+  background: #f8fafc;
+  padding: 12px;
+}
+
+.assessmentTable td {
+  border-top: 0;
+}
+
+.assessmentTable td:first-child,
+.assessmentTable td:last-child {
+  border-left: 0;
+  border-right: 0;
+  border-radius: 0;
+}
+
+.assessmentTable tbody tr:hover td,
+.selectedRow td {
+  background: #f8fbff;
+}
+
+.selectedRow td:first-child {
+  box-shadow: inset 3px 0 0 #d71920;
+}
+
+.statusPill,
+.questionList b {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+/* Unified alignment with the Training Course hub */
+.page {
+  width: min(1180px, calc(100% - 48px));
+  max-width: none;
+  padding: 8px 0 48px;
+}
+
+@media (max-width: 900px) {
+  .page {
+    width: min(100% - 28px, 560px);
+    padding-inline: 0;
+  }
 }

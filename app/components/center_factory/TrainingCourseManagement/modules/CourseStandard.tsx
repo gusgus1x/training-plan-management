@@ -142,14 +142,11 @@ export default function CourseStandard() {
           <h2>{courseStandardModule.title}</h2>
           <p>{courseStandardModule.description}</p>
         </div>
-        <div className={styles.summaryCard}>
-          <span>Total standards</span>
-          <strong>{standards.length}</strong>
-        </div>
       </section>
 
       <section className={styles.workspace}>
         <div className={styles.toolbar}>
+          <span className={styles.listMeta}>{visibleStandards.length} / {standards.length} standards</span>
           <input
             aria-label="Search course standard"
             value={search}
@@ -265,12 +262,12 @@ export default function CourseStandard() {
                   <td>{standard.functionName}</td>
                   {positionColumns.map((position) => (
                     <td className={styles.centerCell} key={position}>
-                      {standard.positions.includes(position) ? <span className={styles.checkMark}>✓</span> : ""}
+                      {standard.positions.includes(position) ? <span className={styles.checkMark}>Y</span> : ""}
                     </td>
                   ))}
                   {levelColumns.map((level) => (
                     <td className={styles.centerCell} key={level}>
-                      {standard.levels.includes(level) ? <span className={styles.checkMark}>✓</span> : ""}
+                      {standard.levels.includes(level) ? <span className={styles.checkMark}>Y</span> : ""}
                     </td>
                   ))}
                 </tr>

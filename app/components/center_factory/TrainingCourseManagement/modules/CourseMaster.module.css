@@ -42,33 +42,11 @@
   color: #66758b;
   line-height: 1.5;
 }
-
-.metrics {
-  min-width: 320px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(90px, 1fr));
-  gap: 10px;
-}
-
-.metrics div {
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #f8fafc;
-  padding: 12px;
-}
-
-.metrics span,
 .panelHeader span {
   display: block;
   color: #65758b;
   font-size: 0.76rem;
   font-weight: 800;
-}
-
-.metrics strong {
-  display: block;
-  margin-top: 4px;
-  font-size: 1.35rem;
 }
 
 .toolbar {
@@ -318,18 +296,12 @@
     grid-template-columns: 1fr;
     display: grid;
   }
-
-  .metrics {
-    min-width: 0;
-  }
 }
 
 @media (max-width: 640px) {
   .page {
     padding-inline: 14px;
   }
-
-  .metrics,
   .formGrid {
     grid-template-columns: 1fr;
   }
@@ -364,15 +336,7 @@
 }
 
 .summaryCard,
-.metrics div {
-  padding: 10px;
-}
-
 .summaryCard strong,
-.metrics strong {
-  font-size: 1.15rem;
-}
-
 .workspace,
 .listPanel,
 .formPanel,
@@ -423,7 +387,6 @@
 }
 
 .panelHeader span,
-.metrics span,
 .summaryCard span {
   font-size: 0.68rem;
 }
@@ -495,4 +458,101 @@
 .formActions {
   gap: 6px;
   margin-top: 12px;
+}
+
+/* Premium dark-shell treatment */
+.page {
+  max-width: 1240px;
+  padding-top: 8px;
+  color: #172033;
+}
+
+.hero,
+.toolbar,
+.listPanel,
+.formPanel {
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24);
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, #ffffff 0%, #ffffff 62%, #f1f5f9 100%);
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: #d71920;
+}
+
+.kicker {
+  color: #007a3d;
+}
+
+.toolbar,
+.listPanel,
+.formPanel {
+  background: #ffffff;
+}
+
+.inlinePanel .formPanel,
+.topDropPanel .formPanel {
+  border-color: #dbeafe;
+  background: #fbfdff;
+  box-shadow: none;
+}
+
+.primaryButton {
+  background: #d71920;
+  box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
+}
+
+.secondaryButton:hover,
+.detailButton:hover,
+.closeButton:hover {
+  border-color: #8aa4cc;
+  background: #f8fbff;
+}
+
+.tableWrap {
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.courseTable th {
+  color: #65758b;
+}
+
+.courseTable tr:hover td,
+.selectedRow td {
+  background: #f8fbff;
+}
+
+.selectedRow td:first-child {
+  box-shadow: inset 3px 0 0 #d71920;
+}
+
+.statusPill {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+/* Unified alignment with the Training Course hub */
+.page {
+  width: min(1180px, calc(100% - 48px));
+  max-width: none;
+  padding: 8px 0 48px;
+}
+
+@media (max-width: 640px) {
+  .page {
+    width: min(100% - 28px, 560px);
+    padding-inline: 0;
+  }
 }
