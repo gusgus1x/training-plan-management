@@ -9,7 +9,7 @@ export const trainingRollingModule = {
   description: "Convert annual OAP items into monthly rolling training schedules.",
 } as const;
 
-type RollingStatus = "Planning" | "Planned";
+export type RollingStatus = "Planning" | "Planned";
 
 type CourseMasterDetail = {
   code: string;
@@ -38,7 +38,7 @@ type OapSource = {
   owner: string;
 };
 
-type RollingPlan = OapSource & {
+export type RollingPlan = OapSource & {
   rollingId: string;
   sequence: number;
   batch: string;
@@ -52,7 +52,7 @@ type RollingPlan = OapSource & {
 };
 
 const companies = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
-const monthOptions = [
+export const monthOptions = [
   { value: "01", label: "January" },
   { value: "02", label: "February" },
   { value: "03", label: "March" },
@@ -66,7 +66,7 @@ const monthOptions = [
   { value: "11", label: "November" },
   { value: "12", label: "December" },
 ] as const;
-const yearOptions = ["2026", "2027"] as const;
+export const yearOptions = ["2026", "2027"] as const;
 
 const oapSources: OapSource[] = [
   {
@@ -143,7 +143,7 @@ const oapSources: OapSource[] = [
   },
 ];
 
-const initialRollingPlans: RollingPlan[] = [
+export const initialRollingPlans: RollingPlan[] = [
   {
     ...oapSources[1],
     rollingId: "rolling-001",
@@ -182,7 +182,7 @@ const emptyForm = {
   company: companies[0] as string,
 };
 
-const getJobStatus = (trainingDate: string) => {
+export const getJobStatus = (trainingDate: string) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const target = new Date(`${trainingDate}T00:00:00`);

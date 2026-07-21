@@ -3,7 +3,6 @@ import ModuleHeader from "./ModuleHeader";
 import styles from "./UserDashboard.module.css";
 
 type RequestTrainingModuleProps = {
-  onBack: () => void;
   reason: string;
   setReason: (value: string) => void;
   setTrainingNeed: (value: string) => void;
@@ -11,7 +10,6 @@ type RequestTrainingModuleProps = {
 };
 
 export default function RequestTrainingModule({
-  onBack,
   reason,
   setReason,
   setTrainingNeed,
@@ -21,33 +19,37 @@ export default function RequestTrainingModule({
     <section className={styles.modulePage}>
       <ModuleHeader
         eyebrow="Request Training Need"
-        title="ส่งความต้องการอบรม"
-        detail="ส่ง training need ไป HRD Center และติดตามผลอนุมัติจาก HRD Center"
-        onBack={onBack}
+        title="Request Training Need"
+        detail="Submit a training need to HRD Center and follow the approval progress."
       />
 
       <div className={styles.requestLayout}>
         <form className={styles.requestForm}>
           <label>
-            หลักสูตรที่ต้องการ
+            Course Needed
             <input
               type="text"
               value={trainingNeed}
               onChange={(event) => setTrainingNeed(event.target.value)}
+              placeholder="Enter course or skill topic"
             />
           </label>
           <label>
-            เหตุผลการอบรม
-            <textarea value={reason} onChange={(event) => setReason(event.target.value)} />
+            Request Reason
+            <textarea
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder="Explain why this training is needed"
+            />
           </label>
-          <button type="button">ส่ง Training Need</button>
+          <button type="button">Submit Training Need</button>
         </form>
 
         <div className={styles.requestPreview}>
           <article>
-            <p>Preview request</p>
-            <h3>{trainingNeed || "ระบุหลักสูตรที่ต้องการ"}</h3>
-            <span>{reason || "ระบุเหตุผลการอบรม"}</span>
+            <p>Preview Request</p>
+            <h3>{trainingNeed || "Course name will appear here"}</h3>
+            <span>{reason || "Request reason will appear here"}</span>
           </article>
 
           <div className={styles.approvalTimeline}>

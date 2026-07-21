@@ -2,17 +2,22 @@
   position: sticky;
   top: 0;
   z-index: 20;
-  border-bottom: 1px solid rgba(17, 24, 39, 0.1);
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 12px 30px rgba(17, 24, 39, 0.07);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(12, 18, 28, 0.9);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: 0 12px 30px rgba(2, 6, 23, 0.26);
+  transition:
+    background 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .navbar::before {
   position: absolute;
   inset: 0 0 auto;
   height: 3px;
-  background: linear-gradient(90deg, #007a3d 0%, #007a3d 34%, #d71920 34%, #d71920 100%);
+  background: linear-gradient(90deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
   content: "";
 }
 
@@ -60,7 +65,7 @@
 }
 
 .groupName {
-  color: #111827;
+  color: #f8fafc;
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.02em;
@@ -82,37 +87,42 @@
   gap: 10px;
   box-sizing: border-box;
   min-width: 0;
-  border: 1px solid rgba(17, 24, 39, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.98)),
-    #ffffff;
+    linear-gradient(180deg, rgba(30, 41, 59, 0.82), rgba(2, 6, 23, 0.68)),
+    rgba(2, 6, 23, 0.62);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
   padding: 9px 14px 9px 9px;
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.06);
 }
 
 .contextNav {
   display: grid;
-  grid-template-columns: auto minmax(220px, 320px) minmax(0, 1fr);
+  grid-template-columns: auto minmax(190px, 280px) minmax(0, 1fr);
   gap: 12px;
   align-items: center;
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  background: #f8fafc;
+  background: rgba(2, 6, 23, 0.68);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
   padding: 8px 10px;
 }
 
 .backButton {
   min-height: 34px;
-  border: 1px solid #cfd8e6;
+  border: 1px solid rgba(203, 213, 225, 0.22);
   border-radius: 8px;
-  background: #ffffff;
-  color: #0f2747;
+  background: rgba(255, 255, 255, 0.14);
+  color: #f8fafc;
   cursor: pointer;
   font: inherit;
   font-size: 0.8rem;
   font-weight: 900;
   padding: 7px 13px;
+  white-space: nowrap;
   transition:
     background 140ms ease,
     border-color 140ms ease,
@@ -122,7 +132,7 @@
 
 .backButton:hover {
   border-color: #8aa4cc;
-  background: #f8fbff;
+  background: rgba(255, 255, 255, 0.16);
   transform: translateY(-1px);
 }
 
@@ -130,12 +140,12 @@
   display: grid;
   gap: 3px;
   min-width: 0;
-  border-right: 1px solid #dbe4ef;
+  border-right: 1px solid rgba(219, 228, 239, 0.18);
   padding-right: 12px;
 }
 
 .contextTitle span {
-  color: #64748b;
+  color: #cbd5e1;
   font-size: 10px;
   font-weight: 900;
   text-transform: uppercase;
@@ -143,7 +153,7 @@
 
 .contextTitle strong {
   overflow: hidden;
-  color: #111827;
+  color: #ffffff;
   font-size: 13px;
   font-weight: 900;
   line-height: 1.1;
@@ -156,6 +166,7 @@
   gap: 8px;
   min-width: 0;
   overflow-x: auto;
+  padding-bottom: 1px;
   scrollbar-width: none;
 }
 
@@ -181,15 +192,15 @@
 }
 
 .contextItem {
-  border: 1px solid #dbe4ef;
-  background: #ffffff;
-  color: #26364d;
+  border: 1px solid rgba(219, 228, 239, 0.18);
+  background: rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
 }
 
 .activeContextItem {
   border: 1px solid rgba(215, 25, 32, 0.24);
-  background: #fff1f2;
-  color: #d71920;
+  background: rgba(215, 25, 32, 0.32);
+  color: #fecdd3;
 }
 
 .contextItem:hover,
@@ -204,7 +215,7 @@
   min-height: 54px;
   place-items: center;
   border-radius: 8px;
-  background: #fff1f2;
+  background: rgba(255, 241, 242, 0.16);
   color: #d71920;
   font-size: 12px;
   font-weight: 900;
@@ -233,7 +244,7 @@
 }
 
 .userValue {
-  color: #111827;
+  color: #f8fafc;
   font-size: 12px;
   font-weight: 900;
   overflow: hidden;
@@ -243,10 +254,10 @@
 
 .logoutButton {
   height: 36px;
-  border: 1px solid rgba(215, 25, 32, 0.28);
+  border: 1px solid rgba(254, 202, 202, 0.44);
   border-radius: 8px;
-  background: #fff1f2;
-  color: #d71920;
+  background: rgba(215, 25, 32, 0.82);
+  color: #ffffff;
   cursor: pointer;
   font-size: 13px;
   font-weight: 900;
@@ -268,7 +279,10 @@
 }
 
 .brandButton:focus-visible,
-.logoutButton:focus-visible {
+.logoutButton:focus-visible,
+.backButton:focus-visible,
+.contextItem:focus-visible,
+.activeContextItem:focus-visible {
   outline: 3px solid rgba(37, 99, 235, 0.24);
   outline-offset: 3px;
 }
@@ -293,7 +307,7 @@
 
   .contextTitle {
     border-right: 0;
-    border-bottom: 1px solid #dbe4ef;
+    border-bottom: 1px solid rgba(219, 228, 239, 0.18);
     padding-right: 0;
     padding-bottom: 8px;
   }
@@ -340,5 +354,73 @@
 
   .logoutButton {
     width: 100%;
+  }
+}
+
+.scrolledNavbar {
+  border-bottom-color: rgba(17, 24, 39, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 30px rgba(17, 24, 39, 0.08);
+}
+
+.scrolledNavbar .groupName {
+  color: #111827;
+}
+
+.scrolledNavbar .userInfo {
+  border-color: rgba(17, 24, 39, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.84)),
+    rgba(255, 255, 255, 0.78);
+}
+
+.scrolledNavbar .contextNav {
+  border-color: rgba(15, 23, 42, 0.08);
+  background: rgba(248, 250, 252, 0.88);
+}
+
+.scrolledNavbar .backButton {
+  border-color: rgba(203, 213, 225, 0.68);
+  background: rgba(255, 255, 255, 0.72);
+  color: #0f2747;
+}
+
+.scrolledNavbar .contextTitle {
+  border-right-color: rgba(219, 228, 239, 0.72);
+}
+
+.scrolledNavbar .contextTitle span {
+  color: #64748b;
+}
+
+.scrolledNavbar .contextTitle strong,
+.scrolledNavbar .userValue {
+  color: #111827;
+}
+
+.scrolledNavbar .contextItem {
+  border-color: rgba(219, 228, 239, 0.72);
+  background: rgba(255, 255, 255, 0.68);
+  color: #26364d;
+}
+
+.scrolledNavbar .activeContextItem {
+  background: rgba(255, 241, 242, 0.86);
+  color: #d71920;
+}
+
+.scrolledNavbar .avatar {
+  background: rgba(255, 241, 242, 0.86);
+}
+
+.scrolledNavbar .logoutButton {
+  border-color: rgba(254, 202, 202, 0.44);
+  background: rgba(215, 25, 32, 0.82);
+  color: #ffffff;
+}
+
+@media (max-width: 760px) {
+  .scrolledNavbar .contextTitle {
+    border-bottom-color: rgba(219, 228, 239, 0.72);
   }
 }

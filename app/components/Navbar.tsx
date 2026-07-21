@@ -1,3 +1,6 @@
+ "use client";
+
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import logoImage from "../photo/logo.png";
 import { profileValue, useAuthenticatedUser } from "./AuthenticatedUserContext";
@@ -28,6 +31,7 @@ export default function Navbar({
   onHome,
   onLogout,
 }: NavbarProps) {
+  const [isScrolled, setIsScrolled] = useState(false);
   const user = useAuthenticatedUser();
   const displayUsername = user?.username ?? username;
   const displayLevel = user?.roleCode ?? userLevel;
@@ -54,8 +58,17 @@ export default function Navbar({
     </>
   );
 
+  useEffect(() => {
+    const updateNavbarState = () => setIsScrolled(window.scrollY > 18);
+
+    updateNavbarState();
+    window.addEventListener("scroll", updateNavbarState, { passive: true });
+
+    return () => window.removeEventListener("scroll", updateNavbarState);
+  }, []);
+
   return (
-    <header className={styles.navbar}>
+    <header className={`${styles.navbar} ${isScrolled ? styles.scrolledNavbar : ""}`}>
       <div className={styles.inner}>
         <div className={styles.topBar}>
           {onHome ? (
@@ -101,7 +114,7 @@ export default function Navbar({
           <nav className={styles.contextNav} aria-label="Current module navigation">
             {onBack ? (
               <button className={styles.backButton} type="button" onClick={onBack}>
-                Back
+                Back to Dashboard
               </button>
             ) : null}
             <div className={styles.contextTitle}>

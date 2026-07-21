@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { externalRecordRequests, recordCourses } from "./data";
 import ModuleHeader from "./ModuleHeader";
@@ -5,13 +7,12 @@ import styles from "./UserDashboard.module.css";
 
 type RecordModuleProps = {
   completedHours: number;
-  onBack: () => void;
 };
 
 const recordYears = ["2026", "2027"] as const;
 
 const recordMonths = [
-  { value: "all", label: "ทั้งปี" },
+  { value: "all", label: "All year" },
   { value: "01", label: "January" },
   { value: "02", label: "February" },
   { value: "03", label: "March" },
@@ -26,9 +27,10 @@ const recordMonths = [
   { value: "12", label: "December" },
 ] as const;
 
-export default function RecordModule({ completedHours, onBack }: RecordModuleProps) {
+export default function RecordModule({ completedHours }: RecordModuleProps) {
   const [selectedRecordYear, setSelectedRecordYear] = useState<(typeof recordYears)[number]>("2026");
-  const [selectedRecordMonth, setSelectedRecordMonth] = useState<(typeof recordMonths)[number]["value"]>("all");
+  const [selectedRecordMonth, setSelectedRecordMonth] =
+    useState<(typeof recordMonths)[number]["value"]>("all");
 
   const visibleRecordCourses = recordCourses.filter(
     (course) =>
@@ -40,41 +42,22 @@ export default function RecordModule({ completedHours, onBack }: RecordModulePro
     <section className={styles.modulePage}>
       <ModuleHeader
         eyebrow="Training Record"
-        title="User Record Dashboard"
-        detail="ตรวจสอบประวัติอบรมในระบบ ทำแบบทดสอบ/แบบประเมิน และส่งคำขอรับรอง record ภายนอก"
-        onBack={onBack}
+        title="Training Record"
+        detail="Check training history, assessment status, completed hours, and external record requests."
       />
 
       <div className={styles.recordSummary}>
         <article>
-          <span>ชั่วโมงสะสม</span>
+          <span>Completed Hours</span>
           <strong>{completedHours}</strong>
         </article>
         <article>
-          <span>ผ่านแล้ว</span>
+          <span>Completed</span>
           <strong>2</strong>
         </article>
         <article>
-          <span>รอยืนยัน</span>
+          <span>Pending</span>
           <strong>1</strong>
-        </article>
-      </div>
-
-      <div className={styles.recordWorkflow}>
-        <article>
-          <small>Step 1</small>
-          <strong>แสดงรายละเอียดที่เข้าอบรม</strong>
-          <span>ระบบแสดงหลักสูตร วันที่อบรม ผลการอบรม และสถานะการประเมิน</span>
-        </article>
-        <article>
-          <small>Decision</small>
-          <strong>สำเร็จหรือไม่</strong>
-          <span>ถ้าผ่านจะแสดงว่าสำเร็จ ถ้าไม่ผ่านให้ทำ pre/post test หรือแบบประเมิน</span>
-        </article>
-        <article>
-          <small>External record</small>
-          <strong>Request training record</strong>
-          <span>กรณีอบรมนอกระบบหรือจากที่ทำงานเดิม ส่งให้ HRD ตรวจสอบก่อนรับรองผล</span>
         </article>
       </div>
 
@@ -83,14 +66,14 @@ export default function RecordModule({ completedHours, onBack }: RecordModulePro
           <div className={styles.panelHeader}>
             <div>
               <p>System Record</p>
-              <h2>รายการอบรมในระบบ</h2>
+              <h2>Training Records</h2>
             </div>
             <span>{visibleRecordCourses.length} courses</span>
           </div>
 
           <div className={styles.recordFilters}>
             <label>
-              <span>ปี</span>
+              <span>Year</span>
               <select
                 value={selectedRecordYear}
                 onChange={(event) =>
@@ -104,7 +87,7 @@ export default function RecordModule({ completedHours, onBack }: RecordModulePro
             </label>
 
             <label>
-              <span>เดือน</span>
+              <span>Month</span>
               <select
                 value={selectedRecordMonth}
                 onChange={(event) =>
@@ -131,7 +114,7 @@ export default function RecordModule({ completedHours, onBack }: RecordModulePro
               </article>
             ))}
             {visibleRecordCourses.length === 0 ? (
-              <div className={styles.recordEmpty}>ไม่มีรายการอบรมในช่วงเวลานี้</div>
+              <div className={styles.recordEmpty}>No training record found for this period.</div>
             ) : null}
           </div>
         </section>
@@ -140,32 +123,34 @@ export default function RecordModule({ completedHours, onBack }: RecordModulePro
           <div className={styles.panelHeader}>
             <div>
               <p>Request Record</p>
-              <h2>ขอรับรองประวัติอบรมภายนอก</h2>
+              <h2>External Record Request</h2>
             </div>
             <span>HRD</span>
           </div>
 
           <form className={styles.recordRequestForm}>
             <label>
-              ชื่อหลักสูตร
+              Course Name
               <input type="text" defaultValue="Forklift Safety Training" />
             </label>
             <label>
-              แหล่งที่มา
+              Source
               <select defaultValue="external">
-                <option value="external">อบรมนอกบริษัท</option>
-                <option value="previous">ประวัติจากที่ทำงานเดิม</option>
+                <option value="external">External training</option>
+                <option value="previous">Previous workplace record</option>
               </select>
             </label>
             <label>
-              หมายเหตุ/หลักฐาน
-              <textarea defaultValue="แนบใบประกาศหรือเอกสารรับรองเพื่อให้ HRD ตรวจสอบ" />
+              Note / Evidence
+              <textarea defaultValue="Attach certificate or supporting document for HRD verification." />
             </label>
             <div className={styles.recordReasonBox}>
-              <span>สาเหตุ</span>
-              <strong>ใช้เป็นหลักฐานยืนยันการเข้าอบรมและแนบเอกสารรับรองให้ HRD ตรวจสอบ</strong>
+              <span>Reason</span>
+              <strong>
+                Use this request when training was completed outside the system and needs HRD confirmation.
+              </strong>
             </div>
-            <button type="button">ส่งคำขอรับรอง</button>
+            <button type="button">Submit Request</button>
           </form>
 
           <div className={styles.externalRecordList}>

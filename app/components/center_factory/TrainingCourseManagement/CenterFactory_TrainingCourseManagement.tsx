@@ -73,7 +73,7 @@ export default function TrainingCourseManagement({
               <span>Course Setup</span>
               <h2>Select a workspace</h2>
             </div>
-            <p>Choose the area you want to manage.</p>
+            <p>{centerCourseItems.length} modules</p>
           </div>
 
           <div className={styles.moduleGrid}>

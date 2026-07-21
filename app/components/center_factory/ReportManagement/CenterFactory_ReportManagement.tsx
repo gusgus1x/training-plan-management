@@ -32,30 +32,64 @@ export default function ReportManagement({
 
   return (
     <main className={styles.page}>
-      <Navbar username={username} onHome={onHome} onLogout={onLogout} />
+      <Navbar
+        username={username}
+        contextTitle={selectedItem ? `Report Management / ${selectedItem.title}` : "Report Management"}
+        contextItems={centerReportItems.map((item) => ({
+          title: item.title,
+          active: item.title === selectedItem?.title,
+          onClick: () => setSelectedItem(item),
+        }))}
+        onBack={handleBack}
+        onHome={onHome}
+        onLogout={onLogout}
+      />
 
       <section className={styles.header}>
-        <button className={styles.backButton} type="button" onClick={handleBack}>
-          Back
-        </button>
-        <p className={styles.kicker}>Report</p>
-        <h1>{selectedItem ? selectedItem.title : "Report Management"}</h1>
+        <div className={styles.headerTop}>
+          <span className={styles.sectionBadge}>Report Workspace</span>
+        </div>
+        <div className={styles.heroPanel}>
+          <div>
+            <p className={styles.kicker}>Report</p>
+            <h1>{selectedItem ? selectedItem.title : "Report Management"}</h1>
+            <p>
+              Review training schedules, internal reports, and HRD reporting outputs in one workspace.
+            </p>
+          </div>
+        </div>
       </section>
 
       {SelectedModule ? (
         <SelectedModule />
       ) : (
-        <section className={styles.moduleGrid} aria-label="Report Management modules">
-          {centerReportItems.map((item) => (
-            <button
-              className={styles.moduleCard}
-              key={item.title}
-              type="button"
-              onClick={() => setSelectedItem(item)}
-            >
-              <h3>{item.title}</h3>
-            </button>
-          ))}
+        <section className={styles.moduleSection} aria-label="Report Management modules">
+          <div className={styles.moduleHeader}>
+            <div>
+              <span>Report Operation</span>
+              <h2>Select a workspace</h2>
+            </div>
+            <p>{centerReportItems.length} modules</p>
+          </div>
+
+          <div className={styles.moduleGrid}>
+            {centerReportItems.map((item, index) => (
+              <button
+                className={styles.moduleCard}
+                key={item.title}
+                type="button"
+                onClick={() => setSelectedItem(item)}
+              >
+                <span className={styles.cardIndex}>{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  <span className={styles.cardSubtitle}>{item.subtitle}</span>
+                  <h3>{item.title}</h3>
+                  <p>{item.description}</p>
+                </div>
+                <strong>Open</strong>
+              </button>
+            ))}
+          </div>
         </section>
       )}
     </main>

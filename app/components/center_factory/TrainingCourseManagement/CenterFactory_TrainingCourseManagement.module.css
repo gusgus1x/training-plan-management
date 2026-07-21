@@ -1,9 +1,7 @@
 .page {
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(215, 25, 32, 0.18), transparent 28rem),
-    radial-gradient(circle at top right, rgba(0, 122, 61, 0.18), transparent 26rem),
-    linear-gradient(180deg, #2f343b 0%, #242930 58%, #2f343b 100%);
+  overflow-x: clip;
+  background: #edf2f7;
   color: #172033;
 }
 
@@ -14,7 +12,21 @@
 }
 
 .header {
-  padding: 28px 0 16px;
+  position: relative;
+  isolation: isolate;
+  padding: 22px 0 14px;
+}
+
+.header::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  right: calc((100vw - 100%) / -2);
+  bottom: 50%;
+  left: calc((100vw - 100%) / -2);
+  background: #202733;
+  pointer-events: none;
 }
 
 .headerTop {
@@ -22,61 +34,45 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 14px;
-}
-
-.backButton {
-  min-height: 40px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.86rem;
-  font-weight: 800;
-  padding: 8px 14px;
-  transition:
-    background 140ms ease,
-    border-color 140ms ease,
-    transform 140ms ease;
-}
-
-.backButton:hover {
-  border-color: rgba(255, 255, 255, 0.38);
-  background: rgba(255, 255, 255, 0.14);
-  transform: translateY(-1px);
+  margin-bottom: 10px;
 }
 
 .sectionBadge {
-  border: 1px solid rgba(0, 122, 61, 0.18);
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border: 1px solid #ffc7ce;
   border-radius: 999px;
-  background: #f1fbf5;
-  color: #007a3d;
-  font-size: 0.74rem;
+  background: #fff1f2;
+  color: #d71920;
+  font-size: 0.68rem;
   font-weight: 900;
-  padding: 7px 11px;
+  line-height: 1;
+  padding: 0 12px;
 }
 
 .heroPanel {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  min-height: 128px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
   background: #ffffff;
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 24px 54px rgba(31, 41, 55, 0.22);
 }
 
 .heroPanel::before {
   content: "";
   position: absolute;
-  inset: 0;
-  border-left: 5px solid #d71920;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
   pointer-events: none;
 }
 
 .heroPanel > div:first-child {
-  padding: 22px 24px 24px 28px;
+  padding: 28px 30px 26px 34px;
+  background: #ffffff;
 }
 
 .heroPanel > div:only-child {
@@ -84,40 +80,32 @@
 }
 
 .kicker {
-  margin: 0 0 7px;
-  color: #007a3d;
-  font-size: 0.72rem;
+  margin: 0 0 6px;
+  color: #64748b;
+  font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
 }
 
 .heroPanel h1 {
   margin: 0;
-  color: #111827;
-  font-size: clamp(1.9rem, 3vw, 2.55rem);
-  font-weight: 800;
+  color: #020617;
+  font-size: clamp(2.15rem, 3.2vw, 2.75rem);
+  font-weight: 900;
   letter-spacing: 0;
-  line-height: 1.12;
+  line-height: 1.02;
 }
 
 .heroPanel p {
-  max-width: 660px;
+  max-width: 860px;
   margin: 10px 0 0;
-  color: #66758b;
-  font-size: 0.92rem;
-  line-height: 1.55;
-}
-
-.moduleHeader span,
-.cardSubtitle {
-  color: #65758b;
-  font-size: 0.7rem;
-  font-weight: 900;
-  text-transform: uppercase;
+  color: #355172;
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
 .moduleSection {
-  padding: 4px 0 48px;
+  padding: 0 0 48px;
 }
 
 .moduleHeader {
@@ -125,21 +113,36 @@
   align-items: end;
   justify-content: space-between;
   gap: 14px;
-  margin: 10px 0 12px;
+  margin: 12px 0 14px;
+}
+
+.moduleHeader span,
+.cardSubtitle {
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 
 .moduleHeader h2 {
-  margin: 5px 0 0;
-  color: #ffffff;
-  font-size: 1.08rem;
+  margin: 7px 0 0;
+  color: #172033;
+  font-size: 1rem;
+  font-weight: 800;
   letter-spacing: 0;
 }
 
 .moduleHeader p {
   margin: 0;
-  color: #cbd5e1;
-  font-size: 0.82rem;
-  font-weight: 700;
+  border: 1px solid #ffc7ce;
+  border-radius: 999px;
+  background: #fff1f2;
+  color: #d71920;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 7px 11px;
+  white-space: nowrap;
 }
 
 .moduleGrid {
@@ -152,15 +155,17 @@
   appearance: none;
   position: relative;
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-columns: 42px minmax(0, 1fr);
   grid-template-rows: 1fr auto;
   gap: 14px;
-  min-height: 190px;
+  min-height: 176px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
   border-radius: 8px;
   background: #ffffff;
-  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 18px 42px rgba(31, 41, 55, 0.12);
   color: #172033;
   cursor: pointer;
   font: inherit;
@@ -173,23 +178,14 @@
     transform 160ms ease;
 }
 
-.moduleCard::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: #d71920;
-  opacity: 0.78;
-}
-
-.moduleCard:nth-child(2n)::before {
-  background: #007a3d;
+.moduleCard:nth-child(2n) {
+  border-left-color: #d71920;
 }
 
 .moduleCard:hover {
-  border-color: rgba(215, 25, 32, 0.45);
+  border-color: rgba(215, 25, 32, 0.38);
   background: #fbfdff;
-  box-shadow: 0 22px 44px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.16);
   transform: translateY(-2px);
 }
 
@@ -200,50 +196,53 @@
 
 .cardIndex {
   display: grid;
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   place-items: center;
-  border: 1px solid rgba(215, 25, 32, 0.16);
-  border-radius: 8px;
-  background: #fff1f2;
-  color: #d71920;
-  font-size: 0.78rem;
+  border: 1px solid rgba(0, 122, 61, 0.18);
+  border-radius: 6px;
+  background: #f1fbf5;
+  color: #007a3d;
+  font-size: 0.72rem;
   font-weight: 900;
+  line-height: 1;
 }
 
 .moduleCard:nth-child(2n) .cardIndex {
-  border-color: rgba(0, 122, 61, 0.16);
-  background: #f1fbf5;
-  color: #007a3d;
+  border-color: rgba(215, 25, 32, 0.2);
+  background: #fff1f2;
+  color: #d71920;
 }
 
 .moduleCard h3 {
-  margin: 5px 0 0;
-  color: #111827;
-  font-size: 1.1rem;
+  margin: 6px 0 0;
+  color: #020617;
+  font-size: 1.12rem;
   font-weight: 900;
   letter-spacing: 0;
-  line-height: 1.2;
+  line-height: 1.18;
 }
 
 .moduleCard p {
-  margin: 9px 0 0;
-  color: #66758c;
-  font-size: 0.82rem;
-  line-height: 1.5;
+  margin: 8px 0 0;
+  color: #334b68;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.45;
 }
 
 .moduleCard > strong {
   grid-column: 2;
   justify-self: start;
   align-self: end;
-  border: 1px solid #dbe4ef;
+  border: 1px solid #dbeafe;
   border-radius: 999px;
-  background: #f8fafc;
-  color: #26364d;
-  font-size: 0.74rem;
+  background: #f8fbff;
+  color: #0f2747;
+  font-size: 0.72rem;
   font-weight: 900;
-  padding: 7px 11px;
+  line-height: 1;
+  padding: 8px 10px;
 }
 
 @media (max-width: 980px) {
@@ -253,6 +252,10 @@
 }
 
 @media (max-width: 640px) {
+  .page {
+    background: #edf2f7;
+  }
+
   .header,
   .moduleSection {
     width: min(100% - 28px, 560px);
@@ -263,7 +266,7 @@
   }
 
   .heroPanel > div:first-child {
-    padding: 18px 18px 18px 22px;
+    padding: 20px 20px 22px 24px;
   }
 
   .moduleGrid {
@@ -276,6 +279,6 @@
   }
 
   .moduleCard {
-    min-height: 168px;
+    min-height: 148px;
   }
 }

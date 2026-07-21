@@ -1,5 +1,6 @@
 .page {
   min-height: 100vh;
+  overflow-x: clip;
   background: #2f343b;
   color: #0f172a;
 }
@@ -402,7 +403,8 @@
   min-height: 156px;
   align-content: start;
   border: 1.5px solid rgba(15, 23, 42, 0.22);
-  border-left: 4px solid rgba(215, 25, 32, 0.68);
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
@@ -580,7 +582,8 @@
 .courseDetailGrid div {
   min-height: 68px;
   border: 1px solid rgba(15, 23, 42, 0.12);
-  border-left: 3px solid rgba(248, 113, 113, 0.85);
+  border-left: 3px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
   border-radius: 8px;
   background: #ffffff;
   padding: 12px 14px;
@@ -1215,7 +1218,8 @@
 .recordReasonBox,
 .recordEmpty {
   border: 1px solid rgba(215, 25, 32, 0.18);
-  border-left: 4px solid rgba(215, 25, 32, 0.6);
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
   border-radius: 8px;
   background: #fff1f2;
   color: #0f172a;
@@ -1616,7 +1620,8 @@
 }
 
 .savedReportList article {
-  border-left: 4px solid rgba(215, 25, 32, 0.62);
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
   background: #ffffff;
 }
 
@@ -1635,6 +1640,878 @@
   }
 
   .reportControlPanel .recordRequestForm {
+    grid-template-columns: 1fr;
+  }
+}
+
+.registerWorkspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.registerListPanel {
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(31, 41, 55, 0.12);
+  padding: 16px;
+}
+
+.registerWorkspace .panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.registerWorkspace .panelHeader p {
+  display: block !important;
+  margin: 0 0 6px;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.registerWorkspace .panelHeader h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.registerWorkspace .panelHeader > span {
+  display: inline-flex !important;
+  width: fit-content;
+  border: 1px solid #ffc7ce;
+  border-radius: 999px;
+  background: #fff1f2;
+  color: #d71920;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 7px 11px;
+  white-space: nowrap;
+}
+
+.registerWorkspace .trainingList {
+  gap: 10px;
+}
+
+.registerWorkspace .trainingItem {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.registerWorkspace .trainingItem:nth-child(2n) {
+  border-left-color: #d71920;
+}
+
+.registerWorkspace .activeTrainingItem {
+  border-color: rgba(215, 25, 32, 0.34) !important;
+  background: #fbfdff !important;
+  box-shadow: 0 16px 32px rgba(31, 41, 55, 0.1);
+}
+
+.registerWorkspace .trainingActions {
+  grid-column: 1 / -1;
+  justify-content: flex-start;
+}
+
+.registerWorkspace .courseDetailPanel {
+  position: sticky;
+  top: 126px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(31, 41, 55, 0.12);
+}
+
+.registerWorkspace .courseDetailPanel p {
+  display: block !important;
+}
+
+.registerWorkspace + .flowSteps {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(31, 41, 55, 0.1);
+  padding: 14px;
+}
+
+@media (max-width: 980px) {
+  .registerWorkspace {
+    grid-template-columns: 1fr;
+  }
+
+  .registerWorkspace .courseDetailPanel {
+    position: static;
+  }
+
+  .registerWorkspace + .flowSteps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .registerWorkspace .panelHeader,
+  .registerWorkspace .trainingItem,
+  .registerWorkspace + .flowSteps {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Employee dashboard alignment with center factory workspace design */
+.page {
+  background: #edf2f7;
+}
+
+.workspace {
+  position: relative;
+  isolation: isolate;
+  width: min(1180px, calc(100% - 48px)) !important;
+  margin: 0 auto !important;
+  padding: 22px 0 56px;
+}
+
+.workspace::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  right: 50%;
+  height: 136px;
+  left: 50%;
+  width: 100vw;
+  background: #202733;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.workspaceBadge {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border: 1px solid #ffc7ce;
+  border-radius: 999px;
+  background: #fff1f2;
+  color: #d71920;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 10px;
+  padding: 0 12px;
+}
+
+.heroPanel {
+  position: relative;
+  overflow: hidden;
+  min-height: 128px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 24px 54px rgba(31, 41, 55, 0.22);
+}
+
+.heroPanel::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+}
+
+.heroCopy {
+  padding: 28px 30px 26px 34px;
+  background: #ffffff;
+}
+
+.heroCopy span {
+  display: block;
+  margin: 0 0 6px;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.heroCopy h1 {
+  margin: 0;
+  color: #020617;
+  font-size: clamp(2.15rem, 3.2vw, 2.75rem);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.02;
+}
+
+.heroCopy p {
+  max-width: 860px;
+  margin: 10px 0 0;
+  color: #355172;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.employeePanel,
+.calendarPanel,
+.modulePanel {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(31, 41, 55, 0.14);
+}
+
+.topRow {
+  grid-template-columns: minmax(0, 0.92fr) minmax(440px, 1.08fr);
+  gap: 14px;
+}
+
+.modulePanel {
+  margin-top: 16px;
+  padding: 16px;
+}
+
+.modulePanel .panelHeader,
+.calendarPanel .panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.modulePanel .panelHeader {
+  margin-bottom: 14px;
+}
+
+.modulePanel .panelHeader p,
+.calendarPanel .panelHeader p {
+  display: block !important;
+  margin: 0 0 6px;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.modulePanel .panelHeader h2,
+.calendarPanel .panelHeader h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.calendarPanel .panelHeader span {
+  display: block !important;
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.modulePanel .panelHeader > span {
+  display: inline-flex !important;
+  width: fit-content;
+  border: 1px solid #ffc7ce;
+  border-radius: 999px;
+  background: #fff1f2;
+  color: #d71920;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 7px 11px;
+  white-space: nowrap;
+}
+
+.moduleGrid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.moduleCard {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  gap: 14px;
+  min-height: 168px;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(31, 41, 55, 0.12);
+  padding: 18px;
+}
+
+.moduleCard:nth-child(2n) {
+  border-left-color: #d71920;
+}
+
+.moduleCard small {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  min-height: 0;
+  place-items: center;
+  border: 1px solid rgba(0, 122, 61, 0.18);
+  border-radius: 6px;
+  background: #f1fbf5;
+  color: #007a3d;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0;
+}
+
+.moduleCard:nth-child(2n) small {
+  border-color: rgba(215, 25, 32, 0.2);
+  background: #fff1f2;
+  color: #d71920;
+}
+
+.moduleCard em {
+  display: block;
+  margin-bottom: 6px;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.moduleCard strong {
+  color: #020617;
+  font-size: 1.08rem;
+  line-height: 1.18;
+}
+
+.moduleCard span {
+  margin-top: 8px;
+  color: #334b68;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.moduleCard b {
+  grid-column: 2;
+  align-self: end;
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+  color: #0f2747;
+  font-size: 0.72rem;
+  line-height: 1;
+  padding: 8px 10px;
+}
+
+@media (max-width: 1060px) {
+  .topRow {
+    grid-template-columns: 1fr;
+  }
+
+  .moduleGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .moduleCard:nth-child(1),
+  .moduleCard:nth-child(2),
+  .moduleCard:nth-child(3),
+  .moduleCard:nth-child(4),
+  .moduleCard:nth-child(5) {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .workspace {
+    width: min(100% - 28px, 560px);
+  }
+
+  .workspace::before {
+    height: 168px;
+  }
+
+  .heroCopy {
+    padding: 20px 20px 22px 24px;
+  }
+
+  .modulePanel .panelHeader,
+  .calendarPanel .panelHeader {
+    display: grid;
+  }
+}
+
+.roadmapWorkspace,
+.requestLayout,
+.recordLayout,
+.reportWorkspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.roadmapListPanel,
+.requestForm,
+.requestPreview,
+.recordPanel,
+.reportControlPanel,
+.reportResultPanel {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.09);
+}
+
+.roadmapListPanel,
+.recordPanel,
+.reportControlPanel,
+.reportResultPanel {
+  padding: 18px;
+}
+
+.roadmapWorkspace .panelHeader,
+.recordPanel .panelHeader,
+.reportControlPanel .panelHeader,
+.reportResultPanel .panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.roadmapWorkspace .panelHeader p,
+.recordPanel .panelHeader p,
+.reportControlPanel .panelHeader p,
+.reportResultPanel .panelHeader p {
+  display: block !important;
+  margin: 0 0 6px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.roadmapWorkspace .panelHeader h2,
+.recordPanel .panelHeader h2,
+.reportControlPanel .panelHeader h2,
+.reportResultPanel .panelHeader h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.roadmapWorkspace .panelHeader > span,
+.recordPanel .panelHeader > span,
+.reportControlPanel .panelHeader > span,
+.reportResultPanel .panelHeader > span {
+  display: inline-flex !important;
+  width: fit-content;
+  border: 1px solid #ffc7ce;
+  border-radius: 999px;
+  background: #fff7f8;
+  color: #d71920;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.roadmapWorkspace .roadmapGrid {
+  gap: 12px;
+}
+
+.roadmapWorkspace .roadmapGrid article {
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  background: linear-gradient(90deg, rgba(240, 253, 244, 0.62), #ffffff 38%);
+}
+
+.roadmapWorkspace .activeRoadmapItem {
+  border-left-color: #d71920 !important;
+  background: linear-gradient(90deg, rgba(255, 241, 242, 0.74), #ffffff 42%) !important;
+}
+
+.roadmapWorkspace .courseDetailPanel {
+  position: sticky;
+  top: 126px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.09);
+}
+
+.roadmapWorkspace .courseDetailPanel p {
+  display: block !important;
+}
+
+.roadmapWorkspace .courseDetailPanel h2 {
+  margin: 0 0 8px;
+  color: #172033;
+  font-size: 1.1rem;
+  line-height: 1.25;
+}
+
+.requestForm {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+}
+
+.requestForm label,
+.recordRequestForm label {
+  display: grid;
+  gap: 7px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.requestForm input,
+.requestForm textarea,
+.recordRequestForm input,
+.recordRequestForm select,
+.recordRequestForm textarea {
+  width: 100%;
+  border: 1.5px solid rgba(15, 23, 42, 0.14);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.requestForm input,
+.recordRequestForm input,
+.recordRequestForm select {
+  min-height: 40px;
+  padding: 0 12px;
+}
+
+.requestForm textarea,
+.recordRequestForm textarea {
+  min-height: 120px;
+  padding: 12px;
+  resize: vertical;
+}
+
+.requestForm button,
+.recordRequestForm button,
+.reportControlPanel .recordRequestForm button {
+  justify-self: end;
+  min-height: 40px;
+  border: 1px solid rgba(215, 25, 32, 0.2);
+  border-radius: 999px;
+  background: #fff7f8;
+  color: #d71920;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.requestPreview {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+}
+
+.requestPreview p {
+  display: block !important;
+  color: #64748b;
+}
+
+.requestPreview > article,
+.approvalTimeline article,
+.recordCourseList article,
+.externalRecordList article,
+.savedReportList article {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.approvalTimeline {
+  display: grid;
+  gap: 10px;
+}
+
+.recordSummary {
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+}
+
+.recordSummary article {
+  border-left: 3px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+}
+
+.recordFilters {
+  margin-bottom: 14px;
+}
+
+.recordCourseList,
+.externalRecordList,
+.savedReportList {
+  display: grid;
+  gap: 10px;
+}
+
+.recordCourseList article,
+.externalRecordList article,
+.savedReportList article {
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  background: #ffffff;
+}
+
+.recordReasonBox {
+  border: 1px solid rgba(215, 25, 32, 0.14);
+  border-radius: 8px;
+  background: #fff7f8;
+}
+
+.reportControlPanel {
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+}
+
+.reportResultPanel {
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+}
+
+.reportControlPanel .recordRequestForm {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.reportControlPanel .recordRequestForm label:has(textarea),
+.reportControlPanel .recordRequestForm button {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 980px) {
+  .roadmapWorkspace,
+  .requestLayout,
+  .recordLayout,
+  .reportWorkspace {
+    grid-template-columns: 1fr;
+  }
+
+  .roadmapWorkspace .courseDetailPanel {
+    position: static;
+  }
+}
+
+@media (max-width: 760px) {
+  .roadmapWorkspace .panelHeader,
+  .recordPanel .panelHeader,
+  .reportControlPanel .panelHeader,
+  .reportResultPanel .panelHeader,
+  .reportControlPanel .recordRequestForm {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+.modulePage {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 38px 0 0 !important;
+}
+
+.moduleHeader {
+  min-height: 128px;
+  align-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  background: #ffffff;
+  box-shadow: 0 24px 54px rgba(31, 41, 55, 0.22);
+  padding: 26px 30px 26px 30px;
+}
+
+.moduleHeader::before {
+  display: none;
+}
+
+.employeePanel,
+.calendarPanel {
+  position: relative;
+  overflow: hidden;
+}
+
+.employeePanel::before,
+.calendarPanel::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  pointer-events: none;
+}
+
+.employeeProfile {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(240, 253, 244, 0.86), rgba(255, 255, 255, 0.96) 46%),
+    #ffffff;
+  padding: 10px;
+}
+
+.employeeProfileGrid article,
+.profileStats article {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #e5ebf2;
+  background: #ffffff;
+  padding-left: 13px;
+}
+
+.employeeProfileGrid article::before,
+.profileStats article::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  pointer-events: none;
+}
+
+.calendarPanel .panelHeader {
+  margin: -2px 0 14px;
+  border-bottom: 1px solid #edf2f7;
+  padding: 0 0 12px 8px;
+}
+
+.calendarFilters {
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.calendarFilters label {
+  border: 1px solid #e5ebf2;
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 8px;
+}
+
+.calendarGrid {
+  border: 1px solid #e5ebf2;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 8px;
+}
+
+.trainingDay {
+  border-color: rgba(0, 122, 61, 0.22);
+  background:
+    linear-gradient(180deg, rgba(240, 253, 244, 0.86), rgba(255, 255, 255, 0.96)),
+    #ffffff;
+}
+
+.calendarTrainingList {
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.calendarTrainingList article {
+  position: relative;
+  overflow: hidden;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  min-height: 50px;
+  padding: 9px 10px 9px 14px;
+}
+
+.calendarTrainingList article::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  pointer-events: none;
+}
+
+.employeePanel {
+  gap: 12px;
+  padding: 18px;
+}
+
+.employeeProfile {
+  min-height: auto;
+  padding: 12px;
+}
+
+.avatar {
+  width: 54px;
+  min-height: 54px;
+}
+
+.employeeProfileGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.employeeProfileGrid article {
+  min-height: 58px;
+  padding: 10px 11px 10px 15px;
+}
+
+.profileStats {
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.profileStats article {
+  min-height: 72px;
+  padding: 11px 12px 11px 15px;
+}
+
+.calendarToggleButton {
+  min-height: 30px;
+  border: 1px solid rgba(215, 25, 32, 0.2);
+  border-radius: 999px;
+  background: #fff7f8;
+  color: #d71920;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 900;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.calendarToggleButton:hover {
+  border-color: rgba(215, 25, 32, 0.34);
+  background: #fff1f2;
+}
+
+@media (max-width: 760px) {
+  .employeeProfileGrid {
     grid-template-columns: 1fr;
   }
 }

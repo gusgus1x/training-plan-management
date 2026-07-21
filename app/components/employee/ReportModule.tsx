@@ -1,10 +1,11 @@
+"use client";
+
+import { useState } from "react";
 import ModuleHeader from "./ModuleHeader";
 import styles from "./UserDashboard.module.css";
-import { useState } from "react";
 
 type ReportModuleProps = {
   completedHours: number;
-  onBack: () => void;
 };
 
 type SentReportMessage = {
@@ -21,10 +22,11 @@ type SentReportMessage = {
 const reportMessageCompanies = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
 const reportMessageDepartments = ["HRD", "Production", "Operations", "Quality", "Maintenance", "Safety"] as const;
 
-export default function ReportModule({ completedHours, onBack }: ReportModuleProps) {
+export default function ReportModule({ completedHours }: ReportModuleProps) {
   const [reportRecipient, setReportRecipient] = useState("Employee");
   const [reportCompany, setReportCompany] = useState<(typeof reportMessageCompanies)[number]>("ATA");
-  const [reportDepartment, setReportDepartment] = useState<(typeof reportMessageDepartments)[number]>("HRD");
+  const [reportDepartment, setReportDepartment] =
+    useState<(typeof reportMessageDepartments)[number]>("HRD");
   const [reportSubject, setReportSubject] = useState("");
   const [reportMessage, setReportMessage] = useState("");
   const [sentReportMessages, setSentReportMessages] = useState<SentReportMessage[]>([]);
@@ -66,8 +68,7 @@ export default function ReportModule({ completedHours, onBack }: ReportModulePro
       <ModuleHeader
         eyebrow="User Report"
         title="Training Report"
-        detail="ระบบส่งข้อความรายงานอบรมและดูข้อมูลที่ส่งกลับมา"
-        onBack={onBack}
+        detail="Send training report messages and review the submitted report history."
       />
 
       <div className={styles.reportWorkspace}>
@@ -75,14 +76,14 @@ export default function ReportModule({ completedHours, onBack }: ReportModulePro
           <div className={styles.panelHeader}>
             <div>
               <p>Compose</p>
-              <h2>ส่งข้อความ</h2>
+              <h2>Send Report Message</h2>
             </div>
             <span>{completedHours} hours</span>
           </div>
 
           <form className={styles.recordRequestForm}>
             <label>
-              ส่งให้ใคร
+              Recipient
               <select value={reportRecipient} onChange={(event) => setReportRecipient(event.target.value)}>
                 <option value="Employee">Employee</option>
                 <option value="HRD Factory">HRD Factory</option>
@@ -92,10 +93,12 @@ export default function ReportModule({ completedHours, onBack }: ReportModulePro
 
             {shouldShowCompany ? (
               <label>
-                บริษัท
+                Company
                 <select
                   value={reportCompany}
-                  onChange={(event) => setReportCompany(event.target.value as (typeof reportMessageCompanies)[number])}
+                  onChange={(event) =>
+                    setReportCompany(event.target.value as (typeof reportMessageCompanies)[number])
+                  }
                 >
                   {reportMessageCompanies.map((company) => (
                     <option key={company} value={company}>{company}</option>
@@ -106,7 +109,7 @@ export default function ReportModule({ completedHours, onBack }: ReportModulePro
 
             {shouldShowDepartment ? (
               <label>
-                แผนก
+                Department
                 <select
                   value={reportDepartment}
                   onChange={(event) =>
@@ -121,21 +124,21 @@ export default function ReportModule({ completedHours, onBack }: ReportModulePro
             ) : null}
 
             <label>
-              หัวข้อเรื่อง
+              Subject
               <input
                 type="text"
                 value={reportSubject}
                 onChange={(event) => setReportSubject(event.target.value)}
-                placeholder="ระบุหัวข้อเรื่อง"
+                placeholder="Enter report subject"
               />
             </label>
 
             <label>
-              ข้อความ
+              Message
               <textarea
                 value={reportMessage}
                 onChange={(event) => setReportMessage(event.target.value)}
-                placeholder="พิมพ์ข้อความที่ต้องการส่ง"
+                placeholder="Type the report message"
               />
             </label>
 
@@ -144,7 +147,7 @@ export default function ReportModule({ completedHours, onBack }: ReportModulePro
               disabled={!reportSubject.trim() || !reportMessage.trim()}
               onClick={handleSendReportMessage}
             >
-              ส่งข้อความ
+              Send Message
             </button>
           </form>
         </section>
@@ -153,7 +156,7 @@ export default function ReportModule({ completedHours, onBack }: ReportModulePro
           <div className={styles.panelHeader}>
             <div>
               <p>Inbox</p>
-              <h2>ข้อมูลที่ส่งมา</h2>
+              <h2>Submitted Reports</h2>
             </div>
             <span>{sentReportMessages.length} messages</span>
           </div>
@@ -175,7 +178,7 @@ export default function ReportModule({ completedHours, onBack }: ReportModulePro
                 </article>
               ))
             ) : (
-              <div className={styles.recordEmpty}>ยังไม่มีข้อความ</div>
+              <div className={styles.recordEmpty}>No report message has been sent yet.</div>
             )}
           </div>
         </section>

@@ -4,18 +4,20 @@ type ModuleHeaderProps = {
   eyebrow?: string;
   title: string;
   detail?: string;
-  onBack: () => void;
 };
 
-export default function ModuleHeader({ title, onBack }: ModuleHeaderProps) {
+export default function ModuleHeader({
+  eyebrow = "Employee Workspace",
+  title,
+  detail,
+}: ModuleHeaderProps) {
   return (
     <div className={styles.moduleHeader}>
       <div>
+        <p>{eyebrow}</p>
         <h1>{title}</h1>
+        {detail ? <span>{detail}</span> : null}
       </div>
-      <button type="button" onClick={onBack}>
-        กลับ Dashboard
-      </button>
     </div>
   );
 }

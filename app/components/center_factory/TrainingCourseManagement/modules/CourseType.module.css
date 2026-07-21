@@ -28,7 +28,8 @@
   content: "";
   position: absolute;
   inset: 0;
-  border-left: 5px solid #d71920;
+  border-left: 5px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
   pointer-events: none;
 }
 

@@ -119,6 +119,7 @@ export default function Dashboard({
     useState<(typeof calendarYears)[number]>("2026");
   const [selectedCalendarMonth, setSelectedCalendarMonth] =
     useState<(typeof calendarMonths)[number]["value"]>("07");
+  const [isMonthListOpen, setIsMonthListOpen] = useState(false);
 
   const selectedMonthLabel =
     calendarMonths.find((month) => month.value === selectedCalendarMonth)?.label ??
@@ -208,10 +209,12 @@ export default function Dashboard({
       onHome={onHome}
       onLogout={onLogout}
     >
+      <div className={styles.workspaceBadge}>Center Factory Workspace</div>
+
       <section className={styles.heroPanel} aria-label="Dashboard overview">
         <div className={styles.heroCopy}>
           <span>HRD Training Center</span>
-          <h1>Training Plan Management</h1>
+          <h1>Center Factory Dashboard</h1>
           <p>
             Manage training plans, course data, records, and reports across the
             AISIN TAKAOKA Thailand group.
@@ -241,7 +244,7 @@ export default function Dashboard({
           </div>
 
           <div className={styles.employeeDetails}>
-            {employeeInfo.map((item) => (
+            {employeeInfo.slice(0, 4).map((item) => (
               <p key={item.label}>
                 <span>{item.label}</span>
                 <strong>{item.value}</strong>
@@ -266,7 +269,15 @@ export default function Dashboard({
               <span>{selectedMonthLabel} {selectedCalendarYear}</span>
               <h2>Training Calendar</h2>
             </div>
-            <b>{filteredTrainingSchedule.length} courses</b>
+            <div className={styles.calendarHeaderActions}>
+              <b>{filteredTrainingSchedule.length} courses</b>
+              <button
+                type="button"
+                onClick={() => setIsMonthListOpen((current) => !current)}
+              >
+                {isMonthListOpen ? "Hide month list" : "Show month list"}
+              </button>
+            </div>
           </div>
 
           <div className={styles.calendarFilters}>
@@ -331,48 +342,54 @@ export default function Dashboard({
             </div>
           )}
 
-          <div className={styles.trainingList} aria-label="Upcoming training courses">
-            {filteredTrainingSchedule.map((item) => {
-              const date = new Date(`${item.date}T00:00:00`);
-              const dateLabel = date.toLocaleDateString("en-GB", {
-                day: "numeric",
-                month: "short",
-              });
+          {isMonthListOpen ? (
+            <div className={styles.trainingList} aria-label="Upcoming training courses">
+              {filteredTrainingSchedule.map((item) => {
+                const date = new Date(`${item.date}T00:00:00`);
+                const dateLabel = date.toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "short",
+                });
 
-              return (
-                <article className={styles.trainingItem} key={item.course}>
-                  <time dateTime={item.date}>{dateLabel}</time>
-                  <div>
-                    <strong>{item.course}</strong>
-                    <span>{item.time} / {item.room}</span>
-                  </div>
-                  <b>{item.status}</b>
-                </article>
-              );
-            })}
-          </div>
+                return (
+                  <article className={styles.trainingItem} key={item.course}>
+                    <time dateTime={item.date}>{dateLabel}</time>
+                    <div>
+                      <strong>{item.course}</strong>
+                      <span>{item.time} / {item.room}</span>
+                    </div>
+                    <b>{item.status}</b>
+                  </article>
+                );
+              })}
+            </div>
+          ) : null}
         </section>
       </div>
 
       <section className={styles.menuPanel} aria-label="Main menu">
         <div className={styles.menuHeader}>
           <div>
-            <span>Workspaces</span>
-            <h2>Main Menu</h2>
+            <span>Workspace Operation</span>
+            <h2>Select a workspace</h2>
           </div>
           <p>{menuItems.length} modules</p>
         </div>
         <div className={styles.menuRow}>
-          {menuItems.map((item) => (
+          {menuItems.map((item, index) => (
             <button
               className={styles.menuBox}
               key={item.title}
               type="button"
               onClick={item.onClick}
             >
-              <span>{item.badge}</span>
-              <strong>{item.title}</strong>
-              <small>{item.description}</small>
+              <span className={styles.cardIndex}>{String(index + 1).padStart(2, "0")}</span>
+              <div>
+                <small>{item.badge}</small>
+                <strong>{item.title}</strong>
+                <em>{item.description}</em>
+              </div>
+              <b>Open</b>
             </button>
           ))}
         </div>

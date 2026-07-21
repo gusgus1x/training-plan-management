@@ -250,7 +250,8 @@
   border: 1px solid #dce4ef;
   border-radius: 8px;
   background: #ffffff;
-  border-left: 4px solid #007a3d;
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
   margin-top: 12px;
   padding: 12px;
 }

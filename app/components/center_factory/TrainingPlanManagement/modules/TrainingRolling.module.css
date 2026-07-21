@@ -246,7 +246,8 @@
   display: grid;
   gap: 6px;
   border: 1px solid #dce4ef;
-  border-left: 4px solid #007a3d;
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
   border-radius: 8px;
   background: #ffffff;
   margin-top: 12px;

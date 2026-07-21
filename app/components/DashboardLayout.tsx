@@ -9,6 +9,13 @@ type DashboardLayoutProps = {
   username: string;
   userLevel?: "Admin" | "User";
   company?: string;
+  contextTitle?: string;
+  contextItems?: Array<{
+    title: string;
+    active: boolean;
+    onClick: () => void;
+  }>;
+  onBack?: () => void;
   onHome: () => void;
   onLogout: () => void;
 };
@@ -21,6 +28,9 @@ export default function DashboardLayout({
   username,
   userLevel,
   company,
+  contextTitle,
+  contextItems,
+  onBack,
   onHome,
   onLogout,
 }: DashboardLayoutProps) {
@@ -30,6 +40,9 @@ export default function DashboardLayout({
         username={username}
         userLevel={userLevel}
         company={company}
+        contextTitle={contextTitle}
+        contextItems={contextItems}
+        onBack={onBack}
         onHome={onHome}
         onLogout={onLogout}
       />
