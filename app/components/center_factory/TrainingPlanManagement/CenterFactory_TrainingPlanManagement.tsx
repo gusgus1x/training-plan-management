@@ -20,6 +20,7 @@ export default function TrainingPlanManagement({
 }: TrainingPlanManagementProps) {
   const [selectedItem, setSelectedItem] = useState<(typeof planItems)[number] | null>(null);
   const SelectedModule = selectedItem?.Component;
+  const trainingOapItem = planItems.find((item) => item.title === "Training OAP");
 
   const handleBack = () => {
     if (selectedItem) {
@@ -65,7 +66,14 @@ export default function TrainingPlanManagement({
       </section>
 
       {SelectedModule ? (
-        <SelectedModule username={username} />
+        <SelectedModule
+          onOpenTrainingOap={() => {
+            if (trainingOapItem) {
+              setSelectedItem(trainingOapItem);
+            }
+          }}
+          username={username}
+        />
       ) : (
         <section className={styles.moduleSection} aria-label="Training Plan Management modules">
           <div className={styles.moduleHeader}>

@@ -276,3 +276,37 @@
     min-height: 148px;
   }
 }
+
+/* Hub alignment with Training Record Management */
+.sectionBadge,
+.moduleHeader p {
+  border-color: #ffc7ce;
+  background: #fff1f2;
+  color: #d71920;
+}
+
+.moduleGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.moduleCard {
+  min-height: 168px;
+}
+
+.moduleCard h3 {
+  font-size: 1.18rem;
+}
+
+.cardIndex {
+  line-height: 1;
+}
+
+.heroPanel > div:first-child {
+  padding: 28px 30px 26px 34px;
+}
+
+@media (max-width: 760px) {
+  .moduleGrid {
+    grid-template-columns: 1fr;
+  }
+}

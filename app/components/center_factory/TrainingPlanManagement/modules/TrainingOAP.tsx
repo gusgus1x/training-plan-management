@@ -1,6 +1,10 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import {
+  APPROVED_TRAINING_NEED_STORAGE_KEY,
+  type EmployeeTrainingNeedRequest,
+} from "../../../../lib/trainingRequests";
 import styles from "./TrainingOAP.module.css";
 
 export const trainingOapModule = {
@@ -132,16 +136,81 @@ const emptyForm = {
   provider: "",
 };
 
+const readApprovedTrainingNeed = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const storedValue = window.localStorage.getItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
+    return storedValue ? (JSON.parse(storedValue) as EmployeeTrainingNeedRequest) : null;
+  } catch {
+    return null;
+  }
+};
+
+const buildRequestCourse = (request: EmployeeTrainingNeedRequest): CourseMasterDetail => ({
+  code: `REQ-${request.requestNo}`,
+  name: request.courseNeed,
+  nameTh: request.courseNeed,
+  objective: request.reason,
+  learningContent: request.expectedBenefit,
+  targetGroup: `${request.employeeName} / ${request.company} / ${request.functionName}`,
+  methodology: "To be defined by HRD",
+  preTest: "To be defined",
+  postTest: "To be defined",
+  evaluation: "Course evaluation",
+  evaluationAfter30Day: "HRD follow-up after training",
+  lifeCycleMonth: "12",
+  courseType: request.sourceCourseOwner === "Factory" ? "FACTORY REQUEST" : "CENTER REQUEST",
+  courseGroup: "Training Need",
+});
+
 export default function TrainingOAP({ username = "Current user" }: TrainingOAPProps) {
   const [plans, setPlans] = useState<OapPlan[]>(initialPlans);
   const [form, setForm] = useState(emptyForm);
+  const [approvedRequest, setApprovedRequest] = useState<EmployeeTrainingNeedRequest | null>(null);
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [openDetailId, setOpenDetailId] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | OapStatus>("all");
 
-  const selectedCourse = courseMasterOptions.find((course) => course.code === form.courseCode) ?? courseMasterOptions[0];
+  useEffect(() => {
+    const syncApprovedRequest = () => {
+      const request = readApprovedTrainingNeed();
+
+      if (!request) {
+        return;
+      }
+
+      setApprovedRequest(request);
+      setForm({
+        courseCode: `REQ-${request.requestNo}`,
+        participants: "1",
+        hours: "",
+        budget: "",
+        trainer: "",
+        provider: request.sourceCourseOwner === "Factory" ? request.company : "HRD Center",
+      });
+      setEditingId("");
+      setOpenDetailId("");
+      setIsNewOpen(true);
+    };
+
+    syncApprovedRequest();
+    window.addEventListener("approved-training-need-changed", syncApprovedRequest);
+
+    return () => {
+      window.removeEventListener("approved-training-need-changed", syncApprovedRequest);
+    };
+  }, []);
+
+  const courseOptions = useMemo(
+    () => (approvedRequest ? [buildRequestCourse(approvedRequest), ...courseMasterOptions] : courseMasterOptions),
+    [approvedRequest],
+  );
+  const selectedCourse = courseOptions.find((course) => course.code === form.courseCode) ?? courseOptions[0];
   const visiblePlans = useMemo(
     () =>
       plans.filter((plan) =>
@@ -177,6 +246,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       );
       setEditingId("");
       setForm(emptyForm);
+      setApprovedRequest(null);
+      window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
       setIsNewOpen(false);
       return;
     }
@@ -195,6 +266,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     };
     setPlans((current) => [nextPlan, ...current]);
     setForm(emptyForm);
+    setApprovedRequest(null);
+    window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
     setIsNewOpen(false);
   };
 
@@ -231,6 +304,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const handleRefresh = () => {
     setPlans(initialPlans);
     setForm(emptyForm);
+    setApprovedRequest(null);
+    window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
     setIsNewOpen(false);
     setEditingId("");
     setOpenDetailId("");
@@ -241,6 +316,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const handleNew = () => {
     setEditingId("");
     setForm(emptyForm);
+    setApprovedRequest(null);
     setOpenDetailId("");
     setIsNewOpen(true);
   };
@@ -293,11 +369,21 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               </div>
               <button className={styles.closeButton} type="button" onClick={() => setIsNewOpen(false)}>Close</button>
             </div>
+            {approvedRequest ? (
+              <div className={styles.approvedRequestBanner}>
+                <span>Approved training need</span>
+                <strong>{approvedRequest.courseNeed}</strong>
+                <p>
+                  From {approvedRequest.employeeName} / {approvedRequest.company} /{" "}
+                  {approvedRequest.sourceCourseOwner ?? "Center"} course
+                </p>
+              </div>
+            ) : null}
             <div className={styles.formGrid}>
               <label className={styles.fullField}>
                 Course Name
                 <select value={form.courseCode} onChange={(event) => updateForm("courseCode", event.target.value)}>
-                  {courseMasterOptions.map((course) => <option key={course.code} value={course.code}>{course.name}</option>)}
+                  {courseOptions.map((course) => <option key={course.code} value={course.code}>{course.name}</option>)}
                 </select>
               </label>
               <label>Participants / Group<input value={form.participants} inputMode="numeric" onChange={(event) => updateForm("participants", event.target.value)} /></label>

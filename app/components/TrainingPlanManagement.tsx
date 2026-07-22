@@ -206,12 +206,13 @@ export default function TrainingPlanManagement() {
 
     try {
       await logoutCurrentSession();
+    } catch {
+      // Local sign-out should still complete if the cookie clearing request fails.
+      setLogoutMessage(LOGOUT_ERROR);
+    } finally {
       clearCachedUser();
       setView("dashboard");
       setAuthentication({ status: "anonymous" });
-    } catch {
-      setLogoutMessage(LOGOUT_ERROR);
-    } finally {
       setIsLoggingOut(false);
     }
   };

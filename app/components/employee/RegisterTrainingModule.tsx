@@ -23,15 +23,15 @@ export default function RegisterTrainingModule() {
       <ModuleHeader
         eyebrow="Register Training"
         title="Register Training"
-        detail="Select available courses, review course details, and submit registration for HRD approval."
+        detail="Register any open training course. Target group is not required for normal registration."
       />
 
       <div className={styles.registerWorkspace}>
         <section className={styles.registerListPanel} aria-label="Available training courses">
           <div className={styles.panelHeader}>
             <div>
-              <p>Available Courses</p>
-              <h2>Course Registration</h2>
+              <p>Open registration</p>
+              <h2>All Available Courses</h2>
             </div>
             <span>{availableCourses.length} courses</span>
           </div>
@@ -45,13 +45,19 @@ export default function RegisterTrainingModule() {
                 key={course.id}
               >
                 <div>
-                  <small>{course.category}</small>
+                  <small>{course.category} / {course.courseOwner}</small>
                   <strong>{course.title}</strong>
-                  <span>
-                    {course.date} / {course.time} / {course.place} / {course.seats}
-                  </span>
+                  <div className={styles.trainingScheduleGrid}>
+                    <span><b>Date</b>{course.date}</span>
+                    <span><b>Time</b>{course.time}</span>
+                    <span><b>Place</b>{course.place}</span>
+                    <span><b>Seats</b>{course.seats}</span>
+                  </div>
                 </div>
-                <b>{course.status}</b>
+                <div className={styles.courseStatusStack}>
+                  <b>{course.courseOwner}</b>
+                  <span>{course.status}</span>
+                </div>
                 <div className={styles.trainingActions}>
                   <button
                     className={styles.secondaryActionButton}
@@ -73,10 +79,18 @@ export default function RegisterTrainingModule() {
               <p>Course Detail</p>
               <h2>{selectedCourse.title}</h2>
             </div>
-            <span>{selectedCourse.status}</span>
+            <span>{selectedCourse.courseOwner}</span>
           </div>
 
-          <span>{selectedCourse.description}</span>
+          <div className={styles.registerCourseHero}>
+            <b>{selectedCourse.status}</b>
+            <span>{selectedCourse.description}</span>
+            <div>
+              <strong>{selectedCourse.date}</strong>
+              <strong>{selectedCourse.time}</strong>
+              <strong>{selectedCourse.place}</strong>
+            </div>
+          </div>
           <dl className={styles.courseDetailGrid}>
             <div>
               <dt>Course Code</dt>
@@ -93,6 +107,10 @@ export default function RegisterTrainingModule() {
             <div>
               <dt>Training Status</dt>
               <dd>{selectedCourse.trainingStatus}</dd>
+            </div>
+            <div>
+              <dt>Course Owner</dt>
+              <dd>{selectedCourse.courseOwner}</dd>
             </div>
             <div>
               <dt>Course Type</dt>

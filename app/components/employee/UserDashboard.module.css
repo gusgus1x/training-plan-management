@@ -1729,6 +1729,109 @@
   justify-content: flex-start;
 }
 
+.trainingScheduleGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.trainingScheduleGrid span {
+  display: grid;
+  gap: 3px;
+  min-height: 54px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #172033;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 8px;
+}
+
+.trainingScheduleGrid b {
+  width: auto;
+  background: transparent;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  padding: 0;
+  text-transform: uppercase;
+}
+
+.courseStatusStack {
+  display: grid;
+  justify-items: end;
+  gap: 7px;
+}
+
+.courseStatusStack b {
+  border-radius: 999px;
+  background: #fff1f2;
+  color: #d71920;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 7px 10px;
+}
+
+.courseStatusStack span {
+  margin: 0;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 7px 10px;
+}
+
+.registerCourseHero {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+  border: 1px solid #d7e7dd;
+  border-radius: 8px;
+  background: #f1fbf5;
+  box-shadow: inset 4px 0 0 #007a3d;
+  padding: 12px;
+}
+
+.registerCourseHero > b {
+  width: fit-content;
+  border-radius: 999px;
+  background: #fff1f2;
+  color: #d71920;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 7px 10px;
+}
+
+.registerCourseHero > span {
+  margin: 0;
+  color: #26364d;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.registerCourseHero div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.registerCourseHero strong {
+  border: 1px solid #d7e7dd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 9px;
+}
+
 .registerWorkspace .courseDetailPanel {
   position: sticky;
   top: 126px;
@@ -1768,8 +1871,15 @@
 @media (max-width: 760px) {
   .registerWorkspace .panelHeader,
   .registerWorkspace .trainingItem,
+  .trainingScheduleGrid,
+  .registerCourseHero div,
+  .courseStatusStack,
   .registerWorkspace + .flowSteps {
     grid-template-columns: 1fr;
+  }
+
+  .courseStatusStack {
+    justify-items: start;
   }
 }
 
@@ -2066,6 +2176,10 @@
   align-items: start;
 }
 
+.requestLayout {
+  grid-template-columns: 1fr;
+}
+
 .roadmapListPanel,
 .requestForm,
 .requestPreview,
@@ -2148,6 +2262,138 @@
   background: linear-gradient(90deg, rgba(255, 241, 242, 0.74), #ffffff 42%) !important;
 }
 
+.roadmapTargetSummary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.roadmapTargetSummary article {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  padding: 12px;
+}
+
+.roadmapTargetSummary span,
+.roadmapCoursePicker,
+.selectedRoadmapCourse span,
+.roadmapChoice span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.roadmapTargetSummary strong {
+  display: block;
+  margin-top: 6px;
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roadmapCoursePicker {
+  display: grid;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.roadmapCoursePicker select {
+  min-height: 42px;
+  border: 1.5px solid rgba(15, 23, 42, 0.14);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #0f172a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0 12px;
+}
+
+.selectedRoadmapCourse {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 12px;
+  border: 1px solid #d7e7dd;
+  border-radius: 8px;
+  background: #f1fbf5;
+  box-shadow: inset 4px 0 0 #007a3d;
+  padding: 13px;
+}
+
+.selectedRoadmapCourse strong,
+.roadmapChoice strong {
+  display: block;
+  margin-top: 4px;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.selectedRoadmapCourse small,
+.roadmapChoice small {
+  display: block;
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.selectedRoadmapCourse b,
+.roadmapOwnerLine b {
+  border-radius: 999px;
+  background: #fff1f2;
+  color: #d71920;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 7px 10px;
+}
+
+.roadmapChoice,
+.activeRoadmapItem {
+  display: grid;
+  gap: 5px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  padding: 12px;
+  text-align: left;
+}
+
+.roadmapChoice {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: #ffffff;
+}
+
+.roadmapOwnerLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.roadmapOwnerLine strong {
+  border: 1px solid #d7e7dd;
+  border-radius: 999px;
+  background: #f1fbf5;
+  color: #007a3d;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 7px 10px;
+}
+
 .roadmapWorkspace .courseDetailPanel {
   position: sticky;
   top: 126px;
@@ -2188,6 +2434,7 @@
 }
 
 .requestForm input,
+.requestForm select,
 .requestForm textarea,
 .recordRequestForm input,
 .recordRequestForm select,
@@ -2202,6 +2449,7 @@
 }
 
 .requestForm input,
+.requestForm select,
 .recordRequestForm input,
 .recordRequestForm select {
   min-height: 40px;
@@ -2234,6 +2482,207 @@
   padding: 18px;
   border-left: 4px solid transparent;
   border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+}
+
+.requestEmployeeStrip,
+.requestMetaPreview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.previousTrainingPicker {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.previousTrainingPicker p,
+.selectedRecordPreview p {
+  margin: 0 0 4px;
+  color: #d71920;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.previousTrainingPicker > div > strong,
+.selectedRecordPreview strong {
+  display: block;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.previousCourseList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.previousCourse,
+.activePreviousCourse,
+.selectedPreviousCourse {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+  border-radius: 8px;
+  font: inherit;
+  padding: 10px;
+  text-align: left;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+}
+
+.previousCourse {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.activePreviousCourse {
+  border: 1px solid #b7d8c7;
+  background: #f1fbf5;
+  box-shadow: inset 3px 0 0 #007a3d;
+}
+
+.selectedPreviousCourse {
+  grid-template-columns: minmax(0, 1fr) auto;
+  border: 1px solid #b7d8c7;
+  background: #f1fbf5;
+  box-shadow: inset 3px 0 0 #007a3d;
+}
+
+.previousCourse span,
+.activePreviousCourse span,
+.selectedPreviousCourse span,
+.selectedRecordPreview span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.previousCourse strong,
+.activePreviousCourse strong,
+.selectedPreviousCourse strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.previousCourse small,
+.activePreviousCourse small,
+.selectedPreviousCourse small,
+.courseOwnerBadge {
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2458b8;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 5px 8px;
+  white-space: nowrap;
+}
+
+.courseOwnerBadge {
+  align-self: start;
+  background: #fff1f2;
+  color: #d71920;
+}
+
+.selectedRecordPreview {
+  border: 1px solid #d7e7dd;
+  border-radius: 8px;
+  background: #f1fbf5;
+  padding: 12px;
+}
+
+.requestEmployeeStrip article,
+.requestMetaPreview article,
+.myRequestPanel article {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 10px;
+}
+
+.requestEmployeeStrip span,
+.requestMetaPreview span,
+.myRequestPanel p,
+.myRequestPanel span {
+  display: block;
+  margin: 0 0 5px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.requestEmployeeStrip strong,
+.requestMetaPreview strong,
+.myRequestPanel > div strong,
+.myRequestPanel article strong {
+  display: block;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.requestFormRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 10px;
+}
+
+.requestSubmitMessage {
+  margin: 0;
+  border: 1px solid #d7e7dd;
+  border-radius: 8px;
+  background: #f1fbf5;
+  color: #007a3d;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 10px 12px;
+}
+
+.myRequestPanel {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+}
+
+.myRequestPanel > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.myRequestPanel article {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.myRequestPanel small {
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 5px 8px;
 }
 
 .requestPreview p {
@@ -2312,11 +2761,187 @@
   grid-column: 1 / -1;
 }
 
+.employeeReportSummary,
+.employeeReportPreview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.employeeReportSummary {
+  margin-bottom: 14px;
+}
+
+.employeeReportSummary article,
+.employeeReportPreview article,
+.employeeReportBody {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+  padding: 12px;
+}
+
+.employeeReportSummary span,
+.employeeReportPreview span,
+.employeeReportBody span {
+  display: block;
+  margin-bottom: 6px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.employeeReportSummary strong,
+.employeeReportPreview strong {
+  display: block;
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.employeeReportActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 12px;
+}
+
+.employeeReportActions button,
+.reportSearchBar button,
+.savedReportButton,
+.activeSavedReport {
+  cursor: pointer;
+  font: inherit;
+}
+
+.employeeReportActions button,
+.reportSearchBar button {
+  min-height: 38px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 0 13px;
+}
+
+.employeeReportActions button:first-child,
+.employeeReportActions button:nth-child(2),
+.reportSearchBar button {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #26364d;
+}
+
+.employeeReportActions button:last-child {
+  border: 0;
+  background: #d71920;
+  color: #ffffff;
+}
+
+.employeeReportBody {
+  margin-top: 10px;
+}
+
+.employeeReportBody p {
+  margin: 0;
+  color: #26364d;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.reportSearchBar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.reportSearchBar input {
+  min-height: 38px;
+  border: 1.5px solid rgba(15, 23, 42, 0.14);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #0f172a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 0 12px;
+}
+
+.savedReportButton,
+.activeSavedReport {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  padding: 14px;
+  text-align: left;
+}
+
+.activeSavedReport {
+  background: #f1fbf5;
+}
+
+.savedReportButton strong,
+.activeSavedReport strong {
+  display: block;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.savedReportButton span,
+.activeSavedReport span {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.savedReportButton b,
+.activeSavedReport b {
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 7px 9px;
+}
+
 @media (max-width: 980px) {
   .roadmapWorkspace,
   .requestLayout,
   .recordLayout,
   .reportWorkspace {
+    grid-template-columns: 1fr;
+  }
+
+  .requestFormRow,
+  .requestEmployeeStrip,
+  .requestMetaPreview,
+  .previousCourseList,
+  .selectedPreviousCourse,
+  .previousCourse,
+  .activePreviousCourse,
+  .roadmapTargetSummary,
+  .selectedRoadmapCourse,
+  .employeeReportSummary,
+  .employeeReportPreview,
+  .myRequestPanel article {
     grid-template-columns: 1fr;
   }
 
@@ -2330,7 +2955,10 @@
   .recordPanel .panelHeader,
   .reportControlPanel .panelHeader,
   .reportResultPanel .panelHeader,
-  .reportControlPanel .recordRequestForm {
+  .reportControlPanel .recordRequestForm,
+  .reportSearchBar,
+  .savedReportButton,
+  .activeSavedReport {
     display: grid;
     grid-template-columns: 1fr;
   }

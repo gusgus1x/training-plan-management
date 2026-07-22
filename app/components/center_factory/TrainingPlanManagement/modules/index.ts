@@ -12,7 +12,7 @@ export type PlanModuleTopic = {
   title: string;
   subtitle: string;
   description: string;
-  Component: ComponentType<{ username?: string }>;
+  Component: ComponentType<{ onOpenTrainingOap?: () => void; username?: string }>;
 };
 
 export const planItems: readonly PlanModuleTopic[] = [

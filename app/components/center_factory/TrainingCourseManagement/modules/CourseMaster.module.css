@@ -556,3 +556,415 @@
     padding-inline: 0;
   }
 }
+
+/* Unified Training Record visual alignment */
+.page,
+.moduleWorkspace {
+  width: min(1180px, calc(100% - 48px));
+  max-width: none;
+  margin: 0 auto;
+  padding: 8px 0 48px;
+  color: #172033;
+  font-size: 0.88rem;
+}
+
+.hero,
+.moduleHero,
+.workspace,
+.panel,
+.formPanel,
+.listPanel,
+.editorPanel,
+.detailPanel {
+  border: 1px solid #dce4ef;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
+}
+
+.hero,
+.moduleHero {
+  position: relative;
+  overflow: hidden;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 16px 18px 16px 22px;
+  background: linear-gradient(90deg, #ffffff 0%, #ffffff 66%, #f1f5f9 100%);
+}
+
+.hero::before,
+.moduleHero::before,
+.workspace::before,
+.panel::before,
+.formPanel::before,
+.listPanel::before,
+.editorPanel::before,
+.detailPanel::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  pointer-events: none;
+}
+
+.workspace,
+.panel,
+.formPanel,
+.listPanel,
+.editorPanel,
+.detailPanel {
+  position: relative;
+  overflow: hidden;
+  padding: 14px 16px 14px 18px;
+}
+
+.kicker,
+.panelKicker,
+.workspaceHeader span,
+.panelHeader span,
+.listMeta,
+.badge {
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hero h2,
+.moduleHero h2,
+.workspaceHeader h3,
+.panelHeader h3,
+.panel h3,
+.formPanel h3 {
+  margin: 0;
+  color: #111827;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.hero h2,
+.moduleHero h2 {
+  font-size: 1.28rem;
+}
+
+.hero p,
+.moduleHero p,
+.panel p,
+.formPanel p {
+  color: #526176;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.toolbar {
+  border-bottom: 1px solid #e5ebf2;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+}
+
+.toolbar input,
+.toolbar select,
+.editor input,
+.formGrid input,
+.formGrid select,
+.formGrid textarea,
+.questionGrid input,
+.questionGrid select,
+.questionGrid textarea {
+  min-height: 36px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #172033;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 8px 10px;
+  outline: none;
+}
+
+.toolbar input:focus,
+.toolbar select:focus,
+.editor input:focus,
+.formGrid input:focus,
+.formGrid select:focus,
+.formGrid textarea:focus,
+.questionGrid input:focus,
+.questionGrid select:focus,
+.questionGrid textarea:focus {
+  border-color: #007a3d;
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
+}
+
+.primaryButton,
+.actionButton,
+.newButton,
+.saveButton {
+  border: 0;
+  border-radius: 8px;
+  background: #d71920;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
+}
+
+.secondaryButton,
+.editButton,
+.refreshButton,
+.exportButton,
+.cancelButton,
+.detailButton,
+.closeButton {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #26364d;
+}
+
+.dangerButton,
+.deleteButton {
+  border: 1px solid #f0b8b8;
+  border-radius: 8px;
+  background: #fff5f5;
+  color: #b42318;
+}
+
+.primaryButton,
+.actionButton,
+.newButton,
+.saveButton,
+.secondaryButton,
+.editButton,
+.refreshButton,
+.exportButton,
+.cancelButton,
+.detailButton,
+.closeButton,
+.dangerButton,
+.deleteButton {
+  min-height: 34px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  padding: 7px 11px;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.primaryButton:hover,
+.actionButton:hover,
+.newButton:hover,
+.saveButton:hover,
+.secondaryButton:hover,
+.editButton:hover,
+.refreshButton:hover,
+.exportButton:hover,
+.cancelButton:hover,
+.detailButton:hover,
+.closeButton:hover,
+.dangerButton:hover,
+.deleteButton:hover {
+  transform: translateY(-1px);
+}
+
+.secondaryButton:hover,
+.editButton:hover,
+.refreshButton:hover,
+.exportButton:hover,
+.cancelButton:hover,
+.detailButton:hover,
+.closeButton:hover {
+  border-color: #8aa4cc;
+  background: #f8fbff;
+}
+
+.tableWrap {
+  border: 1px solid #dbe4ef;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0;
+  overflow-x: auto;
+}
+
+.dataTable,
+.courseTable,
+.courseTypeTable,
+.courseGroupTable,
+.standardTable,
+.assessmentTable,
+.evaluationTable,
+.planTable,
+.rollingTable {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.dataTable th,
+.courseTable th,
+.courseTypeTable th,
+.courseGroupTable th,
+.standardTable th,
+.assessmentTable th,
+.evaluationTable th,
+.planTable th,
+.rollingTable th {
+  border-bottom: 1px solid #e5ebf2;
+  background: #f8fafc;
+  color: #65758b;
+  font-size: 0.66rem;
+  font-weight: 900;
+  padding: 12px;
+  text-transform: uppercase;
+}
+
+.dataTable td,
+.courseTable td,
+.courseTypeTable td,
+.courseGroupTable td,
+.standardTable td,
+.assessmentTable td,
+.evaluationTable td,
+.planTable td,
+.rollingTable td {
+  border-bottom: 1px solid #e5ebf2;
+  background: #ffffff;
+  box-shadow: none;
+  color: #26364d;
+  font-size: 0.8rem;
+  padding: 10px 12px;
+}
+
+.dataTable tbody tr:hover td,
+.courseTable tbody tr:hover td,
+.courseTypeTable tbody tr:hover td,
+.courseGroupTable tbody tr:hover td,
+.standardTable tbody tr:hover td,
+.assessmentTable tbody tr:hover td,
+.evaluationTable tbody tr:hover td,
+.planTable tbody tr:hover td,
+.rollingTable tbody tr:hover td,
+.selectedRow td {
+  background: #f8fbff;
+}
+
+.selectedRow td:first-child {
+  box-shadow: inset 3px 0 0 #d71920;
+}
+
+.statusPill,
+.codePill,
+.questionList b {
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 0.66rem;
+  font-weight: 900;
+  padding: 3px 8px;
+}
+
+@media (max-width: 760px) {
+  .page,
+  .moduleWorkspace {
+    width: min(100% - 28px, 560px);
+    padding-inline: 0;
+  }
+
+  .hero,
+  .moduleHero,
+  .toolbar,
+  .workspaceHeader,
+  .panelHeader,
+  .formGrid,
+  .questionGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+/* CRUD toolbar button alignment */
+.toolbar button {
+  display: inline-flex;
+  min-width: 64px;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0 13px;
+  white-space: nowrap;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.toolbar .primaryButton,
+.toolbar .actionButton,
+.toolbar .newButton {
+  border: 0;
+  background: #007a3d;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(0, 122, 61, 0.16);
+}
+
+.toolbar .secondaryButton,
+.toolbar .editButton,
+.toolbar .refreshButton,
+.toolbar .exportButton {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f2747;
+  box-shadow: none;
+}
+
+.toolbar .dangerButton,
+.toolbar .deleteButton {
+  min-width: 78px;
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+  color: #b42318;
+  box-shadow: none;
+}
+
+.toolbar .primaryButton:hover,
+.toolbar .actionButton:hover,
+.toolbar .newButton:hover {
+  background: #006b35;
+  box-shadow: 0 12px 24px rgba(0, 122, 61, 0.22);
+  transform: translateY(-1px);
+}
+
+.toolbar .secondaryButton:hover,
+.toolbar .editButton:hover,
+.toolbar .refreshButton:hover,
+.toolbar .exportButton:hover {
+  border-color: #8aa4cc;
+  background: #f8fbff;
+  transform: translateY(-1px);
+}
+
+.toolbar .dangerButton:hover,
+.toolbar .deleteButton:hover {
+  border-color: #d71920;
+  background: #fff1f2;
+  color: #a90f16;
+  transform: translateY(-1px);
+}
+
+.toolbar button:disabled {
+  border-color: #dbe2ec;
+  background: #f8fafc;
+  box-shadow: none;
+  color: #a4afbd;
+  cursor: not-allowed;
+  opacity: 1;
+  transform: none;
+}
