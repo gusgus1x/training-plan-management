@@ -11,11 +11,53 @@ const isTargetMatch = (targets: readonly string[], value: string) =>
 
 const targetsAll = (targets: readonly string[]) => targets.includes("All");
 
+const formatTargets = (targets: readonly string[]) =>
+  targetsAll(targets) ? "All" : targets.join(", ");
+
+const roadmapGroups = [
+  {
+    owner: "Center",
+    title: "Center Roadmap",
+    detail: "Target courses assigned by HRD Center or corporate learning teams.",
+  },
+  {
+    owner: "Factory",
+    title: "Factory Roadmap",
+    detail: "Target courses assigned by factory HR, safety, or local operation teams.",
+  },
+] as const;
+
+const roadmapDetailSections = [
+  {
+    title: "Course Information",
+    items: [
+      ["Course Code", "code"],
+      ["Course Name", "title"],
+      ["Category", "category"],
+      ["Round", "round"],
+      ["Course Type", "type"],
+      ["Training Status", "trainingStatus"],
+    ],
+  },
+  {
+    title: "Roadmap Requirement",
+    items: [
+      ["Due Date", "due"],
+      ["Priority", "priority"],
+      ["Current Status", "status"],
+      ["Action", "action"],
+      ["Trainer", "trainer"],
+      ["Responsible Team", "owner"],
+    ],
+  },
+] as const;
+
 export default function RoadmapModule() {
   const authenticatedUser = useAuthenticatedUser();
   const employeeCompany = profileValue(authenticatedUser?.companyCode);
   const employeeFunction = profileValue(authenticatedUser?.functionName);
   const employeePosition = profileValue(authenticatedUser?.positionName);
+  const employeeLevel = profileValue(authenticatedUser?.levelName);
 
   const targetCourses = useMemo(
     () =>
@@ -23,34 +65,16 @@ export default function RoadmapModule() {
         (item) =>
           isTargetMatch(item.targetCompanies, employeeCompany) &&
           isTargetMatch(item.targetFunctions, employeeFunction) &&
-          isTargetMatch(item.targetPositions, employeePosition),
+          isTargetMatch(item.targetPositions, employeePosition) &&
+          isTargetMatch(item.targetLevels, employeeLevel),
       ),
-    [employeeCompany, employeeFunction, employeePosition],
+    [employeeCompany, employeeFunction, employeeLevel, employeePosition],
   );
 
   const fallbackCourses = targetCourses.length > 0 ? targetCourses : roadmapItems;
-  const [selectedCourseCode, setSelectedCourseCode] = useState<string>(
+  const [expandedCourseCode, setExpandedCourseCode] = useState<string | null>(
     fallbackCourses[0]?.code ?? "",
   );
-  const selectedCourse =
-    fallbackCourses.find((item) => item.code === selectedCourseCode) ?? fallbackCourses[0];
-
-  const centerCourses = fallbackCourses.filter((item) => item.courseOwner === "Center");
-  const factoryCourses = fallbackCourses.filter((item) => item.courseOwner === "Factory");
-
-  const targetReason = selectedCourse
-    ? [
-        targetsAll(selectedCourse.targetFunctions)
-          ? "all functions"
-          : employeeFunction,
-        targetsAll(selectedCourse.targetPositions)
-          ? "all positions"
-          : employeePosition,
-        targetsAll(selectedCourse.targetCompanies)
-          ? "all companies"
-          : employeeCompany,
-      ].join(" / ")
-    : "-";
 
   return (
     <section className={styles.modulePage}>
@@ -61,82 +85,110 @@ export default function RoadmapModule() {
       />
 
       <div className={styles.registerWorkspace}>
-        <section className={styles.registerListPanel} aria-label="Target roadmap courses">
-          <div className={styles.panelHeader}>
-            <div>
-              <p>Target group courses</p>
-              <h2>Courses Assigned To Me</h2>
-            </div>
-            <span>{centerCourses.length} Center / {factoryCourses.length} Factory</span>
-          </div>
+        {roadmapGroups.map((group) => {
+          const courses = fallbackCourses.filter((item) => item.courseOwner === group.owner);
 
-          <div className={styles.trainingList}>
-            {fallbackCourses.map((item) => (
-              <article
-                className={`${styles.trainingItem} ${
-                  item.code === selectedCourse?.code ? styles.activeTrainingItem : ""
-                }`}
-                key={item.title}
-              >
+          return (
+            <section
+              className={styles.registerListPanel}
+              aria-label={`${group.title} target courses`}
+              key={group.owner}
+            >
+              <div className={styles.panelHeader}>
                 <div>
-                  <small>{item.category} / {item.courseOwner}</small>
-                  <strong>{item.title}</strong>
-                  <div className={styles.trainingScheduleGrid}>
-                    <span><b>Due</b>{item.due}</span>
-                    <span><b>Round</b>{item.round}</span>
-                    <span><b>Priority</b>{item.priority}</span>
-                    <span><b>Owner</b>{item.courseOwner}</span>
-                  </div>
+                  <p>{group.owner} roadmap</p>
+                  <h2>{group.title}</h2>
+                  <span>{group.detail}</span>
                 </div>
-                <div className={styles.courseStatusStack}>
-                  <b>{item.courseOwner}</b>
-                  <span>Target group</span>
-                </div>
-                <div className={styles.trainingActions}>
-                  <button
-                    className={styles.secondaryActionButton}
-                    type="button"
-                    onClick={() => setSelectedCourseCode(item.code)}
-                  >
-                    Details
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className={styles.courseDetailPanel} aria-label="Target course detail">
-          <p>Why This Course Appears</p>
-          <h2>{selectedCourse?.title ?? "No target course"}</h2>
-          {selectedCourse ? (
-            <>
-              <div className={styles.registerCourseHero}>
-                <b>{selectedCourse.courseOwner}</b>
-                <span>
-                  This course appears because your profile matches the course target group.
-                </span>
-                <div>
-                  <strong>Due {selectedCourse.due}</strong>
-                  <strong>{selectedCourse.round}</strong>
-                  <strong>{selectedCourse.priority}</strong>
-                </div>
+                <span>{courses.length} courses</span>
               </div>
-              <dl className={styles.courseDetailGrid}>
-                <div><dt>Course Code</dt><dd>{selectedCourse.code}</dd></div>
-                <div><dt>Round</dt><dd>{selectedCourse.round}</dd></div>
-                <div><dt>Status</dt><dd>{selectedCourse.trainingStatus}</dd></div>
-                <div><dt>Priority</dt><dd>{selectedCourse.priority}</dd></div>
-                <div><dt>Course Type</dt><dd>{selectedCourse.type}</dd></div>
-                <div><dt>Budget</dt><dd>{selectedCourse.budget}</dd></div>
-                <div><dt>Trainer</dt><dd>{selectedCourse.trainer}</dd></div>
-                <div><dt>Owner</dt><dd>{selectedCourse.owner}</dd></div>
-                <div><dt>Target Group</dt><dd>{targetReason}</dd></div>
-                <div><dt>Target Result</dt><dd>This employee is included</dd></div>
-              </dl>
-            </>
-          ) : null}
-        </section>
+
+              <div className={styles.trainingList}>
+                {courses.map((item) => {
+                  const isExpanded = item.code === expandedCourseCode;
+                  const targetReason = [
+                    targetsAll(item.targetFunctions) ? "all functions" : employeeFunction,
+                    targetsAll(item.targetPositions) ? "all positions" : employeePosition,
+                    targetsAll(item.targetLevels) ? "all levels" : employeeLevel,
+                    targetsAll(item.targetCompanies) ? "all companies" : employeeCompany,
+                  ].join(" / ");
+
+                  return (
+                    <article
+                      className={`${styles.trainingItem} ${
+                        isExpanded ? styles.activeTrainingItem : ""
+                      }`}
+                      key={item.code}
+                    >
+                      <div>
+                        <small>{item.category} / {item.courseOwner}</small>
+                        <strong>{item.title}</strong>
+                        <span>{item.detail}</span>
+                        <div className={styles.trainingScheduleGrid}>
+                          <span><b>Due</b>{item.due}</span>
+                          <span><b>Round</b>{item.round}</span>
+                          <span><b>Priority</b>{item.priority}</span>
+                          <span><b>Status</b>{item.status}</span>
+                        </div>
+                      </div>
+
+                      <div className={styles.courseStatusStack}>
+                        <b>{item.courseOwner}</b>
+                        <span>Target group</span>
+                      </div>
+
+                      <div className={styles.trainingActions}>
+                        <button
+                          className={styles.secondaryActionButton}
+                          type="button"
+                          aria-expanded={isExpanded}
+                          onClick={() => setExpandedCourseCode(isExpanded ? null : item.code)}
+                        >
+                          {isExpanded ? "Hide detail" : "Show detail"}
+                        </button>
+                        <button type="button" disabled={item.action !== "Register"}>
+                          {item.action === "Register" ? "Register" : item.action}
+                        </button>
+                      </div>
+
+                      {isExpanded ? (
+                        <div className={styles.courseDropdownDetail}>
+                          <section className={styles.courseDetailSection}>
+                            <h3>Why This Course Appears</h3>
+                            <dl className={styles.courseDetailGrid}>
+                              <div><dt>Matched Profile</dt><dd>{targetReason}</dd></div>
+                              <div><dt>Target Companies</dt><dd>{formatTargets(item.targetCompanies)}</dd></div>
+                              <div><dt>Target Functions</dt><dd>{formatTargets(item.targetFunctions)}</dd></div>
+                              <div><dt>Target Positions</dt><dd>{formatTargets(item.targetPositions)}</dd></div>
+                              <div><dt>Target Levels</dt><dd>{formatTargets(item.targetLevels)}</dd></div>
+                            </dl>
+                          </section>
+
+                          {roadmapDetailSections.map((section) => (
+                            <section className={styles.courseDetailSection} key={section.title}>
+                              <h3>{section.title}</h3>
+                              <dl className={styles.courseDetailGrid}>
+                                {section.items.map(([label, field]) => (
+                                  <div key={label}>
+                                    <dt>{label}</dt>
+                                    <dd>{item[field]}</dd>
+                                  </div>
+                                ))}
+                              </dl>
+                            </section>
+                          ))}
+                        </div>
+                      ) : null}
+                    </article>
+                  );
+                })}
+                {courses.length === 0 ? (
+                  <p className={styles.emptyCourseGroup}>No target courses in this group.</p>
+                ) : null}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </section>
   );

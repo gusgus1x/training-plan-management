@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
-import { requestStatuses } from "../../../employee/data";
 import {
   APPROVED_TRAINING_NEED_STORAGE_KEY,
   EMPLOYEE_TRAINING_REQUESTS_STORAGE_KEY,
@@ -101,23 +100,6 @@ const defaultRequests: EmployeeTrainingNeedRequest[] = [
   },
 ];
 
-const emptyRequest = (): EmployeeTrainingNeedRequest => ({
-  id: `req-${Date.now()}`,
-  requestNo: `REQ-2026-${String(Date.now()).slice(-3)}`,
-  employeeCode: "",
-  employeeName: "",
-  company: "SATI",
-  functionName: "",
-  courseNeed: "",
-  reason: "",
-  expectedBenefit: "",
-  preferredMonth: "",
-  urgency: "Normal",
-  status: "New Request",
-  submittedAt: new Date().toISOString().slice(0, 10),
-  approvedBy: "",
-});
-
 const readStoredRequests = () => {
   if (typeof window === "undefined") {
     return [] as EmployeeTrainingNeedRequest[];
@@ -153,7 +135,6 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<TrainingNeedRequestStatus | "all">("all");
   const [companyFilter, setCompanyFilter] = useState<(typeof companies)[number] | "all">("all");
-  const [formValues, setFormValues] = useState<EmployeeTrainingNeedRequest>(emptyRequest);
 
   useEffect(() => {
     const syncStoredRequests = () => {
@@ -206,20 +187,6 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
     });
   }, [companyFilter, isFactoryUser, requests, search, statusFilter, userCompanyCode]);
 
-  const summary = useMemo(
-    () => ({
-      total: requests.length,
-      newRequest: requests.filter((request) => request.status === "New Request").length,
-      review: requests.filter((request) => request.status === "Review").length,
-      accepted: requests.filter((request) => request.status === "Accepted").length,
-    }),
-    [requests],
-  );
-
-  const updateForm = (field: keyof EmployeeTrainingNeedRequest, value: string) => {
-    setFormValues((current) => ({ ...current, [field]: value }));
-  };
-
   const updateSelectedStatus = (status: TrainingNeedRequestStatus) => {
     if (!selectedRequest) {
       return;
@@ -264,34 +231,6 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
     onOpenTrainingOap?.();
   };
 
-  const handleSubmitRequest = () => {
-    const nextRequest: EmployeeTrainingNeedRequest = {
-      ...formValues,
-      employeeCode: formValues.employeeCode.trim().toUpperCase(),
-      employeeName: formValues.employeeName.trim(),
-      functionName: formValues.functionName.trim(),
-      courseNeed: formValues.courseNeed.trim(),
-      reason: formValues.reason.trim(),
-      expectedBenefit: formValues.expectedBenefit.trim(),
-      preferredMonth: formValues.preferredMonth.trim(),
-    };
-
-    if (!nextRequest.employeeCode || !nextRequest.employeeName || !nextRequest.courseNeed) {
-      return;
-    }
-
-    setRequests((current) => [nextRequest, ...current]);
-    window.localStorage.setItem(
-      EMPLOYEE_TRAINING_REQUESTS_STORAGE_KEY,
-      JSON.stringify([nextRequest, ...readStoredRequests()]),
-    );
-    window.dispatchEvent(new Event("employee-training-requests-changed"));
-    setSelectedId(nextRequest.id);
-    setStatusFilter("all");
-    setCompanyFilter("all");
-    setFormValues(emptyRequest());
-  };
-
   const handleRefresh = () => {
     setRequests(defaultRequests);
     window.localStorage.removeItem(EMPLOYEE_TRAINING_REQUESTS_STORAGE_KEY);
@@ -300,7 +239,6 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
     setSearch("");
     setStatusFilter("all");
     setCompanyFilter("all");
-    setFormValues(emptyRequest());
   };
 
   return (
@@ -317,24 +255,6 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
           ) : (
             <span className={styles.permissionNote}>Center permission: center requests</span>
           )}
-        </div>
-        <div className={styles.summaryGrid}>
-          <article>
-            <strong>{summary.total}</strong>
-            <span>Total</span>
-          </article>
-          <article>
-            <strong>{summary.newRequest}</strong>
-            <span>New</span>
-          </article>
-          <article>
-            <strong>{summary.review}</strong>
-            <span>Review</span>
-          </article>
-          <article>
-            <strong>{summary.accepted}</strong>
-            <span>Accepted</span>
-          </article>
         </div>
       </section>
 
@@ -481,20 +401,6 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                 <p>{selectedRequest.expectedBenefit}</p>
               </div>
 
-              <div className={styles.approvalTimeline}>
-                {requestStatuses.map((item, index) => (
-                  <article key={item.title}>
-                    <b>{index + 1}</b>
-                    <div>
-                      <strong>{item.title}</strong>
-                      <span>
-                        {item.owner} / {item.status}
-                      </span>
-                    </div>
-                  </article>
-                ))}
-              </div>
-
               <div className={styles.reviewActions}>
                 <button
                   className={styles.secondaryButton}
@@ -523,102 +429,6 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
         </section>
       </section>
 
-      <section className={styles.formPanel}>
-        <div className={styles.panelHeader}>
-          <div>
-            <span>New employee request</span>
-            <h3>Submit Training Need</h3>
-          </div>
-        </div>
-
-        <div className={styles.formGrid}>
-          <label>
-            Employee Code
-            <input
-              value={formValues.employeeCode}
-              onChange={(event) => updateForm("employeeCode", event.target.value)}
-              placeholder="SATI-5403"
-            />
-          </label>
-          <label>
-            Employee Name
-            <input
-              value={formValues.employeeName}
-              onChange={(event) => updateForm("employeeName", event.target.value)}
-              placeholder="Employee name"
-            />
-          </label>
-          <label>
-            Company
-            <select
-              value={formValues.company}
-              onChange={(event) => updateForm("company", event.target.value)}
-            >
-              {companies.map((company) => (
-                <option key={company} value={company}>
-                  {company}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Function
-            <input
-              value={formValues.functionName}
-              onChange={(event) => updateForm("functionName", event.target.value)}
-              placeholder="Production"
-            />
-          </label>
-          <label>
-            Course Needed
-            <input
-              value={formValues.courseNeed}
-              onChange={(event) => updateForm("courseNeed", event.target.value)}
-              placeholder="Course employee wants to attend"
-            />
-          </label>
-          <label>
-            Preferred Month
-            <input
-              value={formValues.preferredMonth}
-              onChange={(event) => updateForm("preferredMonth", event.target.value)}
-              placeholder="August 2026"
-            />
-          </label>
-          <label>
-            Urgency
-            <select
-              value={formValues.urgency}
-              onChange={(event) => updateForm("urgency", event.target.value)}
-            >
-              <option>Low</option>
-              <option>Normal</option>
-              <option>High</option>
-            </select>
-          </label>
-          <label className={styles.fullWidth}>
-            Request Reason
-            <textarea
-              value={formValues.reason}
-              onChange={(event) => updateForm("reason", event.target.value)}
-              placeholder="Why this training is needed"
-            />
-          </label>
-          <label className={styles.fullWidth}>
-            Expected Benefit
-            <textarea
-              value={formValues.expectedBenefit}
-              onChange={(event) => updateForm("expectedBenefit", event.target.value)}
-              placeholder="What will improve after training"
-            />
-          </label>
-          <div className={styles.fullWidth}>
-            <button className={styles.actionButton} type="button" onClick={handleSubmitRequest}>
-              Submit Request
-            </button>
-          </div>
-        </div>
-      </section>
     </section>
   );
 }

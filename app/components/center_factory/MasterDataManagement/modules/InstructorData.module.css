@@ -499,3 +499,128 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Instructor Data custom layout */
+.moduleWorkspace {
+  gap: 14px;
+}
+
+.moduleHero {
+  min-height: 116px;
+  align-items: center;
+  background:
+    linear-gradient(90deg, #ffffff 0%, #ffffff 68%, #f8fafc 100%);
+}
+
+.panel,
+.formPanel {
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto;
+  align-items: center;
+  border-bottom: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.toolbar input {
+  width: 100%;
+}
+
+.dataTable {
+  min-width: 820px;
+  width: 100%;
+}
+
+.dataTable th:first-child,
+.dataTable td:first-child {
+  width: 72px;
+  text-align: center;
+}
+
+.dataTable th {
+  color: #172033;
+  font-size: 0.72rem;
+  text-transform: none;
+}
+
+.dataTable td {
+  font-size: 0.82rem;
+}
+
+.dataTable tbody tr {
+  cursor: pointer;
+}
+
+.dataTable td:nth-child(5) {
+  min-width: 280px;
+}
+
+.formGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.actionButton {
+  justify-self: end;
+}
+
+.deleteButton {
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fff5f5;
+  color: #b42318;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  min-height: 34px;
+  padding: 7px 11px;
+}
+
+.toolbar button:disabled {
+  border-color: #dbe2ec;
+  background: #f8fafc;
+  color: #a4afbd;
+  cursor: not-allowed;
+}
+
+.selectedRow td {
+  background: #f8fbff;
+}
+
+.selectedRow td:first-child {
+  box-shadow: inset 3px 0 0 #d71920;
+}
+
+.fullWidth {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media (max-width: 920px) {
+  .formGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .toolbar,
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .secondaryButton,
+  .deleteButton,
+  .actionButton {
+    width: 100%;
+  }
+
+  .fullWidth {
+    display: grid;
+  }
+}

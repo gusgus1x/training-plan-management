@@ -990,6 +990,14 @@
   margin-top: 0;
 }
 
+.trainingItem .trainingActions button:disabled,
+.roadmapGrid .trainingActions button:disabled {
+  border-color: #cbd5e1;
+  background: #e2e8f0;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
 .secondaryActionButton {
   border-color: rgba(215, 25, 32, 0.2) !important;
   background: #ffffff !important;
@@ -1652,6 +1660,7 @@
 }
 
 .registerListPanel {
+  grid-column: 1 / -1;
   min-width: 0;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
@@ -1684,6 +1693,15 @@
   font-size: 1rem;
   font-weight: 900;
   line-height: 1.2;
+}
+
+.registerWorkspace .panelHeader div > span {
+  display: block;
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
 }
 
 .registerWorkspace .panelHeader > span {
@@ -1727,6 +1745,10 @@
 .registerWorkspace .trainingActions {
   grid-column: 1 / -1;
   justify-content: flex-start;
+}
+
+.registerWorkspace .secondaryActionButton {
+  min-width: 126px;
 }
 
 .trainingScheduleGrid {
@@ -1832,6 +1854,40 @@
   padding: 9px;
 }
 
+.courseDetailSection {
+  display: grid;
+  gap: 10px;
+}
+
+.courseDetailSection h3 {
+  margin: 0;
+  color: #172033;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.courseDropdownDetail {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 14px;
+  margin-top: 2px;
+  border-top: 1px solid #e5ebf2;
+  padding-top: 14px;
+}
+
+.emptyCourseGroup {
+  margin: 0;
+  border: 1px solid #d7e7dd;
+  border-radius: 8px;
+  background: #f1fbf5;
+  color: #007a3d;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.45;
+  padding: 12px;
+}
+
 .registerWorkspace .courseDetailPanel {
   position: sticky;
   top: 126px;
@@ -1885,7 +1941,16 @@
 
 /* Employee dashboard alignment with center factory workspace design */
 .page {
-  background: #edf2f7;
+  background:
+    radial-gradient(
+      circle 760px at 100% 100%,
+      rgba(0, 122, 61, 0.52) 0%,
+      rgba(0, 122, 61, 0.34) 24%,
+      rgba(156, 210, 244, 0.14) 46%,
+      rgba(215, 25, 32, 0.26) 70%,
+      rgba(237, 242, 247, 0) 100%
+    ),
+    #edf2f7;
 }
 
 .workspace {
@@ -2553,15 +2618,23 @@
 
 .selectedPreviousCourse {
   grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
   border: 1px solid #b7d8c7;
   background: #f1fbf5;
   box-shadow: inset 3px 0 0 #007a3d;
+}
+
+.selectedPreviousCourse > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
 }
 
 .previousCourse span,
 .activePreviousCourse span,
 .selectedPreviousCourse span,
 .selectedRecordPreview span {
+  display: block;
   color: #64748b;
   font-size: 11px;
   font-weight: 800;
@@ -2570,6 +2643,7 @@
 .previousCourse strong,
 .activePreviousCourse strong,
 .selectedPreviousCourse strong {
+  display: block;
   overflow: hidden;
   color: #0f172a;
   font-size: 13px;
@@ -2580,8 +2654,9 @@
 
 .previousCourse small,
 .activePreviousCourse small,
-.selectedPreviousCourse small,
-.courseOwnerBadge {
+.selectedPreviousCourse small {
+  display: block;
+  width: fit-content;
   border-radius: 999px;
   background: #eff6ff;
   color: #2458b8;
@@ -2593,9 +2668,15 @@
 }
 
 .courseOwnerBadge {
+  border-radius: 999px;
   align-self: start;
   background: #fff1f2;
   color: #d71920;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 5px 8px;
+  white-space: nowrap;
 }
 
 .selectedRecordPreview {
@@ -3102,6 +3183,606 @@
 .employeeProfileGrid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.employeeRecordHero,
+.employeeRecordStats,
+.employeeRecordToolbar,
+.employeeRecordDownloadBox,
+.employeeRecordListPanel,
+.employeeRecordDetailPanel {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.09);
+}
+
+.employeeRecordHero {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 22px 24px 22px 28px;
+}
+
+.employeeRecordHero::before,
+.employeeRecordDownloadBox::before,
+.employeeRecordListPanel::before,
+.employeeRecordDetailPanel::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  pointer-events: none;
+}
+
+.employeeRecordHero span,
+.employeeRecordDetailHead span,
+.employeeRecordDetailGrid span,
+.employeeRecordMeta dt,
+.employeeRecordEvidence span {
+  display: block;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.employeeRecordHero h2,
+.employeeRecordDetailHead h2 {
+  margin: 5px 0 0;
+  color: #0f172a;
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 900;
+  line-height: 1.12;
+}
+
+.employeeRecordHero p,
+.employeeRecordDetailHead p,
+.employeeRecordEvidence p {
+  max-width: 720px;
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.employeeRecordHero button,
+.employeeRecordActions button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 8px;
+  background: #d71920;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+.employeeRecordStats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+
+.employeeRecordStats article,
+.employeeRecordDetailGrid article {
+  position: relative;
+  overflow: hidden;
+  min-height: 78px;
+  border: 1px solid #e5ebf2;
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 13px 14px 13px 16px;
+}
+
+.employeeRecordStats article::before,
+.employeeRecordDetailGrid article::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+}
+
+.employeeRecordStats span {
+  display: block;
+  overflow: hidden;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.employeeRecordStats strong,
+.employeeRecordDetailGrid strong {
+  display: block;
+  margin-top: 7px;
+  color: #0f172a;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.employeeRecordToolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 0.28fr);
+  gap: 10px;
+  padding: 12px;
+}
+
+.employeeRecordToolbar input,
+.employeeRecordToolbar select {
+  width: 100%;
+  min-height: 40px;
+  border: 1.5px solid rgba(15, 23, 42, 0.14);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #0f172a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  outline: none;
+  padding: 0 12px;
+}
+
+.employeeRecordToolbar input:focus,
+.employeeRecordToolbar select:focus {
+  border-color: #007a3d;
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
+}
+
+.employeeRecordDownloadBox {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.7fr) minmax(330px, auto);
+  gap: 18px;
+  align-items: center;
+  padding: 18px 20px 18px 24px;
+}
+
+.employeeRecordDownloadBox > div:first-child span,
+.employeeRecordDownloadMeta span {
+  display: block;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.employeeRecordDownloadBox h2 {
+  margin: 5px 0 0;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.employeeRecordDownloadBox p {
+  max-width: 720px;
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.employeeRecordPurposeGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.employeeRecordPurposeGroup label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-height: 58px;
+  border: 1px solid #e5ebf2;
+  border-radius: 8px;
+  background: #fbfdff;
+  cursor: pointer;
+  padding: 10px 12px;
+}
+
+.employeeRecordPurposeGroup input {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  accent-color: #d71920;
+}
+
+.employeeRecordPurposeGroup strong {
+  display: block;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.employeeRecordPurposeGroup small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.employeeRecordDownloadMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(78px, 1fr)) auto;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.employeeRecordDownloadMeta article {
+  display: grid;
+  min-height: 62px;
+  align-content: center;
+  border: 1px solid #e5ebf2;
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 10px 12px;
+}
+
+.employeeRecordDownloadMeta strong {
+  margin-top: 5px;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.employeeRecordDownloadMeta button {
+  min-height: 40px;
+  align-self: center;
+  border: 0;
+  border-radius: 8px;
+  background: #d71920;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+.employeeRecordDownloadBox .employeeRecordMessage {
+  grid-column: 1 / -1;
+}
+
+.employeeRecordWorkspace {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.employeeRecordListPanel,
+.employeeRecordDetailPanel {
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+}
+
+.employeeRecordTimeline {
+  display: grid;
+  gap: 10px;
+}
+
+.employeeRecordItem,
+.activeEmployeeRecordItem {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 94px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 76px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  cursor: pointer;
+  font: inherit;
+  padding: 12px;
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.activeEmployeeRecordItem {
+  border-color: rgba(0, 122, 61, 0.34);
+  background: #f1fbf5;
+  box-shadow: inset 4px 0 0 #007a3d;
+}
+
+.employeeRecordItem:hover,
+.activeEmployeeRecordItem:hover {
+  border-color: rgba(215, 25, 32, 0.3);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.employeeRecordItem time,
+.activeEmployeeRecordItem time {
+  color: #d71920;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.employeeRecordItem div,
+.activeEmployeeRecordItem div {
+  min-width: 0;
+}
+
+.employeeRecordItem strong,
+.activeEmployeeRecordItem strong {
+  display: block;
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.employeeRecordItem span,
+.activeEmployeeRecordItem span {
+  display: block;
+  overflow: hidden;
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.employeeRecordItem b,
+.activeEmployeeRecordItem b,
+.employeeRecordDetailHead b {
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 7px 9px;
+  white-space: nowrap;
+}
+
+.employeeRecordEmpty,
+.employeeRecordMessage {
+  margin: 0;
+  border: 1px solid #d7e7dd;
+  border-radius: 8px;
+  background: #f1fbf5;
+  color: #007a3d;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.45;
+  padding: 10px 12px;
+}
+
+.employeeRecordDetailPanel {
+  position: relative;
+  display: grid;
+  gap: 14px;
+}
+
+.employeeRecordDetailHead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.employeeRecordDetailHead h2 {
+  font-size: 22px;
+}
+
+.employeeRecordDetailGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.employeeRecordDetailGrid strong {
+  font-size: 18px;
+}
+
+.employeeRecordMeta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.employeeRecordMeta div,
+.employeeRecordEvidence,
+.employeeAssessmentPanel {
+  border: 1px solid #e5ebf2;
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 12px;
+}
+
+.employeeAssessmentPanel {
+  display: grid;
+  gap: 12px;
+  background: #ffffff;
+}
+
+.employeeAssessmentPanel > div:first-child span,
+.employeeAssessmentStep span,
+.lockedAssessmentStep span {
+  display: block;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.employeeAssessmentPanel h3 {
+  margin: 5px 0 0;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.employeeAssessmentPanel p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.employeeAssessmentSteps {
+  display: grid;
+  gap: 8px;
+}
+
+.employeeAssessmentStep,
+.lockedAssessmentStep {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid #e5ebf2;
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 10px 12px;
+}
+
+.lockedAssessmentStep {
+  background: #f8fafc;
+  opacity: 0.72;
+}
+
+.employeeAssessmentStep strong,
+.lockedAssessmentStep strong {
+  display: block;
+  margin-top: 4px;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.employeeAssessmentStep small,
+.lockedAssessmentStep small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.employeeAssessmentStep button,
+.lockedAssessmentStep button {
+  min-height: 34px;
+  border: 1px solid rgba(215, 25, 32, 0.2);
+  border-radius: 8px;
+  background: #d71920;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.employeeAssessmentStep button:disabled,
+.lockedAssessmentStep button:disabled {
+  border-color: #cbd5e1;
+  background: #e2e8f0;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.employeeRecordMeta dd {
+  margin: 6px 0 0;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.employeeRecordActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid #edf2f7;
+  padding-top: 12px;
+}
+
+.employeeRecordActions button:first-child {
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: #ffffff;
+  color: #26364d;
+}
+
+@media (max-width: 980px) {
+  .employeeRecordStats,
+  .employeeRecordDownloadBox,
+  .employeeRecordWorkspace,
+  .employeeRecordDetailGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .employeeRecordWorkspace {
+    grid-template-columns: 1fr;
+  }
+
+  .employeeRecordDetailPanel {
+    position: static;
+  }
+}
+
+@media (max-width: 760px) {
+  .employeeRecordHero,
+  .employeeRecordToolbar,
+  .employeeRecordDownloadBox,
+  .employeeRecordPurposeGroup,
+  .employeeRecordDownloadMeta,
+  .employeeRecordStats,
+  .employeeRecordDetailGrid,
+  .employeeRecordMeta,
+  .employeeAssessmentStep,
+  .lockedAssessmentStep,
+  .employeeRecordItem,
+  .activeEmployeeRecordItem,
+  .employeeRecordDetailHead {
+    grid-template-columns: 1fr;
+  }
+
+  .employeeRecordHero button,
+  .employeeRecordDownloadMeta button,
+  .employeeRecordActions button {
+    width: 100%;
+  }
 }
 
 .employeeProfileGrid article {

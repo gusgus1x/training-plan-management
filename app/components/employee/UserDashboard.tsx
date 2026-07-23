@@ -153,7 +153,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
             />
           ) : null}
           {activeModule === "record" ? (
-            <RecordModule completedHours={completedHours} />
+            <RecordModule />
           ) : null}
           {activeModule === "report" ? (
             <ReportModule completedHours={completedHours} />

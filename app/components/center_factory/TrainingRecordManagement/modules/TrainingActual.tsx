@@ -42,6 +42,9 @@ type ActualCourse = {
   expenses: Record<ExpenseKey, string>;
 };
 
+type CourseOwner = ActualCourse["owner"];
+type CourseOwnerFilter = CourseOwner | "";
+
 const expenseFields: Array<{ key: ExpenseKey; label: string }> = [
   { key: "instructor", label: "Instructor" },
   { key: "traveling", label: "Traveling" },
@@ -81,7 +84,7 @@ const initialCourses: ActualCourse[] = [
       },
       {
         id: "att-003",
-        employeeCode: "HRD-021",
+        employeeCode: "SNF-5621",
         name: "Kittipong R.",
         department: "Maintenance",
         registered: false,
@@ -182,7 +185,8 @@ const formatCurrency = (value: number) =>
 export default function TrainingActual() {
   const user = useAuthenticatedUser();
   const [courses, setCourses] = useState<ActualCourse[]>(initialCourses);
-  const [selectedCourseId, setSelectedCourseId] = useState(initialCourses[0].id);
+  const [courseOwnerFilter, setCourseOwnerFilter] = useState<CourseOwnerFilter>("");
+  const [selectedCourseId, setSelectedCourseId] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
   const userCompanyCode = profileValue(user?.companyCode);
@@ -193,27 +197,42 @@ export default function TrainingActual() {
         : courses,
     [courses, isFactoryUser, userCompanyCode],
   );
-  const selectedCourse =
-    availableCourses.find((course) => course.id === selectedCourseId) ??
-    availableCourses[0] ??
-    courses[0];
+  const selectedCourseOwner: CourseOwnerFilter = isFactoryUser ? "FACTORY" : courseOwnerFilter;
+  const ownerFilteredCourses = useMemo(
+    () =>
+      selectedCourseOwner
+        ? availableCourses.filter((course) => course.owner === selectedCourseOwner)
+        : [],
+    [availableCourses, selectedCourseOwner],
+  );
+  const selectedCourse = ownerFilteredCourses.find((course) => course.id === selectedCourseId);
 
-  const actualCount = selectedCourse.attendees.filter((attendee) => attendee.attended).length;
-  const walkInCount = selectedCourse.attendees.filter(
-    (attendee) => attendee.attended && !attendee.registered,
-  ).length;
-  const registeredCount = selectedCourse.attendees.filter((attendee) => attendee.registered).length;
-  const absentCount = selectedCourse.attendees.length - actualCount;
+  const actualCount = selectedCourse
+    ? selectedCourse.attendees.filter((attendee) => attendee.attended).length
+    : 0;
+  const walkInCount = selectedCourse
+    ? selectedCourse.attendees.filter((attendee) => attendee.attended && !attendee.registered).length
+    : 0;
+  const registeredCount = selectedCourse
+    ? selectedCourse.attendees.filter((attendee) => attendee.registered).length
+    : 0;
+  const absentCount = selectedCourse ? selectedCourse.attendees.length - actualCount : 0;
   const expenseTotal = useMemo(
     () =>
-      expenseFields.reduce(
-        (total, field) => total + Number(selectedCourse.expenses[field.key] || 0),
-        0,
-      ),
-    [selectedCourse.expenses],
+      selectedCourse
+        ? expenseFields.reduce(
+            (total, field) => total + Number(selectedCourse.expenses[field.key] || 0),
+            0,
+          )
+        : 0,
+    [selectedCourse],
   );
 
   const updateSelectedCourse = (updater: (course: ActualCourse) => ActualCourse) => {
+    if (!selectedCourse) {
+      return;
+    }
+
     setCourses((current) =>
       current.map((course) => (course.id === selectedCourse.id ? updater(course) : course)),
     );
@@ -239,6 +258,10 @@ export default function TrainingActual() {
   };
 
   const handleSave = () => {
+    if (!selectedCourse) {
+      return;
+    }
+
     const now = new Intl.DateTimeFormat("en-GB", {
       day: "2-digit",
       hour: "2-digit",
@@ -263,11 +286,72 @@ export default function TrainingActual() {
         <div className={styles.heroMeta}>
             <span>{actualCount} Actual</span>
             <span>{walkInCount} Walk-in</span>
-            <span>{isFactoryUser ? `${userCompanyCode} only` : "Center scope"}</span>
+            <span>
+              {selectedCourseOwner
+                ? selectedCourseOwner === "CENTER"
+                  ? "Center owner"
+                  : "Factory owner"
+                : "Select owner"}
+            </span>
             <span>THB {formatCurrency(expenseTotal)}</span>
           </div>
       </section>
 
+      <section
+        className={`${styles.actualCoursePickerPanel} ${styles.actualSelectorFirstPanel}`}
+        aria-label="Select training actual course"
+      >
+        <div className={styles.courseSelectorControls}>
+          <label className={styles.actualCourseSelect}>
+            Course Owner
+            <select
+              disabled={isFactoryUser}
+              value={selectedCourseOwner}
+              onChange={(event) => {
+                setCourseOwnerFilter(event.target.value as CourseOwnerFilter);
+                setSelectedCourseId("");
+                setSavedMessage("");
+              }}
+            >
+              <option value="">Select Course Owner</option>
+              <option value="CENTER">Center</option>
+              <option value="FACTORY">Factory</option>
+            </select>
+          </label>
+          <label className={styles.actualCourseSelect}>
+            Course
+            <select
+              disabled={!selectedCourseOwner}
+              value={selectedCourseId}
+              onChange={(event) => {
+                setSelectedCourseId(event.target.value);
+                setSavedMessage("");
+              }}
+            >
+              <option value="">
+                {!selectedCourseOwner
+                  ? "Select course owner first"
+                  : ownerFilteredCourses.length > 0
+                    ? "Select actual course"
+                    : `No ${selectedCourseOwner.toLowerCase()} course available`}
+              </option>
+              {ownerFilteredCourses.map((course) => (
+                <option key={course.id} value={course.id}>
+                  {course.code} / {course.title} / {course.company}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div>
+          <p className={styles.kicker}>Course Owner</p>
+          <h3>Select owner first</h3>
+          <span>Choose an owner first, then select a course to record actual attendance and training expenses.</span>
+        </div>
+      </section>
+
+      {selectedCourse ? (
       <section className={styles.actualWorkspace}>
         <div className={styles.actualMainPanel}>
           <div className={styles.actualCompactHeader}>
@@ -278,23 +362,6 @@ export default function TrainingActual() {
                 {selectedCourse.code} / {selectedCourse.company} / {selectedCourse.date} / {selectedCourse.time}
               </span>
             </div>
-
-            <label className={styles.actualCourseSelect}>
-              Course
-              <select
-              value={selectedCourseId}
-              onChange={(event) => {
-                setSelectedCourseId(event.target.value);
-                setSavedMessage("");
-              }}
-            >
-              {availableCourses.map((course) => (
-                <option key={course.id} value={course.id}>
-                  {course.code} / {course.title}
-                </option>
-              ))}
-            </select>
-          </label>
 
             <div className={styles.actualMiniStats}>
               <article>
@@ -412,6 +479,11 @@ export default function TrainingActual() {
           {savedMessage ? <p className={styles.actualSavedMessage}>{savedMessage}</p> : null}
         </aside>
       </section>
+      ) : (
+        <section className={styles.emptyState} aria-label="No selected actual course">
+          Select a course first to show training actual details.
+        </section>
+      )}
     </section>
   );
 }

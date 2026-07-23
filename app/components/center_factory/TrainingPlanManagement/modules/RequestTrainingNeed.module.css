@@ -24,42 +24,9 @@
 }
 
 .moduleHero {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.summaryGrid {
   display: grid;
-  min-width: 420px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.summaryGrid article {
-  display: grid;
-  min-height: 74px;
-  align-content: center;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #ffffff;
-  padding: 10px;
-}
-
-.summaryGrid strong {
-  color: #007a3d;
-  font-size: 1.2rem;
-  font-weight: 900;
-  line-height: 1;
-}
-
-.summaryGrid span {
-  margin-top: 6px;
-  color: #526176;
-  font-size: 0.68rem;
-  font-weight: 900;
-  text-transform: uppercase;
+  gap: 10px;
+  align-items: start;
 }
 
 .contentGrid {
@@ -279,51 +246,6 @@
   padding-top: 12px;
 }
 
-.approvalTimeline {
-  display: grid;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.approvalTimeline article {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  background: #ffffff;
-  padding: 10px;
-}
-
-.approvalTimeline b {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border-radius: 999px;
-  background: #0f2747;
-  color: #ffffff;
-  font-size: 0.72rem;
-  font-weight: 900;
-}
-
-.approvalTimeline strong {
-  display: block;
-  color: #172033;
-  font-size: 0.8rem;
-  font-weight: 900;
-  line-height: 1.25;
-}
-
-.approvalTimeline span {
-  display: block;
-  margin-top: 3px;
-  color: #64748b;
-  font-size: 0.72rem;
-  font-weight: 800;
-}
-
 .emptyState {
   border: 1px dashed #cbd5e1;
   border-radius: 8px;
@@ -503,7 +425,6 @@
     display: grid;
   }
 
-  .summaryGrid,
   .contentGrid,
   .detailGrid {
     min-width: 0;

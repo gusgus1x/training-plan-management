@@ -397,14 +397,6 @@ export default function EmployeeData() {
           <h2>{employeeDataModule.title}</h2>
           <p>{employeeDataModule.description}</p>
         </div>
-        <div className={styles.companyStats}>
-          {companies.map((company) => (
-            <article key={company}>
-              <strong>{rows.filter((row) => row.company === company).length}</strong>
-              <span>{company}</span>
-            </article>
-          ))}
-        </div>
       </section>
 
       <section className={styles.workspace}>

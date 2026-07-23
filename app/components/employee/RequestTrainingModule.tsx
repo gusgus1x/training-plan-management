@@ -165,10 +165,10 @@ export default function RequestTrainingModule({
             {selectedCourse ? (
               <article className={styles.selectedPreviousCourse}>
                 <div>
-                  <span>{selectedCourse.date}</span>
+                  <span>Completed Course</span>
                   <strong>{selectedCourse.course}</strong>
                   <small>
-                    {selectedCourse.result} / {selectedCourse.assessment}
+                    {selectedCourse.date} / {selectedCourse.result} / {selectedCourse.assessment}
                   </small>
                 </div>
                 <b className={styles.courseOwnerBadge}>{selectedCourseOwner}</b>

@@ -535,6 +535,20 @@
   background: #f8fbff;
 }
 
+.standardTable tbody tr {
+  cursor: pointer;
+}
+
+.toolbar button:disabled {
+  border-color: #dbe2ec;
+  background: #f8fafc;
+  box-shadow: none;
+  color: #a4afbd;
+  cursor: not-allowed;
+  opacity: 1;
+  transform: none;
+}
+
 .checkMark {
   background: #ecfdf5;
   color: #047857;

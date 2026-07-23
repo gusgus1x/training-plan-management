@@ -1090,3 +1090,775 @@
     padding-inline: 0;
   }
 }
+
+.scheduleEditPanel {
+  display: grid;
+  gap: 12px;
+  margin: 2px 0 14px;
+  border: 1px solid #d7e7dd;
+  border-radius: 8px;
+  background: #f1fbf5;
+  box-shadow: inset 4px 0 0 #007a3d;
+  padding: 14px;
+}
+
+.editPanelHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.editPanelHead h3 {
+  margin: 0;
+  color: #172033;
+  font-size: 1rem;
+}
+
+.editPanelHead span {
+  display: block;
+  margin-top: 4px;
+  color: #526176;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.editPanelHead button {
+  min-height: 34px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #26364d;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 900;
+  padding: 6px 10px;
+}
+
+.scheduleEditForm {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.scheduleEditForm label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: #65758b;
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.scheduleEditForm input,
+.scheduleEditForm select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #172033;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 7px 10px;
+}
+
+.saveEditButton {
+  min-height: 38px;
+  border: 0;
+  border-radius: 8px;
+  background: #007a3d;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.overviewDetails li {
+  grid-template-columns: 32px minmax(0, 1fr) auto auto auto;
+}
+
+.overviewDetails li .editScheduleButton {
+  border-color: rgba(0, 122, 61, 0.24);
+  background: #f1fbf5;
+  color: #007a3d;
+}
+
+.calendarEvent button {
+  min-height: 24px;
+  margin-top: 5px;
+  border: 1px solid rgba(0, 122, 61, 0.24);
+  border-radius: 6px;
+  background: #ffffff;
+  color: #007a3d;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 900;
+  padding: 3px 7px;
+}
+
+@media (max-width: 980px) {
+  .scheduleEditForm {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .saveEditButton {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 680px) {
+  .editPanelHead,
+  .scheduleEditForm,
+  .overviewDetails li {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Schedule calendar usability refresh */
+.moduleWorkspace {
+  display: grid;
+  gap: 18px;
+}
+
+.moduleHero {
+  background:
+    linear-gradient(90deg, #ffffff 0%, #ffffff 58%, #f8fafc 100%);
+  border-color: #dbe4ef;
+}
+
+.panel {
+  display: grid;
+  gap: 14px;
+}
+
+.toolbar {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) auto;
+  align-items: center;
+  border-bottom: 1px solid #e5ebf2;
+  gap: 12px;
+  margin-bottom: 0;
+  padding-bottom: 14px;
+}
+
+.yearNote {
+  min-height: 42px;
+  align-items: center;
+  border: 1px solid #e5ebf2;
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 8px 12px;
+}
+
+.exportButton {
+  border-radius: 8px;
+}
+
+.monthTabs {
+  margin-top: 0;
+  grid-template-columns: 1.25fr repeat(12, minmax(58px, 1fr));
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.monthTabs button {
+  min-width: 58px;
+  min-height: 52px;
+}
+
+.monthGrid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.monthCard {
+  min-height: 178px;
+}
+
+.monthCard header {
+  align-items: center;
+}
+
+.monthCardActions button,
+.overviewSummary button,
+.overviewDetails li button {
+  border-radius: 8px;
+}
+
+.calendarPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.calendarPanel > header {
+  margin-bottom: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5ebf2;
+}
+
+.calendarGrid {
+  border-radius: 8px;
+}
+
+.calendarDay {
+  min-height: 156px;
+  padding: 8px;
+}
+
+.calendarEvents {
+  gap: 7px;
+  max-height: 112px;
+}
+
+.calendarEvent {
+  display: grid;
+  gap: 3px;
+  border: 1px solid #dbe7f8;
+  border-left: 4px solid #007a3d;
+  border-image: none;
+  background: #f8fbff;
+  padding: 7px;
+}
+
+.calendarEvent strong {
+  font-size: 0.72rem;
+}
+
+.calendarEvent button {
+  justify-self: start;
+}
+
+.editingCalendarEvent {
+  border-color: rgba(215, 25, 32, 0.38);
+  border-left-color: #d71920;
+  background: #fff7f8;
+  box-shadow: 0 8px 16px rgba(215, 25, 32, 0.08);
+}
+
+.courseOverview {
+  display: grid;
+  gap: 12px;
+}
+
+.courseOverview header {
+  margin-bottom: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e5ebf2;
+}
+
+.overviewSummary {
+  grid-template-columns: 58px minmax(0, 1fr) auto auto;
+}
+
+.overviewDetails {
+  grid-template-columns: 1fr;
+}
+
+.overviewDetails li {
+  grid-template-columns: 42px minmax(0, 1fr) auto auto auto;
+  align-items: center;
+}
+
+.selectedOverviewDetail {
+  border-color: rgba(215, 25, 32, 0.34) !important;
+  background: #fff7f8 !important;
+  box-shadow: inset 4px 0 0 #d71920;
+}
+
+.courseDetailPanel {
+  border: 1px solid #e5ebf2;
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 10px;
+}
+
+@media (max-width: 980px) {
+  .toolbar,
+  .overviewSummary,
+  .overviewDetails li {
+    grid-template-columns: 1fr;
+  }
+
+  .exportButton,
+  .overviewSummary button,
+  .overviewDetails li button {
+    justify-self: start;
+  }
+}
+
+/* Schedule calendar full redesign */
+.moduleWorkspace {
+  width: min(100% - 36px, 1320px);
+  max-width: none;
+  gap: 18px;
+  padding: 10px 0 48px;
+  color: #172033;
+}
+
+.moduleHero {
+  display: grid;
+  min-height: 112px;
+  align-content: center;
+  border: 1px solid #dde6f1;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 34px rgba(24, 36, 56, 0.08);
+  padding: 22px 26px;
+}
+
+.moduleHero::before {
+  width: 4px;
+  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+}
+
+.moduleHero h2 {
+  color: #111827;
+  font-size: clamp(1.45rem, 2vw, 2.05rem);
+  line-height: 1.1;
+}
+
+.moduleHero p {
+  max-width: 760px;
+  color: #526176;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.panel,
+.calendarPanel,
+.courseOverview,
+.monthCard {
+  border: 1px solid #dde6f1;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgba(24, 36, 56, 0.07);
+}
+
+.panel {
+  padding: 16px;
+}
+
+.toolbar {
+  grid-template-columns: 190px minmax(260px, 1fr) auto;
+  align-items: stretch;
+  gap: 12px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.toolbar label,
+.yearNote,
+.exportButton {
+  min-height: 54px;
+}
+
+.toolbar label {
+  align-content: center;
+  border: 1px solid #dde6f1;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 8px 10px;
+}
+
+.toolbar select {
+  min-height: 28px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.toolbar select:focus {
+  box-shadow: none;
+}
+
+.yearNote {
+  display: flex;
+  align-items: center;
+  border: 1px solid #dde6f1;
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 8px 14px;
+}
+
+.yearNote strong {
+  color: #007a3d;
+  font-size: 1.65rem;
+}
+
+.exportButton {
+  border-radius: 8px;
+  background: #172033;
+  padding-inline: 18px;
+}
+
+.exportButton:hover:not(:disabled) {
+  background: #26364d;
+  transform: none;
+}
+
+.monthTabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  overflow-x: auto;
+  padding: 2px 1px 6px;
+}
+
+.monthTabs button {
+  flex: 0 0 76px;
+  min-height: 54px;
+  border-color: #dde6f1;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.monthTabs button:first-child {
+  flex-basis: 104px;
+  background: #172033;
+  border-color: #172033;
+}
+
+.monthTabs button:hover {
+  transform: none;
+}
+
+.monthTabs .activeMonth,
+.monthTabs .activeMonth:first-child {
+  background: #d71920;
+  border-color: #d71920;
+}
+
+.scheduleEditPanel {
+  margin: 14px 0 0;
+  border: 1px solid #b7d8c7;
+  background: #f8fffb;
+  box-shadow: inset 4px 0 0 #007a3d;
+}
+
+.editPanelHead {
+  border-bottom: 1px solid #dcebe3;
+  padding-bottom: 10px;
+}
+
+.scheduleEditForm {
+  grid-template-columns: repeat(4, minmax(130px, 1fr)) minmax(130px, auto);
+}
+
+.scheduleEditForm input,
+.scheduleEditForm select {
+  border-color: #d5e0ec;
+  background: #ffffff;
+}
+
+.saveEditButton {
+  background: #007a3d;
+}
+
+.monthGrid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.monthCard {
+  min-height: 190px;
+  padding: 14px;
+}
+
+.monthCard::before {
+  border-top: 4px solid #e5ebf2;
+}
+
+.monthCard.hasPlans {
+  border-color: #cdd9e8;
+}
+
+.monthCard.hasPlans::before {
+  border-top-color: #007a3d;
+}
+
+.monthCard header {
+  align-items: center;
+  border-bottom: 1px solid #edf2f7;
+  padding-bottom: 10px;
+}
+
+.monthCardActions button {
+  min-height: 32px;
+}
+
+.miniCalendar {
+  gap: 5px;
+}
+
+.miniCalendar div {
+  min-height: 30px;
+}
+
+.miniCalendar b:nth-child(7n + 1) {
+  color: #d71920;
+}
+
+.miniCalendar b:nth-child(7n) {
+  color: #d71920;
+}
+
+.miniCalendar div:nth-child(7n + 1) {
+  border-color: #ffd4da;
+  background: #fff7f8;
+}
+
+.miniCalendar div:nth-child(7n) {
+  border-color: #ffd4da;
+  background: #fff7f8;
+}
+
+.miniCalendar div:nth-child(7n + 1) span {
+  color: #d71920;
+}
+
+.miniCalendar div:nth-child(7n) span {
+  color: #d71920;
+}
+
+.monthCoursePreview {
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+.calendarPanel,
+.courseOverview {
+  padding: 18px;
+}
+
+.calendarPanel > header,
+.courseOverview header {
+  align-items: center;
+  border-bottom: 1px solid #edf2f7;
+  margin: 0;
+  padding-bottom: 14px;
+}
+
+.calendarPanel h3,
+.courseOverview h3 {
+  color: #111827;
+  font-size: 1.12rem;
+}
+
+.calendarGrid {
+  margin-top: 0;
+  border-color: #dce4ef;
+  border-radius: 8px;
+}
+
+.calendarGrid b {
+  min-height: 42px;
+  background: #f8fafc;
+}
+
+.calendarGrid b:nth-child(7n + 1) {
+  background: #fff1f2;
+  color: #d71920;
+}
+
+.calendarGrid b:nth-child(7n) {
+  background: #fff1f2;
+  color: #d71920;
+}
+
+.calendarDay {
+  min-height: 168px;
+  background: #ffffff;
+  padding: 9px;
+}
+
+.calendarDay:nth-child(7n + 1) {
+  background: #fff7f8;
+}
+
+.calendarDay:nth-child(7n) {
+  background: #fff7f8;
+}
+
+.calendarDay:nth-child(7n + 1) .dayNumber {
+  background: #fff1f2;
+  color: #d71920;
+}
+
+.calendarDay:nth-child(7n) .dayNumber {
+  background: #fff1f2;
+  color: #d71920;
+}
+
+.trainingDay {
+  background: #fbfdff;
+}
+
+.trainingDay:nth-child(7n + 1) {
+  background: #fff7f8;
+}
+
+.trainingDay:nth-child(7n) {
+  background: #fff7f8;
+}
+
+.dayNumber {
+  width: 30px;
+  height: 28px;
+}
+
+.calendarEvents {
+  max-height: 122px;
+  gap: 7px;
+}
+
+.calendarEvent {
+  border: 1px solid #d8e5f5;
+  border-left: 4px solid #007a3d;
+  border-image: none;
+  background: #ffffff;
+  box-shadow: 0 6px 12px rgba(24, 36, 56, 0.05);
+  padding: 7px;
+}
+
+.calendarEvent strong {
+  color: #172033;
+  font-size: 0.72rem;
+}
+
+.calendarEvent button {
+  justify-self: start;
+  background: #f1fbf5;
+}
+
+.editingCalendarEvent {
+  border-color: rgba(215, 25, 32, 0.42);
+  border-left-color: #d71920;
+  background: #fff7f8;
+}
+
+.courseOverview {
+  gap: 14px;
+}
+
+.courseOverviewList {
+  gap: 10px;
+}
+
+.overviewRow {
+  border-color: #dde6f1;
+  box-shadow: none;
+}
+
+.overviewSummary {
+  min-height: 72px;
+  grid-template-columns: 58px minmax(0, 1fr) auto auto;
+  background: #ffffff;
+}
+
+.monthBadge {
+  background: #172033;
+}
+
+.overviewTitle strong {
+  font-size: 0.96rem;
+}
+
+.overviewMeta span {
+  border-radius: 8px;
+}
+
+.overviewDetails {
+  grid-template-columns: 1fr;
+  background: #f8fafc;
+}
+
+.overviewDetails li {
+  grid-template-columns: 42px minmax(0, 1fr) auto auto auto;
+  border-color: #dde6f1;
+  background: #ffffff;
+}
+
+.overviewDetails time {
+  width: 34px;
+  height: 34px;
+}
+
+.overviewDetails li > strong {
+  border-radius: 8px;
+}
+
+.selectedOverviewDetail {
+  border-color: rgba(215, 25, 32, 0.42) !important;
+  background: #fff7f8 !important;
+  box-shadow: inset 4px 0 0 #d71920;
+}
+
+.courseDetailPanel {
+  border: 1px solid #dde6f1;
+  border-radius: 8px;
+  background: #fbfdff;
+  padding: 12px;
+}
+
+@media (max-width: 1080px) {
+  .toolbar,
+  .overviewSummary,
+  .overviewDetails li,
+  .scheduleEditForm {
+    grid-template-columns: 1fr;
+  }
+
+  .exportButton,
+  .saveEditButton,
+  .overviewSummary button,
+  .overviewDetails li button {
+    justify-self: stretch;
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .moduleWorkspace {
+    width: min(100% - 24px, 620px);
+  }
+
+  .moduleHero,
+  .panel,
+  .calendarPanel,
+  .courseOverview {
+    padding: 14px;
+  }
+}
+
+/* Align module body with the Report Workspace header */
+.moduleWorkspace {
+  width: min(1180px, calc(100% - 48px));
+  max-width: none;
+  margin: 0 auto;
+  gap: 14px;
+  padding: 10px 0 48px;
+}
+
+.moduleWorkspace > .panel:first-child {
+  margin-top: 0;
+}
+
+.panel {
+  border-left: 4px solid transparent;
+  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+}
+
+@media (max-width: 640px) {
+  .moduleWorkspace {
+    width: min(100% - 28px, 560px);
+  }
+}

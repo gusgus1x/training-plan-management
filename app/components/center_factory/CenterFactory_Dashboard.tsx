@@ -115,6 +115,9 @@ export default function Dashboard({
 }: DashboardProps) {
   const authenticatedUser = useAuthenticatedUser();
   const employeeInfo = buildProfileItems(authenticatedUser);
+  const isCenterDashboard = authenticatedUser?.roleCode === "HRD_CENTER";
+  const dashboardScope = isCenterDashboard ? "Center" : "Factory";
+  const dashboardTitle = `${dashboardScope} Dashboard`;
   const [selectedCalendarYear, setSelectedCalendarYear] =
     useState<(typeof calendarYears)[number]>("2026");
   const [selectedCalendarMonth, setSelectedCalendarMonth] =
@@ -204,17 +207,17 @@ export default function Dashboard({
     <DashboardLayout
       pageClassName={styles.page}
       workspaceClassName={styles.workspace}
-      workspaceLabel="HRD Center dashboard"
+      workspaceLabel={`HRD ${dashboardScope} dashboard`}
       username={username}
       onHome={onHome}
       onLogout={onLogout}
     >
-      <div className={styles.workspaceBadge}>Center Factory Workspace</div>
+      <div className={styles.workspaceBadge}>{dashboardScope} Workspace</div>
 
       <section className={styles.heroPanel} aria-label="Dashboard overview">
         <div className={styles.heroCopy}>
-          <span>HRD Training Center</span>
-          <h1>Center Factory Dashboard</h1>
+          <span>HRD Training {dashboardScope}</span>
+          <h1>{dashboardTitle}</h1>
           <p>
             Manage training plans, course data, records, and reports across the
             AISIN TAKAOKA Thailand group.

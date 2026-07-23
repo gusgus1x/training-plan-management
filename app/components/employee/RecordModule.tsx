@@ -1,170 +1,491 @@
 "use client";
 
-import { useState } from "react";
-import { externalRecordRequests, recordCourses } from "./data";
+import { useMemo, useState } from "react";
+import {
+  profileValue,
+  useAuthenticatedUser,
+} from "../AuthenticatedUserContext";
 import ModuleHeader from "./ModuleHeader";
 import styles from "./UserDashboard.module.css";
 
-type RecordModuleProps = {
-  completedHours: number;
+type EmployeeTrainingRecord = {
+  id: string;
+  courseCode: string;
+  courseTitle: string;
+  category: "Mandatory" | "Core Skill" | "Role Skill" | "Safety";
+  completedDate: string;
+  provider: "HRD Center" | "Factory HRD" | "External";
+  trainingType: "Classroom" | "Online" | "Workshop" | "External";
+  hours: number;
+  result: "Completed" | "Passed";
+  score: number | null;
+  certificateNo: string;
+  evidenceStatus: "Ready" | "Verified";
+  instructor: string;
+  location: string;
+  note: string;
+  preTestStatus: "Pending" | "Completed";
+  postTestStatus: "Pending" | "Completed";
+  evaluationStatus: "Pending" | "Completed";
 };
 
-const recordYears = ["2026", "2027"] as const;
+type DownloadPurpose = "job_change" | "resignation";
 
-const recordMonths = [
-  { value: "all", label: "All year" },
-  { value: "01", label: "January" },
-  { value: "02", label: "February" },
-  { value: "03", label: "March" },
-  { value: "04", label: "April" },
-  { value: "05", label: "May" },
-  { value: "06", label: "June" },
-  { value: "07", label: "July" },
-  { value: "08", label: "August" },
-  { value: "09", label: "September" },
-  { value: "10", label: "October" },
-  { value: "11", label: "November" },
-  { value: "12", label: "December" },
-] as const;
+const downloadPurposes: Record<DownloadPurpose, { label: string; description: string }> = {
+  job_change: {
+    label: "Job application / transfer",
+    description: "Use this file as supporting evidence when applying for or changing jobs.",
+  },
+  resignation: {
+    label: "Resignation document",
+    description: "Use this file as a complete training record for resignation documents.",
+  },
+};
 
-export default function RecordModule({ completedHours }: RecordModuleProps) {
-  const [selectedRecordYear, setSelectedRecordYear] = useState<(typeof recordYears)[number]>("2026");
-  const [selectedRecordMonth, setSelectedRecordMonth] =
-    useState<(typeof recordMonths)[number]["value"]>("all");
+const employeeRecords: EmployeeTrainingRecord[] = [
+  {
+    id: "record-orientation",
+    courseCode: "ORI-2026-05",
+    courseTitle: "Orientation Program",
+    category: "Core Skill",
+    completedDate: "2026-05-12",
+    provider: "HRD Center",
+    trainingType: "Classroom",
+    hours: 6,
+    result: "Completed",
+    score: null,
+    certificateNo: "EMP-ORI-260512-001",
+    evidenceStatus: "Verified",
+    instructor: "HRD Learning Team",
+    location: "Training Room A",
+    note: "New employee orientation completed and verified by HRD.",
+    preTestStatus: "Completed",
+    postTestStatus: "Completed",
+    evaluationStatus: "Completed",
+  },
+  {
+    id: "record-5s",
+    courseCode: "5S-2026-06",
+    courseTitle: "5S Awareness",
+    category: "Safety",
+    completedDate: "2026-06-22",
+    provider: "Factory HRD",
+    trainingType: "Workshop",
+    hours: 3,
+    result: "Passed",
+    score: 88,
+    certificateNo: "EMP-5S-260622-014",
+    evidenceStatus: "Ready",
+    instructor: "Production Excellence",
+    location: "Shop Floor Learning Area",
+    note: "Passed post-training assessment and practical review.",
+    preTestStatus: "Completed",
+    postTestStatus: "Pending",
+    evaluationStatus: "Pending",
+  },
+  {
+    id: "record-pdpa",
+    courseCode: "PDPA-2026-07",
+    courseTitle: "Data Privacy Awareness",
+    category: "Mandatory",
+    completedDate: "2026-07-15",
+    provider: "HRD Center",
+    trainingType: "Online",
+    hours: 2,
+    result: "Passed",
+    score: 96,
+    certificateNo: "EMP-PDPA-260715-021",
+    evidenceStatus: "Verified",
+    instructor: "IT Governance",
+    location: "Online",
+    note: "Mandatory compliance training completed for annual requirement.",
+    preTestStatus: "Pending",
+    postTestStatus: "Pending",
+    evaluationStatus: "Pending",
+  },
+];
 
-  const visibleRecordCourses = recordCourses.filter(
-    (course) =>
-      course.year === selectedRecordYear &&
-      (selectedRecordMonth === "all" || course.month === selectedRecordMonth),
-  );
+const categories = ["all", "Mandatory", "Core Skill", "Role Skill", "Safety"] as const;
+
+const formatDate = (value: string) =>
+  new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(`${value}T00:00:00`));
+
+const escapeCell = (value: string | number | null) =>
+  String(value ?? "-")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+
+const exportPersonalRecord = (
+  records: EmployeeTrainingRecord[],
+  employeeName: string,
+  purpose: (typeof downloadPurposes)[DownloadPurpose],
+) => {
+  const headers = [
+    "Employee",
+    "Completed Date",
+    "Course Code",
+    "Course Title",
+    "Category",
+    "Provider",
+    "Training Type",
+    "Hours",
+    "Result",
+    "Score",
+    "Certificate No.",
+    "Evidence Status",
+    "Pre Test",
+    "Post Test",
+    "Evaluation",
+    "Instructor",
+    "Location",
+  ];
+  const rows = records.map((record) => [
+    employeeName,
+    formatDate(record.completedDate),
+    record.courseCode,
+    record.courseTitle,
+    record.category,
+    record.provider,
+    record.trainingType,
+    record.hours,
+    record.result,
+    record.score,
+    record.certificateNo,
+    record.evidenceStatus,
+    record.preTestStatus,
+    record.postTestStatus,
+    record.evaluationStatus,
+    record.instructor,
+    record.location,
+  ]);
+  const recordTableRows = [headers, ...rows]
+    .map((row) => `<tr>${row.map((cell) => `<td>${escapeCell(cell)}</td>`).join("")}</tr>`)
+    .join("");
+  const summaryRows = [
+    ["Document", "Completed Training Record"],
+    ["Employee", employeeName],
+    ["Purpose", purpose.label],
+    ["Purpose Detail", purpose.description],
+    ["Total Completed Records", records.length],
+    ["Total Completed Hours", records.reduce((total, record) => total + record.hours, 0)],
+    ["Generated Date", formatDate(new Date().toISOString().slice(0, 10))],
+  ]
+    .map((row) => `<tr>${row.map((cell) => `<td>${escapeCell(cell)}</td>`).join("")}</tr>`)
+    .join("");
+  const workbook = `<!doctype html><html><head><meta charset="utf-8" /><style>body{font-family:Arial,sans-serif}table{border-collapse:collapse;margin-bottom:16px}td{border:1px solid #cbd5e1;padding:6px 8px;white-space:nowrap}.summary tr td:first-child,.records tr:first-child td{background:#f1f5f9;font-weight:700}</style></head><body><table class="summary">${summaryRows}</table><table class="records">${recordTableRows}</table></body></html>`;
+  const blob = new Blob([workbook], { type: "application/vnd.ms-excel;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = `my-training-record-${new Date().toISOString().slice(0, 10)}.xls`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+
+export default function RecordModule() {
+  const authenticatedUser = useAuthenticatedUser();
+  const employeeName = profileValue(authenticatedUser?.displayName ?? authenticatedUser?.username);
+  const [selectedCategory, setSelectedCategory] = useState<(typeof categories)[number]>("all");
+  const [query, setQuery] = useState("");
+  const [selectedRecordId, setSelectedRecordId] = useState(employeeRecords[0].id);
+  const [downloadPurpose, setDownloadPurpose] = useState<DownloadPurpose>("job_change");
+  const [exportMessage, setExportMessage] = useState("");
+  const [assessmentMessage, setAssessmentMessage] = useState("");
+
+  const filteredRecords = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return employeeRecords.filter((record) => {
+      const matchesCategory = selectedCategory === "all" || record.category === selectedCategory;
+      const matchesQuery =
+        !normalizedQuery ||
+        [
+          record.courseCode,
+          record.courseTitle,
+          record.category,
+          record.provider,
+          record.certificateNo,
+        ].some((value) => value.toLowerCase().includes(normalizedQuery));
+
+      return matchesCategory && matchesQuery;
+    });
+  }, [query, selectedCategory]);
+
+  const selectedRecord =
+    filteredRecords.find((record) => record.id === selectedRecordId) ??
+    filteredRecords[0] ??
+    employeeRecords[0];
+
+  const handleExportAll = () => {
+    if (employeeRecords.length === 0) {
+      setExportMessage("No training record available to export.");
+      return;
+    }
+
+    const purpose = downloadPurposes[downloadPurpose];
+
+    exportPersonalRecord(employeeRecords, employeeName, purpose);
+    setExportMessage(
+      `Downloaded ${employeeRecords.length} completed training records for ${purpose.label}.`,
+    );
+  };
 
   return (
     <section className={styles.modulePage}>
       <ModuleHeader
-        eyebrow="Training Record"
-        title="Training Record"
-        detail="Check training history, assessment status, completed hours, and external record requests."
+        eyebrow="Employee Training Record"
+        title="My Training Record"
+        detail="A personal training passport for completed courses, certificates, scores, and verified learning hours."
       />
 
-      <div className={styles.recordSummary}>
-        <article>
-          <span>Completed Hours</span>
-          <strong>{completedHours}</strong>
-        </article>
-        <article>
-          <span>Completed</span>
-          <strong>2</strong>
-        </article>
-        <article>
-          <span>Pending</span>
-          <strong>1</strong>
-        </article>
-      </div>
+      <section className={styles.employeeRecordToolbar} aria-label="Training record filters">
+        <input
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setExportMessage("");
+          }}
+          placeholder="Search course, provider, certificate..."
+        />
+        <select
+          value={selectedCategory}
+          onChange={(event) => {
+            setSelectedCategory(event.target.value as (typeof categories)[number]);
+            setExportMessage("");
+          }}
+        >
+          {categories.map((category) => (
+            <option key={category} value={category}>
+              {category === "all" ? "All categories" : category}
+            </option>
+          ))}
+        </select>
+      </section>
 
-      <div className={styles.recordLayout}>
-        <section className={styles.recordPanel} aria-label="Training record in system">
+      <section className={styles.employeeRecordDownloadBox} aria-label="Download completed training files">
+        <div>
+          <span>All Completed Training Files</span>
+          <h2>Download full training record</h2>
+          <p>
+            Download one file that includes every completed training record, certificate number,
+            learning hours, score, provider, evidence status, and document purpose.
+          </p>
+        </div>
+        <div className={styles.employeeRecordPurposeGroup} aria-label="Document purpose">
+          {(Object.keys(downloadPurposes) as DownloadPurpose[]).map((purposeKey) => (
+            <label key={purposeKey}>
+              <input
+                checked={downloadPurpose === purposeKey}
+                name="download-purpose"
+                onChange={() => {
+                  setDownloadPurpose(purposeKey);
+                  setExportMessage("");
+                }}
+                type="radio"
+              />
+              <span>
+                <strong>{downloadPurposes[purposeKey].label}</strong>
+                <small>{downloadPurposes[purposeKey].description}</small>
+              </span>
+            </label>
+          ))}
+        </div>
+        <div className={styles.employeeRecordDownloadMeta}>
+          <article>
+            <span>Records</span>
+            <strong>{employeeRecords.length}</strong>
+          </article>
+          <article>
+            <span>Hours</span>
+            <strong>{employeeRecords.reduce((total, record) => total + record.hours, 0)}</strong>
+          </article>
+          <button type="button" onClick={handleExportAll}>
+            Download All Records
+          </button>
+        </div>
+        {exportMessage ? <p className={styles.employeeRecordMessage}>{exportMessage}</p> : null}
+      </section>
+
+      <div className={styles.employeeRecordWorkspace}>
+        <section className={styles.employeeRecordListPanel} aria-label="Completed training list">
           <div className={styles.panelHeader}>
             <div>
-              <p>System Record</p>
-              <h2>Training Records</h2>
+              <p>Completed History</p>
+              <h2>Training Timeline</h2>
             </div>
-            <span>{visibleRecordCourses.length} courses</span>
+            <span>{filteredRecords.length} records</span>
           </div>
 
-          <div className={styles.recordFilters}>
-            <label>
-              <span>Year</span>
-              <select
-                value={selectedRecordYear}
-                onChange={(event) =>
-                  setSelectedRecordYear(event.target.value as (typeof recordYears)[number])
+          <div className={styles.employeeRecordTimeline}>
+            {filteredRecords.map((record) => (
+              <button
+                className={
+                  record.id === selectedRecord.id
+                    ? styles.activeEmployeeRecordItem
+                    : styles.employeeRecordItem
                 }
+                key={record.id}
+                type="button"
+                onClick={() => {
+                  setSelectedRecordId(record.id);
+                  setExportMessage("");
+                  setAssessmentMessage("");
+                }}
               >
-                {recordYears.map((year) => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
-            </label>
-
-            <label>
-              <span>Month</span>
-              <select
-                value={selectedRecordMonth}
-                onChange={(event) =>
-                  setSelectedRecordMonth(event.target.value as (typeof recordMonths)[number]["value"])
-                }
-              >
-                {recordMonths.map((month) => (
-                  <option key={month.value} value={month.value}>{month.label}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className={styles.recordCourseList}>
-            {visibleRecordCourses.map((item) => (
-              <article key={item.course}>
+                <time dateTime={record.completedDate}>{formatDate(record.completedDate)}</time>
                 <div>
-                  <strong>{item.course}</strong>
-                  <span>{item.date}</span>
+                  <strong>{record.courseTitle}</strong>
+                  <span>{record.courseCode} / {record.provider}</span>
                 </div>
-                <b>{item.result}</b>
-                <span>{item.assessment}</span>
-                <button type="button">{item.action}</button>
-              </article>
+                <b>{record.result}</b>
+              </button>
             ))}
-            {visibleRecordCourses.length === 0 ? (
-              <div className={styles.recordEmpty}>No training record found for this period.</div>
+            {filteredRecords.length === 0 ? (
+              <p className={styles.employeeRecordEmpty}>No completed training record found.</p>
             ) : null}
           </div>
         </section>
 
-        <section className={styles.recordPanel} aria-label="Request external training record">
-          <div className={styles.panelHeader}>
+        <aside className={styles.employeeRecordDetailPanel} aria-label="Selected training record detail">
+          <div className={styles.employeeRecordDetailHead}>
             <div>
-              <p>Request Record</p>
-              <h2>External Record Request</h2>
+              <span>{selectedRecord.category}</span>
+              <h2>{selectedRecord.courseTitle}</h2>
+              <p>{selectedRecord.courseCode} / {formatDate(selectedRecord.completedDate)}</p>
             </div>
-            <span>HRD</span>
+            <b>{selectedRecord.evidenceStatus}</b>
           </div>
 
-          <form className={styles.recordRequestForm}>
-            <label>
-              Course Name
-              <input type="text" defaultValue="Forklift Safety Training" />
-            </label>
-            <label>
-              Source
-              <select defaultValue="external">
-                <option value="external">External training</option>
-                <option value="previous">Previous workplace record</option>
-              </select>
-            </label>
-            <label>
-              Note / Evidence
-              <textarea defaultValue="Attach certificate or supporting document for HRD verification." />
-            </label>
-            <div className={styles.recordReasonBox}>
-              <span>Reason</span>
-              <strong>
-                Use this request when training was completed outside the system and needs HRD confirmation.
-              </strong>
-            </div>
-            <button type="button">Submit Request</button>
-          </form>
-
-          <div className={styles.externalRecordList}>
-            {externalRecordRequests.map((item) => (
-              <article key={item.course}>
-                <div>
-                  <strong>{item.course}</strong>
-                  <span>{item.source}</span>
-                </div>
-                <b>{item.status}</b>
-              </article>
-            ))}
+          <div className={styles.employeeRecordDetailGrid}>
+            <article>
+              <span>Hours</span>
+              <strong>{selectedRecord.hours}</strong>
+            </article>
+            <article>
+              <span>Score</span>
+              <strong>{selectedRecord.score ? `${selectedRecord.score}%` : "-"}</strong>
+            </article>
+            <article>
+              <span>Type</span>
+              <strong>{selectedRecord.trainingType}</strong>
+            </article>
+            <article>
+              <span>Result</span>
+              <strong>{selectedRecord.result}</strong>
+            </article>
           </div>
-        </section>
+
+          <dl className={styles.employeeRecordMeta}>
+            <div>
+              <dt>Certificate No.</dt>
+              <dd>{selectedRecord.certificateNo}</dd>
+            </div>
+            <div>
+              <dt>Instructor</dt>
+              <dd>{selectedRecord.instructor}</dd>
+            </div>
+            <div>
+              <dt>Location</dt>
+              <dd>{selectedRecord.location}</dd>
+            </div>
+            <div>
+              <dt>Provider</dt>
+              <dd>{selectedRecord.provider}</dd>
+            </div>
+          </dl>
+
+          <div className={styles.employeeRecordEvidence}>
+            <span>Evidence Note</span>
+            <p>{selectedRecord.note}</p>
+          </div>
+
+          <section className={styles.employeeAssessmentPanel} aria-label="Assessment flow">
+            <div>
+              <span>Assessment Flow</span>
+              <h3>Pre test / Post test / Evaluation</h3>
+              <p>
+                Post test opens after pre test is completed. Evaluation opens after post test is completed.
+              </p>
+            </div>
+
+            <div className={styles.employeeAssessmentSteps}>
+              {[
+                {
+                  key: "pre",
+                  title: "Pre Test",
+                  status: selectedRecord.preTestStatus,
+                  locked: false,
+                  action: "Open Pre Test",
+                },
+                {
+                  key: "post",
+                  title: "Post Test",
+                  status: selectedRecord.postTestStatus,
+                  locked: selectedRecord.preTestStatus !== "Completed",
+                  action: "Open Post Test",
+                },
+                {
+                  key: "evaluation",
+                  title: "Evaluation",
+                  status: selectedRecord.evaluationStatus,
+                  locked: selectedRecord.postTestStatus !== "Completed",
+                  action: "Open Evaluation",
+                },
+              ].map((step) => {
+                const isCompleted = step.status === "Completed";
+                const buttonLabel = step.locked
+                  ? "Locked"
+                  : isCompleted
+                    ? "Completed"
+                    : step.action;
+
+                return (
+                  <article
+                    className={step.locked ? styles.lockedAssessmentStep : styles.employeeAssessmentStep}
+                    key={step.key}
+                  >
+                    <div>
+                      <span>{step.title}</span>
+                      <strong>{step.status}</strong>
+                      <small>
+                        {step.locked
+                          ? step.key === "post"
+                            ? "Complete pre test first"
+                            : "Complete post test first"
+                          : isCompleted
+                            ? "Already submitted"
+                            : "Ready to open"}
+                      </small>
+                    </div>
+                    <button
+                      disabled={step.locked || isCompleted}
+                      type="button"
+                      onClick={() => {
+                        setAssessmentMessage(`${step.title} opened for ${selectedRecord.courseTitle}.`);
+                      }}
+                    >
+                      {buttonLabel}
+                    </button>
+                  </article>
+                );
+              })}
+            </div>
+
+            {assessmentMessage ? (
+              <p className={styles.employeeRecordMessage}>{assessmentMessage}</p>
+            ) : null}
+          </section>
+
+        </aside>
       </div>
     </section>
   );

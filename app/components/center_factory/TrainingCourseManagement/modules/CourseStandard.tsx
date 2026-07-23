@@ -76,6 +76,8 @@ const normalizePosition = (position: string) => {
 export default function CourseStandard() {
   const [standards, setStandards] = useState<CourseStandardRecord[]>(initialStandards);
   const [isNewOpen, setIsNewOpen] = useState(false);
+  const [editingId, setEditingId] = useState("");
+  const [selectedId, setSelectedId] = useState(initialStandards[0]?.id ?? "");
   const [courseCode, setCourseCode] = useState(courseMasterOptions[0]?.code ?? "");
   const [functionName, setFunctionName] = useState("");
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
@@ -83,6 +85,7 @@ export default function CourseStandard() {
   const [search, setSearch] = useState("");
 
   const selectedCourse = courseMasterOptions.find((course) => course.code === courseCode) ?? courseMasterOptions[0];
+  const selectedStandard = standards.find((standard) => standard.id === selectedId) ?? null;
   const visibleStandards = useMemo(
     () =>
       standards.filter((standard) =>
@@ -104,10 +107,24 @@ export default function CourseStandard() {
 
   const handleNew = () => {
     setIsNewOpen(true);
+    setEditingId("");
     setCourseCode(courseMasterOptions[0]?.code ?? "");
     setFunctionName("");
     setSelectedPositions([]);
     setSelectedLevels([]);
+  };
+
+  const handleEdit = () => {
+    if (!selectedStandard) {
+      return;
+    }
+
+    setIsNewOpen(true);
+    setEditingId(selectedStandard.id);
+    setCourseCode(selectedStandard.courseCode);
+    setFunctionName(selectedStandard.functionName);
+    setSelectedPositions(selectedStandard.positions);
+    setSelectedLevels(selectedStandard.levels);
   };
 
   const handleSave = () => {
@@ -116,7 +133,7 @@ export default function CourseStandard() {
     }
 
     const nextRecord: CourseStandardRecord = {
-      id: `standard-${Date.now()}`,
+      id: editingId || `standard-${Date.now()}`,
       courseCode: selectedCourse.code,
       courseName: selectedCourse.name,
       functionName: functionName.trim(),
@@ -124,14 +141,35 @@ export default function CourseStandard() {
       levels: selectedLevels,
     };
 
-    setStandards((current) => [nextRecord, ...current]);
+    setStandards((current) =>
+      editingId
+        ? current.map((standard) => (standard.id === editingId ? nextRecord : standard))
+        : [nextRecord, ...current],
+    );
+    setSelectedId(nextRecord.id);
     setIsNewOpen(false);
+    setEditingId("");
+  };
+
+  const handleDelete = () => {
+    if (!selectedStandard) {
+      return;
+    }
+
+    setStandards((current) => current.filter((standard) => standard.id !== selectedStandard.id));
+    setSelectedId("");
+    if (editingId === selectedStandard.id) {
+      setIsNewOpen(false);
+      setEditingId("");
+    }
   };
 
   const handleRefresh = () => {
     setStandards(initialStandards);
     setSearch("");
     setIsNewOpen(false);
+    setEditingId("");
+    setSelectedId(initialStandards[0]?.id ?? "");
   };
 
   return (
@@ -156,6 +194,22 @@ export default function CourseStandard() {
           <button className={styles.primaryButton} type="button" onClick={handleNew}>
             New
           </button>
+          <button
+            className={styles.secondaryButton}
+            disabled={!selectedStandard}
+            type="button"
+            onClick={handleEdit}
+          >
+            Edit
+          </button>
+          <button
+            className={styles.dangerButton}
+            disabled={!selectedStandard}
+            type="button"
+            onClick={handleDelete}
+          >
+            Delete
+          </button>
           <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>
             Refresh
           </button>
@@ -165,10 +219,17 @@ export default function CourseStandard() {
           <section className={styles.formPanel}>
             <div className={styles.panelHeader}>
               <div>
-                <p className={styles.kicker}>New standard</p>
-                <h3>Create course standard</h3>
+                <p className={styles.kicker}>{editingId ? "Edit standard" : "New standard"}</p>
+                <h3>{editingId ? "Update course standard" : "Create course standard"}</h3>
               </div>
-              <button className={styles.closeButton} type="button" onClick={() => setIsNewOpen(false)}>
+              <button
+                className={styles.closeButton}
+                type="button"
+                onClick={() => {
+                  setIsNewOpen(false);
+                  setEditingId("");
+                }}
+              >
                 Close
               </button>
             </div>
@@ -230,9 +291,16 @@ export default function CourseStandard() {
 
             <div className={styles.formActions}>
               <button className={styles.primaryButton} type="button" onClick={handleSave}>
-                Save standard
+                {editingId ? "Save changes" : "Save standard"}
               </button>
-              <button className={styles.secondaryButton} type="button" onClick={() => setIsNewOpen(false)}>
+              <button
+                className={styles.secondaryButton}
+                type="button"
+                onClick={() => {
+                  setIsNewOpen(false);
+                  setEditingId("");
+                }}
+              >
                 Cancel
               </button>
             </div>
@@ -256,7 +324,11 @@ export default function CourseStandard() {
             </thead>
             <tbody>
               {visibleStandards.map((standard) => (
-                <tr key={standard.id}>
+                <tr
+                  className={standard.id === selectedId ? styles.selectedRow : undefined}
+                  key={standard.id}
+                  onClick={() => setSelectedId(standard.id)}
+                >
                   <td>{standard.courseCode}</td>
                   <td>{standard.courseName}</td>
                   <td>{standard.functionName}</td>

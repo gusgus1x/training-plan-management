@@ -22,6 +22,11 @@ const calendarMonths = monthOptions.map((month) => ({
 
 const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
+const isWeekendDate = (date: string) => {
+  const day = new Date(`${date}T00:00:00`).getDay();
+  return day === 0 || day === 6;
+};
+
 const mockCourseTemplates = [
   {
     code: "CRS-101",
@@ -140,20 +145,44 @@ const buildCalendarCells = (year: string, month: string, plans: RollingPlan[]) =
   return cells;
 };
 
+type ScheduleEditForm = Pick<
+  RollingPlan,
+  "batch" | "company" | "endTime" | "location" | "startTime" | "status" | "trainer" | "trainingDate"
+>;
+
+const buildEditForm = (plan: RollingPlan): ScheduleEditForm => ({
+  batch: plan.batch,
+  company: plan.company,
+  endTime: plan.endTime,
+  location: plan.location,
+  startTime: plan.startTime,
+  status: plan.status,
+  trainer: plan.trainer,
+  trainingDate: plan.trainingDate,
+});
+
 export default function ScheduleCalendar() {
   const [selectedYear, setSelectedYear] = useState("2026");
   const [selectedMonth, setSelectedMonth] = useState<"all" | string>("all");
   const [expandedTrainingMonth, setExpandedTrainingMonth] = useState("");
   const [expandedOverviewMonth, setExpandedOverviewMonth] = useState("");
   const [expandedOverviewCourse, setExpandedOverviewCourse] = useState("");
+  const [scheduleUpdates, setScheduleUpdates] = useState<Record<string, ScheduleEditForm>>({});
+  const [editingPlanId, setEditingPlanId] = useState("");
+  const [editForm, setEditForm] = useState<ScheduleEditForm | null>(null);
 
   const schedulePlans = useMemo(
     () =>
-      [...initialRollingPlans, ...createMockRollingPlans(selectedYear)].sort((a, b) =>
-        a.trainingDate.localeCompare(b.trainingDate),
-      ),
-    [selectedYear],
+      [...initialRollingPlans, ...createMockRollingPlans(selectedYear)]
+        .map((plan) => ({
+          ...plan,
+          ...(scheduleUpdates[plan.rollingId] ?? {}),
+        }))
+        .filter((plan) => !isWeekendDate(plan.trainingDate))
+        .sort((a, b) => a.trainingDate.localeCompare(b.trainingDate)),
+    [scheduleUpdates, selectedYear],
   );
+  const editingPlan = schedulePlans.find((plan) => plan.rollingId === editingPlanId) ?? null;
 
   const monthSummaries = useMemo(
     () =>
@@ -231,16 +260,38 @@ export default function ScheduleCalendar() {
     URL.revokeObjectURL(url);
   };
 
+  const handleEditPlan = (plan: RollingPlan) => {
+    setEditingPlanId(plan.rollingId);
+    setEditForm(buildEditForm(plan));
+    setSelectedMonth(plan.trainingDate.slice(5, 7));
+    setExpandedOverviewMonth(plan.trainingDate.slice(5, 7));
+    setExpandedOverviewCourse(plan.rollingId);
+  };
+
+  const updateEditForm = <Key extends keyof ScheduleEditForm>(
+    field: Key,
+    value: ScheduleEditForm[Key],
+  ) => {
+    setEditForm((current) => (current ? { ...current, [field]: value } : current));
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingPlanId || !editForm) return;
+
+    setScheduleUpdates((current) => ({
+      ...current,
+      [editingPlanId]: editForm,
+    }));
+    setSelectedMonth(editForm.trainingDate.slice(5, 7));
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPlanId("");
+    setEditForm(null);
+  };
+
   return (
     <section className={styles.moduleWorkspace} aria-label="Schedule calendar module">
-      <section className={styles.moduleHero}>
-        <div>
-          <p className={styles.panelKicker}>{scheduleCalendarModule.subtitle}</p>
-          <h2>{scheduleCalendarModule.title}</h2>
-          <p>{scheduleCalendarModule.description}</p>
-        </div>
-      </section>
-
       <section className={styles.panel}>
         <div className={styles.toolbar}>
           <label>
@@ -264,6 +315,91 @@ export default function ScheduleCalendar() {
             Export Excel
           </button>
         </div>
+
+        {editingPlan && editForm ? (
+          <section className={styles.scheduleEditPanel} aria-label="Edit selected training schedule">
+            <div className={styles.editPanelHead}>
+              <div>
+                <p className={styles.panelKicker}>Edit schedule</p>
+                <h3>{editingPlan.course.name}</h3>
+                <span>{editingPlan.course.code} / {editingPlan.course.courseGroup}</span>
+              </div>
+              <button type="button" onClick={handleCancelEdit}>
+                Close
+              </button>
+            </div>
+
+            <div className={styles.scheduleEditForm}>
+              <label>
+                Date
+                <input
+                  type="date"
+                  value={editForm.trainingDate}
+                  onChange={(event) => updateEditForm("trainingDate", event.target.value)}
+                />
+              </label>
+              <label>
+                Start
+                <input
+                  type="time"
+                  value={editForm.startTime}
+                  onChange={(event) => updateEditForm("startTime", event.target.value)}
+                />
+              </label>
+              <label>
+                End
+                <input
+                  type="time"
+                  value={editForm.endTime}
+                  onChange={(event) => updateEditForm("endTime", event.target.value)}
+                />
+              </label>
+              <label>
+                Location
+                <input
+                  value={editForm.location}
+                  onChange={(event) => updateEditForm("location", event.target.value)}
+                />
+              </label>
+              <label>
+                Company
+                <input
+                  value={editForm.company}
+                  onChange={(event) => updateEditForm("company", event.target.value)}
+                />
+              </label>
+              <label>
+                Trainer
+                <input
+                  value={editForm.trainer}
+                  onChange={(event) => updateEditForm("trainer", event.target.value)}
+                />
+              </label>
+              <label>
+                Batch
+                <input
+                  value={editForm.batch}
+                  onChange={(event) => updateEditForm("batch", event.target.value)}
+                />
+              </label>
+              <label>
+                Status
+                <select
+                  value={editForm.status}
+                  onChange={(event) =>
+                    updateEditForm("status", event.target.value as ScheduleEditForm["status"])
+                  }
+                >
+                  <option>Planning</option>
+                  <option>Planned</option>
+                </select>
+              </label>
+              <button className={styles.saveEditButton} type="button" onClick={handleSaveEdit}>
+                Save changes
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         <div className={styles.monthTabs} aria-label="Select schedule month">
           <button
@@ -372,9 +508,17 @@ export default function ScheduleCalendar() {
                     <span className={styles.dayNumber}>{cell.day}</span>
                     <div className={styles.calendarEvents}>
                       {cell.plans.map((plan) => (
-                        <article className={styles.calendarEvent} key={plan.rollingId}>
+                        <article
+                          className={`${styles.calendarEvent} ${
+                            editingPlanId === plan.rollingId ? styles.editingCalendarEvent : ""
+                          }`}
+                          key={plan.rollingId}
+                        >
                           <strong>{plan.course.name}</strong>
                           <small>{plan.startTime}-{plan.endTime} / {plan.company}</small>
+                          <button type="button" onClick={() => handleEditPlan(plan)}>
+                            Edit
+                          </button>
                         </article>
                       ))}
                     </div>
@@ -397,7 +541,6 @@ export default function ScheduleCalendar() {
         <div className={styles.courseOverviewList}>
           {displayedMonths.map((month) => {
             const firstPlan = month.plans[0];
-            const lastPlan = month.plans.at(-1);
             const isOpen = expandedOverviewMonth === month.value;
 
             return (
@@ -411,14 +554,6 @@ export default function ScheduleCalendar() {
                     <strong>{month.label}</strong>
                     <span>{firstPlan ? firstPlan.course.name : "No schedule"}</span>
                   </div>
-                  <div className={styles.overviewMeta}>
-                    <span>{month.plans.length} courses</span>
-                    <span>
-                      {firstPlan && lastPlan
-                        ? `${Number(firstPlan.trainingDate.slice(8, 10))}-${Number(lastPlan.trainingDate.slice(8, 10))} ${month.shortLabel}`
-                        : "No schedule"}
-                    </span>
-                  </div>
                   <button
                     disabled={month.plans.length === 0}
                     type="button"
@@ -430,7 +565,10 @@ export default function ScheduleCalendar() {
                 {isOpen ? (
                   <ul className={styles.overviewDetails}>
                     {month.plans.map((plan) => (
-                      <li key={plan.rollingId}>
+                      <li
+                        className={editingPlanId === plan.rollingId ? styles.selectedOverviewDetail : ""}
+                        key={plan.rollingId}
+                      >
                         <time dateTime={plan.trainingDate}>{Number(plan.trainingDate.slice(8, 10))}</time>
                         <div>
                           <span>{plan.course.name}</span>
@@ -446,6 +584,13 @@ export default function ScheduleCalendar() {
                           }
                         >
                           {expandedOverviewCourse === plan.rollingId ? "Hide details" : "Show details"}
+                        </button>
+                        <button
+                          className={styles.editScheduleButton}
+                          type="button"
+                          onClick={() => handleEditPlan(plan)}
+                        >
+                          Edit
                         </button>
                         {expandedOverviewCourse === plan.rollingId ? (
                           <dl className={styles.courseDetailPanel}>
