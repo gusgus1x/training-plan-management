@@ -71,7 +71,6 @@ export default function CourseStandard() {
     () =>
       courses.filter(
         (course) =>
-          course.status === "Active" &&
           isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode),
       ),
     [courses, user?.roleCode, userCompanyCode],

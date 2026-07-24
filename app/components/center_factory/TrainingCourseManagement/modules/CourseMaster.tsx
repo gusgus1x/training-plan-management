@@ -59,12 +59,10 @@ const emptyCourseForm: CourseForm = {
   evaluationAfter30Day: "",
   lifeCycleMonth: "12",
   remark: "",
-  status: "Draft",
-  courseType: defaultCourseTypes[0]?.name ?? "",
-  courseGroup: defaultCourseGroups[0]?.name ?? "",
+  status: "Active",
+  courseType: "",
+  courseGroup: "",
 };
-
-const statuses: CourseStatus[] = ["Active", "Draft", "Inactive"];
 
 export default function CourseMaster() {
   const user = useAuthenticatedUser();
@@ -73,11 +71,10 @@ export default function CourseMaster() {
       (type) => type.name,
     ),
   );
-  const [courseGroups] = useState(() =>
-    readMasterCollection(TRAINING_MASTER_KEYS.courseGroups, defaultCourseGroups).map(
-      (group) => group.name,
-    ),
+  const [courseGroupOptions] = useState(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.courseGroups, defaultCourseGroups),
   );
+  const courseGroups = courseGroupOptions.map((group) => group.name);
   const [courses, setCourses] = useState<CourseRecord[]>(() =>
     readWorkflowCollection<CourseRecord>(TRAINING_WORKFLOW_KEYS.courses),
   );
@@ -108,7 +105,6 @@ export default function CourseMaster() {
           course.courseNameEn,
           course.courseType,
           course.courseGroup,
-          course.status,
         ]
           .join(" ")
           .toLowerCase()
@@ -124,6 +120,59 @@ export default function CourseMaster() {
 
   const updateForm = (field: keyof CourseForm, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const buildCourseCode = (
+    courseGroup: string,
+    currentCode = "",
+    excludedCourseId = "",
+  ) => {
+    if (!courseGroup) {
+      return "";
+    }
+
+    const groupId =
+      courseGroupOptions.find((group) => group.name === courseGroup)?.groupId ||
+      "CRS";
+    const currentSequence = currentCode.match(/(\d+)$/)?.[1];
+    const preferredCode = currentSequence
+      ? `${groupId}-${currentSequence.padStart(3, "0")}`
+      : "";
+    const codeExists = (courseCode: string) =>
+      courses.some(
+        (course) =>
+          course.id !== excludedCourseId &&
+          course.courseCode.toUpperCase() === courseCode.toUpperCase(),
+      );
+
+    if (preferredCode && !codeExists(preferredCode)) {
+      return preferredCode;
+    }
+
+    const highestSequence = courses.reduce((highest, course) => {
+      if (course.id === excludedCourseId) {
+        return highest;
+      }
+
+      const match = course.courseCode.match(
+        new RegExp(`^${groupId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-(\\d+)$`, "i"),
+      );
+      return match ? Math.max(highest, Number(match[1])) : highest;
+    }, 0);
+
+    return `${groupId}-${String(highestSequence + 1).padStart(3, "0")}`;
+  };
+
+  const handleCourseGroupChange = (courseGroup: string) => {
+    setForm((current) => ({
+      ...current,
+      courseGroup,
+      courseCode: buildCourseCode(
+        courseGroup,
+        current.courseCode,
+        selectedCourseId,
+      ),
+    }));
   };
 
   const handleNew = () => {
@@ -186,12 +235,19 @@ export default function CourseMaster() {
   };
 
   const handleSave = () => {
+    if (!form.courseGroup || !form.courseType || !form.courseCode) {
+      return;
+    }
+
     const nextCourse: CourseRecord = {
       ...form,
       id: selectedCourseId || `course-${Date.now()}`,
-      courseCode: form.courseCode.trim() || `CRS-${String(courses.length + 1).padStart(3, "0")}`,
+      courseCode:
+        form.courseCode.trim() ||
+        buildCourseCode(form.courseGroup, "", selectedCourseId),
       courseNameTh: form.courseNameTh.trim() || "New Course TH",
       courseNameEn: form.courseNameEn.trim() || "New Course",
+      status: "Active",
       updatedAt: new Date().toISOString().slice(0, 10),
       owner: selectedCourse?.owner ?? owner,
       ownerCompany: selectedCourse?.ownerCompany ?? ownerCompany,
@@ -230,7 +286,11 @@ export default function CourseMaster() {
       <div className={styles.formGrid}>
         <label>
           Course Code
-          <input value={form.courseCode} disabled={!isEditing} onChange={(event) => updateForm("courseCode", event.target.value)} />
+          <input
+            value={form.courseCode}
+            readOnly
+            title="Generated automatically from the selected Course Group ID"
+          />
         </label>
         <label>
           Course Name (TH)
@@ -241,26 +301,24 @@ export default function CourseMaster() {
           <input value={form.courseNameEn} disabled={!isEditing} onChange={(event) => updateForm("courseNameEn", event.target.value)} />
         </label>
         <label>
-          Status
-          <select value={form.status} disabled={!isEditing} onChange={(event) => updateForm("status", event.target.value)}>
-            {statuses.map((status) => (
-              <option key={status} value={status}>{status}</option>
+          Course Group
+          <select value={form.courseGroup} disabled={!isEditing} onChange={(event) => handleCourseGroupChange(event.target.value)}>
+            <option value="">Select Course Group</option>
+            {courseGroups.map((group) => (
+              <option key={group} value={group}>{group}</option>
             ))}
           </select>
         </label>
         <label>
           Course Type
-          <select value={form.courseType} disabled={!isEditing} onChange={(event) => updateForm("courseType", event.target.value)}>
+          <select
+            value={form.courseType}
+            disabled={!isEditing}
+            onChange={(event) => updateForm("courseType", event.target.value)}
+          >
+            <option value="">Select Course Type</option>
             {courseTypes.map((type) => (
               <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Course Group
-          <select value={form.courseGroup} disabled={!isEditing} onChange={(event) => updateForm("courseGroup", event.target.value)}>
-            {courseGroups.map((group) => (
-              <option key={group} value={group}>{group}</option>
             ))}
           </select>
         </label>
@@ -308,7 +366,12 @@ export default function CourseMaster() {
 
       {isEditing ? (
         <div className={styles.formActions}>
-          <button className={styles.primaryButton} type="button" onClick={handleSave}>
+          <button
+            className={styles.primaryButton}
+            disabled={!form.courseGroup || !form.courseType || !form.courseCode}
+            type="button"
+            onClick={handleSave}
+          >
             Save course
           </button>
           <button className={styles.secondaryButton} type="button" onClick={handleClosePanel}>
@@ -373,7 +436,6 @@ export default function CourseMaster() {
                 <th>Course Name</th>
                 <th>Type</th>
                 <th>Group</th>
-                <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -391,9 +453,6 @@ export default function CourseMaster() {
                       </td>
                       <td>{course.courseType}</td>
                       <td>{course.courseGroup}</td>
-                      <td>
-                        <span className={styles.statusPill}>{course.status}</span>
-                      </td>
                       <td className={styles.actionCell}>
                         <button
                           className={styles.detailButton}
@@ -406,7 +465,7 @@ export default function CourseMaster() {
                     </tr>
                     {isOpen ? (
                       <tr className={styles.detailRow}>
-                        <td colSpan={6}>
+                        <td colSpan={5}>
                           <div className={styles.inlinePanel}>
                             {renderCoursePanel(
                               isEditing ? "Edit course" : course.courseNameEn,

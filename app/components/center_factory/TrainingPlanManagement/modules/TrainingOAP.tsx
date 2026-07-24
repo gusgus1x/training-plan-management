@@ -147,7 +147,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     () => {
       const standardizedCourses = courses.filter(
         (course) =>
-          course.status === "Active" &&
           standardCourseIds.has(course.id) &&
           isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode),
       );
