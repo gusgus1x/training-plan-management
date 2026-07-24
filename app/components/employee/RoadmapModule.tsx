@@ -1,8 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  TRAINING_WORKFLOW_EVENT,
+  TRAINING_WORKFLOW_KEYS,
+  readWorkflowCollection,
+  type WorkflowCourse,
+  type WorkflowOapPlan,
+  type WorkflowStandard,
+} from "../../lib/trainingWorkflow";
 import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext";
-import { roadmapItems } from "./data";
+import type { RollingPlan } from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
 import ModuleHeader from "./ModuleHeader";
 import styles from "./UserDashboard.module.css";
 
@@ -58,6 +66,70 @@ export default function RoadmapModule() {
   const employeeFunction = profileValue(authenticatedUser?.functionName);
   const employeePosition = profileValue(authenticatedUser?.positionName);
   const employeeLevel = profileValue(authenticatedUser?.levelName);
+  const [courses, setCourses] = useState<WorkflowCourse[]>([]);
+  const [standards, setStandards] = useState<WorkflowStandard[]>([]);
+  const [oapPlans, setOapPlans] = useState<WorkflowOapPlan[]>([]);
+  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
+
+  useEffect(() => {
+    const syncWorkflow = () => {
+      setCourses(readWorkflowCollection<WorkflowCourse>(TRAINING_WORKFLOW_KEYS.courses));
+      setStandards(
+        readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards),
+      );
+      setOapPlans(
+        readWorkflowCollection<WorkflowOapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans),
+      );
+      setRollingPlans(
+        readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
+      );
+    };
+
+    syncWorkflow();
+    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflow);
+    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflow);
+  }, []);
+
+  const roadmapItems = useMemo(
+    () =>
+      standards.map((standard) => {
+        const course = courses.find((item) => item.id === standard.courseId);
+        const oapPlan = oapPlans.find(
+          (plan) => plan.course.id === standard.courseId && plan.status === "Planned",
+        );
+        const rollingPlan = rollingPlans.find(
+          (plan) => plan.course.code === standard.courseCode && plan.status === "Planned",
+        );
+
+        return {
+          code: standard.courseCode,
+          title: standard.courseName,
+          category: course?.courseGroup ?? "-",
+          detail: course?.objective ?? "-",
+          round: rollingPlan?.batch ?? "-",
+          trainingStatus: rollingPlan ? "Open registration" : "Annual plan pending",
+          type: course?.courseType ?? "-",
+          budget: oapPlan ? `THB ${Number(oapPlan.budget).toLocaleString("en-US")}` : "-",
+          trainer: oapPlan?.trainer ?? "Pending trainer",
+          owner: oapPlan?.createdBy ?? course?.createdBy ?? "-",
+          courseOwner: standard.owner === "CENTER" ? "Center" as const : "Factory" as const,
+          targetFunctions:
+            standard.functionName === "All Function"
+              ? ["All"]
+              : [standard.functionName],
+          targetPositions:
+            standard.positions.length > 0 ? standard.positions : ["All"],
+          targetLevels: standard.levels.length > 0 ? standard.levels : ["All"],
+          targetCompanies:
+            standard.owner === "CENTER" ? ["All"] : [standard.ownerCompany],
+          due: rollingPlan?.trainingDate ?? "-",
+          status: rollingPlan ? "Registration recommended" : "Planned",
+          action: rollingPlan ? "Register" : "View detail",
+          priority: standard.owner === "CENTER" ? "High" : "Medium",
+        };
+      }),
+    [courses, oapPlans, rollingPlans, standards],
+  );
 
   const targetCourses = useMemo(
     () =>
@@ -68,10 +140,10 @@ export default function RoadmapModule() {
           isTargetMatch(item.targetPositions, employeePosition) &&
           isTargetMatch(item.targetLevels, employeeLevel),
       ),
-    [employeeCompany, employeeFunction, employeeLevel, employeePosition],
+    [employeeCompany, employeeFunction, employeeLevel, employeePosition, roadmapItems],
   );
 
-  const fallbackCourses = targetCourses.length > 0 ? targetCourses : roadmapItems;
+  const fallbackCourses = targetCourses;
   const [expandedCourseCode, setExpandedCourseCode] = useState<string | null>(
     fallbackCourses[0]?.code ?? "",
   );

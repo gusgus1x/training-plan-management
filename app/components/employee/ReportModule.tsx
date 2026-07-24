@@ -85,8 +85,8 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
   const [messageBody, setMessageBody] = useState(createInitialMessage(completedHours));
   const [attachments, setAttachments] = useState<AttachmentRecord[]>([]);
   const [attachmentInputKey, setAttachmentInputKey] = useState(0);
-  const [reports, setReports] = useState<EmployeeReport[]>(initialReports);
-  const [selectedId, setSelectedId] = useState(initialReports[0]?.id ?? "");
+  const [reports, setReports] = useState<EmployeeReport[]>([]);
+  const [selectedId, setSelectedId] = useState("");
   const [search, setSearch] = useState("");
   const [message, setMessage] = useState("");
 

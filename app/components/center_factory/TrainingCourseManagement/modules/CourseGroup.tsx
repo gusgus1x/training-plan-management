@@ -1,6 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  TRAINING_MASTER_KEYS,
+  readMasterCollection,
+  writeMasterCollection,
+} from "../../../../lib/trainingWorkflow";
 import styles from "./CourseGroup.module.css";
 
 export const courseGroupModule = {
@@ -9,13 +14,13 @@ export const courseGroupModule = {
   description: "Maintain course group master data for course classification and reporting.",
 } as const;
 
-type CourseGroupRecord = {
+export type CourseGroupRecord = {
   id: string;
   name: string;
   groupId: string;
 };
 
-const initialCourseGroups: CourseGroupRecord[] = [
+export const defaultCourseGroups: CourseGroupRecord[] = [
   { id: "group-001", name: "Quality", groupId: "QT" },
   { id: "group-002", name: "Safety", groupId: "ST" },
   { id: "group-003", name: "Casting", groupId: "CT" },
@@ -34,7 +39,9 @@ const initialCourseGroups: CourseGroupRecord[] = [
 ];
 
 export default function CourseGroup() {
-  const [courseGroups, setCourseGroups] = useState<CourseGroupRecord[]>(initialCourseGroups);
+  const [courseGroups, setCourseGroups] = useState<CourseGroupRecord[]>(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.courseGroups, defaultCourseGroups),
+  );
   const [selectedId, setSelectedId] = useState("");
   const [draftName, setDraftName] = useState("");
   const [draftGroupId, setDraftGroupId] = useState("");
@@ -70,7 +77,11 @@ export default function CourseGroup() {
       return;
     }
 
-    setCourseGroups((current) => current.filter((courseGroup) => courseGroup.id !== selectedId));
+    const nextCourseGroups = courseGroups.filter(
+      (courseGroup) => courseGroup.id !== selectedId,
+    );
+    setCourseGroups(nextCourseGroups);
+    writeMasterCollection(TRAINING_MASTER_KEYS.courseGroups, nextCourseGroups);
     setSelectedId("");
     setDraftName("");
     setDraftGroupId("");
@@ -79,7 +90,9 @@ export default function CourseGroup() {
   };
 
   const handleRefresh = () => {
-    setCourseGroups(initialCourseGroups);
+    setCourseGroups(
+      readMasterCollection(TRAINING_MASTER_KEYS.courseGroups, defaultCourseGroups),
+    );
     setSelectedId("");
     setDraftName("");
     setDraftGroupId("");
@@ -99,11 +112,13 @@ export default function CourseGroup() {
     }
 
     if (mode === "edit" && selectedId) {
-      setCourseGroups((current) =>
-        current.map((courseGroup) =>
-          courseGroup.id === selectedId ? { ...courseGroup, name: nextName, groupId: nextGroupId } : courseGroup,
-        ),
+      const nextCourseGroups = courseGroups.map((courseGroup) =>
+        courseGroup.id === selectedId
+          ? { ...courseGroup, name: nextName, groupId: nextGroupId }
+          : courseGroup,
       );
+      setCourseGroups(nextCourseGroups);
+      writeMasterCollection(TRAINING_MASTER_KEYS.courseGroups, nextCourseGroups);
       setMode("idle");
       setDraftName("");
       setDraftGroupId("");
@@ -115,7 +130,9 @@ export default function CourseGroup() {
       name: nextName,
       groupId: nextGroupId,
     };
-    setCourseGroups((current) => [...current, nextRecord]);
+    const nextCourseGroups = [...courseGroups, nextRecord];
+    setCourseGroups(nextCourseGroups);
+    writeMasterCollection(TRAINING_MASTER_KEYS.courseGroups, nextCourseGroups);
     setSelectedId(nextRecord.id);
     setMode("idle");
     setDraftName("");

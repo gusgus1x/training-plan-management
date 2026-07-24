@@ -1,6 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  TRAINING_WORKFLOW_KEYS,
+  isWorkflowOwner,
+  readWorkflowCollection,
+  writeWorkflowCollection,
+  type WorkflowCourse,
+  type WorkflowStandard,
+} from "../../../../lib/trainingWorkflow";
+import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { defaultFunctionRows } from "../../MasterDataManagement/modules/FunctionData";
 import styles from "./CourseStandard.module.css";
 
@@ -11,25 +20,12 @@ export const courseStandardModule = {
 } as const;
 
 type CourseMasterOption = {
+  id: string;
   code: string;
   name: string;
 };
 
-type CourseStandardRecord = {
-  id: string;
-  courseCode: string;
-  courseName: string;
-  functionName: string;
-  positions: string[];
-  levels: string[];
-};
-
-const courseMasterOptions: CourseMasterOption[] = [
-  { code: "CRS-001", name: "Leadership Essentials" },
-  { code: "CRS-022", name: "Safety Basics" },
-  { code: "CRS-030", name: "Data Privacy Awareness" },
-  { code: "CRS-041", name: "Quality Control Basics" },
-];
+type CourseStandardRecord = WorkflowStandard;
 
 const allFunctionOption = "All Function";
 const functionOptions = [
@@ -40,33 +36,6 @@ const functionOptions = [
 const positionColumns = ["Manager", "SH", "Engineer", "Office", "Staff", "Foreman", "Leader", "Operator"] as const;
 const positionChecklist = ["Manager Up", "SH", "Engineer", "Office", "Staff", "Force man", "Leader", "Operator"] as const;
 const levelColumns = ["M3", "M2", "M1", "S4", "S3", "S2", "S1", "O5", "O4", "O3", "O2", "O1"] as const;
-
-const initialStandards: CourseStandardRecord[] = [
-  {
-    id: "standard-001",
-    courseCode: "CRS-001",
-    courseName: "Leadership Essentials",
-    functionName: allFunctionOption,
-    positions: ["Manager", "SH", "Foreman", "Leader"],
-    levels: ["M3", "M2", "M1", "S4"],
-  },
-  {
-    id: "standard-002",
-    courseCode: "CRS-022",
-    courseName: "Safety Basics",
-    functionName: "Production",
-    positions: ["Staff", "Foreman", "Leader", "Operator"],
-    levels: ["S3", "S2", "S1", "O5", "O4", "O3", "O2", "O1"],
-  },
-  {
-    id: "standard-003",
-    courseCode: "CRS-041",
-    courseName: "Quality Control Basics",
-    functionName: "Quality",
-    positions: ["Engineer", "Staff", "Operator"],
-    levels: ["S4", "S3", "S2", "O4", "O3"],
-  },
-];
 
 const normalizePosition = (position: string) => {
   if (position === "Manager Up") {
@@ -81,28 +50,66 @@ const normalizePosition = (position: string) => {
 };
 
 export default function CourseStandard() {
-  const [standards, setStandards] = useState<CourseStandardRecord[]>(initialStandards);
+  const user = useAuthenticatedUser();
+  const [courses, setCourses] = useState<WorkflowCourse[]>(() =>
+    readWorkflowCollection<WorkflowCourse>(TRAINING_WORKFLOW_KEYS.courses),
+  );
+  const [standards, setStandards] = useState<CourseStandardRecord[]>(() =>
+    readWorkflowCollection<CourseStandardRecord>(TRAINING_WORKFLOW_KEYS.standards),
+  );
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [editingId, setEditingId] = useState("");
-  const [selectedId, setSelectedId] = useState(initialStandards[0]?.id ?? "");
-  const [courseCode, setCourseCode] = useState(courseMasterOptions[0]?.code ?? "");
+  const [selectedId, setSelectedId] = useState("");
+  const [courseCode, setCourseCode] = useState("");
   const [functionName, setFunctionName] = useState(allFunctionOption);
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   const [search, setSearch] = useState("");
 
-  const selectedCourse = courseMasterOptions.find((course) => course.code === courseCode) ?? courseMasterOptions[0];
-  const selectedStandard = standards.find((standard) => standard.id === selectedId) ?? null;
-  const visibleStandards = useMemo(
+  const userCompanyCode = profileValue(user?.companyCode);
+  const scopedCourses = useMemo(
+    () =>
+      courses.filter(
+        (course) =>
+          course.status === "Active" &&
+          isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode),
+      ),
+    [courses, user?.roleCode, userCompanyCode],
+  );
+  const courseMasterOptions: CourseMasterOption[] = useMemo(
+    () =>
+      scopedCourses.map((course) => ({
+        id: course.id,
+        code: course.courseCode,
+        name: course.courseNameEn,
+      })),
+    [scopedCourses],
+  );
+  const scopedStandards = useMemo(
     () =>
       standards.filter((standard) =>
+        isWorkflowOwner(standard.owner, standard.ownerCompany, user?.roleCode, userCompanyCode),
+      ),
+    [standards, user?.roleCode, userCompanyCode],
+  );
+  const selectedCourse =
+    courseMasterOptions.find((course) => course.code === courseCode) ?? courseMasterOptions[0] ?? null;
+  const selectedStandard = scopedStandards.find((standard) => standard.id === selectedId) ?? null;
+  const visibleStandards = useMemo(
+    () =>
+      scopedStandards.filter((standard) =>
         [standard.courseCode, standard.courseName, standard.functionName]
           .join(" ")
           .toLowerCase()
           .includes(search.toLowerCase()),
       ),
-    [standards, search],
+    [scopedStandards, search],
   );
+
+  const saveStandards = (nextStandards: CourseStandardRecord[]) => {
+    setStandards(nextStandards);
+    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.standards, nextStandards);
+  };
 
   const toggleItem = (value: string, selectedValues: string[], setSelectedValues: (next: string[]) => void) => {
     setSelectedValues(
@@ -141,18 +148,23 @@ export default function CourseStandard() {
 
     const nextRecord: CourseStandardRecord = {
       id: editingId || `standard-${Date.now()}`,
+      courseId: selectedCourse.id,
       courseCode: selectedCourse.code,
       courseName: selectedCourse.name,
       functionName: functionName.trim(),
       positions: selectedPositions.map(normalizePosition),
       levels: selectedLevels,
+      owner: scopedCourses.find((course) => course.id === selectedCourse.id)?.owner ?? "FACTORY",
+      ownerCompany:
+        scopedCourses.find((course) => course.id === selectedCourse.id)?.ownerCompany ??
+        userCompanyCode,
     };
 
-    setStandards((current) =>
+    const nextStandards =
       editingId
-        ? current.map((standard) => (standard.id === editingId ? nextRecord : standard))
-        : [nextRecord, ...current],
-    );
+        ? standards.map((standard) => (standard.id === editingId ? nextRecord : standard))
+        : [nextRecord, ...standards];
+    saveStandards(nextStandards);
     setSelectedId(nextRecord.id);
     setIsNewOpen(false);
     setEditingId("");
@@ -163,7 +175,7 @@ export default function CourseStandard() {
       return;
     }
 
-    setStandards((current) => current.filter((standard) => standard.id !== selectedStandard.id));
+    saveStandards(standards.filter((standard) => standard.id !== selectedStandard.id));
     setSelectedId("");
     if (editingId === selectedStandard.id) {
       setIsNewOpen(false);
@@ -172,11 +184,14 @@ export default function CourseStandard() {
   };
 
   const handleRefresh = () => {
-    setStandards(initialStandards);
+    setCourses(readWorkflowCollection<WorkflowCourse>(TRAINING_WORKFLOW_KEYS.courses));
+    setStandards(
+      readWorkflowCollection<CourseStandardRecord>(TRAINING_WORKFLOW_KEYS.standards),
+    );
     setSearch("");
     setIsNewOpen(false);
     setEditingId("");
-    setSelectedId(initialStandards[0]?.id ?? "");
+    setSelectedId("");
   };
 
   return (
@@ -191,14 +206,14 @@ export default function CourseStandard() {
 
       <section className={styles.workspace}>
         <div className={styles.toolbar}>
-          <span className={styles.listMeta}>{visibleStandards.length} / {standards.length} standards</span>
+          <span className={styles.listMeta}>{visibleStandards.length} / {scopedStandards.length} standards</span>
           <input
             aria-label="Search course standard"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search course code, course name, function"
           />
-          <button className={styles.primaryButton} type="button" onClick={handleNew}>
+          <button className={styles.primaryButton} disabled={courseMasterOptions.length === 0} type="button" onClick={handleNew}>
             New
           </button>
           <button
@@ -245,6 +260,9 @@ export default function CourseStandard() {
               <label>
                 Course Name
                 <select value={courseCode} onChange={(event) => setCourseCode(event.target.value)}>
+                  {courseMasterOptions.length === 0 ? (
+                    <option value="">Create an active Course Master first</option>
+                  ) : null}
                   {courseMasterOptions.map((course) => (
                     <option key={course.code} value={course.code}>
                       {course.name}

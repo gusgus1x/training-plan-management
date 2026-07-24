@@ -1,6 +1,19 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import {
+  TRAINING_WORKFLOW_KEYS,
+  TRAINING_MASTER_KEYS,
+  isWorkflowOwner,
+  readMasterCollection,
+  readWorkflowCollection,
+  writeWorkflowCollection,
+  type WorkflowCourse,
+  type WorkflowOwner,
+} from "../../../../lib/trainingWorkflow";
+import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { defaultCourseGroups } from "./CourseGroup";
+import { defaultCourseTypes } from "./CourseType";
 import styles from "./CourseMaster.module.css";
 
 export const courseMasterModule = {
@@ -30,10 +43,7 @@ type CourseForm = {
   courseGroup: string;
 };
 
-type CourseRecord = CourseForm & {
-  id: string;
-  updatedAt: string;
-};
+type CourseRecord = WorkflowCourse;
 
 const emptyCourseForm: CourseForm = {
   courseCode: "",
@@ -50,59 +60,27 @@ const emptyCourseForm: CourseForm = {
   lifeCycleMonth: "12",
   remark: "",
   status: "Draft",
-  courseType: "Internal",
-  courseGroup: "General",
+  courseType: defaultCourseTypes[0]?.name ?? "",
+  courseGroup: defaultCourseGroups[0]?.name ?? "",
 };
 
-const initialCourses: CourseRecord[] = [
-  {
-    id: "course-001",
-    courseCode: "CRS-001",
-    courseNameTh: "Leadership TH",
-    courseNameEn: "Leadership Essentials",
-    objective: "Develop basic leadership and team management capability.",
-    learningContent: "Role of leader, feedback, delegation, coaching conversation.",
-    targetGroup: "Supervisor / Section Head",
-    methodology: "Classroom + Workshop",
-    preTest: "Leadership pre-test",
-    postTest: "Leadership post-test",
-    evaluation: "Course satisfaction survey",
-    evaluationAfter30Day: "Follow-up effectiveness survey after 30 days",
-    lifeCycleMonth: "24",
-    remark: "Core course for new supervisors.",
-    status: "Active",
-    courseType: "Internal",
-    courseGroup: "Leadership",
-    updatedAt: "2026-07-01",
-  },
-  {
-    id: "course-002",
-    courseCode: "CRS-022",
-    courseNameTh: "Safety TH",
-    courseNameEn: "Safety Basics",
-    objective: "Ensure employees understand workplace safety rules.",
-    learningContent: "Safety rules, PPE, emergency response, incident reporting.",
-    targetGroup: "All employees",
-    methodology: "Classroom",
-    preTest: "Safety awareness pre-test",
-    postTest: "Safety awareness post-test",
-    evaluation: "Safety course evaluation",
-    evaluationAfter30Day: "Supervisor confirms behavior after 30 days",
-    lifeCycleMonth: "12",
-    remark: "Mandatory annual course.",
-    status: "Active",
-    courseType: "Compliance",
-    courseGroup: "Safety",
-    updatedAt: "2026-07-08",
-  },
-];
-
-const courseTypes = ["Internal", "External", "Compliance", "On the Job"] as const;
-const courseGroups = ["General", "Leadership", "Safety", "Digital", "Quality"] as const;
 const statuses: CourseStatus[] = ["Active", "Draft", "Inactive"];
 
 export default function CourseMaster() {
-  const [courses, setCourses] = useState<CourseRecord[]>(initialCourses);
+  const user = useAuthenticatedUser();
+  const [courseTypes] = useState(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.courseTypes, defaultCourseTypes).map(
+      (type) => type.name,
+    ),
+  );
+  const [courseGroups] = useState(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.courseGroups, defaultCourseGroups).map(
+      (group) => group.name,
+    ),
+  );
+  const [courses, setCourses] = useState<CourseRecord[]>(() =>
+    readWorkflowCollection<CourseRecord>(TRAINING_WORKFLOW_KEYS.courses),
+  );
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [form, setForm] = useState<CourseForm>(emptyCourseForm);
   const [isEditing, setIsEditing] = useState(false);
@@ -110,10 +88,20 @@ export default function CourseMaster() {
   const [openDetailCourseId, setOpenDetailCourseId] = useState("");
   const [search, setSearch] = useState("");
 
-  const selectedCourse = courses.find((course) => course.id === selectedCourseId) ?? null;
-  const filteredCourses = useMemo(
+  const userCompanyCode = profileValue(user?.companyCode);
+  const owner: WorkflowOwner = user?.roleCode === "HRD_CENTER" ? "CENTER" : "FACTORY";
+  const ownerCompany = owner === "CENTER" ? "HRD Center" : userCompanyCode;
+  const scopedCourses = useMemo(
     () =>
       courses.filter((course) =>
+        isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode),
+      ),
+    [courses, user?.roleCode, userCompanyCode],
+  );
+  const selectedCourse = scopedCourses.find((course) => course.id === selectedCourseId) ?? null;
+  const filteredCourses = useMemo(
+    () =>
+      scopedCourses.filter((course) =>
         [
           course.courseCode,
           course.courseNameTh,
@@ -126,8 +114,13 @@ export default function CourseMaster() {
           .toLowerCase()
           .includes(search.toLowerCase()),
       ),
-    [courses, search],
+    [scopedCourses, search],
   );
+
+  const saveCourses = (nextCourses: CourseRecord[]) => {
+    setCourses(nextCourses);
+    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.courses, nextCourses);
+  };
 
   const updateForm = (field: keyof CourseForm, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -157,7 +150,7 @@ export default function CourseMaster() {
       return;
     }
 
-    setCourses((current) => current.filter((course) => course.id !== selectedCourseId));
+    saveCourses(courses.filter((course) => course.id !== selectedCourseId));
     setSelectedCourseId("");
     setOpenDetailCourseId("");
     setIsEditing(false);
@@ -166,7 +159,7 @@ export default function CourseMaster() {
   };
 
   const handleRefresh = () => {
-    setCourses(initialCourses);
+    setCourses(readWorkflowCollection<CourseRecord>(TRAINING_WORKFLOW_KEYS.courses));
     setSelectedCourseId("");
     setOpenDetailCourseId("");
     setSearch("");
@@ -200,13 +193,18 @@ export default function CourseMaster() {
       courseNameTh: form.courseNameTh.trim() || "New Course TH",
       courseNameEn: form.courseNameEn.trim() || "New Course",
       updatedAt: new Date().toISOString().slice(0, 10),
+      owner: selectedCourse?.owner ?? owner,
+      ownerCompany: selectedCourse?.ownerCompany ?? ownerCompany,
+      createdBy:
+        selectedCourse?.createdBy ??
+        profileValue(user?.displayName ?? user?.username),
     };
 
-    setCourses((current) =>
+    const nextCourses =
       selectedCourseId
-        ? current.map((course) => (course.id === selectedCourseId ? nextCourse : course))
-        : [nextCourse, ...current],
-    );
+        ? courses.map((course) => (course.id === selectedCourseId ? nextCourse : course))
+        : [nextCourse, ...courses];
+    saveCourses(nextCourses);
     setSelectedCourseId("");
     setOpenDetailCourseId("");
     setForm(emptyCourseForm);

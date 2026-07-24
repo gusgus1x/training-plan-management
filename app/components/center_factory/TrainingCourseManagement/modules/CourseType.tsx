@@ -1,6 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  TRAINING_MASTER_KEYS,
+  readMasterCollection,
+  writeMasterCollection,
+} from "../../../../lib/trainingWorkflow";
 import styles from "./CourseType.module.css";
 
 export const courseTypeModule = {
@@ -9,12 +14,12 @@ export const courseTypeModule = {
   description: "Maintain course type master data for Course Master and training planning.",
 } as const;
 
-type CourseTypeRecord = {
+export type CourseTypeRecord = {
   id: string;
   name: string;
 };
 
-const initialCourseTypes: CourseTypeRecord[] = [
+export const defaultCourseTypes: CourseTypeRecord[] = [
   { id: "type-001", name: "ATA-TC" },
   { id: "type-002", name: "IN-HOUSE" },
   { id: "type-003", name: "PUBLIC" },
@@ -22,7 +27,9 @@ const initialCourseTypes: CourseTypeRecord[] = [
 ];
 
 export default function CourseType() {
-  const [courseTypes, setCourseTypes] = useState<CourseTypeRecord[]>(initialCourseTypes);
+  const [courseTypes, setCourseTypes] = useState<CourseTypeRecord[]>(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.courseTypes, defaultCourseTypes),
+  );
   const [selectedId, setSelectedId] = useState("");
   const [draftName, setDraftName] = useState("");
   const [query, setQuery] = useState("");
@@ -66,7 +73,11 @@ export default function CourseType() {
       return;
     }
 
-    setCourseTypes((current) => current.filter((courseType) => courseType.id !== selectedId));
+    const nextCourseTypes = courseTypes.filter(
+      (courseType) => courseType.id !== selectedId,
+    );
+    setCourseTypes(nextCourseTypes);
+    writeMasterCollection(TRAINING_MASTER_KEYS.courseTypes, nextCourseTypes);
     setSelectedId("");
     setDraftName("");
     setMode("idle");
@@ -74,7 +85,9 @@ export default function CourseType() {
   };
 
   const handleRefresh = () => {
-    setCourseTypes(initialCourseTypes);
+    setCourseTypes(
+      readMasterCollection(TRAINING_MASTER_KEYS.courseTypes, defaultCourseTypes),
+    );
     setSelectedId("");
     setDraftName("");
     setQuery("");
@@ -93,11 +106,11 @@ export default function CourseType() {
     }
 
     if (mode === "edit" && selectedId) {
-      setCourseTypes((current) =>
-        current.map((courseType) =>
-          courseType.id === selectedId ? { ...courseType, name: nextName } : courseType,
-        ),
+      const nextCourseTypes = courseTypes.map((courseType) =>
+        courseType.id === selectedId ? { ...courseType, name: nextName } : courseType,
       );
+      setCourseTypes(nextCourseTypes);
+      writeMasterCollection(TRAINING_MASTER_KEYS.courseTypes, nextCourseTypes);
       setMode("idle");
       setDraftName("");
       return;
@@ -107,7 +120,9 @@ export default function CourseType() {
       id: `type-${Date.now()}`,
       name: nextName,
     };
-    setCourseTypes((current) => [...current, nextRecord]);
+    const nextCourseTypes = [...courseTypes, nextRecord];
+    setCourseTypes(nextCourseTypes);
+    writeMasterCollection(TRAINING_MASTER_KEYS.courseTypes, nextCourseTypes);
     setSelectedId(nextRecord.id);
     setMode("idle");
     setDraftName("");

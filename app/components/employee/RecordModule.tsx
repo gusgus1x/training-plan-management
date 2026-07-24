@@ -1,6 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  TRAINING_WORKFLOW_EVENT,
+  TRAINING_WORKFLOW_KEYS,
+  readWorkflowCollection,
+  type WorkflowCompletedCourse,
+} from "../../lib/trainingWorkflow";
 import {
   profileValue,
   useAuthenticatedUser,
@@ -194,17 +200,64 @@ const exportPersonalRecord = (
 export default function RecordModule() {
   const authenticatedUser = useAuthenticatedUser();
   const employeeName = profileValue(authenticatedUser?.displayName ?? authenticatedUser?.username);
+  const employeeCode = profileValue(authenticatedUser?.employeeCode);
+  const [records, setRecords] = useState<EmployeeTrainingRecord[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<(typeof categories)[number]>("all");
   const [query, setQuery] = useState("");
-  const [selectedRecordId, setSelectedRecordId] = useState(employeeRecords[0].id);
+  const [selectedRecordId, setSelectedRecordId] = useState("");
   const [downloadPurpose, setDownloadPurpose] = useState<DownloadPurpose>("job_change");
   const [exportMessage, setExportMessage] = useState("");
   const [assessmentMessage, setAssessmentMessage] = useState("");
 
+  useEffect(() => {
+    const syncRecords = () => {
+      const nextRecords = readWorkflowCollection<WorkflowCompletedCourse>(
+        TRAINING_WORKFLOW_KEYS.completedCourses,
+      )
+        .filter((course) =>
+          course.attendees.some(
+            (attendee) =>
+              attendee.employeeCode === employeeCode && attendee.attended,
+          ),
+        )
+        .map<EmployeeTrainingRecord>((course) => ({
+          id: course.id,
+          courseCode: course.code,
+          courseTitle: course.title,
+          category: course.owner === "CENTER" ? "Mandatory" : "Core Skill",
+          completedDate: course.date,
+          provider: course.owner === "CENTER" ? "HRD Center" : "Factory HRD",
+          trainingType: "Classroom",
+          hours: course.hours,
+          result: "Completed",
+          score: null,
+          certificateNo: `CERT-${course.code}-${employeeCode}`,
+          evidenceStatus: "Ready",
+          instructor: course.instructor,
+          location: course.room,
+          note: "Saved from Training Actual by HRD.",
+          preTestStatus: "Pending",
+          postTestStatus: "Pending",
+          evaluationStatus: "Pending",
+        }));
+
+      setRecords(nextRecords);
+      setSelectedRecordId((current) =>
+        nextRecords.some((record) => record.id === current)
+          ? current
+          : nextRecords[0]?.id ?? "",
+      );
+    };
+
+    syncRecords();
+    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncRecords);
+    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncRecords);
+  }, [employeeCode]);
+
   const filteredRecords = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
-    return employeeRecords.filter((record) => {
+    return records.filter((record) => {
       const matchesCategory = selectedCategory === "all" || record.category === selectedCategory;
       const matchesQuery =
         !normalizedQuery ||
@@ -218,24 +271,24 @@ export default function RecordModule() {
 
       return matchesCategory && matchesQuery;
     });
-  }, [query, selectedCategory]);
+  }, [query, records, selectedCategory]);
 
   const selectedRecord =
     filteredRecords.find((record) => record.id === selectedRecordId) ??
     filteredRecords[0] ??
-    employeeRecords[0];
+    null;
 
   const handleExportAll = () => {
-    if (employeeRecords.length === 0) {
+    if (records.length === 0) {
       setExportMessage("No training record available to export.");
       return;
     }
 
     const purpose = downloadPurposes[downloadPurpose];
 
-    exportPersonalRecord(employeeRecords, employeeName, purpose);
+    exportPersonalRecord(records, employeeName, purpose);
     setExportMessage(
-      `Downloaded ${employeeRecords.length} completed training records for ${purpose.label}.`,
+      `Downloaded ${records.length} completed training records for ${purpose.label}.`,
     );
   };
 
@@ -302,11 +355,11 @@ export default function RecordModule() {
         <div className={styles.employeeRecordDownloadMeta}>
           <article>
             <span>Records</span>
-            <strong>{employeeRecords.length}</strong>
+            <strong>{records.length}</strong>
           </article>
           <article>
             <span>Hours</span>
-            <strong>{employeeRecords.reduce((total, record) => total + record.hours, 0)}</strong>
+            <strong>{records.reduce((total, record) => total + record.hours, 0)}</strong>
           </article>
           <button type="button" onClick={handleExportAll}>
             Download All Records
@@ -329,7 +382,7 @@ export default function RecordModule() {
             {filteredRecords.map((record) => (
               <button
                 className={
-                  record.id === selectedRecord.id
+                  record.id === selectedRecord?.id
                     ? styles.activeEmployeeRecordItem
                     : styles.employeeRecordItem
                 }
@@ -355,6 +408,7 @@ export default function RecordModule() {
           </div>
         </section>
 
+        {selectedRecord ? (
         <aside className={styles.employeeRecordDetailPanel} aria-label="Selected training record detail">
           <div className={styles.employeeRecordDetailHead}>
             <div>
@@ -486,6 +540,13 @@ export default function RecordModule() {
           </section>
 
         </aside>
+        ) : (
+          <aside className={styles.employeeRecordDetailPanel} aria-label="No training record">
+            <p className={styles.employeeRecordEmpty}>
+              No completed training record yet.
+            </p>
+          </aside>
+        )}
       </div>
     </section>
   );

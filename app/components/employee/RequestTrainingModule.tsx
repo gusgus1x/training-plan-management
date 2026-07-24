@@ -43,7 +43,7 @@ const getCourseOwner = (courseName: string) => {
   return "Center";
 };
 
-const completedRecordCourses = recordCourses.filter((course) => course.result === "Passed");
+const completedRecordCourses: Array<(typeof recordCourses)[number]> = [];
 
 export default function RequestTrainingModule({
   reason,

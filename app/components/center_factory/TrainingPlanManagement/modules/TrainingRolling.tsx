@@ -1,6 +1,15 @@
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
+import {
+  TRAINING_WORKFLOW_KEYS,
+  isWorkflowOwner,
+  readWorkflowCollection,
+  writeWorkflowCollection,
+  type WorkflowOapPlan,
+  type WorkflowOwner,
+} from "../../../../lib/trainingWorkflow";
+import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import styles from "./TrainingRolling.module.css";
 
 export const trainingRollingModule = {
@@ -36,6 +45,8 @@ type OapSource = {
   trainer: string;
   provider: string;
   owner: string;
+  ownerScope?: WorkflowOwner;
+  ownerCompany?: string;
 };
 
 export type RollingPlan = OapSource & {
@@ -51,7 +62,7 @@ export type RollingPlan = OapSource & {
   updatedAt: string;
 };
 
-const companies = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
+const companies = ["All Companies", "ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
 export const monthOptions = [
   { value: "01", label: "January" },
   { value: "02", label: "February" },
@@ -68,7 +79,7 @@ export const monthOptions = [
 ] as const;
 export const yearOptions = ["2026", "2027"] as const;
 
-const oapSources: OapSource[] = [
+const mockOapSources: OapSource[] = [
   {
     id: "oap-001",
     course: {
@@ -143,9 +154,9 @@ const oapSources: OapSource[] = [
   },
 ];
 
-export const initialRollingPlans: RollingPlan[] = [
+const legacyInitialRollingPlans: RollingPlan[] = [
   {
-    ...oapSources[1],
+    ...mockOapSources[1],
     rollingId: "rolling-001",
     sequence: 1,
     batch: "1/2026",
@@ -158,7 +169,7 @@ export const initialRollingPlans: RollingPlan[] = [
     updatedAt: "2026-07-01",
   },
   {
-    ...oapSources[0],
+    ...mockOapSources[0],
     rollingId: "rolling-002",
     sequence: 2,
     batch: "2/2026",
@@ -172,8 +183,10 @@ export const initialRollingPlans: RollingPlan[] = [
   },
 ];
 
+export const initialRollingPlans: RollingPlan[] = [];
+
 const emptyForm = {
-  oapId: oapSources[0].id,
+  oapId: "",
   batch: "",
   location: "",
   trainingDate: "",
@@ -190,7 +203,45 @@ export const getJobStatus = (trainingDate: string) => {
 };
 
 export default function TrainingRolling() {
-  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>(initialRollingPlans);
+  const user = useAuthenticatedUser();
+  const userCompanyCode = profileValue(user?.companyCode);
+  const [oapSources] = useState<OapSource[]>(() =>
+    readWorkflowCollection<WorkflowOapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans)
+      .filter(
+        (plan) =>
+          plan.status === "Planned" &&
+          isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode),
+      )
+      .map<OapSource>((plan) => ({
+        id: plan.id,
+        course: {
+          code: plan.course.courseCode,
+          name: plan.course.courseNameEn,
+          objective: plan.course.objective,
+          learningContent: plan.course.learningContent,
+          targetGroup: plan.course.targetGroup,
+          methodology: plan.course.methodology,
+          preTest: plan.course.preTest,
+          postTest: plan.course.postTest,
+          evaluation: plan.course.evaluation,
+          evaluationAfter30Day: plan.course.evaluationAfter30Day,
+          lifeCycleMonth: plan.course.lifeCycleMonth,
+          courseType: plan.course.courseType,
+          courseGroup: plan.course.courseGroup,
+        },
+        participants: plan.participants,
+        hours: plan.hours,
+        budget: plan.budget,
+        trainer: plan.trainer,
+        provider: plan.provider,
+        owner: plan.createdBy,
+        ownerScope: plan.owner,
+        ownerCompany: plan.ownerCompany,
+      })),
+  );
+  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>(() =>
+    readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
+  );
   const [form, setForm] = useState(emptyForm);
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [editingId, setEditingId] = useState("");
@@ -199,12 +250,23 @@ export default function TrainingRolling() {
   const [selectedYear, setSelectedYear] = useState("2026");
   const [selectedMonth, setSelectedMonth] = useState("07");
   const [statusFilter, setStatusFilter] = useState<"all" | RollingStatus>("all");
-
-  const selectedOap = oapSources.find((source) => source.id === form.oapId) ?? oapSources[0];
+  const selectedOap = oapSources.find((source) => source.id === form.oapId) ?? oapSources[0] ?? null;
+  const scopedRollingPlans = useMemo(
+    () =>
+      rollingPlans.filter((plan) =>
+        isWorkflowOwner(
+          plan.ownerScope ?? (plan.owner === "admin.hrd" ? "CENTER" : "FACTORY"),
+          plan.ownerCompany ?? plan.company,
+          user?.roleCode,
+          userCompanyCode,
+        ),
+      ),
+    [rollingPlans, user?.roleCode, userCompanyCode],
+  );
   const selectedMonthLabel = monthOptions.find((month) => month.value === selectedMonth)?.label ?? "Selected month";
   const visiblePlans = useMemo(
     () =>
-      [...rollingPlans]
+      [...scopedRollingPlans]
         .sort((a, b) => a.trainingDate.localeCompare(b.trainingDate))
         .map((plan, index) => ({ ...plan, sequence: index + 1 }))
         .filter((plan) =>
@@ -223,17 +285,26 @@ export default function TrainingRolling() {
             .toLowerCase()
             .includes(search.toLowerCase()),
         ),
-    [rollingPlans, search, selectedMonth, selectedYear, statusFilter],
+    [scopedRollingPlans, search, selectedMonth, selectedYear, statusFilter],
   );
+
+  const saveRollingPlans = (nextPlans: RollingPlan[]) => {
+    setRollingPlans(nextPlans);
+    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.rollingPlans, nextPlans);
+  };
 
   const updateForm = (field: keyof typeof emptyForm, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
   const handleSave = () => {
+    if (!selectedOap) {
+      return;
+    }
+
     if (editingId) {
-      setRollingPlans((current) =>
-        current.map((plan) =>
+      saveRollingPlans(
+        rollingPlans.map((plan) =>
           plan.rollingId === editingId
             ? {
                 ...plan,
@@ -258,7 +329,7 @@ export default function TrainingRolling() {
     const nextPlan: RollingPlan = {
       ...selectedOap,
       rollingId: `rolling-${Date.now()}`,
-      sequence: rollingPlans.length + 1,
+      sequence: scopedRollingPlans.length + 1,
       batch: form.batch.trim() || "New batch",
       location: form.location.trim() || "Pending location",
       trainingDate: form.trainingDate || new Date().toISOString().slice(0, 10),
@@ -269,7 +340,7 @@ export default function TrainingRolling() {
       updatedAt: new Date().toISOString().slice(0, 10),
     };
 
-    setRollingPlans((current) => [nextPlan, ...current]);
+    saveRollingPlans([nextPlan, ...rollingPlans]);
     setForm(emptyForm);
     setIsNewOpen(false);
   };
@@ -278,7 +349,7 @@ export default function TrainingRolling() {
     const matchedOap = oapSources.find((source) => source.course.code === plan.course.code);
     setEditingId(plan.rollingId);
     setForm({
-      oapId: matchedOap?.id ?? oapSources[0].id,
+      oapId: matchedOap?.id ?? oapSources[0]?.id ?? "",
       batch: plan.batch,
       location: plan.location,
       trainingDate: plan.trainingDate,
@@ -291,7 +362,7 @@ export default function TrainingRolling() {
   };
 
   const handleDelete = (rollingId: string) => {
-    setRollingPlans((current) => current.filter((plan) => plan.rollingId !== rollingId));
+    saveRollingPlans(rollingPlans.filter((plan) => plan.rollingId !== rollingId));
     if (openDetailId === rollingId) {
       setOpenDetailId("");
     }
@@ -303,7 +374,9 @@ export default function TrainingRolling() {
   };
 
   const handleRefresh = () => {
-    setRollingPlans(initialRollingPlans);
+    setRollingPlans(
+      readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
+    );
     setForm(emptyForm);
     setIsNewOpen(false);
     setEditingId("");
@@ -316,9 +389,21 @@ export default function TrainingRolling() {
 
   const handleNew = () => {
     setEditingId("");
-    setForm(emptyForm);
+    setForm({
+      ...emptyForm,
+      oapId: oapSources[0]?.id ?? "",
+      company: user?.roleCode === "HRD_FACTORY" ? userCompanyCode : "All Companies",
+    });
     setOpenDetailId("");
     setIsNewOpen(true);
+  };
+
+  const handleConfirm = (rollingId: string) => {
+    saveRollingPlans(
+      rollingPlans.map((plan) =>
+        plan.rollingId === rollingId ? { ...plan, status: "Planned" } : plan,
+      ),
+    );
   };
 
   return (
@@ -366,7 +451,15 @@ export default function TrainingRolling() {
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Course, company, location, status" />
           </label>
           <div className={styles.toolbarActions}>
-            <button className={styles.primaryButton} type="button" onClick={handleNew}>New</button>
+            <button
+              className={styles.primaryButton}
+              disabled={oapSources.length === 0}
+              title={oapSources.length === 0 ? "Confirm a Training OAP before creating a rolling plan." : "Create monthly rolling plan"}
+              type="button"
+              onClick={handleNew}
+            >
+              New
+            </button>
             <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>Refresh</button>
           </div>
         </div>
@@ -387,11 +480,11 @@ export default function TrainingRolling() {
                   {oapSources.map((source) => <option key={source.id} value={source.id}>{source.course.name}</option>)}
                 </select>
               </label>
-              <label>Participants<input disabled value={selectedOap.participants} /></label>
-              <label>Training Hours<input disabled value={selectedOap.hours} /></label>
-              <label>Budget<input disabled value={Number(selectedOap.budget).toLocaleString("en-US")} /></label>
-              <label>Trainer<input disabled value={selectedOap.trainer} /></label>
-              <label>Institute / Provider<input disabled value={selectedOap.provider} /></label>
+              <label>Participants<input disabled value={selectedOap?.participants ?? ""} /></label>
+              <label>Training Hours<input disabled value={selectedOap?.hours ?? ""} /></label>
+              <label>Budget<input disabled value={selectedOap ? Number(selectedOap.budget).toLocaleString("en-US") : ""} /></label>
+              <label>Trainer<input disabled value={selectedOap?.trainer ?? ""} /></label>
+              <label>Institute / Provider<input disabled value={selectedOap?.provider ?? ""} /></label>
               <label>Batch<input value={form.batch} onChange={(event) => updateForm("batch", event.target.value)} /></label>
               <label>Location<input value={form.location} onChange={(event) => updateForm("location", event.target.value)} /></label>
               <label>Training Date<input type="date" value={form.trainingDate} onChange={(event) => updateForm("trainingDate", event.target.value)} /></label>
@@ -399,18 +492,20 @@ export default function TrainingRolling() {
               <label>End Time<input type="time" value={form.endTime} onChange={(event) => updateForm("endTime", event.target.value)} /></label>
               <label>
                 Related Company
-                <select value={form.company} onChange={(event) => updateForm("company", event.target.value)}>
-                  {companies.map((company) => <option key={company}>{company}</option>)}
+                <select disabled={user?.roleCode === "HRD_FACTORY"} value={form.company} onChange={(event) => updateForm("company", event.target.value)}>
+                  {(user?.roleCode === "HRD_FACTORY" ? [userCompanyCode] : companies).map((company) => <option key={company}>{company}</option>)}
                 </select>
               </label>
             </div>
-            <div className={styles.coursePreview}>
-              <strong>{selectedOap.course.code} / {selectedOap.course.name}</strong>
-              <span>{selectedOap.course.objective}</span>
-              <span>{selectedOap.course.courseType} / {selectedOap.course.courseGroup}</span>
-            </div>
+            {selectedOap ? (
+              <div className={styles.coursePreview}>
+                <strong>{selectedOap.course.code} / {selectedOap.course.name}</strong>
+                <span>{selectedOap.course.objective}</span>
+                <span>{selectedOap.course.courseType} / {selectedOap.course.courseGroup}</span>
+              </div>
+            ) : null}
             <div className={styles.formActions}>
-              <button className={styles.primaryButton} type="button" onClick={handleSave}>{editingId ? "Save changes" : "Save rolling plan"}</button>
+              <button className={styles.primaryButton} type="button" onClick={handleSave}>{editingId ? "Save changes" : "Save Draft"}</button>
               <button className={styles.secondaryButton} type="button" onClick={() => { setEditingId(""); setForm(emptyForm); setIsNewOpen(false); }}>Cancel</button>
             </div>
           </section>
@@ -448,6 +543,14 @@ export default function TrainingRolling() {
                           {isOpen ? "Hide" : "Details"}
                         </button>
                         <button className={styles.detailButton} type="button" onClick={() => handleEdit(plan)}>Edit</button>
+                        <button
+                          className={styles.primaryButton}
+                          disabled={plan.status === "Planned"}
+                          type="button"
+                          onClick={() => handleConfirm(plan.rollingId)}
+                        >
+                          {plan.status === "Planned" ? "Published" : "Publish"}
+                        </button>
                         <button className={styles.dangerButton} type="button" onClick={() => handleDelete(plan.rollingId)}>Delete</button>
                       </td>
                     </tr>
@@ -491,6 +594,18 @@ export default function TrainingRolling() {
                               <div><span>Owner</span><strong>{plan.owner}</strong></div>
                               <div><span>Last Updated</span><strong>{plan.updatedAt}</strong></div>
                             </div>
+                            <div className={styles.formActions}>
+                              <button
+                                className={styles.primaryButton}
+                                disabled={plan.status === "Planned"}
+                                type="button"
+                                onClick={() => handleConfirm(plan.rollingId)}
+                              >
+                                {plan.status === "Planned"
+                                  ? "Published to Registration & Accept Survey"
+                                  : "Confirm & Send to Registration / Accept Survey"}
+                              </button>
+                            </div>
                           </section>
                         </td>
                       </tr>
@@ -502,8 +617,12 @@ export default function TrainingRolling() {
           </table>
           {visiblePlans.length === 0 ? (
             <div className={styles.emptyState}>
-              <strong>No rolling plans found</strong>
-              <span>Try changing the month, year, status, or search text.</span>
+              <strong>{oapSources.length === 0 ? "No confirmed Training OAP" : "No rolling plans found"}</strong>
+              <span>
+                {oapSources.length === 0
+                  ? "Open Training OAP and click Confirm on an annual plan before creating a monthly rolling plan."
+                  : "Try changing the month, year, status, or search text."}
+              </span>
             </div>
           ) : null}
         </div>

@@ -123,9 +123,9 @@ export default function InternalReport({ preparedDraft }: InternalReportProps = 
     ...createInitialForm(),
     ...(preparedDraft ?? {}),
   }));
-  const [reports, setReports] = useState<ReportRecord[]>(initialReports);
+  const [reports, setReports] = useState<ReportRecord[]>([]);
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState(initialReports[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState("");
   const [sendMessage, setSendMessage] = useState("");
   const [attachmentInputKey, setAttachmentInputKey] = useState(0);
   const attachments = form.attachments ?? [];

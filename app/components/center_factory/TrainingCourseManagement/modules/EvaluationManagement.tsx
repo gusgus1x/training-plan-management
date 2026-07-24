@@ -61,7 +61,7 @@ const initialEvaluations: EvaluationRecord[] = [
 const companies = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
 
 export default function EvaluationManagement() {
-  const [evaluations, setEvaluations] = useState<EvaluationRecord[]>(initialEvaluations);
+  const [evaluations, setEvaluations] = useState<EvaluationRecord[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [openDetailId, setOpenDetailId] = useState("");
   const [mode, setMode] = useState<"idle" | "new" | "edit">("idle");
@@ -123,7 +123,7 @@ export default function EvaluationManagement() {
   };
 
   const handleRefresh = () => {
-    setEvaluations(initialEvaluations);
+    setEvaluations([]);
     setSelectedId("");
     setOpenDetailId("");
     setMode("idle");

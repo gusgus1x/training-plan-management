@@ -1,6 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  TRAINING_WORKFLOW_EVENT,
+  TRAINING_WORKFLOW_KEYS,
+  readWorkflowCollection,
+  type WorkflowCompletedCourse,
+  type WorkflowRegistration,
+} from "../../lib/trainingWorkflow";
 import {
   buildProfileItems,
   profileValue,
@@ -8,12 +15,10 @@ import {
 } from "../AuthenticatedUserContext";
 import DashboardLayout from "../DashboardLayout";
 import {
-  availableCourses,
-  employeeCalendarTrainings,
-  history,
   moduleCards,
   type UserModule,
 } from "./data";
+import type { RollingPlan } from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
 import RecordModule from "./RecordModule";
 import RegisterTrainingModule from "./RegisterTrainingModule";
 import ReportModule from "./ReportModule";
@@ -45,23 +50,94 @@ const calendarMonths = [
   { value: "12", label: "December" },
 ] as const;
 
+type CalendarTraining = {
+  date: string;
+  title: string;
+  shortName: string;
+  time: string;
+  place: string;
+  status: string;
+};
+
 export default function UserDashboard({ username, onHome, onLogout }: UserDashboardProps) {
   const authenticatedUser = useAuthenticatedUser();
   const employeeProfile = buildProfileItems(authenticatedUser);
   const [activeModule, setActiveModule] = useState<UserModule | null>(null);
-  const [trainingNeed, setTrainingNeed] = useState("Advanced Quality Control");
-  const [reason, setReason] = useState(
-    "Need to improve quality inspection skills for production line work.",
-  );
+  const [trainingNeed, setTrainingNeed] = useState("");
+  const [reason, setReason] = useState("");
   const [selectedCalendarYear, setSelectedCalendarYear] =
     useState<(typeof calendarYears)[number]>("2026");
   const [selectedCalendarMonth, setSelectedCalendarMonth] =
     useState<(typeof calendarMonths)[number]["value"]>("07");
   const [isMonthListOpen, setIsMonthListOpen] = useState(false);
+  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
+  const [registrations, setRegistrations] = useState<WorkflowRegistration[]>([]);
+  const [completedCourses, setCompletedCourses] = useState<WorkflowCompletedCourse[]>([]);
+  const employeeCode = profileValue(authenticatedUser?.employeeCode);
+  const employeeCompany = profileValue(authenticatedUser?.companyCode);
 
+  useEffect(() => {
+    const syncWorkflow = () => {
+      setRollingPlans(
+        readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
+      );
+      setRegistrations(
+        readWorkflowCollection<WorkflowRegistration>(
+          TRAINING_WORKFLOW_KEYS.registrations,
+        ),
+      );
+      setCompletedCourses(
+        readWorkflowCollection<WorkflowCompletedCourse>(
+          TRAINING_WORKFLOW_KEYS.completedCourses,
+        ),
+      );
+    };
+
+    syncWorkflow();
+    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflow);
+    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflow);
+  }, []);
+
+  const availableRollingPlans = useMemo(
+    () =>
+      rollingPlans.filter(
+        (plan) =>
+          plan.status === "Planned" &&
+          (plan.company === "All Companies" || plan.company === employeeCompany),
+      ),
+    [employeeCompany, rollingPlans],
+  );
   const completedHours = useMemo(
-    () => history.reduce((total, item) => total + Number(item.hours), 0),
-    [],
+    () =>
+      completedCourses.reduce(
+        (total, course) =>
+          course.attendees.some(
+            (attendee) =>
+              attendee.employeeCode === employeeCode && attendee.attended,
+          )
+            ? total + course.hours
+            : total,
+        0,
+      ),
+    [completedCourses, employeeCode],
+  );
+  const employeeCalendarTrainings = useMemo<CalendarTraining[]>(
+    () =>
+      availableRollingPlans.map((plan) => ({
+        date: plan.trainingDate,
+        title: plan.course.name,
+        shortName: plan.course.code,
+        time: `${plan.startTime} - ${plan.endTime}`,
+        place: plan.location,
+        status: registrations.some(
+          (registration) =>
+            registration.rollingId === plan.rollingId &&
+            registration.employeeCode === employeeCode,
+        )
+          ? "Registered"
+          : "Open registration",
+      })),
+    [availableRollingPlans, employeeCode, registrations],
   );
 
   const selectedMonthLabel =
@@ -83,7 +159,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
           const leadingBlankDays = (firstDay.getDay() + 6) % 7;
           const baseDays = Array.from({ length: leadingBlankDays + daysInMonth }, (_, index) => {
             if (index < leadingBlankDays) {
-              return { day: null, trainings: [] as typeof employeeCalendarTrainings[number][] };
+              return { day: null, trainings: [] as CalendarTraining[] };
             }
 
             const day = index - leadingBlankDays + 1;
@@ -98,7 +174,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
             ...baseDays,
             ...Array.from({ length: (7 - (baseDays.length % 7)) % 7 }, () => ({
               day: null,
-              trainings: [] as typeof employeeCalendarTrainings[number][],
+              trainings: [] as CalendarTraining[],
             })),
           ];
         })();
@@ -200,7 +276,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
               <div className={styles.profileStats}>
                 <article>
                   <span>Available Courses</span>
-                  <strong>{availableCourses.length}</strong>
+                  <strong>{availableRollingPlans.length}</strong>
                 </article>
                 <article>
                   <span>Completed Hours</span>
@@ -208,7 +284,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                 </article>
                 <article>
                   <span>Pending Requests</span>
-                  <strong>2</strong>
+                  <strong>0</strong>
                 </article>
               </div>
             </section>

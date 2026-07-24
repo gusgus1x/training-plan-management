@@ -5,6 +5,16 @@ import {
   APPROVED_TRAINING_NEED_STORAGE_KEY,
   type EmployeeTrainingNeedRequest,
 } from "../../../../lib/trainingRequests";
+import {
+  TRAINING_WORKFLOW_KEYS,
+  isWorkflowOwner,
+  readWorkflowCollection,
+  writeWorkflowCollection,
+  type WorkflowCourse,
+  type WorkflowOapPlan,
+  type WorkflowStandard,
+} from "../../../../lib/trainingWorkflow";
+import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import styles from "./TrainingOAP.module.css";
 
 export const trainingOapModule = {
@@ -13,122 +23,16 @@ export const trainingOapModule = {
   description: "Plan annual training courses, budget, trainer, provider, and target participants.",
 } as const;
 
-type CourseMasterDetail = {
-  code: string;
-  name: string;
-  nameTh: string;
-  objective: string;
-  learningContent: string;
-  targetGroup: string;
-  methodology: string;
-  preTest: string;
-  postTest: string;
-  evaluation: string;
-  evaluationAfter30Day: string;
-  lifeCycleMonth: string;
-  courseType: string;
-  courseGroup: string;
-};
-
 type OapStatus = "Planning" | "Planned" | "Cancel";
 
-type OapPlan = {
-  id: string;
-  sequence: number;
-  course: CourseMasterDetail;
-  participants: string;
-  hours: string;
-  budget: string;
-  trainer: string;
-  provider: string;
-  createdBy: string;
-  status: OapStatus;
-};
+type OapPlan = WorkflowOapPlan;
 
 type TrainingOAPProps = {
   username?: string;
 };
 
-const courseMasterOptions: CourseMasterDetail[] = [
-  {
-    code: "CRS-001",
-    name: "Leadership Essentials",
-    nameTh: "Leadership TH",
-    objective: "Develop leadership capability for supervisors and team leaders.",
-    learningContent: "Leader role, delegation, coaching, feedback, team follow-up.",
-    targetGroup: "Supervisor / Section Head / Leader",
-    methodology: "Classroom + Workshop",
-    preTest: "Leadership pre-test",
-    postTest: "Leadership post-test",
-    evaluation: "Course satisfaction survey",
-    evaluationAfter30Day: "Manager follow-up after 30 days",
-    lifeCycleMonth: "24",
-    courseType: "IN-HOUSE",
-    courseGroup: "Management",
-  },
-  {
-    code: "CRS-022",
-    name: "Safety Basics",
-    nameTh: "Safety TH",
-    objective: "Ensure employees understand workplace safety rules.",
-    learningContent: "Safety rules, PPE, emergency response, incident reporting.",
-    targetGroup: "All employees",
-    methodology: "Classroom",
-    preTest: "Safety awareness pre-test",
-    postTest: "Safety awareness post-test",
-    evaluation: "Safety course evaluation",
-    evaluationAfter30Day: "Supervisor confirms behavior after 30 days",
-    lifeCycleMonth: "12",
-    courseType: "ATA-TC",
-    courseGroup: "Safety",
-  },
-  {
-    code: "CRS-041",
-    name: "Quality Control Basics",
-    nameTh: "Quality TH",
-    objective: "Build basic quality control understanding for production teams.",
-    learningContent: "Defect prevention, inspection points, quality records, escalation.",
-    targetGroup: "Production / Quality / Operator",
-    methodology: "Classroom + Case study",
-    preTest: "Quality pre-test",
-    postTest: "Quality post-test",
-    evaluation: "Quality course evaluation",
-    evaluationAfter30Day: "Quality issue follow-up after 30 days",
-    lifeCycleMonth: "18",
-    courseType: "PUBLIC",
-    courseGroup: "Quality",
-  },
-];
-
-const initialPlans: OapPlan[] = [
-  {
-    id: "oap-001",
-    sequence: 1,
-    course: courseMasterOptions[0],
-    participants: "24",
-    hours: "6",
-    budget: "45000",
-    trainer: "Somchai P.",
-    provider: "HRD Center",
-    createdBy: "admin.hrd",
-    status: "Planned",
-  },
-  {
-    id: "oap-002",
-    sequence: 2,
-    course: courseMasterOptions[1],
-    participants: "42",
-    hours: "3",
-    budget: "28500",
-    trainer: "Safety Team",
-    provider: "Safety Department",
-    createdBy: "factory.hrd",
-    status: "Planning",
-  },
-];
-
 const emptyForm = {
-  courseCode: courseMasterOptions[0].code,
+  courseCode: "",
   participants: "",
   hours: "",
   budget: "",
@@ -149,10 +53,11 @@ const readApprovedTrainingNeed = () => {
   }
 };
 
-const buildRequestCourse = (request: EmployeeTrainingNeedRequest): CourseMasterDetail => ({
-  code: `REQ-${request.requestNo}`,
-  name: request.courseNeed,
-  nameTh: request.courseNeed,
+const buildRequestCourse = (request: EmployeeTrainingNeedRequest): WorkflowCourse => ({
+  id: `request-${request.id}`,
+  courseCode: `REQ-${request.requestNo}`,
+  courseNameEn: request.courseNeed,
+  courseNameTh: request.courseNeed,
   objective: request.reason,
   learningContent: request.expectedBenefit,
   targetGroup: `${request.employeeName} / ${request.company} / ${request.functionName}`,
@@ -164,10 +69,25 @@ const buildRequestCourse = (request: EmployeeTrainingNeedRequest): CourseMasterD
   lifeCycleMonth: "12",
   courseType: request.sourceCourseOwner === "Factory" ? "FACTORY REQUEST" : "CENTER REQUEST",
   courseGroup: "Training Need",
+  remark: "Created from an approved employee training need.",
+  status: "Active",
+  updatedAt: new Date().toISOString().slice(0, 10),
+  owner: request.sourceCourseOwner === "Factory" ? "FACTORY" : "CENTER",
+  ownerCompany: request.sourceCourseOwner === "Factory" ? request.company : "HRD Center",
+  createdBy: request.employeeName,
 });
 
 export default function TrainingOAP({ username = "Current user" }: TrainingOAPProps) {
-  const [plans, setPlans] = useState<OapPlan[]>(initialPlans);
+  const user = useAuthenticatedUser();
+  const [courses, setCourses] = useState<WorkflowCourse[]>(() =>
+    readWorkflowCollection<WorkflowCourse>(TRAINING_WORKFLOW_KEYS.courses),
+  );
+  const [standards, setStandards] = useState<WorkflowStandard[]>(() =>
+    readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards),
+  );
+  const [plans, setPlans] = useState<OapPlan[]>(() =>
+    readWorkflowCollection<OapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans),
+  );
   const [form, setForm] = useState(emptyForm);
   const [approvedRequest, setApprovedRequest] = useState<EmployeeTrainingNeedRequest | null>(null);
   const [isNewOpen, setIsNewOpen] = useState(false);
@@ -175,6 +95,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const [openDetailId, setOpenDetailId] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | OapStatus>("all");
+  const userCompanyCode = profileValue(user?.companyCode);
 
   useEffect(() => {
     const syncApprovedRequest = () => {
@@ -206,31 +127,76 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     };
   }, []);
 
-  const courseOptions = useMemo(
-    () => (approvedRequest ? [buildRequestCourse(approvedRequest), ...courseMasterOptions] : courseMasterOptions),
-    [approvedRequest],
+  const standardCourseIds = useMemo(
+    () =>
+      new Set(
+        standards
+          .filter((standard) =>
+            isWorkflowOwner(
+              standard.owner,
+              standard.ownerCompany,
+              user?.roleCode,
+              userCompanyCode,
+            ),
+          )
+          .map((standard) => standard.courseId),
+      ),
+    [standards, user?.roleCode, userCompanyCode],
   );
-  const selectedCourse = courseOptions.find((course) => course.code === form.courseCode) ?? courseOptions[0];
-  const visiblePlans = useMemo(
+  const courseOptions = useMemo(
+    () => {
+      const standardizedCourses = courses.filter(
+        (course) =>
+          course.status === "Active" &&
+          standardCourseIds.has(course.id) &&
+          isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode),
+      );
+      return approvedRequest
+        ? [buildRequestCourse(approvedRequest), ...standardizedCourses]
+        : standardizedCourses;
+    },
+    [approvedRequest, courses, standardCourseIds, user?.roleCode, userCompanyCode],
+  );
+  const selectedCourse =
+    courseOptions.find((course) => course.courseCode === form.courseCode) ??
+    courseOptions[0] ??
+    null;
+  const scopedPlans = useMemo(
     () =>
       plans.filter((plan) =>
-        [plan.course.code, plan.course.name, plan.status, plan.trainer, plan.provider]
+        isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode),
+      ),
+    [plans, user?.roleCode, userCompanyCode],
+  );
+  const visiblePlans = useMemo(
+    () =>
+      scopedPlans.filter((plan) =>
+        [plan.course.courseCode, plan.course.courseNameEn, plan.status, plan.trainer, plan.provider]
           .join(" ")
           .toLowerCase()
           .includes(search.toLowerCase()),
       )
       .filter((plan) => statusFilter === "all" || plan.status === statusFilter),
-    [plans, search, statusFilter],
+    [scopedPlans, search, statusFilter],
   );
+
+  const savePlans = (nextPlans: OapPlan[]) => {
+    setPlans(nextPlans);
+    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.oapPlans, nextPlans);
+  };
 
   const updateForm = (field: keyof typeof emptyForm, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
   const handleSave = () => {
+    if (!selectedCourse) {
+      return;
+    }
+
     if (editingId) {
-      setPlans((current) =>
-        current.map((plan) =>
+      savePlans(
+        plans.map((plan) =>
           plan.id === editingId
             ? {
                 ...plan,
@@ -254,7 +220,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
     const nextPlan: OapPlan = {
       id: `oap-${Date.now()}`,
-      sequence: plans.length + 1,
+      sequence: scopedPlans.length + 1,
       course: selectedCourse,
       participants: form.participants.trim() || "0",
       hours: form.hours.trim() || "0",
@@ -263,8 +229,10 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       provider: form.provider.trim() || "Pending provider",
       createdBy: username,
       status: "Planning",
+      owner: selectedCourse.owner,
+      ownerCompany: selectedCourse.ownerCompany,
     };
-    setPlans((current) => [nextPlan, ...current]);
+    savePlans([nextPlan, ...plans]);
     setForm(emptyForm);
     setApprovedRequest(null);
     window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
@@ -274,7 +242,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const handleEdit = (plan: OapPlan) => {
     setEditingId(plan.id);
     setForm({
-      courseCode: plan.course.code,
+      courseCode: plan.course.courseCode,
       participants: plan.participants,
       hours: plan.hours,
       budget: plan.budget,
@@ -286,7 +254,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   };
 
   const handleDelete = (planId: string) => {
-    setPlans((current) => current.filter((plan) => plan.id !== planId));
+    savePlans(plans.filter((plan) => plan.id !== planId));
     if (openDetailId === planId) {
       setOpenDetailId("");
     }
@@ -298,11 +266,15 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   };
 
   const updateStatus = (planId: string, status: OapStatus) => {
-    setPlans((current) => current.map((plan) => plan.id === planId ? { ...plan, status } : plan));
+    savePlans(plans.map((plan) => plan.id === planId ? { ...plan, status } : plan));
   };
 
   const handleRefresh = () => {
-    setPlans(initialPlans);
+    setCourses(readWorkflowCollection<WorkflowCourse>(TRAINING_WORKFLOW_KEYS.courses));
+    setStandards(
+      readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards),
+    );
+    setPlans(readWorkflowCollection<OapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans));
     setForm(emptyForm);
     setApprovedRequest(null);
     window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
@@ -315,7 +287,10 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
   const handleNew = () => {
     setEditingId("");
-    setForm(emptyForm);
+    setForm({
+      ...emptyForm,
+      courseCode: courseOptions[0]?.courseCode ?? "",
+    });
     setApprovedRequest(null);
     setOpenDetailId("");
     setIsNewOpen(true);
@@ -355,7 +330,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             </select>
           </label>
           <div className={styles.toolbarActions}>
-            <button className={styles.primaryButton} type="button" onClick={handleNew}>New</button>
+            <button className={styles.primaryButton} disabled={courseOptions.length === 0} type="button" onClick={handleNew}>New</button>
             <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>Refresh</button>
           </div>
         </div>
@@ -383,7 +358,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               <label className={styles.fullField}>
                 Course Name
                 <select value={form.courseCode} onChange={(event) => updateForm("courseCode", event.target.value)}>
-                  {courseOptions.map((course) => <option key={course.code} value={course.code}>{course.name}</option>)}
+                  {courseOptions.map((course) => <option key={course.courseCode} value={course.courseCode}>{course.courseNameEn}</option>)}
                 </select>
               </label>
               <label>Participants / Group<input value={form.participants} inputMode="numeric" onChange={(event) => updateForm("participants", event.target.value)} /></label>
@@ -392,13 +367,15 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               <label>Trainer Name<input value={form.trainer} onChange={(event) => updateForm("trainer", event.target.value)} /></label>
               <label>Institute / Provider<input value={form.provider} onChange={(event) => updateForm("provider", event.target.value)} /></label>
             </div>
-            <div className={styles.coursePreview}>
-              <strong>{selectedCourse.code} / {selectedCourse.name}</strong>
-              <span>{selectedCourse.objective}</span>
-              <span>{selectedCourse.courseType} / {selectedCourse.courseGroup}</span>
-            </div>
+            {selectedCourse ? (
+              <div className={styles.coursePreview}>
+                <strong>{selectedCourse.courseCode} / {selectedCourse.courseNameEn}</strong>
+                <span>{selectedCourse.objective}</span>
+                <span>{selectedCourse.courseType} / {selectedCourse.courseGroup}</span>
+              </div>
+            ) : null}
             <div className={styles.formActions}>
-              <button className={styles.primaryButton} type="button" onClick={handleSave}>{editingId ? "Save changes" : "Save plan"}</button>
+              <button className={styles.primaryButton} type="button" onClick={handleSave}>{editingId ? "Save changes" : "Save Draft"}</button>
               <button className={styles.secondaryButton} type="button" onClick={() => { setEditingId(""); setForm(emptyForm); setIsNewOpen(false); }}>Cancel</button>
             </div>
           </section>
@@ -427,7 +404,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                   <Fragment key={plan.id}>
                     <tr>
                       <td>{plan.sequence}</td>
-                      <td><strong>{plan.course.name}</strong><span>{plan.course.code}</span></td>
+                      <td><strong>{plan.course.courseNameEn}</strong><span>{plan.course.courseCode}</span></td>
                       <td>{plan.participants}</td>
                       <td>{plan.hours}</td>
                       <td>{Number(plan.budget).toLocaleString("en-US")}</td>
@@ -440,6 +417,18 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                           {isOpen ? "Hide" : "Details"}
                         </button>
                         <button className={styles.detailButton} type="button" onClick={() => handleEdit(plan)}>Edit</button>
+                        <button
+                          className={styles.primaryButton}
+                          disabled={plan.status !== "Planning"}
+                          type="button"
+                          onClick={() => updateStatus(plan.id, "Planned")}
+                        >
+                          {plan.status === "Planned"
+                            ? "Confirmed"
+                            : plan.status === "Cancel"
+                              ? "Cancelled"
+                              : "Confirm"}
+                        </button>
                         <button className={styles.dangerButton} type="button" onClick={() => handleDelete(plan.id)}>Delete</button>
                       </td>
                     </tr>
@@ -450,13 +439,13 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                             <div className={styles.panelHeader}>
                               <div>
                                 <p className={styles.kicker}>Course detail from Course Master</p>
-                                <h3>{plan.course.name}</h3>
+                                <h3>{plan.course.courseNameEn}</h3>
                               </div>
                               <button className={styles.closeButton} type="button" onClick={() => setOpenDetailId("")}>Close</button>
                             </div>
                             <div className={styles.detailGrid}>
-                              <div><span>Course Code</span><strong>{plan.course.code}</strong></div>
-                              <div><span>Course Name (TH)</span><strong>{plan.course.nameTh}</strong></div>
+                              <div><span>Course Code</span><strong>{plan.course.courseCode}</strong></div>
+                              <div><span>Course Name (TH)</span><strong>{plan.course.courseNameTh}</strong></div>
                               <div><span>Course Type</span><strong>{plan.course.courseType}</strong></div>
                               <div><span>Course Group</span><strong>{plan.course.courseGroup}</strong></div>
                               <div><span>Objective</span><p>{plan.course.objective}</p></div>

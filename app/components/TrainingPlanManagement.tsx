@@ -8,6 +8,7 @@ import {
   type ClientRoleCode,
   type ClientSessionUser,
 } from "../lib/auth/client";
+import { initializeTrainingWorkflow } from "../lib/trainingWorkflow";
 import CenterFactoryDashboard from "./center_factory/CenterFactory_Dashboard";
 import CenterFactoryMasterDataManagement from "./center_factory/MasterDataManagement/CenterFactory_MasterDataManagement";
 import CenterFactoryReportManagement from "./center_factory/ReportManagement/CenterFactory_ReportManagement";
@@ -138,6 +139,7 @@ export default function TrainingPlanManagement() {
   const [logoutMessage, setLogoutMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    initializeTrainingWorkflow();
     let active = true;
 
     getCurrentSession()

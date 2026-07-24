@@ -1,7 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  TRAINING_WORKFLOW_EVENT,
+  TRAINING_WORKFLOW_KEYS,
+  readWorkflowCollection,
+  writeWorkflowCollection,
+  type WorkflowAcceptance,
+  type WorkflowCompletedCourse,
+} from "../../../../lib/trainingWorkflow";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import type { RollingPlan } from "../../TrainingPlanManagement/modules/TrainingRolling";
 import styles from "./TrainingRecord.module.css";
 
 export const trainingActualModule = {
@@ -24,6 +33,7 @@ type Attendee = {
   employeeCode: string;
   name: string;
   department: string;
+  company?: string;
   registered: boolean;
   attended: boolean;
 };
@@ -38,6 +48,7 @@ type ActualCourse = {
   company: string;
   owner: "CENTER" | "FACTORY";
   instructor: string;
+  hours?: string;
   attendees: Attendee[];
   expenses: Record<ExpenseKey, string>;
 };
@@ -184,12 +195,84 @@ const formatCurrency = (value: number) =>
 
 export default function TrainingActual() {
   const user = useAuthenticatedUser();
-  const [courses, setCourses] = useState<ActualCourse[]>(initialCourses);
+  const [courses, setCourses] = useState<ActualCourse[]>([]);
   const [courseOwnerFilter, setCourseOwnerFilter] = useState<CourseOwnerFilter>("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
   const userCompanyCode = profileValue(user?.companyCode);
+
+  useEffect(() => {
+    const syncWorkflow = () => {
+      const acceptances = readWorkflowCollection<WorkflowAcceptance>(
+        TRAINING_WORKFLOW_KEYS.acceptances,
+      );
+      const nextCourses = readWorkflowCollection<RollingPlan>(
+        TRAINING_WORKFLOW_KEYS.rollingPlans,
+      )
+        .filter((plan) => plan.status === "Planned")
+        .map<ActualCourse>((plan) => ({
+          id: plan.rollingId,
+          code: plan.course.code,
+          title: plan.course.name,
+          date: plan.trainingDate,
+          time: `${plan.startTime} - ${plan.endTime}`,
+          room: plan.location,
+          company: plan.company,
+          owner: plan.ownerScope === "CENTER" ? "CENTER" : "FACTORY",
+          instructor: plan.trainer,
+          hours: plan.hours,
+          attendees: acceptances
+            .filter(
+              (acceptance) =>
+                acceptance.courseId === plan.rollingId &&
+                (plan.ownerScope === "CENTER"
+                  ? acceptance.status === "Center Approved"
+                  : acceptance.status === "Factory Approved"),
+            )
+            .map((acceptance) => ({
+              id: `${plan.rollingId}-${acceptance.id}`,
+              employeeCode: acceptance.id,
+              name: acceptance.name,
+              department: acceptance.department,
+              company: acceptance.company,
+              registered: true,
+              attended: false,
+            })),
+          expenses: {
+            instructor: "",
+            traveling: "",
+            seminarRoom: "",
+            accommodation: "",
+            material: "",
+            foodBeverage: "",
+          },
+        }))
+        .filter((course) => course.attendees.length > 0);
+
+      setCourses((current) =>
+        nextCourses.map((nextCourse) => {
+          const existing = current.find((course) => course.id === nextCourse.id);
+          return existing
+            ? {
+                ...nextCourse,
+                attendees: nextCourse.attendees.map((nextAttendee) => {
+                  const existingAttendee = existing.attendees.find(
+                    (attendee) => attendee.id === nextAttendee.id,
+                  );
+                  return existingAttendee ?? nextAttendee;
+                }),
+                expenses: existing.expenses,
+              }
+            : nextCourse;
+        }),
+      );
+    };
+
+    syncWorkflow();
+    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflow);
+    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflow);
+  }, []);
   const availableCourses = useMemo(
     () =>
       isFactoryUser
@@ -269,6 +352,43 @@ export default function TrainingActual() {
       month: "short",
       year: "numeric",
     }).format(new Date());
+
+    const completedCourses = readWorkflowCollection<WorkflowCompletedCourse>(
+      TRAINING_WORKFLOW_KEYS.completedCourses,
+    );
+    const completedCourse: WorkflowCompletedCourse = {
+      id: `completed-${selectedCourse.id}`,
+      rollingId: selectedCourse.id,
+      code: selectedCourse.code,
+      title: selectedCourse.title,
+      date: selectedCourse.date,
+      company: selectedCourse.company,
+      owner: selectedCourse.owner,
+      room: selectedCourse.room,
+      instructor: selectedCourse.instructor,
+      hours: Number(selectedCourse.hours || 0),
+      attendees: selectedCourse.attendees.map((attendee) => ({
+        ...attendee,
+        company: attendee.company ?? selectedCourse.company,
+      })),
+      expenses: {
+        accommodation: Number(selectedCourse.expenses.accommodation || 0),
+        foodBeverage: Number(selectedCourse.expenses.foodBeverage || 0),
+        instructor: Number(selectedCourse.expenses.instructor || 0),
+        material: Number(selectedCourse.expenses.material || 0),
+        seminarRoom: Number(selectedCourse.expenses.seminarRoom || 0),
+        traveling: Number(selectedCourse.expenses.traveling || 0),
+      },
+      savedAt: new Date().toISOString(),
+    };
+    const nextCompletedCourses = [
+      completedCourse,
+      ...completedCourses.filter((course) => course.rollingId !== selectedCourse.id),
+    ];
+    writeWorkflowCollection(
+      TRAINING_WORKFLOW_KEYS.completedCourses,
+      nextCompletedCourses,
+    );
 
     setSavedMessage(
       `Saved ${selectedCourse.code} with ${actualCount} actual attendees and THB ${formatCurrency(expenseTotal)} at ${now}.`,

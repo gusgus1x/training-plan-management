@@ -114,12 +114,7 @@ const readStoredRequests = () => {
 };
 
 const mergeRequests = (storedRequests: EmployeeTrainingNeedRequest[]) => {
-  const storedIds = new Set(storedRequests.map((request) => request.id));
-
-  return [
-    ...storedRequests,
-    ...defaultRequests.filter((request) => !storedIds.has(request.id)),
-  ];
+  return storedRequests;
 };
 
 type RequestTrainingNeedProps = {
@@ -130,8 +125,8 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
   const user = useAuthenticatedUser();
   const userCompanyCode = profileValue(user?.companyCode);
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
-  const [requests, setRequests] = useState<EmployeeTrainingNeedRequest[]>(defaultRequests);
-  const [selectedId, setSelectedId] = useState(defaultRequests[0]?.id ?? "");
+  const [requests, setRequests] = useState<EmployeeTrainingNeedRequest[]>([]);
+  const [selectedId, setSelectedId] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<TrainingNeedRequestStatus | "all">("all");
   const [companyFilter, setCompanyFilter] = useState<(typeof companies)[number] | "all">("all");
@@ -232,10 +227,10 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
   };
 
   const handleRefresh = () => {
-    setRequests(defaultRequests);
+    setRequests([]);
     window.localStorage.removeItem(EMPLOYEE_TRAINING_REQUESTS_STORAGE_KEY);
     window.dispatchEvent(new Event("employee-training-requests-changed"));
-    setSelectedId(defaultRequests[0]?.id ?? "");
+    setSelectedId("");
     setSearch("");
     setStatusFilter("all");
     setCompanyFilter("all");

@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
+import {
+  TRAINING_WORKFLOW_EVENT,
+  TRAINING_WORKFLOW_KEYS,
+  readWorkflowCollection,
+  type WorkflowCompletedCourse,
+} from "../../../../lib/trainingWorkflow";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import styles from "./TrainingRecord.module.css";
 
@@ -543,17 +549,65 @@ const expenseItems = [
 
 export default function TrainingRecord() {
   const user = useAuthenticatedUser();
-  const [courses, setCourses] = useState<CompletedCourse[]>(initialCompletedCourses);
+  const [courses, setCourses] = useState<CompletedCourse[]>([]);
   const [courseOwnerFilter, setCourseOwnerFilter] = useState<CourseOwnerFilter>("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [downloadMessage, setDownloadMessage] = useState("");
   const [importedCourses, setImportedCourses] = useState<ImportedCourseDraft[]>([]);
   const [importedRecordRows, setImportedRecordRows] = useState<UploadedTrainingRecord[]>([]);
-  const [savedRecordRows, setSavedRecordRows] = useState<UploadedTrainingRecord[]>(
-    initialUploadedTrainingRecords,
-  );
+  const [savedRecordRows, setSavedRecordRows] = useState<UploadedTrainingRecord[]>([]);
   const [importMessage, setImportMessage] = useState("");
   const [importFileName, setImportFileName] = useState("");
+
+  useEffect(() => {
+    const syncCompletedCourses = () => {
+      const nextCourses = readWorkflowCollection<WorkflowCompletedCourse>(
+        TRAINING_WORKFLOW_KEYS.completedCourses,
+      ).map<CompletedCourse>((course) => {
+        const attendedEmployees = course.attendees.filter((attendee) => attendee.attended);
+        const registeredEmployees = course.attendees.filter(
+          (attendee) => attendee.registered,
+        );
+
+        return {
+          id: course.id,
+          source: "SYSTEM",
+          code: course.code,
+          title: course.title,
+          date: course.date,
+          company: course.company,
+          owner: course.owner,
+          room: course.room,
+          instructor: course.instructor,
+          actualAttendees: attendedEmployees.length,
+          registeredAttendees: registeredEmployees.length,
+          actualCost: course.expenses,
+          prePostPassPercent: 0,
+          postTestPassPercent: 0,
+          preTestPassPercent: 0,
+          evaluationCompleted: 0,
+          evaluationTotal: attendedEmployees.length,
+          averageScore: 0,
+          attendees: attendedEmployees.map((attendee) => ({
+            id: attendee.id,
+            company: attendee.company,
+            name: attendee.name,
+            employeeCode: attendee.employeeCode,
+            department: attendee.department,
+            prePost: "Passed",
+            evaluation: "Pending",
+          })),
+        };
+      });
+
+      setCourses(nextCourses);
+    };
+
+    syncCompletedCourses();
+    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncCompletedCourses);
+    return () =>
+      window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncCompletedCourses);
+  }, []);
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
   const userCompanyCode = profileValue(user?.companyCode);
   const importScopeLabel = isFactoryUser ? `${userCompanyCode} factory scope` : "Center scope";

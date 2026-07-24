@@ -1,12 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  TRAINING_WORKFLOW_EVENT,
+  TRAINING_WORKFLOW_KEYS,
+  isWorkflowOwner,
+  readWorkflowCollection,
+} from "../../lib/trainingWorkflow";
 import DashboardLayout from "../DashboardLayout";
 import {
   buildProfileItems,
   profileValue,
   useAuthenticatedUser,
 } from "../AuthenticatedUserContext";
+import type { RollingPlan } from "./TrainingPlanManagement/modules/TrainingRolling";
 import styles from "./CenterFactory_Dashboard.module.css";
 
 const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -27,7 +34,7 @@ const calendarMonths = [
   { value: "12", label: "December" },
 ] as const;
 
-const trainingSchedule = [
+const legacyTrainingSchedule = [
   {
     date: "2026-07-02",
     course: "Leadership Essentials",
@@ -86,11 +93,14 @@ const trainingSchedule = [
   },
 ] as const;
 
-const employeeTrainingSummary = [
-  { label: "This Month", value: "4", helper: "courses" },
-  { label: "Training Hours", value: "22", helper: "hours" },
-  { label: "Readiness", value: "Active", helper: "available" },
-] as const;
+type DashboardTraining = {
+  date: string;
+  course: string;
+  shortName: string;
+  time: string;
+  room: string;
+  status: string;
+};
 
 type DashboardProps = {
   username: string;
@@ -116,6 +126,7 @@ export default function Dashboard({
   const authenticatedUser = useAuthenticatedUser();
   const employeeInfo = buildProfileItems(authenticatedUser);
   const isCenterDashboard = authenticatedUser?.roleCode === "HRD_CENTER";
+  const userCompanyCode = profileValue(authenticatedUser?.companyCode);
   const dashboardScope = isCenterDashboard ? "Center" : "Factory";
   const dashboardTitle = `${dashboardScope} Dashboard`;
   const [selectedCalendarYear, setSelectedCalendarYear] =
@@ -123,6 +134,45 @@ export default function Dashboard({
   const [selectedCalendarMonth, setSelectedCalendarMonth] =
     useState<(typeof calendarMonths)[number]["value"]>("07");
   const [isMonthListOpen, setIsMonthListOpen] = useState(false);
+  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>(() =>
+    readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
+  );
+
+  useEffect(() => {
+    const syncRollingPlans = () => {
+      setRollingPlans(
+        readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
+      );
+    };
+
+    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncRollingPlans);
+    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncRollingPlans);
+  }, []);
+
+  const scopedRollingPlans = useMemo(
+    () =>
+      rollingPlans.filter((plan) =>
+        isWorkflowOwner(
+          plan.ownerScope ?? (plan.provider === "HRD Center" ? "CENTER" : "FACTORY"),
+          plan.ownerCompany ?? plan.company,
+          authenticatedUser?.roleCode,
+          userCompanyCode,
+        ),
+      ),
+    [authenticatedUser?.roleCode, rollingPlans, userCompanyCode],
+  );
+  const trainingSchedule = useMemo<DashboardTraining[]>(
+    () =>
+      scopedRollingPlans.map((plan) => ({
+        date: plan.trainingDate,
+        course: plan.course.name,
+        shortName: plan.course.code,
+        time: `${plan.startTime} - ${plan.endTime}`,
+        room: plan.location,
+        status: plan.status === "Planned" ? "Published" : "Draft",
+      })),
+    [scopedRollingPlans],
+  );
 
   const selectedMonthLabel =
     calendarMonths.find((month) => month.value === selectedCalendarMonth)?.label ??
@@ -135,6 +185,30 @@ export default function Dashboard({
       (selectedCalendarMonth === "all" || month === selectedCalendarMonth)
     );
   });
+  const employeeTrainingSummary = [
+    {
+      label: "This Month",
+      value: String(filteredTrainingSchedule.length),
+      helper: "courses",
+    },
+    {
+      label: "Training Hours",
+      value: String(
+        scopedRollingPlans.reduce(
+          (total, plan) => total + Number(plan.hours || 0),
+          0,
+        ),
+      ),
+      helper: "hours",
+    },
+    {
+      label: "Published",
+      value: String(
+        scopedRollingPlans.filter((plan) => plan.status === "Planned").length,
+      ),
+      helper: "courses",
+    },
+  ];
 
   const calendarDays =
     selectedCalendarMonth === "all"
@@ -149,7 +223,7 @@ export default function Dashboard({
             { length: leadingBlankDays + daysInMonth },
             (_, index) => {
               if (index < leadingBlankDays) {
-                return { day: null, trainings: [] as typeof trainingSchedule[number][] };
+                return { day: null, trainings: [] as DashboardTraining[] };
               }
 
               const day = index - leadingBlankDays + 1;
@@ -165,7 +239,7 @@ export default function Dashboard({
             ...baseDays,
             ...Array.from({ length: (7 - (baseDays.length % 7)) % 7 }, () => ({
               day: null,
-              trainings: [] as typeof trainingSchedule[number][],
+              trainings: [] as DashboardTraining[],
             })),
           ];
         })();
@@ -335,7 +409,7 @@ export default function Dashboard({
                       <>
                         <span>{item.day}</span>
                         {item.trainings.map((training) => (
-                          <small key={training.course}>{training.shortName}</small>
+                          <small key={`${training.date}-${training.course}-${training.time}`}>{training.shortName}</small>
                         ))}
                       </>
                     ) : null}
@@ -355,7 +429,7 @@ export default function Dashboard({
                 });
 
                 return (
-                  <article className={styles.trainingItem} key={item.course}>
+                  <article className={styles.trainingItem} key={`${item.date}-${item.course}-${item.time}`}>
                     <time dateTime={item.date}>{dateLabel}</time>
                     <div>
                       <strong>{item.course}</strong>

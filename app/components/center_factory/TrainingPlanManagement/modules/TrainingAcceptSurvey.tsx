@@ -1,7 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  TRAINING_WORKFLOW_EVENT,
+  TRAINING_WORKFLOW_KEYS,
+  readWorkflowCollection,
+  writeWorkflowCollection,
+  type WorkflowAcceptance,
+  type WorkflowRegistration,
+  type WorkflowStandard,
+} from "../../../../lib/trainingWorkflow";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import type { RollingPlan } from "./TrainingRolling";
 import styles from "./TrainingAcceptSurvey.module.css";
 
 export const trainingAcceptSurveyModule = {
@@ -14,12 +24,17 @@ export const trainingAcceptSurveyModule = {
 type RoleMode = "center" | "factory";
 type CourseOwnerFilter = RoleMode | "";
 type CandidateStatus =
+  | "Pending Approval"
   | "Target"
   | "Factory Submitted"
   | "Factory Approved"
   | "Center Approved"
   | "Rejected";
-type CandidateSource = "Auto Target" | "Added by Center" | "Submitted by Factory";
+type CandidateSource =
+  | "Employee Registration"
+  | "Auto Target"
+  | "Added by Center"
+  | "Submitted by Factory";
 
 type CourseSurvey = {
   id: string;
@@ -48,12 +63,7 @@ type Employee = {
   legacyLabel: string;
 };
 
-type Candidate = Employee & {
-  courseId: string;
-  source: CandidateSource;
-  status: CandidateStatus;
-  remark: string;
-};
+type Candidate = WorkflowAcceptance;
 
 const companies = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
 
@@ -88,7 +98,7 @@ const employeeNameProfiles: Record<string, { prefix: string; firstName: string; 
   "SNF-5405": { prefix: "Ms.", firstName: "Nicha", lastName: "Limsakul" },
 };
 
-const courseSurveys: CourseSurvey[] = [
+const legacyCourseSurveys: CourseSurvey[] = [
   {
     id: "survey-001",
     code: "CRS-001",
@@ -215,9 +225,8 @@ const initialCandidates: Candidate[] = [
   },
 ];
 
-const PARTICIPANT_STORAGE_KEY = "training_accept_survey_candidates";
-
 const statusClass: Record<CandidateStatus, string> = {
+  "Pending Approval": styles.statusTarget,
   Target: styles.statusTarget,
   "Factory Submitted": styles.statusSubmitted,
   "Factory Approved": styles.statusFactoryApproved,
@@ -226,9 +235,68 @@ const statusClass: Record<CandidateStatus, string> = {
 };
 
 const sourceClass: Record<CandidateSource, string> = {
+  "Employee Registration": styles.sourceAuto,
   "Auto Target": styles.sourceAuto,
   "Added by Center": styles.sourceCenter,
   "Submitted by Factory": styles.sourceFactory,
+};
+
+const mergeRegistrationCandidates = (
+  savedCandidates: Candidate[],
+  registrations: WorkflowRegistration[],
+) => {
+  const activeRegistrationKeys = new Set(
+    registrations.map(
+      (registration) => `${registration.rollingId}:${registration.employeeCode}`,
+    ),
+  );
+  const nextCandidates = savedCandidates.filter(
+    (candidate) =>
+      candidate.source !== "Employee Registration" ||
+      candidate.status !== "Pending Approval" ||
+      activeRegistrationKeys.has(`${candidate.courseId}:${candidate.id}`),
+  );
+
+  registrations.forEach((registration) => {
+    const exists = nextCandidates.some(
+      (candidate) =>
+        candidate.courseId === registration.rollingId &&
+        candidate.id === registration.employeeCode,
+    );
+
+    if (!exists) {
+      nextCandidates.push({
+        id: registration.employeeCode,
+        name: registration.employeeName,
+        company: registration.company,
+        department: registration.department,
+        position: registration.position || "-",
+        level: registration.level || "-",
+        legacyLabel: "Registered",
+        courseId: registration.rollingId,
+        source: "Employee Registration",
+        status: "Pending Approval",
+        remark: "Employee registered from Register Training.",
+      });
+    }
+  });
+
+  return nextCandidates;
+};
+
+const getEmployeeNameProfile = (employee: Employee) => {
+  const savedProfile = employeeNameProfiles[employee.id];
+
+  if (savedProfile) {
+    return savedProfile;
+  }
+
+  const nameParts = employee.name.trim().split(/\s+/);
+  return {
+    prefix: "-",
+    firstName: nameParts[0] || employee.name,
+    lastName: nameParts.slice(1).join(" ") || "-",
+  };
 };
 
 export default function TrainingAcceptSurvey() {
@@ -239,36 +307,107 @@ export default function TrainingAcceptSurvey() {
     roleMode === "center"
       ? "All Companies"
       : profileValue(user?.companyName ?? userCompanyCode);
-  const [selectedCourseOwner, setSelectedCourseOwner] = useState<CourseOwnerFilter>("");
+  const [selectedCourseOwner, setSelectedCourseOwner] = useState<CourseOwnerFilter>(
+    roleMode,
+  );
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [showTargetOnly, setShowTargetOnly] = useState(false);
-  const [candidates, setCandidates] = useState<Candidate[]>(initialCandidates);
+  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>(() =>
+    readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
+  );
+  const [standards, setStandards] = useState<WorkflowStandard[]>(() =>
+    readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards),
+  );
+  const [candidates, setCandidates] = useState<Candidate[]>(() =>
+    mergeRegistrationCandidates(
+      readWorkflowCollection<Candidate>(TRAINING_WORKFLOW_KEYS.acceptances),
+      readWorkflowCollection<WorkflowRegistration>(
+        TRAINING_WORKFLOW_KEYS.registrations,
+      ),
+    ),
+  );
   const [hasUnsavedParticipants, setHasUnsavedParticipants] = useState(false);
   const [participantSaveMessage, setParticipantSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const savedCandidates = localStorage.getItem(PARTICIPANT_STORAGE_KEY);
+    const syncWorkflow = () => {
+      const nextRegistrations = readWorkflowCollection<WorkflowRegistration>(
+        TRAINING_WORKFLOW_KEYS.registrations,
+      );
+      const savedCandidates = readWorkflowCollection<Candidate>(
+        TRAINING_WORKFLOW_KEYS.acceptances,
+      );
+      setRollingPlans(
+        readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
+      );
+      setStandards(
+        readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards),
+      );
+      setCandidates((current) =>
+        mergeRegistrationCandidates(
+          savedCandidates.concat(
+            current.filter(
+              (candidate) =>
+                !savedCandidates.some(
+                  (savedCandidate) =>
+                    savedCandidate.courseId === candidate.courseId &&
+                    savedCandidate.id === candidate.id,
+                ),
+            ),
+          ),
+          nextRegistrations,
+        ),
+      );
+    };
 
-      if (!savedCandidates) {
-        return;
-      }
-
-      const parsedCandidates = JSON.parse(savedCandidates) as unknown;
-
-      if (Array.isArray(parsedCandidates)) {
-        setCandidates(parsedCandidates as Candidate[]);
-      }
-    } catch {
-      setParticipantSaveMessage("Unable to load saved participants.");
-    }
+    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflow);
+    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflow);
   }, []);
+
+  const courseSurveys = useMemo<CourseSurvey[]>(
+    () =>
+      rollingPlans
+        .filter((plan) => plan.status === "Planned")
+        .map((plan) => {
+          const standard = standards.find(
+            (item) => item.courseCode === plan.course.code,
+          );
+          const isCenterPlan =
+            plan.ownerScope === "CENTER" ||
+            plan.ownerCompany === "HRD Center" ||
+            plan.provider === "HRD Center" ||
+            plan.owner === "admin.hrd";
+
+          return {
+            id: plan.rollingId,
+            code: plan.course.code,
+            title: plan.course.name,
+            owner: isCenterPlan ? "center" : "factory",
+            ownerCompany:
+              isCenterPlan
+                ? "HRD Center"
+                : plan.ownerCompany ?? plan.company,
+            date: plan.trainingDate,
+            capacity: Number(plan.participants || 0),
+            courseType: plan.course.courseType,
+            courseGroup: plan.course.courseGroup,
+            objective: plan.course.objective,
+            standardName: standard
+              ? `${standard.functionName} target standard`
+              : "No Course Standard",
+            targetPositions: standard?.positions ?? [],
+            targetLevels: standard?.levels ?? [],
+            companies:
+              plan.company === "All Companies" ? [...companies] : [plan.company],
+          };
+        }),
+    [rollingPlans, standards],
+  );
 
   const courseOwnerOptions =
     roleMode === "center"
       ? [
           { value: "center" as const, label: "Center" },
-          { value: "factory" as const, label: "Factory" },
         ]
       : [
           { value: "factory" as const, label: "Factory" },
@@ -286,7 +425,9 @@ export default function TrainingAcceptSurvey() {
           );
 
   const selectedCourse =
-    availableCourses.find((course) => course.id === selectedCourseId) ?? null;
+    availableCourses.find((course) => course.id === selectedCourseId) ??
+    availableCourses[0] ??
+    null;
   const isFactoryOwnedByUser =
     roleMode === "factory" &&
     selectedCourse?.owner === "factory" &&
@@ -321,7 +462,7 @@ export default function TrainingAcceptSurvey() {
   const activeCourseCandidateIds = new Set(
     courseCandidates
       .filter((candidate) =>
-        ["Factory Submitted", "Factory Approved", "Center Approved"].includes(candidate.status),
+        ["Pending Approval", "Factory Submitted", "Factory Approved", "Center Approved"].includes(candidate.status),
       )
       .map((candidate) => candidate.id),
   );
@@ -346,15 +487,14 @@ export default function TrainingAcceptSurvey() {
       targetCount: targetEmployees.filter((employee) => employee.company === company).length,
     }))
     .filter((group) => group.employees.length > 0 || !showTargetOnly);
-  const factorySubmittedCandidates = courseCandidates.filter(
-    (candidate) =>
-      candidate.source === "Submitted by Factory" ||
-      candidate.status === "Factory Submitted" ||
-      candidate.status === "Factory Approved",
-  );
   const visibleCandidates =
     roleMode === "center"
-      ? factorySubmittedCandidates.filter((candidate) => candidate.status !== "Center Approved")
+      ? courseCandidates.filter(
+          (candidate) =>
+            candidate.status !== "Center Approved" &&
+            candidate.status !== "Rejected" &&
+            candidate.status !== "Target",
+        )
       : isFactoryOwnedByUser
         ? courseCandidates.filter(
             (candidate) =>
@@ -366,10 +506,14 @@ export default function TrainingAcceptSurvey() {
 
   const approvalQueue = visibleCandidates.filter((candidate) =>
     roleMode === "center"
-      ? candidate.status === "Factory Approved" || candidate.status === "Factory Submitted"
+      ? candidate.status === "Pending Approval" ||
+        candidate.status === "Factory Approved" ||
+        candidate.status === "Factory Submitted"
       : isFactoryOwnedByUser &&
         candidate.company === userCompanyCode &&
-        (candidate.status === "Target" || candidate.status === "Factory Submitted"),
+        (candidate.status === "Pending Approval" ||
+          candidate.status === "Target" ||
+          candidate.status === "Factory Submitted"),
   );
   const submittedToCenterCandidates = isFactorySubmittingToCenter
     ? courseCandidates.filter(
@@ -488,7 +632,7 @@ export default function TrainingAcceptSurvey() {
 
   const handleSaveParticipants = () => {
     try {
-      localStorage.setItem(PARTICIPANT_STORAGE_KEY, JSON.stringify(candidates));
+      writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.acceptances, candidates);
       setHasUnsavedParticipants(false);
       setParticipantSaveMessage("Changes saved.");
     } catch {
@@ -532,9 +676,9 @@ export default function TrainingAcceptSurvey() {
         </label>
 
         <label>
-          Course
+          Published Rolling Course
           <select
-            value={selectedCourseId}
+            value={selectedCourse?.id ?? ""}
             disabled={selectedCourseOwner === ""}
             onChange={(event) => setSelectedCourseId(event.target.value)}
           >
@@ -542,7 +686,9 @@ export default function TrainingAcceptSurvey() {
               {selectedCourseOwner === "" ? "Select owner first" : "Select course"}
             </option>
             {availableCourses.map((course) => (
-              <option key={course.id} value={course.id}>{course.title}</option>
+              <option key={course.id} value={course.id}>
+                {course.date} / {course.title}
+              </option>
             ))}
           </select>
         </label>
@@ -656,7 +802,7 @@ export default function TrainingAcceptSurvey() {
               </div>
             ) : null}
             {acceptedParticipants.map((participant) => {
-              const nameProfile = employeeNameProfiles[participant.id];
+              const nameProfile = getEmployeeNameProfile(participant);
 
               return (
                 <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={participant.id}>
@@ -725,7 +871,7 @@ export default function TrainingAcceptSurvey() {
                       </div>
                     </div>
                     {group.employees.map((employee) => {
-                      const nameProfile = employeeNameProfiles[employee.id];
+                      const nameProfile = getEmployeeNameProfile(employee);
 
                       return (
                         <article className={`${styles.employeeRow} ${styles.targetListRow}`} key={employee.id}>
@@ -800,7 +946,7 @@ export default function TrainingAcceptSurvey() {
               </div>
             ) : null}
             {submittedToCenterCandidates.map((candidate) => {
-              const nameProfile = employeeNameProfiles[candidate.id];
+              const nameProfile = getEmployeeNameProfile(candidate);
 
               return (
                 <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={candidate.id}>
@@ -860,9 +1006,13 @@ export default function TrainingAcceptSurvey() {
                   selectedCourse.targetLevels.includes(candidate.level);
                 const canApprove =
                   (canCenterApprove &&
-                    (candidate.status === "Factory Approved" || candidate.status === "Factory Submitted")) ||
+                    (candidate.status === "Pending Approval" ||
+                      candidate.status === "Factory Approved" ||
+                      candidate.status === "Factory Submitted")) ||
                   (canFactoryApprove &&
-                    (candidate.status === "Target" || candidate.status === "Factory Submitted"));
+                    (candidate.status === "Pending Approval" ||
+                      candidate.status === "Target" ||
+                      candidate.status === "Factory Submitted"));
 
                 return (
                   <tr key={`${candidate.courseId}-${candidate.id}`}>
@@ -924,9 +1074,9 @@ export default function TrainingAcceptSurvey() {
         </>
       ) : (
         <section className={styles.selectionPrompt}>
-          <p className={styles.kicker}>Course selection</p>
-          <h3>Select a course to open Training Accept Survey data.</h3>
-          <span>No course data is shown until a course is selected.</span>
+          <p className={styles.kicker}>Published Rolling Course</p>
+          <h3>No published Rolling course is available for this owner.</h3>
+          <span>Open Training Rolling and click Publish, then the course will appear here automatically.</span>
         </section>
       )}
     </section>

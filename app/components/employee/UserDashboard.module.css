@@ -3993,6 +3993,17 @@
   background: #fff1f2;
 }
 
+.formMessage {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #b8d8c4;
+  border-radius: 6px;
+  background: #eef8f1;
+  color: #17633a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 @media (max-width: 760px) {
   .employeeProfileGrid {
     grid-template-columns: 1fr;

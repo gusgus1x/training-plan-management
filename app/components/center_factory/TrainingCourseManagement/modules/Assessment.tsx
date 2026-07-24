@@ -99,7 +99,7 @@ const initialAssessments: AssessmentRecord[] = [
 ];
 
 export default function Assessment() {
-  const [assessments, setAssessments] = useState<AssessmentRecord[]>(initialAssessments);
+  const [assessments, setAssessments] = useState<AssessmentRecord[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [openDetailId, setOpenDetailId] = useState("");
   const [mode, setMode] = useState<"idle" | "new" | "edit">("idle");
@@ -174,7 +174,7 @@ export default function Assessment() {
   };
 
   const handleRefresh = () => {
-    setAssessments(initialAssessments);
+    setAssessments([]);
     setSelectedId("");
     setOpenDetailId("");
     setMode("idle");

@@ -1,12 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   initialRollingPlans,
   monthOptions,
   type RollingPlan,
   yearOptions,
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
+import {
+  TRAINING_WORKFLOW_EVENT,
+  TRAINING_WORKFLOW_KEYS,
+  isWorkflowOwner,
+  readWorkflowCollection,
+  writeWorkflowCollection,
+} from "../../../../lib/trainingWorkflow";
+import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import type { InternalReportDraft } from "./InternalReport";
 import styles from "./ScheduleCalendar.module.css";
 
@@ -167,6 +175,7 @@ type ScheduleCalendarProps = {
 };
 
 export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarProps = {}) {
+  const user = useAuthenticatedUser();
   const [selectedYear, setSelectedYear] = useState("2026");
   const [selectedMonth, setSelectedMonth] = useState<"all" | string>("all");
   const [expandedTrainingMonth, setExpandedTrainingMonth] = useState("");
@@ -175,17 +184,39 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
   const [scheduleUpdates, setScheduleUpdates] = useState<Record<string, ScheduleEditForm>>({});
   const [editingPlanId, setEditingPlanId] = useState("");
   const [editForm, setEditForm] = useState<ScheduleEditForm | null>(null);
+  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
+  const userCompanyCode = profileValue(user?.companyCode);
+
+  useEffect(() => {
+    const syncRollingPlans = () => {
+      setRollingPlans(
+        readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
+      );
+    };
+
+    syncRollingPlans();
+    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncRollingPlans);
+    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncRollingPlans);
+  }, []);
 
   const schedulePlans = useMemo(
     () =>
-      [...initialRollingPlans, ...createMockRollingPlans(selectedYear)]
+      rollingPlans
+        .filter((plan) =>
+          isWorkflowOwner(
+            plan.ownerScope ?? (plan.owner === "admin.hrd" ? "CENTER" : "FACTORY"),
+            plan.ownerCompany ?? plan.company,
+            user?.roleCode,
+            userCompanyCode,
+          ),
+        )
         .map((plan) => ({
           ...plan,
           ...(scheduleUpdates[plan.rollingId] ?? {}),
         }))
         .filter((plan) => !isWeekendDate(plan.trainingDate))
         .sort((a, b) => a.trainingDate.localeCompare(b.trainingDate)),
-    [scheduleUpdates, selectedYear],
+    [rollingPlans, scheduleUpdates, user?.roleCode, userCompanyCode],
   );
   const editingPlan = schedulePlans.find((plan) => plan.rollingId === editingPlanId) ?? null;
 
@@ -325,11 +356,15 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
   const handleSaveEdit = () => {
     if (!editingPlanId || !editForm) return;
 
-    setScheduleUpdates((current) => ({
-      ...current,
-      [editingPlanId]: editForm,
-    }));
+    const nextPlans = rollingPlans.map((plan) =>
+      plan.rollingId === editingPlanId ? { ...plan, ...editForm } : plan,
+    );
+    setRollingPlans(nextPlans);
+    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.rollingPlans, nextPlans);
+    setScheduleUpdates({});
     setSelectedMonth(editForm.trainingDate.slice(5, 7));
+    setEditingPlanId("");
+    setEditForm(null);
   };
 
   const handleCancelEdit = () => {
