@@ -1,25 +1,38 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import styles from "./InternalReport.module.css";
 
 type ReportStatus = "Draft" | "Ready" | "Sent";
 
+type AttachmentRecord = {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+};
+
 type ReportRecord = {
   id: string;
+  senderEmail: string;
   subject: string;
   reportType: string;
+  recipientType: string;
+  recipientTarget: string;
   recipientGroup: string;
   companyScope: string;
   period: string;
   dueDate: string;
-  deliveryMethod: string;
   summary: string;
+  attachments?: AttachmentRecord[];
   status: ReportStatus;
   sentAt: string;
 };
 
-type ComposeForm = Omit<ReportRecord, "id" | "status" | "sentAt">;
+type ComposeForm = Omit<ReportRecord, "id" | "senderEmail" | "status" | "sentAt">;
+
+export type InternalReportDraft = Partial<ComposeForm>;
 
 export const internalReportModule = {
   title: "Internal Report",
@@ -30,73 +43,63 @@ export const internalReportModule = {
 
 export const internalReportTitle = internalReportModule.title;
 
-const reportTypes = [
-  "Monthly Training Summary",
-  "Training Expense Summary",
-  "Evaluation Follow Up",
-  "Training Plan Progress",
-  "Compliance Alert",
-] as const;
-
-const recipientGroups = [
-  "HRD Center",
-  "Factory HR",
-  "Management",
-  "Finance",
-  "Department Owner",
-] as const;
-
-const companyScopes = ["All Companies", "ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] as const;
-const deliveryMethods = ["Email", "Dashboard Notice", "Email + Dashboard"] as const;
+const recipientTypes = ["Person", "Company"] as const;
+const companyRecipients = ["All Companies", "ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] as const;
 
 const createInitialForm = (): ComposeForm => ({
   subject: "Monthly training summary",
   reportType: "Monthly Training Summary",
-  recipientGroup: "Factory HR",
+  recipientType: "Person",
+  recipientTarget: "factory.hr@attg.local",
+  recipientGroup: "factory.hr@attg.local",
   companyScope: "All Companies",
-  period: "July 2026",
+  period: "2026-07-24",
   dueDate: "2026-07-31",
-  deliveryMethod: "Email + Dashboard",
-  summary:
-    "สรุปภาพรวมการอบรมประจำเดือน จำนวนหลักสูตร สถานะการเข้าร่วม ค่าใช้จ่าย และรายการที่ต้องติดตามต่อ",
+  summary: "Please review the attached training report and confirm any required follow-up actions.",
 });
 
 const initialReports: ReportRecord[] = [
   {
     id: "report-001",
+    senderEmail: "center.hrd@attg.local",
     subject: "Monthly training summary",
     reportType: "Monthly Training Summary",
+    recipientType: "Company",
+    recipientTarget: "All Companies",
     recipientGroup: "Factory HR",
     companyScope: "All Companies",
-    period: "June 2026",
+    period: "2026-07-01",
     dueDate: "2026-06-30",
-    deliveryMethod: "Email + Dashboard",
     summary: "Monthly training status, participant completion, and expense overview.",
     status: "Sent",
     sentAt: "2026-07-01 09:30",
   },
   {
     id: "report-002",
+    senderEmail: "factory.hr@attg.local",
     subject: "Evaluation follow up",
     reportType: "Evaluation Follow Up",
-    recipientGroup: "Department Owner",
+    recipientType: "Person",
+    recipientTarget: "department.owner@attg.local",
+    recipientGroup: "department.owner@attg.local",
     companyScope: "SNF",
-    period: "July 2026",
+    period: "2026-07-24",
     dueDate: "2026-07-25",
-    deliveryMethod: "Dashboard Notice",
     summary: "Pending 30-day evaluations by department owner.",
     status: "Ready",
     sentAt: "-",
   },
   {
     id: "report-003",
+    senderEmail: "finance.coordinator@attg.local",
     subject: "Budget clarification",
     reportType: "Training Expense Summary",
-    recipientGroup: "Finance",
+    recipientType: "Person",
+    recipientTarget: "finance@attg.local",
+    recipientGroup: "finance@attg.local",
     companyScope: "All Companies",
-    period: "Q2 2026",
+    period: "2026-07-15",
     dueDate: "2026-07-15",
-    deliveryMethod: "Email",
     summary: "Training expense detail for finance review.",
     status: "Draft",
     sentAt: "-",
@@ -109,12 +112,23 @@ const statusClass: Record<ReportStatus, string> = {
   Sent: "statusSent",
 };
 
-export default function InternalReport() {
-  const [form, setForm] = useState<ComposeForm>(createInitialForm);
+type InternalReportProps = {
+  preparedDraft?: InternalReportDraft | null;
+};
+
+export default function InternalReport({ preparedDraft }: InternalReportProps = {}) {
+  const authenticatedUser = useAuthenticatedUser();
+  const senderEmail = profileValue(authenticatedUser?.email);
+  const [form, setForm] = useState<ComposeForm>(() => ({
+    ...createInitialForm(),
+    ...(preparedDraft ?? {}),
+  }));
   const [reports, setReports] = useState<ReportRecord[]>(initialReports);
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(initialReports[0]?.id ?? "");
   const [sendMessage, setSendMessage] = useState("");
+  const [attachmentInputKey, setAttachmentInputKey] = useState(0);
+  const attachments = form.attachments ?? [];
 
   const selectedReport = reports.find((report) => report.id === selectedId) ?? null;
   const visibleReports = useMemo(() => {
@@ -127,9 +141,10 @@ export default function InternalReport() {
     return reports.filter((report) =>
       [
         report.subject,
-        report.reportType,
+        report.senderEmail,
+        report.recipientType,
+        report.recipientTarget,
         report.recipientGroup,
-        report.companyScope,
         report.period,
         report.status,
       ]
@@ -147,14 +162,91 @@ export default function InternalReport() {
     setSendMessage("");
   };
 
+  const updateRecipientType = (value: string) => {
+    const nextTarget = value === "Company" ? companyRecipients[0] : "";
+
+    setForm((current) => ({
+      ...current,
+      recipientType: value,
+      recipientTarget: nextTarget,
+      recipientGroup: nextTarget,
+      companyScope: value === "Company" ? nextTarget : current.companyScope,
+    }));
+    setSendMessage("");
+  };
+
+  const updateRecipientTarget = (value: string) => {
+    setForm((current) => ({
+      ...current,
+      recipientTarget: value,
+      recipientGroup: value,
+      companyScope: current.recipientType === "Company" ? value : current.companyScope,
+    }));
+    setSendMessage("");
+  };
+
+  const formatFileSize = (size: number) => {
+    if (size >= 1024 * 1024) {
+      return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    return `${Math.max(1, Math.round(size / 1024))} KB`;
+  };
+
+  const handleFileChange = (files: FileList | null) => {
+    if (!files) {
+      return;
+    }
+
+    const nextAttachments: AttachmentRecord[] = Array.from(files).map((file, index) => ({
+      id: `attachment-${file.name}-${file.lastModified}-${Date.now()}-${index}`,
+      name: file.name,
+      size: file.size,
+      type: file.type || "Unknown file type",
+    }));
+
+    setForm((current) => ({
+      ...current,
+      attachments: [...(current.attachments ?? []), ...nextAttachments],
+    }));
+    setSendMessage("");
+  };
+
+  const handleRemoveAttachment = (attachmentId: string) => {
+    setForm((current) => ({
+      ...current,
+      attachments: (current.attachments ?? []).filter((attachment) => attachment.id !== attachmentId),
+    }));
+    setSendMessage("");
+  };
+
   const handleReset = () => {
     setForm(createInitialForm());
     setSendMessage("");
+    setAttachmentInputKey((current) => current + 1);
+  };
+
+  const handleClearData = () => {
+    setForm({
+      subject: "",
+      reportType: "Monthly Training Summary",
+      recipientType: "Person",
+      recipientTarget: "factory.hr@attg.local",
+      recipientGroup: "factory.hr@attg.local",
+      companyScope: "All Companies",
+      period: "",
+      dueDate: "",
+      summary: "",
+      attachments: [],
+    });
+    setSendMessage("Composer cleared.");
+    setAttachmentInputKey((current) => current + 1);
   };
 
   const handleSaveDraft = () => {
     const nextReport: ReportRecord = {
       id: `report-${Date.now()}`,
+      senderEmail,
       ...form,
       status: "Draft",
       sentAt: "-",
@@ -162,12 +254,13 @@ export default function InternalReport() {
 
     setReports((current) => [nextReport, ...current]);
     setSelectedId(nextReport.id);
-    setSendMessage("Draft saved.");
+    setSendMessage(`Draft saved with ${attachments.length} attachments.`);
   };
 
   const handlePrepare = () => {
     const nextReport: ReportRecord = {
       id: `report-${Date.now()}`,
+      senderEmail,
       ...form,
       status: "Ready",
       sentAt: "-",
@@ -175,7 +268,7 @@ export default function InternalReport() {
 
     setReports((current) => [nextReport, ...current]);
     setSelectedId(nextReport.id);
-    setSendMessage("Report prepared and ready to send.");
+    setSendMessage(`Report prepared with ${attachments.length} attachments.`);
   };
 
   const handleSend = () => {
@@ -188,6 +281,7 @@ export default function InternalReport() {
     });
     const nextReport: ReportRecord = {
       id: `report-${Date.now()}`,
+      senderEmail,
       ...form,
       status: "Sent",
       sentAt,
@@ -195,7 +289,7 @@ export default function InternalReport() {
 
     setReports((current) => [nextReport, ...current]);
     setSelectedId(nextReport.id);
-    setSendMessage(`Sent to ${form.recipientGroup} via ${form.deliveryMethod}.`);
+    setSendMessage(`Sent from ${senderEmail} to ${form.recipientTarget} with ${attachments.length} attachments.`);
   };
 
   const loadSelectedReport = () => {
@@ -206,14 +300,17 @@ export default function InternalReport() {
     setForm({
       subject: selectedReport.subject,
       reportType: selectedReport.reportType,
+      recipientType: selectedReport.recipientType,
+      recipientTarget: selectedReport.recipientTarget,
       recipientGroup: selectedReport.recipientGroup,
       companyScope: selectedReport.companyScope,
       period: selectedReport.period,
       dueDate: selectedReport.dueDate,
-      deliveryMethod: selectedReport.deliveryMethod,
       summary: selectedReport.summary,
+      attachments: selectedReport.attachments ?? [],
     });
     setSendMessage("Loaded selected report into composer.");
+    setAttachmentInputKey((current) => current + 1);
   };
 
   return (
@@ -258,85 +355,96 @@ export default function InternalReport() {
                 placeholder="Report subject"
               />
             </label>
-            <label>
-              Report Type
+            <label className={styles.recipientTypeField}>
+              Send To
               <select
-                value={form.reportType}
-                onChange={(event) => updateForm("reportType", event.target.value)}
+                value={form.recipientType}
+                onChange={(event) => updateRecipientType(event.target.value)}
               >
-                {reportTypes.map((item) => (
+                {recipientTypes.map((item) => (
                   <option key={item} value={item}>
                     {item}
                   </option>
                 ))}
               </select>
             </label>
-            <label>
-              Recipient
-              <select
-                value={form.recipientGroup}
-                onChange={(event) => updateForm("recipientGroup", event.target.value)}
-              >
-                {recipientGroups.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
+            <label className={styles.recipientTargetField}>
+              {form.recipientType === "Company" ? "Company" : "Person Email"}
+              {form.recipientType === "Company" ? (
+                <select
+                  value={form.recipientTarget}
+                  onChange={(event) => updateRecipientTarget(event.target.value)}
+                >
+                  {companyRecipients.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="email"
+                  value={form.recipientTarget}
+                  onChange={(event) => updateRecipientTarget(event.target.value)}
+                  placeholder="name@company.com"
+                />
+              )}
             </label>
-            <label>
-              Company Scope
-              <select
-                value={form.companyScope}
-                onChange={(event) => updateForm("companyScope", event.target.value)}
-              >
-                {companyScopes.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Period
-              <input
-                value={form.period}
-                onChange={(event) => updateForm("period", event.target.value)}
-                placeholder="July 2026"
-              />
-            </label>
-            <label>
-              Due Date
+            <label className={styles.sendDateField}>
+              Send Date
               <input
                 type="date"
-                value={form.dueDate}
-                onChange={(event) => updateForm("dueDate", event.target.value)}
+                value={form.period}
+                onChange={(event) => updateForm("period", event.target.value)}
               />
             </label>
-            <label>
-              Delivery
-              <select
-                value={form.deliveryMethod}
-                onChange={(event) => updateForm("deliveryMethod", event.target.value)}
-              >
-                {deliveryMethods.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className={styles.fullWidth}>
-              Summary Message
+            <label className={styles.messageField}>
+              Message
               <textarea
                 value={form.summary}
                 onChange={(event) => updateForm("summary", event.target.value)}
-                placeholder="Write report summary"
+                placeholder="Write email message"
+              />
+            </label>
+            <label className={`${styles.fullWidth} ${styles.attachmentInput} ${styles.fileField}`}>
+              Attach Files
+              <input
+                key={attachmentInputKey}
+                type="file"
+                multiple
+                onChange={(event) => handleFileChange(event.target.files)}
               />
             </label>
           </div>
 
+          <div className={styles.attachmentPanel}>
+            <div className={styles.attachmentHeader}>
+              <span>Attachments</span>
+              <strong>{attachments.length} files</strong>
+            </div>
+            {attachments.length > 0 ? (
+              <ul className={styles.attachmentList}>
+                {attachments.map((attachment) => (
+                  <li key={attachment.id}>
+                    <div>
+                      <strong>{attachment.name}</strong>
+                      <span>{formatFileSize(attachment.size)} / {attachment.type}</span>
+                    </div>
+                    <button type="button" onClick={() => handleRemoveAttachment(attachment.id)}>
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.emptyAttachments}>No files attached.</p>
+            )}
+          </div>
+
           <div className={styles.formActions}>
+            <button className={styles.secondaryButton} type="button" onClick={handleClearData}>
+              Clear Data
+            </button>
             <button className={styles.secondaryButton} type="button" onClick={handleReset}>
               Reset
             </button>
@@ -362,30 +470,41 @@ export default function InternalReport() {
           </div>
           <dl className={styles.previewList}>
             <div>
-              <dt>Type</dt>
-              <dd>{form.reportType}</dd>
+              <dt>From</dt>
+              <dd>{senderEmail}</dd>
             </div>
             <div>
               <dt>To</dt>
-              <dd>{form.recipientGroup}</dd>
+              <dd>{form.recipientTarget}</dd>
             </div>
             <div>
-              <dt>Scope</dt>
-              <dd>{form.companyScope}</dd>
+              <dt>Mode</dt>
+              <dd>{form.recipientType}</dd>
             </div>
             <div>
-              <dt>Period</dt>
+              <dt>Send Date</dt>
               <dd>{form.period}</dd>
             </div>
             <div>
-              <dt>Delivery</dt>
-              <dd>{form.deliveryMethod}</dd>
-            </div>
-            <div>
-              <dt>Due</dt>
-              <dd>{form.dueDate}</dd>
+              <dt>Files</dt>
+              <dd>{attachments.length}</dd>
             </div>
           </dl>
+          <div className={styles.previewFiles}>
+            <span>Attached files</span>
+            {attachments.length > 0 ? (
+              <ul>
+                {attachments.map((attachment) => (
+                  <li key={attachment.id}>
+                    {attachment.name}
+                    <small>{formatFileSize(attachment.size)}</small>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No attachment selected.</p>
+            )}
+          </div>
           <div className={styles.previewMessage}>
             <span>Message</span>
             <p>{form.summary || "No summary provided."}</p>
@@ -421,51 +540,103 @@ export default function InternalReport() {
           </button>
         </div>
 
-        <div className={styles.tableWrap}>
-          <table className={styles.reportTable}>
-            <thead>
-              <tr>
-                <th>Subject</th>
-                <th>Type</th>
-                <th>Recipient</th>
-                <th>Scope</th>
-                <th>Period</th>
-                <th>Delivery</th>
-                <th>Status</th>
-                <th>Sent At</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleReports.map((report) => (
-                <tr
-                  className={report.id === selectedId ? styles.selectedRow : undefined}
-                  key={report.id}
-                  onClick={() => setSelectedId(report.id)}
-                >
-                  <td>
-                    <strong>{report.subject}</strong>
-                    <span>{report.summary}</span>
-                  </td>
-                  <td>{report.reportType}</td>
-                  <td>{report.recipientGroup}</td>
-                  <td>{report.companyScope}</td>
-                  <td>{report.period}</td>
-                  <td>{report.deliveryMethod}</td>
-                  <td>
-                    <span className={`${styles.statusPill} ${styles[statusClass[report.status]]}`}>
-                      {report.status}
-                    </span>
-                  </td>
-                  <td>{report.sentAt}</td>
-                </tr>
-              ))}
-              {visibleReports.length === 0 ? (
+        <div className={styles.historyGrid}>
+          <div className={styles.tableWrap}>
+            <table className={styles.reportTable}>
+              <thead>
                 <tr>
-                  <td colSpan={8}>No report history found.</td>
+                  <th>Subject</th>
+                  <th>Recipient</th>
+                  <th>Send Date</th>
+                  <th>Files</th>
+                  <th>Status</th>
                 </tr>
-              ) : null}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {visibleReports.map((report) => (
+                  <tr
+                    className={report.id === selectedId ? styles.selectedRow : undefined}
+                    key={report.id}
+                    onClick={() => setSelectedId(report.id)}
+                  >
+                    <td>
+                      <strong>{report.subject}</strong>
+                      <span>{report.senderEmail}</span>
+                    </td>
+                    <td>
+                      <strong>{report.recipientTarget}</strong>
+                      <span>{report.recipientType}</span>
+                    </td>
+                    <td>{report.period}</td>
+                    <td>{report.attachments?.length ?? 0}</td>
+                    <td>
+                      <span className={`${styles.statusPill} ${styles[statusClass[report.status]]}`}>
+                        {report.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {visibleReports.length === 0 ? (
+                  <tr>
+                    <td colSpan={5}>No report history found.</td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+
+          <aside className={styles.historyDetailPanel} aria-label="Selected report detail">
+            {selectedReport ? (
+              <>
+                <div className={styles.historyDetailHeader}>
+                  <span className={`${styles.statusPill} ${styles[statusClass[selectedReport.status]]}`}>
+                    {selectedReport.status}
+                  </span>
+                  <h4>{selectedReport.subject}</h4>
+                  <p>{selectedReport.sentAt === "-" ? "Not sent yet" : `Sent at ${selectedReport.sentAt}`}</p>
+                </div>
+                <dl className={styles.historyDetailList}>
+                  <div>
+                    <dt>From</dt>
+                    <dd>{selectedReport.senderEmail}</dd>
+                  </div>
+                  <div>
+                    <dt>To</dt>
+                    <dd>{selectedReport.recipientTarget}</dd>
+                  </div>
+                  <div>
+                    <dt>Send To</dt>
+                    <dd>{selectedReport.recipientType}</dd>
+                  </div>
+                  <div>
+                    <dt>Send Date</dt>
+                    <dd>{selectedReport.period}</dd>
+                  </div>
+                </dl>
+                <div className={styles.historyMessage}>
+                  <span>Message</span>
+                  <p>{selectedReport.summary || "No message provided."}</p>
+                </div>
+                <div className={styles.historyFiles}>
+                  <span>Files</span>
+                  {(selectedReport.attachments?.length ?? 0) > 0 ? (
+                    <ul>
+                      {selectedReport.attachments?.map((attachment) => (
+                        <li key={attachment.id}>
+                          <strong>{attachment.name}</strong>
+                          <small>{formatFileSize(attachment.size)}</small>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No files attached.</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className={styles.emptyAttachments}>Select a report to view details.</p>
+            )}
+          </aside>
         </div>
       </section>
     </section>

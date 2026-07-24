@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import styles from "./FunctionData.module.css";
 
-type FunctionRecord = {
+export type FunctionRecord = {
   id: string;
   functionCode: string;
   functionNameTh: string;
@@ -18,7 +18,7 @@ export const functionDataModule = {
   description: "Maintain function codes and bilingual function names for training workflows.",
 } as const;
 
-const defaultRows: FunctionRecord[] = [
+export const defaultFunctionRows: FunctionRecord[] = [
   {
     id: "function-0001",
     functionCode: "FNC0001",
@@ -131,9 +131,9 @@ const emptyRecord = (): FunctionRecord => ({
 });
 
 export default function FunctionData() {
-  const [rows, setRows] = useState<FunctionRecord[]>(defaultRows);
+  const [rows, setRows] = useState<FunctionRecord[]>(defaultFunctionRows);
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState(defaultRows[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState(defaultFunctionRows[0]?.id ?? "");
   const [formMode, setFormMode] = useState<FormMode>(null);
   const [formValues, setFormValues] = useState<FunctionRecord>(emptyRecord);
 
@@ -182,9 +182,9 @@ export default function FunctionData() {
   };
 
   const handleRefresh = () => {
-    setRows(defaultRows);
+    setRows(defaultFunctionRows);
     setSearch("");
-    setSelectedId(defaultRows[0]?.id ?? "");
+    setSelectedId(defaultFunctionRows[0]?.id ?? "");
     setFormMode(null);
   };
 

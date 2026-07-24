@@ -7,6 +7,7 @@ import {
   type RollingPlan,
   yearOptions,
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
+import type { InternalReportDraft } from "./InternalReport";
 import styles from "./ScheduleCalendar.module.css";
 
 export const scheduleCalendarModule = {
@@ -161,7 +162,11 @@ const buildEditForm = (plan: RollingPlan): ScheduleEditForm => ({
   trainingDate: plan.trainingDate,
 });
 
-export default function ScheduleCalendar() {
+type ScheduleCalendarProps = {
+  onPrepareEmail?: (draft: InternalReportDraft) => void;
+};
+
+export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarProps = {}) {
   const [selectedYear, setSelectedYear] = useState("2026");
   const [selectedMonth, setSelectedMonth] = useState<"all" | string>("all");
   const [expandedTrainingMonth, setExpandedTrainingMonth] = useState("");
@@ -219,6 +224,17 @@ export default function ScheduleCalendar() {
       company: plan.company,
     })),
   );
+  const emailPeriodLabel = selectedMonth === "all" ? selectedYear : `${selectedMonthDetail?.label} ${selectedYear}`;
+  const emailCompanyScope = (() => {
+    const companies = [...new Set(exportPlans.map((plan) => plan.company))];
+
+    return companies.length === 1 ? companies[0] : "All Companies";
+  })();
+  const emailDueDate =
+    selectedMonth === "all"
+      ? `${selectedYear}-12-31`
+      : `${selectedYear}-${selectedMonth}-${String(new Date(Number(selectedYear), Number(selectedMonth), 0).getDate()).padStart(2, "0")}`;
+  const emailSendDate = new Date().toISOString().slice(0, 10);
 
   const handleExportExcel = () => {
     const headers = ["Month", "Date", "Course Code", "Course Name", "Time", "Company"];
@@ -258,6 +274,37 @@ export default function ScheduleCalendar() {
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
+  };
+
+  const handlePrepareEmail = () => {
+    if (exportPlans.length === 0) {
+      return;
+    }
+
+    const scheduleLines = exportPlans
+      .slice(0, 8)
+      .map((plan) => `${plan.date} ${plan.time} - ${plan.courseName} (${plan.company})`);
+    const remainingCount = exportPlans.length - scheduleLines.length;
+    const summary = [
+      `Training schedule for ${emailPeriodLabel}.`,
+      `Total schedules: ${exportPlans.length}.`,
+      ...scheduleLines,
+      remainingCount > 0 ? `And ${remainingCount} more schedules.` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    onPrepareEmail?.({
+      subject: `Training schedule: ${emailPeriodLabel}`,
+      reportType: "Training Plan Progress",
+      recipientType: "Company",
+      recipientTarget: emailCompanyScope,
+      recipientGroup: "Factory HR",
+      companyScope: emailCompanyScope,
+      period: emailSendDate,
+      dueDate: emailDueDate,
+      summary,
+    });
   };
 
   const handleEditPlan = (plan: RollingPlan) => {
@@ -313,6 +360,14 @@ export default function ScheduleCalendar() {
             onClick={handleExportExcel}
           >
             Export Excel
+          </button>
+          <button
+            className={styles.emailButton}
+            disabled={exportPlans.length === 0}
+            type="button"
+            onClick={handlePrepareEmail}
+          >
+            Prepare Email
           </button>
         </div>
 

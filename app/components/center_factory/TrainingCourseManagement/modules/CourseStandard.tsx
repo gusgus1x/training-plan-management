@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { defaultFunctionRows } from "../../MasterDataManagement/modules/FunctionData";
 import styles from "./CourseStandard.module.css";
 
 export const courseStandardModule = {
@@ -30,6 +31,12 @@ const courseMasterOptions: CourseMasterOption[] = [
   { code: "CRS-041", name: "Quality Control Basics" },
 ];
 
+const allFunctionOption = "All Function";
+const functionOptions = [
+  allFunctionOption,
+  ...defaultFunctionRows.map((row) => row.functionNameEn || row.functionNameTh),
+];
+
 const positionColumns = ["Manager", "SH", "Engineer", "Office", "Staff", "Foreman", "Leader", "Operator"] as const;
 const positionChecklist = ["Manager Up", "SH", "Engineer", "Office", "Staff", "Force man", "Leader", "Operator"] as const;
 const levelColumns = ["M3", "M2", "M1", "S4", "S3", "S2", "S1", "O5", "O4", "O3", "O2", "O1"] as const;
@@ -39,7 +46,7 @@ const initialStandards: CourseStandardRecord[] = [
     id: "standard-001",
     courseCode: "CRS-001",
     courseName: "Leadership Essentials",
-    functionName: "Management",
+    functionName: allFunctionOption,
     positions: ["Manager", "SH", "Foreman", "Leader"],
     levels: ["M3", "M2", "M1", "S4"],
   },
@@ -79,7 +86,7 @@ export default function CourseStandard() {
   const [editingId, setEditingId] = useState("");
   const [selectedId, setSelectedId] = useState(initialStandards[0]?.id ?? "");
   const [courseCode, setCourseCode] = useState(courseMasterOptions[0]?.code ?? "");
-  const [functionName, setFunctionName] = useState("");
+  const [functionName, setFunctionName] = useState(allFunctionOption);
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -109,7 +116,7 @@ export default function CourseStandard() {
     setIsNewOpen(true);
     setEditingId("");
     setCourseCode(courseMasterOptions[0]?.code ?? "");
-    setFunctionName("");
+    setFunctionName(allFunctionOption);
     setSelectedPositions([]);
     setSelectedLevels([]);
   };
@@ -247,11 +254,16 @@ export default function CourseStandard() {
               </label>
               <label>
                 Function Name
-                <input
+                <select
                   value={functionName}
                   onChange={(event) => setFunctionName(event.target.value)}
-                  placeholder="Enter function name"
-                />
+                >
+                  {functionOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
 
@@ -313,7 +325,7 @@ export default function CourseStandard() {
               <tr>
                 <th>Course Code</th>
                 <th>Course Name</th>
-                <th>Funtion Name</th>
+                <th>Function Name</th>
                 {positionColumns.map((position) => (
                   <th key={position}>{position}</th>
                 ))}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext";
 import { recordCourses } from "./data";
 import ModuleHeader from "./ModuleHeader";
 import styles from "./UserDashboard.module.css";
@@ -10,65 +11,80 @@ type ReportModuleProps = {
 };
 
 type ReportStatus = "Draft" | "Ready" | "Sent";
+type RecipientType = "Person" | "Company";
+
+type AttachmentRecord = {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+};
 
 type EmployeeReport = {
   id: string;
+  senderEmail: string;
   subject: string;
-  reportType: string;
-  recipient: string;
-  period: string;
-  deliveryMethod: string;
-  summary: string;
+  recipientType: RecipientType;
+  recipientTarget: string;
+  sendDate: string;
+  message: string;
+  attachments: AttachmentRecord[];
   status: ReportStatus;
   sentAt: string;
 };
 
-const reportTypes = [
-  "My Training Summary",
-  "Training Record Follow Up",
-  "Certificate Request",
-  "Training Need Follow Up",
-] as const;
-
-const recipients = ["HRD Center", "HRD Factory", "Supervisor"] as const;
-const deliveryMethods = ["Dashboard Notice", "Email", "Email + Dashboard"] as const;
+const companyRecipients = ["All Companies", "ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] as const;
 
 const initialReports: EmployeeReport[] = [
   {
     id: "employee-report-001",
+    senderEmail: "employee.test@attg.local",
     subject: "Training record follow up",
-    reportType: "Training Record Follow Up",
-    recipient: "HRD Factory",
-    period: "July 2026",
-    deliveryMethod: "Dashboard Notice",
-    summary: "Follow up Data Privacy Awareness record status and approval result.",
+    recipientType: "Person",
+    recipientTarget: "factory.hr@attg.local",
+    sendDate: "2026-07-24",
+    message: "Please review my training record status and approval result.",
+    attachments: [],
     status: "Sent",
     sentAt: "18 Jul 2026, 09:40",
   },
   {
     id: "employee-report-002",
+    senderEmail: "employee.test@attg.local",
     subject: "Certificate request",
-    reportType: "Certificate Request",
-    recipient: "HRD Center",
-    period: "June 2026",
-    deliveryMethod: "Email + Dashboard",
-    summary: "Request certificate copy for 5S Awareness completed training.",
+    recipientType: "Person",
+    recipientTarget: "hrd.center@attg.local",
+    sendDate: "2026-07-24",
+    message: "Please support a certificate copy for my completed 5S Awareness training.",
+    attachments: [],
     status: "Ready",
     sentAt: "-",
   },
 ];
 
-const createInitialSummary = (completedHours: number) =>
-  `Completed ${completedHours} training hours. ${recordCourses.length} records are available in the employee training record.`;
+const createInitialMessage = (completedHours: number) =>
+  `Please review my training records. I have completed ${completedHours} training hours and ${recordCourses.length} records are available.`;
+
+const formatFileSize = (size: number) => {
+  if (size >= 1024 * 1024) {
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  return `${Math.max(1, Math.round(size / 1024))} KB`;
+};
 
 export default function ReportModule({ completedHours }: ReportModuleProps) {
+  const authenticatedUser = useAuthenticatedUser();
+  const senderEmail = profileValue(authenticatedUser?.email);
+  const today = new Date().toISOString().slice(0, 10);
+
   const [subject, setSubject] = useState("My training summary");
-  const [reportType, setReportType] = useState<(typeof reportTypes)[number]>("My Training Summary");
-  const [recipient, setRecipient] = useState<(typeof recipients)[number]>("HRD Center");
-  const [period, setPeriod] = useState("July 2026");
-  const [deliveryMethod, setDeliveryMethod] =
-    useState<(typeof deliveryMethods)[number]>("Email + Dashboard");
-  const [summary, setSummary] = useState(createInitialSummary(completedHours));
+  const [recipientType, setRecipientType] = useState<RecipientType>("Person");
+  const [recipientTarget, setRecipientTarget] = useState("");
+  const [sendDate, setSendDate] = useState(today);
+  const [messageBody, setMessageBody] = useState(createInitialMessage(completedHours));
+  const [attachments, setAttachments] = useState<AttachmentRecord[]>([]);
+  const [attachmentInputKey, setAttachmentInputKey] = useState(0);
   const [reports, setReports] = useState<EmployeeReport[]>(initialReports);
   const [selectedId, setSelectedId] = useState(initialReports[0]?.id ?? "");
   const [search, setSearch] = useState("");
@@ -85,11 +101,12 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
     return reports.filter((report) =>
       [
         report.subject,
-        report.reportType,
-        report.recipient,
-        report.period,
+        report.senderEmail,
+        report.recipientType,
+        report.recipientTarget,
+        report.sendDate,
         report.status,
-        report.summary,
+        report.message,
       ]
         .join(" ")
         .toLowerCase()
@@ -100,8 +117,57 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
   const sentCount = reports.filter((report) => report.status === "Sent").length;
   const readyCount = reports.filter((report) => report.status === "Ready").length;
 
+  const updateRecipientType = (value: RecipientType) => {
+    setRecipientType(value);
+    setRecipientTarget(value === "Company" ? companyRecipients[0] : "");
+    setMessage("");
+  };
+
+  const handleFileChange = (files: FileList | null) => {
+    if (!files) {
+      return;
+    }
+
+    const nextAttachments = Array.from(files).map((file, index) => ({
+      id: `employee-attachment-${file.name}-${file.lastModified}-${Date.now()}-${index}`,
+      name: file.name,
+      size: file.size,
+      type: file.type || "Unknown file type",
+    }));
+
+    setAttachments((current) => [...current, ...nextAttachments]);
+    setMessage("");
+  };
+
+  const removeAttachment = (attachmentId: string) => {
+    setAttachments((current) => current.filter((attachment) => attachment.id !== attachmentId));
+    setMessage("");
+  };
+
+  const clearComposer = () => {
+    setSubject("");
+    setRecipientType("Person");
+    setRecipientTarget("");
+    setSendDate(today);
+    setMessageBody("");
+    setAttachments([]);
+    setAttachmentInputKey((current) => current + 1);
+    setMessage("Composer cleared.");
+  };
+
+  const resetComposer = () => {
+    setSubject("My training summary");
+    setRecipientType("Person");
+    setRecipientTarget("");
+    setSendDate(today);
+    setMessageBody(createInitialMessage(completedHours));
+    setAttachments([]);
+    setAttachmentInputKey((current) => current + 1);
+    setMessage("");
+  };
+
   const createReport = (status: ReportStatus) => {
-    if (!subject.trim() || !summary.trim()) {
+    if (!subject.trim() || !recipientTarget.trim() || !messageBody.trim()) {
       return;
     }
 
@@ -118,19 +184,24 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
 
     const nextReport: EmployeeReport = {
       id: `employee-report-${Date.now()}`,
+      senderEmail,
       subject: subject.trim(),
-      reportType,
-      recipient,
-      period: period.trim() || "-",
-      deliveryMethod,
-      summary: summary.trim(),
+      recipientType,
+      recipientTarget: recipientTarget.trim(),
+      sendDate,
+      message: messageBody.trim(),
+      attachments,
       status,
       sentAt,
     };
 
     setReports((current) => [nextReport, ...current]);
     setSelectedId(nextReport.id);
-    setMessage(status === "Sent" ? `Sent to ${recipient}.` : `${status} report saved.`);
+    setMessage(
+      status === "Sent"
+        ? `Sent from ${senderEmail} to ${recipientTarget}.`
+        : `${status} report saved with ${attachments.length} attachments.`,
+    );
   };
 
   const loadSelectedReport = () => {
@@ -139,11 +210,12 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
     }
 
     setSubject(selectedReport.subject);
-    setReportType(selectedReport.reportType as (typeof reportTypes)[number]);
-    setRecipient(selectedReport.recipient as (typeof recipients)[number]);
-    setPeriod(selectedReport.period);
-    setDeliveryMethod(selectedReport.deliveryMethod as (typeof deliveryMethods)[number]);
-    setSummary(selectedReport.summary);
+    setRecipientType(selectedReport.recipientType);
+    setRecipientTarget(selectedReport.recipientTarget);
+    setSendDate(selectedReport.sendDate);
+    setMessageBody(selectedReport.message);
+    setAttachments(selectedReport.attachments);
+    setAttachmentInputKey((current) => current + 1);
     setMessage("Loaded selected report.");
   };
 
@@ -152,7 +224,7 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
       <ModuleHeader
         eyebrow="Training Report"
         title="Training Report"
-        detail="Prepare, preview, and send employee training reports to HRD or supervisor."
+        detail="Prepare and send employee training reports by email."
       />
 
       <div className={styles.employeeReportSummary}>
@@ -178,71 +250,103 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
         <section className={styles.reportControlPanel} aria-label="Compose employee report">
           <div className={styles.panelHeader}>
             <div>
-              <p>Compose Report</p>
-              <h2>Employee Report</h2>
+              <p>Compose</p>
+              <h2>Email Setup</h2>
             </div>
-            <span>{reportType}</span>
+            <span>{senderEmail}</span>
           </div>
 
           <form className={styles.recordRequestForm}>
-            <label>
-              Report Type
-              <select
-                value={reportType}
-                onChange={(event) => setReportType(event.target.value as (typeof reportTypes)[number])}
-              >
-                {reportTypes.map((type) => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Recipient
-              <select
-                value={recipient}
-                onChange={(event) => setRecipient(event.target.value as (typeof recipients)[number])}
-              >
-                {recipients.map((item) => (
-                  <option key={item} value={item}>{item}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Period
-              <input value={period} onChange={(event) => setPeriod(event.target.value)} />
-            </label>
-            <label>
-              Delivery
-              <select
-                value={deliveryMethod}
-                onChange={(event) =>
-                  setDeliveryMethod(event.target.value as (typeof deliveryMethods)[number])
-                }
-              >
-                {deliveryMethods.map((item) => (
-                  <option key={item} value={item}>{item}</option>
-                ))}
-              </select>
-            </label>
-            <label>
+            <label className={styles.employeeReportFullWidth}>
               Subject
               <input
                 value={subject}
                 onChange={(event) => setSubject(event.target.value)}
-                placeholder="Enter report subject"
+                placeholder="Enter email subject"
               />
             </label>
             <label>
-              Summary
+              Send To
+              <select
+                value={recipientType}
+                onChange={(event) => updateRecipientType(event.target.value as RecipientType)}
+              >
+                <option>Person</option>
+                <option>Company</option>
+              </select>
+            </label>
+            <label>
+              {recipientType === "Company" ? "Company" : "Person Email"}
+              {recipientType === "Company" ? (
+                <select
+                  value={recipientTarget}
+                  onChange={(event) => setRecipientTarget(event.target.value)}
+                >
+                  {companyRecipients.map((company) => (
+                    <option key={company} value={company}>
+                      {company}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="email"
+                  value={recipientTarget}
+                  onChange={(event) => setRecipientTarget(event.target.value)}
+                  placeholder="name@company.com"
+                />
+              )}
+            </label>
+            <label>
+              Send Date
+              <input type="date" value={sendDate} onChange={(event) => setSendDate(event.target.value)} />
+            </label>
+            <label className={styles.employeeReportFullWidth}>
+              Message
               <textarea
-                value={summary}
-                onChange={(event) => setSummary(event.target.value)}
-                placeholder="Summarize training record, request, or follow-up detail"
+                value={messageBody}
+                onChange={(event) => setMessageBody(event.target.value)}
+                placeholder="Write message"
+              />
+            </label>
+            <label className={styles.employeeReportFullWidth}>
+              Attach Files
+              <input
+                key={attachmentInputKey}
+                type="file"
+                multiple
+                onChange={(event) => handleFileChange(event.target.files)}
               />
             </label>
           </form>
 
+          <div className={styles.employeeReportAttachmentPanel}>
+            <div>
+              <span>Attachments</span>
+              <strong>{attachments.length} files</strong>
+            </div>
+            {attachments.length > 0 ? (
+              <ul>
+                {attachments.map((attachment) => (
+                  <li key={attachment.id}>
+                    <div>
+                      <strong>{attachment.name}</strong>
+                      <span>{formatFileSize(attachment.size)} / {attachment.type}</span>
+                    </div>
+                    <button type="button" onClick={() => removeAttachment(attachment.id)}>
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No files attached.</p>
+            )}
+          </div>
+
           <div className={styles.employeeReportActions}>
+            <button type="button" onClick={clearComposer}>Clear Data</button>
+            <button type="button" onClick={resetComposer}>Reset</button>
             <button type="button" onClick={() => createReport("Draft")}>Save Draft</button>
             <button type="button" onClick={() => createReport("Ready")}>Prepare</button>
             <button type="button" onClick={() => createReport("Sent")}>Send Report</button>
@@ -254,32 +358,32 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
           <div className={styles.panelHeader}>
             <div>
               <p>Preview</p>
-              <h2>{subject || "Report subject"}</h2>
+              <h2>{subject || "Email subject"}</h2>
             </div>
-            <span>{recipient}</span>
+            <span>{recipientTarget || "No recipient"}</span>
           </div>
 
           <div className={styles.employeeReportPreview}>
             <article>
-              <span>Report Type</span>
-              <strong>{reportType}</strong>
+              <span>From</span>
+              <strong>{senderEmail}</strong>
             </article>
             <article>
-              <span>Period</span>
-              <strong>{period || "-"}</strong>
+              <span>To</span>
+              <strong>{recipientTarget || "-"}</strong>
             </article>
             <article>
-              <span>Delivery</span>
-              <strong>{deliveryMethod}</strong>
+              <span>Send Date</span>
+              <strong>{sendDate || "-"}</strong>
             </article>
             <article>
-              <span>Training Hours</span>
-              <strong>{completedHours}</strong>
+              <span>Files</span>
+              <strong>{attachments.length}</strong>
             </article>
           </div>
           <div className={styles.employeeReportBody}>
-            <span>Summary</span>
-            <p>{summary || "Report summary will appear here."}</p>
+            <span>Message</span>
+            <p>{messageBody || "Message will appear here."}</p>
           </div>
         </section>
       </div>
@@ -305,25 +409,83 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
           </button>
         </div>
 
-        <div className={styles.savedReportList}>
-          {visibleReports.map((report) => (
-            <button
-              className={report.id === selectedId ? styles.activeSavedReport : styles.savedReportButton}
-              key={report.id}
-              type="button"
-              onClick={() => setSelectedId(report.id)}
-            >
-              <div>
-                <strong>{report.subject}</strong>
-                <span>{report.reportType} / To: {report.recipient} / {report.period}</span>
-                <span>{report.summary}</span>
-              </div>
-              <b>{report.status}</b>
-            </button>
-          ))}
-          {visibleReports.length === 0 ? (
-            <div className={styles.recordEmpty}>No report found.</div>
-          ) : null}
+        <div className={styles.employeeReportHistoryGrid}>
+          <div className={styles.savedReportList}>
+            {visibleReports.map((report) => (
+              <button
+                className={report.id === selectedId ? styles.activeSavedReport : styles.savedReportButton}
+                key={report.id}
+                type="button"
+                onClick={() => setSelectedId(report.id)}
+              >
+                <div>
+                  <strong>{report.subject}</strong>
+                  <span>{report.recipientType} / {report.recipientTarget} / {report.sendDate}</span>
+                  <span>{report.senderEmail}</span>
+                </div>
+                <b>{report.status}</b>
+              </button>
+            ))}
+            {visibleReports.length === 0 ? (
+              <div className={styles.recordEmpty}>No report found.</div>
+            ) : null}
+          </div>
+
+          <aside className={styles.employeeReportDetailPanel}>
+            {selectedReport ? (
+              <>
+                <div className={styles.employeeReportDetailHeader}>
+                  <b>{selectedReport.status}</b>
+                  <h3>{selectedReport.subject}</h3>
+                  <span>{selectedReport.sentAt === "-" ? "Not sent yet" : `Sent at ${selectedReport.sentAt}`}</span>
+                </div>
+                <dl className={styles.employeeReportDetailList}>
+                  <div>
+                    <dt>From</dt>
+                    <dd>{selectedReport.senderEmail}</dd>
+                  </div>
+                  <div>
+                    <dt>To</dt>
+                    <dd>{selectedReport.recipientTarget}</dd>
+                  </div>
+                  <div>
+                    <dt>Send To</dt>
+                    <dd>{selectedReport.recipientType}</dd>
+                  </div>
+                  <div>
+                    <dt>Send Date</dt>
+                    <dd>{selectedReport.sendDate}</dd>
+                  </div>
+                </dl>
+                <div className={styles.employeeReportBody}>
+                  <span>Message</span>
+                  <p>{selectedReport.message || "No message provided."}</p>
+                </div>
+                <div className={styles.employeeReportAttachmentPanel}>
+                  <div>
+                    <span>Files</span>
+                    <strong>{selectedReport.attachments.length} files</strong>
+                  </div>
+                  {selectedReport.attachments.length > 0 ? (
+                    <ul>
+                      {selectedReport.attachments.map((attachment) => (
+                        <li key={attachment.id}>
+                          <div>
+                            <strong>{attachment.name}</strong>
+                            <span>{formatFileSize(attachment.size)}</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No files attached.</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className={styles.recordEmpty}>Select a report to view details.</div>
+            )}
+          </aside>
         </div>
       </section>
     </section>

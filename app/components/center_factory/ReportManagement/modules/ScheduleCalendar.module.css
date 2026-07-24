@@ -1447,7 +1447,7 @@
 }
 
 .toolbar {
-  grid-template-columns: 190px minmax(260px, 1fr) auto;
+  grid-template-columns: 190px minmax(260px, 1fr) auto auto;
   align-items: stretch;
   gap: 12px;
   border: 0;
@@ -1457,7 +1457,8 @@
 
 .toolbar label,
 .yearNote,
-.exportButton {
+.exportButton,
+.emailButton {
   min-height: 54px;
 }
 
@@ -1503,6 +1504,31 @@
 .exportButton:hover:not(:disabled) {
   background: #26364d;
   transform: none;
+}
+
+.emailButton {
+  border: 0;
+  border-radius: 8px;
+  background: #007a3d;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 900;
+  padding: 8px 18px;
+  transition:
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.emailButton:hover:not(:disabled) {
+  background: #006b35;
+  box-shadow: 0 10px 20px rgba(0, 122, 61, 0.16);
+}
+
+.emailButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .monthTabs {
@@ -1818,6 +1844,7 @@
   }
 
   .exportButton,
+  .emailButton,
   .saveEditButton,
   .overviewSummary button,
   .overviewDetails li button {

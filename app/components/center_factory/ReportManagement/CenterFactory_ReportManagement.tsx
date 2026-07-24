@@ -3,7 +3,11 @@
 import { useState } from "react";
 import Navbar from "../../Navbar";
 import styles from "./CenterFactory_ReportManagement.module.css";
-import { centerReportItems } from "./modules";
+import {
+  centerReportItems,
+  internalReportTitle,
+  type InternalReportDraft,
+} from "./modules";
 
 type ReportManagementProps = {
   username: string;
@@ -19,7 +23,21 @@ export default function ReportManagement({
   onLogout,
 }: ReportManagementProps) {
   const [selectedItem, setSelectedItem] = useState<(typeof centerReportItems)[number] | null>(null);
+  const [preparedDraft, setPreparedDraft] = useState<InternalReportDraft | null>(null);
   const SelectedModule = selectedItem?.Component;
+
+  const handleSelectItem = (item: (typeof centerReportItems)[number]) => {
+    setPreparedDraft(null);
+    setSelectedItem(item);
+  };
+
+  const handlePrepareEmail = (draft: InternalReportDraft) => {
+    const internalReportItem =
+      centerReportItems.find((item) => item.title === internalReportTitle) ?? null;
+
+    setPreparedDraft(draft);
+    setSelectedItem(internalReportItem);
+  };
 
   const handleBack = () => {
     if (selectedItem) {
@@ -38,7 +56,7 @@ export default function ReportManagement({
         contextItems={centerReportItems.map((item) => ({
           title: item.title,
           active: item.title === selectedItem?.title,
-          onClick: () => setSelectedItem(item),
+          onClick: () => handleSelectItem(item),
         }))}
         onBack={handleBack}
         onHome={onHome}
@@ -61,7 +79,10 @@ export default function ReportManagement({
       </section>
 
       {SelectedModule ? (
-        <SelectedModule />
+        <SelectedModule
+          onPrepareEmail={handlePrepareEmail}
+          preparedDraft={selectedItem?.title === internalReportTitle ? preparedDraft : null}
+        />
       ) : (
         <section className={styles.moduleSection} aria-label="Report Management modules">
           <div className={styles.moduleHeader}>
@@ -78,7 +99,7 @@ export default function ReportManagement({
                 className={styles.moduleCard}
                 key={item.title}
                 type="button"
-                onClick={() => setSelectedItem(item)}
+                onClick={() => handleSelectItem(item)}
               >
                 <span className={styles.cardIndex}>{String(index + 1).padStart(2, "0")}</span>
                 <div>
