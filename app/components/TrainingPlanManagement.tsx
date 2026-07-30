@@ -31,103 +31,73 @@ type AppView =
 
 type AuthenticationState =
   | { status: "checking" }
-  | { status: "anonymous"; message?: string }
-  | { status: "authenticated"; user: ClientSessionUser };
+  | { status: "anonymous" }
+  | { status: "error"; message: string }
+  | { status: "authenticated"; user: ClientSessionUser }
+  | { status: "preview"; user: ClientSessionUser };
 
 const SESSION_CHECK_ERROR =
-  "Unable to verify your previous session. Please sign in again.";
+  "Unable to verify your session. Check the connection and try again.";
 const LOGOUT_ERROR = "Unable to sign out. Please try again.";
-const AUTHENTICATED_USER_STORAGE_KEY = "tpm_authenticated_user";
+const DEVELOPMENT_PREVIEW_ENABLED = process.env.NODE_ENV === "development";
 
-const readCachedUser = (): ClientSessionUser | null => {
-  try {
-    const serializedUser = sessionStorage.getItem(AUTHENTICATED_USER_STORAGE_KEY);
-
-    if (!serializedUser) {
-      return null;
-    }
-
-    const user = JSON.parse(serializedUser) as Partial<ClientSessionUser>;
-
-    if (
-      typeof user.userId !== "string" ||
-      typeof user.username !== "string" ||
-      !["EMPLOYEE", "HRD_FACTORY", "HRD_CENTER"].includes(user.roleCode ?? "")
-    ) {
-      return null;
-    }
-
-    return user as ClientSessionUser;
-  } catch {
-    return null;
-  }
-};
-
-const writeCachedUser = (user: ClientSessionUser) => {
-  sessionStorage.setItem(AUTHENTICATED_USER_STORAGE_KEY, JSON.stringify(user));
-};
-
-const clearCachedUser = () => {
-  sessionStorage.removeItem(AUTHENTICATED_USER_STORAGE_KEY);
-};
-
-const testUsers: Record<ClientRoleCode, ClientSessionUser> = {
-  EMPLOYEE: {
-    userId: "test-employee",
-    username: "test.employee",
-    roleCode: "EMPLOYEE",
-    employeeId: "emp-test-001",
-    companyId: "company-snf",
-    email: "test.employee@attg.local",
-    employeeCode: "SNF-5401",
-    displayName: "Test Employee",
-    companyCode: "SNF",
-    companyName: "The Siam Nawaloha Foundry Co.,Ltd",
-    functionCode: "PRD",
-    functionName: "Production",
-    positionCode: "OP",
-    positionName: "Operator",
-    levelCode: "L2",
-    levelName: "L2",
-    pl: "PL2",
-  },
+const DEVELOPMENT_PREVIEW_USERS: Record<ClientRoleCode, ClientSessionUser> = {
   HRD_CENTER: {
-    userId: "test-center",
-    username: "test.center",
+    userId: "preview-hrd-center",
+    username: "Mock HRD Center",
     roleCode: "HRD_CENTER",
-    employeeId: "center-test-001",
+    employeeId: null,
     companyId: null,
-    email: "test.center@attg.local",
-    employeeCode: "HRD-0001",
-    displayName: "Test HRD Center",
+    email: "mock.hrd.center@example.invalid",
+    employeeCode: null,
+    displayName: "Mock HRD Center",
     companyCode: null,
-    companyName: "HRD Center",
-    functionCode: "HRD",
-    functionName: "Human Resource Development",
-    positionCode: "HRD",
+    companyName: null,
+    functionCode: "HRD_CENTER",
+    functionName: "Human Resources Development Center",
+    positionCode: "HRD_CENTER",
     positionName: "HRD Center",
-    levelCode: "L5",
-    levelName: "L5",
-    pl: "PL5",
+    levelCode: null,
+    levelName: null,
+    pl: null,
   },
   HRD_FACTORY: {
-    userId: "test-factory",
-    username: "test.factory",
+    userId: "preview-hrd-factory",
+    username: "Mock HRD Factory",
     roleCode: "HRD_FACTORY",
-    employeeId: "factory-test-001",
-    companyId: "company-snf",
-    email: "test.factory@attg.local",
-    employeeCode: "SNF-HRD-01",
-    displayName: "Test HRD Factory",
-    companyCode: "SNF",
-    companyName: "The Siam Nawaloha Foundry Co.,Ltd",
-    functionCode: "HRD",
-    functionName: "Human Resource Development",
-    positionCode: "HRD",
+    employeeId: null,
+    companyId: "preview-company-sati",
+    email: "mock.hrd.factory@example.invalid",
+    employeeCode: null,
+    displayName: "Mock HRD Factory",
+    companyCode: "SATI",
+    companyName: "SATI Mock Company",
+    functionCode: "HRD_FACTORY",
+    functionName: "Human Resources Development",
+    positionCode: "HRD_FACTORY",
     positionName: "HRD Factory",
-    levelCode: "L4",
-    levelName: "L4",
-    pl: "PL4",
+    levelCode: null,
+    levelName: null,
+    pl: null,
+  },
+  EMPLOYEE: {
+    userId: "preview-employee",
+    username: "Mock Employee",
+    roleCode: "EMPLOYEE",
+    employeeId: "preview-employee-sati",
+    companyId: "preview-company-sati",
+    email: "mock.employee@example.invalid",
+    employeeCode: "MOCK-EMP-001",
+    displayName: "Mock Employee",
+    companyCode: "SATI",
+    companyName: "SATI Mock Company",
+    functionCode: "MOCK_PRODUCTION",
+    functionName: "Mock Production",
+    positionCode: "MOCK_OPERATOR",
+    positionName: "Mock Operator",
+    levelCode: "MOCK_LEVEL",
+    levelName: "Mock Level",
+    pl: "MOCK-PL1",
   },
 };
 
@@ -149,12 +119,10 @@ export default function TrainingPlanManagement() {
         }
 
         if (user) {
-          writeCachedUser(user);
           setAuthentication({ status: "authenticated", user });
           return;
         }
 
-        clearCachedUser();
         setAuthentication({ status: "anonymous" });
       })
       .catch(() => {
@@ -162,15 +130,8 @@ export default function TrainingPlanManagement() {
           return;
         }
 
-        const cachedUser = readCachedUser();
-
-        if (cachedUser) {
-          setAuthentication({ status: "authenticated", user: cachedUser });
-          return;
-        }
-
         setAuthentication({
-          status: "anonymous",
+          status: "error",
           message: SESSION_CHECK_ERROR,
         });
       });
@@ -181,21 +142,40 @@ export default function TrainingPlanManagement() {
   }, []);
 
   const handleLogin = async (username: string, password: string) => {
-    clearCachedUser();
     const user = await loginWithCredentials(username, password);
-    writeCachedUser(user);
     setView("dashboard");
     setLogoutMessage(null);
     setAuthentication({ status: "authenticated", user });
   };
 
-  const handleTestLogin = (roleCode: ClientRoleCode) => {
-    const user = testUsers[roleCode];
+  const handlePreviewLogin = (roleCode: ClientRoleCode) => {
+    if (!DEVELOPMENT_PREVIEW_ENABLED) {
+      return;
+    }
 
-    writeCachedUser(user);
     setView("dashboard");
     setLogoutMessage(null);
-    setAuthentication({ status: "authenticated", user });
+    setAuthentication({
+      status: "preview",
+      user: DEVELOPMENT_PREVIEW_USERS[roleCode],
+    });
+  };
+
+  const handleRetrySession = async () => {
+    setAuthentication({ status: "checking" });
+
+    try {
+      const user = await getCurrentSession();
+
+      setAuthentication(
+        user ? { status: "authenticated", user } : { status: "anonymous" },
+      );
+    } catch {
+      setAuthentication({
+        status: "error",
+        message: SESSION_CHECK_ERROR,
+      });
+    }
   };
 
   const handleLogout = async () => {
@@ -206,13 +186,19 @@ export default function TrainingPlanManagement() {
     setIsLoggingOut(true);
     setLogoutMessage(null);
 
+    if (authentication.status === "preview") {
+      setView("dashboard");
+      setAuthentication({ status: "anonymous" });
+      setIsLoggingOut(false);
+      return;
+    }
+
     try {
       await logoutCurrentSession();
     } catch {
       // Local sign-out should still complete if the cookie clearing request fails.
       setLogoutMessage(LOGOUT_ERROR);
     } finally {
-      clearCachedUser();
       setView("dashboard");
       setAuthentication({ status: "anonymous" });
       setIsLoggingOut(false);
@@ -231,17 +217,48 @@ export default function TrainingPlanManagement() {
     );
   }
 
+  if (authentication.status === "error") {
+    return (
+      <main className={styles.statusPage}>
+        <Navbar />
+        <section className={styles.statusCard} role="alert">
+          <p className={styles.eyebrow}>Authentication unavailable</p>
+          <h1>We could not verify your session.</h1>
+          <p>{authentication.message}</p>
+          <div className={styles.statusActions}>
+            <button
+              className={styles.retryButton}
+              type="button"
+              onClick={() => void handleRetrySession()}
+            >
+              Retry session check
+            </button>
+            <button
+              className={styles.signInButton}
+              type="button"
+              onClick={() => setAuthentication({ status: "anonymous" })}
+            >
+              Return to sign in
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   if (authentication.status === "anonymous") {
     return (
       <LoginPage
         onLogin={handleLogin}
-        onTestLogin={handleTestLogin}
-        sessionMessage={authentication.message}
+        onPreviewLogin={
+          DEVELOPMENT_PREVIEW_ENABLED ? handlePreviewLogin : undefined
+        }
       />
     );
   }
 
   const { user } = authentication;
+  const isDevelopmentPreview = authentication.status === "preview";
   const goHome = () => setView("dashboard");
   const logout = () => void handleLogout();
   let application: ReactNode;
@@ -322,7 +339,15 @@ export default function TrainingPlanManagement() {
         </p>
       ) : null}
       {application}
-      <div className={styles.demoBadge}>Development sample data</div>
+      <div
+        className={
+          isDevelopmentPreview ? styles.previewBadge : styles.demoBadge
+        }
+      >
+        {isDevelopmentPreview
+          ? `MOCK UI PREVIEW · ${user.roleCode} · No server session`
+          : "Development sample data"}
+      </div>
     </AuthenticatedUserProvider>
   );
 }

@@ -20,6 +20,41 @@
   line-height: 1.2;
 }
 
+.statusCard > p:not(.eyebrow) {
+  margin: 16px 0 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.statusActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.retryButton,
+.signInButton {
+  min-height: 42px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  padding: 10px 16px;
+}
+
+.retryButton {
+  border: 1px solid #d71920;
+  background: #d71920;
+  color: #ffffff;
+}
+
+.signInButton {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+}
+
 .eyebrow {
   margin: 0 0 10px;
   color: var(--ui-10-accent);
@@ -42,6 +77,13 @@
   font-weight: 800;
   padding: 8px 12px;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+}
+
+.previewBadge {
+  composes: demoBadge;
+  border-color: rgba(217, 119, 6, 0.35);
+  background: rgba(255, 251, 235, 0.96);
+  color: #92400e;
 }
 
 .logoutError {

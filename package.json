@@ -2,16 +2,23 @@
   "name": "attg-training-plan-management",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "prisma:generate": "prisma generate",
+    "prisma:pull": "prisma db pull",
+    "prisma:validate": "prisma validate",
     "type-check": "tsc --noEmit --incremental false",
     "test": "vitest run"
   },
   "dependencies": {
+    "@prisma/adapter-mssql": "^7.9.1",
+    "@prisma/client": "^7.9.1",
     "argon2": "^0.44.0",
+    "dotenv": "^17.4.2",
     "mssql": "^12.7.0",
     "next": "16.2.9",
     "react": "19.2.4",
@@ -25,6 +32,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "prisma": "^7.9.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.10"

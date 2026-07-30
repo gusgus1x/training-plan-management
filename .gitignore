@@ -41,6 +41,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# generated Prisma Client
+/app/generated/prisma/
+
 # ai skill
 
 AGENTS.md
@@ -51,13 +54,4 @@ README_PACKAGE.md
 
 .agents/
 
-docs/design/TrainingPlanManagement_Flowchart_ER_v5_2.drawio
-docs/design/FLOWCHART_SUMMARY.md
-docs/design/FLOWCHART_PAGE_INDEX.md
-
-docs/database/TrainingPlanManagement_Data_Dictionary_v5.xlsx
-docs/database/SCHEMA_REFERENCE_v5.md
-docs/database/DATABASE_SUMMARY.md
-docs/database/VALIDATION_RESULT.md
-docs/database/07_Add_Training_Need_Request.sql
-docs/database/08_Validate_Schema_v5_1.sql
+/docs/

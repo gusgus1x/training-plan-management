@@ -104,6 +104,16 @@ describe("authentication UI client", () => {
     await expect(getCurrentSession(fetcher)).resolves.toBeNull();
   });
 
+  it("rejects server failures instead of treating them as a session", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ ok: false }, 503)) as unknown as typeof fetch;
+
+    await expect(getCurrentSession(fetcher)).rejects.toMatchObject({
+      name: "AuthenticationClientError",
+    });
+  });
+
   it("posts logout with credentials included", async () => {
     const fetcher = vi
       .fn()

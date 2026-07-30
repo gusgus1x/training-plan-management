@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useState, type FormEvent } from "react";
-import type { ClientRoleCode } from "../lib/auth/client";
 import atfbImage from "../photo/ATFB.jpg";
 import nicImage from "../photo/NIC.png";
 import satiImage from "../photo/SATI.jpg";
@@ -10,19 +9,18 @@ import snfImage from "../photo/SNF.jpg";
 import tepImage from "../photo/TEP.jpg";
 import Navbar from "./Navbar";
 import styles from "./LoginPage.module.css";
+import type { ClientRoleCode } from "../lib/auth/client";
 
 type LoginPageProps = {
   onLogin: (username: string, password: string) => Promise<void>;
-  onTestLogin: (roleCode: ClientRoleCode) => void;
-  sessionMessage?: string | null;
+  onPreviewLogin?: (roleCode: ClientRoleCode) => void;
 };
 
 const GENERIC_LOGIN_ERROR = "Unable to sign in. Check your username and password.";
 
 export default function LoginPage({
   onLogin,
-  onTestLogin,
-  sessionMessage = null,
+  onPreviewLogin,
 }: LoginPageProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -157,21 +155,19 @@ export default function LoginPage({
               maxLength={1024}
               required
               disabled={isSubmitting}
-              aria-describedby={
-                errorMessage || sessionMessage ? "login-error" : undefined
-              }
+              aria-describedby={errorMessage ? "login-error" : undefined}
               onChange={(event) => setPassword(event.target.value)}
             />
           </label>
 
-          {errorMessage || sessionMessage ? (
+          {errorMessage ? (
             <p
               className={styles.errorMessage}
               id="login-error"
               role="alert"
               aria-live="polite"
             >
-              {errorMessage ?? sessionMessage}
+              {errorMessage}
             </p>
           ) : null}
 
@@ -183,36 +179,33 @@ export default function LoginPage({
             {isSubmitting ? "Signing in..." : "Login"}
           </button>
 
-          <div className={styles.quickLoginPanel} aria-label="Test login options">
-            <p>Test access</p>
-            <button
-              className={styles.quickLoginButton}
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => onTestLogin("EMPLOYEE")}
+          {onPreviewLogin ? (
+            <section
+              className={styles.previewAccess}
+              aria-labelledby="preview-access-title"
             >
-              Employee
-              <span>Open user dashboard without password</span>
-            </button>
-            <button
-              className={styles.quickLoginButton}
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => onTestLogin("HRD_CENTER")}
-            >
-              HRD Center
-              <span>Open center management workspace</span>
-            </button>
-            <button
-              className={styles.quickLoginButton}
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => onTestLogin("HRD_FACTORY")}
-            >
-              HRD Factory
-              <span>Open factory management workspace</span>
-            </button>
-          </div>
+              <div className={styles.previewDivider}>
+                <span>Development only</span>
+              </div>
+              <h3 id="preview-access-title">Mock UI Preview</h3>
+              <p>เปิดหน้าทดสอบโดยไม่สร้าง authenticated session</p>
+              <div className={styles.previewButtons}>
+                {(["HRD_CENTER", "HRD_FACTORY", "EMPLOYEE"] as const).map(
+                  (roleCode) => (
+                    <button
+                      key={roleCode}
+                      className={styles.previewButton}
+                      type="button"
+                      disabled={isSubmitting}
+                      onClick={() => onPreviewLogin(roleCode)}
+                    >
+                      {roleCode}
+                    </button>
+                  ),
+                )}
+              </div>
+            </section>
+          ) : null}
         </form>
       </section>
     </main>

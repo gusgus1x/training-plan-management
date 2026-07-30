@@ -294,55 +294,76 @@
   transform: none;
 }
 
-.quickLoginPanel {
-  display: grid;
-  gap: 10px;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(15, 23, 42, 0.1);
+.previewAccess {
+  margin-top: 20px;
 }
 
-.quickLoginPanel p {
+.previewDivider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.previewDivider::before,
+.previewDivider::after {
+  flex: 1;
+  height: 1px;
+  background: #dbe2ea;
+  content: "";
+}
+
+.previewAccess h3 {
+  margin: 14px 0 4px;
+  color: #111827;
+  font-size: 13px;
+}
+
+.previewAccess p {
   margin: 0;
   color: var(--ui-30-muted);
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1.2;
+  font-size: 11px;
+  line-height: 1.45;
 }
 
-.quickLoginButton {
+.previewButtons {
   display: grid;
-  gap: 4px;
-  width: 100%;
-  min-height: 50px;
-  border: 1px solid rgba(17, 24, 39, 0.1);
-  border-radius: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.previewButton {
+  min-width: 0;
+  min-height: 36px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
   background: var(--ui-60-surface-soft);
   color: var(--ui-30-ink);
   cursor: pointer;
-  font: inherit;
-  font-size: 13px;
+  font-size: 9px;
   font-weight: 900;
-  padding: 10px 12px;
-  text-align: left;
-  transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
+  padding: 7px 4px;
 }
 
-.quickLoginButton span {
-  color: var(--ui-30-text);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.quickLoginButton:hover {
+.previewButton:hover {
   border-color: rgba(215, 25, 32, 0.22);
   background: var(--ui-10-accent-soft);
-  box-shadow: 0 12px 24px rgba(215, 25, 32, 0.1);
-  transform: translateY(-1px);
+  color: #a90f16;
+}
+
+.previewButton:focus-visible {
+  outline: 3px solid rgba(215, 25, 32, 0.18);
+  outline-offset: 2px;
+}
+
+.previewButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 @media (max-width: 820px) {

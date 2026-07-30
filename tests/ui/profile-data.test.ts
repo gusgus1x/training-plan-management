@@ -29,12 +29,12 @@ const employee: ClientSessionUser = {
 describe("database-backed profile display", () => {
   it("maps employee session fields to the profile card", () => {
     expect(buildProfileItems(employee)).toEqual([
-      { label: "รหัสพนักงาน", value: "DEV-SATI-EMP-001" },
-      { label: "ตำแหน่ง", value: "พนักงานฝ่ายผลิตตัวอย่าง" },
-      { label: "แผนก", value: "ฝ่ายผลิตสำหรับการพัฒนา" },
-      { label: "บริษัท", value: "SATI Development Demo Company" },
-      { label: "ระดับพนักงาน", value: "ระดับปฏิบัติการตัวอย่าง / DEV-PL1" },
-      { label: "อีเมล", value: "dev.employee.sati@example.invalid" },
+      { label: "Employee Code", value: "DEV-SATI-EMP-001" },
+      { label: "Position", value: "พนักงานฝ่ายผลิตตัวอย่าง" },
+      { label: "Function", value: "ฝ่ายผลิตสำหรับการพัฒนา" },
+      { label: "Company", value: "SATI Development Demo Company" },
+      { label: "Level", value: "ระดับปฏิบัติการตัวอย่าง / DEV-PL1" },
+      { label: "Email", value: "dev.employee.sati@example.invalid" },
     ]);
   });
 
@@ -57,7 +57,7 @@ describe("database-backed profile display", () => {
         levelName: null,
         pl: null,
       }),
-    ).toContainEqual({ label: "บริษัท", value: "ทุกบริษัท" });
+    ).toContainEqual({ label: "Company", value: "All Companies" });
     expect(profileValue(null)).toBe("-");
   });
 
