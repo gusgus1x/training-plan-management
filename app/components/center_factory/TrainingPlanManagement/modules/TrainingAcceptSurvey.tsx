@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  TRAINING_MASTER_EVENT,
   TRAINING_WORKFLOW_EVENT,
   TRAINING_WORKFLOW_KEYS,
   readWorkflowCollection,
@@ -10,8 +11,16 @@ import {
   type WorkflowRegistration,
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
+import {
+  normalizeEmployeeLevel,
+  readEmployeeMasterData,
+  type EmployeeMasterRecord,
+} from "../../../../lib/employeeMasterData";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
-import type { RollingPlan } from "./TrainingRolling";
+import {
+  getRollingPlanCompanies,
+  type RollingPlan,
+} from "./TrainingRolling";
 import styles from "./TrainingAcceptSurvey.module.css";
 
 export const trainingAcceptSurveyModule = {
@@ -38,29 +47,49 @@ type CandidateSource =
 
 type CourseSurvey = {
   id: string;
+  groupId?: string;
   code: string;
   title: string;
   owner: RoleMode;
   ownerCompany: string;
   date: string;
+  batch?: string;
+  location?: string;
+  startTime?: string;
+  endTime?: string;
   capacity: number;
   courseType: string;
   courseGroup: string;
   objective: string;
   standardName: string;
+  targetFunctionCode: string;
+  targetFunctionName: string;
   targetPositions: string[];
   targetLevels: string[];
   companies: string[];
+};
+
+type CourseSurveyGroup = {
+  id: string;
+  code: string;
+  title: string;
+  owner: RoleMode;
+  ownerCompany: string;
+  sessions: CourseSurvey[];
 };
 
 type Employee = {
   id: string;
   name: string;
   company: string;
+  departmentCode?: string;
   department: string;
   position: string;
   level: string;
   legacyLabel: string;
+  prefix?: string;
+  firstName?: string;
+  lastName?: string;
 };
 
 type Candidate = WorkflowAcceptance;
@@ -111,6 +140,8 @@ const legacyCourseSurveys: CourseSurvey[] = [
     courseGroup: "Management",
     objective: "Develop leadership capability for supervisors and team leaders.",
     standardName: "Management supervisor standard",
+    targetFunctionCode: "",
+    targetFunctionName: "All Function",
     targetPositions: ["Supervisor", "Section Head"],
     targetLevels: ["L3", "L4"],
     companies: [...companies],
@@ -127,6 +158,8 @@ const legacyCourseSurveys: CourseSurvey[] = [
     courseGroup: "Safety",
     objective: "Ensure employees understand workplace safety rules and daily safety behavior.",
     standardName: "Safety operator standard",
+    targetFunctionCode: "",
+    targetFunctionName: "All Function",
     targetPositions: ["Operator", "Technician"],
     targetLevels: ["L1", "L2"],
     companies: ["SNF", "TEP"],
@@ -143,6 +176,8 @@ const legacyCourseSurveys: CourseSurvey[] = [
     courseGroup: "Quality",
     objective: "Build basic quality control understanding for production and quality teams.",
     standardName: "Quality technical standard",
+    targetFunctionCode: "",
+    targetFunctionName: "All Function",
     targetPositions: ["Engineer", "Supervisor"],
     targetLevels: ["L2", "L3"],
     companies: ["ATA", "ATFB", "NIC", "SATI"],
@@ -284,11 +319,31 @@ const mergeRegistrationCandidates = (
   return nextCandidates;
 };
 
-const getEmployeeNameProfile = (employee: Employee) => {
-  const savedProfile = employeeNameProfiles[employee.id];
+const toSurveyEmployee = (employee: EmployeeMasterRecord): Employee => ({
+  id: employee.empCode,
+  name:
+    [employee.nameEn, employee.surnameEn].filter(Boolean).join(" ") ||
+    [employee.nameTh, employee.surnameTh].filter(Boolean).join(" "),
+  company: employee.company,
+  departmentCode: employee.functionCode,
+  department: employee.functionName || "-",
+  position: employee.positionName || "-",
+  level: normalizeEmployeeLevel(employee.levelKey) || "-",
+  legacyLabel: [employee.positionName, employee.levelKey].filter(Boolean).join(" / "),
+  prefix: employee.titleEn || "-",
+  firstName: employee.nameEn || employee.nameTh,
+  lastName: employee.surnameEn || employee.surnameTh,
+});
 
-  if (savedProfile) {
-    return savedProfile;
+const readSurveyEmployees = () => readEmployeeMasterData().map(toSurveyEmployee);
+
+const getEmployeeNameProfile = (employee: Employee) => {
+  if (employee.firstName || employee.lastName) {
+    return {
+      prefix: employee.prefix || "-",
+      firstName: employee.firstName || employee.name,
+      lastName: employee.lastName || "-",
+    };
   }
 
   const nameParts = employee.name.trim().split(/\s+/);
@@ -310,13 +365,16 @@ export default function TrainingAcceptSurvey() {
   const [selectedCourseOwner, setSelectedCourseOwner] = useState<CourseOwnerFilter>(
     roleMode,
   );
+  const [selectedCourseGroupId, setSelectedCourseGroupId] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
-  const [showTargetOnly, setShowTargetOnly] = useState(false);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>(() =>
     readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
   );
   const [standards, setStandards] = useState<WorkflowStandard[]>(() =>
     readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards),
+  );
+  const [masterEmployees, setMasterEmployees] = useState<Employee[]>(
+    readSurveyEmployees,
   );
   const [candidates, setCandidates] = useState<Candidate[]>(() =>
     mergeRegistrationCandidates(
@@ -364,6 +422,17 @@ export default function TrainingAcceptSurvey() {
     return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflow);
   }, []);
 
+  useEffect(() => {
+    const syncEmployeeMaster = () => setMasterEmployees(readSurveyEmployees());
+
+    window.addEventListener(TRAINING_MASTER_EVENT, syncEmployeeMaster);
+    window.addEventListener("storage", syncEmployeeMaster);
+    return () => {
+      window.removeEventListener(TRAINING_MASTER_EVENT, syncEmployeeMaster);
+      window.removeEventListener("storage", syncEmployeeMaster);
+    };
+  }, []);
+
   const courseSurveys = useMemo<CourseSurvey[]>(
     () =>
       rollingPlans
@@ -380,6 +449,9 @@ export default function TrainingAcceptSurvey() {
 
           return {
             id: plan.rollingId,
+            groupId:
+              plan.scheduleGroupId ??
+              `legacy-${plan.id}-${plan.course.code}-${getRollingPlanCompanies(plan).join("-")}`,
             code: plan.course.code,
             title: plan.course.name,
             owner: isCenterPlan ? "center" : "factory",
@@ -388,6 +460,10 @@ export default function TrainingAcceptSurvey() {
                 ? "HRD Center"
                 : plan.ownerCompany ?? plan.company,
             date: plan.trainingDate,
+            batch: plan.batch,
+            location: plan.location,
+            startTime: plan.startTime,
+            endTime: plan.endTime,
             capacity: Number(plan.participants || 0),
             courseType: plan.course.courseType,
             courseGroup: plan.course.courseGroup,
@@ -395,10 +471,11 @@ export default function TrainingAcceptSurvey() {
             standardName: standard
               ? `${standard.functionName} target standard`
               : "No Course Standard",
+            targetFunctionCode: standard?.functionCode ?? "",
+            targetFunctionName: standard?.functionName ?? "All Function",
             targetPositions: standard?.positions ?? [],
             targetLevels: standard?.levels ?? [],
-            companies:
-              plan.company === "All Companies" ? [...companies] : [plan.company],
+            companies: getRollingPlanCompanies(plan),
           };
         }),
     [rollingPlans, standards],
@@ -413,20 +490,59 @@ export default function TrainingAcceptSurvey() {
           { value: "factory" as const, label: "Factory" },
           { value: "center" as const, label: "Center" },
         ];
-  const availableCourses =
-    selectedCourseOwner === ""
-      ? []
-      : roleMode === "center"
-        ? courseSurveys.filter((course) => course.owner === selectedCourseOwner)
-        : courseSurveys.filter((course) =>
-            selectedCourseOwner === "factory"
-              ? course.owner === "factory" && course.ownerCompany === userCompanyCode
-              : course.owner === "center" && course.companies.includes(userCompanyCode),
-          );
+  const availableCourseGroups = useMemo<CourseSurveyGroup[]>(() => {
+    const ownerFilteredSessions =
+      selectedCourseOwner === ""
+        ? []
+        : roleMode === "center"
+          ? courseSurveys.filter(
+              (course) => course.owner === selectedCourseOwner,
+            )
+          : courseSurveys.filter((course) =>
+              selectedCourseOwner === "factory"
+                ? course.owner === "factory" &&
+                  course.ownerCompany === userCompanyCode
+                : course.owner === "center" &&
+                  course.companies.includes(userCompanyCode),
+            );
+    const groups = new Map<string, CourseSurvey[]>();
 
+    ownerFilteredSessions.forEach((session) => {
+      const groupId =
+        session.groupId ??
+        `legacy-${session.code}-${session.ownerCompany}-${session.companies.join("-")}`;
+      groups.set(groupId, [...(groups.get(groupId) ?? []), session]);
+    });
+
+    return [...groups.entries()].map(([id, sessions]) => {
+      const sortedSessions = [...sessions].sort(
+        (a, b) =>
+          a.date.localeCompare(b.date) ||
+          (a.startTime ?? "").localeCompare(b.startTime ?? ""),
+      );
+      const firstSession = sortedSessions[0];
+
+      return {
+        id,
+        code: firstSession.code,
+        title: firstSession.title,
+        owner: firstSession.owner,
+        ownerCompany: firstSession.ownerCompany,
+        sessions: sortedSessions,
+      };
+    });
+  }, [courseSurveys, roleMode, selectedCourseOwner, userCompanyCode]);
+
+  const selectedCourseGroup =
+    availableCourseGroups.find(
+      (group) => group.id === selectedCourseGroupId,
+    ) ??
+    availableCourseGroups[0] ??
+    null;
+  const availableSessions = selectedCourseGroup?.sessions ?? [];
   const selectedCourse =
-    availableCourses.find((course) => course.id === selectedCourseId) ??
-    availableCourses[0] ??
+    availableSessions.find((course) => course.id === selectedCourseId) ??
+    availableSessions[0] ??
     null;
   const isFactoryOwnedByUser =
     roleMode === "factory" &&
@@ -438,14 +554,42 @@ export default function TrainingAcceptSurvey() {
   const canShowAcceptanceList = hasSelectedCourse && (roleMode === "center" || isFactoryOwnedByUser);
 
   const accessibleCompanies: string[] =
-    roleMode === "center" ? [...companies] : [userCompanyCode];
+    roleMode === "center"
+      ? (selectedCourse?.companies ?? [])
+      : selectedCourse?.companies.includes(userCompanyCode)
+        ? [userCompanyCode]
+        : [];
 
-  const targetEmployees = employees.filter(
+  const normalizeTargetPosition = (position: string) => {
+    const normalized = position.trim().toLowerCase();
+    const aliases: Record<string, string> = {
+      sh: "section head",
+      office: "supervisor",
+      "manager up": "manager",
+      "manager++": "manager",
+      "force man": "foreman",
+    };
+    return aliases[normalized] ?? normalized;
+  };
+  const matchesCourseTarget = (employee: Employee) =>
+    selectedCourse !== null &&
+    (selectedCourse.targetFunctionName === "All Function" ||
+      (selectedCourse.targetFunctionCode && employee.departmentCode
+        ? employee.departmentCode === selectedCourse.targetFunctionCode
+        : employee.department.trim().toLowerCase() ===
+          selectedCourse.targetFunctionName.trim().toLowerCase())) &&
+    selectedCourse.targetPositions.some(
+      (position) =>
+        normalizeTargetPosition(position) ===
+        normalizeTargetPosition(employee.position),
+    ) &&
+    selectedCourse.targetLevels.some(
+      (level) => normalizeEmployeeLevel(level) === employee.level,
+    );
+  const targetEmployees = masterEmployees.filter(
     (employee) =>
-      selectedCourse !== null &&
       accessibleCompanies.includes(employee.company) &&
-      selectedCourse.targetPositions.includes(employee.position) &&
-      selectedCourse.targetLevels.includes(employee.level),
+      matchesCourseTarget(employee),
   );
 
   const courseCandidates = selectedCourse
@@ -466,27 +610,34 @@ export default function TrainingAcceptSurvey() {
       )
       .map((candidate) => candidate.id),
   );
-  const relatedEmployees = employees
-    .filter(
-      (employee) =>
-        accessibleCompanies.includes(employee.company) &&
-        !activeCourseCandidateIds.has(employee.id),
-    )
-    .filter(
-      (employee) =>
-        (showTargetOnly
-          ? selectedCourse !== null &&
-            selectedCourse.targetPositions.includes(employee.position) &&
-            selectedCourse.targetLevels.includes(employee.level)
-          : true),
-    );
-  const relatedEmployeeGroups = accessibleCompanies
+  const availableEmployees = masterEmployees.filter(
+    (employee) =>
+      accessibleCompanies.includes(employee.company) &&
+      !activeCourseCandidateIds.has(employee.id),
+  );
+  const availableTargetEmployees = availableEmployees.filter(
+    matchesCourseTarget,
+  );
+  const additionalEmployees = availableEmployees.filter(
+    (employee) => !matchesCourseTarget(employee),
+  );
+  const targetEmployeeGroups = accessibleCompanies
     .map((company) => ({
       company,
-      employees: relatedEmployees.filter((employee) => employee.company === company),
+      employees: availableTargetEmployees.filter(
+        (employee) => employee.company === company,
+      ),
       targetCount: targetEmployees.filter((employee) => employee.company === company).length,
     }))
-    .filter((group) => group.employees.length > 0 || !showTargetOnly);
+    .filter((group) => group.employees.length > 0);
+  const additionalEmployeeGroups = accessibleCompanies
+    .map((company) => ({
+      company,
+      employees: additionalEmployees.filter(
+        (employee) => employee.company === company,
+      ),
+    }))
+    .filter((group) => group.employees.length > 0);
   const visibleCandidates =
     roleMode === "center"
       ? courseCandidates.filter(
@@ -553,7 +704,7 @@ export default function TrainingAcceptSurvey() {
     );
   };
 
-  const handleAddTargetEmployee = (employee: Employee) => {
+  const handleAddEmployee = (employee: Employee) => {
     if (!selectedCourse) {
       return;
     }
@@ -567,12 +718,19 @@ export default function TrainingAcceptSurvey() {
           : "Factory Submitted";
     const nextSource: CandidateSource =
       roleMode === "center" ? "Added by Center" : "Submitted by Factory";
+    const isTargetMatch = matchesCourseTarget(employee);
     const nextRemark =
       roleMode === "center"
-        ? "Added from Course Standard target."
+        ? isTargetMatch
+          ? "Added from Course Standard target."
+          : "Manually added outside Course Standard target."
         : isFactoryOwnedByUser
-          ? "Accepted by factory for factory-owned course."
-          : "Submitted by factory for center approval.";
+          ? isTargetMatch
+            ? "Accepted Course Standard target by factory."
+            : "Manually accepted outside Course Standard target by factory."
+          : isTargetMatch
+            ? "Submitted Course Standard target for center approval."
+            : "Manually submitted outside Course Standard target for center approval.";
 
     setCandidates((current) => {
       const existingCandidate = current.some(
@@ -663,8 +821,8 @@ export default function TrainingAcceptSurvey() {
             value={selectedCourseOwner}
             onChange={(event) => {
               setSelectedCourseOwner(event.target.value as CourseOwnerFilter);
+              setSelectedCourseGroupId("");
               setSelectedCourseId("");
-              setShowTargetOnly(false);
               setParticipantSaveMessage(null);
             }}
           >
@@ -678,16 +836,41 @@ export default function TrainingAcceptSurvey() {
         <label>
           Published Rolling Course
           <select
-            value={selectedCourse?.id ?? ""}
+            value={selectedCourseGroup?.id ?? ""}
             disabled={selectedCourseOwner === ""}
-            onChange={(event) => setSelectedCourseId(event.target.value)}
+            onChange={(event) => {
+              setSelectedCourseGroupId(event.target.value);
+              setSelectedCourseId("");
+              setParticipantSaveMessage(null);
+            }}
           >
             <option value="">
               {selectedCourseOwner === "" ? "Select owner first" : "Select course"}
             </option>
-            {availableCourses.map((course) => (
-              <option key={course.id} value={course.id}>
-                {course.date} / {course.title}
+            {availableCourseGroups.map((group) => (
+              <option key={group.id} value={group.id}>
+                [{group.code}] {group.title} / {group.sessions.length} sessions
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label>
+          Training Session
+          <select
+            value={selectedCourse?.id ?? ""}
+            disabled={!selectedCourseGroup}
+            onChange={(event) => {
+              setSelectedCourseId(event.target.value);
+              setParticipantSaveMessage(null);
+            }}
+          >
+            <option value="">
+              {selectedCourseGroup ? "Select training session" : "Select course first"}
+            </option>
+            {availableSessions.map((session) => (
+              <option key={session.id} value={session.id}>
+                {session.batch ?? "-"} / {session.date} / {session.startTime ?? "-"}-{session.endTime ?? "-"} / {session.location ?? "-"}
               </option>
             ))}
           </select>
@@ -732,6 +915,18 @@ export default function TrainingAcceptSurvey() {
             <strong>{selectedCourse.date}</strong>
           </article>
           <article>
+            <span>Batch</span>
+            <strong>{selectedCourse.batch ?? "-"}</strong>
+          </article>
+          <article>
+            <span>Time</span>
+            <strong>{selectedCourse.startTime ?? "-"} - {selectedCourse.endTime ?? "-"}</strong>
+          </article>
+          <article>
+            <span>Location</span>
+            <strong>{selectedCourse.location ?? "-"}</strong>
+          </article>
+          <article>
             <span>Capacity</span>
             <strong>{selectedCourse.capacity}</strong>
           </article>
@@ -757,6 +952,7 @@ export default function TrainingAcceptSurvey() {
           </article>
         </div>
         <div className={styles.ruleRow}>
+          <span>Function: {selectedCourse.targetFunctionName}</span>
           <span>Position: {selectedCourse.targetPositions.join(", ")}</span>
           <span>Level: {selectedCourse.targetLevels.join(", ")}</span>
           <span>Company: {selectedCourse.companies.join(", ")}</span>
@@ -833,28 +1029,29 @@ export default function TrainingAcceptSurvey() {
         <section className={styles.targetPanel}>
           <div className={styles.workspaceHeader}>
             <div>
-              <p className={styles.kicker}>Course Standard target</p>
-              <h3>Related employees by company</h3>
+              <p className={styles.kicker}>Automatic target group</p>
+              <h3>Course Standard target employees</h3>
             </div>
-            <span>{relatedEmployees.length} shown / {targetEmployees.length} target</span>
+            <span>
+              {availableTargetEmployees.length} available / {targetEmployees.length} target
+            </span>
           </div>
-          <div className={styles.targetControls}>
-            <label className={styles.targetToggle}>
-              <input
-                checked={showTargetOnly}
-                type="checkbox"
-                onChange={(event) => setShowTargetOnly(event.target.checked)}
-              />
-              Show target group only
-            </label>
-          </div>
+          <p className={styles.targetRuleNote}>
+            Automatically matched from position and level in Course Standard.
+          </p>
           <div className={styles.companyGroupGrid}>
-            {relatedEmployeeGroups.map((group) => (
-              <details className={styles.companyGroupCard} key={group.company}>
+            {targetEmployeeGroups.map((group) => (
+              <details
+                className={styles.companyGroupCard}
+                key={group.company}
+                open
+              >
                 <summary className={styles.companyGroupHeader}>
                   <div>
                     <strong>{group.company}</strong>
-                    <span>{group.targetCount} target / {group.employees.length} shown</span>
+                    <span>
+                      {group.employees.length} available / {group.targetCount} target
+                    </span>
                   </div>
                 </summary>
                 <div className={styles.dropdownScroll}>
@@ -878,7 +1075,7 @@ export default function TrainingAcceptSurvey() {
                           <button
                             className={styles.addTargetButton}
                             type="button"
-                            onClick={() => handleAddTargetEmployee(employee)}
+                            onClick={() => handleAddEmployee(employee)}
                           >
                             {targetActionLabel}
                           </button>
@@ -900,12 +1097,118 @@ export default function TrainingAcceptSurvey() {
                 </div>
               </details>
             ))}
-            {relatedEmployees.length === 0 ? (
-              <div className={styles.emptyCompact}>No employees match the selected target filter.</div>
+            {availableTargetEmployees.length === 0 ? (
+              <div className={styles.emptyCompact}>
+                No remaining Course Standard target employees.
+              </div>
             ) : null}
           </div>
         </section>
       </div>
+
+      <section className={styles.additionalPanel}>
+        <details className={styles.additionalDisclosure}>
+          <summary className={styles.additionalSummary}>
+            <div>
+              <p className={styles.kicker}>Additional employees</p>
+              <h3>Add employees outside the target group</h3>
+            </div>
+            <span>{additionalEmployees.length} available</span>
+          </summary>
+          <p className={styles.additionalNote}>
+            Open this section only when you need to add an employee who does not
+            match the Course Standard position and level.
+          </p>
+          <div className={styles.companyGroupGrid}>
+            {additionalEmployeeGroups.map((group) => (
+              <details className={styles.companyGroupCard} key={group.company}>
+                <summary className={styles.companyGroupHeader}>
+                  <div>
+                    <strong>{group.company}</strong>
+                    <span>{group.employees.length} outside target</span>
+                  </div>
+                </summary>
+                <div className={styles.dropdownScroll}>
+                  <div className={styles.relatedPeopleGrid}>
+                    <div
+                      className={`${styles.targetEmployeeHeader} ${styles.targetListHeader}`}
+                    >
+                      <span>Action</span>
+                      <div
+                        className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}
+                      >
+                        <span>Employee ID</span>
+                        <span>Prefix</span>
+                        <span>First Name</span>
+                        <span>Last Name</span>
+                        <span>Company</span>
+                        <span>Department</span>
+                      </div>
+                    </div>
+                    {group.employees.map((employee) => {
+                      const nameProfile = getEmployeeNameProfile(employee);
+
+                      return (
+                        <article
+                          className={`${styles.employeeRow} ${styles.targetListRow}`}
+                          key={employee.id}
+                        >
+                          <button
+                            className={styles.addTargetButton}
+                            type="button"
+                            onClick={() => handleAddEmployee(employee)}
+                          >
+                            {targetActionLabel}
+                          </button>
+                          <div
+                            className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}
+                          >
+                            <span
+                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                            >
+                              {employee.id}
+                            </span>
+                            <span
+                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                            >
+                              {nameProfile.prefix}
+                            </span>
+                            <span
+                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                            >
+                              {nameProfile.firstName}
+                            </span>
+                            <span
+                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                            >
+                              {nameProfile.lastName}
+                            </span>
+                            <span
+                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                            >
+                              {employee.company}
+                            </span>
+                            <span
+                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                            >
+                              {employee.department}
+                            </span>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </div>
+              </details>
+            ))}
+            {additionalEmployees.length === 0 ? (
+              <div className={styles.emptyCompact}>
+                No additional employees are available.
+              </div>
+            ) : null}
+          </div>
+        </details>
+      </section>
 
       {isFactorySubmittingToCenter ? (
         <section className={styles.submittedPanel}>
@@ -1001,9 +1304,7 @@ export default function TrainingAcceptSurvey() {
             </thead>
             <tbody>
               {visibleCandidates.map((candidate) => {
-                const isMatched =
-                  selectedCourse.targetPositions.includes(candidate.position) &&
-                  selectedCourse.targetLevels.includes(candidate.level);
+                const isMatched = matchesCourseTarget(candidate);
                 const canApprove =
                   (canCenterApprove &&
                     (candidate.status === "Pending Approval" ||

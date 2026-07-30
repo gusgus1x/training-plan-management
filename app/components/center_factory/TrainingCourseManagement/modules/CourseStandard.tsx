@@ -1,16 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  TRAINING_MASTER_EVENT,
+  TRAINING_MASTER_KEYS,
   TRAINING_WORKFLOW_KEYS,
   isWorkflowOwner,
+  readMasterCollection,
   readWorkflowCollection,
   writeWorkflowCollection,
   type WorkflowCourse,
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
+import { normalizeEmployeeLevel } from "../../../../lib/employeeMasterData";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { defaultFunctionRows } from "../../MasterDataManagement/modules/FunctionData";
+import { defaultLevelRows } from "../../MasterDataManagement/modules/LevelData";
+import { defaultPositionRows } from "../../MasterDataManagement/modules/PositionData";
 import styles from "./CourseStandard.module.css";
 
 export const courseStandardModule = {
@@ -28,25 +34,18 @@ type CourseMasterOption = {
 type CourseStandardRecord = WorkflowStandard;
 
 const allFunctionOption = "All Function";
-const functionOptions = [
-  allFunctionOption,
-  ...defaultFunctionRows.map((row) => row.functionNameEn || row.functionNameTh),
-];
+const allFunctionCode = "__ALL__";
 
-const positionColumns = ["Manager", "SH", "Engineer", "Office", "Staff", "Foreman", "Leader", "Operator"] as const;
-const positionChecklist = ["Manager Up", "SH", "Engineer", "Office", "Staff", "Force man", "Leader", "Operator"] as const;
-const levelColumns = ["M3", "M2", "M1", "S4", "S3", "S2", "S1", "O5", "O4", "O3", "O2", "O1"] as const;
-
-const normalizePosition = (position: string) => {
-  if (position === "Manager Up") {
-    return "Manager";
-  }
-
-  if (position === "Force man") {
-    return "Foreman";
-  }
-
-  return position;
+const normalizeTargetPosition = (position: string) => {
+  const normalized = position.trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    sh: "section head",
+    office: "supervisor",
+    "manager up": "manager",
+    "manager++": "manager",
+    "force man": "foreman",
+  };
+  return aliases[normalized] ?? normalized;
 };
 
 export default function CourseStandard() {
@@ -61,10 +60,56 @@ export default function CourseStandard() {
   const [editingId, setEditingId] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [courseCode, setCourseCode] = useState("");
+  const [functionCode, setFunctionCode] = useState(allFunctionCode);
   const [functionName, setFunctionName] = useState(allFunctionOption);
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   const [search, setSearch] = useState("");
+  const [functionRows, setFunctionRows] = useState(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.functions, defaultFunctionRows),
+  );
+  const [positionRows, setPositionRows] = useState(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows),
+  );
+  const [levelRows, setLevelRows] = useState(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows),
+  );
+
+  useEffect(() => {
+    const syncReferenceMasters = () => {
+      setFunctionRows(
+        readMasterCollection(TRAINING_MASTER_KEYS.functions, defaultFunctionRows),
+      );
+      setPositionRows(
+        readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows),
+      );
+      setLevelRows(
+        readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows),
+      );
+    };
+
+    window.addEventListener(TRAINING_MASTER_EVENT, syncReferenceMasters);
+    return () =>
+      window.removeEventListener(TRAINING_MASTER_EVENT, syncReferenceMasters);
+  }, []);
+
+  const functionOptions = [
+    {
+      code: allFunctionCode,
+      name: allFunctionOption,
+    },
+    ...functionRows.map((row) => ({
+      code: row.functionCode,
+      name: row.functionNameEn || row.functionNameTh,
+    })),
+  ];
+  const positionChecklist = positionRows
+    .map((row) => row.positionNameEn.trim())
+    .filter(Boolean);
+  const positionColumns = positionChecklist;
+  const levelColumns = levelRows
+    .map((row) => normalizeEmployeeLevel(row.levelKey))
+    .filter(Boolean);
 
   const userCompanyCode = profileValue(user?.companyCode);
   const scopedCourses = useMemo(
@@ -122,6 +167,7 @@ export default function CourseStandard() {
     setIsNewOpen(true);
     setEditingId("");
     setCourseCode(courseMasterOptions[0]?.code ?? "");
+    setFunctionCode(allFunctionCode);
     setFunctionName(allFunctionOption);
     setSelectedPositions([]);
     setSelectedLevels([]);
@@ -135,9 +181,30 @@ export default function CourseStandard() {
     setIsNewOpen(true);
     setEditingId(selectedStandard.id);
     setCourseCode(selectedStandard.courseCode);
+    const matchingFunction = functionOptions.find(
+      (option) =>
+        option.code === selectedStandard.functionCode ||
+        option.name === selectedStandard.functionName,
+    );
+    setFunctionCode(matchingFunction?.code ?? allFunctionCode);
     setFunctionName(selectedStandard.functionName);
-    setSelectedPositions(selectedStandard.positions);
-    setSelectedLevels(selectedStandard.levels);
+    setSelectedPositions(
+      positionChecklist.filter((position) =>
+        selectedStandard.positions.some(
+          (savedPosition) =>
+            normalizeTargetPosition(savedPosition) ===
+            normalizeTargetPosition(position),
+        ),
+      ),
+    );
+    setSelectedLevels(
+      levelColumns.filter((level) =>
+        selectedStandard.levels.some(
+          (savedLevel) =>
+            normalizeEmployeeLevel(savedLevel) === normalizeEmployeeLevel(level),
+        ),
+      ),
+    );
   };
 
   const handleSave = () => {
@@ -150,8 +217,9 @@ export default function CourseStandard() {
       courseId: selectedCourse.id,
       courseCode: selectedCourse.code,
       courseName: selectedCourse.name,
+      functionCode: functionCode === allFunctionCode ? "" : functionCode,
       functionName: functionName.trim(),
-      positions: selectedPositions.map(normalizePosition),
+      positions: selectedPositions,
       levels: selectedLevels,
       owner: scopedCourses.find((course) => course.id === selectedCourse.id)?.owner ?? "FACTORY",
       ownerCompany:
@@ -186,6 +254,15 @@ export default function CourseStandard() {
     setCourses(readWorkflowCollection<WorkflowCourse>(TRAINING_WORKFLOW_KEYS.courses));
     setStandards(
       readWorkflowCollection<CourseStandardRecord>(TRAINING_WORKFLOW_KEYS.standards),
+    );
+    setFunctionRows(
+      readMasterCollection(TRAINING_MASTER_KEYS.functions, defaultFunctionRows),
+    );
+    setPositionRows(
+      readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows),
+    );
+    setLevelRows(
+      readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows),
     );
     setSearch("");
     setIsNewOpen(false);
@@ -272,12 +349,19 @@ export default function CourseStandard() {
               <label>
                 Function Name
                 <select
-                  value={functionName}
-                  onChange={(event) => setFunctionName(event.target.value)}
+                  value={functionCode}
+                  onChange={(event) => {
+                    const nextCode = event.target.value;
+                    setFunctionCode(nextCode);
+                    setFunctionName(
+                      functionOptions.find((option) => option.code === nextCode)
+                        ?.name ?? allFunctionOption,
+                    );
+                  }}
                 >
                   {functionOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+                    <option key={option.code} value={option.code}>
+                      {option.name}
                     </option>
                   ))}
                 </select>
@@ -363,7 +447,11 @@ export default function CourseStandard() {
                   <td>{standard.functionName}</td>
                   {positionColumns.map((position) => (
                     <td className={styles.centerCell} key={position}>
-                      {standard.positions.includes(position) ? <span className={styles.checkMark}>Y</span> : ""}
+                      {standard.positions.some(
+                        (savedPosition) =>
+                          normalizeTargetPosition(savedPosition) ===
+                          normalizeTargetPosition(position),
+                      ) ? <span className={styles.checkMark}>Y</span> : ""}
                     </td>
                   ))}
                   {levelColumns.map((level) => (

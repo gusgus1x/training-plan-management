@@ -3,8 +3,8 @@
   overflow: hidden;
   min-height: 100vh;
   height: 100vh;
-  background: #111827;
-  color: #111827;
+  background: var(--ui-30-ink);
+  color: var(--ui-30-ink);
 }
 
 .loginSection {
@@ -27,8 +27,8 @@
   min-height: 100vh;
   border: 0;
   border-radius: 0;
-  background: #0f172a;
-  color: #ffffff;
+  background: var(--ui-30-ink);
+  color: var(--ui-60-surface);
   box-shadow: none;
 }
 
@@ -143,7 +143,7 @@
 .companySlide h1 {
   margin: 0;
   max-width: 470px;
-  color: #ffffff;
+  color: var(--ui-60-surface);
   font-size: clamp(24px, 3vw, 36px);
   font-weight: 900;
   letter-spacing: 0;
@@ -167,7 +167,7 @@
   align-items: center;
   gap: 10px;
   margin: 0 0 10px;
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.14em;
@@ -178,7 +178,7 @@
 .companyEyebrow::before {
   width: 30px;
   height: 2px;
-  background: #d71920;
+  background: var(--ui-10-accent);
   content: "";
 }
 
@@ -192,7 +192,7 @@
   border-radius: 8px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.98)),
-    #ffffff;
+    var(--ui-60-surface);
   width: min(100%, 430px);
   padding: 34px;
   box-shadow: 0 24px 70px rgba(2, 6, 23, 0.32);
@@ -200,7 +200,7 @@
 }
 
 .formEyebrow {
-  color: #d71920;
+  color: var(--ui-10-accent);
 }
 
 .formHeader {
@@ -209,7 +209,7 @@
 
 .loginCard h2 {
   margin: 0;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: clamp(13px, 1.45vw, 15px);
   font-weight: 900;
   letter-spacing: 0.05em;
@@ -221,7 +221,7 @@
   display: grid;
   gap: 8px;
   margin-bottom: 14px;
-  color: #334155;
+  color: var(--ui-30-text);
   font-size: 14px;
   font-weight: 700;
 }
@@ -229,10 +229,10 @@
 .field input {
   width: 100%;
   height: 44px;
-  border: 1px solid #d7dee8;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #111827;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   font: inherit;
   padding: 0 14px;
   outline: none;
@@ -243,8 +243,8 @@
 }
 
 .field input:focus {
-  background: #f8fafc;
-  border-color: #d71920;
+  background: var(--ui-60-surface-soft);
+  border-color: var(--ui-10-accent);
   box-shadow: 0 0 0 4px rgba(215, 25, 32, 0.14);
 }
 
@@ -266,8 +266,8 @@
   height: 46px;
   border: 0;
   border-radius: 8px;
-  background: #d71920;
-  color: #ffffff;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
   cursor: pointer;
   font-size: 15px;
   font-weight: 800;
@@ -278,13 +278,13 @@
 }
 
 .loginButton:hover {
-  background: #a90f16;
+  background: var(--ui-10-accent-strong);
   box-shadow: 0 14px 28px rgba(215, 25, 32, 0.24);
   transform: translateY(-1px);
 }
 
 .loginButton:focus-visible {
-  outline: 3px solid rgba(37, 99, 235, 0.24);
+  outline: 3px solid var(--ui-focus-ring);
   outline-offset: 3px;
 }
 
@@ -304,7 +304,7 @@
 
 .quickLoginPanel p {
   margin: 0;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 12px;
   font-weight: 900;
   line-height: 1.2;
@@ -317,8 +317,8 @@
   min-height: 50px;
   border: 1px solid rgba(17, 24, 39, 0.1);
   border-radius: 8px;
-  background: #f8fafc;
-  color: #111827;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
   cursor: pointer;
   font: inherit;
   font-size: 13px;
@@ -333,14 +333,14 @@
 }
 
 .quickLoginButton span {
-  color: #475569;
+  color: var(--ui-30-text);
   font-size: 12px;
   font-weight: 800;
 }
 
 .quickLoginButton:hover {
   border-color: rgba(215, 25, 32, 0.22);
-  background: #fff1f2;
+  background: var(--ui-10-accent-soft);
   box-shadow: 0 12px 24px rgba(215, 25, 32, 0.1);
   transform: translateY(-1px);
 }

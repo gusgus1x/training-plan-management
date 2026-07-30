@@ -1,14 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --background: #2f343b;
-  --foreground: #111827;
-  --attg-red: #d71920;
-  --attg-red-dark: #a90f16;
-  --attg-green: #007a3d;
-  --attg-ink: #111827;
-  --attg-muted: #5f6b7a;
-  --attg-line: #d9dee7;
+  /*
+   * ATTG 60–30–10 color system
+   * 60% neutral canvas and surfaces, 30% brand green structure,
+   * 10% red actions and emphasis. Semantic feedback colors remain separate.
+   */
+  --ui-60-canvas: #eef3f0;
+  --ui-60-surface: #ffffff;
+  --ui-60-surface-soft: #f7faf8;
+  --ui-60-surface-muted: #f1f5f3;
+
+  --ui-30-primary: #007a3d;
+  --ui-30-primary-strong: #005c2e;
+  --ui-30-primary-soft: #e8f4ed;
+  --ui-30-primary-border: #c9e2d3;
+  --ui-30-ink: #172033;
+  --ui-30-text: #334155;
+  --ui-30-muted: #64748b;
+  --ui-30-border: #dbe4df;
+
+  --ui-10-accent: #d71920;
+  --ui-10-accent-strong: #a90f16;
+  --ui-10-accent-soft: #fff1f2;
+  --ui-10-accent-border: #ffc7ce;
+
+  --ui-focus-ring: rgba(215, 25, 32, 0.18);
+  --ui-shadow: rgba(15, 23, 42, 0.1);
+
+  --background: var(--ui-60-canvas);
+  --foreground: var(--ui-30-ink);
+  --attg-red: var(--ui-10-accent);
+  --attg-red-dark: var(--ui-10-accent-strong);
+  --attg-green: var(--ui-30-primary);
+  --attg-ink: var(--ui-30-ink);
+  --attg-muted: var(--ui-30-muted);
+  --attg-line: var(--ui-30-border);
 }
 
 @theme inline {
@@ -25,6 +52,10 @@ body {
 }
 
 ::selection {
-  background: rgba(215, 25, 32, 0.18);
+  background: var(--ui-focus-ring);
   color: var(--attg-ink);
+}
+
+:where(button, a, input, select, textarea):focus-visible {
+  outline-color: var(--ui-10-accent);
 }

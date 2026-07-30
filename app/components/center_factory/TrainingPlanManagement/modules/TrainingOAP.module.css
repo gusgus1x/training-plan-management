@@ -2,7 +2,7 @@
   max-width: 1280px;
   margin: 0 auto;
   padding: 18px 24px 48px;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.88rem;
 }
 
@@ -10,8 +10,8 @@
 .workspace,
 .formPanel,
 .detailPanel {
-  background: #ffffff;
-  border: 1px solid #dce4ef;
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
   box-shadow: 0 14px 32px rgba(24, 36, 56, 0.07);
 }
@@ -28,12 +28,12 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 5px;
-  background: #d71920;
+  background: var(--ui-10-accent);
 }
 
 .kicker {
   margin: 0 0 6px;
-  color: #007a3d;
+  color: var(--ui-30-primary);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -58,7 +58,7 @@
 .hero p {
   max-width: 680px;
   margin: 8px 0 0;
-  color: #66758b;
+  color: var(--ui-30-muted);
   font-size: 0.82rem;
   line-height: 1.45;
 }
@@ -74,16 +74,16 @@
   align-items: end;
   justify-content: space-between;
   gap: 12px;
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--ui-30-border);
   padding: 2px 2px 12px;
   margin-bottom: 12px;
 }
 
 .workspaceHeader span {
-  border: 1px solid #d7e7dd;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
-  background: #f1fbf5;
-  color: #007a3d;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
@@ -104,7 +104,7 @@
   display: grid;
   gap: 5px;
   min-width: 0;
-  color: #65758b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -121,10 +121,10 @@
 .toolbar select,
 .formGrid input,
 .formGrid select {
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #172033;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   min-height: 38px;
   padding: 8px 11px;
   font: inherit;
@@ -137,8 +137,8 @@
 .toolbar select:focus,
 .formGrid input:focus,
 .formGrid select:focus {
-  border-color: #2f67c7;
-  box-shadow: 0 0 0 3px rgba(47, 103, 199, 0.12);
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.16);
 }
 
 .primaryButton,
@@ -162,12 +162,12 @@
 
 .primaryButton {
   border: 0;
-  background: #d71920;
-  color: #ffffff;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
 }
 
 .primaryButton:hover {
-  background: #bd151c;
+  background: var(--ui-10-accent-strong);
   box-shadow: 0 10px 20px rgba(215, 25, 32, 0.18);
   transform: translateY(-1px);
 }
@@ -175,9 +175,9 @@
 .secondaryButton,
 .detailButton,
 .closeButton {
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #26364d;
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
 }
 
 .dangerButton {
@@ -190,7 +190,7 @@
 .detailButton:hover,
 .closeButton:hover {
   border-color: #9fb0c5;
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
 }
 
 .dangerButton:hover {
@@ -205,8 +205,8 @@
 }
 
 .formPanel {
-  border-color: #cfd9e6;
-  background: #fbfdff;
+  border-color: var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
   box-shadow: 0 10px 24px rgba(24, 36, 56, 0.06);
   margin-bottom: 14px;
 }
@@ -216,7 +216,7 @@
   justify-content: space-between;
   gap: 12px;
   align-items: flex-start;
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--ui-30-border);
   padding-bottom: 12px;
   margin-bottom: 12px;
 }
@@ -230,7 +230,7 @@
 .formGrid label {
   display: grid;
   gap: 5px;
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.72rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -247,21 +247,21 @@
 .coursePreview {
   display: grid;
   gap: 6px;
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
   margin-top: 12px;
   padding: 12px;
 }
 
 .coursePreview strong {
-  color: #111827;
+  color: var(--ui-30-ink);
 }
 
 .coursePreview span {
-  color: #66758b;
+  color: var(--ui-30-muted);
   font-size: 0.76rem;
 }
 
@@ -269,29 +269,29 @@
   display: grid;
   gap: 5px;
   margin-bottom: 12px;
-  border: 1px solid #d7e7dd;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 8px;
-  background: #f1fbf5;
-  box-shadow: inset 4px 0 0 #007a3d;
+  background: var(--ui-30-primary-soft);
+  box-shadow: inset 4px 0 0 var(--ui-30-primary);
   padding: 12px 14px;
 }
 
 .approvedRequestBanner span {
-  color: #007a3d;
+  color: var(--ui-30-primary);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
 }
 
 .approvedRequestBanner strong {
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 0.94rem;
   font-weight: 900;
 }
 
 .approvedRequestBanner p {
   margin: 0;
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.8rem;
   font-weight: 800;
 }
@@ -304,9 +304,9 @@
 }
 
 .tableWrap {
-  border: 1px solid #e1e8f2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
   padding: 8px;
   overflow-x: auto;
 }
@@ -315,7 +315,7 @@
   width: 100%;
   min-width: 1180px;
   border-collapse: collapse;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -324,10 +324,10 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  border-bottom: 1px solid #dce6f3;
-  background: #f4f7fb;
+  border-bottom: 1px solid var(--ui-30-primary-border);
+  background: var(--ui-60-surface-soft);
   padding: 10px 12px;
-  color: #65758b;
+  color: var(--ui-30-muted);
   font-size: 0.66rem;
   font-weight: 900;
   text-align: left;
@@ -335,20 +335,20 @@
 }
 
 .planTable td {
-  border-bottom: 1px solid #e5ebf2;
-  background: #ffffff;
+  border-bottom: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
   padding: 11px 12px;
   font-size: 0.8rem;
   vertical-align: middle;
 }
 
 .planTable tbody tr:hover td {
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
 }
 
 .planTable td:first-child,
 .planTable th:first-child {
-  color: #315fbb;
+  color: var(--ui-30-primary);
   font-weight: 900;
 }
 
@@ -369,7 +369,7 @@
 .planTable td span {
   display: block;
   margin-top: 4px;
-  color: #66758b;
+  color: var(--ui-30-muted);
   font-size: 0.72rem;
 }
 
@@ -377,8 +377,8 @@
   display: inline-flex;
   width: fit-content;
   border-radius: 999px;
-  background: #eaf2ff;
-  color: #2458b8;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   padding: 5px 9px;
   font-size: 0.66rem;
   font-weight: 900;
@@ -395,7 +395,7 @@
 }
 
 .statusCancel {
-  background: #fff1f2;
+  background: var(--ui-10-accent-soft);
   color: #be123c;
 }
 
@@ -408,7 +408,7 @@
 }
 
 .detailRow td {
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
   padding: 0;
 }
 
@@ -423,9 +423,9 @@
 }
 
 .detailGrid div {
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 10px;
 }
 
@@ -438,7 +438,7 @@
 
 .detailGrid span {
   display: block;
-  color: #65758b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -448,7 +448,7 @@
 .detailGrid p {
   display: block;
   margin: 5px 0 0;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.8rem;
   line-height: 1.4;
 }
@@ -458,14 +458,14 @@
   place-items: center;
   gap: 6px;
   min-height: 120px;
-  border-top: 1px solid #e5ebf2;
-  background: #ffffff;
-  color: #66758b;
+  border-top: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-muted);
   text-align: center;
 }
 
 .emptyState strong {
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.94rem;
 }
 
@@ -514,7 +514,7 @@
   max-width: none;
   margin: 0 auto;
   padding: 8px 0 48px;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.88rem;
 }
 
@@ -535,9 +535,9 @@
 .costBreakdownPanel,
 .chartPanel,
 .evaluationDownloadPanel {
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
 }
 
@@ -548,7 +548,7 @@
   gap: 14px;
   margin-bottom: 14px;
   padding: 16px 18px 16px 22px;
-  background: linear-gradient(90deg, #ffffff 0%, #ffffff 66%, #f1f5f9 100%);
+  background: linear-gradient(90deg, var(--ui-60-surface) 0%, var(--ui-60-surface) 66%, var(--ui-60-surface-muted) 100%);
 }
 
 .hero::before,
@@ -563,7 +563,7 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
@@ -584,7 +584,7 @@
 .panelHeader span,
 .listMeta,
 .badge {
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -598,7 +598,7 @@
 .panel h3,
 .formPanel h3 {
   margin: 0;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-weight: 900;
   letter-spacing: 0;
   line-height: 1.2;
@@ -613,22 +613,22 @@
 .moduleHero p,
 .panel p,
 .formPanel p {
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.82rem;
   line-height: 1.45;
 }
 
 .toolbar {
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--ui-30-border);
   gap: 8px;
   margin-bottom: 12px;
   padding-bottom: 12px;
 }
 
 .tableWrap {
-  border: 1px solid #dbe4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 0;
   overflow-x: auto;
 }
@@ -636,9 +636,9 @@
 .dataTable th,
 .planTable th,
 .rollingTable th {
-  border-bottom: 1px solid #e5ebf2;
-  background: #f8fafc;
-  color: #65758b;
+  border-bottom: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
   font-size: 0.66rem;
   font-weight: 900;
   padding: 12px;
@@ -648,10 +648,10 @@
 .dataTable td,
 .planTable td,
 .rollingTable td {
-  border-bottom: 1px solid #e5ebf2;
-  background: #ffffff;
+  border-bottom: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
   box-shadow: none;
-  color: #26364d;
+  color: var(--ui-30-text);
   font-size: 0.8rem;
   padding: 10px 12px;
 }
@@ -660,11 +660,11 @@
 .planTable tbody tr:hover td,
 .rollingTable tbody tr:hover td,
 .selectedRow td {
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
 }
 
 .selectedRow td:first-child {
-  box-shadow: inset 3px 0 0 #d71920;
+  box-shadow: inset 3px 0 0 var(--ui-10-accent);
 }
 
 @media (max-width: 760px) {
@@ -702,8 +702,8 @@
 .toolbar .actionButton,
 .toolbar .newButton {
   border: 0;
-  background: #007a3d;
-  color: #ffffff;
+  background: var(--ui-30-primary);
+  color: var(--ui-60-surface);
   box-shadow: 0 8px 18px rgba(0, 122, 61, 0.16);
 }
 
@@ -711,8 +711,8 @@
 .toolbar .editButton,
 .toolbar .refreshButton,
 .toolbar .exportButton {
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
   color: #0f2747;
   box-shadow: none;
 }
@@ -729,7 +729,7 @@
 .toolbar .primaryButton:hover,
 .toolbar .actionButton:hover,
 .toolbar .newButton:hover {
-  background: #006b35;
+  background: var(--ui-30-primary-strong);
   box-shadow: 0 12px 24px rgba(0, 122, 61, 0.22);
   transform: translateY(-1px);
 }
@@ -739,21 +739,21 @@
 .toolbar .refreshButton:hover,
 .toolbar .exportButton:hover {
   border-color: #8aa4cc;
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
   transform: translateY(-1px);
 }
 
 .toolbar .dangerButton:hover,
 .toolbar .deleteButton:hover {
-  border-color: #d71920;
-  background: #fff1f2;
-  color: #a90f16;
+  border-color: var(--ui-10-accent);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
   transform: translateY(-1px);
 }
 
 .toolbar button:disabled {
-  border-color: #dbe2ec;
-  background: #f8fafc;
+  border-color: var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
   box-shadow: none;
   color: #a4afbd;
   cursor: not-allowed;

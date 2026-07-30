@@ -3,15 +3,13 @@
   overflow-x: clip;
   background:
     radial-gradient(
-      circle 760px at 100% 100%,
-      rgba(0, 122, 61, 0.52) 0%,
-      rgba(0, 122, 61, 0.34) 24%,
-      rgba(156, 210, 244, 0.14) 46%,
-      rgba(215, 25, 32, 0.26) 70%,
-      rgba(237, 242, 247, 0) 100%
+      circle 620px at 100% 100%,
+      rgba(0, 122, 61, 0.18) 0%,
+      rgba(0, 122, 61, 0.08) 35%,
+      rgba(238, 243, 240, 0) 72%
     ),
-    #edf2f7;
-  color: #172033;
+    var(--ui-60-canvas);
+  color: var(--ui-30-ink);
 }
 
 .header,
@@ -34,7 +32,7 @@
   right: calc((100vw - 100%) / -2);
   bottom: 50%;
   left: calc((100vw - 100%) / -2);
-  background: #202733;
+  background: var(--ui-30-primary-strong);
   pointer-events: none;
 }
 
@@ -50,10 +48,10 @@
   display: inline-flex;
   min-height: 28px;
   align-items: center;
-  border: 1px solid #ffc7ce;
+  border: 1px solid var(--ui-10-accent-border);
   border-radius: 999px;
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
   font-size: 0.68rem;
   font-weight: 900;
   line-height: 1;
@@ -66,7 +64,7 @@
   min-height: 128px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 24px 54px rgba(31, 41, 55, 0.22);
 }
 
@@ -75,18 +73,18 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
 .heroPanel > div:first-child {
   padding: 28px 30px 26px 34px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
 }
 
 .kicker {
   margin: 0 0 6px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -94,7 +92,7 @@
 
 .heroPanel h1 {
   margin: 0;
-  color: #020617;
+  color: var(--ui-30-ink);
   font-size: clamp(2.15rem, 3.2vw, 2.75rem);
   font-weight: 900;
   letter-spacing: 0;
@@ -104,7 +102,7 @@
 .heroPanel p {
   max-width: 860px;
   margin: 10px 0 0;
-  color: #355172;
+  color: var(--ui-30-text);
   font-size: 0.82rem;
   line-height: 1.5;
 }
@@ -123,7 +121,7 @@
 
 .moduleHeader span,
 .cardSubtitle {
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -131,7 +129,7 @@
 
 .moduleHeader h2 {
   margin: 7px 0 0;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 1rem;
   font-weight: 800;
   letter-spacing: 0;
@@ -139,10 +137,10 @@
 
 .moduleHeader p {
   margin: 0;
-  border: 1px solid #ffc7ce;
+  border: 1px solid var(--ui-10-accent-border);
   border-radius: 999px;
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
   font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
@@ -165,13 +163,13 @@
   gap: 14px;
   min-height: 168px;
   overflow: hidden;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ui-30-border);
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 18px 42px rgba(31, 41, 55, 0.12);
-  color: #172033;
+  color: var(--ui-30-ink);
   cursor: pointer;
   font: inherit;
   padding: 18px;
@@ -184,18 +182,46 @@
 }
 
 .moduleCard:nth-child(2n) {
-  border-left-color: #d71920;
+  border-left-color: var(--ui-10-accent);
 }
 
 .moduleCard:hover {
   border-color: rgba(215, 25, 32, 0.38);
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   box-shadow: 0 24px 48px rgba(15, 23, 42, 0.16);
   transform: translateY(-2px);
 }
 
+.lockedModuleCard,
+.lockedModuleCard:hover {
+  border-color: var(--ui-30-border);
+  border-left-color: #94a3b8;
+  background:
+    linear-gradient(rgba(248, 250, 252, 0.78), rgba(248, 250, 252, 0.78)),
+    var(--ui-60-surface);
+  box-shadow: none;
+  cursor: not-allowed;
+  filter: saturate(0.45);
+  opacity: 0.76;
+  transform: none;
+}
+
+.lockedModuleCard .cardIndex {
+  border-color: rgba(100, 116, 139, 0.22);
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 0.88rem;
+}
+
+.lockedModuleCard > strong {
+  border-style: dashed;
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+  color: #64748b;
+}
+
 .moduleCard:focus-visible {
-  outline: 3px solid rgba(37, 99, 235, 0.24);
+  outline: 3px solid var(--ui-focus-ring);
   outline-offset: 3px;
 }
 
@@ -206,8 +232,8 @@
   place-items: center;
   border: 1px solid rgba(0, 122, 61, 0.18);
   border-radius: 6px;
-  background: #f1fbf5;
-  color: #007a3d;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
@@ -215,13 +241,13 @@
 
 .moduleCard:nth-child(2n) .cardIndex {
   border-color: rgba(215, 25, 32, 0.2);
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
 }
 
 .moduleCard h3 {
   margin: 6px 0 0;
-  color: #020617;
+  color: var(--ui-30-ink);
   font-size: 1.18rem;
   font-weight: 900;
   letter-spacing: 0;
@@ -230,7 +256,7 @@
 
 .moduleCard p {
   margin: 8px 0 0;
-  color: #334b68;
+  color: var(--ui-30-text);
   font-size: 0.78rem;
   font-weight: 600;
   line-height: 1.45;
@@ -240,9 +266,9 @@
   grid-column: 2;
   justify-self: start;
   align-self: end;
-  border: 1px solid #dbeafe;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
   color: #0f2747;
   font-size: 0.72rem;
   font-weight: 900;
@@ -281,9 +307,9 @@
 /* Hub alignment with Training Record Management */
 .sectionBadge,
 .moduleHeader p {
-  border-color: #ffc7ce;
-  background: #fff1f2;
-  color: #d71920;
+  border-color: var(--ui-10-accent-border);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
 }
 
 .moduleGrid {

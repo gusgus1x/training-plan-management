@@ -3,7 +3,7 @@
   max-width: none;
   margin: 0 auto;
   padding: 8px 0 48px;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.88rem;
 }
 
@@ -11,9 +11,9 @@
 .workspace,
 .formPanel,
 .detailPanel {
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 14px 32px rgba(24, 36, 56, 0.07);
 }
 
@@ -29,12 +29,12 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 5px;
-  background: #d71920;
+  background: var(--ui-10-accent);
 }
 
 .kicker {
   margin: 0 0 6px;
-  color: #007a3d;
+  color: var(--ui-30-primary);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -59,7 +59,7 @@
 .hero p {
   max-width: 680px;
   margin: 8px 0 0;
-  color: #66758b;
+  color: var(--ui-30-muted);
   font-size: 0.82rem;
   line-height: 1.45;
 }
@@ -75,16 +75,16 @@
   align-items: end;
   justify-content: space-between;
   gap: 12px;
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--ui-30-border);
   padding: 2px 2px 12px;
   margin-bottom: 12px;
 }
 
 .workspaceHeader span {
-  border: 1px solid #d7e7dd;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
-  background: #f1fbf5;
-  color: #007a3d;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
@@ -105,7 +105,7 @@
   display: grid;
   gap: 5px;
   min-width: 0;
-  color: #65758b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -123,10 +123,10 @@
 .formGrid input,
 .formGrid select {
   min-height: 38px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #172033;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   font: inherit;
   font-size: 0.82rem;
   font-weight: 700;
@@ -138,14 +138,14 @@
 .toolbar select:focus,
 .formGrid input:focus,
 .formGrid select:focus {
-  border-color: #2f67c7;
-  box-shadow: 0 0 0 3px rgba(47, 103, 199, 0.12);
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.16);
 }
 
 .formGrid input:disabled {
-  border-color: #e0e6ef;
-  background: #f7f9fc;
-  color: #526176;
+  border-color: var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-text);
 }
 
 .primaryButton,
@@ -169,12 +169,12 @@
 
 .primaryButton {
   border: 0;
-  background: #d71920;
-  color: #ffffff;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
 }
 
 .primaryButton:hover {
-  background: #bd151c;
+  background: var(--ui-10-accent-strong);
   box-shadow: 0 10px 20px rgba(215, 25, 32, 0.18);
   transform: translateY(-1px);
 }
@@ -182,16 +182,16 @@
 .secondaryButton,
 .detailButton,
 .closeButton {
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #26364d;
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
 }
 
 .secondaryButton:hover,
 .detailButton:hover,
 .closeButton:hover {
   border-color: #9fb0c5;
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
 }
 
 .dangerButton {
@@ -206,8 +206,8 @@
 }
 
 .formPanel {
-  border-color: #cfd9e6;
-  background: #fbfdff;
+  border-color: var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
   box-shadow: 0 10px 24px rgba(24, 36, 56, 0.06);
   margin-bottom: 14px;
 }
@@ -217,7 +217,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--ui-30-border);
   padding-bottom: 12px;
   margin-bottom: 12px;
 }
@@ -232,7 +232,7 @@
   display: grid;
   grid-column: span 2;
   gap: 5px;
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.72rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -245,21 +245,21 @@
 .coursePreview {
   display: grid;
   gap: 6px;
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   margin-top: 12px;
   padding: 12px;
 }
 
 .coursePreview strong {
-  color: #111827;
+  color: var(--ui-30-ink);
 }
 
 .coursePreview span {
-  color: #66758b;
+  color: var(--ui-30-muted);
   font-size: 0.76rem;
 }
 
@@ -272,9 +272,9 @@
 
 .tableWrap {
   overflow-x: auto;
-  border: 1px solid #e1e8f2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
   padding: 8px;
 }
 
@@ -284,16 +284,16 @@
   overflow: hidden;
   border-collapse: collapse;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
 }
 
 .rollingTable th {
   position: sticky;
   top: 0;
   z-index: 1;
-  border-bottom: 1px solid #dce6f3;
-  background: #f4f7fb;
-  color: #65758b;
+  border-bottom: 1px solid var(--ui-30-primary-border);
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
   font-size: 0.66rem;
   font-weight: 900;
   padding: 10px 12px;
@@ -302,20 +302,20 @@
 }
 
 .rollingTable td {
-  border-bottom: 1px solid #e5ebf2;
-  background: #ffffff;
+  border-bottom: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
   font-size: 0.8rem;
   padding: 11px 12px;
   vertical-align: middle;
 }
 
 .rollingTable tbody tr:hover td {
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
 }
 
 .rollingTable td:first-child,
 .rollingTable th:first-child {
-  color: #315fbb;
+  color: var(--ui-30-primary);
   font-weight: 900;
 }
 
@@ -327,7 +327,7 @@
 .rollingTable td span {
   display: block;
   margin-top: 4px;
-  color: #66758b;
+  color: var(--ui-30-muted);
   font-size: 0.72rem;
 }
 
@@ -336,8 +336,8 @@
   display: inline-flex;
   width: fit-content;
   border-radius: 999px;
-  background: #eaf2ff;
-  color: #2458b8;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 0.66rem;
   font-weight: 900;
   padding: 5px 9px;
@@ -354,13 +354,13 @@
 }
 
 .jobRolling {
-  background: #eaf2ff;
-  color: #2458b8;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
 }
 
 .jobCompleted {
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--ui-60-surface-muted);
+  color: var(--ui-30-text);
 }
 
 .actionCell {
@@ -372,7 +372,7 @@
 }
 
 .detailRow td {
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
   padding: 0;
 }
 
@@ -387,9 +387,9 @@
 }
 
 .detailGrid div {
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 10px;
 }
 
@@ -402,7 +402,7 @@
 
 .detailGrid span {
   display: block;
-  color: #65758b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -412,7 +412,7 @@
 .detailGrid p {
   display: block;
   margin: 5px 0 0;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.8rem;
   line-height: 1.4;
 }
@@ -422,14 +422,14 @@
   place-items: center;
   gap: 6px;
   min-height: 120px;
-  border-top: 1px solid #e5ebf2;
-  background: #ffffff;
-  color: #66758b;
+  border-top: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-muted);
   text-align: center;
 }
 
 .emptyState strong {
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.94rem;
 }
 
@@ -469,7 +469,7 @@
   max-width: none;
   margin: 0 auto;
   padding: 8px 0 48px;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.88rem;
 }
 
@@ -490,9 +490,9 @@
 .costBreakdownPanel,
 .chartPanel,
 .evaluationDownloadPanel {
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
 }
 
@@ -503,7 +503,7 @@
   gap: 14px;
   margin-bottom: 14px;
   padding: 16px 18px 16px 22px;
-  background: linear-gradient(90deg, #ffffff 0%, #ffffff 66%, #f1f5f9 100%);
+  background: linear-gradient(90deg, var(--ui-60-surface) 0%, var(--ui-60-surface) 66%, var(--ui-60-surface-muted) 100%);
 }
 
 .hero::before,
@@ -518,7 +518,7 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
@@ -539,7 +539,7 @@
 .panelHeader span,
 .listMeta,
 .badge {
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -553,7 +553,7 @@
 .panel h3,
 .formPanel h3 {
   margin: 0;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-weight: 900;
   letter-spacing: 0;
   line-height: 1.2;
@@ -568,22 +568,22 @@
 .moduleHero p,
 .panel p,
 .formPanel p {
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.82rem;
   line-height: 1.45;
 }
 
 .toolbar {
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--ui-30-border);
   gap: 8px;
   margin-bottom: 12px;
   padding-bottom: 12px;
 }
 
 .tableWrap {
-  border: 1px solid #dbe4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 0;
   overflow-x: auto;
 }
@@ -591,9 +591,9 @@
 .dataTable th,
 .planTable th,
 .rollingTable th {
-  border-bottom: 1px solid #e5ebf2;
-  background: #f8fafc;
-  color: #65758b;
+  border-bottom: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
   font-size: 0.66rem;
   font-weight: 900;
   padding: 12px;
@@ -603,10 +603,10 @@
 .dataTable td,
 .planTable td,
 .rollingTable td {
-  border-bottom: 1px solid #e5ebf2;
-  background: #ffffff;
+  border-bottom: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
   box-shadow: none;
-  color: #26364d;
+  color: var(--ui-30-text);
   font-size: 0.8rem;
   padding: 10px 12px;
 }
@@ -615,11 +615,11 @@
 .planTable tbody tr:hover td,
 .rollingTable tbody tr:hover td,
 .selectedRow td {
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
 }
 
 .selectedRow td:first-child {
-  box-shadow: inset 3px 0 0 #d71920;
+  box-shadow: inset 3px 0 0 var(--ui-10-accent);
 }
 
 @media (max-width: 760px) {
@@ -657,8 +657,8 @@
 .toolbar .actionButton,
 .toolbar .newButton {
   border: 0;
-  background: #007a3d;
-  color: #ffffff;
+  background: var(--ui-30-primary);
+  color: var(--ui-60-surface);
   box-shadow: 0 8px 18px rgba(0, 122, 61, 0.16);
 }
 
@@ -666,8 +666,8 @@
 .toolbar .editButton,
 .toolbar .refreshButton,
 .toolbar .exportButton {
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
   color: #0f2747;
   box-shadow: none;
 }
@@ -684,7 +684,7 @@
 .toolbar .primaryButton:hover,
 .toolbar .actionButton:hover,
 .toolbar .newButton:hover {
-  background: #006b35;
+  background: var(--ui-30-primary-strong);
   box-shadow: 0 12px 24px rgba(0, 122, 61, 0.22);
   transform: translateY(-1px);
 }
@@ -694,24 +694,289 @@
 .toolbar .refreshButton:hover,
 .toolbar .exportButton:hover {
   border-color: #8aa4cc;
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
   transform: translateY(-1px);
 }
 
 .toolbar .dangerButton:hover,
 .toolbar .deleteButton:hover {
-  border-color: #d71920;
-  background: #fff1f2;
-  color: #a90f16;
+  border-color: var(--ui-10-accent);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
   transform: translateY(-1px);
 }
 
 .toolbar button:disabled {
-  border-color: #dbe2ec;
-  background: #f8fafc;
+  border-color: var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
   box-shadow: none;
   color: #a4afbd;
   cursor: not-allowed;
   opacity: 1;
   transform: none;
+}
+
+/* Multiple training sessions and company scope */
+.sessionSection,
+.companyField {
+  min-width: 0;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  padding: 12px;
+}
+
+.sectionHeader,
+.sessionHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sectionHeader > div {
+  display: grid;
+  gap: 3px;
+}
+
+.sectionHeader strong,
+.sessionHeader strong,
+.companyField legend {
+  color: var(--ui-30-ink);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.sectionHeader span,
+.companyField p {
+  margin: 0;
+  color: var(--ui-30-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.4;
+  text-transform: none;
+}
+
+.addSessionButton,
+.removeSessionButton {
+  min-height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 900;
+  padding: 6px 10px;
+}
+
+.addSessionButton {
+  border: 0;
+  background: var(--ui-30-primary);
+  color: var(--ui-60-surface);
+}
+
+.removeSessionButton {
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+  color: #b42318;
+}
+
+.removeSessionButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.sessionList {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.sessionCard {
+  display: grid;
+  gap: 9px;
+  border: 1px solid var(--ui-30-primary-border);
+  border-left: 4px solid var(--ui-30-primary);
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  padding: 10px;
+}
+
+.sessionGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.formGrid .sessionGrid label {
+  grid-column: auto;
+}
+
+.companyField {
+  display: grid;
+  grid-column: span 6;
+  gap: 8px;
+  margin: 0;
+}
+
+.companyField legend {
+  padding: 0 5px;
+}
+
+.companyChecklist {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.formGrid .companyChecklist label {
+  display: flex;
+  grid-column: auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-text);
+  cursor: pointer;
+  font-size: 0.72rem;
+  padding: 7px 9px;
+  text-transform: none;
+}
+
+.formGrid .companyChecklist input {
+  width: 16px;
+  min-height: 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--ui-30-primary);
+}
+
+.companyField > small {
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .sessionSection,
+  .companyField {
+    grid-column: auto;
+  }
+
+  .sessionGrid,
+  .companyChecklist {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .sectionHeader {
+    display: grid;
+  }
+
+  .sectionHeader .addSessionButton {
+    justify-self: start;
+  }
+
+  .sessionGrid,
+  .companyChecklist {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Grouped course rows with nested session schedules */
+.sessionDetailHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  border-bottom: 1px solid var(--ui-30-border);
+  padding-bottom: 8px;
+}
+
+.sessionDetailHeader > div {
+  display: grid;
+  gap: 3px;
+}
+
+.sessionDetailHeader strong {
+  color: var(--ui-30-ink);
+  font-size: 0.84rem;
+}
+
+.sessionDetailHeader span {
+  color: var(--ui-30-muted);
+  font-size: 0.7rem;
+}
+
+.sessionSummaryList {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.sessionSummaryList > article {
+  display: grid;
+  grid-template-columns:
+    minmax(80px, 0.7fr)
+    minmax(110px, 1fr)
+    minmax(120px, 1fr)
+    minmax(110px, 1fr)
+    minmax(90px, 0.7fr)
+    auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--ui-30-border);
+  border-left: 4px solid var(--ui-30-primary);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  padding: 9px 10px;
+}
+
+.sessionSummaryList > article > div {
+  min-width: 0;
+}
+
+.sessionSummaryList > article span {
+  display: block;
+  color: var(--ui-30-muted);
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.sessionSummaryList > article strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--ui-30-ink);
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sessionActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.sessionActions button {
+  min-height: 32px;
+  padding: 6px 9px;
+  font-size: 0.68rem;
+}
+
+@media (max-width: 900px) {
+  .sessionSummaryList > article {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sessionActions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
 }

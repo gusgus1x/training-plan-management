@@ -1,9 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  TRAINING_MASTER_KEYS,
+  readMasterCollection,
+  writeMasterCollection,
+} from "../../../../lib/trainingWorkflow";
 import styles from "./LevelData.module.css";
 
-type LevelRecord = {
+export type LevelRecord = {
   id: string;
   levelCodeTh: string;
   levelCodeEn: string;
@@ -22,7 +27,7 @@ export const levelDataModule = {
   description: "Maintain employee level codes, PL values, and level keys for training standards.",
 } as const;
 
-const defaultRows: LevelRecord[] = [
+export const defaultLevelRows: LevelRecord[] = [
   {
     id: "level-m4",
     levelCodeTh: "จ",
@@ -167,9 +172,11 @@ const emptyRecord = (): LevelRecord => ({
 });
 
 export default function LevelData() {
-  const [rows, setRows] = useState<LevelRecord[]>(defaultRows);
+  const [rows, setRows] = useState<LevelRecord[]>(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows),
+  );
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState(defaultRows[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState(defaultLevelRows[0]?.id ?? "");
   const [formMode, setFormMode] = useState<FormMode>(null);
   const [formValues, setFormValues] = useState<LevelRecord>(emptyRecord);
 
@@ -201,6 +208,11 @@ export default function LevelData() {
     setFormValues((current) => ({ ...current, [field]: value }));
   };
 
+  const saveRows = (nextRows: LevelRecord[]) => {
+    setRows(nextRows);
+    writeMasterCollection(TRAINING_MASTER_KEYS.levels, nextRows);
+  };
+
   const handleNew = () => {
     setFormValues(emptyRecord());
     setFormMode("new");
@@ -220,15 +232,19 @@ export default function LevelData() {
       return;
     }
 
-    setRows((current) => current.filter((row) => row.id !== selectedRecord.id));
+    saveRows(rows.filter((row) => row.id !== selectedRecord.id));
     setSelectedId("");
     setFormMode(null);
   };
 
   const handleRefresh = () => {
-    setRows(defaultRows);
+    const nextRows = readMasterCollection(
+      TRAINING_MASTER_KEYS.levels,
+      defaultLevelRows,
+    );
+    setRows(nextRows);
     setSearch("");
-    setSelectedId(defaultRows[0]?.id ?? "");
+    setSelectedId(nextRows[0]?.id ?? "");
     setFormMode(null);
   };
 
@@ -256,11 +272,11 @@ export default function LevelData() {
     }
 
     if (formMode === "edit") {
-      setRows((current) =>
-        current.map((row) => (row.id === nextRecord.id ? nextRecord : row)),
+      saveRows(
+        rows.map((row) => (row.id === nextRecord.id ? nextRecord : row)),
       );
     } else {
-      setRows((current) => [nextRecord, ...current]);
+      saveRows([nextRecord, ...rows]);
     }
 
     setSelectedId(nextRecord.id);

@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import {
+  TRAINING_MASTER_KEYS,
+  readMasterCollection,
+  writeMasterCollection,
+} from "../../../../lib/trainingWorkflow";
 import styles from "./InstructorData.module.css";
 
 export const instructorDataModule = {
@@ -9,7 +14,7 @@ export const instructorDataModule = {
   description: "Maintain instructor contact and education records for training courses.",
 } as const;
 
-type InstructorRecord = {
+export type InstructorRecord = {
   id: string;
   firstName: string;
   lastName: string;
@@ -18,7 +23,7 @@ type InstructorRecord = {
   logDate: string;
 };
 
-const initialRows: InstructorRecord[] = [
+export const defaultInstructorRows: InstructorRecord[] = [
   {
     id: "instructor-001",
     firstName: "Somchai",
@@ -53,9 +58,11 @@ const emptyForm = {
 };
 
 export default function InstructorData() {
-  const [rows, setRows] = useState<InstructorRecord[]>(initialRows);
+  const [rows, setRows] = useState<InstructorRecord[]>(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.instructors, defaultInstructorRows),
+  );
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState(initialRows[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState(defaultInstructorRows[0]?.id ?? "");
   const [formMode, setFormMode] = useState<"new" | "edit" | null>(null);
   const [formValues, setFormValues] = useState(emptyForm);
 
@@ -89,11 +96,12 @@ export default function InstructorData() {
           : new Date().toISOString().slice(0, 10),
     };
 
-    setRows((current) =>
+    const nextRows =
       formMode === "edit"
-        ? current.map((row) => (row.id === nextRow.id ? nextRow : row))
-        : [nextRow, ...current],
-    );
+        ? rows.map((row) => (row.id === nextRow.id ? nextRow : row))
+        : [nextRow, ...rows];
+    setRows(nextRows);
+    writeMasterCollection(TRAINING_MASTER_KEYS.instructors, nextRows);
     setSelectedId(nextRow.id);
     setFormValues(emptyForm);
     setFormMode(null);
@@ -123,15 +131,21 @@ export default function InstructorData() {
       return;
     }
 
-    setRows((current) => current.filter((row) => row.id !== selectedRecord.id));
+    const nextRows = rows.filter((row) => row.id !== selectedRecord.id);
+    setRows(nextRows);
+    writeMasterCollection(TRAINING_MASTER_KEYS.instructors, nextRows);
     setSelectedId("");
     setFormMode(null);
   };
 
   const handleRefresh = () => {
-    setRows(initialRows);
+    const nextRows = readMasterCollection(
+      TRAINING_MASTER_KEYS.instructors,
+      defaultInstructorRows,
+    );
+    setRows(nextRows);
     setSearch("");
-    setSelectedId(initialRows[0]?.id ?? "");
+    setSelectedId(nextRows[0]?.id ?? "");
     setFormMode(null);
     setFormValues(emptyForm);
   };

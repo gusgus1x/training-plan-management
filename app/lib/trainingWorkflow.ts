@@ -9,9 +9,13 @@ export type WorkflowCourse = {
   learningContent: string;
   targetGroup: string;
   methodology: string;
+  preTestId?: string;
   preTest: string;
+  postTestId?: string;
   postTest: string;
+  evaluationId?: string;
   evaluation: string;
+  evaluationAfter30DayId?: string;
   evaluationAfter30Day: string;
   lifeCycleMonth: string;
   remark: string;
@@ -29,6 +33,7 @@ export type WorkflowStandard = {
   courseId: string;
   courseCode: string;
   courseName: string;
+  functionCode?: string;
   functionName: string;
   positions: string[];
   levels: string[];
@@ -53,6 +58,7 @@ export type WorkflowOapPlan = {
 
 export type WorkflowRollingPlan = {
   rollingId: string;
+  scheduleGroupId?: string;
   oapId: string;
   sequence: number;
   course: WorkflowCourse;
@@ -70,6 +76,7 @@ export type WorkflowRollingPlan = {
   startTime: string;
   endTime: string;
   company: string;
+  relatedCompanies?: string[];
   status: "Planning" | "Planned";
   updatedAt: string;
 };
@@ -113,11 +120,17 @@ export type WorkflowAcceptance = {
 export type WorkflowCompletedCourse = {
   id: string;
   rollingId: string;
+  scheduleGroupId?: string;
   code: string;
   title: string;
   date: string;
+  batch?: string;
+  startTime?: string;
+  endTime?: string;
   company: string;
+  relatedCompanies?: string[];
   owner: WorkflowOwner;
+  ownerCompany?: string;
   room: string;
   instructor: string;
   hours: number;
@@ -155,7 +168,13 @@ export const TRAINING_WORKFLOW_EVENT = "training-workflow-changed";
 export const TRAINING_MASTER_KEYS = {
   courseTypes: "tpm_master_course_types",
   courseGroups: "tpm_master_course_groups",
+  employees: "tpm_master_employees",
+  functions: "tpm_master_functions",
+  positions: "tpm_master_positions",
+  levels: "tpm_master_levels",
+  instructors: "tpm_master_instructors",
 } as const;
+export const TRAINING_MASTER_EVENT = "training-master-changed";
 
 const WORKFLOW_VERSION_KEY = "tpm_mock_workflow_version";
 const WORKFLOW_VERSION = "2026-07-24-clean-2";
@@ -225,6 +244,7 @@ export const writeMasterCollection = <T>(key: string, records: T[]) => {
   }
 
   window.localStorage.setItem(key, JSON.stringify(records));
+  window.dispatchEvent(new CustomEvent(TRAINING_MASTER_EVENT, { detail: { key } }));
 };
 
 export const isWorkflowOwner = (

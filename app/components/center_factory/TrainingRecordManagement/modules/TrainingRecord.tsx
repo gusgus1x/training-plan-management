@@ -8,6 +8,10 @@ import {
   type WorkflowCompletedCourse,
 } from "../../../../lib/trainingWorkflow";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import {
+  getRollingPlanCompanies,
+  type RollingPlan,
+} from "../../TrainingPlanManagement/modules/TrainingRolling";
 import styles from "./TrainingRecord.module.css";
 
 export const trainingRecordModule = {
@@ -19,12 +23,18 @@ export const trainingRecordModule = {
 
 type CompletedCourse = {
   id: string;
+  rollingId?: string;
+  groupId?: string;
   source: "SYSTEM" | "UPLOAD";
   code: string;
   title: string;
   date: string;
+  batch?: string;
+  time?: string;
   company: string;
+  relatedCompanies?: string[];
   owner: "CENTER" | "FACTORY";
+  ownerCompany?: string;
   room: string;
   instructor: string;
   actualAttendees: number;
@@ -52,6 +62,15 @@ type CompletedCourse = {
     prePost: "Passed" | "Failed";
     evaluation: "Done" | "Pending";
   }>;
+};
+
+type CompletedCourseGroup = {
+  id: string;
+  source: CompletedCourse["source"];
+  code: string;
+  title: string;
+  owner: CompletedCourse["owner"];
+  sessions: CompletedCourse[];
 };
 
 type CourseOwner = CompletedCourse["owner"];
@@ -551,6 +570,7 @@ export default function TrainingRecord() {
   const user = useAuthenticatedUser();
   const [courses, setCourses] = useState<CompletedCourse[]>([]);
   const [courseOwnerFilter, setCourseOwnerFilter] = useState<CourseOwnerFilter>("");
+  const [selectedCourseGroupId, setSelectedCourseGroupId] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [downloadMessage, setDownloadMessage] = useState("");
   const [importedCourses, setImportedCourses] = useState<ImportedCourseDraft[]>([]);
@@ -561,9 +581,15 @@ export default function TrainingRecord() {
 
   useEffect(() => {
     const syncCompletedCourses = () => {
+      const rollingPlans = readWorkflowCollection<RollingPlan>(
+        TRAINING_WORKFLOW_KEYS.rollingPlans,
+      );
       const nextCourses = readWorkflowCollection<WorkflowCompletedCourse>(
         TRAINING_WORKFLOW_KEYS.completedCourses,
       ).map<CompletedCourse>((course) => {
+        const rollingPlan = rollingPlans.find(
+          (plan) => plan.rollingId === course.rollingId,
+        );
         const attendedEmployees = course.attendees.filter((attendee) => attendee.attended);
         const registeredEmployees = course.attendees.filter(
           (attendee) => attendee.registered,
@@ -571,12 +597,31 @@ export default function TrainingRecord() {
 
         return {
           id: course.id,
+          rollingId: course.rollingId,
+          groupId:
+            course.scheduleGroupId ??
+            rollingPlan?.scheduleGroupId ??
+            `legacy-completed-${course.rollingId}`,
           source: "SYSTEM",
           code: course.code,
           title: course.title,
           date: course.date,
+          batch: course.batch ?? rollingPlan?.batch,
+          time:
+            course.startTime || course.endTime
+              ? `${course.startTime ?? "-"} - ${course.endTime ?? "-"}`
+              : rollingPlan
+                ? `${rollingPlan.startTime} - ${rollingPlan.endTime}`
+                : undefined,
           company: course.company,
+          relatedCompanies:
+            course.relatedCompanies ??
+            (rollingPlan ? getRollingPlanCompanies(rollingPlan) : [course.company]),
           owner: course.owner,
+          ownerCompany:
+            course.ownerCompany ??
+            rollingPlan?.ownerCompany ??
+            (course.owner === "CENTER" ? "HRD Center" : course.company),
           room: course.room,
           instructor: course.instructor,
           actualAttendees: attendedEmployees.length,
@@ -615,13 +660,42 @@ export default function TrainingRecord() {
     ? `Factory import saves only completed courses for ${userCompanyCode}. Center records and other companies are ignored.`
     : "Center import can save completed courses for center and factory scopes.";
   const availableCourses = isFactoryUser
-    ? courses.filter((course) => course.owner === "FACTORY" && course.company === userCompanyCode)
+    ? courses.filter(
+        (course) =>
+          course.owner === "FACTORY" &&
+          (course.ownerCompany ?? course.company) === userCompanyCode,
+      )
     : courses;
   const selectedCourseOwner: CourseOwnerFilter = isFactoryUser ? "FACTORY" : courseOwnerFilter;
   const ownerFilteredCourses = selectedCourseOwner
     ? availableCourses.filter((course) => course.owner === selectedCourseOwner)
     : [];
-  const selectedCourse = ownerFilteredCourses.find((course) => course.id === selectedCourseId);
+  const courseGroups = new Map<string, CompletedCourse[]>();
+  ownerFilteredCourses.forEach((course) => {
+    const groupId = course.groupId ?? course.rollingId ?? course.id;
+    courseGroups.set(groupId, [...(courseGroups.get(groupId) ?? []), course]);
+  });
+  const availableCourseGroups: CompletedCourseGroup[] = [...courseGroups.entries()].map(
+    ([id, sessions]) => {
+      const sortedSessions = [...sessions].sort((a, b) => a.date.localeCompare(b.date));
+      const firstSession = sortedSessions[0];
+
+      return {
+        id,
+        source: firstSession.source,
+        code: firstSession.code,
+        title: firstSession.title,
+        owner: firstSession.owner,
+        sessions: sortedSessions,
+      };
+    },
+  );
+  const selectedCourseGroup =
+    availableCourseGroups.find((group) => group.id === selectedCourseGroupId) ??
+    null;
+  const availableSessions = selectedCourseGroup?.sessions ?? [];
+  const selectedCourse =
+    availableSessions.find((course) => course.id === selectedCourseId) ?? null;
 
   if (availableCourses.length === 0) {
     return (
@@ -752,9 +826,13 @@ export default function TrainingRecord() {
     const savedCourses = importedCourses.map((course, index) => ({
       ...course,
       id: `imported-course-${Date.now()}-${index}`,
+      groupId:
+        course.groupId ??
+        `imported-${course.code}-${course.date}-${course.company}-${index}`,
     }));
 
     setCourses((current) => [...savedCourses, ...current]);
+    setSelectedCourseGroupId("");
     setSelectedCourseId("");
     setSavedRecordRows((current) => [...importedRecordRows, ...current]);
     setImportedCourses([]);
@@ -797,6 +875,7 @@ export default function TrainingRecord() {
               value={selectedCourseOwner}
               onChange={(event) => {
                 setCourseOwnerFilter(event.target.value as CourseOwnerFilter);
+                setSelectedCourseGroupId("");
                 setSelectedCourseId("");
                 setDownloadMessage("");
               }}
@@ -810,6 +889,31 @@ export default function TrainingRecord() {
             Course
             <select
               disabled={!selectedCourseOwner}
+              value={selectedCourseGroupId}
+              onChange={(event) => {
+                setSelectedCourseGroupId(event.target.value);
+                setSelectedCourseId("");
+                setDownloadMessage("");
+              }}
+            >
+              <option value="">
+                {!selectedCourseOwner
+                  ? "Select course owner first"
+                  : availableCourseGroups.length > 0
+                    ? "Select completed course"
+                    : `No ${selectedCourseOwner.toLowerCase()} course available`}
+              </option>
+              {availableCourseGroups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.source === "UPLOAD" ? "Upload" : "System"} / {group.code} / {group.title} / {group.sessions.length} sessions
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Training Session
+            <select
+              disabled={!selectedCourseGroup}
               value={selectedCourseId}
               onChange={(event) => {
                 setSelectedCourseId(event.target.value);
@@ -817,15 +921,11 @@ export default function TrainingRecord() {
               }}
             >
               <option value="">
-                {!selectedCourseOwner
-                  ? "Select course owner first"
-                  : ownerFilteredCourses.length > 0
-                    ? "Select completed course"
-                    : `No ${selectedCourseOwner.toLowerCase()} course available`}
+                {selectedCourseGroup ? "Select training session" : "Select course first"}
               </option>
-              {ownerFilteredCourses.map((course) => (
-                <option key={course.id} value={course.id}>
-                  {course.source === "UPLOAD" ? "Upload" : "System"} / {course.code} / {course.title} / {course.company}
+              {availableSessions.map((session) => (
+                <option key={session.id} value={session.id}>
+                  {session.batch ?? "-"} / {session.date} / {session.time ?? "-"} / {session.room}
                 </option>
               ))}
             </select>
@@ -891,7 +991,7 @@ export default function TrainingRecord() {
               <p className={styles.kicker}>Course Record</p>
               <h3>{selectedCourse.title}</h3>
               <span>
-                {selectedCourse.code} / {selectedCourse.date} / {selectedCourse.room} / {selectedCourse.instructor}
+                {selectedCourse.code} / Batch {selectedCourse.batch ?? "-"} / {selectedCourse.date} / {selectedCourse.time ?? "-"} / {selectedCourse.room} / {selectedCourse.instructor}
               </span>
             </div>
             <b className={selectedCourse.source === "UPLOAD" ? styles.uploadSourceBadge : styles.systemSourceBadge}>

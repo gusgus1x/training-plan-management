@@ -51,6 +51,7 @@ type OapSource = {
 
 export type RollingPlan = OapSource & {
   rollingId: string;
+  scheduleGroupId?: string;
   sequence: number;
   batch: string;
   location: string;
@@ -58,11 +59,30 @@ export type RollingPlan = OapSource & {
   startTime: string;
   endTime: string;
   company: string;
+  relatedCompanies?: string[];
   status: RollingStatus;
   updatedAt: string;
 };
 
-const companies = ["All Companies", "ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
+export const rollingCompanyOptions = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
+
+export const getRollingPlanCompanies = (plan: RollingPlan): string[] => {
+  if (plan.relatedCompanies?.length) {
+    return plan.relatedCompanies;
+  }
+
+  return plan.company === "All Companies"
+    ? [...rollingCompanyOptions]
+    : [plan.company];
+};
+
+export const formatRollingPlanCompanies = (plan: RollingPlan): string => {
+  const selectedCompanies = getRollingPlanCompanies(plan);
+
+  return selectedCompanies.length === rollingCompanyOptions.length
+    ? "All Companies"
+    : selectedCompanies.join(", ");
+};
 export const monthOptions = [
   { value: "01", label: "January" },
   { value: "02", label: "February" },
@@ -185,15 +205,35 @@ const legacyInitialRollingPlans: RollingPlan[] = [
 
 export const initialRollingPlans: RollingPlan[] = [];
 
-const emptyForm = {
-  oapId: "",
-  batch: "",
+type RollingSessionForm = {
+  id: string;
+  batch: string;
+  location: string;
+  trainingDate: string;
+  startTime: string;
+  endTime: string;
+};
+
+type RollingForm = {
+  oapId: string;
+  sessions: RollingSessionForm[];
+  relatedCompanies: string[];
+};
+
+const createEmptySession = (index = 0): RollingSessionForm => ({
+  id: `session-${Date.now()}-${index}`,
+  batch: String(index + 1),
   location: "",
   trainingDate: "",
   startTime: "09:00",
   endTime: "16:00",
-  company: companies[0] as string,
-};
+});
+
+const createEmptyForm = (): RollingForm => ({
+  oapId: "",
+  sessions: [createEmptySession()],
+  relatedCompanies: [...rollingCompanyOptions],
+});
 
 export const getJobStatus = (trainingDate: string) => {
   const today = new Date();
@@ -242,7 +282,7 @@ export default function TrainingRolling() {
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>(() =>
     readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
   );
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState<RollingForm>(createEmptyForm);
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [openDetailId, setOpenDetailId] = useState("");
@@ -277,7 +317,7 @@ export default function TrainingRolling() {
             plan.course.code,
             plan.batch,
             plan.location,
-            plan.company,
+            formatRollingPlanCompanies(plan),
             plan.status,
             getJobStatus(plan.trainingDate),
           ]
@@ -287,61 +327,149 @@ export default function TrainingRolling() {
         ),
     [scopedRollingPlans, search, selectedMonth, selectedYear, statusFilter],
   );
+  const visiblePlanGroups = useMemo(() => {
+    const groups = new Map<string, RollingPlan[]>();
+
+    visiblePlans.forEach((plan) => {
+      const groupId =
+        plan.scheduleGroupId ??
+        `legacy-${plan.id}-${plan.course.code}-${formatRollingPlanCompanies(plan)}`;
+      groups.set(groupId, [...(groups.get(groupId) ?? []), plan]);
+    });
+
+    return [...groups.entries()].map(([id, plans], index) => ({
+      id,
+      sequence: index + 1,
+      plans: [...plans].sort(
+        (a, b) =>
+          a.trainingDate.localeCompare(b.trainingDate) ||
+          a.startTime.localeCompare(b.startTime),
+      ),
+    }));
+  }, [visiblePlans]);
 
   const saveRollingPlans = (nextPlans: RollingPlan[]) => {
     setRollingPlans(nextPlans);
     writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.rollingPlans, nextPlans);
   };
 
-  const updateForm = (field: keyof typeof emptyForm, value: string) => {
-    setForm((current) => ({ ...current, [field]: value }));
+  const updateOap = (value: string) => {
+    setForm((current) => ({ ...current, oapId: value }));
+  };
+
+  const updateSession = (
+    sessionId: string,
+    field: Exclude<keyof RollingSessionForm, "id">,
+    value: string,
+  ) => {
+    setForm((current) => ({
+      ...current,
+      sessions: current.sessions.map((session) =>
+        session.id === sessionId ? { ...session, [field]: value } : session,
+      ),
+    }));
+  };
+
+  const addSession = () => {
+    setForm((current) => ({
+      ...current,
+      sessions: [
+        ...current.sessions,
+        createEmptySession(current.sessions.length),
+      ],
+    }));
+  };
+
+  const removeSession = (sessionId: string) => {
+    setForm((current) => ({
+      ...current,
+      sessions:
+        current.sessions.length === 1
+          ? current.sessions
+          : current.sessions.filter((session) => session.id !== sessionId),
+    }));
+  };
+
+  const toggleCompany = (company: string) => {
+    setForm((current) => {
+      const isSelected = current.relatedCompanies.includes(company);
+      const relatedCompanies = isSelected
+        ? current.relatedCompanies.filter((item) => item !== company)
+        : [...current.relatedCompanies, company];
+
+      return { ...current, relatedCompanies };
+    });
+  };
+
+  const toggleAllCompanies = () => {
+    setForm((current) => ({
+      ...current,
+      relatedCompanies:
+        current.relatedCompanies.length === rollingCompanyOptions.length
+          ? []
+          : [...rollingCompanyOptions],
+    }));
   };
 
   const handleSave = () => {
-    if (!selectedOap) {
+    const selectedCompanies =
+      user?.roleCode === "HRD_FACTORY"
+        ? [userCompanyCode]
+        : form.relatedCompanies;
+
+    if (!selectedOap || selectedCompanies.length === 0) {
       return;
     }
 
-    if (editingId) {
-      saveRollingPlans(
-        rollingPlans.map((plan) =>
-          plan.rollingId === editingId
-            ? {
-                ...plan,
-                ...selectedOap,
-                batch: form.batch.trim() || "New batch",
-                location: form.location.trim() || "Pending location",
-                trainingDate: form.trainingDate || new Date().toISOString().slice(0, 10),
-                startTime: form.startTime || "09:00",
-                endTime: form.endTime || "16:00",
-                company: form.company,
-                updatedAt: new Date().toISOString().slice(0, 10),
-              }
-            : plan,
+    const now = Date.now();
+    const today = new Date().toISOString().slice(0, 10);
+    const company =
+      selectedCompanies.length === rollingCompanyOptions.length
+        ? "All Companies"
+        : selectedCompanies[0];
+    const existingPlan =
+      rollingPlans.find((plan) => plan.rollingId === editingId) ?? null;
+    const scheduleGroupId =
+      existingPlan?.scheduleGroupId ?? `rolling-group-${now}`;
+    const nextSessionPlans = form.sessions.map<RollingPlan>(
+      (session, index) => ({
+        ...selectedOap,
+        rollingId:
+          index === 0 && existingPlan
+            ? existingPlan.rollingId
+            : `rolling-${now}-${index}`,
+        scheduleGroupId,
+        sequence:
+          index === 0 && existingPlan
+            ? existingPlan.sequence
+            : scopedRollingPlans.length + index + 1,
+        batch: session.batch.trim() || `Batch ${index + 1}`,
+        location: session.location.trim() || "Pending location",
+        trainingDate: session.trainingDate || today,
+        startTime: session.startTime || "09:00",
+        endTime: session.endTime || "16:00",
+        company,
+        relatedCompanies: selectedCompanies,
+        status:
+          index === 0 && existingPlan ? existingPlan.status : "Planning",
+        updatedAt: today,
+      }),
+    );
+
+    if (existingPlan) {
+      const [updatedPlan, ...additionalPlans] = nextSessionPlans;
+      saveRollingPlans([
+        ...additionalPlans,
+        ...rollingPlans.map((plan) =>
+          plan.rollingId === editingId ? updatedPlan : plan,
         ),
-      );
-      setEditingId("");
-      setForm(emptyForm);
-      setIsNewOpen(false);
-      return;
+      ]);
+    } else {
+      saveRollingPlans([...nextSessionPlans, ...rollingPlans]);
     }
 
-    const nextPlan: RollingPlan = {
-      ...selectedOap,
-      rollingId: `rolling-${Date.now()}`,
-      sequence: scopedRollingPlans.length + 1,
-      batch: form.batch.trim() || "New batch",
-      location: form.location.trim() || "Pending location",
-      trainingDate: form.trainingDate || new Date().toISOString().slice(0, 10),
-      startTime: form.startTime || "09:00",
-      endTime: form.endTime || "16:00",
-      company: form.company,
-      status: "Planning",
-      updatedAt: new Date().toISOString().slice(0, 10),
-    };
-
-    saveRollingPlans([nextPlan, ...rollingPlans]);
-    setForm(emptyForm);
+    setEditingId("");
+    setForm(createEmptyForm());
     setIsNewOpen(false);
   };
 
@@ -350,12 +478,17 @@ export default function TrainingRolling() {
     setEditingId(plan.rollingId);
     setForm({
       oapId: matchedOap?.id ?? oapSources[0]?.id ?? "",
-      batch: plan.batch,
-      location: plan.location,
-      trainingDate: plan.trainingDate,
-      startTime: plan.startTime,
-      endTime: plan.endTime,
-      company: plan.company,
+      sessions: [
+        {
+          id: `session-${plan.rollingId}`,
+          batch: plan.batch,
+          location: plan.location,
+          trainingDate: plan.trainingDate,
+          startTime: plan.startTime,
+          endTime: plan.endTime,
+        },
+      ],
+      relatedCompanies: getRollingPlanCompanies(plan),
     });
     setIsNewOpen(true);
     setOpenDetailId("");
@@ -368,7 +501,7 @@ export default function TrainingRolling() {
     }
     if (editingId === rollingId) {
       setEditingId("");
-      setForm(emptyForm);
+      setForm(createEmptyForm());
       setIsNewOpen(false);
     }
   };
@@ -377,7 +510,7 @@ export default function TrainingRolling() {
     setRollingPlans(
       readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
     );
-    setForm(emptyForm);
+    setForm(createEmptyForm());
     setIsNewOpen(false);
     setEditingId("");
     setOpenDetailId("");
@@ -390,9 +523,12 @@ export default function TrainingRolling() {
   const handleNew = () => {
     setEditingId("");
     setForm({
-      ...emptyForm,
+      ...createEmptyForm(),
       oapId: oapSources[0]?.id ?? "",
-      company: user?.roleCode === "HRD_FACTORY" ? userCompanyCode : "All Companies",
+      relatedCompanies:
+        user?.roleCode === "HRD_FACTORY"
+          ? [userCompanyCode]
+          : [...rollingCompanyOptions],
     });
     setOpenDetailId("");
     setIsNewOpen(true);
@@ -404,6 +540,29 @@ export default function TrainingRolling() {
         plan.rollingId === rollingId ? { ...plan, status: "Planned" } : plan,
       ),
     );
+  };
+
+  const handleConfirmGroup = (groupPlans: RollingPlan[]) => {
+    const planIds = new Set(groupPlans.map((plan) => plan.rollingId));
+    saveRollingPlans(
+      rollingPlans.map((plan) =>
+        planIds.has(plan.rollingId) ? { ...plan, status: "Planned" } : plan,
+      ),
+    );
+  };
+
+  const handleDeleteGroup = (groupId: string, groupPlans: RollingPlan[]) => {
+    const planIds = new Set(groupPlans.map((plan) => plan.rollingId));
+    saveRollingPlans(
+      rollingPlans.filter((plan) => !planIds.has(plan.rollingId)),
+    );
+    setOpenDetailId((current) => (current === groupId ? "" : current));
+
+    if (editingId && planIds.has(editingId)) {
+      setEditingId("");
+      setForm(createEmptyForm());
+      setIsNewOpen(false);
+    }
   };
 
   return (
@@ -476,7 +635,7 @@ export default function TrainingRolling() {
             <div className={styles.formGrid}>
               <label className={styles.fullField}>
                 Course Name
-                <select value={form.oapId} onChange={(event) => updateForm("oapId", event.target.value)}>
+                <select value={form.oapId} onChange={(event) => updateOap(event.target.value)}>
                   {oapSources.map((source) => <option key={source.id} value={source.id}>{source.course.name}</option>)}
                 </select>
               </label>
@@ -485,17 +644,121 @@ export default function TrainingRolling() {
               <label>Budget<input disabled value={selectedOap ? Number(selectedOap.budget).toLocaleString("en-US") : ""} /></label>
               <label>Trainer<input disabled value={selectedOap?.trainer ?? ""} /></label>
               <label>Institute / Provider<input disabled value={selectedOap?.provider ?? ""} /></label>
-              <label>Batch<input value={form.batch} onChange={(event) => updateForm("batch", event.target.value)} /></label>
-              <label>Location<input value={form.location} onChange={(event) => updateForm("location", event.target.value)} /></label>
-              <label>Training Date<input type="date" value={form.trainingDate} onChange={(event) => updateForm("trainingDate", event.target.value)} /></label>
-              <label>Start Time<input type="time" value={form.startTime} onChange={(event) => updateForm("startTime", event.target.value)} /></label>
-              <label>End Time<input type="time" value={form.endTime} onChange={(event) => updateForm("endTime", event.target.value)} /></label>
-              <label>
-                Related Company
-                <select disabled={user?.roleCode === "HRD_FACTORY"} value={form.company} onChange={(event) => updateForm("company", event.target.value)}>
-                  {(user?.roleCode === "HRD_FACTORY" ? [userCompanyCode] : companies).map((company) => <option key={company}>{company}</option>)}
-                </select>
-              </label>
+
+              <div className={`${styles.fullField} ${styles.sessionSection}`}>
+                <div className={styles.sectionHeader}>
+                  <div>
+                    <strong>Training sessions</strong>
+                    <span>Add another session when the course has a different batch, date, time, or location.</span>
+                  </div>
+                  <button className={styles.addSessionButton} type="button" onClick={addSession}>
+                    Add session
+                  </button>
+                </div>
+
+                <div className={styles.sessionList}>
+                  {form.sessions.map((session, index) => (
+                    <article className={styles.sessionCard} key={session.id}>
+                      <div className={styles.sessionHeader}>
+                        <strong>Session {index + 1}</strong>
+                        <button
+                          className={styles.removeSessionButton}
+                          disabled={form.sessions.length === 1}
+                          type="button"
+                          onClick={() => removeSession(session.id)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <div className={styles.sessionGrid}>
+                        <label>
+                          Batch
+                          <input
+                            value={session.batch}
+                            onChange={(event) =>
+                              updateSession(session.id, "batch", event.target.value)
+                            }
+                          />
+                        </label>
+                        <label>
+                          Location
+                          <input
+                            value={session.location}
+                            onChange={(event) =>
+                              updateSession(session.id, "location", event.target.value)
+                            }
+                          />
+                        </label>
+                        <label>
+                          Training Date
+                          <input
+                            type="date"
+                            value={session.trainingDate}
+                            onChange={(event) =>
+                              updateSession(session.id, "trainingDate", event.target.value)
+                            }
+                          />
+                        </label>
+                        <label>
+                          Start Time
+                          <input
+                            type="time"
+                            value={session.startTime}
+                            onChange={(event) =>
+                              updateSession(session.id, "startTime", event.target.value)
+                            }
+                          />
+                        </label>
+                        <label>
+                          End Time
+                          <input
+                            type="time"
+                            value={session.endTime}
+                            onChange={(event) =>
+                              updateSession(session.id, "endTime", event.target.value)
+                            }
+                          />
+                        </label>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </div>
+
+              <fieldset className={`${styles.fullField} ${styles.companyField}`}>
+                <legend>Related Companies</legend>
+                <p>Select every company whose employees can join these sessions.</p>
+                <div className={styles.companyChecklist}>
+                  <label>
+                    <input
+                      checked={
+                        form.relatedCompanies.length ===
+                        rollingCompanyOptions.length
+                      }
+                      disabled={user?.roleCode === "HRD_FACTORY"}
+                      type="checkbox"
+                      onChange={toggleAllCompanies}
+                    />
+                    <span>All Companies</span>
+                  </label>
+                  {rollingCompanyOptions.map((company) => (
+                    <label key={company}>
+                      <input
+                        checked={form.relatedCompanies.includes(company)}
+                        disabled={user?.roleCode === "HRD_FACTORY"}
+                        type="checkbox"
+                        onChange={() => toggleCompany(company)}
+                      />
+                      <span>{company}</span>
+                    </label>
+                  ))}
+                </div>
+                {form.relatedCompanies.length === 0 ? (
+                  <small>Please select at least one related company.</small>
+                ) : (
+                  <small>{form.relatedCompanies.length} companies selected</small>
+                )}
+              </fieldset>
             </div>
             {selectedOap ? (
               <div className={styles.coursePreview}>
@@ -505,8 +768,15 @@ export default function TrainingRolling() {
               </div>
             ) : null}
             <div className={styles.formActions}>
-              <button className={styles.primaryButton} type="button" onClick={handleSave}>{editingId ? "Save changes" : "Save Draft"}</button>
-              <button className={styles.secondaryButton} type="button" onClick={() => { setEditingId(""); setForm(emptyForm); setIsNewOpen(false); }}>Cancel</button>
+              <button
+                className={styles.primaryButton}
+                disabled={form.relatedCompanies.length === 0}
+                type="button"
+                onClick={handleSave}
+              >
+                {editingId ? "Save changes" : "Save Draft"}
+              </button>
+              <button className={styles.secondaryButton} type="button" onClick={() => { setEditingId(""); setForm(createEmptyForm()); setIsNewOpen(false); }}>Cancel</button>
             </div>
           </section>
         ) : null}
@@ -516,9 +786,8 @@ export default function TrainingRolling() {
             <thead>
               <tr>
                 <th>Seq.</th>
-                <th>Training Date</th>
                 <th>Course Name</th>
-                <th>Batch</th>
+                <th>Training Sessions</th>
                 <th>Company</th>
                 <th>Status</th>
                 <th>Job Status</th>
@@ -526,37 +795,65 @@ export default function TrainingRolling() {
               </tr>
             </thead>
             <tbody>
-              {visiblePlans.map((plan) => {
-                const isOpen = openDetailId === plan.rollingId;
+              {visiblePlanGroups.map((group) => {
+                const plan = group.plans[0];
+                const isOpen = openDetailId === group.id;
+                const dates = [
+                  ...new Set(group.plans.map((item) => item.trainingDate)),
+                ];
+                const allPublished = group.plans.every(
+                  (item) => item.status === "Planned",
+                );
+                const groupStatus: RollingStatus = allPublished
+                  ? "Planned"
+                  : "Planning";
+                const groupJobStatus = group.plans.some(
+                  (item) => getJobStatus(item.trainingDate) === "Rolling",
+                )
+                  ? "Rolling"
+                  : "Completed";
+
                 return (
-                  <Fragment key={plan.rollingId}>
+                  <Fragment key={group.id}>
                     <tr>
-                      <td>{plan.sequence}</td>
-                      <td>{plan.trainingDate}</td>
+                      <td>{group.sequence}</td>
                       <td><strong>{plan.course.name}</strong><span>{plan.course.code}</span></td>
-                      <td>{plan.batch}</td>
-                      <td>{plan.company}</td>
-                      <td><span className={`${styles.statusPill} ${styles[`status${plan.status}`]}`}>{plan.status}</span></td>
-                      <td><span className={`${styles.jobPill} ${styles[`job${getJobStatus(plan.trainingDate)}`]}`}>{getJobStatus(plan.trainingDate)}</span></td>
+                      <td>
+                        <strong>{group.plans.length} sessions</strong>
+                        <span>
+                          {dates.length === 1
+                            ? dates[0]
+                            : `${dates.length} dates`}{" "}
+                          / Batches: {group.plans.map((item) => item.batch).join(", ")}
+                        </span>
+                      </td>
+                      <td>{formatRollingPlanCompanies(plan)}</td>
+                      <td><span className={`${styles.statusPill} ${styles[`status${groupStatus}`]}`}>{groupStatus}</span></td>
+                      <td><span className={`${styles.jobPill} ${styles[`job${groupJobStatus}`]}`}>{groupJobStatus}</span></td>
                       <td className={styles.actionCell}>
-                        <button className={styles.detailButton} type="button" onClick={() => setOpenDetailId(isOpen ? "" : plan.rollingId)}>
+                        <button className={styles.detailButton} type="button" onClick={() => setOpenDetailId(isOpen ? "" : group.id)}>
                           {isOpen ? "Hide" : "Details"}
                         </button>
-                        <button className={styles.detailButton} type="button" onClick={() => handleEdit(plan)}>Edit</button>
                         <button
                           className={styles.primaryButton}
-                          disabled={plan.status === "Planned"}
+                          disabled={allPublished}
                           type="button"
-                          onClick={() => handleConfirm(plan.rollingId)}
+                          onClick={() => handleConfirmGroup(group.plans)}
                         >
-                          {plan.status === "Planned" ? "Published" : "Publish"}
+                          {allPublished ? "All published" : "Publish all"}
                         </button>
-                        <button className={styles.dangerButton} type="button" onClick={() => handleDelete(plan.rollingId)}>Delete</button>
+                        <button
+                          className={styles.dangerButton}
+                          type="button"
+                          onClick={() => handleDeleteGroup(group.id, group.plans)}
+                        >
+                          Delete all
+                        </button>
                       </td>
                     </tr>
                     {isOpen ? (
                       <tr className={styles.detailRow}>
-                        <td colSpan={8}>
+                        <td colSpan={7}>
                           <section className={styles.detailPanel}>
                             <div className={styles.panelHeader}>
                               <div>
@@ -566,9 +863,10 @@ export default function TrainingRolling() {
                               <button className={styles.closeButton} type="button" onClick={() => setOpenDetailId("")}>Close</button>
                             </div>
                             <div className={styles.detailGrid}>
-                              <div><span>Course Sequence</span><strong>{plan.sequence}</strong></div>
-                              <div><span>Status</span><strong>{plan.status}</strong></div>
-                              <div><span>Job Status</span><strong>{getJobStatus(plan.trainingDate)}</strong></div>
+                              <div><span>Course Sequence</span><strong>{group.sequence}</strong></div>
+                              <div><span>Sessions</span><strong>{group.plans.length}</strong></div>
+                              <div><span>Status</span><strong>{groupStatus}</strong></div>
+                              <div><span>Job Status</span><strong>{groupJobStatus}</strong></div>
                               <div><span>Course Code</span><strong>{plan.course.code}</strong></div>
                               <div><span>Course Type</span><strong>{plan.course.courseType}</strong></div>
                               <div><span>Course Group</span><strong>{plan.course.courseGroup}</strong></div>
@@ -581,12 +879,8 @@ export default function TrainingRolling() {
                               <div><span>Evaluation</span><strong>{plan.course.evaluation}</strong></div>
                               <div><span>Evaluation After 30 Day</span><strong>{plan.course.evaluationAfter30Day}</strong></div>
                               <div><span>Life Cycle (Month)</span><strong>{plan.course.lifeCycleMonth}</strong></div>
-                              <div><span>Batch</span><strong>{plan.batch}</strong></div>
                               <div><span>Budget</span><strong>{Number(plan.budget).toLocaleString("en-US")}</strong></div>
-                              <div><span>Location</span><strong>{plan.location}</strong></div>
-                              <div><span>Start Time</span><strong>{plan.startTime}</strong></div>
-                              <div><span>End Time</span><strong>{plan.endTime}</strong></div>
-                              <div><span>Related Company</span><strong>{plan.company}</strong></div>
+                              <div><span>Related Companies</span><strong>{formatRollingPlanCompanies(plan)}</strong></div>
                               <div><span>Participants</span><strong>{plan.participants}</strong></div>
                               <div><span>Training Hours</span><strong>{plan.hours}</strong></div>
                               <div><span>Trainer</span><strong>{plan.trainer}</strong></div>
@@ -594,17 +888,51 @@ export default function TrainingRolling() {
                               <div><span>Owner</span><strong>{plan.owner}</strong></div>
                               <div><span>Last Updated</span><strong>{plan.updatedAt}</strong></div>
                             </div>
-                            <div className={styles.formActions}>
-                              <button
-                                className={styles.primaryButton}
-                                disabled={plan.status === "Planned"}
-                                type="button"
-                                onClick={() => handleConfirm(plan.rollingId)}
-                              >
-                                {plan.status === "Planned"
-                                  ? "Published to Registration & Accept Survey"
-                                  : "Confirm & Send to Registration / Accept Survey"}
-                              </button>
+
+                            <div className={styles.sessionDetailHeader}>
+                              <div>
+                                <strong>Session schedule</strong>
+                                <span>Edit, publish, or remove each session independently.</span>
+                              </div>
+                              <span>{group.plans.length} sessions</span>
+                            </div>
+                            <div className={styles.sessionSummaryList}>
+                              {group.plans.map((session, index) => (
+                                <article key={session.rollingId}>
+                                  <div>
+                                    <span>Session {index + 1}</span>
+                                    <strong>{session.batch}</strong>
+                                  </div>
+                                  <div>
+                                    <span>Training Date</span>
+                                    <strong>{session.trainingDate}</strong>
+                                  </div>
+                                  <div>
+                                    <span>Time</span>
+                                    <strong>{session.startTime} - {session.endTime}</strong>
+                                  </div>
+                                  <div>
+                                    <span>Location</span>
+                                    <strong>{session.location}</strong>
+                                  </div>
+                                  <div>
+                                    <span>Status</span>
+                                    <strong>{session.status}</strong>
+                                  </div>
+                                  <div className={styles.sessionActions}>
+                                    <button className={styles.detailButton} type="button" onClick={() => handleEdit(session)}>Edit</button>
+                                    <button
+                                      className={styles.primaryButton}
+                                      disabled={session.status === "Planned"}
+                                      type="button"
+                                      onClick={() => handleConfirm(session.rollingId)}
+                                    >
+                                      {session.status === "Planned" ? "Published" : "Publish"}
+                                    </button>
+                                    <button className={styles.dangerButton} type="button" onClick={() => handleDelete(session.rollingId)}>Delete</button>
+                                  </div>
+                                </article>
+                              ))}
                             </div>
                           </section>
                         </td>
@@ -615,7 +943,7 @@ export default function TrainingRolling() {
               })}
             </tbody>
           </table>
-          {visiblePlans.length === 0 ? (
+          {visiblePlanGroups.length === 0 ? (
             <div className={styles.emptyState}>
               <strong>{oapSources.length === 0 ? "No confirmed Training OAP" : "No rolling plans found"}</strong>
               <span>

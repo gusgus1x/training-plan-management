@@ -1,9 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  TRAINING_MASTER_KEYS,
+  readMasterCollection,
+  writeMasterCollection,
+} from "../../../../lib/trainingWorkflow";
 import styles from "./PositionData.module.css";
 
-type PositionRecord = {
+export type PositionRecord = {
   id: string;
   positionCode: string;
   positionNameTh: string;
@@ -19,7 +24,7 @@ export const positionDataModule = {
   description: "Maintain position codes and bilingual position names for training standards.",
 } as const;
 
-const defaultRows: PositionRecord[] = [
+export const defaultPositionRows: PositionRecord[] = [
   {
     id: "position-mgr",
     positionCode: "mgr",
@@ -87,9 +92,11 @@ const emptyRecord = (): PositionRecord => ({
 });
 
 export default function PositionData() {
-  const [rows, setRows] = useState<PositionRecord[]>(defaultRows);
+  const [rows, setRows] = useState<PositionRecord[]>(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows),
+  );
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState(defaultRows[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState(defaultPositionRows[0]?.id ?? "");
   const [formMode, setFormMode] = useState<FormMode>(null);
   const [formValues, setFormValues] = useState<PositionRecord>(emptyRecord);
 
@@ -118,6 +125,11 @@ export default function PositionData() {
     setFormValues((current) => ({ ...current, [field]: value }));
   };
 
+  const saveRows = (nextRows: PositionRecord[]) => {
+    setRows(nextRows);
+    writeMasterCollection(TRAINING_MASTER_KEYS.positions, nextRows);
+  };
+
   const handleNew = () => {
     setFormValues(emptyRecord());
     setFormMode("new");
@@ -137,15 +149,19 @@ export default function PositionData() {
       return;
     }
 
-    setRows((current) => current.filter((row) => row.id !== selectedRecord.id));
+    saveRows(rows.filter((row) => row.id !== selectedRecord.id));
     setSelectedId("");
     setFormMode(null);
   };
 
   const handleRefresh = () => {
-    setRows(defaultRows);
+    const nextRows = readMasterCollection(
+      TRAINING_MASTER_KEYS.positions,
+      defaultPositionRows,
+    );
+    setRows(nextRows);
     setSearch("");
-    setSelectedId(defaultRows[0]?.id ?? "");
+    setSelectedId(nextRows[0]?.id ?? "");
     setFormMode(null);
   };
 
@@ -167,11 +183,11 @@ export default function PositionData() {
     }
 
     if (formMode === "edit") {
-      setRows((current) =>
-        current.map((row) => (row.id === nextRecord.id ? nextRecord : row)),
+      saveRows(
+        rows.map((row) => (row.id === nextRecord.id ? nextRecord : row)),
       );
     } else {
-      setRows((current) => [nextRecord, ...current]);
+      saveRows([nextRecord, ...rows]);
     }
 
     setSelectedId(nextRecord.id);
@@ -247,7 +263,7 @@ export default function PositionData() {
                 <input
                   value={formValues.positionNameTh}
                   onChange={(event) => updateForm("positionNameTh", event.target.value)}
-                  placeholder="ชื่อตำแหน่งภาษาไทย"
+                  placeholder="Thai position name"
                 />
               </label>
               <label>

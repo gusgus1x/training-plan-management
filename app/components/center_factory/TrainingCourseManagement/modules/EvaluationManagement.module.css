@@ -2,7 +2,7 @@
   max-width: 1280px;
   margin: 0 auto;
   padding: 18px 24px 48px;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.88rem;
 }
 
@@ -10,8 +10,8 @@
 .workspace,
 .editorPanel,
 .detailPanel {
-  background: #ffffff;
-  border: 1px solid #dce4ef;
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
   box-shadow: 0 14px 32px rgba(24, 36, 56, 0.07);
 }
@@ -27,7 +27,7 @@
 
 .kicker {
   margin: 0 0 6px;
-  color: #315fbb;
+  color: var(--ui-30-primary);
   font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -46,13 +46,13 @@
 
 .hero p {
   margin: 8px 0 0;
-  color: #66758b;
+  color: var(--ui-30-muted);
   font-size: 0.82rem;
   line-height: 1.45;
 }
 .panelHeader span {
   display: block;
-  color: #65758b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 800;
 }
@@ -69,17 +69,17 @@
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--ui-30-border);
   padding-bottom: 10px;
   margin-bottom: 10px;
 }
 
 .listMeta {
   margin-right: auto;
-  border: 1px solid #d7e7dd;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
-  background: #f1fbf5;
-  color: #007a3d;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   padding: 6px 10px;
   font-size: 0.74rem;
   font-weight: 800;
@@ -96,10 +96,10 @@
 .formGrid select,
 .questionGrid select,
 .questionGrid textarea {
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #172033;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   min-height: 36px;
   padding: 8px 10px;
   font-size: 0.8rem;
@@ -121,16 +121,16 @@
 
 .primaryButton {
   border: 0;
-  background: #2458b8;
-  color: #ffffff;
+  background: var(--ui-30-primary);
+  color: var(--ui-60-surface);
 }
 
 .secondaryButton,
 .detailButton,
 .closeButton {
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #26364d;
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
 }
 
 .dangerButton {
@@ -149,7 +149,7 @@
 .editorPanel,
 .detailPanel {
   box-shadow: none;
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   margin-bottom: 14px;
 }
 
@@ -172,7 +172,7 @@
 .questionGrid label {
   display: grid;
   gap: 5px;
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.76rem;
   font-weight: 800;
 }
@@ -187,9 +187,9 @@
 }
 
 .questionBuilder {
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 12px;
   margin-top: 12px;
 }
@@ -203,18 +203,18 @@
 
 .exportMessage {
   margin: 0 0 12px;
-  border: 1px solid #cbdcf3;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 8px;
-  background: #f5f9ff;
-  color: #315fbb;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-primary);
   padding: 10px 12px;
   font-weight: 800;
 }
 
 .tableWrap {
-  border: 1px solid #e1e8f2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 34%);
+  background: linear-gradient(180deg, var(--ui-60-surface-soft) 0%, var(--ui-60-surface) 34%);
   padding: 10px;
   overflow-x: auto;
 }
@@ -228,44 +228,44 @@
 
 .evaluationTable th {
   padding: 0 12px 4px;
-  color: #65758b;
+  color: var(--ui-30-muted);
   font-size: 0.66rem;
   text-align: left;
   text-transform: uppercase;
 }
 
 .evaluationTable td {
-  border-top: 1px solid #dce6f3;
-  border-bottom: 1px solid #dce6f3;
-  background: #ffffff;
+  border-top: 1px solid var(--ui-30-primary-border);
+  border-bottom: 1px solid var(--ui-30-primary-border);
+  background: var(--ui-60-surface);
   padding: 10px 12px;
   font-size: 0.8rem;
   box-shadow: 0 8px 18px rgba(24, 36, 56, 0.04);
 }
 
 .evaluationTable td:first-child {
-  border-left: 1px solid #dce6f3;
+  border-left: 1px solid var(--ui-30-primary-border);
   border-radius: 8px 0 0 8px;
-  color: #315fbb;
+  color: var(--ui-30-primary);
   font-weight: 800;
 }
 
 .evaluationTable td:last-child {
-  border-right: 1px solid #dce6f3;
+  border-right: 1px solid var(--ui-30-primary-border);
   border-radius: 0 8px 8px 0;
 }
 
 .evaluationTable tbody tr:hover td,
 .selectedRow td {
-  background: #f7fbff;
+  background: var(--ui-60-surface-soft);
   border-color: #bfd3ef;
 }
 
 .statusPill {
   display: inline-flex;
   border-radius: 999px;
-  background: #eaf2ff;
-  color: #2458b8;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   padding: 3px 8px;
   font-size: 0.66rem;
   font-weight: 800;
@@ -277,7 +277,7 @@
 }
 
 .detailRow td {
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
   padding: 0;
 }
 
@@ -291,9 +291,9 @@
 }
 
 .questionList article {
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 10px;
 }
 
@@ -305,7 +305,7 @@
 .questionList span,
 .questionList p {
   margin: 6px 0 0;
-  color: #66758b;
+  color: var(--ui-30-muted);
   font-size: 0.74rem;
   line-height: 1.45;
 }
@@ -323,7 +323,7 @@
 .page {
   max-width: 1280px;
   padding-top: 8px;
-  color: #172033;
+  color: var(--ui-30-ink);
 }
 
 .hero,
@@ -338,7 +338,7 @@
   position: relative;
   overflow: hidden;
   background:
-    linear-gradient(90deg, #ffffff 0%, #ffffff 62%, #f1f5f9 100%);
+    linear-gradient(90deg, var(--ui-60-surface) 0%, var(--ui-60-surface) 62%, var(--ui-60-surface-muted) 100%);
 }
 
 .hero::before {
@@ -346,17 +346,17 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 5px;
-  background: #d71920;
+  background: var(--ui-10-accent);
 }
 
 .kicker {
-  color: #007a3d;
+  color: var(--ui-30-primary);
 }
 
 .workspace,
 .editorPanel,
 .detailPanel {
-  background: #ffffff;
+  background: var(--ui-60-surface);
 }
 
 .editorPanel,
@@ -365,7 +365,7 @@
 }
 
 .primaryButton {
-  background: #d71920;
+  background: var(--ui-10-accent);
   box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
 }
 
@@ -373,21 +373,21 @@
 .detailButton:hover,
 .closeButton:hover {
   border-color: #8aa4cc;
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
 }
 
 .questionBuilder,
 .questionList article {
-  border-color: #dbe4ef;
+  border-color: var(--ui-30-border);
 }
 
 .questionBuilder {
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
 }
 
 .tableWrap {
-  border-color: #dbe4ef;
-  background: #ffffff;
+  border-color: var(--ui-30-border);
+  background: var(--ui-60-surface);
   padding: 0;
 }
 
@@ -398,12 +398,12 @@
 
 .evaluationTable th,
 .evaluationTable td {
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--ui-30-border);
   box-shadow: none;
 }
 
 .evaluationTable th {
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
   padding: 12px;
 }
 
@@ -420,11 +420,11 @@
 
 .evaluationTable tbody tr:hover td,
 .selectedRow td {
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
 }
 
 .selectedRow td:first-child {
-  box-shadow: inset 3px 0 0 #d71920;
+  box-shadow: inset 3px 0 0 var(--ui-10-accent);
 }
 
 .statusPill {
@@ -453,7 +453,7 @@
   max-width: none;
   margin: 0 auto;
   padding: 8px 0 48px;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.88rem;
 }
 
@@ -465,9 +465,9 @@
 .listPanel,
 .editorPanel,
 .detailPanel {
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
 }
 
@@ -478,7 +478,7 @@
   gap: 14px;
   margin-bottom: 14px;
   padding: 16px 18px 16px 22px;
-  background: linear-gradient(90deg, #ffffff 0%, #ffffff 66%, #f1f5f9 100%);
+  background: linear-gradient(90deg, var(--ui-60-surface) 0%, var(--ui-60-surface) 66%, var(--ui-60-surface-muted) 100%);
 }
 
 .hero::before,
@@ -493,7 +493,7 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
@@ -514,7 +514,7 @@
 .panelHeader span,
 .listMeta,
 .badge {
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -528,7 +528,7 @@
 .panel h3,
 .formPanel h3 {
   margin: 0;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-weight: 900;
   letter-spacing: 0;
   line-height: 1.2;
@@ -543,13 +543,13 @@
 .moduleHero p,
 .panel p,
 .formPanel p {
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.82rem;
   line-height: 1.45;
 }
 
 .toolbar {
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--ui-30-border);
   gap: 8px;
   margin-bottom: 12px;
   padding-bottom: 12px;
@@ -565,10 +565,10 @@
 .questionGrid select,
 .questionGrid textarea {
   min-height: 36px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #172033;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   font: inherit;
   font-size: 0.8rem;
   padding: 8px 10px;
@@ -584,7 +584,7 @@
 .questionGrid input:focus,
 .questionGrid select:focus,
 .questionGrid textarea:focus {
-  border-color: #007a3d;
+  border-color: var(--ui-30-primary);
   box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
 }
 
@@ -594,8 +594,8 @@
 .saveButton {
   border: 0;
   border-radius: 8px;
-  background: #d71920;
-  color: #ffffff;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
   box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
 }
 
@@ -606,10 +606,10 @@
 .cancelButton,
 .detailButton,
 .closeButton {
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #26364d;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
 }
 
 .dangerButton,
@@ -666,13 +666,13 @@
 .detailButton:hover,
 .closeButton:hover {
   border-color: #8aa4cc;
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
 }
 
 .tableWrap {
-  border: 1px solid #dbe4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 0;
   overflow-x: auto;
 }
@@ -699,9 +699,9 @@
 .evaluationTable th,
 .planTable th,
 .rollingTable th {
-  border-bottom: 1px solid #e5ebf2;
-  background: #f8fafc;
-  color: #65758b;
+  border-bottom: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
   font-size: 0.66rem;
   font-weight: 900;
   padding: 12px;
@@ -717,10 +717,10 @@
 .evaluationTable td,
 .planTable td,
 .rollingTable td {
-  border-bottom: 1px solid #e5ebf2;
-  background: #ffffff;
+  border-bottom: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
   box-shadow: none;
-  color: #26364d;
+  color: var(--ui-30-text);
   font-size: 0.8rem;
   padding: 10px 12px;
 }
@@ -735,11 +735,11 @@
 .planTable tbody tr:hover td,
 .rollingTable tbody tr:hover td,
 .selectedRow td {
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
 }
 
 .selectedRow td:first-child {
-  box-shadow: inset 3px 0 0 #d71920;
+  box-shadow: inset 3px 0 0 var(--ui-10-accent);
 }
 
 .statusPill,
@@ -799,8 +799,8 @@
 .toolbar .actionButton,
 .toolbar .newButton {
   border: 0;
-  background: #007a3d;
-  color: #ffffff;
+  background: var(--ui-30-primary);
+  color: var(--ui-60-surface);
   box-shadow: 0 8px 18px rgba(0, 122, 61, 0.16);
 }
 
@@ -808,8 +808,8 @@
 .toolbar .editButton,
 .toolbar .refreshButton,
 .toolbar .exportButton {
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
   color: #0f2747;
   box-shadow: none;
 }
@@ -826,7 +826,7 @@
 .toolbar .primaryButton:hover,
 .toolbar .actionButton:hover,
 .toolbar .newButton:hover {
-  background: #006b35;
+  background: var(--ui-30-primary-strong);
   box-shadow: 0 12px 24px rgba(0, 122, 61, 0.22);
   transform: translateY(-1px);
 }
@@ -836,24 +836,313 @@
 .toolbar .refreshButton:hover,
 .toolbar .exportButton:hover {
   border-color: #8aa4cc;
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
   transform: translateY(-1px);
 }
 
 .toolbar .dangerButton:hover,
 .toolbar .deleteButton:hover {
-  border-color: #d71920;
-  background: #fff1f2;
-  color: #a90f16;
+  border-color: var(--ui-10-accent);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
   transform: translateY(-1px);
 }
 
 .toolbar button:disabled {
-  border-color: #dbe2ec;
-  background: #f8fafc;
+  border-color: var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
   box-shadow: none;
   color: #a4afbd;
   cursor: not-allowed;
   opacity: 1;
   transform: none;
+}
+
+/* Functional evaluation form builder */
+.formGrid label small {
+  color: #b42318;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.inputError,
+.inputError:focus {
+  border-color: var(--ui-10-accent) !important;
+  box-shadow: 0 0 0 3px var(--ui-focus-ring) !important;
+}
+
+.toggleLabel {
+  display: flex !important;
+  align-content: center;
+  align-items: center;
+  flex-direction: row;
+  flex-wrap: wrap;
+  min-height: 36px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  padding: 8px 10px;
+}
+
+.toggleLabel input {
+  flex: 0 0 auto;
+  width: 16px;
+  min-height: 16px;
+  margin: 0;
+  accent-color: var(--ui-30-primary);
+}
+
+.toggleLabel small {
+  flex-basis: 100%;
+  margin-left: 22px;
+  color: var(--ui-30-muted) !important;
+  font-weight: 700 !important;
+}
+
+.helperText {
+  margin: 10px 0 0;
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.validationMessage {
+  margin: 10px 0 0;
+  border-left: 3px solid var(--ui-10-accent);
+  color: #b42318;
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding-left: 9px;
+}
+
+.previewPanel {
+  margin-top: 14px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  padding: 14px;
+}
+
+.editorActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 14px;
+  border-top: 1px solid var(--ui-30-border);
+  padding-top: 14px;
+}
+
+.feedback {
+  margin: 0 0 12px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 10px 12px;
+}
+
+.feedbackSuccess {
+  border-color: var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+}
+
+.feedbackInfo {
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-text);
+}
+
+.feedbackError {
+  border-color: var(--ui-10-accent-border);
+  background: var(--ui-10-accent-soft);
+  color: #b42318;
+}
+
+.selectableRow {
+  cursor: pointer;
+}
+
+.selectableRow:focus-visible {
+  outline: 3px solid var(--ui-focus-ring);
+  outline-offset: -3px;
+}
+
+.statusPill.statusPublished {
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+}
+
+.statusPill.statusDraft {
+  background: #fff7ed;
+  color: #b45309;
+}
+
+.statusPill.statusInactive {
+  background: var(--ui-60-surface-muted);
+  color: var(--ui-30-muted);
+}
+
+.emptyTableCell {
+  color: var(--ui-30-muted) !important;
+  font-weight: 700;
+  padding: 28px 16px !important;
+  text-align: center;
+}
+
+.questionHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.questionHeading > div {
+  min-width: 0;
+}
+
+.questionHeading span {
+  display: block;
+  margin: 0 0 5px;
+  color: var(--ui-30-primary);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.questionHeading strong {
+  display: block;
+  color: var(--ui-30-ink);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.questionHeading b {
+  flex: 0 0 auto;
+  margin: 0;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+}
+
+.requiredMark {
+  color: var(--ui-10-accent);
+  font-style: normal;
+}
+
+.previewOptions {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.previewOptions label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: fit-content;
+  color: var(--ui-30-text);
+  cursor: pointer;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.previewOptions input {
+  flex: 0 0 auto;
+  margin: 2px 0 0;
+  accent-color: var(--ui-30-primary);
+}
+
+.questionList article > textarea {
+  width: 100%;
+  min-height: 72px;
+  margin-top: 10px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font: inherit;
+  font-size: 0.78rem;
+  padding: 9px 10px;
+  resize: vertical;
+}
+
+.questionList article > textarea:focus {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
+  outline: 0;
+}
+
+.questionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-top: 10px;
+  border-top: 1px solid var(--ui-30-border);
+  padding-top: 10px;
+}
+
+.questionActions button {
+  min-height: 30px;
+  font-size: 0.7rem;
+  padding: 5px 9px;
+}
+
+.questionActions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+  transform: none;
+}
+
+.detailMeta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.detailMeta article {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  padding: 10px;
+}
+
+.detailMeta span {
+  color: var(--ui-30-muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.detailMeta strong {
+  color: var(--ui-30-ink);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 900px) {
+  .detailMeta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .formActions,
+  .editorActions,
+  .questionHeading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .formActions button,
+  .editorActions button {
+    width: 100%;
+  }
+
+  .detailMeta {
+    grid-template-columns: 1fr;
+  }
 }

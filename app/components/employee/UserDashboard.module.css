@@ -2,7 +2,7 @@
   min-height: 100vh;
   overflow-x: clip;
   background: #2f343b;
-  color: #0f172a;
+  color: var(--ui-30-ink);
 }
 
 .workspace {
@@ -20,7 +20,7 @@
 .historyPanel {
   border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
 }
 
@@ -75,7 +75,7 @@
   border: 1px solid rgba(215, 25, 32, 0.28);
   border-radius: 8px;
   background: linear-gradient(135deg, #e0f2fe 0%, #ffe4e6 100%);
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 18px;
   font-weight: 900;
   line-height: 1;
@@ -99,7 +99,7 @@
 .requestPreview p,
 .reportHero p {
   margin: 0 0 6px;
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -108,7 +108,7 @@
 }
 
 .profileCopy span {
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 10px;
   letter-spacing: 0;
   margin-bottom: 0;
@@ -120,7 +120,7 @@
 .requestPreview h3,
 .reportHero h2 {
   margin: 0;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   line-height: 1.2;
 }
 
@@ -153,7 +153,7 @@
 .approvalTimeline span,
 .reportHero span {
   display: block;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 12px;
   font-weight: 700;
   line-height: 1.45;
@@ -161,7 +161,7 @@
 
 .profileCopy p {
   margin: 4px 0 0;
-  color: #334155;
+  color: var(--ui-30-text);
   font-size: 12px;
   font-weight: 800;
 }
@@ -189,7 +189,7 @@
 .recordSummary span,
 .employeeProfileGrid span {
   overflow: hidden;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 11px;
   font-weight: 900;
   line-height: 1.2;
@@ -199,7 +199,7 @@
 
 .profileStats strong,
 .recordSummary strong {
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 16px;
   font-weight: 900;
   line-height: 1;
@@ -239,7 +239,7 @@
 
 .modulePanel .panelHeader h2 {
   margin: 0;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 24px;
   line-height: 1.2;
 }
@@ -264,9 +264,9 @@
 
 .panelHeader > span {
   border-radius: 999px;
-  border: 1px solid rgba(37, 99, 235, 0.18);
-  background: #eff6ff;
-  color: #1d4ed8;
+  border: 1px solid rgba(0, 122, 61, 0.18);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
   font-size: 11px;
   font-weight: 900;
   padding: 7px 9px;
@@ -286,7 +286,7 @@
 
 .calendarPanel .panelHeader p {
   margin: 0;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0;
@@ -294,7 +294,7 @@
 }
 
 .calendarPanel .panelHeader h2 {
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 16px;
   line-height: 1.2;
 }
@@ -312,7 +312,7 @@
 }
 
 .calendarFilters span {
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -324,8 +324,8 @@
   height: 34px;
   border: 1px solid rgba(15, 23, 42, 0.14);
   border-radius: 8px;
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   font: inherit;
   font-size: 12px;
   font-weight: 800;
@@ -340,7 +340,7 @@
   gap: 5px 18px;
   border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
   padding: 16px 18px 18px;
 }
@@ -371,8 +371,8 @@
   min-height: 38px;
   border: 1px solid rgba(215, 25, 32, 0.2);
   border-radius: 8px;
-  background: #d71920;
-  color: #ffffff;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
@@ -386,8 +386,8 @@
   grid-row: 1 / span 3;
   align-self: center;
   justify-self: end;
-  background: #ffffff;
-  color: #d71920;
+  background: var(--ui-60-surface);
+  color: var(--ui-10-accent);
 }
 
 .moduleGrid {
@@ -404,11 +404,11 @@
   align-content: start;
   border: 1.5px solid rgba(15, 23, 42, 0.22);
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
-  color: #0f172a;
+  color: var(--ui-30-ink);
   cursor: pointer;
   font: inherit;
   padding: 18px 20px;
@@ -422,7 +422,7 @@
 
 .moduleCard:hover {
   border-color: rgba(215, 25, 32, 0.68);
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
   transform: translateY(-2px);
 }
@@ -450,7 +450,7 @@
 .employeeProfileGrid strong {
   display: block;
   overflow: hidden;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 13px;
   font-weight: 900;
   line-height: 1.3;
@@ -459,7 +459,7 @@
 }
 
 .moduleCard strong {
-  color: #020617;
+  color: var(--ui-30-ink);
   font-size: 18px;
   font-weight: 900;
   line-height: 1.25;
@@ -475,8 +475,8 @@
   align-items: center;
   border: 1px solid rgba(215, 25, 32, 0.2);
   border-radius: 8px;
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
   font-size: 13px;
   font-weight: 900;
   letter-spacing: 0;
@@ -487,7 +487,7 @@
 }
 
 .moduleCard span {
-  color: #334155;
+  color: var(--ui-30-text);
   font-size: 13px;
   font-weight: 500;
   line-height: 1.55;
@@ -509,8 +509,8 @@
 .trainingItem b,
 .approvalTimeline b {
   align-self: end;
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
 }
 
 .modulePage {
@@ -538,7 +538,7 @@
 .modulePage > .recordWorkflow {
   border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
   padding: 18px;
 }
@@ -548,14 +548,14 @@
   border-radius: 8px;
   background:
     linear-gradient(180deg, rgba(240, 253, 250, 0.82), rgba(255, 255, 255, 0.96)),
-    #ffffff;
+    var(--ui-60-surface);
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
   padding: 16px;
 }
 
 .courseDetailPanel p {
   margin: 0 0 14px;
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -566,7 +566,7 @@
 .courseDetailPanel > span {
   display: block;
   margin-bottom: 8px;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 13px;
   font-weight: 700;
   line-height: 1.55;
@@ -583,14 +583,14 @@
   min-height: 68px;
   border: 1px solid rgba(15, 23, 42, 0.12);
   border-left: 3px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 12px 14px;
 }
 
 .courseDetailGrid dt {
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 11px;
   font-weight: 900;
   line-height: 1.2;
@@ -598,7 +598,7 @@
 
 .courseDetailGrid dd {
   margin: 9px 0 0;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 14px;
   font-weight: 900;
   line-height: 1.35;
@@ -615,7 +615,7 @@
   display: grid;
   min-height: 24px;
   place-items: center;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 11px;
   font-weight: 900;
 }
@@ -627,12 +627,12 @@
   gap: 5px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 6px;
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
   padding: 6px;
 }
 
 .calendarDay span {
-  color: #334155;
+  color: var(--ui-30-text);
   font-size: 12px;
   font-weight: 900;
   line-height: 1;
@@ -642,7 +642,7 @@
   overflow: hidden;
   border-radius: 5px;
   background: rgba(215, 25, 32, 0.1);
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 9px;
   font-weight: 900;
   line-height: 1.2;
@@ -667,12 +667,12 @@
   align-items: center;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 8px;
 }
 
 .calendarTrainingList time {
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 11px;
   font-weight: 900;
   white-space: nowrap;
@@ -685,7 +685,7 @@
 .calendarTrainingList strong {
   display: block;
   overflow: hidden;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 12px;
   font-weight: 900;
   line-height: 1.3;
@@ -697,7 +697,7 @@
   display: block;
   overflow: hidden;
   margin-top: 4px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 11px;
   font-weight: 700;
   line-height: 1.35;
@@ -708,8 +708,8 @@
 .calendarTrainingList b {
   width: fit-content;
   border-radius: 999px;
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--ui-60-surface-muted);
+  color: var(--ui-30-text);
   font-size: 10px;
   font-weight: 900;
   padding: 7px 8px;
@@ -723,7 +723,7 @@
   align-items: center;
   border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
   padding: 14px;
   transition:
     border-color 160ms ease,
@@ -739,7 +739,7 @@
 
 .activeTrainingItem {
   border-color: rgba(215, 25, 32, 0.55) !important;
-  background: linear-gradient(180deg, rgba(255, 241, 242, 0.7), #ffffff) !important;
+  background: linear-gradient(180deg, rgba(255, 241, 242, 0.7), var(--ui-60-surface)) !important;
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
 }
 
@@ -767,8 +767,8 @@
   min-height: 48px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 8px;
-  background: #f8fafc;
-  color: #475569;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-text);
   font-size: 12px;
   font-weight: 900;
   padding: 8px 10px;
@@ -781,8 +781,8 @@
   height: 22px;
   place-items: center;
   border-radius: 999px;
-  background: #e2e8f0;
-  color: #334155;
+  background: var(--ui-30-border);
+  color: var(--ui-30-text);
   content: counter(steps);
   counter-increment: steps;
   font-size: 11px;
@@ -791,13 +791,13 @@
 
 .currentStep {
   border-color: rgba(215, 25, 32, 0.22) !important;
-  background: #fff1f2 !important;
-  color: #d71920 !important;
+  background: var(--ui-10-accent-soft) !important;
+  color: var(--ui-10-accent) !important;
 }
 
 .currentStep::before {
-  background: #d71920 !important;
-  color: #ffffff !important;
+  background: var(--ui-10-accent) !important;
+  color: var(--ui-60-surface) !important;
 }
 
 .employeeProfileGrid {
@@ -814,7 +814,7 @@
 .reportRows article {
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
   padding: 12px;
 }
 
@@ -838,7 +838,7 @@
 }
 
 .historyList b {
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 12px;
   font-weight: 900;
 }
@@ -858,7 +858,7 @@
   min-height: 86px;
   overflow: hidden;
   border-color: rgba(15, 23, 42, 0.1);
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 16px 14px 16px 18px;
   transition:
     border-color 160ms ease,
@@ -886,12 +886,12 @@
 
 .activeRoadmapItem {
   border-color: rgba(215, 25, 32, 0.48) !important;
-  background: linear-gradient(90deg, rgba(255, 241, 242, 0.7), #ffffff 44%) !important;
+  background: linear-gradient(90deg, rgba(255, 241, 242, 0.7), var(--ui-60-surface) 44%) !important;
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
 }
 
 .activeRoadmapItem::before {
-  background: #d71920 !important;
+  background: var(--ui-10-accent) !important;
 }
 
 .roadmapQuarter {
@@ -900,8 +900,8 @@
   place-items: center;
   border: 1px solid rgba(215, 25, 32, 0.18);
   border-radius: 8px;
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
   font-size: 11px;
   font-weight: 900;
   padding: 0 8px;
@@ -915,7 +915,7 @@
 }
 
 .roadmapContent small {
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -923,7 +923,7 @@
 }
 
 .roadmapContent strong {
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 15px;
   line-height: 1.25;
 }
@@ -950,8 +950,8 @@
 }
 
 .roadmapMeta b {
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
 }
 
 .roadmapMeta em {
@@ -962,10 +962,10 @@
   width: fit-content;
   min-height: 38px;
   margin-top: 4px;
-  border: 1px solid #d71920;
+  border: 1px solid var(--ui-10-accent);
   border-radius: 8px;
-  background: #d71920;
-  color: #ffffff;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
@@ -992,21 +992,21 @@
 
 .trainingItem .trainingActions button:disabled,
 .roadmapGrid .trainingActions button:disabled {
-  border-color: #cbd5e1;
-  background: #e2e8f0;
-  color: #64748b;
+  border-color: var(--ui-30-border);
+  background: var(--ui-30-border);
+  color: var(--ui-30-muted);
   cursor: not-allowed;
 }
 
 .secondaryActionButton {
   border-color: rgba(215, 25, 32, 0.2) !important;
-  background: #ffffff !important;
-  color: #d71920 !important;
+  background: var(--ui-60-surface) !important;
+  color: var(--ui-10-accent) !important;
 }
 
 .secondaryActionButton:hover {
   border-color: rgba(215, 25, 32, 0.45) !important;
-  background: #fff1f2 !important;
+  background: var(--ui-10-accent-soft) !important;
 }
 
 .progressTrack {
@@ -1014,14 +1014,14 @@
   overflow: hidden;
   margin-top: 10px;
   border-radius: 999px;
-  background: #e2e8f0;
+  background: var(--ui-30-border);
 }
 
 .progressTrack i {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #d71920;
+  background: var(--ui-10-accent);
 }
 
 .requestLayout {
@@ -1036,7 +1036,7 @@
   gap: 12px;
   border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
   padding: 18px;
 }
@@ -1048,7 +1048,7 @@
 .requestForm label {
   display: grid;
   gap: 6px;
-  color: #334155;
+  color: var(--ui-30-text);
   font-size: 12px;
   font-weight: 900;
 }
@@ -1061,8 +1061,8 @@
   width: 100%;
   border: 1px solid rgba(15, 23, 42, 0.12);
   border-radius: 8px;
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   font: inherit;
   font-size: 13px;
   font-weight: 700;
@@ -1086,7 +1086,7 @@
 .recordPanel {
   border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
 }
 
 .recordWorkflow article {
@@ -1097,7 +1097,7 @@
 }
 
 .recordWorkflow small {
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -1109,7 +1109,7 @@
 .externalRecordList strong {
   display: block;
   overflow: hidden;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 13px;
   font-weight: 900;
   line-height: 1.3;
@@ -1120,7 +1120,7 @@
 .recordWorkflow span,
 .recordCourseList span,
 .externalRecordList span {
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 12px;
   font-weight: 700;
   line-height: 1.45;
@@ -1133,7 +1133,7 @@
 }
 
 .recordPanel {
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
   padding: 18px;
 }
@@ -1155,7 +1155,7 @@
 .recordFilters label {
   display: grid;
   gap: 6px;
-  color: #334155;
+  color: var(--ui-30-text);
   font-size: 12px;
   font-weight: 900;
 }
@@ -1165,8 +1165,8 @@
   height: 38px;
   border: 1px solid rgba(15, 23, 42, 0.12);
   border-radius: 8px;
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   font: inherit;
   font-size: 13px;
   font-weight: 800;
@@ -1180,7 +1180,7 @@
   align-items: center;
   border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 14px;
 }
 
@@ -1188,8 +1188,8 @@
 .externalRecordList b {
   width: fit-content;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
   font-size: 10px;
   font-weight: 900;
   padding: 7px 8px;
@@ -1201,8 +1201,8 @@
   min-height: 38px;
   border: 1px solid rgba(215, 25, 32, 0.2);
   border-radius: 8px;
-  background: #d71920;
-  color: #ffffff;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
@@ -1218,7 +1218,7 @@
 .recordRequestForm label {
   display: grid;
   gap: 6px;
-  color: #334155;
+  color: var(--ui-30-text);
   font-size: 12px;
   font-weight: 900;
 }
@@ -1227,16 +1227,16 @@
 .recordEmpty {
   border: 1px solid rgba(215, 25, 32, 0.18);
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
   border-radius: 8px;
-  background: #fff1f2;
-  color: #0f172a;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-30-ink);
   padding: 12px;
 }
 
 .recordReasonBox span {
   display: block;
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -1252,8 +1252,8 @@
 }
 
 .recordEmpty {
-  background: #f8fafc;
-  color: #64748b;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
   font-size: 13px;
   font-weight: 900;
   text-align: center;
@@ -1266,7 +1266,7 @@
   align-items: center;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 12px;
 }
 
@@ -1281,7 +1281,7 @@
   align-items: center;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
   padding: 18px;
 }
 
@@ -1297,9 +1297,9 @@
   justify-self: end;
   border-radius: 50%;
   background:
-    radial-gradient(circle at center, #ffffff 0 52%, transparent 53%),
-    conic-gradient(#d71920 0 68%, #dbeafe 68% 100%);
-  color: #d71920;
+    radial-gradient(circle at center, var(--ui-60-surface) 0 52%, transparent 53%),
+    conic-gradient(var(--ui-10-accent) 0 68%, var(--ui-30-primary-border) 68% 100%);
+  color: var(--ui-10-accent);
   font-size: 22px;
   font-weight: 900;
 }
@@ -1309,15 +1309,15 @@
 }
 
 .reportRows span {
-  color: #1d4ed8;
+  color: var(--ui-30-primary-strong);
   font-size: 13px;
   font-weight: 900;
   white-space: nowrap;
 }
 
 .reportRows b {
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
 }
 
 .reportFlowGrid,
@@ -1332,7 +1332,7 @@
 .reportResultPanel {
   border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
   padding: 18px;
 }
@@ -1352,8 +1352,8 @@
   align-items: center;
   min-height: 36px;
   border-radius: 8px;
-  background: #ffffff;
-  color: #475569;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
   font-size: 12px;
   font-weight: 900;
   padding: 8px 10px;
@@ -1366,8 +1366,8 @@
   height: 22px;
   place-items: center;
   border-radius: 999px;
-  background: #e2e8f0;
-  color: #334155;
+  background: var(--ui-30-border);
+  color: var(--ui-30-text);
   content: counter(report-steps);
   counter-increment: report-steps;
   font-size: 11px;
@@ -1391,14 +1391,14 @@
   align-items: center;
   border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 14px;
 }
 
 .savedReportList strong {
   display: block;
   overflow: hidden;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 13px;
   font-weight: 900;
   text-overflow: ellipsis;
@@ -1406,7 +1406,7 @@
 }
 
 .savedReportList span {
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 12px;
   font-weight: 700;
 }
@@ -1414,8 +1414,8 @@
 .savedReportList b {
   width: fit-content;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
   font-size: 10px;
   font-weight: 900;
   padding: 7px 8px;
@@ -1564,7 +1564,7 @@
 
 .reportControlPanel .panelHeader h2,
 .reportResultPanel .panelHeader h2 {
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 18px;
   line-height: 1.25;
 }
@@ -1573,8 +1573,8 @@
 .reportResultPanel .panelHeader > span {
   display: inline-flex !important;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
   font-size: 11px;
   font-weight: 900;
   padding: 7px 9px;
@@ -1591,7 +1591,7 @@
 .reportControlPanel .recordRequestForm label {
   display: grid;
   gap: 6px;
-  color: #475569;
+  color: var(--ui-30-text);
   font-size: 12px;
   font-weight: 900;
 }
@@ -1621,22 +1621,22 @@
   grid-column: 1 / -1;
   justify-self: end;
   min-height: 40px;
-  border-color: #d71920;
-  background: #d71920;
+  border-color: var(--ui-10-accent);
+  background: var(--ui-10-accent);
   font-size: 13px;
   padding: 0 18px;
 }
 
 .savedReportList article {
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
-  background: #ffffff;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  background: var(--ui-60-surface);
 }
 
 .savedReportList b {
   border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
   font-size: 11px;
   padding: 7px 9px;
 }
@@ -1664,7 +1664,7 @@
   min-width: 0;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 18px 42px rgba(31, 41, 55, 0.12);
   padding: 16px;
 }
@@ -1680,7 +1680,7 @@
 .registerWorkspace .panelHeader p {
   display: block !important;
   margin: 0 0 6px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0;
@@ -1689,7 +1689,7 @@
 
 .registerWorkspace .panelHeader h2 {
   margin: 0;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 1rem;
   font-weight: 900;
   line-height: 1.2;
@@ -1698,7 +1698,7 @@
 .registerWorkspace .panelHeader div > span {
   display: block;
   margin-top: 5px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 12px;
   font-weight: 800;
   line-height: 1.4;
@@ -1707,10 +1707,10 @@
 .registerWorkspace .panelHeader > span {
   display: inline-flex !important;
   width: fit-content;
-  border: 1px solid #ffc7ce;
+  border: 1px solid var(--ui-10-accent-border);
   border-radius: 999px;
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
   font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
@@ -1725,20 +1725,20 @@
 .registerWorkspace .trainingItem {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ui-30-border);
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
-  background: #ffffff;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  background: var(--ui-60-surface);
   box-shadow: none;
 }
 
 .registerWorkspace .trainingItem:nth-child(2n) {
-  border-left-color: #d71920;
+  border-left-color: var(--ui-10-accent);
 }
 
 .registerWorkspace .activeTrainingItem {
   border-color: rgba(215, 25, 32, 0.34) !important;
-  background: #fbfdff !important;
+  background: var(--ui-60-surface-soft) !important;
   box-shadow: 0 16px 32px rgba(31, 41, 55, 0.1);
 }
 
@@ -1762,10 +1762,10 @@
   display: grid;
   gap: 3px;
   min-height: 54px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #f8fafc;
-  color: #172033;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
   font-size: 12px;
   font-weight: 900;
   padding: 8px;
@@ -1774,7 +1774,7 @@
 .trainingScheduleGrid b {
   width: auto;
   background: transparent;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 10px;
   font-weight: 900;
   padding: 0;
@@ -1789,8 +1789,8 @@
 
 .courseStatusStack b {
   border-radius: 999px;
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
   font-size: 11px;
   font-weight: 900;
   line-height: 1;
@@ -1812,18 +1812,18 @@
   display: grid;
   gap: 10px;
   margin-bottom: 12px;
-  border: 1px solid #d7e7dd;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 8px;
-  background: #f1fbf5;
-  box-shadow: inset 4px 0 0 #007a3d;
+  background: var(--ui-30-primary-soft);
+  box-shadow: inset 4px 0 0 var(--ui-30-primary);
   padding: 12px;
 }
 
 .registerCourseHero > b {
   width: fit-content;
   border-radius: 999px;
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
   font-size: 11px;
   font-weight: 900;
   line-height: 1;
@@ -1832,7 +1832,7 @@
 
 .registerCourseHero > span {
   margin: 0;
-  color: #26364d;
+  color: var(--ui-30-text);
   font-size: 13px;
   font-weight: 800;
   line-height: 1.4;
@@ -1845,10 +1845,10 @@
 }
 
 .registerCourseHero strong {
-  border: 1px solid #d7e7dd;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   font-size: 12px;
   font-weight: 900;
   padding: 9px;
@@ -1861,7 +1861,7 @@
 
 .courseDetailSection h3 {
   margin: 0;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 13px;
   font-weight: 900;
   line-height: 1.2;
@@ -1872,16 +1872,16 @@
   display: grid;
   gap: 14px;
   margin-top: 2px;
-  border-top: 1px solid #e5ebf2;
+  border-top: 1px solid var(--ui-30-border);
   padding-top: 14px;
 }
 
 .emptyCourseGroup {
   margin: 0;
-  border: 1px solid #d7e7dd;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 8px;
-  background: #f1fbf5;
-  color: #007a3d;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 12px;
   font-weight: 900;
   line-height: 1.45;
@@ -1892,7 +1892,7 @@
   position: sticky;
   top: 126px;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 18px 42px rgba(31, 41, 55, 0.12);
 }
 
@@ -1905,7 +1905,7 @@
   grid-template-columns: repeat(4, minmax(0, 1fr));
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 18px 42px rgba(31, 41, 55, 0.1);
   padding: 14px;
 }
@@ -1943,14 +1943,12 @@
 .page {
   background:
     radial-gradient(
-      circle 760px at 100% 100%,
-      rgba(0, 122, 61, 0.52) 0%,
-      rgba(0, 122, 61, 0.34) 24%,
-      rgba(156, 210, 244, 0.14) 46%,
-      rgba(215, 25, 32, 0.26) 70%,
-      rgba(237, 242, 247, 0) 100%
+      circle 620px at 100% 100%,
+      rgba(0, 122, 61, 0.18) 0%,
+      rgba(0, 122, 61, 0.08) 35%,
+      rgba(238, 243, 240, 0) 72%
     ),
-    #edf2f7;
+    var(--ui-60-canvas);
 }
 
 .workspace {
@@ -1970,7 +1968,7 @@
   height: 136px;
   left: 50%;
   width: 100vw;
-  background: #202733;
+  background: var(--ui-30-primary-strong);
   pointer-events: none;
   transform: translateX(-50%);
 }
@@ -1979,10 +1977,10 @@
   display: inline-flex;
   min-height: 28px;
   align-items: center;
-  border: 1px solid #ffc7ce;
+  border: 1px solid var(--ui-10-accent-border);
   border-radius: 999px;
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
   font-size: 0.68rem;
   font-weight: 900;
   line-height: 1;
@@ -1997,7 +1995,7 @@
   margin-bottom: 14px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 24px 54px rgba(31, 41, 55, 0.22);
 }
 
@@ -2006,18 +2004,18 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
 }
 
 .heroCopy {
   padding: 28px 30px 26px 34px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
 }
 
 .heroCopy span {
   display: block;
   margin: 0 0 6px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0;
@@ -2026,7 +2024,7 @@
 
 .heroCopy h1 {
   margin: 0;
-  color: #020617;
+  color: var(--ui-30-ink);
   font-size: clamp(2.15rem, 3.2vw, 2.75rem);
   font-weight: 900;
   letter-spacing: 0;
@@ -2036,7 +2034,7 @@
 .heroCopy p {
   max-width: 860px;
   margin: 10px 0 0;
-  color: #355172;
+  color: var(--ui-30-text);
   font-size: 0.82rem;
   font-weight: 600;
   line-height: 1.5;
@@ -2046,7 +2044,7 @@
 .calendarPanel,
 .modulePanel {
   border: 1px solid rgba(255, 255, 255, 0.18);
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 18px 42px rgba(31, 41, 55, 0.14);
 }
 
@@ -2076,7 +2074,7 @@
 .calendarPanel .panelHeader p {
   display: block !important;
   margin: 0 0 6px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0;
@@ -2086,7 +2084,7 @@
 .modulePanel .panelHeader h2,
 .calendarPanel .panelHeader h2 {
   margin: 0;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 1rem;
   font-weight: 800;
   line-height: 1.2;
@@ -2095,7 +2093,7 @@
 .calendarPanel .panelHeader span {
   display: block !important;
   margin-top: 5px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.72rem;
   font-weight: 800;
 }
@@ -2103,10 +2101,10 @@
 .modulePanel .panelHeader > span {
   display: inline-flex !important;
   width: fit-content;
-  border: 1px solid #ffc7ce;
+  border: 1px solid var(--ui-10-accent-border);
   border-radius: 999px;
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
   font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
@@ -2125,16 +2123,16 @@
   grid-template-rows: 1fr auto;
   gap: 14px;
   min-height: 168px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ui-30-border);
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
-  background: #ffffff;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  background: var(--ui-60-surface);
   box-shadow: 0 18px 42px rgba(31, 41, 55, 0.12);
   padding: 18px;
 }
 
 .moduleCard:nth-child(2n) {
-  border-left-color: #d71920;
+  border-left-color: var(--ui-10-accent);
 }
 
 .moduleCard small {
@@ -2145,8 +2143,8 @@
   place-items: center;
   border: 1px solid rgba(0, 122, 61, 0.18);
   border-radius: 6px;
-  background: #f1fbf5;
-  color: #007a3d;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
@@ -2155,14 +2153,14 @@
 
 .moduleCard:nth-child(2n) small {
   border-color: rgba(215, 25, 32, 0.2);
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
 }
 
 .moduleCard em {
   display: block;
   margin-bottom: 6px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-style: normal;
   font-weight: 900;
@@ -2170,14 +2168,14 @@
 }
 
 .moduleCard strong {
-  color: #020617;
+  color: var(--ui-30-ink);
   font-size: 1.08rem;
   line-height: 1.18;
 }
 
 .moduleCard span {
   margin-top: 8px;
-  color: #334b68;
+  color: var(--ui-30-text);
   font-size: 0.78rem;
   font-weight: 600;
   line-height: 1.45;
@@ -2186,8 +2184,8 @@
 .moduleCard b {
   grid-column: 2;
   align-self: end;
-  border: 1px solid #dbeafe;
-  background: #f8fbff;
+  border: 1px solid var(--ui-30-primary-border);
+  background: var(--ui-60-surface-soft);
   color: #0f2747;
   font-size: 0.72rem;
   line-height: 1;
@@ -2253,7 +2251,7 @@
 .reportResultPanel {
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 18px 42px rgba(15, 23, 42, 0.09);
 }
 
@@ -2281,7 +2279,7 @@
 .reportResultPanel .panelHeader p {
   display: block !important;
   margin: 0 0 6px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 11px;
   font-weight: 900;
   letter-spacing: 0;
@@ -2293,7 +2291,7 @@
 .reportControlPanel .panelHeader h2,
 .reportResultPanel .panelHeader h2 {
   margin: 0;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 1rem;
   line-height: 1.2;
 }
@@ -2304,10 +2302,10 @@
 .reportResultPanel .panelHeader > span {
   display: inline-flex !important;
   width: fit-content;
-  border: 1px solid #ffc7ce;
+  border: 1px solid var(--ui-10-accent-border);
   border-radius: 999px;
   background: #fff7f8;
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 11px;
   font-weight: 900;
 }
@@ -2318,13 +2316,13 @@
 
 .roadmapWorkspace .roadmapGrid article {
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
-  background: linear-gradient(90deg, rgba(240, 253, 244, 0.62), #ffffff 38%);
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  background: linear-gradient(90deg, rgba(240, 253, 244, 0.62), var(--ui-60-surface) 38%);
 }
 
 .roadmapWorkspace .activeRoadmapItem {
-  border-left-color: #d71920 !important;
-  background: linear-gradient(90deg, rgba(255, 241, 242, 0.74), #ffffff 42%) !important;
+  border-left-color: var(--ui-10-accent) !important;
+  background: linear-gradient(90deg, rgba(255, 241, 242, 0.74), var(--ui-60-surface) 42%) !important;
 }
 
 .roadmapTargetSummary {
@@ -2337,7 +2335,7 @@
 .roadmapTargetSummary article {
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
   padding: 12px;
 }
@@ -2346,7 +2344,7 @@
 .roadmapCoursePicker,
 .selectedRoadmapCourse span,
 .roadmapChoice span {
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 11px;
   font-weight: 900;
   text-transform: uppercase;
@@ -2356,7 +2354,7 @@
   display: block;
   margin-top: 6px;
   overflow: hidden;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 14px;
   font-weight: 900;
   text-overflow: ellipsis;
@@ -2373,8 +2371,8 @@
   min-height: 42px;
   border: 1.5px solid rgba(15, 23, 42, 0.14);
   border-radius: 8px;
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
   font: inherit;
   font-size: 13px;
   font-weight: 800;
@@ -2387,10 +2385,10 @@
   gap: 12px;
   align-items: start;
   margin-bottom: 12px;
-  border: 1px solid #d7e7dd;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 8px;
-  background: #f1fbf5;
-  box-shadow: inset 4px 0 0 #007a3d;
+  background: var(--ui-30-primary-soft);
+  box-shadow: inset 4px 0 0 var(--ui-30-primary);
   padding: 13px;
 }
 
@@ -2398,7 +2396,7 @@
 .roadmapChoice strong {
   display: block;
   margin-top: 4px;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 14px;
   font-weight: 900;
 }
@@ -2407,7 +2405,7 @@
 .roadmapChoice small {
   display: block;
   margin-top: 5px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 12px;
   font-weight: 800;
   line-height: 1.35;
@@ -2416,8 +2414,8 @@
 .selectedRoadmapCourse b,
 .roadmapOwnerLine b {
   border-radius: 999px;
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
   font-size: 11px;
   font-weight: 900;
   line-height: 1;
@@ -2437,7 +2435,7 @@
 
 .roadmapChoice {
   border: 1px solid rgba(15, 23, 42, 0.08);
-  background: #ffffff;
+  background: var(--ui-60-surface);
 }
 
 .roadmapOwnerLine {
@@ -2449,10 +2447,10 @@
 }
 
 .roadmapOwnerLine strong {
-  border: 1px solid #d7e7dd;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
-  background: #f1fbf5;
-  color: #007a3d;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 11px;
   font-weight: 900;
   line-height: 1;
@@ -2464,8 +2462,8 @@
   top: 126px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
-  background: #ffffff;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  background: var(--ui-60-surface);
   box-shadow: 0 18px 42px rgba(15, 23, 42, 0.09);
 }
 
@@ -2475,7 +2473,7 @@
 
 .roadmapWorkspace .courseDetailPanel h2 {
   margin: 0 0 8px;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 1.1rem;
   line-height: 1.25;
 }
@@ -2485,14 +2483,14 @@
   gap: 14px;
   padding: 18px;
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
 }
 
 .requestForm label,
 .recordRequestForm label {
   display: grid;
   gap: 7px;
-  color: #475569;
+  color: var(--ui-30-text);
   font-size: 11px;
   font-weight: 900;
   text-transform: uppercase;
@@ -2507,8 +2505,8 @@
   width: 100%;
   border: 1.5px solid rgba(15, 23, 42, 0.14);
   border-radius: 8px;
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
   font-size: 13px;
   font-weight: 800;
 }
@@ -2536,7 +2534,7 @@
   border: 1px solid rgba(215, 25, 32, 0.2);
   border-radius: 999px;
   background: #fff7f8;
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 12px;
   font-weight: 900;
 }
@@ -2546,7 +2544,7 @@
   gap: 12px;
   padding: 18px;
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
 }
 
 .requestEmployeeStrip,
@@ -2559,16 +2557,16 @@
 .previousTrainingPicker {
   display: grid;
   gap: 10px;
-  border: 1px solid #dbe4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 12px;
 }
 
 .previousTrainingPicker p,
 .selectedRecordPreview p {
   margin: 0 0 4px;
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 10px;
   font-weight: 900;
   text-transform: uppercase;
@@ -2577,7 +2575,7 @@
 .previousTrainingPicker > div > strong,
 .selectedRecordPreview strong {
   display: block;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 13px;
   font-weight: 900;
   line-height: 1.25;
@@ -2606,22 +2604,22 @@
 }
 
 .previousCourse {
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
 }
 
 .activePreviousCourse {
-  border: 1px solid #b7d8c7;
-  background: #f1fbf5;
-  box-shadow: inset 3px 0 0 #007a3d;
+  border: 1px solid var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  box-shadow: inset 3px 0 0 var(--ui-30-primary);
 }
 
 .selectedPreviousCourse {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
-  border: 1px solid #b7d8c7;
-  background: #f1fbf5;
-  box-shadow: inset 3px 0 0 #007a3d;
+  border: 1px solid var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  box-shadow: inset 3px 0 0 var(--ui-30-primary);
 }
 
 .selectedPreviousCourse > div {
@@ -2635,7 +2633,7 @@
 .selectedPreviousCourse span,
 .selectedRecordPreview span {
   display: block;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 11px;
   font-weight: 800;
 }
@@ -2645,7 +2643,7 @@
 .selectedPreviousCourse strong {
   display: block;
   overflow: hidden;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 13px;
   font-weight: 900;
   text-overflow: ellipsis;
@@ -2658,8 +2656,8 @@
   display: block;
   width: fit-content;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #2458b8;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 10px;
   font-weight: 900;
   line-height: 1;
@@ -2670,8 +2668,8 @@
 .courseOwnerBadge {
   border-radius: 999px;
   align-self: start;
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
   font-size: 10px;
   font-weight: 900;
   line-height: 1;
@@ -2680,9 +2678,9 @@
 }
 
 .selectedRecordPreview {
-  border: 1px solid #d7e7dd;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 8px;
-  background: #f1fbf5;
+  background: var(--ui-30-primary-soft);
   padding: 12px;
 }
 
@@ -2691,7 +2689,7 @@
 .myRequestPanel article {
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
   padding: 10px;
 }
 
@@ -2701,7 +2699,7 @@
 .myRequestPanel span {
   display: block;
   margin: 0 0 5px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 10px;
   font-weight: 900;
   text-transform: uppercase;
@@ -2712,7 +2710,7 @@
 .myRequestPanel > div strong,
 .myRequestPanel article strong {
   display: block;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 13px;
   font-weight: 900;
   line-height: 1.25;
@@ -2726,10 +2724,10 @@
 
 .requestSubmitMessage {
   margin: 0;
-  border: 1px solid #d7e7dd;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 8px;
-  background: #f1fbf5;
-  color: #007a3d;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 12px;
   font-weight: 900;
   padding: 10px 12px;
@@ -2738,7 +2736,7 @@
 .myRequestPanel {
   display: grid;
   gap: 8px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--ui-30-border);
   padding-top: 12px;
 }
 
@@ -2768,7 +2766,7 @@
 
 .requestPreview p {
   display: block !important;
-  color: #64748b;
+  color: var(--ui-30-muted);
 }
 
 .requestPreview > article,
@@ -2778,7 +2776,7 @@
 .savedReportList article {
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
 }
 
 .approvalTimeline {
@@ -2789,13 +2787,13 @@
 .recordSummary {
   border: 1px solid rgba(15, 23, 42, 0.08) !important;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
 }
 
 .recordSummary article {
   border-left: 3px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
 }
 
 .recordFilters {
@@ -2813,8 +2811,8 @@
 .externalRecordList article,
 .savedReportList article {
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
-  background: #ffffff;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  background: var(--ui-60-surface);
 }
 
 .recordReasonBox {
@@ -2825,12 +2823,12 @@
 
 .reportControlPanel {
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
 }
 
 .reportResultPanel {
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
 }
 
 .reportControlPanel .recordRequestForm {
@@ -2862,7 +2860,7 @@
 .employeeReportBody {
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
   padding: 12px;
 }
@@ -2872,7 +2870,7 @@
 .employeeReportBody span {
   display: block;
   margin-bottom: 6px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 10px;
   font-weight: 900;
   text-transform: uppercase;
@@ -2882,7 +2880,7 @@
 .employeeReportPreview strong {
   display: block;
   overflow: hidden;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 15px;
   font-weight: 900;
   text-overflow: ellipsis;
@@ -2894,7 +2892,7 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--ui-30-border);
   padding-top: 12px;
 }
 
@@ -2902,9 +2900,9 @@
   display: grid;
   gap: 8px;
   margin-top: 12px;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   padding: 12px;
 }
 
@@ -2917,7 +2915,7 @@
 
 .employeeReportAttachmentPanel span,
 .employeeReportDetailList dt {
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 10px;
   font-weight: 900;
   text-transform: uppercase;
@@ -2925,8 +2923,8 @@
 
 .employeeReportAttachmentPanel > div:first-child strong {
   border-radius: 999px;
-  background: #eef5ff;
-  color: #2458b8;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 10px;
   font-weight: 900;
   padding: 4px 8px;
@@ -2947,14 +2945,14 @@
   align-items: center;
   border: 1px solid #dde6f1;
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 9px 10px;
 }
 
 .employeeReportAttachmentPanel li strong {
   display: block;
   overflow: hidden;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 12px;
   font-weight: 900;
   text-overflow: ellipsis;
@@ -2964,7 +2962,7 @@
 .employeeReportAttachmentPanel li span {
   display: block;
   margin-top: 3px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 11px;
   font-weight: 800;
   text-transform: none;
@@ -2985,9 +2983,9 @@
 
 .employeeReportAttachmentPanel p {
   margin: 0;
-  border: 1px dashed #d7e0ec;
+  border: 1px dashed var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   color: #8a97a8;
   font-size: 12px;
   font-weight: 800;
@@ -3014,15 +3012,15 @@
 .employeeReportActions button:first-child,
 .employeeReportActions button:nth-child(2),
 .reportSearchBar button {
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #26364d;
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
 }
 
 .employeeReportActions button:last-child {
   border: 0;
-  background: #d71920;
-  color: #ffffff;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
 }
 
 .employeeReportBody {
@@ -3031,7 +3029,7 @@
 
 .employeeReportBody p {
   margin: 0;
-  color: #26364d;
+  color: var(--ui-30-text);
   font-size: 13px;
   font-weight: 800;
   line-height: 1.45;
@@ -3047,8 +3045,8 @@
   min-height: 38px;
   border: 1.5px solid rgba(15, 23, 42, 0.14);
   border-radius: 8px;
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
   font: inherit;
   font-size: 13px;
   font-weight: 800;
@@ -3064,21 +3062,21 @@
   align-items: center;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
   padding: 14px;
   text-align: left;
 }
 
 .activeSavedReport {
-  background: #f1fbf5;
+  background: var(--ui-30-primary-soft);
 }
 
 .savedReportButton strong,
 .activeSavedReport strong {
   display: block;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 13px;
   font-weight: 900;
 }
@@ -3087,7 +3085,7 @@
 .activeSavedReport span {
   display: block;
   margin-top: 4px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 12px;
   font-weight: 700;
 }
@@ -3095,8 +3093,8 @@
 .savedReportButton b,
 .activeSavedReport b {
   border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
   font-size: 11px;
   font-weight: 900;
   line-height: 1;
@@ -3113,24 +3111,24 @@
 .employeeReportDetailPanel {
   display: grid;
   gap: 12px;
-  border: 1px solid #dbe4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   padding: 14px;
 }
 
 .employeeReportDetailHeader {
   display: grid;
   gap: 6px;
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--ui-30-border);
   padding-bottom: 12px;
 }
 
 .employeeReportDetailHeader b {
   justify-self: start;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #2458b8;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 11px;
   font-weight: 900;
   line-height: 1;
@@ -3139,14 +3137,14 @@
 
 .employeeReportDetailHeader h3 {
   margin: 0;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 15px;
   font-weight: 900;
   line-height: 1.25;
 }
 
 .employeeReportDetailHeader span {
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 12px;
   font-weight: 800;
 }
@@ -3159,15 +3157,15 @@
 }
 
 .employeeReportDetailList div {
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 10px;
 }
 
 .employeeReportDetailList dd {
   margin: 5px 0 0;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 12px;
   font-weight: 900;
   line-height: 1.35;
@@ -3231,8 +3229,8 @@
   align-content: center;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
-  background: #ffffff;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  background: var(--ui-60-surface);
   box-shadow: 0 24px 54px rgba(31, 41, 55, 0.22);
   padding: 26px 30px 26px 30px;
 }
@@ -3253,16 +3251,16 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
 .employeeProfile {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
   background:
     linear-gradient(90deg, rgba(240, 253, 244, 0.86), rgba(255, 255, 255, 0.96) 46%),
-    #ffffff;
+    var(--ui-60-surface);
   padding: 10px;
 }
 
@@ -3270,8 +3268,8 @@
 .profileStats article {
   position: relative;
   overflow: hidden;
-  border: 1px solid #e5ebf2;
-  background: #ffffff;
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
   padding-left: 13px;
 }
 
@@ -3281,13 +3279,13 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
 .calendarPanel .panelHeader {
   margin: -2px 0 14px;
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid var(--ui-60-canvas);
   padding: 0 0 12px 8px;
 }
 
@@ -3297,16 +3295,16 @@
 }
 
 .calendarFilters label {
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   padding: 8px;
 }
 
 .calendarGrid {
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 8px;
 }
 
@@ -3314,7 +3312,7 @@
   border-color: rgba(0, 122, 61, 0.22);
   background:
     linear-gradient(180deg, rgba(240, 253, 244, 0.86), rgba(255, 255, 255, 0.96)),
-    #ffffff;
+    var(--ui-60-surface);
 }
 
 .calendarTrainingList {
@@ -3335,7 +3333,7 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
@@ -3367,7 +3365,7 @@
 .employeeRecordDetailPanel {
   border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 18px 42px rgba(15, 23, 42, 0.09);
 }
 
@@ -3389,7 +3387,7 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
@@ -3399,7 +3397,7 @@
 .employeeRecordMeta dt,
 .employeeRecordEvidence span {
   display: block;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 11px;
   font-weight: 900;
   text-transform: uppercase;
@@ -3408,7 +3406,7 @@
 .employeeRecordHero h2,
 .employeeRecordDetailHead h2 {
   margin: 5px 0 0;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: clamp(24px, 3vw, 34px);
   font-weight: 900;
   line-height: 1.12;
@@ -3419,7 +3417,7 @@
 .employeeRecordEvidence p {
   max-width: 720px;
   margin: 8px 0 0;
-  color: #475569;
+  color: var(--ui-30-text);
   font-size: 13px;
   font-weight: 700;
   line-height: 1.5;
@@ -3430,8 +3428,8 @@
   min-height: 40px;
   border: 0;
   border-radius: 8px;
-  background: #d71920;
-  color: #ffffff;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
@@ -3452,9 +3450,9 @@
   position: relative;
   overflow: hidden;
   min-height: 78px;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   padding: 13px 14px 13px 16px;
 }
 
@@ -3464,13 +3462,13 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
 }
 
 .employeeRecordStats span {
   display: block;
   overflow: hidden;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 11px;
   font-weight: 900;
   text-overflow: ellipsis;
@@ -3482,7 +3480,7 @@
 .employeeRecordDetailGrid strong {
   display: block;
   margin-top: 7px;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 22px;
   font-weight: 900;
   line-height: 1;
@@ -3501,8 +3499,8 @@
   min-height: 40px;
   border: 1.5px solid rgba(15, 23, 42, 0.14);
   border-radius: 8px;
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
   font: inherit;
   font-size: 13px;
   font-weight: 800;
@@ -3512,7 +3510,7 @@
 
 .employeeRecordToolbar input:focus,
 .employeeRecordToolbar select:focus {
-  border-color: #007a3d;
+  border-color: var(--ui-30-primary);
   box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
 }
 
@@ -3529,7 +3527,7 @@
 .employeeRecordDownloadBox > div:first-child span,
 .employeeRecordDownloadMeta span {
   display: block;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 11px;
   font-weight: 900;
   text-transform: uppercase;
@@ -3537,7 +3535,7 @@
 
 .employeeRecordDownloadBox h2 {
   margin: 5px 0 0;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 20px;
   font-weight: 900;
   line-height: 1.2;
@@ -3546,7 +3544,7 @@
 .employeeRecordDownloadBox p {
   max-width: 720px;
   margin: 8px 0 0;
-  color: #475569;
+  color: var(--ui-30-text);
   font-size: 13px;
   font-weight: 700;
   line-height: 1.5;
@@ -3563,9 +3561,9 @@
   gap: 10px;
   align-items: start;
   min-height: 58px;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   cursor: pointer;
   padding: 10px 12px;
 }
@@ -3574,12 +3572,12 @@
   width: 16px;
   height: 16px;
   margin-top: 2px;
-  accent-color: #d71920;
+  accent-color: var(--ui-10-accent);
 }
 
 .employeeRecordPurposeGroup strong {
   display: block;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 13px;
   font-weight: 900;
   line-height: 1.25;
@@ -3588,7 +3586,7 @@
 .employeeRecordPurposeGroup small {
   display: block;
   margin-top: 4px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.35;
@@ -3605,15 +3603,15 @@
   display: grid;
   min-height: 62px;
   align-content: center;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   padding: 10px 12px;
 }
 
 .employeeRecordDownloadMeta strong {
   margin-top: 5px;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 18px;
   font-weight: 900;
   line-height: 1;
@@ -3624,8 +3622,8 @@
   align-self: center;
   border: 0;
   border-radius: 8px;
-  background: #d71920;
-  color: #ffffff;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
@@ -3665,10 +3663,10 @@
   gap: 12px;
   align-items: center;
   min-height: 76px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #0f172a;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   cursor: pointer;
   font: inherit;
   padding: 12px;
@@ -3682,8 +3680,8 @@
 
 .activeEmployeeRecordItem {
   border-color: rgba(0, 122, 61, 0.34);
-  background: #f1fbf5;
-  box-shadow: inset 4px 0 0 #007a3d;
+  background: var(--ui-30-primary-soft);
+  box-shadow: inset 4px 0 0 var(--ui-30-primary);
 }
 
 .employeeRecordItem:hover,
@@ -3695,7 +3693,7 @@
 
 .employeeRecordItem time,
 .activeEmployeeRecordItem time {
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 12px;
   font-weight: 900;
 }
@@ -3709,7 +3707,7 @@
 .activeEmployeeRecordItem strong {
   display: block;
   overflow: hidden;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 14px;
   font-weight: 900;
   line-height: 1.25;
@@ -3722,7 +3720,7 @@
   display: block;
   overflow: hidden;
   margin-top: 5px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 12px;
   font-weight: 800;
   text-overflow: ellipsis;
@@ -3745,10 +3743,10 @@
 .employeeRecordEmpty,
 .employeeRecordMessage {
   margin: 0;
-  border: 1px solid #d7e7dd;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 8px;
-  background: #f1fbf5;
-  color: #007a3d;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 12px;
   font-weight: 900;
   line-height: 1.45;
@@ -3792,23 +3790,23 @@
 .employeeRecordMeta div,
 .employeeRecordEvidence,
 .employeeAssessmentPanel {
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   padding: 12px;
 }
 
 .employeeAssessmentPanel {
   display: grid;
   gap: 12px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
 }
 
 .employeeAssessmentPanel > div:first-child span,
 .employeeAssessmentStep span,
 .lockedAssessmentStep span {
   display: block;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 11px;
   font-weight: 900;
   text-transform: uppercase;
@@ -3816,7 +3814,7 @@
 
 .employeeAssessmentPanel h3 {
   margin: 5px 0 0;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 15px;
   font-weight: 900;
   line-height: 1.25;
@@ -3824,7 +3822,7 @@
 
 .employeeAssessmentPanel p {
   margin: 6px 0 0;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 12px;
   font-weight: 800;
   line-height: 1.45;
@@ -3841,14 +3839,14 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   padding: 10px 12px;
 }
 
 .lockedAssessmentStep {
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
   opacity: 0.72;
 }
 
@@ -3856,7 +3854,7 @@
 .lockedAssessmentStep strong {
   display: block;
   margin-top: 4px;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 13px;
   font-weight: 900;
 }
@@ -3865,7 +3863,7 @@
 .lockedAssessmentStep small {
   display: block;
   margin-top: 4px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 11px;
   font-weight: 800;
   line-height: 1.35;
@@ -3876,8 +3874,8 @@
   min-height: 34px;
   border: 1px solid rgba(215, 25, 32, 0.2);
   border-radius: 8px;
-  background: #d71920;
-  color: #ffffff;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
   cursor: pointer;
   font: inherit;
   font-size: 11px;
@@ -3888,15 +3886,15 @@
 
 .employeeAssessmentStep button:disabled,
 .lockedAssessmentStep button:disabled {
-  border-color: #cbd5e1;
-  background: #e2e8f0;
-  color: #64748b;
+  border-color: var(--ui-30-border);
+  background: var(--ui-30-border);
+  color: var(--ui-30-muted);
   cursor: not-allowed;
 }
 
 .employeeRecordMeta dd {
   margin: 6px 0 0;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 13px;
   font-weight: 900;
   line-height: 1.35;
@@ -3908,14 +3906,14 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
-  border-top: 1px solid #edf2f7;
+  border-top: 1px solid var(--ui-60-canvas);
   padding-top: 12px;
 }
 
 .employeeRecordActions button:first-child {
   border: 1px solid rgba(15, 23, 42, 0.14);
-  background: #ffffff;
-  color: #26364d;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
 }
 
 @media (max-width: 980px) {
@@ -3979,7 +3977,7 @@
   border: 1px solid rgba(215, 25, 32, 0.2);
   border-radius: 999px;
   background: #fff7f8;
-  color: #d71920;
+  color: var(--ui-10-accent);
   cursor: pointer;
   font: inherit;
   font-size: 0.7rem;
@@ -3990,7 +3988,7 @@
 
 .calendarToggleButton:hover {
   border-color: rgba(215, 25, 32, 0.34);
-  background: #fff1f2;
+  background: var(--ui-10-accent-soft);
 }
 
 .formMessage {
@@ -3998,8 +3996,8 @@
   padding: 10px 12px;
   border: 1px solid #b8d8c4;
   border-radius: 6px;
-  background: #eef8f1;
-  color: #17633a;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
   font-size: 13px;
   font-weight: 700;
 }

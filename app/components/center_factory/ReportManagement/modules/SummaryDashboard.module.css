@@ -1,0 +1,383 @@
+.moduleWorkspace {
+  display: grid;
+  gap: 14px;
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 8px 0 48px;
+  color: var(--ui-30-ink);
+}
+
+.moduleHero,
+.attendancePanel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
+}
+
+.moduleHero::before,
+.attendancePanel::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(
+    180deg,
+    var(--ui-30-primary) 0 90%,
+    var(--ui-10-accent) 90% 100%
+  );
+  content: "";
+}
+
+.moduleHero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 20px 18px 24px;
+  background: linear-gradient(
+    90deg,
+    var(--ui-60-surface) 0 66%,
+    var(--ui-60-surface-muted) 100%
+  );
+}
+
+.kicker {
+  margin: 0 0 6px;
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.moduleHero h2,
+.panelHeader h3 {
+  margin: 0;
+  color: var(--ui-30-ink);
+  font-weight: 900;
+}
+
+.moduleHero h2 {
+  font-size: 1.28rem;
+}
+
+.moduleHero > div > p:last-child {
+  max-width: 720px;
+  margin: 8px 0 0;
+  color: var(--ui-30-text);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.scopeBadge {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 999px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.attendancePanel {
+  padding: 20px 22px 22px 26px;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--ui-30-border);
+  padding-bottom: 14px;
+}
+
+.panelHeader h3 {
+  font-size: 1.08rem;
+}
+
+.panelHeader > strong {
+  border: 1px solid var(--ui-10-accent-border);
+  border-radius: 999px;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
+  font-size: 0.74rem;
+  font-weight: 900;
+  padding: 7px 11px;
+  white-space: nowrap;
+}
+
+.panelHeaderActions {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.panelHeaderActions > strong {
+  border: 1px solid var(--ui-10-accent-border);
+  border-radius: 999px;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
+  font-size: 0.74rem;
+  font-weight: 900;
+  padding: 8px 11px;
+  white-space: nowrap;
+}
+
+.periodControls {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.periodControls label {
+  display: grid;
+  gap: 5px;
+  color: var(--ui-30-muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.periodControls select {
+  min-width: 112px;
+  min-height: 34px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  outline: none;
+  padding: 6px 28px 6px 9px;
+  text-transform: none;
+}
+
+.periodControls select:focus {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
+}
+
+.summaryLayout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1.28fr);
+  gap: 30px;
+  align-items: center;
+  padding-top: 24px;
+}
+
+.chartColumn {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  padding: 8px;
+}
+
+.donutChart {
+  display: grid;
+  width: min(260px, 74vw);
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--ui-30-primary) 0deg var(--attendance-angle),
+    var(--ui-10-accent) var(--attendance-angle) 360deg
+  );
+  box-shadow:
+    0 22px 42px rgba(0, 122, 61, 0.14),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.62);
+}
+
+.emptyChart {
+  background: var(--ui-60-surface-muted);
+  box-shadow:
+    0 22px 42px rgba(15, 23, 42, 0.08),
+    inset 0 0 0 1px var(--ui-30-border);
+}
+
+.chartCenter {
+  display: grid;
+  width: 61%;
+  aspect-ratio: 1;
+  place-content: center;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 50%;
+  background: var(--ui-60-surface);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  text-align: center;
+}
+
+.chartCenter strong {
+  color: var(--ui-30-ink);
+  font-size: clamp(2rem, 5vw, 3.15rem);
+  font-weight: 950;
+  line-height: 1;
+}
+
+.chartCenter span {
+  max-width: 110px;
+  margin-top: 8px;
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 18px;
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ui-30-text);
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.attendedDot {
+  background: var(--ui-30-primary);
+}
+
+.absentDot {
+  background: var(--ui-10-accent);
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.metricGrid article {
+  position: relative;
+  overflow: hidden;
+  min-height: 132px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  padding: 18px;
+}
+
+.metricGrid article::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  content: "";
+}
+
+.attendedMetric::before {
+  background: var(--ui-30-primary);
+}
+
+.absentMetric::before {
+  background: var(--ui-10-accent);
+}
+
+.rateMetric {
+  grid-column: 1 / -1;
+}
+
+.rateMetric::before {
+  background: linear-gradient(
+    180deg,
+    var(--ui-30-primary) 0 60%,
+    var(--ui-10-accent) 60% 100%
+  );
+}
+
+.metricGrid span,
+.metricGrid small {
+  display: block;
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.metricGrid strong {
+  display: block;
+  margin: 12px 0 6px;
+  color: var(--ui-30-ink);
+  font-size: 2.15rem;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.emptyState {
+  margin: 18px 0 0;
+  border: 1px dashed var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 12px 14px;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .moduleWorkspace {
+    width: min(100% - 28px, 680px);
+  }
+
+  .moduleHero,
+  .panelHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .panelHeaderActions {
+    width: 100%;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+
+  .summaryLayout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .attendancePanel {
+    padding: 16px 14px 18px 18px;
+  }
+
+  .metricGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .panelHeaderActions,
+  .periodControls {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .periodControls select {
+    width: 100%;
+  }
+
+  .rateMetric {
+    grid-column: auto;
+  }
+}

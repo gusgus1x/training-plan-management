@@ -2,13 +2,13 @@
   max-width: 1180px;
   margin: 0 auto;
   padding: 18px 24px 48px;
-  color: #172033;
+  color: var(--ui-30-ink);
 }
 
 .hero,
 .workspace {
-  background: #ffffff;
-  border: 1px solid #dce4ef;
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
   box-shadow: 0 14px 32px rgba(24, 36, 56, 0.07);
 }
@@ -24,7 +24,7 @@
 
 .kicker {
   margin: 0 0 6px;
-  color: #315fbb;
+  color: var(--ui-30-primary);
   font-size: 0.76rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -37,7 +37,7 @@
 
 .hero p {
   margin: 8px 0 0;
-  color: #66758b;
+  color: var(--ui-30-muted);
   line-height: 1.5;
 }
 
@@ -45,13 +45,13 @@
   min-width: 132px;
   border: 1px solid #d8e2f0;
   border-radius: 8px;
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
   padding: 14px;
 }
 
 .summaryCard span {
   display: block;
-  color: #65758b;
+  color: var(--ui-30-muted);
   font-size: 0.76rem;
   font-weight: 800;
 }
@@ -59,7 +59,7 @@
 .summaryCard strong {
   display: block;
   margin-top: 4px;
-  color: #1f4c9a;
+  color: var(--ui-30-primary-strong);
   font-size: 1.45rem;
 }
 
@@ -73,17 +73,17 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--ui-30-border);
   padding-bottom: 14px;
   margin-bottom: 14px;
 }
 
 .listMeta {
   margin-right: auto;
-  border: 1px solid #d7e7dd;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
-  background: #f1fbf5;
-  color: #007a3d;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   padding: 6px 10px;
   font-size: 0.74rem;
   font-weight: 800;
@@ -102,17 +102,17 @@
 
 .newButton {
   border: 0;
-  background: #2458b8;
-  color: #ffffff;
+  background: var(--ui-30-primary);
+  color: var(--ui-60-surface);
 }
 
 .editButton,
 .refreshButton,
 .exportButton,
 .cancelButton {
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #26364d;
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
 }
 
 .deleteButton {
@@ -138,9 +138,9 @@
   gap: 10px;
   align-items: end;
   flex-wrap: wrap;
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   padding: 12px;
   margin-bottom: 14px;
 }
@@ -149,7 +149,7 @@
   display: grid;
   gap: 6px;
   min-width: 180px;
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.82rem;
   font-weight: 800;
 }
@@ -159,40 +159,40 @@
 }
 
 .editor input {
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #172033;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   min-height: 40px;
   padding: 10px 12px;
   outline: none;
 }
 
 .editor input:focus {
-  border-color: #315fbb;
-  box-shadow: 0 0 0 3px rgba(49, 95, 187, 0.14);
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.16);
 }
 
 .saveButton {
   border: 0;
-  background: #2458b8;
-  color: #ffffff;
+  background: var(--ui-30-primary);
+  color: var(--ui-60-surface);
 }
 
 .exportMessage {
   margin: 0 0 12px;
-  border: 1px solid #cbdcf3;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 8px;
-  background: #f5f9ff;
-  color: #315fbb;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-primary);
   padding: 10px 12px;
   font-weight: 800;
 }
 
 .tableWrap {
-  border: 1px solid #e1e8f2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 34%);
+  background: linear-gradient(180deg, var(--ui-60-surface-soft) 0%, var(--ui-60-surface) 34%);
   padding: 12px;
   overflow-x: auto;
 }
@@ -206,7 +206,7 @@
 
 .courseGroupTable th {
   padding: 0 16px 4px;
-  color: #65758b;
+  color: var(--ui-30-muted);
   font-size: 0.74rem;
   text-align: left;
   text-transform: uppercase;
@@ -225,31 +225,31 @@
 }
 
 .courseGroupTable td {
-  border-top: 1px solid #dce6f3;
-  border-bottom: 1px solid #dce6f3;
-  background: #ffffff;
+  border-top: 1px solid var(--ui-30-primary-border);
+  border-bottom: 1px solid var(--ui-30-primary-border);
+  background: var(--ui-60-surface);
   padding: 16px;
   box-shadow: 0 8px 18px rgba(24, 36, 56, 0.04);
 }
 
 .courseGroupTable td:first-child {
-  border-left: 1px solid #dce6f3;
+  border-left: 1px solid var(--ui-30-primary-border);
   border-radius: 8px 0 0 8px;
-  color: #315fbb;
+  color: var(--ui-30-primary);
   font-weight: 400;
 }
 
 .courseGroupTable td:last-child {
-  border-right: 1px solid #dce6f3;
+  border-right: 1px solid var(--ui-30-primary-border);
   border-radius: 0 8px 8px 0;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.9rem;
   font-weight: 400;
 }
 
 .courseGroupTable td:nth-child(2) {
   width: 220px;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.9rem;
   font-weight: 400;
 }
@@ -259,12 +259,12 @@
 }
 
 .courseGroupTable tbody tr:hover td {
-  background: #f7fbff;
+  background: var(--ui-60-surface-soft);
   border-color: #bfd3ef;
 }
 
 .selectedRow td {
-  background: #eef5ff;
+  background: var(--ui-30-primary-soft);
   border-color: #8fb3e6;
 }
 
@@ -439,7 +439,7 @@
 .page {
   max-width: 1180px;
   padding-top: 8px;
-  color: #172033;
+  color: var(--ui-30-ink);
 }
 
 .hero,
@@ -452,7 +452,7 @@
   position: relative;
   overflow: hidden;
   background:
-    linear-gradient(90deg, #ffffff 0%, #ffffff 62%, #f1f5f9 100%);
+    linear-gradient(90deg, var(--ui-60-surface) 0%, var(--ui-60-surface) 62%, var(--ui-60-surface-muted) 100%);
 }
 
 .hero::before {
@@ -460,29 +460,29 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 5px;
-  background: #d71920;
+  background: var(--ui-10-accent);
 }
 
 .kicker {
-  color: #007a3d;
+  color: var(--ui-30-primary);
 }
 
 .summaryCard {
-  border-color: #e4ebf4;
-  background: #f8fafc;
+  border-color: var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
 }
 
 .summaryCard strong {
-  color: #111827;
+  color: var(--ui-30-ink);
 }
 
 .workspace {
-  background: #ffffff;
+  background: var(--ui-60-surface);
 }
 
 .newButton,
 .saveButton {
-  background: #d71920;
+  background: var(--ui-10-accent);
   box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
 }
 
@@ -491,12 +491,12 @@
 .exportButton:hover,
 .cancelButton:hover {
   border-color: #8aa4cc;
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
 }
 
 .tableWrap {
-  border-color: #dbe4ef;
-  background: #ffffff;
+  border-color: var(--ui-30-border);
+  background: var(--ui-60-surface);
   padding: 0;
 }
 
@@ -507,12 +507,12 @@
 
 .courseGroupTable th,
 .courseGroupTable td {
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--ui-30-border);
   box-shadow: none;
 }
 
 .courseGroupTable th {
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
   padding: 12px;
 }
 
@@ -528,8 +528,8 @@
 }
 
 .selectedRow td {
-  background: #f8fbff;
-  box-shadow: inset 3px 0 0 #d71920;
+  background: var(--ui-60-surface-soft);
+  box-shadow: inset 3px 0 0 var(--ui-10-accent);
 }
 
 /* Unified alignment with the Training Course hub */
@@ -586,7 +586,7 @@
   max-width: none;
   margin: 0 auto;
   padding: 8px 0 48px;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.88rem;
 }
 
@@ -598,9 +598,9 @@
 .listPanel,
 .editorPanel,
 .detailPanel {
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
 }
 
@@ -611,7 +611,7 @@
   gap: 14px;
   margin-bottom: 14px;
   padding: 16px 18px 16px 22px;
-  background: linear-gradient(90deg, #ffffff 0%, #ffffff 66%, #f1f5f9 100%);
+  background: linear-gradient(90deg, var(--ui-60-surface) 0%, var(--ui-60-surface) 66%, var(--ui-60-surface-muted) 100%);
 }
 
 .hero::before,
@@ -626,7 +626,7 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
@@ -647,7 +647,7 @@
 .panelHeader span,
 .listMeta,
 .badge {
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0.04em;
@@ -661,7 +661,7 @@
 .panel h3,
 .formPanel h3 {
   margin: 0;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-weight: 900;
   letter-spacing: 0;
   line-height: 1.2;
@@ -676,13 +676,13 @@
 .moduleHero p,
 .panel p,
 .formPanel p {
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.82rem;
   line-height: 1.45;
 }
 
 .toolbar {
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--ui-30-border);
   gap: 8px;
   margin-bottom: 12px;
   padding-bottom: 12px;
@@ -698,10 +698,10 @@
 .questionGrid select,
 .questionGrid textarea {
   min-height: 36px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #172033;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   font: inherit;
   font-size: 0.8rem;
   padding: 8px 10px;
@@ -717,7 +717,7 @@
 .questionGrid input:focus,
 .questionGrid select:focus,
 .questionGrid textarea:focus {
-  border-color: #007a3d;
+  border-color: var(--ui-30-primary);
   box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
 }
 
@@ -727,8 +727,8 @@
 .saveButton {
   border: 0;
   border-radius: 8px;
-  background: #d71920;
-  color: #ffffff;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
   box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
 }
 
@@ -739,10 +739,10 @@
 .cancelButton,
 .detailButton,
 .closeButton {
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #26364d;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
 }
 
 .dangerButton,
@@ -799,13 +799,13 @@
 .detailButton:hover,
 .closeButton:hover {
   border-color: #8aa4cc;
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
 }
 
 .tableWrap {
-  border: 1px solid #dbe4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 0;
   overflow-x: auto;
 }
@@ -832,9 +832,9 @@
 .evaluationTable th,
 .planTable th,
 .rollingTable th {
-  border-bottom: 1px solid #e5ebf2;
-  background: #f8fafc;
-  color: #65758b;
+  border-bottom: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
   font-size: 0.66rem;
   font-weight: 900;
   padding: 12px;
@@ -850,10 +850,10 @@
 .evaluationTable td,
 .planTable td,
 .rollingTable td {
-  border-bottom: 1px solid #e5ebf2;
-  background: #ffffff;
+  border-bottom: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
   box-shadow: none;
-  color: #26364d;
+  color: var(--ui-30-text);
   font-size: 0.8rem;
   padding: 10px 12px;
 }
@@ -868,11 +868,11 @@
 .planTable tbody tr:hover td,
 .rollingTable tbody tr:hover td,
 .selectedRow td {
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
 }
 
 .selectedRow td:first-child {
-  box-shadow: inset 3px 0 0 #d71920;
+  box-shadow: inset 3px 0 0 var(--ui-10-accent);
 }
 
 .statusPill,
@@ -932,8 +932,8 @@
 .toolbar .actionButton,
 .toolbar .newButton {
   border: 0;
-  background: #007a3d;
-  color: #ffffff;
+  background: var(--ui-30-primary);
+  color: var(--ui-60-surface);
   box-shadow: 0 8px 18px rgba(0, 122, 61, 0.16);
 }
 
@@ -941,8 +941,8 @@
 .toolbar .editButton,
 .toolbar .refreshButton,
 .toolbar .exportButton {
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
   color: #0f2747;
   box-shadow: none;
 }
@@ -959,7 +959,7 @@
 .toolbar .primaryButton:hover,
 .toolbar .actionButton:hover,
 .toolbar .newButton:hover {
-  background: #006b35;
+  background: var(--ui-30-primary-strong);
   box-shadow: 0 12px 24px rgba(0, 122, 61, 0.22);
   transform: translateY(-1px);
 }
@@ -969,21 +969,21 @@
 .toolbar .refreshButton:hover,
 .toolbar .exportButton:hover {
   border-color: #8aa4cc;
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
   transform: translateY(-1px);
 }
 
 .toolbar .dangerButton:hover,
 .toolbar .deleteButton:hover {
-  border-color: #d71920;
-  background: #fff1f2;
-  color: #a90f16;
+  border-color: var(--ui-10-accent);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
   transform: translateY(-1px);
 }
 
 .toolbar button:disabled {
-  border-color: #dbe2ec;
-  background: #f8fafc;
+  border-color: var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
   box-shadow: none;
   color: #a4afbd;
   cursor: not-allowed;

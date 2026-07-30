@@ -1,6 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  TRAINING_MASTER_KEYS,
+  readMasterCollection,
+  writeMasterCollection,
+} from "../../../../lib/trainingWorkflow";
 import styles from "./FunctionData.module.css";
 
 export type FunctionRecord = {
@@ -131,7 +136,9 @@ const emptyRecord = (): FunctionRecord => ({
 });
 
 export default function FunctionData() {
-  const [rows, setRows] = useState<FunctionRecord[]>(defaultFunctionRows);
+  const [rows, setRows] = useState<FunctionRecord[]>(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.functions, defaultFunctionRows),
+  );
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(defaultFunctionRows[0]?.id ?? "");
   const [formMode, setFormMode] = useState<FormMode>(null);
@@ -157,6 +164,11 @@ export default function FunctionData() {
     setFormValues((current) => ({ ...current, [field]: value }));
   };
 
+  const saveRows = (nextRows: FunctionRecord[]) => {
+    setRows(nextRows);
+    writeMasterCollection(TRAINING_MASTER_KEYS.functions, nextRows);
+  };
+
   const handleNew = () => {
     setFormValues(emptyRecord());
     setFormMode("new");
@@ -176,15 +188,19 @@ export default function FunctionData() {
       return;
     }
 
-    setRows((current) => current.filter((row) => row.id !== selectedRecord.id));
+    saveRows(rows.filter((row) => row.id !== selectedRecord.id));
     setSelectedId("");
     setFormMode(null);
   };
 
   const handleRefresh = () => {
-    setRows(defaultFunctionRows);
+    const nextRows = readMasterCollection(
+      TRAINING_MASTER_KEYS.functions,
+      defaultFunctionRows,
+    );
+    setRows(nextRows);
     setSearch("");
-    setSelectedId(defaultFunctionRows[0]?.id ?? "");
+    setSelectedId(nextRows[0]?.id ?? "");
     setFormMode(null);
   };
 
@@ -201,11 +217,11 @@ export default function FunctionData() {
     }
 
     if (formMode === "edit") {
-      setRows((current) =>
-        current.map((row) => (row.id === nextRecord.id ? nextRecord : row)),
+      saveRows(
+        rows.map((row) => (row.id === nextRecord.id ? nextRecord : row)),
       );
     } else {
-      setRows((current) => [nextRecord, ...current]);
+      saveRows([nextRecord, ...rows]);
     }
 
     setSelectedId(nextRecord.id);
@@ -281,7 +297,7 @@ export default function FunctionData() {
                 <input
                   value={formValues.functionNameTh}
                   onChange={(event) => updateForm("functionNameTh", event.target.value)}
-                  placeholder="ชื่อหน่วยงานภาษาไทย"
+                  placeholder="Thai function name"
                 />
               </label>
               <label>

@@ -5,8 +5,8 @@ import styles from "./TrainingExpense.module.css";
 
 export const trainingExpenseModule = {
   title: "Training Expense",
-  subtitle: "ค่าใช้จ่ายฝึกอบรม",
-  description: "สรุปรายงานค่าใช้จ่ายฝึกอบรมตามหลักสูตร บริษัท และช่วงเวลา",
+  subtitle: "Training expense summary",
+  description: "Training expense summary by course, company, and date range",
 } as const;
 
 const initialRows = [["OAP-001","Leadership Essentials","THB 45,000","ATFB","Approved"],["OAP-022","Safety Basics","THB 28,500","SNF","Submitted"],["OAP-014","Service Mind","THB 18,000","SATI","Draft"]] as const;

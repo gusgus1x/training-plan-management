@@ -10,7 +10,11 @@ import {
   type WorkflowCompletedCourse,
 } from "../../../../lib/trainingWorkflow";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
-import type { RollingPlan } from "../../TrainingPlanManagement/modules/TrainingRolling";
+import {
+  formatRollingPlanCompanies,
+  getRollingPlanCompanies,
+  type RollingPlan,
+} from "../../TrainingPlanManagement/modules/TrainingRolling";
 import styles from "./TrainingRecord.module.css";
 
 export const trainingActualModule = {
@@ -40,17 +44,31 @@ type Attendee = {
 
 type ActualCourse = {
   id: string;
+  groupId?: string;
   code: string;
   title: string;
   date: string;
+  batch?: string;
+  startTime?: string;
+  endTime?: string;
   time: string;
   room: string;
   company: string;
+  relatedCompanies?: string[];
   owner: "CENTER" | "FACTORY";
+  ownerCompany?: string;
   instructor: string;
   hours?: string;
   attendees: Attendee[];
   expenses: Record<ExpenseKey, string>;
+};
+
+type ActualCourseGroup = {
+  id: string;
+  code: string;
+  title: string;
+  owner: "CENTER" | "FACTORY";
+  sessions: ActualCourse[];
 };
 
 type CourseOwner = ActualCourse["owner"];
@@ -197,6 +215,7 @@ export default function TrainingActual() {
   const user = useAuthenticatedUser();
   const [courses, setCourses] = useState<ActualCourse[]>([]);
   const [courseOwnerFilter, setCourseOwnerFilter] = useState<CourseOwnerFilter>("");
+  const [selectedCourseGroupId, setSelectedCourseGroupId] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
@@ -213,13 +232,24 @@ export default function TrainingActual() {
         .filter((plan) => plan.status === "Planned")
         .map<ActualCourse>((plan) => ({
           id: plan.rollingId,
+          groupId:
+            plan.scheduleGroupId ??
+            `legacy-${plan.id}-${plan.course.code}-${getRollingPlanCompanies(plan).join("-")}`,
           code: plan.course.code,
           title: plan.course.name,
           date: plan.trainingDate,
+          batch: plan.batch,
+          startTime: plan.startTime,
+          endTime: plan.endTime,
           time: `${plan.startTime} - ${plan.endTime}`,
           room: plan.location,
-          company: plan.company,
+          company: formatRollingPlanCompanies(plan),
+          relatedCompanies: getRollingPlanCompanies(plan),
           owner: plan.ownerScope === "CENTER" ? "CENTER" : "FACTORY",
+          ownerCompany:
+            plan.ownerScope === "CENTER"
+              ? "HRD Center"
+              : plan.ownerCompany ?? plan.company,
           instructor: plan.trainer,
           hours: plan.hours,
           attendees: acceptances
@@ -247,8 +277,7 @@ export default function TrainingActual() {
             material: "",
             foodBeverage: "",
           },
-        }))
-        .filter((course) => course.attendees.length > 0);
+        }));
 
       setCourses((current) =>
         nextCourses.map((nextCourse) => {
@@ -276,7 +305,11 @@ export default function TrainingActual() {
   const availableCourses = useMemo(
     () =>
       isFactoryUser
-        ? courses.filter((course) => course.owner === "FACTORY" && course.company === userCompanyCode)
+        ? courses.filter(
+            (course) =>
+              course.owner === "FACTORY" &&
+              (course.ownerCompany ?? course.company) === userCompanyCode,
+          )
         : courses,
     [courses, isFactoryUser, userCompanyCode],
   );
@@ -288,7 +321,39 @@ export default function TrainingActual() {
         : [],
     [availableCourses, selectedCourseOwner],
   );
-  const selectedCourse = ownerFilteredCourses.find((course) => course.id === selectedCourseId);
+  const availableCourseGroups = useMemo<ActualCourseGroup[]>(() => {
+    const groups = new Map<string, ActualCourse[]>();
+
+    ownerFilteredCourses.forEach((course) => {
+      const groupId =
+        course.groupId ??
+        `legacy-${course.code}-${course.owner}-${course.relatedCompanies?.join("-") ?? course.company}`;
+      groups.set(groupId, [...(groups.get(groupId) ?? []), course]);
+    });
+
+    return [...groups.entries()].map(([id, sessions]) => {
+      const sortedSessions = [...sessions].sort(
+        (a, b) =>
+          a.date.localeCompare(b.date) ||
+          (a.startTime ?? "").localeCompare(b.startTime ?? ""),
+      );
+      const firstSession = sortedSessions[0];
+
+      return {
+        id,
+        code: firstSession.code,
+        title: firstSession.title,
+        owner: firstSession.owner,
+        sessions: sortedSessions,
+      };
+    });
+  }, [ownerFilteredCourses]);
+  const selectedCourseGroup =
+    availableCourseGroups.find((group) => group.id === selectedCourseGroupId) ??
+    null;
+  const availableSessions = selectedCourseGroup?.sessions ?? [];
+  const selectedCourse =
+    availableSessions.find((course) => course.id === selectedCourseId) ?? null;
 
   const actualCount = selectedCourse
     ? selectedCourse.attendees.filter((attendee) => attendee.attended).length
@@ -300,16 +365,13 @@ export default function TrainingActual() {
     ? selectedCourse.attendees.filter((attendee) => attendee.registered).length
     : 0;
   const absentCount = selectedCourse ? selectedCourse.attendees.length - actualCount : 0;
-  const expenseTotal = useMemo(
-    () =>
-      selectedCourse
-        ? expenseFields.reduce(
-            (total, field) => total + Number(selectedCourse.expenses[field.key] || 0),
-            0,
-          )
-        : 0,
-    [selectedCourse],
-  );
+  const expenseTotal = selectedCourse
+    ? expenseFields.reduce(
+        (total, field) =>
+          total + Number(selectedCourse.expenses[field.key] || 0),
+        0,
+      )
+    : 0;
 
   const updateSelectedCourse = (updater: (course: ActualCourse) => ActualCourse) => {
     if (!selectedCourse) {
@@ -359,11 +421,17 @@ export default function TrainingActual() {
     const completedCourse: WorkflowCompletedCourse = {
       id: `completed-${selectedCourse.id}`,
       rollingId: selectedCourse.id,
+      scheduleGroupId: selectedCourse.groupId,
       code: selectedCourse.code,
       title: selectedCourse.title,
       date: selectedCourse.date,
+      batch: selectedCourse.batch,
+      startTime: selectedCourse.startTime,
+      endTime: selectedCourse.endTime,
       company: selectedCourse.company,
+      relatedCompanies: selectedCourse.relatedCompanies,
       owner: selectedCourse.owner,
+      ownerCompany: selectedCourse.ownerCompany,
       room: selectedCourse.room,
       instructor: selectedCourse.instructor,
       hours: Number(selectedCourse.hours || 0),
@@ -429,6 +497,7 @@ export default function TrainingActual() {
               value={selectedCourseOwner}
               onChange={(event) => {
                 setCourseOwnerFilter(event.target.value as CourseOwnerFilter);
+                setSelectedCourseGroupId("");
                 setSelectedCourseId("");
                 setSavedMessage("");
               }}
@@ -442,6 +511,31 @@ export default function TrainingActual() {
             Course
             <select
               disabled={!selectedCourseOwner}
+              value={selectedCourseGroupId}
+              onChange={(event) => {
+                setSelectedCourseGroupId(event.target.value);
+                setSelectedCourseId("");
+                setSavedMessage("");
+              }}
+            >
+              <option value="">
+                {!selectedCourseOwner
+                  ? "Select course owner first"
+                  : availableCourseGroups.length > 0
+                    ? "Select actual course"
+                    : `No ${selectedCourseOwner.toLowerCase()} course available`}
+              </option>
+              {availableCourseGroups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.code} / {group.title} / {group.sessions.length} sessions
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.actualCourseSelect}>
+            Training Session
+            <select
+              disabled={!selectedCourseGroup}
               value={selectedCourseId}
               onChange={(event) => {
                 setSelectedCourseId(event.target.value);
@@ -449,15 +543,11 @@ export default function TrainingActual() {
               }}
             >
               <option value="">
-                {!selectedCourseOwner
-                  ? "Select course owner first"
-                  : ownerFilteredCourses.length > 0
-                    ? "Select actual course"
-                    : `No ${selectedCourseOwner.toLowerCase()} course available`}
+                {selectedCourseGroup ? "Select training session" : "Select course first"}
               </option>
-              {ownerFilteredCourses.map((course) => (
-                <option key={course.id} value={course.id}>
-                  {course.code} / {course.title} / {course.company}
+              {availableSessions.map((session) => (
+                <option key={session.id} value={session.id}>
+                  {session.batch ?? "-"} / {session.date} / {session.time} / {session.room}
                 </option>
               ))}
             </select>
@@ -479,7 +569,7 @@ export default function TrainingActual() {
               <p className={styles.kicker}>Course Selection</p>
               <h3>{selectedCourse.title}</h3>
               <span>
-                {selectedCourse.code} / {selectedCourse.company} / {selectedCourse.date} / {selectedCourse.time}
+                {selectedCourse.code} / Batch {selectedCourse.batch ?? "-"} / {selectedCourse.company} / {selectedCourse.date} / {selectedCourse.time}
               </span>
             </div>
 

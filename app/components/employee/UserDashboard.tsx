@@ -18,7 +18,10 @@ import {
   moduleCards,
   type UserModule,
 } from "./data";
-import type { RollingPlan } from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
+import {
+  getRollingPlanCompanies,
+  type RollingPlan,
+} from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
 import RecordModule from "./RecordModule";
 import RegisterTrainingModule from "./RegisterTrainingModule";
 import ReportModule from "./ReportModule";
@@ -103,7 +106,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
       rollingPlans.filter(
         (plan) =>
           plan.status === "Planned" &&
-          (plan.company === "All Companies" || plan.company === employeeCompany),
+          getRollingPlanCompanies(plan).includes(employeeCompany),
       ),
     [employeeCompany, rollingPlans],
   );

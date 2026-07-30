@@ -1,6 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  readEmployeeMasterData,
+  writeEmployeeMasterData,
+} from "../../../../lib/employeeMasterData";
+import {
+  TRAINING_MASTER_EVENT,
+  TRAINING_MASTER_KEYS,
+  readMasterCollection,
+} from "../../../../lib/trainingWorkflow";
+import { defaultFunctionRows } from "./FunctionData";
+import { defaultLevelRows } from "./LevelData";
+import { defaultPositionRows } from "./PositionData";
 import styles from "./EmployeeData.module.css";
 
 type CompanyCode = "ATA" | "TEP" | "ATFB" | "NIC" | "SATI" | "SNF";
@@ -258,13 +270,42 @@ const emptyRecord = (): EmployeeRecord => ({
 });
 
 export default function EmployeeData() {
-  const [rows, setRows] = useState<EmployeeRecord[]>(defaultRows);
+  const [rows, setRows] = useState<EmployeeRecord[]>(() => readEmployeeMasterData());
   const [companyFilter, setCompanyFilter] = useState<CompanyCode | "all">("all");
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState(defaultRows[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState(
+    () => readEmployeeMasterData()[0]?.id ?? "",
+  );
   const [openCompanies, setOpenCompanies] = useState<CompanyCode[]>(["SATI"]);
   const [formMode, setFormMode] = useState<"new" | "edit" | null>(null);
   const [formValues, setFormValues] = useState<EmployeeRecord>(emptyRecord);
+  const [functionRows, setFunctionRows] = useState(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.functions, defaultFunctionRows),
+  );
+  const [positionRows, setPositionRows] = useState(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows),
+  );
+  const [levelRows, setLevelRows] = useState(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows),
+  );
+
+  useEffect(() => {
+    const syncReferenceMasters = () => {
+      setFunctionRows(
+        readMasterCollection(TRAINING_MASTER_KEYS.functions, defaultFunctionRows),
+      );
+      setPositionRows(
+        readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows),
+      );
+      setLevelRows(
+        readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows),
+      );
+    };
+
+    window.addEventListener(TRAINING_MASTER_EVENT, syncReferenceMasters);
+    return () =>
+      window.removeEventListener(TRAINING_MASTER_EVENT, syncReferenceMasters);
+  }, []);
 
   const selectedRecord = rows.find((row) => row.id === selectedId) ?? null;
   const visibleRows = useMemo(() => {
@@ -311,6 +352,25 @@ export default function EmployeeData() {
     setFormValues((current) => ({ ...current, [field]: value }));
   };
 
+  const updateFunction = (functionCode: string) => {
+    const selectedFunction = functionRows.find(
+      (row) => row.functionCode === functionCode,
+    );
+    setFormValues((current) => ({
+      ...current,
+      functionCode,
+      functionName:
+        selectedFunction?.functionNameEn ||
+        selectedFunction?.functionNameTh ||
+        "",
+    }));
+  };
+
+  const saveRows = (nextRows: EmployeeRecord[]) => {
+    setRows(nextRows);
+    writeEmployeeMasterData(nextRows);
+  };
+
   const toggleCompany = (company: CompanyCode) => {
     setOpenCompanies((current) =>
       current.includes(company)
@@ -339,16 +399,17 @@ export default function EmployeeData() {
       return;
     }
 
-    setRows((current) => current.filter((row) => row.id !== selectedRecord.id));
+    saveRows(rows.filter((row) => row.id !== selectedRecord.id));
     setSelectedId("");
     setFormMode(null);
   };
 
   const handleRefresh = () => {
-    setRows(defaultRows);
+    const nextRows = readEmployeeMasterData();
+    setRows(nextRows);
     setCompanyFilter("all");
     setSearch("");
-    setSelectedId(defaultRows[0]?.id ?? "");
+    setSelectedId(nextRows[0]?.id ?? "");
     setOpenCompanies(["SATI"]);
     setFormMode(null);
   };
@@ -369,16 +430,23 @@ export default function EmployeeData() {
       levelKey: formValues.levelKey.trim(),
     };
 
-    if (!nextRecord.empCode || !nextRecord.nameTh || !nextRecord.nameEn) {
+    if (
+      !nextRecord.empCode ||
+      !nextRecord.nameTh ||
+      !nextRecord.nameEn ||
+      !nextRecord.functionCode ||
+      !nextRecord.positionName ||
+      !nextRecord.levelKey
+    ) {
       return;
     }
 
     if (formMode === "edit") {
-      setRows((current) =>
-        current.map((row) => (row.id === nextRecord.id ? nextRecord : row)),
+      saveRows(
+        rows.map((row) => (row.id === nextRecord.id ? nextRecord : row)),
       );
     } else {
-      setRows((current) => [nextRecord, ...current]);
+      saveRows([nextRecord, ...rows]);
     }
 
     setSelectedId(nextRecord.id);
@@ -537,31 +605,52 @@ export default function EmployeeData() {
               </label>
               <label>
                 Function Code
-                <input
+                <select
                   value={formValues.functionCode}
-                  onChange={(event) => updateForm("functionCode", event.target.value)}
-                />
+                  onChange={(event) => updateFunction(event.target.value)}
+                >
+                  <option value="">Select function</option>
+                  {functionRows.map((row) => (
+                    <option key={row.id} value={row.functionCode}>
+                      {row.functionCode} — {row.functionNameEn || row.functionNameTh}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label>
                 Function Name
                 <input
+                  disabled
                   value={formValues.functionName}
-                  onChange={(event) => updateForm("functionName", event.target.value)}
                 />
               </label>
               <label>
                 Position Name
-                <input
+                <select
                   value={formValues.positionName}
                   onChange={(event) => updateForm("positionName", event.target.value)}
-                />
+                >
+                  <option value="">Select position</option>
+                  {positionRows.map((row) => (
+                    <option key={row.id} value={row.positionNameEn}>
+                      {row.positionNameEn} / {row.positionNameTh}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label>
                 Level Key
-                <input
+                <select
                   value={formValues.levelKey}
                   onChange={(event) => updateForm("levelKey", event.target.value)}
-                />
+                >
+                  <option value="">Select level</option>
+                  {levelRows.map((row) => (
+                    <option key={row.id} value={row.levelKey}>
+                      {row.levelKey} — {row.levelNameEn}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
 

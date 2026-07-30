@@ -3,15 +3,13 @@
   overflow-x: clip;
   background:
     radial-gradient(
-      circle 760px at 100% 100%,
-      rgba(0, 122, 61, 0.52) 0%,
-      rgba(0, 122, 61, 0.34) 24%,
-      rgba(156, 210, 244, 0.14) 46%,
-      rgba(215, 25, 32, 0.26) 70%,
-      rgba(237, 242, 247, 0) 100%
+      circle 620px at 100% 100%,
+      rgba(0, 122, 61, 0.18) 0%,
+      rgba(0, 122, 61, 0.08) 35%,
+      rgba(238, 243, 240, 0) 72%
     ),
-    #edf2f7;
-  color: #0f172a;
+    var(--ui-60-canvas);
+  color: var(--ui-30-ink);
 }
 
 .workspace {
@@ -31,7 +29,7 @@
   left: 50%;
   width: 100vw;
   height: 136px;
-  background: #202733;
+  background: var(--ui-30-primary-strong);
   pointer-events: none;
   transform: translateX(-50%);
 }
@@ -40,10 +38,10 @@
   display: inline-flex;
   min-height: 28px;
   align-items: center;
-  border: 1px solid #ffc7ce;
+  border: 1px solid var(--ui-10-accent-border);
   border-radius: 999px;
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
   font-size: 0.68rem;
   font-weight: 900;
   line-height: 1;
@@ -57,7 +55,7 @@
 .menuPanel {
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 18px 42px rgba(31, 41, 55, 0.14);
 }
 
@@ -75,12 +73,12 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
 }
 
 .heroCopy {
   padding: 28px 30px 26px 34px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
 }
 
 .heroCopy span,
@@ -91,7 +89,7 @@
 .employeeSummary small,
 .calendarFilters span,
 .menuBox small {
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -99,7 +97,7 @@
 
 .heroCopy h1 {
   margin: 6px 0 0;
-  color: #020617;
+  color: var(--ui-30-ink);
   font-size: clamp(2.15rem, 3.2vw, 2.75rem);
   font-weight: 900;
   line-height: 1.02;
@@ -109,7 +107,7 @@
 .heroCopy p {
   max-width: 860px;
   margin: 10px 0 0;
-  color: #355172;
+  color: var(--ui-30-text);
   font-size: 0.82rem;
   line-height: 1.5;
 }
@@ -129,7 +127,7 @@
 
 .menuHeader h2 {
   margin: 7px 0 0;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.98rem;
   font-weight: 700;
   letter-spacing: 0;
@@ -137,10 +135,10 @@
 
 .menuHeader p {
   margin: 0;
-  border: 1px solid #ffc7ce;
+  border: 1px solid var(--ui-10-accent-border);
   border-radius: 999px;
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
   font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
@@ -164,12 +162,12 @@
   min-height: 168px;
   align-content: start;
   overflow: hidden;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ui-30-border);
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
   border-radius: 8px;
-  background: #ffffff;
-  color: #172033;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   cursor: pointer;
   font: inherit;
   padding: 16px;
@@ -197,12 +195,12 @@
 }
 
 .menuBox:nth-child(2n) {
-  border-left-color: #d71920;
+  border-left-color: var(--ui-10-accent);
 }
 
 .menuBox:hover {
   border-color: rgba(215, 25, 32, 0.38);
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   box-shadow: 0 24px 48px rgba(15, 23, 42, 0.16);
   transform: translateY(-2px);
 }
@@ -214,8 +212,8 @@
   place-items: center;
   border: 1px solid rgba(0, 122, 61, 0.18);
   border-radius: 6px;
-  background: #f1fbf5;
-  color: #007a3d;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
@@ -223,8 +221,8 @@
 
 .menuBox:nth-child(2n) .cardIndex {
   border-color: rgba(215, 25, 32, 0.2);
-  background: #fff1f2;
-  color: #d71920;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
 }
 
 .menuBox div {
@@ -238,7 +236,7 @@
 
 .menuBox strong {
   display: block;
-  color: #020617;
+  color: var(--ui-30-ink);
   font-size: 1.08rem;
   font-weight: 900;
   line-height: 1.18;
@@ -247,7 +245,7 @@
 .menuBox em {
   display: block;
   margin-top: 8px;
-  color: #334b68;
+  color: var(--ui-30-text);
   font-size: 0.76rem;
   font-style: normal;
   font-weight: 600;
@@ -258,9 +256,9 @@
   grid-column: 2;
   width: fit-content;
   align-self: end;
-  border: 1px solid #dbeafe;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
   color: #0f2747;
   font-size: 0.72rem;
   font-weight: 900;
@@ -287,13 +285,13 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
 .calendarPanel .panelHeader {
   margin: -2px 0 14px;
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid var(--ui-60-canvas);
   padding: 0 0 12px 8px;
 }
 
@@ -309,13 +307,13 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
 .employeePanel .panelHeader {
   margin: -2px 0 14px;
-  border-bottom: 1px solid #edf2f7;
+  border-bottom: 1px solid var(--ui-60-canvas);
   padding: 0 0 12px 8px;
 }
 
@@ -329,7 +327,7 @@
 
 .panelHeader h2 {
   margin: 5px 0 0;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 1.08rem;
   line-height: 1.2;
   letter-spacing: 0;
@@ -337,10 +335,10 @@
 
 .panelHeader b {
   margin: 0;
-  border: 1px solid #d7e7dd;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
-  background: #f1fbf5;
-  color: #007a3d;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 0.74rem;
   font-weight: 900;
   line-height: 1;
@@ -360,7 +358,7 @@
   border: 1px solid rgba(215, 25, 32, 0.2);
   border-radius: 999px;
   background: #fff7f8;
-  color: #d71920;
+  color: var(--ui-10-accent);
   cursor: pointer;
   font: inherit;
   font-size: 0.7rem;
@@ -371,7 +369,7 @@
 
 .calendarHeaderActions button:hover {
   border-color: rgba(215, 25, 32, 0.34);
-  background: #fff1f2;
+  background: var(--ui-10-accent-soft);
 }
 
 .employeeProfile {
@@ -380,11 +378,11 @@
   gap: 10px;
   align-items: center;
   margin-bottom: 14px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
   background:
     linear-gradient(90deg, rgba(240, 253, 244, 0.86), rgba(255, 255, 255, 0.96) 46%),
-    #ffffff;
+    var(--ui-60-surface);
   padding: 12px;
 }
 
@@ -395,8 +393,8 @@
   place-items: center;
   border: 1px solid rgba(0, 122, 61, 0.2);
   border-radius: 8px;
-  background: #ffffff;
-  color: #007a3d;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-primary);
   font-size: 1rem;
   font-weight: 900;
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
@@ -409,7 +407,7 @@
 .employeeTitle strong {
   display: block;
   overflow: hidden;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 1.1rem;
   font-weight: 900;
   text-overflow: ellipsis;
@@ -419,7 +417,7 @@
 .employeeTitle p {
   margin: 5px 0 0;
   overflow: hidden;
-  color: #66758b;
+  color: var(--ui-30-muted);
   font-size: 0.78rem;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -439,9 +437,9 @@
   gap: 5px;
   min-width: 0;
   margin: 0;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   min-height: 58px;
   padding: 10px 11px 10px 15px;
 }
@@ -451,13 +449,13 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
 .employeeDetails strong {
   overflow: hidden;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.8rem;
   font-weight: 800;
   line-height: 1.35;
@@ -478,9 +476,9 @@
   display: grid;
   gap: 4px;
   min-width: 0;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   min-height: 72px;
   padding: 11px 12px 11px 15px;
 }
@@ -490,12 +488,12 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
 .employeeSummary strong {
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 0.92rem;
   font-weight: 900;
   line-height: 1;
@@ -517,19 +515,19 @@
 .calendarFilters label {
   display: grid;
   gap: 5px;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   padding: 8px;
 }
 
 .calendarFilters select {
   width: 100%;
   min-height: 36px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #172033;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   font: inherit;
   font-size: 0.82rem;
   font-weight: 800;
@@ -540,9 +538,9 @@
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 5px;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 8px;
 }
 
@@ -550,7 +548,7 @@
   display: grid;
   min-height: 22px;
   place-items: center;
-  color: #65758b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
 }
@@ -560,9 +558,9 @@
   min-height: 44px;
   align-content: start;
   gap: 5px;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 6px;
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
   padding: 6px;
 }
 
@@ -570,7 +568,7 @@
   border-color: rgba(0, 122, 61, 0.22);
   background:
     linear-gradient(180deg, rgba(240, 253, 244, 0.86), rgba(255, 255, 255, 0.96)),
-    #ffffff;
+    var(--ui-60-surface);
 }
 
 .today {
@@ -578,7 +576,7 @@
 }
 
 .calendarDay span {
-  color: #334155;
+  color: var(--ui-30-text);
   font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
@@ -588,7 +586,7 @@
   overflow: hidden;
   border-radius: 5px;
   background: rgba(215, 25, 32, 0.1);
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 0.58rem;
   font-weight: 900;
   line-height: 1.2;
@@ -611,9 +609,9 @@
   gap: 10px;
   align-items: center;
   min-height: 50px;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 9px 10px 9px 14px;
 }
 
@@ -622,12 +620,12 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
 .trainingItem time {
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 0.72rem;
   font-weight: 900;
   white-space: nowrap;
@@ -640,7 +638,7 @@
 .trainingItem strong {
   display: block;
   overflow: hidden;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 0.82rem;
   font-weight: 900;
   text-overflow: ellipsis;
@@ -651,7 +649,7 @@
   display: block;
   overflow: hidden;
   margin-top: 3px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.72rem;
   font-weight: 800;
   text-overflow: ellipsis;
@@ -660,10 +658,10 @@
 
 .trainingItem b {
   width: fit-content;
-  border: 1px solid #dbe4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 999px;
-  background: #f8fafc;
-  color: #26364d;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-text);
   font-size: 0.66rem;
   font-weight: 900;
   line-height: 1;
@@ -673,7 +671,7 @@
 
 .trainingDay {
   border-color: rgba(0, 122, 61, 0.28);
-  background: #f1fbf5;
+  background: var(--ui-30-primary-soft);
 }
 
 .today {
@@ -692,14 +690,14 @@
   grid-template-columns: 58px minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 8px;
 }
 
 .trainingItem time {
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 0.72rem;
   font-weight: 900;
   white-space: nowrap;
@@ -713,7 +711,7 @@
 
 .trainingItem strong {
   overflow: hidden;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 0.78rem;
   font-weight: 900;
   text-overflow: ellipsis;
@@ -722,7 +720,7 @@
 
 .trainingItem span {
   overflow: hidden;
-  color: #66758b;
+  color: var(--ui-30-muted);
   font-size: 0.72rem;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -731,8 +729,8 @@
 
 .trainingItem b {
   border-radius: 999px;
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--ui-60-surface-muted);
+  color: var(--ui-30-text);
   font-size: 0.66rem;
   font-weight: 900;
   line-height: 1;

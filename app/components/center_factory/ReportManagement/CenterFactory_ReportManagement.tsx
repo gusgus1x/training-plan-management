@@ -25,15 +25,23 @@ export default function ReportManagement({
   const [selectedItem, setSelectedItem] = useState<(typeof centerReportItems)[number] | null>(null);
   const [preparedDraft, setPreparedDraft] = useState<InternalReportDraft | null>(null);
   const SelectedModule = selectedItem?.Component;
+  const internalReportItem =
+    centerReportItems.find((item) => item.title === internalReportTitle) ?? null;
+  const isInternalReportLocked = internalReportItem?.locked ?? true;
 
   const handleSelectItem = (item: (typeof centerReportItems)[number]) => {
+    if (item.locked) {
+      return;
+    }
+
     setPreparedDraft(null);
     setSelectedItem(item);
   };
 
   const handlePrepareEmail = (draft: InternalReportDraft) => {
-    const internalReportItem =
-      centerReportItems.find((item) => item.title === internalReportTitle) ?? null;
+    if (isInternalReportLocked) {
+      return;
+    }
 
     setPreparedDraft(draft);
     setSelectedItem(internalReportItem);
@@ -56,6 +64,7 @@ export default function ReportManagement({
         contextItems={centerReportItems.map((item) => ({
           title: item.title,
           active: item.title === selectedItem?.title,
+          locked: item.locked,
           onClick: () => handleSelectItem(item),
         }))}
         onBack={handleBack}
@@ -80,7 +89,9 @@ export default function ReportManagement({
 
       {SelectedModule ? (
         <SelectedModule
-          onPrepareEmail={handlePrepareEmail}
+          onPrepareEmail={
+            isInternalReportLocked ? undefined : handlePrepareEmail
+          }
           preparedDraft={selectedItem?.title === internalReportTitle ? preparedDraft : null}
         />
       ) : (
@@ -96,18 +107,23 @@ export default function ReportManagement({
           <div className={styles.moduleGrid}>
             {centerReportItems.map((item, index) => (
               <button
-                className={styles.moduleCard}
+                className={`${styles.moduleCard} ${
+                  item.locked ? styles.lockedModuleCard : ""
+                }`}
+                disabled={item.locked}
                 key={item.title}
                 type="button"
                 onClick={() => handleSelectItem(item)}
               >
-                <span className={styles.cardIndex}>{String(index + 1).padStart(2, "0")}</span>
+                <span className={styles.cardIndex} aria-hidden="true">
+                  {item.locked ? "🔒" : String(index + 1).padStart(2, "0")}
+                </span>
                 <div>
                   <span className={styles.cardSubtitle}>{item.subtitle}</span>
                   <h3>{item.title}</h3>
                   <p>{item.description}</p>
                 </div>
-                <strong>Open</strong>
+                <strong>{item.locked ? "Locked" : "Open"}</strong>
               </button>
             ))}
           </div>

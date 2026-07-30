@@ -5,8 +5,8 @@ import styles from "./FunctionMapping.module.css";
 
 export const functionMappingModule = {
   title: "Function Mapping",
-  subtitle: "ผูกหน่วยงานกับบริษัท",
-  description: "กำหนดความสัมพันธ์ระหว่างบริษัท หน่วยงาน และผู้รับผิดชอบด้านอบรม",
+  subtitle: "Map functions to companies",
+  description: "Define relationships between companies, functions, and training owners",
 } as const;
 
 const initialRows = [["MAP-001","ATFB","HRD","Center Admin","Active"],["MAP-002","SNF","MFG","Factory Admin","Active"],["MAP-003","NIC","QA","Factory Admin","Draft"]] as const;

@@ -6,8 +6,11 @@ import {
   type EmployeeTrainingNeedRequest,
 } from "../../../../lib/trainingRequests";
 import {
+  TRAINING_MASTER_EVENT,
+  TRAINING_MASTER_KEYS,
   TRAINING_WORKFLOW_KEYS,
   isWorkflowOwner,
+  readMasterCollection,
   readWorkflowCollection,
   writeWorkflowCollection,
   type WorkflowCourse,
@@ -15,6 +18,10 @@ import {
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import {
+  defaultInstructorRows,
+  type InstructorRecord,
+} from "../../MasterDataManagement/modules/InstructorData";
 import styles from "./TrainingOAP.module.css";
 
 export const trainingOapModule = {
@@ -95,6 +102,9 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const [openDetailId, setOpenDetailId] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | OapStatus>("all");
+  const [instructors, setInstructors] = useState<InstructorRecord[]>(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.instructors, defaultInstructorRows),
+  );
   const userCompanyCode = profileValue(user?.companyCode);
 
   useEffect(() => {
@@ -125,6 +135,20 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     return () => {
       window.removeEventListener("approved-training-need-changed", syncApprovedRequest);
     };
+  }, []);
+
+  useEffect(() => {
+    const syncInstructorMaster = () =>
+      setInstructors(
+        readMasterCollection(
+          TRAINING_MASTER_KEYS.instructors,
+          defaultInstructorRows,
+        ),
+      );
+
+    window.addEventListener(TRAINING_MASTER_EVENT, syncInstructorMaster);
+    return () =>
+      window.removeEventListener(TRAINING_MASTER_EVENT, syncInstructorMaster);
   }, []);
 
   const standardCourseIds = useMemo(
@@ -363,7 +387,22 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               <label>Participants / Group<input value={form.participants} inputMode="numeric" onChange={(event) => updateForm("participants", event.target.value)} /></label>
               <label>Training Hours<input value={form.hours} inputMode="numeric" onChange={(event) => updateForm("hours", event.target.value)} /></label>
               <label>Budget<input value={form.budget} inputMode="numeric" onChange={(event) => updateForm("budget", event.target.value)} /></label>
-              <label>Trainer Name<input value={form.trainer} onChange={(event) => updateForm("trainer", event.target.value)} /></label>
+              <label>
+                Trainer Name
+                <input
+                  list="instructor-master-options"
+                  value={form.trainer}
+                  onChange={(event) => updateForm("trainer", event.target.value)}
+                  placeholder="Select from Instructor Master or enter another name"
+                />
+                <datalist id="instructor-master-options">
+                  {instructors.map((instructor) => {
+                    const fullName = `${instructor.firstName} ${instructor.lastName}`.trim();
+                    return <option key={instructor.id} value={fullName}>{instructor.education}</option>;
+                  })}
+                </datalist>
+                <small>Select an existing instructor or type an external instructor name.</small>
+              </label>
               <label>Institute / Provider<input value={form.provider} onChange={(event) => updateForm("provider", event.target.value)} /></label>
             </div>
             {selectedCourse ? (

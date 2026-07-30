@@ -322,7 +322,7 @@ export default function TrainingPlanManagement() {
         </p>
       ) : null}
       {application}
-      <div className={styles.demoBadge}>ข้อมูลตัวอย่างสำหรับการพัฒนา</div>
+      <div className={styles.demoBadge}>Development sample data</div>
     </AuthenticatedUserProvider>
   );
 }

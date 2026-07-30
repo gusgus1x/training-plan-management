@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  formatRollingPlanCompanies,
   initialRollingPlans,
   monthOptions,
   type RollingPlan,
@@ -21,7 +22,7 @@ import styles from "./ScheduleCalendar.module.css";
 export const scheduleCalendarModule = {
   title: "Schedule calendar",
   subtitle: "Training schedule",
-  description: "แสดงรายละเอียดการอบรมรายเดือนจากข้อมูล Training Rolling",
+  description: "Show monthly training details from Training Rolling data",
 } as const;
 
 const calendarMonths = monthOptions.map((month) => ({
@@ -252,7 +253,7 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
       courseCode: plan.course.code,
       courseName: plan.course.name,
       time: `${plan.startTime}-${plan.endTime}`,
-      company: plan.company,
+      company: formatRollingPlanCompanies(plan),
     })),
   );
   const emailPeriodLabel = selectedMonth === "all" ? selectedYear : `${selectedMonthDetail?.label} ${selectedYear}`;
@@ -605,7 +606,7 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
                           key={plan.rollingId}
                         >
                           <strong>{plan.course.name}</strong>
-                          <small>{plan.startTime}-{plan.endTime} / {plan.company}</small>
+                          <small>{plan.startTime}-{plan.endTime} / {formatRollingPlanCompanies(plan)}</small>
                           <button type="button" onClick={() => handleEditPlan(plan)}>
                             Edit
                           </button>
@@ -624,7 +625,7 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
         <header>
           <div>
             <p className={styles.panelKicker}>Course overview</p>
-            <h3>มีอบรมอะไรบ้าง</h3>
+            <h3>What training is available</h3>
           </div>
           <span>{selectedMonth === "all" ? selectedYear : displayedMonths[0]?.label}</span>
         </header>
@@ -662,7 +663,7 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
                         <time dateTime={plan.trainingDate}>{Number(plan.trainingDate.slice(8, 10))}</time>
                         <div>
                           <span>{plan.course.name}</span>
-                          <small>{plan.startTime}-{plan.endTime} / {plan.company}</small>
+                          <small>{plan.startTime}-{plan.endTime} / {formatRollingPlanCompanies(plan)}</small>
                         </div>
                         <strong>{plan.course.courseGroup}</strong>
                         <button
@@ -698,7 +699,7 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
                             </div>
                             <div>
                               <dt>Company</dt>
-                              <dd>{plan.company}</dd>
+                              <dd>{formatRollingPlanCompanies(plan)}</dd>
                             </div>
                             <div>
                               <dt>Trainer</dt>

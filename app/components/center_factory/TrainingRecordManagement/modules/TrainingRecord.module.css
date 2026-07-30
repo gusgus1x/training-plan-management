@@ -2,7 +2,7 @@
   width: min(1180px, calc(100% - 48px));
   margin: 0 auto;
   padding: 8px 0 48px;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.88rem;
 }
 
@@ -11,9 +11,9 @@
 .toolbar,
 .listPanel,
 .formPanel {
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
 }
 
@@ -32,12 +32,12 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 5px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
 }
 
 .kicker {
   margin: 0 0 6px;
-  color: #007a3d;
+  color: var(--ui-30-primary);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -46,7 +46,7 @@
 .hero h2,
 .panelHeader h3 {
   margin: 0;
-  color: #111827;
+  color: var(--ui-30-ink);
   letter-spacing: 0;
 }
 
@@ -58,7 +58,7 @@
 .hero p {
   max-width: 680px;
   margin: 8px 0 0;
-  color: #66758b;
+  color: var(--ui-30-muted);
   font-size: 0.82rem;
   line-height: 1.45;
 }
@@ -73,10 +73,10 @@
 .heroMeta span,
 .panelHeader > span,
 .panelActions span {
-  border: 1px solid #dbe4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 999px;
-  background: #f8fafc;
-  color: #26364d;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-text);
   font-size: 0.68rem;
   font-weight: 900;
   line-height: 1;
@@ -97,7 +97,7 @@
 
 .summaryCard span {
   display: block;
-  color: #65758b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -106,7 +106,7 @@
 .summaryCard strong {
   display: block;
   margin-top: 5px;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 1.36rem;
   line-height: 1;
 }
@@ -134,10 +134,10 @@
 .formGrid select,
 .formGrid textarea {
   min-height: 36px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #172033;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   font: inherit;
   font-size: 0.8rem;
   padding: 8px 10px;
@@ -149,14 +149,14 @@
 .formGrid input:focus,
 .formGrid select:focus,
 .formGrid textarea:focus {
-  border-color: #007a3d;
+  border-color: var(--ui-30-primary);
   box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
 }
 
 .formGrid input:disabled,
 .formGrid select:disabled,
 .formGrid textarea:disabled {
-  background: #f7f9fc;
+  background: var(--ui-60-surface-soft);
   color: #43526a;
   opacity: 1;
 }
@@ -182,17 +182,17 @@
 
 .primaryButton {
   border: 0;
-  background: #d71920;
-  color: #ffffff;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
   box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
 }
 
 .secondaryButton,
 .detailButton,
 .closeButton {
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #26364d;
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
 }
 
 .dangerButton {
@@ -213,7 +213,7 @@
 .detailButton:hover,
 .closeButton:hover {
   border-color: #8aa4cc;
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
 }
 
 .primaryButton:disabled,
@@ -254,9 +254,9 @@
 
 .tableWrap {
   overflow-x: auto;
-  border: 1px solid #dbe4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
 }
 
 .recordTable {
@@ -267,15 +267,15 @@
 
 .recordTable th,
 .recordTable td {
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--ui-30-border);
   padding: 10px 12px;
   text-align: left;
   vertical-align: top;
 }
 
 .recordTable th {
-  background: #f8fafc;
-  color: #65758b;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
   font-size: 0.66rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -283,16 +283,16 @@
 
 .recordTable tr:hover td,
 .selectedRow td {
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
 }
 
 .selectedRow td:first-child {
-  box-shadow: inset 3px 0 0 #d71920;
+  box-shadow: inset 3px 0 0 var(--ui-10-accent);
 }
 
 .recordTable td strong {
   display: block;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 0.84rem;
   line-height: 1.25;
 }
@@ -300,12 +300,12 @@
 .recordTable td span {
   display: block;
   margin-top: 4px;
-  color: #65758b;
+  color: var(--ui-30-muted);
   font-size: 0.74rem;
 }
 
 .detailRow td {
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
   padding: 0;
 }
 
@@ -315,8 +315,8 @@
 
 .inlinePanel .formPanel,
 .topDropPanel .formPanel {
-  border-color: #cbdcf3;
-  background: #fbfdff;
+  border-color: var(--ui-30-primary-border);
+  background: var(--ui-60-surface-soft);
   box-shadow: none;
 }
 
@@ -336,8 +336,8 @@
 }
 
 .statusInprogress {
-  background: #eff6ff;
-  color: #2458b8;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
 }
 
 .statusPendingevidence {
@@ -346,7 +346,7 @@
 }
 
 .statusFailed {
-  background: #fff1f2;
+  background: var(--ui-10-accent-soft);
   color: #be123c;
 }
 
@@ -364,7 +364,7 @@
 .formGrid label {
   display: grid;
   gap: 5px;
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.76rem;
   font-weight: 900;
 }
@@ -443,9 +443,9 @@
   gap: 16px;
   align-items: end;
   margin-bottom: 14px;
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
   padding: 14px 18px;
 }
@@ -455,13 +455,13 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
 .actualCoursePickerPanel h3 {
   margin: 0;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 1.05rem;
   line-height: 1.2;
 }
@@ -469,7 +469,7 @@
 .actualCoursePickerPanel > div > span {
   display: block;
   margin-top: 6px;
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.8rem;
   font-weight: 800;
   line-height: 1.35;
@@ -481,15 +481,18 @@
 }
 
 .actualSelectorFirstPanel .courseSelectorControls {
-  grid-template-columns: minmax(150px, 0.32fr) minmax(260px, 1fr);
+  grid-template-columns:
+    minmax(140px, 0.28fr)
+    minmax(230px, 0.72fr)
+    minmax(280px, 1fr);
 }
 
 .actualMainPanel,
 .actualCostPanel {
   min-width: 0;
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 18px 42px rgba(24, 36, 56, 0.1);
   padding: 18px;
 }
@@ -508,7 +511,7 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
@@ -529,11 +532,11 @@
   gap: 16px;
   align-items: end;
   margin-bottom: 14px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
   background:
     linear-gradient(90deg, rgba(240, 253, 244, 0.92), rgba(255, 255, 255, 0.98) 46%),
-    #ffffff;
+    var(--ui-60-surface);
   padding: 16px;
 }
 
@@ -545,15 +548,15 @@
   gap: 12px 16px;
   align-items: end;
   margin-bottom: 12px;
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 12px 14px 12px 18px;
 }
 
 .actualCompactHeader h3 {
   margin: 0;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 1rem;
   line-height: 1.25;
 }
@@ -561,7 +564,7 @@
 .actualCompactHeader > div > span {
   display: block;
   margin-top: 4px;
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.76rem;
   font-weight: 800;
   line-height: 1.35;
@@ -586,9 +589,9 @@
   min-height: 64px;
   min-width: 0;
   align-content: center;
-  border: 1px solid #dbe4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 10px 22px rgba(24, 36, 56, 0.06);
   padding: 10px 12px 10px 14px;
 }
@@ -596,7 +599,7 @@
 .actualMiniStats span {
   display: block;
   overflow: hidden;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.66rem;
   font-weight: 900;
   line-height: 1;
@@ -608,7 +611,7 @@
 .actualMiniStats strong {
   display: block;
   margin-top: 5px;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 0.92rem;
   font-weight: 900;
   line-height: 1.15;
@@ -617,7 +620,7 @@
 
 .actualCourseBand h3 {
   margin: 0;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 1.2rem;
   line-height: 1.2;
 }
@@ -626,7 +629,7 @@
 .actualCostHeader span {
   display: block;
   margin-top: 6px;
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.8rem;
   font-weight: 800;
   line-height: 1.35;
@@ -647,7 +650,7 @@
 .actualCourseSelect {
   display: grid;
   gap: 7px;
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.76rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -657,10 +660,10 @@
 .actualCostGrid input {
   width: 100%;
   min-height: 38px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #172033;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   font: inherit;
   font-size: 0.82rem;
   font-weight: 800;
@@ -669,7 +672,7 @@
 }
 
 .actualCourseSelect select:disabled {
-  background: #f7f9fc;
+  background: var(--ui-60-surface-soft);
   color: #43526a;
   cursor: not-allowed;
   opacity: 1;
@@ -677,7 +680,7 @@
 
 .actualCourseSelect select:focus,
 .actualCostGrid input:focus {
-  border-color: #007a3d;
+  border-color: var(--ui-30-primary);
   box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
 }
 
@@ -690,22 +693,22 @@
 
 .actualCourseMeta article {
   min-height: 92px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ui-30-border);
   border-left: 3px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
   border-radius: 8px;
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
   padding: 12px;
 }
 
 .actualCourseMeta article:nth-child(2n) {
-  border-left-color: #d71920;
+  border-left-color: var(--ui-10-accent);
 }
 
 .actualCourseMeta span,
 .actualTotalBox span {
   display: block;
-  color: #65758b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -714,7 +717,7 @@
 .actualCourseMeta strong {
   display: block;
   margin-top: 6px;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 1.1rem;
   font-weight: 900;
   line-height: 1.2;
@@ -722,7 +725,7 @@
 
 .actualCourseMeta p {
   margin: 4px 0 0;
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.76rem;
   font-weight: 800;
 }
@@ -731,7 +734,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #26364d;
+  color: var(--ui-30-text);
   font-size: 0.76rem;
   font-weight: 900;
   white-space: nowrap;
@@ -740,7 +743,7 @@
 .attendanceCheck input {
   width: 17px;
   height: 17px;
-  accent-color: #007a3d;
+  accent-color: var(--ui-30-primary);
 }
 
 .walkInPill {
@@ -761,13 +764,13 @@
   border-radius: 8px;
   background:
     linear-gradient(135deg, rgba(255, 241, 242, 0.96), rgba(255, 255, 255, 0.96)),
-    #ffffff;
+    var(--ui-60-surface);
   padding: 14px;
 }
 
 .actualCostHeader h3 {
   margin: 0;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 1.08rem;
   line-height: 1.2;
 }
@@ -784,7 +787,7 @@
   align-items: center;
   min-height: 52px;
   border-bottom: 1px solid #eef2f7;
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.76rem;
   font-weight: 900;
 }
@@ -808,7 +811,7 @@
 }
 
 .actualTotalBox strong {
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 1.4rem;
   font-weight: 900;
   line-height: 1;
@@ -820,8 +823,8 @@
   margin-top: 12px;
   border: 0;
   border-radius: 8px;
-  background: #d71920;
-  color: #ffffff;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
   cursor: pointer;
   font: inherit;
   font-size: 0.82rem;
@@ -902,9 +905,9 @@
   position: relative;
   overflow: hidden;
   min-height: 76px;
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
   padding: 12px 14px 12px 16px;
 }
@@ -920,14 +923,14 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
 .recordOverviewGrid span,
 .recordMetricGrid span {
   display: block;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -937,7 +940,7 @@
 .recordMetricGrid strong {
   display: block;
   margin-top: 7px;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 1.16rem;
   font-weight: 900;
   line-height: 1;
@@ -961,9 +964,9 @@
 .evaluationDownloadPanel {
   position: relative;
   overflow: hidden;
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
 }
 
@@ -990,7 +993,7 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
@@ -1021,8 +1024,8 @@
   align-content: center;
   border: 1px dashed #b8c6d8;
   border-radius: 8px;
-  background: #fbfdff;
-  color: #526176;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-text);
   cursor: pointer;
   padding: 14px 16px;
 }
@@ -1030,7 +1033,7 @@
 .importDropBox span,
 .importPreview span {
   display: block;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -1039,14 +1042,14 @@
 .importDropBox strong,
 .importPreview strong {
   display: block;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 0.96rem;
   font-weight: 900;
   line-height: 1.25;
 }
 
 .importDropBox small {
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.74rem;
   font-weight: 800;
   line-height: 1.45;
@@ -1063,9 +1066,9 @@
   display: grid;
   gap: 10px;
   align-content: center;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 14px;
 }
 
@@ -1073,8 +1076,8 @@
   min-height: 38px;
   border: 0;
   border-radius: 8px;
-  background: #d71920;
-  color: #ffffff;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
   cursor: pointer;
   font: inherit;
   font-size: 0.76rem;
@@ -1090,16 +1093,16 @@
 }
 
 .importCourseList article {
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   padding: 10px 12px;
 }
 
 .importCourseList strong {
   display: block;
   overflow: hidden;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 0.84rem;
   font-weight: 900;
   text-overflow: ellipsis;
@@ -1110,7 +1113,7 @@
   display: block;
   overflow: hidden;
   margin-top: 5px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.74rem;
   font-weight: 800;
   text-overflow: ellipsis;
@@ -1122,13 +1125,13 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
 .courseSelectPanel h3 {
   margin: 0;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 1.05rem;
   line-height: 1.2;
 }
@@ -1136,7 +1139,7 @@
 .courseSelectPanel label {
   display: grid;
   gap: 6px;
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.72rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -1144,7 +1147,10 @@
 
 .courseSelectorControls {
   display: grid;
-  grid-template-columns: minmax(150px, 0.34fr) minmax(260px, 1fr);
+  grid-template-columns:
+    minmax(140px, 0.28fr)
+    minmax(230px, 0.72fr)
+    minmax(280px, 1fr);
   gap: 10px;
   align-items: end;
 }
@@ -1152,10 +1158,10 @@
 .courseSelectPanel select {
   width: 100%;
   min-height: 40px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #172033;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   font: inherit;
   font-size: 0.84rem;
   font-weight: 900;
@@ -1164,25 +1170,25 @@
 }
 
 .courseSelectPanel select:disabled {
-  background: #f7f9fc;
+  background: var(--ui-60-surface-soft);
   color: #43526a;
   cursor: not-allowed;
   opacity: 1;
 }
 
 .courseSelectPanel select:focus {
-  border-color: #007a3d;
+  border-color: var(--ui-30-primary);
   box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
 }
 
 .emptyState {
   margin: 0;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%) 1;
+  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
   border-radius: 8px;
-  background: #ffffff;
-  color: #334155;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
   font-size: 0.86rem;
   font-weight: 800;
   line-height: 1.6;
@@ -1200,10 +1206,10 @@
   appearance: none;
   display: grid;
   gap: 5px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #172033;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   cursor: pointer;
   font: inherit;
   padding: 12px;
@@ -1217,14 +1223,14 @@
 
 .completedCourseButton span,
 .activeCompletedCourse span {
-  color: #007a3d;
+  color: var(--ui-30-primary);
   font-size: 0.68rem;
   font-weight: 900;
 }
 
 .completedCourseButton strong,
 .activeCompletedCourse strong {
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 0.88rem;
   font-weight: 900;
   line-height: 1.25;
@@ -1232,7 +1238,7 @@
 
 .completedCourseButton small,
 .activeCompletedCourse small {
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.72rem;
   font-weight: 800;
 }
@@ -1255,7 +1261,7 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
@@ -1267,9 +1273,9 @@
 
 .courseExcelTableWrap {
   overflow-x: auto;
-  border: 1px solid #dbe4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
 }
 
 .courseExcelTable {
@@ -1280,7 +1286,7 @@
 
 .courseExcelTable th,
 .courseExcelTable td {
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--ui-30-border);
   padding: 10px 12px;
   text-align: left;
   vertical-align: middle;
@@ -1288,21 +1294,21 @@
 }
 
 .courseExcelTable th {
-  background: #f8fafc;
-  color: #64748b;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
   font-size: 0.66rem;
   font-weight: 900;
   text-transform: uppercase;
 }
 
 .courseExcelTable td {
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.78rem;
   font-weight: 800;
 }
 
 .courseExcelTable tbody tr:hover td {
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
 }
 
 .costBreakdownGrid {
@@ -1315,9 +1321,9 @@
   position: relative;
   overflow: hidden;
   min-height: 62px;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   padding: 10px 11px 10px 14px;
 }
 
@@ -1326,14 +1332,14 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
 .costBreakdownGrid span {
   display: block;
   overflow: hidden;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.66rem;
   font-weight: 900;
   text-overflow: ellipsis;
@@ -1344,7 +1350,7 @@
 .costBreakdownGrid strong {
   display: block;
   margin-top: 7px;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 0.88rem;
   font-weight: 900;
   line-height: 1.15;
@@ -1364,9 +1370,9 @@
   position: relative;
   overflow: hidden;
   min-height: 70px;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   padding: 10px 12px 10px 15px;
 }
 
@@ -1375,14 +1381,14 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
 .companyBreakdownGrid span,
 .companyBreakdownGrid small {
   display: block;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.66rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -1391,7 +1397,7 @@
 .companyBreakdownGrid strong {
   display: block;
   margin: 7px 0 4px;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 1.18rem;
   font-weight: 900;
   line-height: 1;
@@ -1406,7 +1412,7 @@
 
 .completedCourseHero h3 {
   margin: 0;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 1.18rem;
   line-height: 1.2;
 }
@@ -1414,7 +1420,7 @@
 .completedCourseHero span {
   display: block;
   margin-top: 6px;
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.8rem;
   font-weight: 800;
 }
@@ -1425,7 +1431,7 @@
   border: 1px solid rgba(215, 25, 32, 0.2);
   border-radius: 999px;
   background: #fff7f8;
-  color: #d71920;
+  color: var(--ui-10-accent);
   cursor: pointer;
   font: inherit;
   font-size: 0.76rem;
@@ -1446,15 +1452,15 @@
 }
 
 .systemSourceBadge {
-  border: 1px solid #d7e7dd;
-  background: #f1fbf5;
-  color: #007a3d;
+  border: 1px solid var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
 }
 
 .uploadSourceBadge {
-  border: 1px solid #ffc7ce;
-  background: #fff1f2;
-  color: #d71920;
+  border: 1px solid var(--ui-10-accent-border);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
 }
 
 .recordChartGrid {
@@ -1473,14 +1479,14 @@
 
 .chartPanel h3 {
   margin: 0;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 1rem;
 }
 
 .chartPanel span {
   display: block;
   margin-top: 6px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.78rem;
   font-weight: 800;
 }
@@ -1492,8 +1498,8 @@
   place-items: center;
   border-radius: 50%;
   background:
-    radial-gradient(circle at center, #ffffff 0 57%, transparent 58%),
-    conic-gradient(#007a3d var(--value), #e5e7eb 0);
+    radial-gradient(circle at center, var(--ui-60-surface) 0 57%, transparent 58%),
+    conic-gradient(var(--ui-30-primary) var(--value), #e5e7eb 0);
 }
 
 .donutChart strong,
@@ -1503,14 +1509,14 @@
 
 .donutChart strong {
   margin-top: -10px;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 1.12rem;
   font-weight: 900;
 }
 
 .donutChart span {
   margin-top: 26px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
 }
@@ -1531,15 +1537,15 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #fbfdff;
+  background: var(--ui-60-surface-soft);
   padding: 10px;
 }
 
 .companyDownloadGrid span {
   display: block;
-  color: #007a3d;
+  color: var(--ui-30-primary);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -1548,7 +1554,7 @@
 .companyDownloadGrid strong {
   display: block;
   margin-top: 4px;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 0.82rem;
   font-weight: 900;
   line-height: 1.2;
@@ -1559,7 +1565,7 @@
   border: 1px solid rgba(215, 25, 32, 0.2);
   border-radius: 999px;
   background: #fff7f8;
-  color: #d71920;
+  color: var(--ui-10-accent);
   cursor: pointer;
   font: inherit;
   font-size: 0.72rem;
@@ -1575,9 +1581,9 @@
 
 .companyAccordion {
   overflow: hidden;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
 }
 
 .companyAccordion summary {
@@ -1600,7 +1606,7 @@
 
 .companyAccordion summary span {
   display: block;
-  color: #007a3d;
+  color: var(--ui-30-primary);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -1609,7 +1615,7 @@
 .companyAccordion summary strong {
   display: block;
   margin-top: 4px;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 0.88rem;
   font-weight: 900;
 }
@@ -1619,7 +1625,7 @@
   border: 1px solid rgba(215, 25, 32, 0.2);
   border-radius: 999px;
   background: #fff7f8;
-  color: #d71920;
+  color: var(--ui-10-accent);
   cursor: pointer;
   font: inherit;
   font-size: 0.72rem;
@@ -1631,8 +1637,8 @@
 .companyAttendeeList {
   display: grid;
   gap: 8px;
-  border-top: 1px solid #edf2f7;
-  background: #fbfdff;
+  border-top: 1px solid var(--ui-60-canvas);
+  background: var(--ui-60-surface-soft);
   padding: 10px;
 }
 
@@ -1641,9 +1647,9 @@
   grid-template-columns: minmax(0, 1fr) auto auto auto;
   gap: 10px;
   align-items: center;
-  border: 1px solid #e5ebf2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 9px 10px;
 }
 
@@ -1654,7 +1660,7 @@
 .companyAttendeeList article strong {
   display: block;
   overflow: hidden;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 0.84rem;
   font-weight: 900;
   text-overflow: ellipsis;
@@ -1665,7 +1671,7 @@
   display: block;
   overflow: hidden;
   margin-top: 4px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.74rem;
   font-weight: 800;
   text-overflow: ellipsis;

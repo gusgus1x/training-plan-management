@@ -17,7 +17,7 @@
   position: absolute;
   inset: 0 0 auto;
   height: 3px;
-  background: linear-gradient(90deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(90deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   content: "";
 }
 
@@ -37,6 +37,71 @@
   min-height: 56px;
 }
 
+.topActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+}
+
+.languageSwitcher {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 3px;
+  height: 30px;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ui-30-ink);
+  padding: 3px 4px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.languageDivider {
+  color: rgba(17, 24, 39, 0.48);
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1;
+}
+
+.languageButton,
+.activeLanguage {
+  box-sizing: border-box;
+  min-width: 30px;
+  height: 24px;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+  padding: 0;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.languageButton {
+  background: transparent;
+  color: var(--ui-30-ink);
+}
+
+.activeLanguage {
+  background: rgba(17, 24, 39, 0.09);
+  color: var(--ui-30-ink);
+  box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.06);
+}
+
+.languageButton:hover,
+.activeLanguage:hover {
+  background: rgba(17, 24, 39, 0.12);
+  color: var(--ui-30-ink);
+}
+
 .brand,
 .brandButton {
   display: inline-flex;
@@ -54,7 +119,7 @@
 }
 
 .brandButton:hover .groupName {
-  color: #d71920;
+  color: var(--ui-10-accent);
 }
 
 .brandLogo {
@@ -65,7 +130,7 @@
 }
 
 .groupName {
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0.02em;
@@ -145,7 +210,7 @@
 }
 
 .contextTitle span {
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 10px;
   font-weight: 900;
   text-transform: uppercase;
@@ -153,7 +218,7 @@
 
 .contextTitle strong {
   overflow: hidden;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 13px;
   font-weight: 900;
   line-height: 1.1;
@@ -175,7 +240,8 @@
 }
 
 .contextItem,
-.activeContextItem {
+.activeContextItem,
+.lockedContextItem {
   min-height: 32px;
   border-radius: 8px;
   cursor: pointer;
@@ -194,13 +260,26 @@
 .contextItem {
   border: 1px solid rgba(219, 228, 239, 0.72);
   background: rgba(255, 255, 255, 0.68);
-  color: #26364d;
+  color: var(--ui-30-text);
 }
 
 .activeContextItem {
   border: 1px solid rgba(215, 25, 32, 0.24);
   background: rgba(255, 241, 242, 0.86);
-  color: #d71920;
+  color: var(--ui-10-accent);
+}
+
+.lockedContextItem {
+  border: 1px dashed rgba(100, 116, 139, 0.4);
+  background: rgba(226, 232, 240, 0.58);
+  color: var(--ui-30-muted);
+  cursor: not-allowed;
+  opacity: 0.78;
+}
+
+.contextLock {
+  margin-right: 5px;
+  font-size: 10px;
 }
 
 .contextItem:hover,
@@ -216,7 +295,7 @@
   place-items: center;
   border-radius: 8px;
   background: rgba(255, 241, 242, 0.86);
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 12px;
   font-weight: 900;
 }
@@ -237,14 +316,14 @@
 }
 
 .userLabel {
-  color: #d71920;
+  color: var(--ui-10-accent);
   font-size: 11px;
   font-weight: 900;
   white-space: nowrap;
 }
 
 .userValue {
-  color: #111827;
+  color: var(--ui-30-ink);
   font-size: 12px;
   font-weight: 900;
   overflow: hidden;
@@ -257,7 +336,7 @@
   border: 1px solid rgba(254, 202, 202, 0.44);
   border-radius: 8px;
   background: rgba(215, 25, 32, 0.82);
-  color: #ffffff;
+  color: var(--ui-60-surface);
   cursor: pointer;
   font-size: 13px;
   font-weight: 900;
@@ -271,9 +350,9 @@
 }
 
 .logoutButton:hover {
-  border-color: #a90f16;
-  background: #d71920;
-  color: #ffffff;
+  border-color: var(--ui-10-accent-strong);
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
   box-shadow: 0 10px 22px rgba(215, 25, 32, 0.22);
   transform: translateY(-1px);
 }
@@ -282,8 +361,11 @@
 .logoutButton:focus-visible,
 .backButton:focus-visible,
 .contextItem:focus-visible,
-.activeContextItem:focus-visible {
-  outline: 3px solid rgba(37, 99, 235, 0.24);
+.activeContextItem:focus-visible,
+.lockedContextItem:focus-visible,
+.languageButton:focus-visible,
+.activeLanguage:focus-visible {
+  outline: 3px solid var(--ui-focus-ring);
   outline-offset: 3px;
 }
 
@@ -291,6 +373,16 @@
   .topBar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .topActions {
+    width: 100%;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .languageSwitcher {
+    align-self: flex-end;
   }
 
   .userArea {
@@ -359,12 +451,12 @@
 
 .scrolledNavbar {
   border-bottom-color: rgba(255, 255, 255, 0.1);
-  background: rgba(12, 18, 28, 0.9);
+  background: #111827;
   box-shadow: 0 12px 30px rgba(2, 6, 23, 0.26);
 }
 
 .scrolledNavbar .groupName {
-  color: #f8fafc;
+  color: var(--ui-60-surface-soft);
 }
 
 .scrolledNavbar .userInfo {
@@ -382,7 +474,7 @@
 .scrolledNavbar .backButton {
   border-color: rgba(203, 213, 225, 0.22);
   background: rgba(255, 255, 255, 0.14);
-  color: #f8fafc;
+  color: var(--ui-60-surface-soft);
 }
 
 .scrolledNavbar .contextTitle {
@@ -390,23 +482,29 @@
 }
 
 .scrolledNavbar .contextTitle span {
-  color: #cbd5e1;
+  color: var(--ui-30-border);
 }
 
 .scrolledNavbar .contextTitle strong,
 .scrolledNavbar .userValue {
-  color: #ffffff;
+  color: var(--ui-60-surface);
 }
 
 .scrolledNavbar .contextItem {
   border-color: rgba(219, 228, 239, 0.18);
   background: rgba(255, 255, 255, 0.14);
-  color: #e2e8f0;
+  color: var(--ui-30-border);
 }
 
 .scrolledNavbar .activeContextItem {
   background: rgba(215, 25, 32, 0.32);
   color: #fecdd3;
+}
+
+.scrolledNavbar .lockedContextItem {
+  border-color: rgba(203, 213, 225, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
 }
 
 .scrolledNavbar .avatar {
@@ -416,6 +514,31 @@
 .scrolledNavbar .logoutButton {
   border-color: rgba(254, 202, 202, 0.44);
   background: rgba(215, 25, 32, 0.82);
+  color: var(--ui-60-surface);
+}
+
+.scrolledNavbar .languageSwitcher {
+  background: transparent;
+  color: #ffffff;
+}
+
+.scrolledNavbar .languageDivider {
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.scrolledNavbar .languageButton {
+  color: #ffffff;
+}
+
+.scrolledNavbar .activeLanguage {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.scrolledNavbar .languageButton:hover,
+.scrolledNavbar .activeLanguage:hover {
+  background: rgba(255, 255, 255, 0.24);
   color: #ffffff;
 }
 

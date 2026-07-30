@@ -5,6 +5,9 @@ import InternalReport, {
   internalReportTitle,
 } from "./InternalReport";
 import ScheduleCalendar, { scheduleCalendarModule } from "./ScheduleCalendar";
+import SummaryDashboard, {
+  summaryDashboardModule,
+} from "./SummaryDashboard";
 
 export { internalReportTitle };
 export type { InternalReportDraft };
@@ -19,9 +22,11 @@ export type ReportModuleTopic = {
   subtitle: string;
   description: string;
   Component: ComponentType<ReportModuleProps>;
+  locked?: boolean;
 };
 
 export const centerReportItems: readonly ReportModuleTopic[] = [
+  { ...summaryDashboardModule, Component: SummaryDashboard },
   { ...scheduleCalendarModule, Component: ScheduleCalendar },
-  { ...internalReportModule, Component: InternalReport },
+  { ...internalReportModule, Component: InternalReport, locked: true },
 ];

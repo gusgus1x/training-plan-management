@@ -4,7 +4,7 @@
   margin: 0 auto;
   padding: 8px 0 48px;
   gap: 14px;
-  color: #172033;
+  color: var(--ui-30-ink);
   font-size: 0.88rem;
 }
 
@@ -12,9 +12,9 @@
 .workspace,
 .editorPanel,
 .tablePanel {
-  border: 1px solid #dce4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
 }
 
@@ -26,8 +26,8 @@
   overflow: hidden;
   padding: 18px 20px 18px 24px;
   background:
-    linear-gradient(90deg, #ffffff 0%, #ffffff 64%, #f1f5f9 100%),
-    #ffffff;
+    linear-gradient(90deg, var(--ui-60-surface) 0%, var(--ui-60-surface) 64%, var(--ui-60-surface-muted) 100%),
+    var(--ui-60-surface);
 }
 
 .hero::before,
@@ -38,7 +38,7 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, #007a3d 0%, #6b7280 48%, #d71920 100%);
+  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
   pointer-events: none;
 }
 
@@ -59,7 +59,7 @@
 .panelHeader span {
   display: block;
   margin: 0 0 6px;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0.05em;
@@ -69,7 +69,7 @@
 .hero h2,
 .panelHeader h3 {
   margin: 0;
-  color: #111827;
+  color: var(--ui-30-ink);
   font-weight: 900;
   letter-spacing: 0;
   line-height: 1.18;
@@ -82,7 +82,7 @@
 .hero p {
   max-width: 680px;
   margin: 8px 0 0;
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.82rem;
   line-height: 1.45;
 }
@@ -92,9 +92,9 @@
   min-width: 122px;
   align-content: center;
   justify-items: start;
-  border: 1px solid #dbeafe;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 8px;
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
   padding: 12px;
 }
 
@@ -107,7 +107,7 @@
 
 .heroMetric span {
   margin-top: 5px;
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -117,7 +117,7 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--ui-30-border);
   padding-bottom: 12px;
 }
 
@@ -128,10 +128,10 @@
 .toolbar input,
 .formGrid input {
   min-height: 36px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #172033;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
   font: inherit;
   font-size: 0.8rem;
   padding: 8px 10px;
@@ -140,7 +140,7 @@
 
 .toolbar input:focus,
 .formGrid input:focus {
-  border-color: #007a3d;
+  border-color: var(--ui-30-primary);
   box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
 }
 
@@ -170,16 +170,16 @@
 
 .newButton {
   border: 0;
-  background: #007a3d;
-  color: #ffffff;
+  background: var(--ui-30-primary);
+  color: var(--ui-60-surface);
   box-shadow: 0 8px 18px rgba(0, 122, 61, 0.16);
 }
 
 .editButton,
 .refreshButton,
 .cancelButton {
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
   color: #0f2747;
 }
 
@@ -192,8 +192,8 @@
 
 .saveButton {
   border: 0;
-  background: #d71920;
-  color: #ffffff;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
   box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
 }
 
@@ -207,7 +207,7 @@
 }
 
 .newButton:hover {
-  background: #006b35;
+  background: var(--ui-30-primary-strong);
   box-shadow: 0 12px 24px rgba(0, 122, 61, 0.22);
 }
 
@@ -215,23 +215,23 @@
 .refreshButton:hover,
 .cancelButton:hover {
   border-color: #8aa4cc;
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
 }
 
 .deleteButton:hover {
-  border-color: #d71920;
-  background: #fff1f2;
-  color: #a90f16;
+  border-color: var(--ui-10-accent);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
 }
 
 .saveButton:hover {
-  background: #a90f16;
+  background: var(--ui-10-accent-strong);
   box-shadow: 0 12px 24px rgba(215, 25, 32, 0.24);
 }
 
 .toolbar button:disabled {
-  border-color: #dbe2ec;
-  background: #f8fafc;
+  border-color: var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
   box-shadow: none;
   color: #a4afbd;
   cursor: not-allowed;
@@ -254,10 +254,10 @@
 
 .panelHeader p {
   margin: 0;
-  border: 1px solid #d7e7dd;
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
-  background: #f1fbf5;
-  color: #007a3d;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
@@ -274,7 +274,7 @@
 .formGrid label {
   display: grid;
   gap: 5px;
-  color: #526176;
+  color: var(--ui-30-text);
   font-size: 0.76rem;
   font-weight: 900;
 }
@@ -284,14 +284,14 @@
   justify-content: flex-end;
   gap: 8px;
   margin-top: 12px;
-  border-top: 1px solid #e5ebf2;
+  border-top: 1px solid var(--ui-30-border);
   padding-top: 12px;
 }
 
 .tableWrap {
-  border: 1px solid #dbe4ef;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   overflow-x: auto;
 }
 
@@ -303,15 +303,15 @@
 
 .functionTable th,
 .functionTable td {
-  border-bottom: 1px solid #e5ebf2;
+  border-bottom: 1px solid var(--ui-30-border);
   padding: 11px 12px;
   text-align: left;
   vertical-align: middle;
 }
 
 .functionTable th {
-  background: #f8fafc;
-  color: #65758b;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
   font-size: 0.66rem;
   font-weight: 900;
   text-transform: uppercase;
@@ -329,11 +329,11 @@
 
 .functionTable tbody tr:hover td,
 .selectedRow td {
-  background: #f8fbff;
+  background: var(--ui-60-surface-soft);
 }
 
 .selectedRow td:first-child {
-  box-shadow: inset 3px 0 0 #d71920;
+  box-shadow: inset 3px 0 0 var(--ui-10-accent);
 }
 
 .codePill {
@@ -341,7 +341,7 @@
   min-width: 86px;
   justify-content: center;
   border-radius: 999px;
-  background: #eef4ff;
+  background: var(--ui-30-primary-soft);
   color: #0f2747;
   font-size: 0.7rem;
   font-weight: 900;

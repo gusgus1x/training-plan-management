@@ -9,7 +9,10 @@ import {
   type WorkflowRegistration,
 } from "../../lib/trainingWorkflow";
 import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext";
-import type { RollingPlan } from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
+import {
+  getRollingPlanCompanies,
+  type RollingPlan,
+} from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
 import ModuleHeader from "./ModuleHeader";
 import styles from "./UserDashboard.module.css";
 
@@ -126,7 +129,7 @@ export default function RegisterTrainingModule() {
         .filter(
           (plan) =>
             plan.status === "Planned" &&
-            (plan.company === "All Companies" || plan.company === employeeCompany),
+            getRollingPlanCompanies(plan).includes(employeeCompany),
         )
         .sort((a, b) => a.trainingDate.localeCompare(b.trainingDate))
         .map((plan) => {

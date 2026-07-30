@@ -5,8 +5,8 @@ import styles from "./TrainingResultReport.module.css";
 
 export const trainingResultReportModule = {
   title: "Keep Pre/Post Test and Evaluation",
-  subtitle: "ผลทดสอบและประเมิน",
-  description: "รายงานผล Pre/Post Test และ Evaluation แยกตามหลักสูตร บริษัท และช่วงเวลา",
+  subtitle: "Test and evaluation results",
+  description: "Test and evaluation results by course, company, and date range",
 } as const;
 
 export const resultReportTitle = trainingResultReportModule.title;
