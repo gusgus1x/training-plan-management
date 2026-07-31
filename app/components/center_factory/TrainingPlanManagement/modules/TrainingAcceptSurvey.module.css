@@ -77,11 +77,10 @@
 .controlPanel {
   display: grid;
   grid-template-columns:
-    minmax(0, 0.85fr)
-    minmax(0, 0.6fr)
-    minmax(0, 1.1fr)
-    minmax(0, 1.35fr)
-    minmax(0, 0.9fr);
+    minmax(170px, 0.85fr)
+    minmax(140px, 0.65fr)
+    minmax(220px, 1.15fr)
+    minmax(270px, 1.35fr);
   gap: 10px;
   align-items: end;
   padding: 14px;
@@ -160,6 +159,33 @@
   color: var(--ui-30-muted);
   font-size: 0.76rem;
   font-weight: 800;
+}
+
+.scopeCard {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px 14px;
+  min-height: 42px;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-30-primary-soft);
+  padding: 9px 12px;
+}
+
+.scopeCard span {
+  flex: 0 0 auto;
+  color: var(--ui-30-primary);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.scopeCard strong {
+  color: var(--ui-30-ink);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .coursePanel {
@@ -291,6 +317,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
   min-width: 0;
 }
@@ -307,30 +334,50 @@
   white-space: nowrap;
 }
 
-.saveParticipantsButton {
-  min-height: 32px;
-  border: 1px solid var(--ui-10-accent);
-  border-radius: 8px;
-  background: var(--ui-10-accent);
-  color: var(--ui-60-surface);
+.saveParticipantsButton,
+.exportAttendanceButton {
+  min-height: 40px;
+  border-radius: 10px;
   cursor: pointer;
   font: inherit;
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 900;
-  padding: 7px 12px;
+  padding: 8px 13px;
   white-space: nowrap;
   transition:
     background 140ms ease,
     border-color 140ms ease,
+    box-shadow 140ms ease,
+    color 140ms ease,
     opacity 140ms ease;
 }
 
-.saveParticipantsButton:hover {
-  background: var(--ui-10-accent-strong);
-  border-color: var(--ui-10-accent-strong);
+.saveParticipantsButton {
+  border: 1px solid var(--ui-10-accent);
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
 }
 
-.saveParticipantsButton:disabled {
+.saveParticipantsButton:hover:not(:disabled) {
+  background: var(--ui-10-accent-strong);
+  border-color: var(--ui-10-accent-strong);
+  box-shadow: var(--ui-shadow-sm);
+}
+
+.exportAttendanceButton {
+  border: 1px solid var(--ui-30-primary);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-primary);
+}
+
+.exportAttendanceButton:hover:not(:disabled) {
+  background: var(--ui-30-primary);
+  color: var(--ui-60-surface);
+  box-shadow: var(--ui-shadow-sm);
+}
+
+.saveParticipantsButton:disabled,
+.exportAttendanceButton:disabled {
   cursor: not-allowed;
   opacity: 0.45;
 }
@@ -530,7 +577,7 @@
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  overflow-x: hidden;
+  overflow-x: auto;
   overflow-y: hidden;
   border: 1px solid var(--ui-30-border);
   border-radius: 8px;
@@ -549,7 +596,7 @@
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  overflow-x: hidden;
+  overflow-x: auto;
   overflow-y: hidden;
   border: 1px solid var(--ui-30-border);
   border-radius: 8px;
@@ -622,14 +669,14 @@
   min-width: 0;
   border: 1px solid var(--ui-30-border);
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  border-image: var(--ui-card-edge) 1;
   border-radius: 8px;
   background: var(--ui-60-surface);
   padding: 9px 10px;
 }
 
 .employeeRow:nth-child(2n) {
-  border-left-color: var(--ui-30-primary);
+  border-left-color: var(--ui-30-border);
 }
 
 .targetEmployeeLine {
@@ -787,7 +834,7 @@
   align-items: end;
   border: 1px solid var(--ui-30-border);
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  border-image: var(--ui-card-edge) 1;
   border-radius: 8px;
   background: var(--ui-60-surface-soft);
   padding: 12px;
@@ -1029,6 +1076,16 @@
   .actionCell {
     justify-content: start;
   }
+
+  .participantActions {
+    justify-content: flex-start;
+  }
+
+  .scopeCard {
+    grid-column: auto;
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 /* Unified Training Record visual alignment */
@@ -1087,7 +1144,8 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
+  background: var(--ui-card-edge);
+  box-shadow: var(--ui-card-edge-shadow);
   pointer-events: none;
 }
 

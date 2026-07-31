@@ -251,7 +251,7 @@
   border-radius: 8px;
   background: var(--ui-60-surface);
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  border-image: var(--ui-card-edge) 1;
   margin-top: 12px;
   padding: 12px;
 }
@@ -563,7 +563,8 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
+  background: var(--ui-card-edge);
+  box-shadow: var(--ui-card-edge-shadow);
   pointer-events: none;
 }
 

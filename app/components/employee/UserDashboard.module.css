@@ -1,12 +1,12 @@
 .page {
   min-height: 100vh;
   overflow-x: clip;
-  background: #2f343b;
+  background: var(--ui-60-canvas);
   color: var(--ui-30-ink);
 }
 
 .workspace {
-  width: min(1120px, calc(100% - 32px));
+  width: min(1240px, calc(100% - 32px));
   margin: 0 auto;
   padding: 24px 0 56px;
 }
@@ -18,10 +18,11 @@
 .modulePage,
 .employeeListPanel,
 .historyPanel {
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  border-radius: 8px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-xl);
   background: var(--ui-60-surface);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
+  box-shadow: var(--ui-shadow-md);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .topRow {
@@ -402,28 +403,24 @@
   gap: 14px;
   min-height: 156px;
   align-content: start;
-  border: 1.5px solid rgba(15, 23, 42, 0.22);
-  border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
-  border-radius: 8px;
+  border: 1px solid var(--ui-30-border);
+  border-left: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-xl);
   background: var(--ui-60-surface);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--ui-card-shadow);
   color: var(--ui-30-ink);
   cursor: pointer;
   font: inherit;
   padding: 18px 20px;
   text-align: left;
-  transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .moduleCard:hover {
-  border-color: rgba(215, 25, 32, 0.68);
+  border-color: var(--ui-30-border);
+  border-left-color: var(--ui-30-border);
   background: var(--ui-60-surface-soft);
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+  box-shadow: var(--ui-card-shadow-hover);
   transform: translateY(-2px);
 }
 
@@ -581,10 +578,9 @@
 
 .courseDetailGrid div {
   min-height: 68px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-left: 3px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
-  border-radius: 8px;
+  border: 1px solid var(--ui-30-border);
+  border-left: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
   background: var(--ui-60-surface);
   padding: 12px 14px;
 }
@@ -1225,10 +1221,9 @@
 
 .recordReasonBox,
 .recordEmpty {
-  border: 1px solid rgba(215, 25, 32, 0.18);
-  border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
-  border-radius: 8px;
+  border: 1px solid var(--ui-10-accent-border);
+  border-left: 4px solid var(--ui-10-accent);
+  border-radius: var(--ui-radius-md);
   background: var(--ui-10-accent-soft);
   color: var(--ui-30-ink);
   padding: 12px;
@@ -1628,8 +1623,8 @@
 }
 
 .savedReportList article {
-  border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  border-left: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
   background: var(--ui-60-surface);
 }
 
@@ -1726,14 +1721,14 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
   border: 1px solid var(--ui-30-border);
-  border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  border-left: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
   background: var(--ui-60-surface);
   box-shadow: none;
 }
 
 .registerWorkspace .trainingItem:nth-child(2n) {
-  border-left-color: var(--ui-10-accent);
+  border-left-color: var(--ui-30-border);
 }
 
 .registerWorkspace .activeTrainingItem {
@@ -1954,9 +1949,9 @@
 .workspace {
   position: relative;
   isolation: isolate;
-  width: min(1180px, calc(100% - 48px)) !important;
+  width: min(1240px, calc(100% - 32px)) !important;
   margin: 0 auto !important;
-  padding: 22px 0 56px;
+  padding: 24px 0 56px;
 }
 
 .workspace::before {
@@ -1965,10 +1960,10 @@
   z-index: -1;
   top: 0;
   right: 50%;
-  height: 136px;
+  height: 120px;
   left: 50%;
   width: 100vw;
-  background: var(--ui-30-primary-strong);
+  background: linear-gradient(180deg, var(--ui-30-primary-soft) 0%, transparent 100%);
   pointer-events: none;
   transform: translateX(-50%);
 }
@@ -1984,8 +1979,8 @@
   font-size: 0.68rem;
   font-weight: 900;
   line-height: 1;
-  margin-bottom: 10px;
-  padding: 0 12px;
+  margin-bottom: 12px;
+  padding: 0 14px;
 }
 
 .heroPanel {
@@ -1993,8 +1988,8 @@
   overflow: hidden;
   min-height: 128px;
   margin-bottom: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 8px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-xl);
   background: var(--ui-60-surface);
   box-shadow: 0 24px 54px rgba(31, 41, 55, 0.22);
 }
@@ -2004,7 +1999,8 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
+  background: var(--ui-card-edge);
+  box-shadow: var(--ui-card-edge-shadow);
 }
 
 .heroCopy {
@@ -2043,9 +2039,9 @@
 .employeePanel,
 .calendarPanel,
 .modulePanel {
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--ui-30-border);
   background: var(--ui-60-surface);
-  box-shadow: 0 18px 42px rgba(31, 41, 55, 0.14);
+  box-shadow: var(--ui-shadow-md);
 }
 
 .topRow {
@@ -2124,15 +2120,15 @@
   gap: 14px;
   min-height: 168px;
   border: 1px solid var(--ui-30-border);
-  border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  border-left: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-xl);
   background: var(--ui-60-surface);
-  box-shadow: 0 18px 42px rgba(31, 41, 55, 0.12);
+  box-shadow: var(--ui-card-shadow);
   padding: 18px;
 }
 
 .moduleCard:nth-child(2n) {
-  border-left-color: var(--ui-10-accent);
+  border-left-color: var(--ui-30-border);
 }
 
 .moduleCard small {
@@ -2227,6 +2223,14 @@
   .calendarPanel .panelHeader {
     display: grid;
   }
+
+  .moduleGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .moduleCard {
+    width: 100%;
+  }
 }
 
 .roadmapWorkspace,
@@ -2315,13 +2319,13 @@
 }
 
 .roadmapWorkspace .roadmapGrid article {
-  border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
-  background: linear-gradient(90deg, rgba(240, 253, 244, 0.62), var(--ui-60-surface) 38%);
+  border-left: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-60-surface);
 }
 
 .roadmapWorkspace .activeRoadmapItem {
-  border-left-color: var(--ui-10-accent) !important;
+  border-left-color: var(--ui-30-border) !important;
   background: linear-gradient(90deg, rgba(255, 241, 242, 0.74), var(--ui-60-surface) 42%) !important;
 }
 
@@ -2460,11 +2464,11 @@
 .roadmapWorkspace .courseDetailPanel {
   position: sticky;
   top: 126px;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  border: 1px solid var(--ui-30-border);
+  border-left: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-lg);
   background: var(--ui-60-surface);
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.09);
+  box-shadow: var(--ui-shadow-md);
 }
 
 .roadmapWorkspace .courseDetailPanel p {
@@ -2482,8 +2486,10 @@
   display: grid;
   gap: 14px;
   padding: 18px;
-  border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  border: 1px solid var(--ui-30-border);
+  border-left: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-60-surface);
 }
 
 .requestForm label,
@@ -2543,8 +2549,10 @@
   display: grid;
   gap: 12px;
   padding: 18px;
-  border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  border: 1px solid var(--ui-30-border);
+  border-left: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-60-surface);
 }
 
 .requestEmployeeStrip,
@@ -2792,8 +2800,8 @@
 }
 
 .recordSummary article {
-  border-left: 3px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  border-left: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
 }
 
 .recordFilters {
@@ -2810,25 +2818,25 @@
 .recordCourseList article,
 .externalRecordList article,
 .savedReportList article {
-  border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  border-left: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
   background: var(--ui-60-surface);
 }
 
 .recordReasonBox {
-  border: 1px solid rgba(215, 25, 32, 0.14);
-  border-radius: 8px;
-  background: #fff7f8;
+  border: 1px solid var(--ui-10-accent-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-10-accent-soft);
 }
 
 .reportControlPanel {
-  border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  border-left: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-lg);
 }
 
 .reportResultPanel {
-  border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  border-left: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-lg);
 }
 
 .reportControlPanel .recordRequestForm {
@@ -3061,10 +3069,9 @@
   gap: 12px;
   align-items: center;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 8px;
+  border-left: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
   background: var(--ui-60-surface);
-  border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
   padding: 14px;
   text-align: left;
 }
@@ -3227,9 +3234,9 @@
 .moduleHeader {
   min-height: 128px;
   align-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  border: 1px solid var(--ui-30-border);
+  border-left: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-xl);
   background: var(--ui-60-surface);
   box-shadow: 0 24px 54px rgba(31, 41, 55, 0.22);
   padding: 26px 30px 26px 30px;
@@ -3251,13 +3258,14 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
+  background: var(--ui-card-edge);
+  box-shadow: var(--ui-card-edge-shadow);
   pointer-events: none;
 }
 
 .employeeProfile {
   border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-md);
   background:
     linear-gradient(90deg, rgba(240, 253, 244, 0.86), rgba(255, 255, 255, 0.96) 46%),
     var(--ui-60-surface);
@@ -3269,6 +3277,7 @@
   position: relative;
   overflow: hidden;
   border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
   background: var(--ui-60-surface);
   padding-left: 13px;
 }
@@ -3279,7 +3288,8 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
-  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
+  background: var(--ui-card-edge);
+  box-shadow: var(--ui-card-edge-shadow);
   pointer-events: none;
 }
 
@@ -3296,14 +3306,14 @@
 
 .calendarFilters label {
   border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-60-surface-soft);
   padding: 8px;
 }
 
 .calendarGrid {
   border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-60-surface);
   padding: 8px;
 }
@@ -3333,7 +3343,8 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
-  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
+  background: var(--ui-card-edge);
+  box-shadow: var(--ui-card-edge-shadow);
   pointer-events: none;
 }
 
@@ -3387,7 +3398,8 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
+  background: var(--ui-card-edge);
+  box-shadow: var(--ui-card-edge-shadow);
   pointer-events: none;
 }
 
@@ -3462,7 +3474,8 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
-  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
+  background: var(--ui-card-edge);
+  box-shadow: var(--ui-card-edge-shadow);
 }
 
 .employeeRecordStats span {

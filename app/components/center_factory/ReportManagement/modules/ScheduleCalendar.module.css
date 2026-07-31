@@ -829,7 +829,7 @@
 
 .calendarEvent {
   border-left: 3px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  border-image: var(--ui-card-edge) 1;
   border-radius: 6px;
   background: var(--ui-30-primary-soft);
   padding: 5px 6px;
@@ -979,7 +979,8 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
+  background: var(--ui-card-edge);
+  box-shadow: var(--ui-card-edge-shadow);
   pointer-events: none;
 }
 
@@ -1322,7 +1323,7 @@
   display: grid;
   gap: 3px;
   border: 1px solid var(--ui-30-primary-border);
-  border-left: 4px solid var(--ui-30-primary);
+  border-left: 1px solid var(--ui-30-border);
   border-image: none;
   background: var(--ui-60-surface-soft);
   padding: 7px;
@@ -1338,7 +1339,7 @@
 
 .editingCalendarEvent {
   border-color: rgba(215, 25, 32, 0.38);
-  border-left-color: var(--ui-10-accent);
+  border-left-color: var(--ui-30-border);
   background: #fff7f8;
   box-shadow: 0 8px 16px rgba(215, 25, 32, 0.08);
 }
@@ -1416,7 +1417,8 @@
 
 .moduleHero::before {
   width: 4px;
-  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
+  background: var(--ui-card-edge);
+  box-shadow: var(--ui-card-edge-shadow);
 }
 
 .moduleHero h2 {
@@ -1748,7 +1750,7 @@
 
 .calendarEvent {
   border: 1px solid #d8e5f5;
-  border-left: 4px solid var(--ui-30-primary);
+  border-left: 1px solid var(--ui-30-border);
   border-image: none;
   background: var(--ui-60-surface);
   box-shadow: 0 6px 12px rgba(24, 36, 56, 0.05);
@@ -1767,7 +1769,7 @@
 
 .editingCalendarEvent {
   border-color: rgba(215, 25, 32, 0.42);
-  border-left-color: var(--ui-10-accent);
+  border-left-color: var(--ui-30-border);
   background: #fff7f8;
 }
 
@@ -1881,7 +1883,7 @@
 
 .panel {
   border-left: 4px solid transparent;
-  border-image: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%) 1;
+  border-image: var(--ui-card-edge) 1;
 }
 
 @media (max-width: 640px) {

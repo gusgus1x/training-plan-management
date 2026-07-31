@@ -1,6 +1,6 @@
 .moduleWorkspace {
   display: grid;
-  gap: 14px;
+  gap: 16px;
   width: min(1180px, calc(100% - 48px));
   margin: 0 auto;
   padding: 8px 0 48px;
@@ -8,26 +8,16 @@
 }
 
 .moduleHero,
-.attendancePanel {
-  position: relative;
-  overflow: hidden;
+.financialOverview,
+.centerFundingPanel,
+.attendancePanel,
+.courseStatusPanel,
+.courseBreakdownPanel {
+  min-width: 0;
   border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-60-surface);
-  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
-}
-
-.moduleHero::before,
-.attendancePanel::before {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: linear-gradient(
-    180deg,
-    var(--ui-30-primary) 0 90%,
-    var(--ui-10-accent) 90% 100%
-  );
-  content: "";
+  box-shadow: var(--ui-card-shadow);
 }
 
 .moduleHero {
@@ -35,12 +25,13 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
-  padding: 18px 20px 18px 24px;
-  background: linear-gradient(
-    90deg,
-    var(--ui-60-surface) 0 66%,
-    var(--ui-60-surface-muted) 100%
-  );
+  padding: 20px 22px;
+  background:
+    linear-gradient(
+      110deg,
+      var(--ui-60-surface) 0 68%,
+      var(--ui-30-primary-soft) 100%
+    );
 }
 
 .kicker {
@@ -53,92 +44,99 @@
 }
 
 .moduleHero h2,
-.panelHeader h3 {
+.panelHeader h3,
+.compactHeader h3 {
   margin: 0;
   color: var(--ui-30-ink);
   font-weight: 900;
+  line-height: 1.25;
 }
 
 .moduleHero h2 {
-  font-size: 1.28rem;
+  font-size: 1.36rem;
 }
 
 .moduleHero > div > p:last-child {
-  max-width: 720px;
+  max-width: 760px;
   margin: 8px 0 0;
   color: var(--ui-30-text);
-  font-size: 0.82rem;
-  line-height: 1.45;
+  font-size: 0.84rem;
+  line-height: 1.55;
 }
 
 .scopeBadge {
   display: inline-flex;
-  min-height: 30px;
+  min-height: 34px;
   align-items: center;
+  flex: 0 0 auto;
   border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
   background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary);
-  font-size: 0.72rem;
+  color: var(--ui-30-primary-strong);
+  font-size: 0.74rem;
   font-weight: 900;
-  padding: 0 12px;
+  padding: 0 13px;
   white-space: nowrap;
 }
 
-.attendancePanel {
-  padding: 20px 22px 22px 26px;
+.financialOverview,
+.centerFundingPanel,
+.courseBreakdownPanel {
+  padding: 20px 22px;
 }
 
-.panelHeader {
+.panelHeader,
+.compactHeader {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  border-bottom: 1px solid var(--ui-30-border);
-  padding-bottom: 14px;
 }
 
-.panelHeader h3 {
+.panelHeader {
+  border-bottom: 1px solid var(--ui-30-border);
+  padding-bottom: 15px;
+}
+
+.panelHeader h3,
+.compactHeader h3 {
   font-size: 1.08rem;
 }
 
-.panelHeader > strong {
+.panelHeader > strong,
+.compactHeader > strong {
+  flex: 0 0 auto;
   border: 1px solid var(--ui-10-accent-border);
   border-radius: 999px;
   background: var(--ui-10-accent-soft);
-  color: var(--ui-10-accent);
-  font-size: 0.74rem;
-  font-weight: 900;
-  padding: 7px 11px;
-  white-space: nowrap;
-}
-
-.panelHeaderActions {
-  display: flex;
-  align-items: flex-end;
-  gap: 12px;
-}
-
-.panelHeaderActions > strong {
-  border: 1px solid var(--ui-10-accent-border);
-  border-radius: 999px;
-  background: var(--ui-10-accent-soft);
-  color: var(--ui-10-accent);
+  color: var(--ui-10-accent-strong);
   font-size: 0.74rem;
   font-weight: 900;
   padding: 8px 11px;
   white-space: nowrap;
 }
 
+.panelDescription {
+  display: block;
+  max-width: 720px;
+  margin-top: 6px;
+  color: var(--ui-30-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
 .periodControls {
   display: flex;
   align-items: flex-end;
   gap: 8px;
+  flex: 0 0 auto;
 }
 
 .periodControls label {
   display: grid;
   gap: 5px;
+  min-width: 0;
   color: var(--ui-30-muted);
   font-size: 0.66rem;
   font-weight: 900;
@@ -146,44 +144,315 @@
 }
 
 .periodControls select {
-  min-width: 112px;
-  min-height: 34px;
+  min-width: 118px;
+  min-height: 40px;
   border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-sm);
   background: var(--ui-60-surface);
   color: var(--ui-30-ink);
   cursor: pointer;
-  font: inherit;
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   font-weight: 900;
   outline: none;
-  padding: 6px 28px 6px 9px;
+  padding: 7px 30px 7px 10px;
   text-transform: none;
 }
 
 .periodControls select:focus {
   border-color: var(--ui-30-primary);
-  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.14);
 }
 
-.summaryLayout {
+.financeMetricGrid {
   display: grid;
-  grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1.28fr);
-  gap: 30px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.financeMetricGrid article {
+  position: relative;
+  overflow: hidden;
+  min-height: 132px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-60-surface-soft);
+  padding: 18px;
+}
+
+.financeMetricGrid article::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  content: "";
+}
+
+.courseMetric::before,
+.budgetMetric::before,
+.remainingMetric::before {
+  background: var(--ui-30-primary);
+}
+
+.actualMetric::before,
+.overBudgetMetric::before {
+  background: var(--ui-10-accent);
+}
+
+.financeMetricGrid span,
+.financeMetricGrid small {
+  display: block;
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.financeMetricGrid strong {
+  display: block;
+  margin: 15px 0 8px;
+  color: var(--ui-30-ink);
+  font-size: clamp(1.3rem, 2.3vw, 1.9rem);
+  font-weight: 950;
+  line-height: 1.08;
+}
+
+.actualMetric strong,
+.overBudgetMetric strong {
+  color: var(--ui-10-accent-strong);
+}
+
+.budgetMetric strong,
+.remainingMetric strong {
+  color: var(--ui-30-primary-strong);
+}
+
+.budgetUtilization {
+  margin-top: 16px;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-30-primary-soft);
+  padding: 12px 14px;
+}
+
+.budgetUtilization > div:first-child {
+  display: flex;
   align-items: center;
-  padding-top: 24px;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  color: var(--ui-30-primary-strong);
+  font-size: 0.76rem;
+  font-weight: 900;
 }
 
-.chartColumn {
+.progressTrack {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-60-surface-muted);
+}
+
+.progressTrack span {
+  display: block;
+  width: var(--budget-used);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    var(--ui-30-primary),
+    var(--ui-10-accent)
+  );
+  transition: width 200ms ease;
+}
+
+.centerFundingPanel {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(238, 247, 242, 0.82),
+      var(--ui-60-surface) 46%
+    );
+}
+
+.fundingTotals {
   display: grid;
-  justify-items: center;
-  gap: 18px;
-  padding: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.fundingTotals article {
+  min-height: 100px;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-60-surface);
+  padding: 14px;
+}
+
+.fundingTotals span {
+  display: block;
+  color: var(--ui-30-muted);
+  font-size: 0.7rem;
+  font-weight: 900;
+}
+
+.fundingTotals strong {
+  display: block;
+  margin-top: 12px;
+  color: var(--ui-30-primary-strong);
+  font-size: 1.28rem;
+  font-weight: 950;
+}
+
+.tableWrap {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-60-surface);
+}
+
+.financeTable {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: collapse;
+}
+
+.financeTable th {
+  border-bottom: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 12px;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.financeTable td {
+  border-bottom: 1px solid var(--ui-30-border);
+  color: var(--ui-30-text);
+  font-size: 0.78rem;
+  font-weight: 750;
+  padding: 12px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.financeTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.financeTable tbody tr:hover td {
+  background: var(--ui-60-surface-soft);
+}
+
+.financeTable td:first-child {
+  min-width: 220px;
+  white-space: normal;
+}
+
+.financeTable td:first-child strong,
+.financeTable td:first-child span,
+.financeTable td:first-child small {
+  display: block;
+}
+
+.financeTable td:first-child strong {
+  color: var(--ui-30-primary-strong);
+  font-size: 0.72rem;
+}
+
+.financeTable td:first-child span {
+  margin-top: 3px;
+  color: var(--ui-30-ink);
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.financeTable td:first-child small {
+  margin-top: 4px;
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.allocatedValue,
+.positiveValue {
+  color: var(--ui-30-primary-strong) !important;
+  font-weight: 900 !important;
+}
+
+.negativeValue {
+  color: var(--ui-10-accent-strong) !important;
+  font-weight: 900 !important;
+}
+
+.methodBadge,
+.statusBadge {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 0 9px;
+}
+
+.methodBadge {
+  border: 1px solid var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+}
+
+.plannedStatus {
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface-muted);
+  color: var(--ui-30-text);
+}
+
+.completedStatus {
+  border: 1px solid var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+}
+
+.overBudgetStatus {
+  border: 1px solid var(--ui-10-accent-border);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
+}
+
+.calculationNote {
+  margin: 12px 0 0;
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.insightGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+  gap: 16px;
+}
+
+.attendancePanel,
+.courseStatusPanel {
+  padding: 18px 20px;
+}
+
+.attendanceContent {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 22px;
+  align-items: center;
+  margin-top: 16px;
 }
 
 .donutChart {
   display: grid;
-  width: min(260px, 74vw);
+  width: 180px;
   aspect-ratio: 1;
   place-items: center;
   border-radius: 50%;
@@ -191,64 +460,58 @@
     var(--ui-30-primary) 0deg var(--attendance-angle),
     var(--ui-10-accent) var(--attendance-angle) 360deg
   );
-  box-shadow:
-    0 22px 42px rgba(0, 122, 61, 0.14),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.62);
+  box-shadow: var(--ui-shadow-md);
 }
 
 .emptyChart {
   background: var(--ui-60-surface-muted);
-  box-shadow:
-    0 22px 42px rgba(15, 23, 42, 0.08),
-    inset 0 0 0 1px var(--ui-30-border);
 }
 
 .chartCenter {
   display: grid;
-  width: 61%;
+  width: 62%;
   aspect-ratio: 1;
   place-content: center;
   border: 1px solid var(--ui-30-border);
   border-radius: 50%;
   background: var(--ui-60-surface);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
   text-align: center;
 }
 
 .chartCenter strong {
   color: var(--ui-30-ink);
-  font-size: clamp(2rem, 5vw, 3.15rem);
+  font-size: 2rem;
   font-weight: 950;
   line-height: 1;
 }
 
 .chartCenter span {
-  max-width: 110px;
-  margin-top: 8px;
+  margin-top: 7px;
   color: var(--ui-30-muted);
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   font-weight: 900;
-  line-height: 1.25;
   text-transform: uppercase;
 }
 
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px 18px;
+.attendanceStats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.legend span {
-  display: inline-flex;
+.attendanceStats article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 7px 9px;
   align-items: center;
-  gap: 7px;
-  color: var(--ui-30-text);
-  font-size: 0.76rem;
-  font-weight: 900;
+  min-height: 96px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-60-surface-soft);
+  padding: 13px;
 }
 
-.legend i {
+.attendanceStats i {
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -262,76 +525,82 @@
   background: var(--ui-10-accent);
 }
 
-.metricGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.metricGrid article {
-  position: relative;
-  overflow: hidden;
-  min-height: 132px;
-  border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
-  background: var(--ui-60-surface-soft);
-  padding: 18px;
-}
-
-.metricGrid article::before {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  content: "";
-}
-
-.attendedMetric::before {
-  background: var(--ui-30-primary);
-}
-
-.absentMetric::before {
-  background: var(--ui-10-accent);
-}
-
-.rateMetric {
-  grid-column: 1 / -1;
-}
-
-.rateMetric::before {
-  background: linear-gradient(
-    180deg,
-    var(--ui-30-primary) 0 60%,
-    var(--ui-10-accent) 60% 100%
-  );
-}
-
-.metricGrid span,
-.metricGrid small {
-  display: block;
+.attendanceStats span {
   color: var(--ui-30-muted);
   font-size: 0.72rem;
   font-weight: 900;
 }
 
-.metricGrid strong {
-  display: block;
-  margin: 12px 0 6px;
+.attendanceStats strong {
+  grid-column: 1 / -1;
   color: var(--ui-30-ink);
-  font-size: 2.15rem;
+  font-size: 1.8rem;
   font-weight: 950;
-  line-height: 1;
+}
+
+.healthList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.healthList article {
+  min-height: 88px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-60-surface-soft);
+  padding: 12px;
+}
+
+.healthList span {
+  display: block;
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.healthList strong {
+  display: block;
+  margin-top: 10px;
+  color: var(--ui-30-ink);
+  font-size: 1.45rem;
+  font-weight: 950;
+}
+
+.courseStatusPanel > p {
+  margin: 14px 0 0;
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.courseBreakdownPanel .tableWrap {
+  margin-top: 16px;
 }
 
 .emptyState {
-  margin: 18px 0 0;
+  margin: 16px 0 0;
   border: 1px dashed var(--ui-30-border);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-sm);
   background: var(--ui-60-surface-soft);
   color: var(--ui-30-muted);
   font-size: 0.78rem;
   font-weight: 800;
-  padding: 12px 14px;
+  padding: 14px;
   text-align: center;
+}
+
+@media (max-width: 980px) {
+  .financeMetricGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .insightGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 760px) {
@@ -340,35 +609,51 @@
   }
 
   .moduleHero,
-  .panelHeader {
+  .panelHeader,
+  .compactHeader {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .panelHeaderActions {
+  .periodControls {
     width: 100%;
-    align-items: flex-end;
-    justify-content: space-between;
   }
 
-  .summaryLayout {
+  .periodControls label {
+    flex: 1 1 0;
+  }
+
+  .fundingTotals {
     grid-template-columns: 1fr;
-    gap: 20px;
+  }
+
+  .attendanceContent {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .attendanceStats {
+    width: 100%;
   }
 }
 
-@media (max-width: 480px) {
-  .attendancePanel {
-    padding: 16px 14px 18px 18px;
+@media (max-width: 520px) {
+  .moduleHero,
+  .financialOverview,
+  .centerFundingPanel,
+  .attendancePanel,
+  .courseStatusPanel,
+  .courseBreakdownPanel {
+    padding: 16px;
   }
 
-  .metricGrid {
+  .financeMetricGrid,
+  .attendanceStats,
+  .healthList {
     grid-template-columns: 1fr;
   }
 
-  .panelHeaderActions,
   .periodControls {
-    width: 100%;
     align-items: stretch;
     flex-direction: column;
   }
@@ -377,7 +662,7 @@
     width: 100%;
   }
 
-  .rateMetric {
-    grid-column: auto;
+  .financeMetricGrid article {
+    min-height: 116px;
   }
 }

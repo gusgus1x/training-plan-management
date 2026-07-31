@@ -1,6 +1,6 @@
 .statusPage {
   min-height: 100vh;
-  background: var(--ui-60-surface-muted);
+  background: var(--ui-60-canvas);
   color: var(--ui-30-ink);
 }
 
@@ -8,75 +8,92 @@
   width: min(560px, calc(100% - 32px));
   margin: 72px auto 0;
   border: 1px solid var(--ui-30-border);
-  border-radius: 12px;
+  border-radius: var(--ui-radius-lg);
   background: var(--ui-60-surface);
-  padding: 32px;
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.1);
+  padding: 36px;
+  box-shadow: var(--ui-shadow-lg);
 }
 
 .statusCard h1 {
   margin: 0;
+  color: var(--ui-30-ink);
   font-size: clamp(24px, 4vw, 34px);
+  font-weight: 900;
   line-height: 1.2;
 }
 
 .statusCard > p:not(.eyebrow) {
   margin: 16px 0 0;
-  color: #475569;
+  color: var(--ui-30-text);
   line-height: 1.6;
 }
 
 .statusActions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 24px;
+  gap: 12px;
+  margin-top: 28px;
 }
 
 .retryButton,
 .signInButton {
-  min-height: 42px;
-  border-radius: 8px;
+  min-height: 44px;
+  border-radius: var(--ui-radius-md);
   cursor: pointer;
   font: inherit;
+  font-size: 14px;
   font-weight: 800;
-  padding: 10px 16px;
+  padding: 10px 20px;
+  transition: all 0.15s ease;
 }
 
 .retryButton {
-  border: 1px solid #d71920;
-  background: #d71920;
+  border: 0;
+  background: var(--ui-10-accent);
   color: #ffffff;
+  box-shadow: 0 6px 16px var(--ui-10-accent-glow);
+}
+
+.retryButton:hover {
+  background: var(--ui-10-accent-strong);
+  transform: translateY(-1px);
 }
 
 .signInButton {
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-30-border);
   background: #ffffff;
-  color: #334155;
+  color: var(--ui-30-text);
+}
+
+.signInButton:hover {
+  border-color: var(--ui-30-primary);
+  color: var(--ui-30-primary);
+  transform: translateY(-1px);
 }
 
 .eyebrow {
   margin: 0 0 10px;
   color: var(--ui-10-accent);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 900;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .demoBadge {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  right: 20px;
+  bottom: 20px;
   z-index: 1000;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-full);
+  background: rgba(255, 255, 255, 0.92);
   color: var(--ui-30-text);
   font-size: 11px;
   font-weight: 800;
-  padding: 8px 12px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+  padding: 8px 14px;
+  box-shadow: var(--ui-shadow-md);
+  backdrop-filter: blur(12px);
 }
 
 .previewBadge {
@@ -89,17 +106,16 @@
 .logoutError {
   position: fixed;
   top: 84px;
-  right: 16px;
+  right: 20px;
   z-index: 1001;
-  max-width: min(360px, calc(100% - 32px));
+  max-width: min(380px, calc(100% - 32px));
   margin: 0;
-  border: 1px solid #fecdca;
-  border-radius: 8px;
-  background: #fef3f2;
-  color: #b42318;
+  border: 1px solid var(--ui-10-accent-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
   font-size: 13px;
   font-weight: 700;
   padding: 12px 16px;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
+  box-shadow: var(--ui-shadow-md);
 }
-

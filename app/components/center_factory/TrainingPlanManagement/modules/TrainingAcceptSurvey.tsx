@@ -16,6 +16,10 @@ import {
   readEmployeeMasterData,
   type EmployeeMasterRecord,
 } from "../../../../lib/employeeMasterData";
+import {
+  buildAttendanceSheetHtml,
+  getAttendanceSheetFileName,
+} from "../../../../lib/attendanceSheetExport";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import {
   getRollingPlanCompanies,
@@ -798,6 +802,38 @@ export default function TrainingAcceptSurvey() {
     }
   };
 
+  const handleExportAttendanceSheet = () => {
+    if (
+      !selectedCourse ||
+      hasUnsavedParticipants ||
+      acceptedParticipants.length === 0
+    ) {
+      return;
+    }
+
+    try {
+      const sheetHtml = buildAttendanceSheetHtml(
+        selectedCourse,
+        acceptedParticipants,
+      );
+      const file = new Blob([`\uFEFF${sheetHtml}`], {
+        type: "application/vnd.ms-excel;charset=utf-8",
+      });
+      const downloadUrl = URL.createObjectURL(file);
+      const downloadLink = document.createElement("a");
+
+      downloadLink.href = downloadUrl;
+      downloadLink.download = getAttendanceSheetFileName(selectedCourse);
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+      setParticipantSaveMessage("Attendance sheet exported.");
+    } catch {
+      setParticipantSaveMessage("Unable to export attendance sheet.");
+    }
+  };
+
   return (
     <section className={styles.page} aria-label="Training Accept Survey module">
       <section className={styles.hero}>
@@ -876,21 +912,18 @@ export default function TrainingAcceptSurvey() {
           </select>
         </label>
 
-        <label>
-          Function scope
-          <input
-            disabled
-            value={
-              !selectedCourse
-                ? "Select a course to open this survey"
-                : roleMode === "center"
+        <div className={styles.scopeCard}>
+          <span>Function scope</span>
+          <strong>
+            {!selectedCourse
+              ? "Select a course to open this survey"
+              : roleMode === "center"
                 ? "View all companies / approve factory submissions"
                 : isFactoryOwnedByUser
                   ? `Add participants for ${userCompanyCode} factory courses`
-                  : `Submit ${userCompanyCode} employees to Center`
-            }
-          />
-        </label>
+                  : `Submit ${userCompanyCode} employees to Center`}
+          </strong>
+        </div>
       </section>
 
       {selectedCourse ? (
@@ -975,6 +1008,23 @@ export default function TrainingAcceptSurvey() {
                 onClick={handleSaveParticipants}
               >
                 Save
+              </button>
+              <button
+                className={styles.exportAttendanceButton}
+                type="button"
+                disabled={
+                  hasUnsavedParticipants || acceptedParticipants.length === 0
+                }
+                title={
+                  hasUnsavedParticipants
+                    ? "Save participant list before exporting."
+                    : acceptedParticipants.length === 0
+                      ? "Add and save at least one participant before exporting."
+                      : "Export attendance sheet"
+                }
+                onClick={handleExportAttendanceSheet}
+              >
+                Export attendance sheet
               </button>
             </div>
           </div>

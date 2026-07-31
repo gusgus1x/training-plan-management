@@ -63,6 +63,16 @@ describe("Thai UI localization", () => {
     );
   });
 
+  it("translates center, factory, and employee dashboard copy", () => {
+    expect(translateUiText("Center Workspace")).toBe("พื้นที่ทำงานส่วนกลาง");
+    expect(translateUiText("Factory Dashboard")).toBe("แดชบอร์ดโรงงาน");
+    expect(translateUiText("Training Roadmap")).toBe("แผนพัฒนาการอบรม");
+    expect(translateUiText("Show month list")).toBe("แสดงรายการของเดือน");
+    expect(translateUiText("Pending Approval")).toBe("รออนุมัติ");
+    expect(translateUiText("Register Train")).toBe("ลงทะเบียนอบรม");
+    expect(translateUiText("Waiting HRD approval")).toBe("รอ HRD อนุมัติ");
+  });
+
   it("provides a persistent EN and TH switch in the navbar", () => {
     const navbarSource = readFileSync(
       join(process.cwd(), "app/components/Navbar.tsx"),

@@ -1,5 +1,5 @@
 .moduleWorkspace {
-  max-width: 1180px;
+  max-width: 1240px;
   margin: 0 auto;
   padding: 18px 24px 52px;
   display: grid;
@@ -30,7 +30,8 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
+  background: var(--ui-card-edge);
+  box-shadow: var(--ui-card-edge-shadow);
 }
 
 .panel,
@@ -479,7 +480,8 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: linear-gradient(180deg, var(--ui-30-primary) 0 90%, var(--ui-10-accent) 90% 100%);
+  background: var(--ui-card-edge);
+  box-shadow: var(--ui-card-edge-shadow);
   pointer-events: none;
 }
 

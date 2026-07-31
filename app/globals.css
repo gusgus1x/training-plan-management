@@ -2,31 +2,52 @@
 
 :root {
   /*
-   * ATTG 60–30–10 color system
-   * 60% neutral canvas and surfaces, 30% brand green structure,
-   * 10% red actions and emphasis. Semantic feedback colors remain separate.
+   * ATTG Unified 60–30–10 Design System (Optimized for Laptop & Desktop Displays)
+   * 60% Neutral Dominant: Off-white slate canvas (#f1f5f9), pure white card surfaces (#ffffff), crisp borders (#cbd5e1)
+   * 30% Secondary Structure: Deep Slate Ink (#0f172a / #1e293b) & ATTG Corporate Forest Green (#007a3d)
+   * 10% Accent Action: ATTG Vibrant Red (#d71920) for CTAs, active highlights & focus rings
    */
-  --ui-60-canvas: #eef3f0;
+  --ui-60-canvas: #f1f5f9;
   --ui-60-surface: #ffffff;
-  --ui-60-surface-soft: #f7faf8;
-  --ui-60-surface-muted: #f1f5f3;
+  --ui-60-surface-soft: #f8fafc;
+  --ui-60-surface-muted: #e2e8f0;
+  --ui-60-glass: rgba(255, 255, 255, 0.94);
+  --ui-60-glass-border: rgba(203, 213, 225, 0.9);
 
   --ui-30-primary: #007a3d;
   --ui-30-primary-strong: #005c2e;
-  --ui-30-primary-soft: #e8f4ed;
-  --ui-30-primary-border: #c9e2d3;
-  --ui-30-ink: #172033;
-  --ui-30-text: #334155;
-  --ui-30-muted: #64748b;
-  --ui-30-border: #dbe4df;
+  --ui-30-primary-soft: #eef7f2;
+  --ui-30-primary-border: #bce3cb;
+  --ui-30-ink: #0f172a;
+  --ui-30-text: #1e293b;
+  --ui-30-muted: #475569;
+  --ui-30-border: #aeb8c4;
+  --ui-on-dark: #ffffff;
+  --ui-on-dark-muted: #d7e0eb;
+  --ui-on-dark-subtle: #b8c5d6;
 
   --ui-10-accent: #d71920;
-  --ui-10-accent-strong: #a90f16;
+  --ui-10-accent-strong: #b91c1c;
   --ui-10-accent-soft: #fff1f2;
-  --ui-10-accent-border: #ffc7ce;
+  --ui-10-accent-border: #fecdd3;
+  --ui-10-accent-glow: rgba(215, 25, 32, 0.18);
+  --ui-10-accent-on-dark: #ff9195;
 
-  --ui-focus-ring: rgba(215, 25, 32, 0.18);
-  --ui-shadow: rgba(15, 23, 42, 0.1);
+  --ui-focus-ring: rgba(215, 25, 32, 0.25);
+  --ui-shadow-sm: 2px 3px 8px -4px rgba(15, 23, 42, 0.2);
+  --ui-shadow-md: 4px 6px 18px -7px rgba(15, 23, 42, 0.24), 0 1px 3px rgba(15, 23, 42, 0.05);
+  --ui-shadow-lg: 7px 11px 30px -10px rgba(15, 23, 42, 0.28), 0 3px 8px -4px rgba(15, 23, 42, 0.12);
+  --ui-card-edge: transparent;
+  --ui-card-edge-shadow: none;
+  --ui-card-shadow: 6px 8px 20px -8px rgba(15, 23, 42, 0.28), 0 2px 5px -2px rgba(15, 23, 42, 0.08);
+  --ui-card-shadow-hover: 8px 12px 30px -10px rgba(15, 23, 42, 0.32), 0 4px 9px -4px rgba(15, 23, 42, 0.14);
+  --ui-radius-sm: 10px;
+  --ui-radius-md: 14px;
+  --ui-radius-lg: 20px;
+  --ui-radius-xl: 24px;
+  --ui-radius-full: 9999px;
+  --ui-font-en: var(--font-geist-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ui-font-th: var(--font-noto-sans-thai), "Leelawadee UI", Tahoma, sans-serif;
 
   --background: var(--ui-60-canvas);
   --foreground: var(--ui-30-ink);
@@ -45,17 +66,102 @@
   --font-mono: var(--font-geist-mono);
 }
 
+* {
+  box-sizing: border-box;
+}
+
+html,
 body {
-  background: var(--background);
+  min-width: 320px;
+  margin: 0;
+}
+
+body {
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, "Tahoma", "Noto Sans Thai", "Leelawadee UI", sans-serif;
+  font-family: var(--ui-font-en);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html[lang="th"] body {
+  font-family: var(--ui-font-th);
+  line-height: 1.55;
+}
+
+button,
+input,
+select,
+textarea {
+  max-width: 100%;
+  font: inherit;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+select,
+textarea {
+  width: 100%;
+  min-height: 42px;
+}
+
+textarea {
+  line-height: 1.6;
+  resize: vertical;
+}
+
+:where(main, header, footer, nav, section, article, aside, form, fieldset, div, label) {
+  min-width: 0;
+}
+
+:where(h1, h2, h3, h4, p, span, strong, small, label, legend) {
+  overflow-wrap: anywhere;
+}
+
+:where(img, svg, canvas, video) {
+  max-width: 100%;
+}
+
+:where([role="status"], [role="alert"]) {
+  overflow-wrap: anywhere;
 }
 
 ::selection {
-  background: var(--ui-focus-ring);
-  color: var(--attg-ink);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
 }
 
 :where(button, a, input, select, textarea):focus-visible {
-  outline-color: var(--ui-10-accent);
+  outline: 3px solid var(--ui-10-accent);
+  outline-offset: 3px;
+}
+
+/* Custom sleek scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
