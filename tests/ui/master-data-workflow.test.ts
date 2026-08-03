@@ -22,7 +22,7 @@ describe("Master Data workflow integration", () => {
     expect(trainingCourseModules).not.toContain("courseGroupModule");
   });
 
-  it("persists Function, Position, Level, and Instructor masters", () => {
+  it("persists Function, Position, Level, and Employee through APIs and keeps Instructor local", () => {
     const workflowSource = readSource("app/lib/trainingWorkflow.ts");
 
     expect(workflowSource).toContain('functions: "tpm_master_functions"');
@@ -31,18 +31,37 @@ describe("Master Data workflow integration", () => {
     expect(workflowSource).toContain('instructors: "tpm_master_instructors"');
     expect(workflowSource).toContain("TRAINING_MASTER_EVENT");
 
-    [
-      "FunctionData.tsx",
-      "PositionData.tsx",
-      "LevelData.tsx",
-      "InstructorData.tsx",
-    ].forEach((fileName) => {
+    const functionSource = readSource(
+      "app/components/center_factory/MasterDataManagement/modules/FunctionData.tsx",
+    );
+    expect(functionSource).toContain("listFunctions()");
+    expect(functionSource).not.toContain("listFunctionMappings()");
+    expect(functionSource).not.toContain("readMasterCollection(");
+    expect(functionSource).not.toContain("writeMasterCollection(");
+
+    const positionSource = readSource(
+      "app/components/center_factory/MasterDataManagement/modules/PositionData.tsx",
+    );
+    expect(positionSource).toContain("listPositions()");
+    expect(positionSource).not.toContain("readMasterCollection(");
+    expect(positionSource).not.toContain("writeMasterCollection(");
+
+    const levelSource = readSource(
+      "app/components/center_factory/MasterDataManagement/modules/LevelData.tsx",
+    );
+    expect(levelSource).toContain("listLevels()");
+    expect(levelSource).not.toContain("readMasterCollection(");
+    expect(levelSource).not.toContain("writeMasterCollection(");
+
+    ["InstructorData.tsx"].forEach(
+      (fileName) => {
       const source = readSource(
         `app/components/center_factory/MasterDataManagement/modules/${fileName}`,
       );
       expect(source).toContain("readMasterCollection");
       expect(source).toContain("writeMasterCollection");
-    });
+      },
+    );
   });
 
   it("uses the reference masters in Employee Data and Course Standard", () => {
@@ -53,10 +72,29 @@ describe("Master Data workflow integration", () => {
       "app/components/center_factory/TrainingCourseManagement/modules/CourseMasterWorkspace.tsx",
     );
 
-    expect(employeeSource).toContain("TRAINING_MASTER_KEYS.functions");
-    expect(employeeSource).toContain("TRAINING_MASTER_KEYS.positions");
-    expect(employeeSource).toContain("TRAINING_MASTER_KEYS.levels");
-    expect(employeeSource).toContain("updateFunction");
+    expect(employeeSource).toContain("listEmployees()");
+    expect(employeeSource).toContain("listFunctions()");
+    expect(employeeSource).toContain("listPositions()");
+    expect(employeeSource).toContain("listLevels()");
+    expect(employeeSource).not.toContain("readEmployeeMasterData");
+    expect(employeeSource).toContain("<th>Title(TH)</th>");
+    expect(employeeSource).not.toContain("<th>Telephone</th>");
+    expect(employeeSource).not.toContain("<th>Email</th>");
+    expect(employeeSource).toContain("<th>Function Name</th>");
+    expect(employeeSource).toContain("visibleCompanyGroups.map");
+    expect(employeeSource).toContain("toggleCompany(companyGroup.companyId)");
+    expect(employeeSource).toContain("aria-expanded={isOpen}");
+    expect(employeeSource).toContain("companyGroup.totalRecords");
+    expect(employeeSource).toContain("companyGroup.rows.length");
+    expect(employeeSource).toContain("revealedNationalIds[employee.employeeId]");
+    expect(employeeSource).not.toContain("Full National ID");
+    expect(employeeSource).toContain('"Reveal All IDs"');
+    expect(employeeSource).toContain('"Hide All IDs"');
+    expect(employeeSource).toContain("rows.map(async (employee)");
+    expect(employeeSource).toContain("Promise.all(");
+    expect(employeeSource).toContain("employee.nationalIdMasked");
+    expect(employeeSource).not.toContain("alert(`National ID:");
+    expect(employeeSource).toContain('change("titleTh"');
     expect(standardSource).toContain("functionRows");
     expect(standardSource).toContain("positionRows");
     expect(standardSource).toContain("levelRows");

@@ -17,11 +17,45 @@ type ApiErrorBody = {
   };
 };
 
+const serializeApiData = (value: unknown): unknown => {
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (
+    value &&
+    typeof value === "object" &&
+    "toJSON" in value &&
+    typeof value.toJSON === "function"
+  ) {
+    return serializeApiData(value.toJSON());
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(serializeApiData);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nestedValue]) => [
+        key,
+        serializeApiData(nestedValue),
+      ]),
+    );
+  }
+
+  return value;
+};
+
 export const apiSuccess = <T>(data: T, status = 200) =>
   NextResponse.json<ApiSuccessBody<T>>(
     {
       ok: true,
-      data,
+      data: serializeApiData(data) as T,
     },
     { status },
   );

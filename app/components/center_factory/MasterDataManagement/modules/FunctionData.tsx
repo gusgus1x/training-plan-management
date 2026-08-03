@@ -1,11 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import {
-  TRAINING_MASTER_KEYS,
-  readMasterCollection,
-  writeMasterCollection,
-} from "../../../../lib/trainingWorkflow";
+  FunctionClientError,
+  createFunction,
+  deleteFunction,
+  listFunctions,
+  updateFunction,
+} from "../../../../lib/functions/client";
+import type {
+  MasterStatus,
+  OrganizationFunctionRecord,
+} from "../../../../lib/functions/types";
 import styles from "./FunctionData.module.css";
 
 export type FunctionRecord = {
@@ -15,217 +22,210 @@ export type FunctionRecord = {
   functionNameEn: string;
 };
 
-type FormMode = "new" | "edit" | null;
-
 export const functionDataModule = {
   title: "Function Data",
   subtitle: "Function master",
-  description: "Maintain function codes and bilingual function names for training workflows.",
+  description:
+    "Maintain the shared function catalog used by every company.",
 } as const;
 
-export const defaultFunctionRows: FunctionRecord[] = [
-  {
-    id: "function-0001",
-    functionCode: "FNC0001",
-    functionNameTh: "การขาย",
-    functionNameEn: "",
-  },
-  {
-    id: "function-0002",
-    functionCode: "FNC0002",
-    functionNameTh: "วางแผนการขาย",
-    functionNameEn: "Sale Planing",
-  },
-  {
-    id: "function-0003",
-    functionCode: "FNC0003",
-    functionNameTh: "บัญชีและการเงิน",
-    functionNameEn: "Account and Financial",
-  },
-  {
-    id: "function-0004",
-    functionCode: "FNC0004",
-    functionNameTh: "ทรัพยากรมนุษย์",
-    functionNameEn: "Human Resource",
-  },
-  {
-    id: "function-0005",
-    functionCode: "FNC0005",
-    functionNameTh: "ธุรการ",
-    functionNameEn: "",
-  },
-  {
-    id: "function-0006",
-    functionCode: "FNC0006",
-    functionNameTh: "ล่ามและเลขานุการ",
-    functionNameEn: "",
-  },
-  {
-    id: "function-0007",
-    functionCode: "FNC0007",
-    functionNameTh: "จัดซื้อ",
-    functionNameEn: "Purchase",
-  },
-  {
-    id: "function-0008",
-    functionCode: "FNC0008",
-    functionNameTh: "เทคโนโลยีสารสนเทศ",
-    functionNameEn: "IT Promotion",
-  },
-  {
-    id: "function-0009",
-    functionCode: "FNC0009",
-    functionNameTh: "คลังสินค้า",
-    functionNameEn: "",
-  },
-  {
-    id: "function-0010",
-    functionCode: "FNC0010",
-    functionNameTh: "ผลิต",
-    functionNameEn: "Production",
-  },
-  {
-    id: "function-0011",
-    functionCode: "FNC0011",
-    functionNameTh: "วางแผนการผลิต",
-    functionNameEn: "Production Planing",
-  },
-  {
-    id: "function-0012",
-    functionCode: "FNC0012",
-    functionNameTh: "วิศวกรรมและซ่อมบำรุง",
-    functionNameEn: "Engineering and Maintenance",
-  },
-  {
-    id: "function-0013",
-    functionCode: "FNC0013",
-    functionNameTh: "คุณภาพ",
-    functionNameEn: "Quality",
-  },
-  {
-    id: "function-0014",
-    functionCode: "FNC0014",
-    functionNameTh: "ความปลอดภัยและสิ่งแวดล้อม",
-    functionNameEn: "Safety and Environment",
-  },
-  {
-    id: "function-0015",
-    functionCode: "FNC0015",
-    functionNameTh: "วิศวกรรมโครงการ",
-    functionNameEn: "Project Engineering",
-  },
-  {
-    id: "function-0016",
-    functionCode: "FNC0016",
-    functionNameTh: "สำนักงานกรรมการผู้จัดการ",
-    functionNameEn: "President Office",
-  },
-  {
-    id: "function-0017",
-    functionCode: "FNC0017",
-    functionNameTh: "อื่นๆ",
-    functionNameEn: "Other",
-  },
-];
+const mockFunctions = [
+  ["FNC0001", "การขาย", ""],
+  ["FNC0002", "วางแผนการขาย", "Sale Planing"],
+  ["FNC0003", "บัญชีและการเงิน", "Account and Financial"],
+  ["FNC0004", "ทรัพยากรมนุษย์", "Human Resource"],
+  ["FNC0005", "ธุรการ", ""],
+  ["FNC0006", "ล่ามและเลขานุการ", ""],
+  ["FNC0007", "จัดซื้อ", "Purchase"],
+  ["FNC0008", "เทคโนโลยีสารสนเทศ", "IT Promotion"],
+  ["FNC0009", "คลังสินค้า", ""],
+  ["FNC0010", "ผลิต", "Production"],
+  ["FNC0011", "วางแผนการผลิต", "Production Planing"],
+  ["FNC0012", "วิศวกรรมและซ่อมบำรุง", "Engineering and Maintenance"],
+  ["FNC0013", "คุณภาพ", "Quality"],
+  ["FNC0014", "ความปลอดภัยและสิ่งแวดล้อม", "Safety and Environment"],
+  ["FNC0015", "วิศวกรรมโครงการ", "Project Engineering"],
+  ["FNC0016", "สำนักงานกรรมการผู้จัดการ", "President Office"],
+  ["FNC0017", "อื่นๆ", "Other"],
+] as const;
 
-const emptyRecord = (): FunctionRecord => ({
-  id: `function-${Date.now()}`,
+// Temporary compatibility export for mock consumers awaiting API migration.
+export const defaultFunctionRows: FunctionRecord[] = mockFunctions.map(
+  ([functionCode, functionNameTh, functionNameEn], index) => ({
+    id: `function-${String(index + 1).padStart(4, "0")}`,
+    functionCode,
+    functionNameTh,
+    functionNameEn,
+  }),
+);
+
+type FunctionForm = {
+  functionCode: string;
+  functionNameTh: string;
+  functionNameEn: string;
+  status: MasterStatus;
+};
+
+const blankForm = (): FunctionForm => ({
   functionCode: "",
   functionNameTh: "",
   functionNameEn: "",
+  status: "ACTIVE",
 });
 
-export default function FunctionData() {
-  const [rows, setRows] = useState<FunctionRecord[]>(() =>
-    readMasterCollection(TRAINING_MASTER_KEYS.functions, defaultFunctionRows),
-  );
-  const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState(defaultFunctionRows[0]?.id ?? "");
-  const [formMode, setFormMode] = useState<FormMode>(null);
-  const [formValues, setFormValues] = useState<FunctionRecord>(emptyRecord);
+const toForm = (record: OrganizationFunctionRecord): FunctionForm => ({
+  functionCode: record.functionCode,
+  functionNameTh: record.functionNameTh,
+  functionNameEn: record.functionNameEn ?? "",
+  status: record.status,
+});
 
-  const selectedRecord = rows.find((row) => row.id === selectedId) ?? null;
+const errorText = (error: unknown) =>
+  error instanceof FunctionClientError
+    ? error.message
+    : "Unable to load function data. Please try again.";
+
+export default function FunctionData() {
+  const user = useAuthenticatedUser();
+  const isCenter = user?.roleCode === "HRD_CENTER";
+  const [rows, setRows] = useState<OrganizationFunctionRecord[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [formMode, setFormMode] = useState<"new" | "edit" | null>(null);
+  const [form, setForm] = useState<FunctionForm>(blankForm);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const selected = rows.find((row) => row.functionId === selectedId) ?? null;
   const visibleRows = useMemo(() => {
     const query = search.trim().toLowerCase();
-
-    if (!query) {
-      return rows;
-    }
-
+    if (!query) return rows;
     return rows.filter((row) =>
-      [row.functionCode, row.functionNameTh, row.functionNameEn]
+      [row.functionCode, row.functionNameTh, row.functionNameEn, row.status]
+        .filter(Boolean)
         .join(" ")
         .toLowerCase()
         .includes(query),
     );
   }, [rows, search]);
 
-  const updateForm = (field: keyof FunctionRecord, value: string) => {
-    setFormValues((current) => ({ ...current, [field]: value }));
-  };
-
-  const saveRows = (nextRows: FunctionRecord[]) => {
-    setRows(nextRows);
-    writeMasterCollection(TRAINING_MASTER_KEYS.functions, nextRows);
-  };
-
-  const handleNew = () => {
-    setFormValues(emptyRecord());
-    setFormMode("new");
-  };
-
-  const handleEdit = () => {
-    if (!selectedRecord) {
-      return;
-    }
-
-    setFormValues(selectedRecord);
-    setFormMode("edit");
-  };
-
-  const handleDelete = () => {
-    if (!selectedRecord) {
-      return;
-    }
-
-    saveRows(rows.filter((row) => row.id !== selectedRecord.id));
-    setSelectedId("");
-    setFormMode(null);
-  };
-
-  const handleRefresh = () => {
-    const nextRows = readMasterCollection(
-      TRAINING_MASTER_KEYS.functions,
-      defaultFunctionRows,
+  const applyRows = (items: OrganizationFunctionRecord[]) => {
+    setRows(items);
+    setSelectedId((current) =>
+      current && items.some((item) => item.functionId === current)
+        ? current
+        : items[0]?.functionId ?? null,
     );
-    setRows(nextRows);
-    setSearch("");
-    setSelectedId(nextRows[0]?.id ?? "");
-    setFormMode(null);
   };
 
-  const handleSave = () => {
-    const nextRecord: FunctionRecord = {
-      ...formValues,
-      functionCode: formValues.functionCode.trim().toUpperCase(),
-      functionNameTh: formValues.functionNameTh.trim(),
-      functionNameEn: formValues.functionNameEn.trim(),
-    };
+  const loadRows = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      applyRows((await listFunctions()).items);
+    } catch (caught: unknown) {
+      setError(errorText(caught));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    if (!nextRecord.functionCode || !nextRecord.functionNameTh) {
+  useEffect(() => {
+    let current = true;
+    listFunctions()
+      .then((result) => {
+        if (!current) return;
+        setRows(result.items);
+        setSelectedId(result.items[0]?.functionId ?? null);
+      })
+      .catch((caught: unknown) => {
+        if (current) setError(errorText(caught));
+      })
+      .finally(() => {
+        if (current) setIsLoading(false);
+      });
+    return () => {
+      current = false;
+    };
+  }, []);
+
+  const startNew = () => {
+    if (!isCenter) return;
+    setForm(blankForm());
+    setFormMode("new");
+    setError(null);
+    setMessage(null);
+  };
+
+  const startEdit = () => {
+    if (!isCenter || !selected) return;
+    setForm(toForm(selected));
+    setFormMode("edit");
+    setError(null);
+    setMessage(null);
+  };
+
+  const save = async () => {
+    if (!isCenter || isSaving) return;
+    setIsSaving(true);
+    setError(null);
+    try {
+      const input = {
+        functionCode: form.functionCode.trim().toUpperCase(),
+        functionNameTh: form.functionNameTh.trim(),
+        functionNameEn: form.functionNameEn.trim() || null,
+        status: form.status,
+      };
+      const result =
+        formMode === "edit" && selected
+          ? await updateFunction(selected.functionId, input)
+          : await createFunction(input);
+      setRows((current) =>
+        formMode === "edit"
+          ? current.map((item) =>
+              item.functionId === result.function.functionId
+                ? result.function
+                : item,
+            )
+          : [...current, result.function],
+      );
+      setSelectedId(result.function.functionId);
+      setFormMode(null);
+      setMessage(`${result.function.functionCode} was saved.`);
+    } catch (caught: unknown) {
+      setError(errorText(caught));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const remove = async () => {
+    if (
+      !isCenter ||
+      !selected ||
+      isSaving ||
+      !window.confirm(`Delete ${selected.functionCode}?`)
+    ) {
       return;
     }
-
-    if (formMode === "edit") {
-      saveRows(
-        rows.map((row) => (row.id === nextRecord.id ? nextRecord : row)),
+    setIsSaving(true);
+    setError(null);
+    try {
+      const result = await deleteFunction(selected.functionId);
+      const nextRows = rows.filter(
+        (item) => item.functionId !== result.function.functionId,
       );
-    } else {
-      saveRows([nextRecord, ...rows]);
+      setRows(nextRows);
+      setSelectedId(nextRows[0]?.functionId ?? null);
+      setFormMode(null);
+      setMessage(`${result.function.functionCode} was deleted.`);
+    } catch (caught: unknown) {
+      setError(errorText(caught));
+    } finally {
+      setIsSaving(false);
     }
-
-    setSelectedId(nextRecord.id);
-    setFormMode(null);
   };
 
   return (
@@ -242,7 +242,7 @@ export default function FunctionData() {
         </div>
       </section>
 
-      <section className={styles.workspace}>
+      <section className={styles.workspace} aria-busy={isLoading}>
         <div className={styles.toolbar}>
           <input
             aria-label="Search function data"
@@ -250,74 +250,120 @@ export default function FunctionData() {
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search function code or name"
           />
-          <button className={styles.newButton} type="button" onClick={handleNew}>
-            New
-          </button>
+          {isCenter ? (
+            <>
+              <button
+                className={styles.newButton}
+                type="button"
+                onClick={startNew}
+                disabled={isSaving}
+              >
+                New
+              </button>
+              <button
+                className={styles.editButton}
+                type="button"
+                onClick={startEdit}
+                disabled={!selected || isSaving}
+              >
+                Edit
+              </button>
+              <button
+                className={styles.deleteButton}
+                type="button"
+                onClick={() => void remove()}
+                disabled={!selected || isSaving}
+              >
+                Delete
+              </button>
+            </>
+          ) : null}
           <button
-            className={styles.editButton}
+            className={styles.refreshButton}
             type="button"
-            onClick={handleEdit}
-            disabled={!selectedRecord}
+            onClick={() => void loadRows()}
+            disabled={isLoading || isSaving}
           >
-            Edit
-          </button>
-          <button
-            className={styles.deleteButton}
-            type="button"
-            onClick={handleDelete}
-            disabled={!selectedRecord}
-          >
-            Delete
-          </button>
-          <button className={styles.refreshButton} type="button" onClick={handleRefresh}>
             Refresh
           </button>
         </div>
 
+        {error ? <p role="alert">{error}</p> : null}
+        {message ? <p role="status">{message}</p> : null}
+
         {formMode ? (
           <section className={styles.editorPanel}>
-            <div className={styles.panelHeader}>
-              <div>
-                <span>{formMode === "new" ? "New record" : "Edit record"}</span>
-                <h3>{formMode === "new" ? "Create Function" : formValues.functionCode}</h3>
-              </div>
-            </div>
-
+            <h3>{formMode === "new" ? "Create Function" : "Edit Function"}</h3>
             <div className={styles.formGrid}>
               <label>
                 Function Code
                 <input
-                  value={formValues.functionCode}
-                  onChange={(event) => updateForm("functionCode", event.target.value)}
-                  placeholder="FNC0001"
+                  value={form.functionCode}
+                  maxLength={30}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      functionCode: event.target.value,
+                    }))
+                  }
                 />
               </label>
               <label>
                 Function Name(TH)
                 <input
-                  value={formValues.functionNameTh}
-                  onChange={(event) => updateForm("functionNameTh", event.target.value)}
-                  placeholder="Thai function name"
+                  value={form.functionNameTh}
+                  maxLength={255}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      functionNameTh: event.target.value,
+                    }))
+                  }
                 />
               </label>
               <label>
                 Function Name(EN)
                 <input
-                  value={formValues.functionNameEn}
-                  onChange={(event) => updateForm("functionNameEn", event.target.value)}
-                  placeholder="Function name in English"
+                  value={form.functionNameEn}
+                  maxLength={255}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      functionNameEn: event.target.value,
+                    }))
+                  }
                 />
               </label>
+              <label>
+                Status
+                <select
+                  value={form.status}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      status: event.target.value as MasterStatus,
+                    }))
+                  }
+                >
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="INACTIVE">INACTIVE</option>
+                </select>
+              </label>
             </div>
-
             <div className={styles.formActions}>
-              <button className={styles.saveButton} type="button" onClick={handleSave}>
-                Save
+              <button
+                className={styles.saveButton}
+                type="button"
+                onClick={() => void save()}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Save"}
               </button>
               <button
                 className={styles.cancelButton}
                 type="button"
                 onClick={() => setFormMode(null)}
+                disabled={isSaving}
               >
                 Cancel
               </button>
@@ -328,12 +374,11 @@ export default function FunctionData() {
         <section className={styles.tablePanel}>
           <div className={styles.panelHeader}>
             <div>
-              <span>Master List</span>
+              <span>Shared Master</span>
               <h3>Function Records</h3>
             </div>
             <p>{visibleRows.length} records</p>
           </div>
-
           <div className={styles.tableWrap}>
             <table className={styles.functionTable}>
               <thead>
@@ -342,26 +387,34 @@ export default function FunctionData() {
                   <th>Function Code</th>
                   <th>Function Name(TH)</th>
                   <th>Function Name(EN)</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleRows.map((row, index) => (
                   <tr
-                    className={row.id === selectedId ? styles.selectedRow : undefined}
-                    key={row.id}
-                    onClick={() => setSelectedId(row.id)}
+                    key={row.functionId}
+                    className={
+                      row.functionId === selectedId
+                        ? styles.selectedRow
+                        : undefined
+                    }
+                    onClick={() => setSelectedId(row.functionId)}
                   >
                     <td>{index + 1}</td>
                     <td>
-                      <span className={styles.codePill}>{row.functionCode}</span>
+                      <span className={styles.codePill}>
+                        {row.functionCode}
+                      </span>
                     </td>
                     <td>{row.functionNameTh}</td>
-                    <td>{row.functionNameEn || "-"}</td>
+                    <td>{row.functionNameEn ?? "-"}</td>
+                    <td>{row.status}</td>
                   </tr>
                 ))}
-                {visibleRows.length === 0 ? (
+                {!isLoading && visibleRows.length === 0 ? (
                   <tr>
-                    <td colSpan={4}>No function data found.</td>
+                    <td colSpan={5}>No function data found.</td>
                   </tr>
                 ) : null}
               </tbody>

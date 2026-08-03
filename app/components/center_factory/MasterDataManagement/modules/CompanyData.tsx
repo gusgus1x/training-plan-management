@@ -1,19 +1,30 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  CompanyClientError,
+  createCompany,
+  deleteCompany,
+  listCompanies,
+  updateCompany,
+} from "../../../../lib/companies/client";
+import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import type {
+  CompanyRecord,
+  CompanyStatus,
+  CreateCompanyInput,
+} from "../../../../lib/companies/types";
 import styles from "./CompanyData.module.css";
 
-type CompanyCode = "ATA" | "TEP" | "ATFB" | "NIC" | "SATI" | "SNF";
-
-type CompanyRecord = {
-  id: string;
-  compCode: CompanyCode;
-  compNameTh: string;
-  compNameEn: string;
-  remark: string;
-};
-
 type FormMode = "new" | "edit" | null;
+
+type CompanyForm = {
+  companyCode: string;
+  companyNameTh: string;
+  companyNameEn: string;
+  remark: string;
+  status: CompanyStatus;
+};
 
 export const companyDataModule = {
   title: "Company Data",
@@ -21,144 +32,248 @@ export const companyDataModule = {
   description: "Store and maintain company master data.",
 } as const;
 
-const companyCodes: CompanyCode[] = ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"];
-
-const companyNameByCode: Record<
-  CompanyCode,
-  Pick<CompanyRecord, "compNameTh" | "compNameEn">
-> = {
-  ATA: {
-    compNameTh: "บริษัท ไอซิน ทาคาโอกะ เอเชีย จำกัด",
-    compNameEn: "Aisin Takaoka Asia Co., Ltd.",
-  },
-  TEP: {
-    compNameTh: "บริษัท ไทย เอ็นจิเนียริ่ง โปรดักส์ จำกัด",
-    compNameEn: "Thai Engineering Products Co., Ltd.",
-  },
-  ATFB: {
-    compNameTh: "บริษัท ไอซิน ทาคาโอกะ ฟาวน์ดรี บางปะกง จำกัด",
-    compNameEn: "Aisin Takaoka Foundry Bangpakong Co., Ltd.",
-  },
-  NIC: {
-    compNameTh: "บริษัท เดอะ นวโลหะ อินดัสทรี จำกัด",
-    compNameEn: "The Nawaloha Industry Co., Ltd.",
-  },
-  SATI: {
-    compNameTh: "บริษัท สยาม เอที อินดัสทรี จำกัด",
-    compNameEn: "Siam AT Industry Co., Ltd.",
-  },
-  SNF: {
-    compNameTh: "บริษัท เดอะ สยาม นวโลหะ ฟาวน์ดรี จำกัด",
-    compNameEn: "The Siam Nawaloha Foundry Co., Ltd.",
-  },
-};
-
-const defaultRows: CompanyRecord[] = companyCodes.map((compCode) => ({
-  id: compCode,
-  compCode,
-  ...companyNameByCode[compCode],
+const createBlankForm = (): CompanyForm => ({
+  companyCode: "",
+  companyNameTh: "",
+  companyNameEn: "",
   remark: "",
-}));
-
-const createBlankRecord = (): CompanyRecord => ({
-  id: `company-${Date.now()}`,
-  compCode: "ATA",
-  ...companyNameByCode.ATA,
-  remark: "",
+  status: "ACTIVE",
 });
 
-export default function CompanyData() {
-  const [rows, setRows] = useState<CompanyRecord[]>(defaultRows);
-  const [search, setSearch] = useState("");
-  const [selectedCode, setSelectedCode] = useState<CompanyCode | "all">("all");
-  const [selectedId, setSelectedId] = useState<string | null>(defaultRows[0]?.id ?? null);
-  const [formMode, setFormMode] = useState<FormMode>(null);
-  const [formValues, setFormValues] = useState<CompanyRecord>(createBlankRecord);
+const toCompanyForm = (company: CompanyRecord): CompanyForm => ({
+  companyCode: company.companyCode,
+  companyNameTh: company.companyNameTh,
+  companyNameEn: company.companyNameEn ?? "",
+  remark: company.remark ?? "",
+  status: company.status,
+});
 
-  const selectedRecord = rows.find((row) => row.id === selectedId) ?? null;
+const toCreateInput = (form: CompanyForm): CreateCompanyInput => ({
+  companyCode: form.companyCode.trim().toUpperCase(),
+  companyNameTh: form.companyNameTh.trim(),
+  companyNameEn: form.companyNameEn.trim() || null,
+  remark: form.remark.trim() || null,
+  status: form.status,
+});
+
+const readableError = (error: unknown) =>
+  error instanceof CompanyClientError
+    ? error.message
+    : "Unable to load company data. Please try again.";
+
+export default function CompanyData() {
+  const authenticatedUser = useAuthenticatedUser();
+  const canCreateCompany = authenticatedUser?.roleCode === "HRD_CENTER";
+  const [rows, setRows] = useState<CompanyRecord[]>([]);
+  const [search, setSearch] = useState("");
+  const [selectedCode, setSelectedCode] = useState<string>("all");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [formMode, setFormMode] = useState<FormMode>(null);
+  const [formValues, setFormValues] = useState<CompanyForm>(createBlankForm);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+
+  const selectedRecord =
+    rows.find((row) => row.companyId === selectedId) ?? null;
+  const canModifySelected =
+    authenticatedUser?.roleCode === "HRD_CENTER" ||
+    (authenticatedUser?.roleCode === "HRD_FACTORY" &&
+      authenticatedUser.companyId !== null &&
+      selectedRecord?.companyId === authenticatedUser.companyId);
+  const companyCodes = useMemo(
+    () => [...new Set(rows.map((row) => row.companyCode))].sort(),
+    [rows],
+  );
   const visibleRows = useMemo(
     () =>
       rows.filter((row) => {
         const searchableText = [
-          row.compCode,
-          row.compNameTh,
-          row.compNameEn,
+          row.companyCode,
+          row.companyNameTh,
+          row.companyNameEn,
           row.remark,
+          row.status,
         ]
+          .filter(Boolean)
           .join(" ")
           .toLowerCase();
-        const matchesSearch = searchableText.includes(search.toLowerCase());
-        const matchesCode = selectedCode === "all" || row.compCode === selectedCode;
+        const matchesSearch = searchableText.includes(
+          search.trim().toLowerCase(),
+        );
+        const matchesCode =
+          selectedCode === "all" || row.companyCode === selectedCode;
 
         return matchesSearch && matchesCode;
       }),
     [rows, search, selectedCode],
   );
 
-  const handleCodeChange = (compCode: CompanyCode) => {
-    setFormValues((current) => ({
-      ...current,
-      compCode,
-      ...companyNameByCode[compCode],
-    }));
+  const loadRows = async (preferredCompanyId?: string | null) => {
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const result = await listCompanies();
+      const nextRows = result.items;
+      const nextSelectedId =
+        preferredCompanyId &&
+        nextRows.some((row) => row.companyId === preferredCompanyId)
+          ? preferredCompanyId
+          : nextRows[0]?.companyId ?? null;
+
+      setRows(nextRows);
+      setSelectedId(nextSelectedId);
+    } catch (error: unknown) {
+      setRows([]);
+      setSelectedId(null);
+      setErrorMessage(readableError(error));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  useEffect(() => {
+    let isCurrent = true;
+
+    listCompanies()
+      .then((result) => {
+        if (!isCurrent) {
+          return;
+        }
+
+        setRows(result.items);
+        setSelectedId(result.items[0]?.companyId ?? null);
+      })
+      .catch((error: unknown) => {
+        if (!isCurrent) {
+          return;
+        }
+
+        setRows([]);
+        setSelectedId(null);
+        setErrorMessage(readableError(error));
+      })
+      .finally(() => {
+        if (isCurrent) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
   const handleNew = () => {
-    setFormValues(createBlankRecord());
+    setFormValues(createBlankForm());
+    setErrorMessage(null);
+    setFeedbackMessage(null);
     setFormMode("new");
   };
 
   const handleEdit = () => {
-    if (!selectedRecord) {
+    if (!selectedRecord || !canModifySelected) {
       return;
     }
 
-    setFormValues(selectedRecord);
+    setFormValues(toCompanyForm(selectedRecord));
+    setErrorMessage(null);
+    setFeedbackMessage(null);
     setFormMode("edit");
   };
 
-  const handleDelete = () => {
-    if (!selectedRecord) {
+  const handleDelete = async () => {
+    if (!selectedRecord || !canModifySelected || isSaving) {
       return;
     }
 
-    setRows((current) => current.filter((row) => row.id !== selectedRecord.id));
-    setSelectedId(null);
-    setFormMode(null);
+    if (
+      !window.confirm(
+        `Delete company ${selectedRecord.companyCode}? This action cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+
+    setIsSaving(true);
+    setErrorMessage(null);
+    setFeedbackMessage(null);
+
+    try {
+      const result = await deleteCompany(selectedRecord.companyId);
+      const nextRows = rows.filter(
+        (row) => row.companyId !== result.company.companyId,
+      );
+
+      setRows(nextRows);
+      setSelectedId(nextRows[0]?.companyId ?? null);
+      setFormMode(null);
+      setFeedbackMessage(`${result.company.companyCode} was deleted.`);
+    } catch (error: unknown) {
+      setErrorMessage(readableError(error));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleRefresh = () => {
-    setRows(defaultRows);
     setSearch("");
     setSelectedCode("all");
-    setSelectedId(defaultRows[0]?.id ?? null);
     setFormMode(null);
+    setFeedbackMessage(null);
+    void loadRows(selectedId);
   };
 
-  const handleSave = () => {
-    const nextRecord: CompanyRecord = {
-      ...formValues,
-      compNameTh:
-        formValues.compNameTh.trim() || companyNameByCode[formValues.compCode].compNameTh,
-      compNameEn:
-        formValues.compNameEn.trim() || companyNameByCode[formValues.compCode].compNameEn,
-      remark: formValues.remark.trim(),
-    };
-
-    if (formMode === "edit") {
-      setRows((current) =>
-        current.map((row) => (row.id === nextRecord.id ? nextRecord : row)),
-      );
-    } else {
-      setRows((current) => [nextRecord, ...current]);
+  const handleSave = async () => {
+    if (isSaving) {
+      return;
     }
 
-    setSelectedId(nextRecord.id);
-    setFormMode(null);
+    const input = toCreateInput(formValues);
+
+    if (!input.companyCode || !input.companyNameTh) {
+      setErrorMessage("Company code and Thai company name are required.");
+      return;
+    }
+
+    setIsSaving(true);
+    setErrorMessage(null);
+    setFeedbackMessage(null);
+
+    try {
+      const result =
+        formMode === "edit" && selectedRecord
+          ? await updateCompany(selectedRecord.companyId, input)
+          : await createCompany(input);
+
+      setRows((current) =>
+        formMode === "edit"
+          ? current.map((row) =>
+              row.companyId === result.company.companyId
+                ? result.company
+                : row,
+            )
+          : [result.company, ...current],
+      );
+      setSelectedId(result.company.companyId);
+      setFormMode(null);
+      setFeedbackMessage(
+        `${result.company.companyCode} was saved successfully.`,
+      );
+    } catch (error: unknown) {
+      setErrorMessage(readableError(error));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    <section className={styles.moduleWorkspace} aria-label="Company Data module">
+    <section
+      className={styles.moduleWorkspace}
+      aria-label="Company Data module"
+    >
       <section className={styles.moduleHero}>
         <div>
           <p className={styles.panelKicker}>{companyDataModule.subtitle}</p>
@@ -189,51 +304,76 @@ export default function CompanyData() {
             <select
               aria-label="Filter company code"
               value={selectedCode}
-              onChange={(event) => setSelectedCode(event.target.value as CompanyCode | "all")}
+              onChange={(event) => setSelectedCode(event.target.value)}
             >
               <option value="all">All comp code</option>
-              {companyCodes.map((compCode) => (
-                <option key={compCode} value={compCode}>
-                  {compCode}
+              {companyCodes.map((companyCode) => (
+                <option key={companyCode} value={companyCode}>
+                  {companyCode}
                 </option>
               ))}
             </select>
           </div>
           <div className={styles.actionGroup}>
-            <button className={styles.actionButton} type="button" onClick={handleNew}>
-              New
-            </button>
+            {canCreateCompany ? (
+              <button
+                className={styles.actionButton}
+                type="button"
+                onClick={handleNew}
+                disabled={isSaving}
+              >
+                New
+              </button>
+            ) : null}
             <button
               className={styles.secondaryButton}
               type="button"
               onClick={handleEdit}
-              disabled={!selectedRecord}
+              disabled={!canModifySelected || isSaving}
             >
               Edit
             </button>
             <button
               className={styles.dangerButton}
               type="button"
-              onClick={handleDelete}
-              disabled={!selectedRecord}
+              onClick={() => void handleDelete()}
+              disabled={!canModifySelected || isSaving}
             >
               Delete
             </button>
-            <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>
+            <button
+              className={styles.secondaryButton}
+              type="button"
+              onClick={handleRefresh}
+              disabled={isLoading || isSaving}
+            >
               Refresh
             </button>
           </div>
         </div>
+
+        {errorMessage ? (
+          <p className={styles.errorMessage} role="alert">
+            {errorMessage}
+          </p>
+        ) : null}
+        {feedbackMessage ? (
+          <p className={styles.feedbackMessage} role="status">
+            {feedbackMessage}
+          </p>
+        ) : null}
       </section>
 
-      <section className={styles.panel}>
+      <section className={styles.panel} aria-busy={isLoading}>
         <div className={styles.sectionHeader}>
           <div>
             <h3>Company Records</h3>
-            <p>{visibleRows.length} records</p>
+            <p>{isLoading ? "Loading company data..." : `${visibleRows.length} records`}</p>
           </div>
           <span className={styles.selectedHint}>
-            {selectedRecord ? `Selected: ${selectedRecord.compCode}` : "Select a row"}
+            {selectedRecord
+              ? `Selected: ${selectedRecord.companyCode}`
+              : "Select a row"}
           </span>
         </div>
         <div className={styles.tableWrap}>
@@ -245,27 +385,47 @@ export default function CompanyData() {
                 <th>Comp Name (TH)</th>
                 <th>Comp Name (EN)</th>
                 <th>Remark</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              {visibleRows.map((row, index) => (
-                <tr
-                  className={row.id === selectedId ? styles.selectedRow : undefined}
-                  key={row.id}
-                  onClick={() => setSelectedId(row.id)}
-                >
-                  <td>{index + 1}</td>
-                  <td>
-                    <span className={styles.codePill}>{row.compCode}</span>
-                  </td>
-                  <td>{row.compNameTh}</td>
-                  <td>{row.compNameEn}</td>
-                  <td>{row.remark || "-"}</td>
-                </tr>
-              ))}
-              {visibleRows.length === 0 ? (
+              {!isLoading
+                ? visibleRows.map((row, index) => (
+                    <tr
+                      className={
+                        row.companyId === selectedId
+                          ? styles.selectedRow
+                          : undefined
+                      }
+                      key={row.companyId}
+                      onClick={() => setSelectedId(row.companyId)}
+                    >
+                      <td>{index + 1}</td>
+                      <td>
+                        <span className={styles.codePill}>
+                          {row.companyCode}
+                        </span>
+                      </td>
+                      <td>{row.companyNameTh}</td>
+                      <td>{row.companyNameEn ?? "-"}</td>
+                      <td>{row.remark ?? "-"}</td>
+                      <td>
+                        <span
+                          className={`${styles.statusPill} ${
+                            row.status === "INACTIVE"
+                              ? styles.inactiveStatus
+                              : ""
+                          }`}
+                        >
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                : null}
+              {!isLoading && visibleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={5}>No company data found.</td>
+                  <td colSpan={6}>No company data found.</td>
                 </tr>
               ) : null}
             </tbody>
@@ -279,25 +439,26 @@ export default function CompanyData() {
           <div className={styles.formGrid}>
             <label>
               Comp Code
-              <select
-                value={formValues.compCode}
-                onChange={(event) => handleCodeChange(event.target.value as CompanyCode)}
-              >
-                {companyCodes.map((compCode) => (
-                  <option key={compCode} value={compCode}>
-                    {compCode}
-                  </option>
-                ))}
-              </select>
+              <input
+                value={formValues.companyCode}
+                maxLength={30}
+                onChange={(event) =>
+                  setFormValues((current) => ({
+                    ...current,
+                    companyCode: event.target.value.toUpperCase(),
+                  }))
+                }
+              />
             </label>
             <label>
               Comp Name (TH)
               <input
-                value={formValues.compNameTh}
+                value={formValues.companyNameTh}
+                maxLength={255}
                 onChange={(event) =>
                   setFormValues((current) => ({
                     ...current,
-                    compNameTh: event.target.value,
+                    companyNameTh: event.target.value,
                   }))
                 }
               />
@@ -305,19 +466,36 @@ export default function CompanyData() {
             <label>
               Comp Name (EN)
               <input
-                value={formValues.compNameEn}
+                value={formValues.companyNameEn}
+                maxLength={255}
                 onChange={(event) =>
                   setFormValues((current) => ({
                     ...current,
-                    compNameEn: event.target.value,
+                    companyNameEn: event.target.value,
                   }))
                 }
               />
+            </label>
+            <label>
+              Status
+              <select
+                value={formValues.status}
+                onChange={(event) =>
+                  setFormValues((current) => ({
+                    ...current,
+                    status: event.target.value as CompanyStatus,
+                  }))
+                }
+              >
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="INACTIVE">INACTIVE</option>
+              </select>
             </label>
             <label className={styles.fullWidth}>
               Remark
               <textarea
                 value={formValues.remark}
+                maxLength={500}
                 onChange={(event) =>
                   setFormValues((current) => ({
                     ...current,
@@ -327,13 +505,19 @@ export default function CompanyData() {
               />
             </label>
             <div className={styles.formActions}>
-              <button className={styles.actionButton} type="button" onClick={handleSave}>
-                Save
+              <button
+                className={styles.actionButton}
+                type="button"
+                onClick={() => void handleSave()}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Save"}
               </button>
               <button
                 className={styles.secondaryButton}
                 type="button"
                 onClick={() => setFormMode(null)}
+                disabled={isSaving}
               >
                 Cancel
               </button>

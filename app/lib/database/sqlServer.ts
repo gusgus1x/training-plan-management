@@ -9,7 +9,8 @@ const requiredDatabaseEnvironmentKeys = [
   "DB_PASSWORD",
 ] as const;
 
-const prohibitedDatabaseUsers = new Set(["sa", "sysadmin"]);
+const requiredDatabaseName = "TrainingPlanManagementDB";
+const requiredDatabaseUser = "training_plan_app";
 
 export class DatabaseEnvironmentError extends Error {
   constructor(message: string) {
@@ -109,9 +110,15 @@ export const getSqlServerConfig = (
   const user = readRequiredValue(environment, "DB_USER");
   const password = readRequiredValue(environment, "DB_PASSWORD");
 
-  if (prohibitedDatabaseUsers.has(user.toLowerCase())) {
+  if (database !== requiredDatabaseName) {
     throw new DatabaseEnvironmentError(
-      "DB_USER must be a least-privilege application account",
+      `DB_DATABASE must be ${requiredDatabaseName}`,
+    );
+  }
+
+  if (user.toLowerCase() !== requiredDatabaseUser) {
+    throw new DatabaseEnvironmentError(
+      `DB_USER must be the least-privilege ${requiredDatabaseUser} account`,
     );
   }
 

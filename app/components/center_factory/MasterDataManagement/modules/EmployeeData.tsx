@@ -1,460 +1,322 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { listCompanies } from "../../../../lib/companies/client";
+import type { CompanyRecord } from "../../../../lib/companies/types";
 import {
-  readEmployeeMasterData,
-  writeEmployeeMasterData,
-} from "../../../../lib/employeeMasterData";
-import {
-  TRAINING_MASTER_EVENT,
-  TRAINING_MASTER_KEYS,
-  readMasterCollection,
-} from "../../../../lib/trainingWorkflow";
-import { defaultFunctionRows } from "./FunctionData";
-import { defaultLevelRows } from "./LevelData";
-import { defaultPositionRows } from "./PositionData";
+  createEmployee,
+  deleteEmployee,
+  listEmployees,
+  revealEmployeeNationalId,
+  updateEmployee,
+} from "../../../../lib/employees/client";
+import type {
+  EmployeeInput,
+  EmployeeRecord,
+} from "../../../../lib/employees/types";
+import { listFunctions } from "../../../../lib/functions/client";
+import type { OrganizationFunctionRecord as FunctionRecord } from "../../../../lib/functions/types";
+import { listLevels } from "../../../../lib/levels/client";
+import type { LevelRecord } from "../../../../lib/levels/types";
+import { listPositions } from "../../../../lib/positions/client";
+import type { PositionRecord } from "../../../../lib/positions/types";
 import styles from "./EmployeeData.module.css";
-
-type CompanyCode = "ATA" | "TEP" | "ATFB" | "NIC" | "SATI" | "SNF";
-
-type EmployeeRecord = {
-  id: string;
-  company: CompanyCode;
-  empCode: string;
-  idCard: string;
-  nameTh: string;
-  surnameTh: string;
-  titleEn: string;
-  nameEn: string;
-  surnameEn: string;
-  birthday: string;
-  workday: string;
-  functionCode: string;
-  functionName: string;
-  positionName: string;
-  levelKey: string;
-};
 
 export const employeeDataModule = {
   title: "Employee Data",
   subtitle: "Employee master",
   description:
-    "Maintain employee profile data by company, function, position, and level without PL values.",
+    "Maintain company-scoped employee profiles with protected Thai National IDs.",
 } as const;
 
-const companies: CompanyCode[] = ["SATI", "ATFB", "TEP", "ATA", "NIC", "SNF"];
-
-const defaultRows: EmployeeRecord[] = [
-  {
-    id: "emp-ata-001",
-    company: "ATA",
-    empCode: "ATA-1001",
-    idCard: "1101400023412",
-    nameTh: "อนันต์",
-    surnameTh: "ศรีสุข",
-    titleEn: "Mr.",
-    nameEn: "Anan",
-    surnameEn: "Srisuk",
-    birthday: "1991-04-12",
-    workday: "2018-06-01",
-    functionCode: "FNC0010",
-    functionName: "Production",
-    positionName: "Operator",
-    levelKey: "ป3",
-  },
-  {
-    id: "emp-ata-002",
-    company: "ATA",
-    empCode: "ATA-1002",
-    idCard: "1101400025798",
-    nameTh: "มาลี",
-    surnameTh: "เกษมสุข",
-    titleEn: "Ms.",
-    nameEn: "Mali",
-    surnameEn: "Kasemsuk",
-    birthday: "1989-09-18",
-    workday: "2016-03-14",
-    functionCode: "FNC0013",
-    functionName: "Quality",
-    positionName: "Engineer",
-    levelKey: "บ2",
-  },
-  {
-    id: "emp-tep-001",
-    company: "TEP",
-    empCode: "TEP-2101",
-    idCard: "3100200045611",
-    nameTh: "ธนกร",
-    surnameTh: "บุญมี",
-    titleEn: "Mr.",
-    nameEn: "Thanakorn",
-    surnameEn: "Boonmee",
-    birthday: "1993-02-07",
-    workday: "2019-11-20",
-    functionCode: "FNC0012",
-    functionName: "Engineering and Maintenance",
-    positionName: "Foreman",
-    levelKey: "บ3",
-  },
-  {
-    id: "emp-tep-002",
-    company: "TEP",
-    empCode: "TEP-2102",
-    idCard: "3100200047983",
-    nameTh: "เบญจมาศ",
-    surnameTh: "ยิ่งเจริญ",
-    titleEn: "Ms.",
-    nameEn: "Benjamas",
-    surnameEn: "Yingcharoen",
-    birthday: "1995-12-22",
-    workday: "2021-01-08",
-    functionCode: "FNC0011",
-    functionName: "Production Planing",
-    positionName: "Staff",
-    levelKey: "ป2",
-  },
-  {
-    id: "emp-atfb-001",
-    company: "ATFB",
-    empCode: "ATFB-3201",
-    idCard: "2100300064410",
-    nameTh: "สมชาย",
-    surnameTh: "พร้อมใจ",
-    titleEn: "Mr.",
-    nameEn: "Somchai",
-    surnameEn: "Promjai",
-    birthday: "1987-07-03",
-    workday: "2013-05-16",
-    functionCode: "FNC0010",
-    functionName: "Production",
-    positionName: "Section Head",
-    levelKey: "บ4",
-  },
-  {
-    id: "emp-atfb-002",
-    company: "ATFB",
-    empCode: "ATFB-3202",
-    idCard: "2100300067154",
-    nameTh: "อรสา",
-    surnameTh: "จันทร์ดี",
-    titleEn: "Ms.",
-    nameEn: "Orasa",
-    surnameEn: "Jandee",
-    birthday: "1990-10-27",
-    workday: "2017-08-21",
-    functionCode: "FNC0014",
-    functionName: "Safety and Environment",
-    positionName: "Supervisor",
-    levelKey: "บ2",
-  },
-  {
-    id: "emp-nic-001",
-    company: "NIC",
-    empCode: "NIC-4301",
-    idCard: "4100500075561",
-    nameTh: "กานดา",
-    surnameTh: "รุ่งเรือง",
-    titleEn: "Ms.",
-    nameEn: "Kanda",
-    surnameEn: "Rungrueang",
-    birthday: "1992-05-30",
-    workday: "2020-04-01",
-    functionCode: "FNC0007",
-    functionName: "Purchase",
-    positionName: "Staff",
-    levelKey: "ป3",
-  },
-  {
-    id: "emp-nic-002",
-    company: "NIC",
-    empCode: "NIC-4302",
-    idCard: "4100500078827",
-    nameTh: "ปรีชา",
-    surnameTh: "วงศ์สว่าง",
-    titleEn: "Mr.",
-    nameEn: "Preecha",
-    surnameEn: "Wongsawang",
-    birthday: "1988-01-14",
-    workday: "2015-09-07",
-    functionCode: "FNC0009",
-    functionName: "Warehouse",
-    positionName: "Leader",
-    levelKey: "ป4",
-  },
-  {
-    id: "emp-sati-001",
-    company: "SATI",
-    empCode: "SATI-5401",
-    idCard: "5100600082149",
-    nameTh: "วิภาดา",
-    surnameTh: "ชัยพร",
-    titleEn: "Ms.",
-    nameEn: "Wipada",
-    surnameEn: "Chaiporn",
-    birthday: "1994-08-11",
-    workday: "2022-02-15",
-    functionCode: "FNC0008",
-    functionName: "IT Promotion",
-    positionName: "Engineer",
-    levelKey: "บ1",
-  },
-  {
-    id: "emp-sati-002",
-    company: "SATI",
-    empCode: "SATI-5402",
-    idCard: "5100600084472",
-    nameTh: "ชัยวัฒน์",
-    surnameTh: "นิลประภา",
-    titleEn: "Mr.",
-    nameEn: "Chaiwat",
-    surnameEn: "Nilprapa",
-    birthday: "1986-11-04",
-    workday: "2014-12-01",
-    functionCode: "FNC0015",
-    functionName: "Project Engineering",
-    positionName: "Manager++",
-    levelKey: "จ2",
-  },
-  {
-    id: "emp-snf-001",
-    company: "SNF",
-    empCode: "SNF-6501",
-    idCard: "6100700090186",
-    nameTh: "สุดา",
-    surnameTh: "มั่นคง",
-    titleEn: "Ms.",
-    nameEn: "Suda",
-    surnameEn: "Mankong",
-    birthday: "1996-03-19",
-    workday: "2023-06-05",
-    functionCode: "FNC0004",
-    functionName: "Human Resource",
-    positionName: "Staff",
-    levelKey: "ป1",
-  },
-  {
-    id: "emp-snf-002",
-    company: "SNF",
-    empCode: "SNF-6502",
-    idCard: "6100700093517",
-    nameTh: "กฤต",
-    surnameTh: "อรุณรุ่ง",
-    titleEn: "Mr.",
-    nameEn: "Krit",
-    surnameEn: "Aroonrung",
-    birthday: "1991-06-25",
-    workday: "2018-10-10",
-    functionCode: "FNC0010",
-    functionName: "Production",
-    positionName: "Operator",
-    levelKey: "ป2",
-  },
-];
-
-const emptyRecord = (): EmployeeRecord => ({
-  id: `employee-${Date.now()}`,
-  company: "ATA",
-  empCode: "",
-  idCard: "",
-  nameTh: "",
-  surnameTh: "",
-  titleEn: "Mr.",
-  nameEn: "",
-  surnameEn: "",
-  birthday: "",
-  workday: "",
-  functionCode: "",
-  functionName: "",
-  positionName: "",
-  levelKey: "",
+const blank = (companyId = ""): EmployeeInput => ({
+  companyId,
+  employeeCode: "",
+  functionId: null,
+  positionId: null,
+  levelId: null,
+  nationalId: "",
+  titleTh: "นาย",
+  titleEn: null,
+  firstNameTh: "",
+  lastNameTh: "",
+  firstNameEn: null,
+  lastNameEn: null,
+  birthDate: null,
+  hireDate: null,
+  telephone: null,
+  email: null,
+  employmentStatus: "ACTIVE",
 });
 
+const display = (value: string | null) => value || "-";
+
 export default function EmployeeData() {
-  const [rows, setRows] = useState<EmployeeRecord[]>(() => readEmployeeMasterData());
-  const [companyFilter, setCompanyFilter] = useState<CompanyCode | "all">("all");
+  const user = useAuthenticatedUser();
+  const center = user?.roleCode === "HRD_CENTER";
+  const [rows, setRows] = useState<EmployeeRecord[]>([]);
+  const [companies, setCompanies] = useState<CompanyRecord[]>([]);
+  const [functions, setFunctions] = useState<FunctionRecord[]>([]);
+  const [positions, setPositions] = useState<PositionRecord[]>([]);
+  const [levels, setLevels] = useState<LevelRecord[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [openCompanies, setOpenCompanies] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState(
-    () => readEmployeeMasterData()[0]?.id ?? "",
-  );
-  const [openCompanies, setOpenCompanies] = useState<CompanyCode[]>(["SATI"]);
-  const [formMode, setFormMode] = useState<"new" | "edit" | null>(null);
-  const [formValues, setFormValues] = useState<EmployeeRecord>(emptyRecord);
-  const [functionRows, setFunctionRows] = useState(() =>
-    readMasterCollection(TRAINING_MASTER_KEYS.functions, defaultFunctionRows),
-  );
-  const [positionRows, setPositionRows] = useState(() =>
-    readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows),
-  );
-  const [levelRows, setLevelRows] = useState(() =>
-    readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows),
-  );
+  const [companyFilter, setCompanyFilter] = useState("all");
+  const [mode, setMode] = useState<"new" | "edit" | null>(null);
+  const [form, setForm] = useState<EmployeeInput>(blank());
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [revealedNationalIds, setRevealedNationalIds] = useState<
+    Record<string, string>
+  >({});
+  const [revealingNationalIds, setRevealingNationalIds] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const selected =
+    rows.find((employee) => employee.employeeId === selectedId) ?? null;
+
+  const load = async () => {
+    setError(null);
+    setRevealedNationalIds({});
+    try {
+      const [employeeResult, companyResult, functionResult, positionResult, levelResult] =
+        await Promise.all([
+          listEmployees(),
+          listCompanies(),
+          listFunctions(),
+          listPositions(),
+          listLevels(),
+        ]);
+      setRows(employeeResult.items);
+      setCompanies(companyResult.items);
+      setFunctions(functionResult.items);
+      setPositions(positionResult.items);
+      setLevels(levelResult.items);
+      setSelectedId((current) =>
+        current &&
+        employeeResult.items.some((employee) => employee.employeeId === current)
+          ? current
+          : (employeeResult.items[0]?.employeeId ?? null),
+      );
+      setOpenCompanies((current) => {
+        const companyIds = new Set(
+          employeeResult.items.map((employee) => employee.companyId),
+        );
+        const retained = current.filter((companyId) => companyIds.has(companyId));
+        return retained.length > 0
+          ? retained
+          : employeeResult.items[0]
+            ? [employeeResult.items[0].companyId]
+            : [];
+      });
+    } catch (loadError) {
+      setError(
+        loadError instanceof Error
+          ? loadError.message
+          : "Unable to load Employee Data",
+      );
+    }
+  };
 
   useEffect(() => {
-    const syncReferenceMasters = () => {
-      setFunctionRows(
-        readMasterCollection(TRAINING_MASTER_KEYS.functions, defaultFunctionRows),
-      );
-      setPositionRows(
-        readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows),
-      );
-      setLevelRows(
-        readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows),
-      );
-    };
-
-    window.addEventListener(TRAINING_MASTER_EVENT, syncReferenceMasters);
-    return () =>
-      window.removeEventListener(TRAINING_MASTER_EVENT, syncReferenceMasters);
+    void Promise.resolve().then(load);
   }, []);
 
-  const selectedRecord = rows.find((row) => row.id === selectedId) ?? null;
-  const visibleRows = useMemo(() => {
+  const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
-
-    return rows.filter((row) => {
-      const matchesCompany = companyFilter === "all" || row.company === companyFilter;
+    return rows.filter((employee) => {
+      const matchesCompany =
+        companyFilter === "all" || employee.companyId === companyFilter;
       const matchesSearch =
         !query ||
         [
-          row.company,
-          row.empCode,
-          row.idCard,
-          row.nameTh,
-          row.surnameTh,
-          row.nameEn,
-          row.surnameEn,
-          row.functionCode,
-          row.functionName,
-          row.positionName,
-          row.levelKey,
+          employee.companyCode,
+          employee.employeeCode,
+          employee.nationalIdMasked,
+          employee.titleTh,
+          employee.titleEn,
+          employee.firstNameTh,
+          employee.lastNameTh,
+          employee.firstNameEn,
+          employee.lastNameEn,
+          employee.birthDate,
+          employee.hireDate,
+          employee.telephone,
+          employee.email,
+          employee.functionCode,
+          employee.functionName,
+          employee.positionCode,
+          employee.positionName,
+          employee.levelCode,
+          employee.levelKey,
         ]
+          .filter(Boolean)
           .join(" ")
           .toLowerCase()
           .includes(query);
-
       return matchesCompany && matchesSearch;
     });
-  }, [rows, companyFilter, search]);
+  }, [rows, search, companyFilter]);
 
-  const visibleCompanyGroups = useMemo(
-    () =>
-      companies
-        .filter((company) => companyFilter === "all" || company === companyFilter)
-        .map((company) => ({
-          code: company,
-          rows: visibleRows.filter((row) => row.company === company),
-          totalRecords: rows.filter((row) => row.company === company).length,
-        })),
-    [companyFilter, rows, visibleRows],
-  );
-
-  const updateForm = (field: keyof EmployeeRecord, value: string) => {
-    setFormValues((current) => ({ ...current, [field]: value }));
-  };
-
-  const updateFunction = (functionCode: string) => {
-    const selectedFunction = functionRows.find(
-      (row) => row.functionCode === functionCode,
+  const visibleCompanyGroups = useMemo(() => {
+    const companyOrder = new Map(
+      companies.map((company, index) => [company.companyId, index]),
     );
-    setFormValues((current) => ({
-      ...current,
-      functionCode,
-      functionName:
-        selectedFunction?.functionNameEn ||
-        selectedFunction?.functionNameTh ||
-        "",
-    }));
-  };
+    const grouped = new Map<
+      string,
+      { companyId: string; companyCode: string; rows: EmployeeRecord[] }
+    >();
 
-  const saveRows = (nextRows: EmployeeRecord[]) => {
-    setRows(nextRows);
-    writeEmployeeMasterData(nextRows);
-  };
-
-  const toggleCompany = (company: CompanyCode) => {
-    setOpenCompanies((current) =>
-      current.includes(company)
-        ? current.filter((openCompany) => openCompany !== company)
-        : [...current, company],
-    );
-  };
-
-  const handleNew = () => {
-    setFormValues(emptyRecord());
-    setOpenCompanies((current) => (current.includes("ATA") ? current : ["ATA", ...current]));
-    setFormMode("new");
-  };
-
-  const handleEdit = () => {
-    if (!selectedRecord) {
-      return;
+    for (const employee of visible) {
+      const group = grouped.get(employee.companyId);
+      if (group) {
+        group.rows.push(employee);
+      } else {
+        grouped.set(employee.companyId, {
+          companyId: employee.companyId,
+          companyCode: employee.companyCode,
+          rows: [employee],
+        });
+      }
     }
 
-    setFormValues(selectedRecord);
-    setFormMode("edit");
-  };
-
-  const handleDelete = () => {
-    if (!selectedRecord) {
-      return;
-    }
-
-    saveRows(rows.filter((row) => row.id !== selectedRecord.id));
-    setSelectedId("");
-    setFormMode(null);
-  };
-
-  const handleRefresh = () => {
-    const nextRows = readEmployeeMasterData();
-    setRows(nextRows);
-    setCompanyFilter("all");
-    setSearch("");
-    setSelectedId(nextRows[0]?.id ?? "");
-    setOpenCompanies(["SATI"]);
-    setFormMode(null);
-  };
-
-  const handleSave = () => {
-    const nextRecord: EmployeeRecord = {
-      ...formValues,
-      empCode: formValues.empCode.trim().toUpperCase(),
-      idCard: formValues.idCard.trim(),
-      nameTh: formValues.nameTh.trim(),
-      surnameTh: formValues.surnameTh.trim(),
-      titleEn: formValues.titleEn.trim(),
-      nameEn: formValues.nameEn.trim(),
-      surnameEn: formValues.surnameEn.trim(),
-      functionCode: formValues.functionCode.trim().toUpperCase(),
-      functionName: formValues.functionName.trim(),
-      positionName: formValues.positionName.trim(),
-      levelKey: formValues.levelKey.trim(),
-    };
-
-    if (
-      !nextRecord.empCode ||
-      !nextRecord.nameTh ||
-      !nextRecord.nameEn ||
-      !nextRecord.functionCode ||
-      !nextRecord.positionName ||
-      !nextRecord.levelKey
-    ) {
-      return;
-    }
-
-    if (formMode === "edit") {
-      saveRows(
-        rows.map((row) => (row.id === nextRecord.id ? nextRecord : row)),
+    return [...grouped.values()]
+      .map((group) => ({
+        ...group,
+        totalRecords: rows.filter(
+          (employee) => employee.companyId === group.companyId,
+        ).length,
+      }))
+      .sort(
+        (left, right) =>
+          (companyOrder.get(left.companyId) ?? Number.MAX_SAFE_INTEGER) -
+            (companyOrder.get(right.companyId) ?? Number.MAX_SAFE_INTEGER) ||
+          left.companyCode.localeCompare(right.companyCode),
       );
-    } else {
-      saveRows([nextRecord, ...rows]);
-    }
+  }, [companies, rows, visible]);
 
-    setSelectedId(nextRecord.id);
-    setCompanyFilter(nextRecord.company);
+  const toggleCompany = (companyId: string) => {
     setOpenCompanies((current) =>
-      current.includes(nextRecord.company) ? current : [nextRecord.company, ...current],
+      current.includes(companyId)
+        ? current.filter((openCompanyId) => openCompanyId !== companyId)
+        : [...current, companyId],
     );
-    setFormMode(null);
+  };
+
+  const change = <Key extends keyof EmployeeInput>(
+    key: Key,
+    value: EmployeeInput[Key],
+  ) => setForm((current) => ({ ...current, [key]: value }));
+
+  const edit = () => {
+    if (!selected) return;
+    setRevealedNationalIds({});
+    setForm({
+      companyId: selected.companyId,
+      employeeCode: selected.employeeCode,
+      functionId: selected.functionId,
+      positionId: selected.positionId,
+      levelId: selected.levelId,
+      nationalId: "",
+      titleTh: selected.titleTh,
+      titleEn: selected.titleEn,
+      firstNameTh: selected.firstNameTh,
+      lastNameTh: selected.lastNameTh,
+      firstNameEn: selected.firstNameEn,
+      lastNameEn: selected.lastNameEn,
+      birthDate: selected.birthDate,
+      hireDate: selected.hireDate,
+      telephone: selected.telephone,
+      email: selected.email,
+      employmentStatus: selected.employmentStatus,
+    });
+    setMode("edit");
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const payload = { ...form, nationalId: form.nationalId.trim() };
+      const { nationalId, ...withoutNationalId } = payload;
+      const result =
+        mode === "edit" && selected
+          ? await updateEmployee(
+              selected.employeeId,
+              nationalId ? payload : withoutNationalId,
+            )
+          : await createEmployee(payload);
+      setRows((current) =>
+        mode === "edit"
+          ? current.map((employee) =>
+              employee.employeeId === result.employee.employeeId
+                ? result.employee
+                : employee,
+            )
+          : [...current, result.employee],
+      );
+      setSelectedId(result.employee.employeeId);
+      setOpenCompanies((current) =>
+        current.includes(result.employee.companyId)
+          ? current
+          : [...current, result.employee.companyId],
+      );
+      setMode(null);
+      setMessage(`${result.employee.employeeCode} saved`);
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error ? saveError.message : "Unable to save Employee",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!selected || !confirm(`Delete ${selected.employeeCode}?`)) return;
+    try {
+      await deleteEmployee(selected.employeeId);
+      setRows((current) =>
+        current.filter(
+          (employee) => employee.employeeId !== selected.employeeId,
+        ),
+      );
+      setSelectedId(null);
+      setRevealedNationalIds({});
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Unable to delete Employee",
+      );
+    }
+  };
+
+  const revealAll = async () => {
+    if (Object.keys(revealedNationalIds).length > 0) {
+      setRevealedNationalIds({});
+      return;
+    }
+    if (rows.length === 0) return;
+    setError(null);
+    setRevealingNationalIds(true);
+    try {
+      const revealed = await Promise.all(
+        rows.map(async (employee) => {
+          const result = await revealEmployeeNationalId(employee.employeeId);
+          return [employee.employeeId, result.nationalId] as const;
+        }),
+      );
+      setRevealedNationalIds(Object.fromEntries(revealed));
+    } catch (revealError) {
+      setError(
+        revealError instanceof Error ? revealError.message : "Access denied",
+      );
+    } finally {
+      setRevealingNationalIds(false);
+    }
   };
 
   return (
@@ -473,195 +335,240 @@ export default function EmployeeData() {
             aria-label="Search employee data"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search employee code, name, function, position"
+            placeholder="Search employee"
           />
           <select
             aria-label="Filter employee company"
             value={companyFilter}
-            onChange={(event) => setCompanyFilter(event.target.value as CompanyCode | "all")}
+            onChange={(event) => setCompanyFilter(event.target.value)}
           >
             <option value="all">All Companies</option>
             {companies.map((company) => (
-              <option key={company} value={company}>
-                {company}
+              <option key={company.companyId} value={company.companyId}>
+                {company.companyCode}
               </option>
             ))}
           </select>
-          <button className={styles.newButton} type="button" onClick={handleNew}>
+          <button
+            className={styles.newButton}
+            type="button"
+            onClick={() => {
+              setForm(
+                blank(center ? (companies[0]?.companyId ?? "") : (user?.companyId ?? "")),
+              );
+              setMode("new");
+            }}
+          >
             New
           </button>
           <button
             className={styles.editButton}
             type="button"
-            onClick={handleEdit}
-            disabled={!selectedRecord}
+            disabled={!selected}
+            onClick={edit}
           >
             Edit
           </button>
           <button
             className={styles.deleteButton}
             type="button"
-            onClick={handleDelete}
-            disabled={!selectedRecord}
+            disabled={!selected}
+            onClick={() => void remove()}
           >
             Delete
           </button>
-          <button className={styles.refreshButton} type="button" onClick={handleRefresh}>
+          <button
+            className={styles.refreshButton}
+            type="button"
+            onClick={() => void load()}
+          >
             Refresh
+          </button>
+          <button
+            className={styles.refreshButton}
+            type="button"
+            disabled={rows.length === 0 || revealingNationalIds}
+            onClick={() => void revealAll()}
+          >
+            {revealingNationalIds
+              ? "Revealing..."
+              : Object.keys(revealedNationalIds).length > 0
+                ? "Hide All IDs"
+                : "Reveal All IDs"}
           </button>
         </div>
 
-        {formMode ? (
+        {error ? <p role="alert">{error}</p> : null}
+        {message ? <p role="status">{message}</p> : null}
+        {mode ? (
           <section className={styles.editorPanel}>
-            <div className={styles.panelHeader}>
-              <div>
-                <span>{formMode === "new" ? "New record" : "Edit record"}</span>
-                <h3>{formMode === "new" ? "Create Employee" : formValues.empCode}</h3>
-              </div>
-            </div>
-
             <div className={styles.formGrid}>
               <label>
                 Company
                 <select
-                  value={formValues.company}
-                  onChange={(event) => updateForm("company", event.target.value)}
+                  disabled={!center}
+                  value={form.companyId}
+                  onChange={(event) => change("companyId", event.target.value)}
                 >
                   {companies.map((company) => (
-                    <option key={company} value={company}>
-                      {company}
+                    <option key={company.companyId} value={company.companyId}>
+                      {company.companyCode}
                     </option>
                   ))}
                 </select>
               </label>
               <label>
-                Emp Code
+                Employee Code
                 <input
-                  value={formValues.empCode}
-                  onChange={(event) => updateForm("empCode", event.target.value)}
+                  value={form.employeeCode}
+                  onChange={(event) => change("employeeCode", event.target.value)}
                 />
               </label>
               <label>
-                ID Card
+                National ID (13 digits)
                 <input
-                  value={formValues.idCard}
-                  onChange={(event) => updateForm("idCard", event.target.value)}
+                  inputMode="numeric"
+                  maxLength={13}
+                  value={form.nationalId}
+                  placeholder={mode === "edit" ? "Leave blank to keep current ID" : ""}
+                  onChange={(event) =>
+                    change("nationalId", event.target.value.replace(/\D/g, ""))
+                  }
                 />
               </label>
               <label>
-                Name(TH)
-                <input
-                  value={formValues.nameTh}
-                  onChange={(event) => updateForm("nameTh", event.target.value)}
-                />
-              </label>
-              <label>
-                Surname(TH)
-                <input
-                  value={formValues.surnameTh}
-                  onChange={(event) => updateForm("surnameTh", event.target.value)}
-                />
-              </label>
-              <label>
-                Title(EN)
+                Title TH
                 <select
-                  value={formValues.titleEn}
-                  onChange={(event) => updateForm("titleEn", event.target.value)}
+                  value={form.titleTh ?? "นาย"}
+                  onChange={(event) => change("titleTh", event.target.value)}
                 >
-                  <option>Mr.</option>
-                  <option>Ms.</option>
-                  <option>Mrs.</option>
+                  <option value="นาย">นาย</option>
+                  <option value="นาง">นาง</option>
+                  <option value="นางสาว">นางสาว</option>
                 </select>
               </label>
               <label>
-                Name(EN)
+                First Name TH
                 <input
-                  value={formValues.nameEn}
-                  onChange={(event) => updateForm("nameEn", event.target.value)}
+                  value={form.firstNameTh}
+                  onChange={(event) => change("firstNameTh", event.target.value)}
                 />
               </label>
               <label>
-                Surname(EN)
+                Last Name TH
                 <input
-                  value={formValues.surnameEn}
-                  onChange={(event) => updateForm("surnameEn", event.target.value)}
+                  value={form.lastNameTh}
+                  onChange={(event) => change("lastNameTh", event.target.value)}
                 />
               </label>
               <label>
-                Birthday
+                Title EN
+                <input
+                  value={form.titleEn ?? ""}
+                  onChange={(event) => change("titleEn", event.target.value || null)}
+                />
+              </label>
+              <label>
+                First Name EN
+                <input
+                  value={form.firstNameEn ?? ""}
+                  onChange={(event) => change("firstNameEn", event.target.value || null)}
+                />
+              </label>
+              <label>
+                Last Name EN
+                <input
+                  value={form.lastNameEn ?? ""}
+                  onChange={(event) => change("lastNameEn", event.target.value || null)}
+                />
+              </label>
+              <label>
+                Birth Date
                 <input
                   type="date"
-                  value={formValues.birthday}
-                  onChange={(event) => updateForm("birthday", event.target.value)}
+                  value={form.birthDate ?? ""}
+                  onChange={(event) => change("birthDate", event.target.value || null)}
                 />
               </label>
               <label>
-                Workday
+                Hire Date
                 <input
                   type="date"
-                  value={formValues.workday}
-                  onChange={(event) => updateForm("workday", event.target.value)}
+                  value={form.hireDate ?? ""}
+                  onChange={(event) => change("hireDate", event.target.value || null)}
                 />
               </label>
               <label>
-                Function Code
+                Function
                 <select
-                  value={formValues.functionCode}
-                  onChange={(event) => updateFunction(event.target.value)}
+                  value={form.functionId ?? ""}
+                  onChange={(event) => change("functionId", event.target.value || null)}
                 >
-                  <option value="">Select function</option>
-                  {functionRows.map((row) => (
-                    <option key={row.id} value={row.functionCode}>
-                      {row.functionCode} — {row.functionNameEn || row.functionNameTh}
+                  <option value="">-</option>
+                  {functions.map((item) => (
+                    <option key={item.functionId} value={item.functionId}>
+                      {item.functionCode} — {item.functionNameEn || item.functionNameTh}
                     </option>
                   ))}
                 </select>
               </label>
               <label>
-                Function Name
-                <input
-                  disabled
-                  value={formValues.functionName}
-                />
-              </label>
-              <label>
-                Position Name
+                Position
                 <select
-                  value={formValues.positionName}
-                  onChange={(event) => updateForm("positionName", event.target.value)}
+                  value={form.positionId ?? ""}
+                  onChange={(event) => change("positionId", event.target.value || null)}
                 >
-                  <option value="">Select position</option>
-                  {positionRows.map((row) => (
-                    <option key={row.id} value={row.positionNameEn}>
-                      {row.positionNameEn} / {row.positionNameTh}
+                  <option value="">-</option>
+                  {positions.map((item) => (
+                    <option key={item.positionId} value={item.positionId}>
+                      {item.positionCode} — {item.positionNameEn || item.positionNameTh}
                     </option>
                   ))}
                 </select>
               </label>
               <label>
-                Level Key
+                Level
                 <select
-                  value={formValues.levelKey}
-                  onChange={(event) => updateForm("levelKey", event.target.value)}
+                  value={form.levelId ?? ""}
+                  onChange={(event) => change("levelId", event.target.value || null)}
                 >
-                  <option value="">Select level</option>
-                  {levelRows.map((row) => (
-                    <option key={row.id} value={row.levelKey}>
-                      {row.levelKey} — {row.levelNameEn}
+                  <option value="">-</option>
+                  {levels.map((item) => (
+                    <option key={item.levelId} value={item.levelId}>
+                      {item.levelKey} — {item.levelNameEn || item.levelNameTh}
                     </option>
                   ))}
+                </select>
+              </label>
+              <label>
+                Status
+                <select
+                  value={form.employmentStatus}
+                  onChange={(event) =>
+                    change(
+                      "employmentStatus",
+                      event.target.value as EmployeeInput["employmentStatus"],
+                    )
+                  }
+                >
+                  <option>ACTIVE</option>
+                  <option>INACTIVE</option>
                 </select>
               </label>
             </div>
-
             <div className={styles.formActions}>
-              <button className={styles.saveButton} type="button" onClick={handleSave}>
+              <button
+                className={styles.saveButton}
+                type="button"
+                disabled={saving}
+                onClick={() => void save()}
+              >
                 Save
               </button>
               <button
                 className={styles.cancelButton}
                 type="button"
-                onClick={() => setFormMode(null)}
+                onClick={() => setMode(null)}
               >
                 Cancel
               </button>
@@ -672,97 +579,110 @@ export default function EmployeeData() {
         <section className={styles.tablePanel}>
           <div className={styles.panelHeader}>
             <div>
-              <span>Master List</span>
+              <span>Scoped Master</span>
               <h3>Employee Records</h3>
             </div>
-            <p>{visibleRows.length} records</p>
+            <p>{visible.length} records</p>
           </div>
-
-          <div className={styles.companyDirectory}>
-            {visibleCompanyGroups.map((companyGroup) => {
-              const isOpen = openCompanies.includes(companyGroup.code);
-
-              return (
-                <section
-                  className={`${styles.companyGroup} ${isOpen ? styles.openGroup : ""}`}
-                  key={companyGroup.code}
-                >
-                  <button
-                    className={styles.companyHeader}
-                    type="button"
-                    onClick={() => toggleCompany(companyGroup.code)}
+          {visibleCompanyGroups.length > 0 ? (
+            <div className={styles.companyDirectory}>
+              {visibleCompanyGroups.map((companyGroup) => {
+                const isOpen = openCompanies.includes(companyGroup.companyId);
+                return (
+                  <section
+                    className={`${styles.companyGroup} ${isOpen ? styles.openGroup : ""}`}
+                    key={companyGroup.companyId}
                   >
-                    <span className={styles.chevron} aria-hidden="true" />
-                    <span>
-                      Company: <strong>{companyGroup.code}</strong>
-                    </span>
-                    <b>({companyGroup.totalRecords})</b>
-                    <small>{companyGroup.rows.length} records in view</small>
-                  </button>
+                    <button
+                      className={styles.companyHeader}
+                      type="button"
+                      aria-expanded={isOpen}
+                      onClick={() => toggleCompany(companyGroup.companyId)}
+                    >
+                      <span className={styles.chevron} aria-hidden="true" />
+                      <span>
+                        Company: <strong>{companyGroup.companyCode}</strong>
+                      </span>
+                      <b>({companyGroup.totalRecords})</b>
+                      <small>{companyGroup.rows.length} records in view</small>
+                    </button>
 
-                  {isOpen ? (
-                    <div className={styles.tableWrap}>
-                      <table className={styles.employeeTable}>
-                        <thead>
-                          <tr>
-                            <th>No.</th>
-                            <th>Company</th>
-                            <th>Emp Code</th>
-                            <th>ID Card</th>
-                            <th>Name(TH)</th>
-                            <th>Surname(TH)</th>
-                            <th>Title(EN)</th>
-                            <th>Name(EN)</th>
-                            <th>Surname(EN)</th>
-                            <th>Birthday</th>
-                            <th>Workday</th>
-                            <th>Function Code</th>
-                            <th>Function Name</th>
-                            <th>Position Name</th>
-                            <th>Level Key</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {companyGroup.rows.map((row, index) => (
-                            <tr
-                              className={row.id === selectedId ? styles.selectedRow : undefined}
-                              key={row.id}
-                              onClick={() => setSelectedId(row.id)}
-                            >
-                              <td>{index + 1}</td>
-                              <td>
-                                <span className={styles.companyPill}>{row.company}</span>
-                              </td>
-                              <td>{row.empCode}</td>
-                              <td>{row.idCard}</td>
-                              <td>{row.nameTh}</td>
-                              <td>{row.surnameTh}</td>
-                              <td>{row.titleEn}</td>
-                              <td>{row.nameEn}</td>
-                              <td>{row.surnameEn}</td>
-                              <td>{row.birthday}</td>
-                              <td>{row.workday}</td>
-                              <td>{row.functionCode}</td>
-                              <td>{row.functionName}</td>
-                              <td>{row.positionName}</td>
-                              <td>
-                                <span className={styles.levelPill}>{row.levelKey}</span>
-                              </td>
-                            </tr>
-                          ))}
-                          {companyGroup.rows.length === 0 ? (
+                    {isOpen ? (
+                      <div className={styles.tableWrap}>
+                        <table className={styles.employeeTable}>
+                          <thead>
                             <tr>
-                              <td colSpan={15}>No employee data found for this company.</td>
+                              <th>No.</th>
+                              <th>Company</th>
+                              <th>Emp Code</th>
+                              <th>ID Card</th>
+                              <th>Title(TH)</th>
+                              <th>Name(TH)</th>
+                              <th>Surname(TH)</th>
+                              <th>Title(EN)</th>
+                              <th>Name(EN)</th>
+                              <th>Surname(EN)</th>
+                              <th>Birthday</th>
+                              <th>Workday</th>
+                              <th>Function Code</th>
+                              <th>Function Name</th>
+                              <th>Position Name</th>
+                              <th>Level Key</th>
                             </tr>
-                          ) : null}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : null}
-                </section>
-              );
-            })}
-          </div>
+                          </thead>
+                          <tbody>
+                            {companyGroup.rows.map((employee, index) => (
+                              <tr
+                                key={employee.employeeId}
+                                className={
+                                  employee.employeeId === selectedId
+                                    ? styles.selectedRow
+                                    : undefined
+                                }
+                                onClick={() => {
+                                  setSelectedId(employee.employeeId);
+                                }}
+                              >
+                                <td>{index + 1}</td>
+                                <td>
+                                  <span className={styles.companyPill}>
+                                    {employee.companyCode}
+                                  </span>
+                                </td>
+                                <td>{employee.employeeCode}</td>
+                                <td>
+                                  {revealedNationalIds[employee.employeeId] ??
+                                    employee.nationalIdMasked}
+                                </td>
+                                <td>{display(employee.titleTh)}</td>
+                                <td>{employee.firstNameTh}</td>
+                                <td>{employee.lastNameTh}</td>
+                                <td>{display(employee.titleEn)}</td>
+                                <td>{display(employee.firstNameEn)}</td>
+                                <td>{display(employee.lastNameEn)}</td>
+                                <td>{display(employee.birthDate)}</td>
+                                <td>{display(employee.hireDate)}</td>
+                                <td>{display(employee.functionCode)}</td>
+                                <td>{display(employee.functionName)}</td>
+                                <td>{display(employee.positionName)}</td>
+                                <td>
+                                  <span className={styles.levelPill}>
+                                    {display(employee.levelKey)}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : null}
+                  </section>
+                );
+              })}
+            </div>
+          ) : (
+            <p>No employee data found.</p>
+          )}
         </section>
       </section>
     </section>

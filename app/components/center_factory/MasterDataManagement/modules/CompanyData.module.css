@@ -321,6 +321,31 @@
   font-weight: 800;
 }
 
+.inactiveStatus {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.errorMessage,
+.feedbackMessage {
+  margin-top: 12px !important;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-weight: 800;
+}
+
+.errorMessage {
+  border: 1px solid #fecaca;
+  background: #fff7f7;
+  color: #b42318 !important;
+}
+
+.feedbackMessage {
+  border: 1px solid var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary) !important;
+}
+
 .codePill {
   display: inline-flex;
   min-width: 58px;

@@ -1,11 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import {
-  TRAINING_MASTER_KEYS,
-  readMasterCollection,
-  writeMasterCollection,
-} from "../../../../lib/trainingWorkflow";
+  PositionClientError,
+  createPosition,
+  deletePosition,
+  listPositions,
+  updatePosition,
+} from "../../../../lib/positions/client";
+import type {
+  PositionRecord as ApiPositionRecord,
+  PositionStatus,
+} from "../../../../lib/positions/types";
 import styles from "./PositionData.module.css";
 
 export type PositionRecord = {
@@ -16,182 +23,197 @@ export type PositionRecord = {
   remark: string;
 };
 
-type FormMode = "new" | "edit" | null;
-
 export const positionDataModule = {
   title: "Position Data",
   subtitle: "Position master",
-  description: "Maintain position codes and bilingual position names for training standards.",
+  description:
+    "Maintain the shared position catalog used by every company.",
 } as const;
 
-export const defaultPositionRows: PositionRecord[] = [
-  {
-    id: "position-mgr",
-    positionCode: "mgr",
-    positionNameTh: "ผู้จัดการ++",
-    positionNameEn: "Manager++",
-    remark: "",
-  },
-  {
-    id: "position-sh",
-    positionCode: "sh",
-    positionNameTh: "ผู้จัดการแผนก",
-    positionNameEn: "Section Head",
-    remark: "",
-  },
-  {
-    id: "position-eng",
-    positionCode: "eng",
-    positionNameTh: "วิศวกร",
-    positionNameEn: "Engineer",
-    remark: "",
-  },
-  {
-    id: "position-fm",
-    positionCode: "fm",
-    positionNameTh: "โฟร์แมน",
-    positionNameEn: "Foreman",
-    remark: "",
-  },
-  {
-    id: "position-ld",
-    positionCode: "ld",
-    positionNameTh: "ลีดเดอร์",
-    positionNameEn: "Leader",
-    remark: "",
-  },
-  {
-    id: "position-op",
-    positionCode: "op",
-    positionNameTh: "พนักงานปฏิบัติการ",
-    positionNameEn: "Operator",
-    remark: "",
-  },
-  {
-    id: "position-office",
-    positionCode: "office",
-    positionNameTh: "เจ้าหน้าที่",
-    positionNameEn: "Supervisor",
-    remark: "",
-  },
-  {
-    id: "position-staff",
-    positionCode: "staff",
-    positionNameTh: "พนักงานปฏิบัติการ",
-    positionNameEn: "Staff",
-    remark: "",
-  },
-];
+const mockPositions = [
+  ["mgr", "ผู้จัดการ++", "Manager++"],
+  ["sh", "ผู้จัดการแผนก", "Section Head"],
+  ["eng", "วิศวกร", "Engineer"],
+  ["fm", "โฟร์แมน", "Foreman"],
+  ["ld", "ลีดเดอร์", "Leader"],
+  ["op", "พนักงานปฏิบัติการ", "Operator"],
+  ["office", "เจ้าหน้าที่", "Supervisor"],
+  ["staff", "พนักงานปฏิบัติการ", "Staff"],
+] as const;
 
-const emptyRecord = (): PositionRecord => ({
-  id: `position-${Date.now()}`,
+// Temporary compatibility export for mock consumers awaiting API migration.
+export const defaultPositionRows: PositionRecord[] = mockPositions.map(
+  ([positionCode, positionNameTh, positionNameEn]) => ({
+    id: `position-${positionCode}`,
+    positionCode,
+    positionNameTh,
+    positionNameEn,
+    remark: "",
+  }),
+);
+
+type PositionForm = {
+  positionCode: string;
+  positionNameTh: string;
+  positionNameEn: string;
+  status: PositionStatus;
+};
+
+const blankForm = (): PositionForm => ({
   positionCode: "",
   positionNameTh: "",
   positionNameEn: "",
-  remark: "",
+  status: "ACTIVE",
 });
 
-export default function PositionData() {
-  const [rows, setRows] = useState<PositionRecord[]>(() =>
-    readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows),
-  );
-  const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState(defaultPositionRows[0]?.id ?? "");
-  const [formMode, setFormMode] = useState<FormMode>(null);
-  const [formValues, setFormValues] = useState<PositionRecord>(emptyRecord);
+const toForm = (record: ApiPositionRecord): PositionForm => ({
+  positionCode: record.positionCode,
+  positionNameTh: record.positionNameTh,
+  positionNameEn: record.positionNameEn ?? "",
+  status: record.status,
+});
 
-  const selectedRecord = rows.find((row) => row.id === selectedId) ?? null;
+const errorText = (error: unknown) =>
+  error instanceof PositionClientError
+    ? error.message
+    : "Unable to load position data. Please try again.";
+
+export default function PositionData() {
+  const user = useAuthenticatedUser();
+  const isCenter = user?.roleCode === "HRD_CENTER";
+  const [rows, setRows] = useState<ApiPositionRecord[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [formMode, setFormMode] = useState<"new" | "edit" | null>(null);
+  const [form, setForm] = useState<PositionForm>(blankForm);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const selected = rows.find((row) => row.positionId === selectedId) ?? null;
   const visibleRows = useMemo(() => {
     const query = search.trim().toLowerCase();
-
-    if (!query) {
-      return rows;
-    }
-
+    if (!query) return rows;
     return rows.filter((row) =>
-      [
-        row.positionCode,
-        row.positionNameTh,
-        row.positionNameEn,
-        row.remark,
-      ]
+      [row.positionCode, row.positionNameTh, row.positionNameEn, row.status]
+        .filter(Boolean)
         .join(" ")
         .toLowerCase()
         .includes(query),
     );
   }, [rows, search]);
 
-  const updateForm = (field: keyof PositionRecord, value: string) => {
-    setFormValues((current) => ({ ...current, [field]: value }));
-  };
-
-  const saveRows = (nextRows: PositionRecord[]) => {
-    setRows(nextRows);
-    writeMasterCollection(TRAINING_MASTER_KEYS.positions, nextRows);
-  };
-
-  const handleNew = () => {
-    setFormValues(emptyRecord());
-    setFormMode("new");
-  };
-
-  const handleEdit = () => {
-    if (!selectedRecord) {
-      return;
+  const loadRows = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const items = (await listPositions()).items;
+      setRows(items);
+      setSelectedId((current) =>
+        current && items.some((item) => item.positionId === current)
+          ? current
+          : items[0]?.positionId ?? null,
+      );
+    } catch (caught: unknown) {
+      setError(errorText(caught));
+    } finally {
+      setIsLoading(false);
     }
-
-    setFormValues(selectedRecord);
-    setFormMode("edit");
   };
 
-  const handleDelete = () => {
-    if (!selectedRecord) {
-      return;
-    }
-
-    saveRows(rows.filter((row) => row.id !== selectedRecord.id));
-    setSelectedId("");
-    setFormMode(null);
-  };
-
-  const handleRefresh = () => {
-    const nextRows = readMasterCollection(
-      TRAINING_MASTER_KEYS.positions,
-      defaultPositionRows,
-    );
-    setRows(nextRows);
-    setSearch("");
-    setSelectedId(nextRows[0]?.id ?? "");
-    setFormMode(null);
-  };
-
-  const handleSave = () => {
-    const nextRecord: PositionRecord = {
-      ...formValues,
-      positionCode: formValues.positionCode.trim().toLowerCase(),
-      positionNameTh: formValues.positionNameTh.trim(),
-      positionNameEn: formValues.positionNameEn.trim(),
-      remark: formValues.remark.trim(),
+  useEffect(() => {
+    let current = true;
+    listPositions()
+      .then((result) => {
+        if (!current) return;
+        setRows(result.items);
+        setSelectedId(result.items[0]?.positionId ?? null);
+      })
+      .catch((caught: unknown) => {
+        if (current) setError(errorText(caught));
+      })
+      .finally(() => {
+        if (current) setIsLoading(false);
+      });
+    return () => {
+      current = false;
     };
+  }, []);
 
+  const startNew = () => {
+    if (!isCenter) return;
+    setForm(blankForm());
+    setFormMode("new");
+    setError(null);
+  };
+
+  const startEdit = () => {
+    if (!isCenter || !selected) return;
+    setForm(toForm(selected));
+    setFormMode("edit");
+    setError(null);
+  };
+
+  const save = async () => {
+    if (!isCenter || isSaving) return;
+    setIsSaving(true);
+    setError(null);
+    try {
+      const input = {
+        positionCode: form.positionCode.trim().toUpperCase(),
+        positionNameTh: form.positionNameTh.trim(),
+        positionNameEn: form.positionNameEn.trim() || null,
+        status: form.status,
+      };
+      const result =
+        formMode === "edit" && selected
+          ? await updatePosition(selected.positionId, input)
+          : await createPosition(input);
+      setRows((current) =>
+        formMode === "edit"
+          ? current.map((item) =>
+              item.positionId === result.position.positionId
+                ? result.position
+                : item,
+            )
+          : [...current, result.position],
+      );
+      setSelectedId(result.position.positionId);
+      setFormMode(null);
+      setMessage(`${result.position.positionCode} was saved.`);
+    } catch (caught: unknown) {
+      setError(errorText(caught));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const remove = async () => {
     if (
-      !nextRecord.positionCode ||
-      !nextRecord.positionNameTh ||
-      !nextRecord.positionNameEn
+      !isCenter ||
+      !selected ||
+      isSaving ||
+      !window.confirm(`Delete ${selected.positionCode}?`)
     ) {
       return;
     }
-
-    if (formMode === "edit") {
-      saveRows(
-        rows.map((row) => (row.id === nextRecord.id ? nextRecord : row)),
+    setIsSaving(true);
+    setError(null);
+    try {
+      const result = await deletePosition(selected.positionId);
+      const nextRows = rows.filter(
+        (item) => item.positionId !== result.position.positionId,
       );
-    } else {
-      saveRows([nextRecord, ...rows]);
+      setRows(nextRows);
+      setSelectedId(nextRows[0]?.positionId ?? null);
+      setFormMode(null);
+      setMessage(`${result.position.positionCode} was deleted.`);
+    } catch (caught: unknown) {
+      setError(errorText(caught));
+    } finally {
+      setIsSaving(false);
     }
-
-    setSelectedId(nextRecord.id);
-    setFormMode(null);
   };
 
   return (
@@ -208,7 +230,7 @@ export default function PositionData() {
         </div>
       </section>
 
-      <section className={styles.workspace}>
+      <section className={styles.workspace} aria-busy={isLoading}>
         <div className={styles.toolbar}>
           <input
             aria-label="Search position data"
@@ -216,82 +238,115 @@ export default function PositionData() {
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search position code or name"
           />
-          <button className={styles.newButton} type="button" onClick={handleNew}>
-            New
-          </button>
+          {isCenter ? (
+            <>
+              <button className={styles.newButton} type="button" onClick={startNew}>
+                New
+              </button>
+              <button
+                className={styles.editButton}
+                type="button"
+                onClick={startEdit}
+                disabled={!selected || isSaving}
+              >
+                Edit
+              </button>
+              <button
+                className={styles.deleteButton}
+                type="button"
+                onClick={() => void remove()}
+                disabled={!selected || isSaving}
+              >
+                Delete
+              </button>
+            </>
+          ) : null}
           <button
-            className={styles.editButton}
+            className={styles.refreshButton}
             type="button"
-            onClick={handleEdit}
-            disabled={!selectedRecord}
+            onClick={() => void loadRows()}
+            disabled={isLoading || isSaving}
           >
-            Edit
-          </button>
-          <button
-            className={styles.deleteButton}
-            type="button"
-            onClick={handleDelete}
-            disabled={!selectedRecord}
-          >
-            Delete
-          </button>
-          <button className={styles.refreshButton} type="button" onClick={handleRefresh}>
             Refresh
           </button>
         </div>
 
+        {error ? <p role="alert">{error}</p> : null}
+        {message ? <p role="status">{message}</p> : null}
+
         {formMode ? (
           <section className={styles.editorPanel}>
-            <div className={styles.panelHeader}>
-              <div>
-                <span>{formMode === "new" ? "New record" : "Edit record"}</span>
-                <h3>{formMode === "new" ? "Create Position" : formValues.positionCode}</h3>
-              </div>
-            </div>
-
+            <h3>{formMode === "new" ? "Create Position" : "Edit Position"}</h3>
             <div className={styles.formGrid}>
               <label>
                 Position Code
                 <input
-                  value={formValues.positionCode}
-                  onChange={(event) => updateForm("positionCode", event.target.value)}
-                  placeholder="mgr"
+                  value={form.positionCode}
+                  maxLength={30}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      positionCode: event.target.value,
+                    }))
+                  }
                 />
               </label>
               <label>
                 Position Name(TH)
                 <input
-                  value={formValues.positionNameTh}
-                  onChange={(event) => updateForm("positionNameTh", event.target.value)}
-                  placeholder="Thai position name"
+                  value={form.positionNameTh}
+                  maxLength={255}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      positionNameTh: event.target.value,
+                    }))
+                  }
                 />
               </label>
               <label>
                 Position Name(EN)
                 <input
-                  value={formValues.positionNameEn}
-                  onChange={(event) => updateForm("positionNameEn", event.target.value)}
-                  placeholder="Position name in English"
+                  value={form.positionNameEn}
+                  maxLength={255}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      positionNameEn: event.target.value,
+                    }))
+                  }
                 />
               </label>
-              <label className={styles.fullWidth}>
-                Remark.
-                <textarea
-                  value={formValues.remark}
-                  onChange={(event) => updateForm("remark", event.target.value)}
-                  placeholder="Remark"
-                />
+              <label>
+                Status
+                <select
+                  value={form.status}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      status: event.target.value as PositionStatus,
+                    }))
+                  }
+                >
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="INACTIVE">INACTIVE</option>
+                </select>
               </label>
             </div>
-
             <div className={styles.formActions}>
-              <button className={styles.saveButton} type="button" onClick={handleSave}>
-                Save
+              <button
+                className={styles.saveButton}
+                type="button"
+                onClick={() => void save()}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Save"}
               </button>
               <button
                 className={styles.cancelButton}
                 type="button"
                 onClick={() => setFormMode(null)}
+                disabled={isSaving}
               >
                 Cancel
               </button>
@@ -302,12 +357,11 @@ export default function PositionData() {
         <section className={styles.tablePanel}>
           <div className={styles.panelHeader}>
             <div>
-              <span>Master List</span>
+              <span>Shared Master</span>
               <h3>Position Records</h3>
             </div>
             <p>{visibleRows.length} records</p>
           </div>
-
           <div className={styles.tableWrap}>
             <table className={styles.positionTable}>
               <thead>
@@ -316,26 +370,30 @@ export default function PositionData() {
                   <th>Position Code</th>
                   <th>Position Name(TH)</th>
                   <th>Position Name(EN)</th>
-                  <th>Remark.</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleRows.map((row, index) => (
                   <tr
-                    className={row.id === selectedId ? styles.selectedRow : undefined}
-                    key={row.id}
-                    onClick={() => setSelectedId(row.id)}
+                    key={row.positionId}
+                    className={
+                      row.positionId === selectedId
+                        ? styles.selectedRow
+                        : undefined
+                    }
+                    onClick={() => setSelectedId(row.positionId)}
                   >
                     <td>{index + 1}</td>
                     <td>
                       <span className={styles.codePill}>{row.positionCode}</span>
                     </td>
                     <td>{row.positionNameTh}</td>
-                    <td>{row.positionNameEn}</td>
-                    <td>{row.remark || "-"}</td>
+                    <td>{row.positionNameEn ?? "-"}</td>
+                    <td>{row.status}</td>
                   </tr>
                 ))}
-                {visibleRows.length === 0 ? (
+                {!isLoading && visibleRows.length === 0 ? (
                   <tr>
                     <td colSpan={5}>No position data found.</td>
                   </tr>

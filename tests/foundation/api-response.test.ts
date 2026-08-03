@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Prisma } from "../../app/generated/prisma/client";
 import { ApiError } from "../../app/lib/api/errors";
 import { apiFailure, apiSuccess } from "../../app/lib/api/response";
 
@@ -10,6 +11,25 @@ describe("common API response format", () => {
     await expect(response.json()).resolves.toEqual({
       ok: true,
       data: { status: "reachable" },
+    });
+  });
+
+  it("serializes database BigInt and Date values safely", async () => {
+    const response = apiSuccess({
+      companyId: BigInt(42),
+      createdAt: new Date("2026-07-31T00:00:00.000Z"),
+      budget: new Prisma.Decimal("1234.50"),
+      nested: [{ employeeId: BigInt(99) }],
+    });
+
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      data: {
+        companyId: "42",
+        createdAt: "2026-07-31T00:00:00.000Z",
+        budget: "1234.5",
+        nested: [{ employeeId: "99" }],
+      },
     });
   });
 

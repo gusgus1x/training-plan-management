@@ -1,0 +1,11 @@
+import type { NextRequest } from "next/server";
+import { createPaginationMeta,readPagination } from "../../../lib/api/pagination";
+import { apiSuccess } from "../../../lib/api/response";
+import { readJsonObject } from "../../../lib/api/validation";
+import { createProtectedRoute,type ProtectedRouteOptions } from "../../../lib/auth/guard";
+import { employeeService,type EmployeeService } from "../../../lib/employees/service";
+import { parseCreateEmployee,parseEmployeeListFilters } from "../../../lib/employees/validation";
+type D={auth?:ProtectedRouteOptions;service?:EmployeeService};const opts=(auth?:ProtectedRouteOptions)=>({...auth,allowedRoles:["HRD_CENTER","HRD_FACTORY"] as const});
+export const createListEmployeesHandler=(d:D={})=>createProtectedRoute(async(r:NextRequest,p)=>{const page=readPagination(r);const result=await(d.service??employeeService).list(p,parseEmployeeListFilters(r.nextUrl.searchParams,page));return apiSuccess({items:result.items,pagination:createPaginationMeta(page.page,page.pageSize,result.totalItems)})},opts(d.auth));
+export const createCreateEmployeeHandler=(d:D={})=>createProtectedRoute(async(r:NextRequest,p)=>apiSuccess({employee:await(d.service??employeeService).create(p,parseCreateEmployee(await readJsonObject(r)))},201),opts(d.auth));
+export const GET=createListEmployeesHandler();export const POST=createCreateEmployeeHandler();

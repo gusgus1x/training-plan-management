@@ -354,6 +354,13 @@ const thaiUiDictionary: Record<string, string> = {
   "Start Date": "วันที่เริ่ม",
   "Start Time": "เวลาเริ่ม",
   Status: "สถานะ",
+  Activate: "เปิดใช้งาน",
+  Deactivate: "ปิดใช้งาน",
+  "Loading company data...": "กำลังโหลดข้อมูลบริษัท...",
+  "Company code and Thai company name are required.":
+    "กรุณากรอกรหัสบริษัทและชื่อบริษัทภาษาไทย",
+  "Unable to load company data. Please try again.":
+    "ไม่สามารถโหลดข้อมูลบริษัทได้ กรุณาลองอีกครั้ง",
   Subject: "หัวข้อข้อความ",
   Submit: "ส่งข้อมูล",
   Submitted: "วันที่ส่งคำขอ",

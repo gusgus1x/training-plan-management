@@ -383,6 +383,10 @@ model employee_level {
   level_name_en                String?                        @db.NVarChar(255)
   pl                           String?                        @db.NVarChar(30)
   status                       String                         @db.NVarChar(20)
+  level_code_th                String                         @db.NVarChar(30)
+  level_code_en                String                         @db.NVarChar(30)
+  level_key                    String                         @unique(map: "UQ_employee_level_level_key") @db.NVarChar(30)
+  remark                       String?                        @db.NVarChar(500)
   course_standard_target_level course_standard_target_level[]
   employee                     employee[]
   training_enrollment          training_enrollment[]

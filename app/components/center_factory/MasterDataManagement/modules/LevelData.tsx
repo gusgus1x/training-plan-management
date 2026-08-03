@@ -1,11 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import {
-  TRAINING_MASTER_KEYS,
-  readMasterCollection,
-  writeMasterCollection,
-} from "../../../../lib/trainingWorkflow";
+  LevelClientError,
+  createLevel,
+  deleteLevel,
+  listLevels,
+  updateLevel,
+} from "../../../../lib/levels/client";
+import type {
+  CreateLevelInput,
+  LevelRecord as ApiLevelRecord,
+  LevelStatus,
+} from "../../../../lib/levels/types";
 import styles from "./LevelData.module.css";
 
 export type LevelRecord = {
@@ -19,149 +27,53 @@ export type LevelRecord = {
   remark: string;
 };
 
-type FormMode = "new" | "edit" | null;
-
 export const levelDataModule = {
   title: "Level Data",
   subtitle: "Level master",
-  description: "Maintain employee level codes, PL values, and level keys for training standards.",
+  description:
+    "Maintain the shared employee level catalog used by every company.",
 } as const;
 
-export const defaultLevelRows: LevelRecord[] = [
-  {
-    id: "level-m4",
-    levelCodeTh: "จ",
-    levelCodeEn: "M",
-    levelNameTh: "จัดการ4",
-    levelNameEn: "Management4",
-    pl: "4",
-    levelKey: "จ4",
-    remark: "",
-  },
-  {
-    id: "level-m3",
-    levelCodeTh: "จ",
-    levelCodeEn: "M",
-    levelNameTh: "จัดการ3",
-    levelNameEn: "Management3",
-    pl: "3",
-    levelKey: "จ3",
-    remark: "",
-  },
-  {
-    id: "level-m2",
-    levelCodeTh: "จ",
-    levelCodeEn: "M",
-    levelNameTh: "จัดการ2",
-    levelNameEn: "Management2",
-    pl: "2",
-    levelKey: "จ2",
-    remark: "",
-  },
-  {
-    id: "level-m1",
-    levelCodeTh: "จ",
-    levelCodeEn: "M",
-    levelNameTh: "จัดการ1",
-    levelNameEn: "Management1",
-    pl: "1",
-    levelKey: "จ1",
-    remark: "",
-  },
-  {
-    id: "level-s4",
-    levelCodeTh: "บ",
-    levelCodeEn: "S",
-    levelNameTh: "บังคับบัญชา4",
-    levelNameEn: "Supervisor4",
-    pl: "4",
-    levelKey: "บ4",
-    remark: "",
-  },
-  {
-    id: "level-s3",
-    levelCodeTh: "บ",
-    levelCodeEn: "S",
-    levelNameTh: "บังคับบัญชา3",
-    levelNameEn: "Supervisor3",
-    pl: "3",
-    levelKey: "บ3",
-    remark: "",
-  },
-  {
-    id: "level-s2",
-    levelCodeTh: "บ",
-    levelCodeEn: "S",
-    levelNameTh: "บังคับบัญชา2",
-    levelNameEn: "Supervisor2",
-    pl: "2",
-    levelKey: "บ2",
-    remark: "",
-  },
-  {
-    id: "level-s1",
-    levelCodeTh: "บ",
-    levelCodeEn: "S",
-    levelNameTh: "บังคับบัญชา1",
-    levelNameEn: "Supervisor1",
-    pl: "1",
-    levelKey: "บ1",
-    remark: "",
-  },
-  {
-    id: "level-o5",
-    levelCodeTh: "ป",
-    levelCodeEn: "O",
-    levelNameTh: "ปฏิบัติการ5",
-    levelNameEn: "Operator5",
-    pl: "5",
-    levelKey: "ป5",
-    remark: "",
-  },
-  {
-    id: "level-o4",
-    levelCodeTh: "ป",
-    levelCodeEn: "O",
-    levelNameTh: "ปฏิบัติการ4",
-    levelNameEn: "Operator4",
-    pl: "4",
-    levelKey: "ป4",
-    remark: "",
-  },
-  {
-    id: "level-o3",
-    levelCodeTh: "ป",
-    levelCodeEn: "O",
-    levelNameTh: "ปฏิบัติการ3",
-    levelNameEn: "Operator3",
-    pl: "3",
-    levelKey: "ป3",
-    remark: "",
-  },
-  {
-    id: "level-o2",
-    levelCodeTh: "ป",
-    levelCodeEn: "O",
-    levelNameTh: "ปฏิบัติการ2",
-    levelNameEn: "Operator2",
-    pl: "2",
-    levelKey: "ป2",
-    remark: "",
-  },
-  {
-    id: "level-o1",
-    levelCodeTh: "ป",
-    levelCodeEn: "O",
-    levelNameTh: "ปฏิบัติการ1",
-    levelNameEn: "Operator1",
-    pl: "1",
-    levelKey: "ป1",
-    remark: "",
-  },
-];
+const mockLevels = [
+  ["m4", "จ", "M", "จัดการ4", "Management4", "4", "จ4"],
+  ["m3", "จ", "M", "จัดการ3", "Management3", "3", "จ3"],
+  ["m2", "จ", "M", "จัดการ2", "Management2", "2", "จ2"],
+  ["m1", "จ", "M", "จัดการ1", "Management1", "1", "จ1"],
+  ["s4", "บ", "S", "บังคับบัญชา4", "Supervisor4", "4", "บ4"],
+  ["s3", "บ", "S", "บังคับบัญชา3", "Supervisor3", "3", "บ3"],
+  ["s2", "บ", "S", "บังคับบัญชา2", "Supervisor2", "2", "บ2"],
+  ["s1", "บ", "S", "บังคับบัญชา1", "Supervisor1", "1", "บ1"],
+  ["o5", "ป", "O", "ปฏิบัติการ5", "Operator5", "5", "ป5"],
+  ["o4", "ป", "O", "ปฏิบัติการ4", "Operator4", "4", "ป4"],
+  ["o3", "ป", "O", "ปฏิบัติการ3", "Operator3", "3", "ป3"],
+  ["o2", "ป", "O", "ปฏิบัติการ2", "Operator2", "2", "ป2"],
+  ["o1", "ป", "O", "ปฏิบัติการ1", "Operator1", "1", "ป1"],
+] as const;
 
-const emptyRecord = (): LevelRecord => ({
-  id: `level-${Date.now()}`,
+// Temporary compatibility export for Employee and Course Standard mock consumers.
+export const defaultLevelRows: LevelRecord[] = mockLevels.map(
+  ([
+    id,
+    levelCodeTh,
+    levelCodeEn,
+    levelNameTh,
+    levelNameEn,
+    pl,
+    levelKey,
+  ]) => ({
+    id: `level-${id}`,
+    levelCodeTh,
+    levelCodeEn,
+    levelNameTh,
+    levelNameEn,
+    pl,
+    levelKey,
+    remark: "",
+  }),
+);
+
+type LevelForm = CreateLevelInput;
+const blankForm = (): LevelForm => ({
   levelCodeTh: "",
   levelCodeEn: "",
   levelNameTh: "",
@@ -169,27 +81,43 @@ const emptyRecord = (): LevelRecord => ({
   pl: "",
   levelKey: "",
   remark: "",
+  status: "ACTIVE",
 });
+const toForm = (record: ApiLevelRecord): LevelForm => ({
+  levelCodeTh: record.levelCodeTh,
+  levelCodeEn: record.levelCodeEn,
+  levelNameTh: record.levelNameTh,
+  levelNameEn: record.levelNameEn ?? "",
+  pl: record.pl ?? "",
+  levelKey: record.levelKey,
+  remark: record.remark ?? "",
+  status: record.status,
+});
+const errorText = (error: unknown) =>
+  error instanceof LevelClientError
+    ? error.message
+    : "Unable to load level data. Please try again.";
 
 export default function LevelData() {
-  const [rows, setRows] = useState<LevelRecord[]>(() =>
-    readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows),
-  );
+  const user = useAuthenticatedUser();
+  const isCenter = user?.roleCode === "HRD_CENTER";
+  const [rows, setRows] = useState<ApiLevelRecord[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState(defaultLevelRows[0]?.id ?? "");
-  const [formMode, setFormMode] = useState<FormMode>(null);
-  const [formValues, setFormValues] = useState<LevelRecord>(emptyRecord);
+  const [formMode, setFormMode] = useState<"new" | "edit" | null>(null);
+  const [form, setForm] = useState<LevelForm>(blankForm);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const selected = rows.find((row) => row.levelId === selectedId) ?? null;
 
-  const selectedRecord = rows.find((row) => row.id === selectedId) ?? null;
   const visibleRows = useMemo(() => {
     const query = search.trim().toLowerCase();
-
-    if (!query) {
-      return rows;
-    }
-
+    if (!query) return rows;
     return rows.filter((row) =>
       [
+        row.levelCode,
         row.levelCodeTh,
         row.levelCodeEn,
         row.levelNameTh,
@@ -197,90 +125,127 @@ export default function LevelData() {
         row.pl,
         row.levelKey,
         row.remark,
+        row.status,
       ]
+        .filter(Boolean)
         .join(" ")
         .toLowerCase()
         .includes(query),
     );
   }, [rows, search]);
 
-  const updateForm = (field: keyof LevelRecord, value: string) => {
-    setFormValues((current) => ({ ...current, [field]: value }));
-  };
-
-  const saveRows = (nextRows: LevelRecord[]) => {
-    setRows(nextRows);
-    writeMasterCollection(TRAINING_MASTER_KEYS.levels, nextRows);
-  };
-
-  const handleNew = () => {
-    setFormValues(emptyRecord());
-    setFormMode("new");
-  };
-
-  const handleEdit = () => {
-    if (!selectedRecord) {
-      return;
-    }
-
-    setFormValues(selectedRecord);
-    setFormMode("edit");
-  };
-
-  const handleDelete = () => {
-    if (!selectedRecord) {
-      return;
-    }
-
-    saveRows(rows.filter((row) => row.id !== selectedRecord.id));
-    setSelectedId("");
-    setFormMode(null);
-  };
-
-  const handleRefresh = () => {
-    const nextRows = readMasterCollection(
-      TRAINING_MASTER_KEYS.levels,
-      defaultLevelRows,
-    );
-    setRows(nextRows);
-    setSearch("");
-    setSelectedId(nextRows[0]?.id ?? "");
-    setFormMode(null);
-  };
-
-  const handleSave = () => {
-    const nextRecord: LevelRecord = {
-      ...formValues,
-      levelCodeTh: formValues.levelCodeTh.trim(),
-      levelCodeEn: formValues.levelCodeEn.trim().toUpperCase(),
-      levelNameTh: formValues.levelNameTh.trim(),
-      levelNameEn: formValues.levelNameEn.trim(),
-      pl: formValues.pl.trim(),
-      levelKey: formValues.levelKey.trim(),
-      remark: formValues.remark.trim(),
-    };
-
-    if (
-      !nextRecord.levelCodeTh ||
-      !nextRecord.levelCodeEn ||
-      !nextRecord.levelNameTh ||
-      !nextRecord.levelNameEn ||
-      !nextRecord.pl ||
-      !nextRecord.levelKey
-    ) {
-      return;
-    }
-
-    if (formMode === "edit") {
-      saveRows(
-        rows.map((row) => (row.id === nextRecord.id ? nextRecord : row)),
+  const loadRows = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const items = (await listLevels()).items;
+      setRows(items);
+      setSelectedId((current) =>
+        current && items.some((item) => item.levelId === current)
+          ? current
+          : items[0]?.levelId ?? null,
       );
-    } else {
-      saveRows([nextRecord, ...rows]);
+    } catch (caught: unknown) {
+      setError(errorText(caught));
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    setSelectedId(nextRecord.id);
-    setFormMode(null);
+  useEffect(() => {
+    let current = true;
+    listLevels()
+      .then((result) => {
+        if (!current) return;
+        setRows(result.items);
+        setSelectedId(result.items[0]?.levelId ?? null);
+      })
+      .catch((caught: unknown) => {
+        if (current) setError(errorText(caught));
+      })
+      .finally(() => {
+        if (current) setIsLoading(false);
+      });
+    return () => {
+      current = false;
+    };
+  }, []);
+
+  const change = (field: keyof LevelForm, value: string) =>
+    setForm((current) => ({ ...current, [field]: value }));
+  const startNew = () => {
+    if (!isCenter) return;
+    setForm(blankForm());
+    setFormMode("new");
+    setError(null);
+  };
+  const startEdit = () => {
+    if (!isCenter || !selected) return;
+    setForm(toForm(selected));
+    setFormMode("edit");
+    setError(null);
+  };
+  const save = async () => {
+    if (!isCenter || isSaving) return;
+    setIsSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const input: CreateLevelInput = {
+        levelCodeTh: form.levelCodeTh.trim(),
+        levelCodeEn: form.levelCodeEn.trim().toUpperCase(),
+        levelNameTh: form.levelNameTh.trim(),
+        levelNameEn: form.levelNameEn?.trim() || null,
+        pl: form.pl.trim(),
+        levelKey: form.levelKey.trim(),
+        remark: form.remark?.trim() || null,
+        status: form.status,
+      };
+      const result =
+        formMode === "edit" && selected
+          ? await updateLevel(selected.levelId, input)
+          : await createLevel(input);
+      setRows((current) =>
+        formMode === "edit"
+          ? current.map((item) =>
+              item.levelId === result.level.levelId ? result.level : item,
+            )
+          : [...current, result.level],
+      );
+      setSelectedId(result.level.levelId);
+      setFormMode(null);
+      setMessage(`${result.level.levelCode} was saved.`);
+    } catch (caught: unknown) {
+      setError(errorText(caught));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  const remove = async () => {
+    if (
+      !isCenter ||
+      !selected ||
+      isSaving ||
+      !window.confirm(`Delete ${selected.levelCode}?`)
+    )
+      return;
+    setIsSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const result = await deleteLevel(selected.levelId);
+      const nextRows = rows.filter(
+        (item) => item.levelId !== result.level.levelId,
+      );
+      setRows(nextRows);
+      setSelectedId(nextRows[0]?.levelId ?? null);
+      setFormMode(null);
+      setMessage(`${result.level.levelCode} was deleted.`);
+    } catch (caught: unknown) {
+      setError(errorText(caught));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -292,22 +257,13 @@ export default function LevelData() {
           <p>{levelDataModule.description}</p>
         </div>
         <div className={styles.levelSummary}>
-          <article>
-            <strong>M</strong>
-            <span>Management</span>
-          </article>
-          <article>
-            <strong>S</strong>
-            <span>Supervisor</span>
-          </article>
-          <article>
-            <strong>O</strong>
-            <span>Operator</span>
-          </article>
+          <article><strong>M</strong><span>Management</span></article>
+          <article><strong>S</strong><span>Supervisor</span></article>
+          <article><strong>O</strong><span>Operator</span></article>
         </div>
       </section>
 
-      <section className={styles.workspace}>
+      <section className={styles.workspace} aria-busy={isLoading}>
         <div className={styles.toolbar}>
           <input
             aria-label="Search level data"
@@ -315,161 +271,77 @@ export default function LevelData() {
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search level code, name, PL, or key"
           />
-          <button className={styles.newButton} type="button" onClick={handleNew}>
-            New
-          </button>
-          <button
-            className={styles.editButton}
-            type="button"
-            onClick={handleEdit}
-            disabled={!selectedRecord}
-          >
-            Edit
-          </button>
-          <button
-            className={styles.deleteButton}
-            type="button"
-            onClick={handleDelete}
-            disabled={!selectedRecord}
-          >
-            Delete
-          </button>
-          <button className={styles.refreshButton} type="button" onClick={handleRefresh}>
-            Refresh
-          </button>
+          {isCenter ? (
+            <>
+              <button className={styles.newButton} type="button" onClick={startNew}>New</button>
+              <button className={styles.editButton} type="button" onClick={startEdit} disabled={!selected || isSaving}>Edit</button>
+              <button className={styles.deleteButton} type="button" onClick={() => void remove()} disabled={!selected || isSaving}>Delete</button>
+            </>
+          ) : null}
+          <button className={styles.refreshButton} type="button" onClick={() => void loadRows()} disabled={isLoading || isSaving}>Refresh</button>
         </div>
+
+        {error ? <p role="alert">{error}</p> : null}
+        {message ? <p role="status">{message}</p> : null}
 
         {formMode ? (
           <section className={styles.editorPanel}>
             <div className={styles.panelHeader}>
               <div>
                 <span>{formMode === "new" ? "New record" : "Edit record"}</span>
-                <h3>{formMode === "new" ? "Create Level" : formValues.levelKey}</h3>
+                <h3>{formMode === "new" ? "Create Level" : selected?.levelCode}</h3>
               </div>
             </div>
-
             <div className={styles.formGrid}>
-              <label>
-                Level Code(TH)
-                <input
-                  value={formValues.levelCodeTh}
-                  onChange={(event) => updateForm("levelCodeTh", event.target.value)}
-                  placeholder="จ"
-                />
-              </label>
-              <label>
-                Level Code(EN)
-                <input
-                  value={formValues.levelCodeEn}
-                  onChange={(event) => updateForm("levelCodeEn", event.target.value)}
-                  placeholder="M"
-                />
-              </label>
-              <label>
-                Level Name(TH)
-                <input
-                  value={formValues.levelNameTh}
-                  onChange={(event) => updateForm("levelNameTh", event.target.value)}
-                  placeholder="จัดการ4"
-                />
-              </label>
-              <label>
-                Level Name(EN)
-                <input
-                  value={formValues.levelNameEn}
-                  onChange={(event) => updateForm("levelNameEn", event.target.value)}
-                  placeholder="Management4"
-                />
-              </label>
-              <label>
-                PL
-                <input
-                  value={formValues.pl}
-                  onChange={(event) => updateForm("pl", event.target.value)}
-                  placeholder="4"
-                />
-              </label>
-              <label>
-                Level Key
-                <input
-                  value={formValues.levelKey}
-                  onChange={(event) => updateForm("levelKey", event.target.value)}
-                  placeholder="จ4"
-                />
-              </label>
-              <label className={styles.fullWidth}>
-                Remark.
-                <textarea
-                  value={formValues.remark}
-                  onChange={(event) => updateForm("remark", event.target.value)}
-                  placeholder="Remark"
-                />
-              </label>
+              <label>Level Code(TH)<input maxLength={30} value={form.levelCodeTh} onChange={(event) => change("levelCodeTh", event.target.value)} /></label>
+              <label>Level Code(EN)<input maxLength={30} value={form.levelCodeEn} onChange={(event) => change("levelCodeEn", event.target.value)} /></label>
+              <label>Level Name(TH)<input maxLength={255} value={form.levelNameTh} onChange={(event) => change("levelNameTh", event.target.value)} /></label>
+              <label>Level Name(EN)<input maxLength={255} value={form.levelNameEn ?? ""} onChange={(event) => change("levelNameEn", event.target.value)} /></label>
+              <label>PL<input maxLength={30} value={form.pl} onChange={(event) => change("pl", event.target.value)} /></label>
+              <label>Level Key<input maxLength={30} value={form.levelKey} onChange={(event) => change("levelKey", event.target.value)} /></label>
+              <label>Status<select value={form.status} onChange={(event) => change("status", event.target.value as LevelStatus)}><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select></label>
+              <label className={styles.fullWidth}>Remark.<textarea maxLength={500} value={form.remark ?? ""} onChange={(event) => change("remark", event.target.value)} /></label>
             </div>
-
             <div className={styles.formActions}>
-              <button className={styles.saveButton} type="button" onClick={handleSave}>
-                Save
-              </button>
-              <button
-                className={styles.cancelButton}
-                type="button"
-                onClick={() => setFormMode(null)}
-              >
-                Cancel
-              </button>
+              <button className={styles.saveButton} type="button" onClick={() => void save()} disabled={isSaving}>{isSaving ? "Saving..." : "Save"}</button>
+              <button className={styles.cancelButton} type="button" onClick={() => setFormMode(null)} disabled={isSaving}>Cancel</button>
             </div>
           </section>
         ) : null}
 
         <section className={styles.tablePanel}>
           <div className={styles.panelHeader}>
-            <div>
-              <span>Master List</span>
-              <h3>Level Records</h3>
-            </div>
+            <div><span>Shared Master</span><h3>Level Records</h3></div>
             <p>{visibleRows.length} records</p>
           </div>
-
           <div className={styles.tableWrap}>
             <table className={styles.levelTable}>
               <thead>
                 <tr>
-                  <th>No.</th>
-                  <th>Level Code(TH)</th>
-                  <th>Level Code(EN)</th>
-                  <th>Level Name(TH)</th>
-                  <th>Level Name(EN)</th>
-                  <th>PL</th>
-                  <th>Level Key</th>
-                  <th>Remark.</th>
+                  <th>No.</th><th>Level Code</th><th>Level Code(TH)</th>
+                  <th>Level Code(EN)</th><th>Level Name(TH)</th>
+                  <th>Level Name(EN)</th><th>PL</th><th>Level Key</th>
+                  <th>Remark.</th><th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {visibleRows.map((row, index) => (
                   <tr
-                    className={row.id === selectedId ? styles.selectedRow : undefined}
-                    key={row.id}
-                    onClick={() => setSelectedId(row.id)}
+                    className={row.levelId === selectedId ? styles.selectedRow : undefined}
+                    key={row.levelId}
+                    onClick={() => setSelectedId(row.levelId)}
                   >
                     <td>{index + 1}</td>
-                    <td>{row.levelCodeTh}</td>
-                    <td>
-                      <span className={styles.codePill}>{row.levelCodeEn}</span>
-                    </td>
-                    <td>{row.levelNameTh}</td>
-                    <td>{row.levelNameEn}</td>
-                    <td>{row.pl}</td>
-                    <td>
-                      <span className={styles.keyPill}>{row.levelKey}</span>
-                    </td>
-                    <td>{row.remark || "-"}</td>
+                    <td><span className={styles.codePill}>{row.levelCode}</span></td>
+                    <td>{row.levelCodeTh}</td><td>{row.levelCodeEn}</td>
+                    <td>{row.levelNameTh}</td><td>{row.levelNameEn ?? "-"}</td>
+                    <td>{row.pl ?? "-"}</td>
+                    <td><span className={styles.keyPill}>{row.levelKey}</span></td>
+                    <td>{row.remark ?? "-"}</td><td>{row.status}</td>
                   </tr>
                 ))}
-                {visibleRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={8}>No level data found.</td>
-                  </tr>
+                {!isLoading && visibleRows.length === 0 ? (
+                  <tr><td colSpan={10}>No level data found.</td></tr>
                 ) : null}
               </tbody>
             </table>
