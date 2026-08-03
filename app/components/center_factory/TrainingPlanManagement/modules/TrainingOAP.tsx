@@ -9,6 +9,8 @@ import {
   TRAINING_MASTER_EVENT,
   TRAINING_MASTER_KEYS,
   TRAINING_WORKFLOW_KEYS,
+  getCourseDisplayName,
+  getCourseSecondaryName,
   isWorkflowOwner,
   readMasterCollection,
   readWorkflowCollection,
@@ -194,7 +196,14 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const visiblePlans = useMemo(
     () =>
       scopedPlans.filter((plan) =>
-        [plan.course.courseCode, plan.course.courseNameEn, plan.status, plan.trainer, plan.provider]
+        [
+          plan.course.courseCode,
+          plan.course.courseNameTh,
+          plan.course.courseNameEn,
+          plan.status,
+          plan.trainer,
+          plan.provider,
+        ]
           .join(" ")
           .toLowerCase()
           .includes(search.toLowerCase()),
@@ -381,7 +390,15 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               <label className={styles.fullField}>
                 Course Name
                 <select value={form.courseCode} onChange={(event) => updateForm("courseCode", event.target.value)}>
-                  {courseOptions.map((course) => <option key={course.courseCode} value={course.courseCode}>{course.courseNameEn}</option>)}
+                  {courseOptions.map((course) => {
+                    const secondaryName = getCourseSecondaryName(course);
+                    return (
+                      <option key={course.courseCode} value={course.courseCode}>
+                        {getCourseDisplayName(course)}
+                        {secondaryName ? ` / ${secondaryName}` : ""}
+                      </option>
+                    );
+                  })}
                 </select>
               </label>
               <label>Participants / Group<input value={form.participants} inputMode="numeric" onChange={(event) => updateForm("participants", event.target.value)} /></label>
@@ -407,7 +424,10 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             </div>
             {selectedCourse ? (
               <div className={styles.coursePreview}>
-                <strong>{selectedCourse.courseCode} / {selectedCourse.courseNameEn}</strong>
+                <strong>{selectedCourse.courseCode} / {getCourseDisplayName(selectedCourse)}</strong>
+                {getCourseSecondaryName(selectedCourse) ? (
+                  <span>{getCourseSecondaryName(selectedCourse)}</span>
+                ) : null}
                 <span>{selectedCourse.objective}</span>
                 <span>{selectedCourse.courseType} / {selectedCourse.courseGroup}</span>
               </div>
@@ -442,7 +462,15 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                   <Fragment key={plan.id}>
                     <tr>
                       <td>{plan.sequence}</td>
-                      <td><strong>{plan.course.courseNameEn}</strong><span>{plan.course.courseCode}</span></td>
+                      <td>
+                        <strong>{getCourseDisplayName(plan.course)}</strong>
+                        <span>
+                          {plan.course.courseCode}
+                          {getCourseSecondaryName(plan.course)
+                            ? ` / ${getCourseSecondaryName(plan.course)}`
+                            : ""}
+                        </span>
+                      </td>
                       <td>{plan.participants}</td>
                       <td>{plan.hours}</td>
                       <td>{Number(plan.budget).toLocaleString("en-US")}</td>
@@ -477,13 +505,14 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                             <div className={styles.panelHeader}>
                               <div>
                                 <p className={styles.kicker}>Course detail from Course Master</p>
-                                <h3>{plan.course.courseNameEn}</h3>
+                                <h3>{getCourseDisplayName(plan.course)}</h3>
                               </div>
                               <button className={styles.closeButton} type="button" onClick={() => setOpenDetailId("")}>Close</button>
                             </div>
                             <div className={styles.detailGrid}>
                               <div><span>Course Code</span><strong>{plan.course.courseCode}</strong></div>
                               <div><span>Course Name (TH)</span><strong>{plan.course.courseNameTh}</strong></div>
+                              <div><span>Course Name (EN)</span><strong>{plan.course.courseNameEn}</strong></div>
                               <div><span>Course Type</span><strong>{plan.course.courseType}</strong></div>
                               <div><span>Course Group</span><strong>{plan.course.courseGroup}</strong></div>
                               <div><span>Objective</span><p>{plan.course.objective}</p></div>

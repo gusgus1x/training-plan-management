@@ -140,11 +140,18 @@ const thaiUiDictionary: Record<string, string> = {
   "Course Selection": "เลือกหลักสูตร",
   "Course Sequence": "ลำดับหลักสูตร",
   "Course Setup": "ตั้งค่าหลักสูตร",
+  "Course Master & Standard": "ฐานข้อมูลและมาตรฐานหลักสูตร",
+  "Course database and standards": "ฐานข้อมูลและมาตรฐานหลักสูตร",
+  "Course workflow": "ขั้นตอนการจัดทำหลักสูตร",
   "Course Standard": "มาตรฐานหลักสูตร",
   "Course Standard target": "กลุ่มเป้าหมายตามมาตรฐานหลักสูตร",
   "Course Type": "ประเภทหลักสูตร",
   "Course type library": "รายการประเภทหลักสูตร",
   "Create an active Course Master first": "กรุณาสร้างหลักสูตรที่เปิดใช้งานก่อน",
+  "Create courses and define training standards in one workspace.":
+    "สร้างหลักสูตรและกำหนดมาตรฐานการฝึกอบรมในพื้นที่ทำงานเดียว",
+  "Create the course and define its training standard in one form.":
+    "สร้างหลักสูตรและกำหนดมาตรฐานการฝึกอบรมในฟอร์มเดียว",
   Create: "สร้าง",
   "Created By": "สร้างโดย",
   "Current access": "สิทธิ์การเข้าถึงปัจจุบัน",
@@ -609,13 +616,27 @@ const thaiUiDictionary: Record<string, string> = {
   Calendar: "ปฏิทิน",
   "Center Factory": "ส่วนกลางและโรงงาน",
   "Company :": "บริษัท :",
+  Classification: "ประเภทและกลุ่มหลักสูตร",
   "Company Data module": "โมดูลข้อมูลบริษัท",
   "Company Records": "รายการบริษัท",
   "Course Group management": "จัดการกลุ่มหลักสูตร",
   "Course Master Records": "รายการหลักสูตร",
   "Course Master management": "จัดการฐานข้อมูลหลักสูตร",
   "Course Standard management": "จัดการมาตรฐานหลักสูตร",
+  "Course Standard Records": "รายการมาตรฐานหลักสูตร",
   "Course Type management": "จัดการประเภทหลักสูตร",
+  "Set Standard": "กำหนดมาตรฐาน",
+  "Save course and standard": "บันทึกหลักสูตรและมาตรฐาน",
+  "Saved standards": "มาตรฐานที่บันทึกแล้ว",
+  "Saved Course Standard data in the original matrix view.":
+    "ข้อมูลมาตรฐานหลักสูตรที่บันทึกแล้วในรูปแบบตารางเดิม",
+  "No saved Course Standard records.": "ยังไม่มีรายการมาตรฐานหลักสูตรที่บันทึก",
+  "No standard": "ยังไม่ได้กำหนดมาตรฐาน",
+  "Define the training target together with the course.":
+    "กำหนดกลุ่มเป้าหมายการฝึกอบรมพร้อมกับข้อมูลหลักสูตร",
+  "Function, Position and Level": "หน่วยงาน ตำแหน่ง และระดับ",
+  "Set up the course, then define its standard.":
+    "สร้างข้อมูลหลักสูตร แล้วกำหนดมาตรฐานของหลักสูตรต่อเนื่องในขั้นตอนถัดไป",
   "Course group actions": "การดำเนินการกลุ่มหลักสูตร",
   "Course type actions": "การดำเนินการประเภทหลักสูตร",
   "Current module navigation": "เมนูโมดูลปัจจุบัน",
@@ -1124,6 +1145,11 @@ const thaiUiDictionary: Record<string, string> = {
 };
 
 const thaiAttributeDictionary: Record<string, string> = {
+  "Saved Course Standard matrix": "ตารางมาตรฐานหลักสูตรที่บันทึกแล้ว",
+  "Course Master and Course Standard workspace":
+    "พื้นที่ทำงานฐานข้อมูลและมาตรฐานหลักสูตร",
+  "Course setup workflow": "ขั้นตอนการจัดทำหลักสูตร",
+  "Course workspace views": "มุมมองพื้นที่ทำงานหลักสูตร",
   "Actual attendees by company": "ผู้เข้าอบรมจริงแยกตามบริษัท",
   "Actual cost breakdown": "รายละเอียดค่าใช้จ่ายจริง",
   "Actual training expenses": "ค่าใช้จ่ายการอบรมจริง",
@@ -1271,6 +1297,8 @@ export const translateUiText = (source: string): string => {
     [/^(\d+) shown$/, (match) => `แสดง ${match[1]} รายการ`],
     [/^(\d+) questions?$/, (match) => `${match[1]} คำถาม`],
     [/^(\d+) courses?$/, (match) => `${match[1]} หลักสูตร`],
+    [/^(\d+) positions?$/, (match) => `${match[1]} ตำแหน่ง`],
+    [/^(\d+) levels?$/, (match) => `${match[1]} ระดับ`],
     [/^(\d+) modules?$/, (match) => `${match[1]} โมดูล`],
     [/^(\d+) schedules?$/, (match) => `${match[1]} กำหนดการ`],
     [/^(\d+) completed$/, (match) => `เสร็จสิ้น ${match[1]} รายการ`],

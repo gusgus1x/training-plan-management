@@ -3,6 +3,7 @@
 import { Fragment, useMemo, useState } from "react";
 import {
   TRAINING_WORKFLOW_KEYS,
+  getCourseDisplayName,
   isWorkflowOwner,
   readWorkflowCollection,
   writeWorkflowCollection,
@@ -256,7 +257,7 @@ export default function TrainingRolling() {
         id: plan.id,
         course: {
           code: plan.course.courseCode,
-          name: plan.course.courseNameEn,
+          name: getCourseDisplayName(plan.course),
           objective: plan.course.objective,
           learningContent: plan.course.learningContent,
           targetGroup: plan.course.targetGroup,

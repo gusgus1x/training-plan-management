@@ -1,0 +1,2348 @@
+.workspaceNav {
+  display: flex;
+  max-width: 1280px;
+  margin: 18px auto 0;
+  padding: 14px 18px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.07);
+}
+
+.workspaceNav > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.workspaceNav span {
+  color: var(--ui-30-primary);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.workspaceNav strong {
+  color: var(--ui-30-ink);
+  font-size: 0.86rem;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+}
+
+.tabs button {
+  display: inline-flex;
+  min-height: 40px;
+  padding: 0 14px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ui-30-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.tabs button b {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #dce6f3;
+  color: #3f5573;
+  font-size: 0.68rem;
+}
+
+.tabs button:hover {
+  color: var(--ui-30-primary);
+}
+
+.tabs .activeTab {
+  border-color: var(--ui-30-primary-border);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-primary-strong);
+  box-shadow: 0 6px 16px rgba(24, 36, 56, 0.08);
+}
+
+.tabs .activeTab b {
+  background: var(--ui-30-primary);
+  color: var(--ui-60-surface);
+}
+
+@media (max-width: 760px) {
+  .workspaceNav {
+    margin-inline: 16px;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tabs,
+  .tabs button {
+    width: 100%;
+  }
+
+  .tabs button {
+    justify-content: center;
+  }
+}
+
+/* Course Master */
+.page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 18px 24px 48px;
+  color: var(--ui-30-ink);
+}
+
+.hero,
+.toolbar,
+.listPanel,
+.formPanel {
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.07);
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px;
+  margin-bottom: 14px;
+}
+
+.kicker {
+  margin: 0 0 6px;
+  color: var(--ui-30-primary);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.hero h2,
+.panelHeader h3 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.hero p {
+  margin: 8px 0 0;
+  color: var(--ui-30-muted);
+  line-height: 1.5;
+}
+.panelHeader span {
+  display: block;
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.topDropPanel {
+  margin-bottom: 14px;
+}
+
+.toolbar input {
+  flex: 1 1 320px;
+}
+
+.toolbar input,
+.formGrid input,
+.formGrid select,
+.formGrid textarea {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  min-height: 40px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.toolbar input:focus,
+.formGrid input:focus,
+.formGrid select:focus,
+.formGrid textarea:focus {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.16);
+}
+
+.formGrid input:disabled,
+.formGrid select:disabled,
+.formGrid textarea:disabled {
+  background: var(--ui-60-surface-soft);
+  color: #43526a;
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton {
+  min-height: 40px;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.primaryButton {
+  border: 0;
+  background: var(--ui-30-primary);
+  color: var(--ui-60-surface);
+}
+
+.secondaryButton {
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
+}
+
+.dangerButton {
+  border: 1px solid #f0b8b8;
+  background: #fff5f5;
+  color: #b42318;
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.dangerButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.contentGrid {
+  display: grid;
+  gap: 14px;
+  align-items: start;
+}
+
+.listPanel,
+.formPanel {
+  min-width: 0;
+  padding: 16px;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.panelActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.courseTable {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+}
+
+.courseTable th,
+.courseTable td {
+  border-bottom: 1px solid var(--ui-30-border);
+  padding: 12px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.courseTable th {
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  background: var(--ui-60-surface-soft);
+}
+
+.courseTable tr:hover td,
+.selectedRow td {
+  background: var(--ui-30-primary-soft);
+}
+
+.courseTable td strong {
+  display: block;
+  font-size: 0.92rem;
+}
+
+.courseTable td span {
+  display: block;
+  margin-top: 4px;
+  color: var(--ui-30-muted);
+  font-size: 0.8rem;
+}
+
+.detailRow td {
+  background: var(--ui-60-surface-soft);
+  padding: 0;
+}
+
+.inlinePanel {
+  padding: 14px;
+}
+
+.inlinePanel .formPanel,
+.topDropPanel .formPanel {
+  box-shadow: none;
+  border-color: var(--ui-30-primary-border);
+  background: var(--ui-60-surface-soft);
+}
+
+.statusPill {
+  display: inline-flex;
+  border-radius: 999px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  padding: 4px 9px;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.actionCell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.actionCell button + button {
+  margin-left: 6px;
+}
+
+.detailButton {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-primary);
+  min-height: 34px;
+  padding: 7px 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.detailButton:hover {
+  border-color: var(--ui-30-primary);
+  background: var(--ui-30-primary-soft);
+}
+
+.closeButton {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: #4b5b73;
+  min-height: 34px;
+  padding: 7px 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  border-color: #8aa4cc;
+  background: var(--ui-60-surface-soft);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.formGrid label {
+  display: grid;
+  gap: 6px;
+  color: var(--ui-30-text);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.formGrid textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+.formActions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+@media (max-width: 980px) {
+  .hero,
+  .contentGrid {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding-inline: 14px;
+  }
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .fullWidth {
+    grid-column: auto;
+  }
+}
+
+/* Compact readability pass */
+.page {
+  font-size: 0.88rem;
+}
+
+.hero {
+  padding: 16px;
+  gap: 12px;
+}
+
+.hero h2 {
+  font-size: 1.28rem;
+  line-height: 1.2;
+}
+
+.hero p {
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.kicker {
+  font-size: 0.68rem;
+}
+
+.summaryCard,
+.summaryCard strong,
+.workspace,
+.listPanel,
+.formPanel,
+.editorPanel,
+.detailPanel {
+  padding: 12px;
+}
+
+.toolbar {
+  gap: 6px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.toolbar button,
+.primaryButton,
+.secondaryButton,
+.dangerButton,
+.detailButton,
+.closeButton,
+.saveButton,
+.cancelButton {
+  min-height: 34px;
+  padding: 7px 11px;
+  font-size: 0.76rem;
+}
+
+.toolbar input,
+.editor input,
+.formGrid input,
+.formGrid select,
+.formGrid textarea,
+.questionGrid input,
+.questionGrid select,
+.questionGrid textarea {
+  min-height: 36px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+}
+
+.panelHeader {
+  margin-bottom: 10px;
+}
+
+.panelHeader h3,
+.checkSection h4 {
+  font-size: 0.98rem;
+}
+
+.panelHeader span,
+.summaryCard span {
+  font-size: 0.68rem;
+}
+
+.formGrid,
+.questionGrid {
+  gap: 10px;
+}
+
+.formGrid label,
+.questionGrid label,
+.editor label {
+  gap: 5px;
+  font-size: 0.76rem;
+}
+
+.tableWrap {
+  padding: 10px;
+}
+
+.courseTable th,
+.courseTypeTable th,
+.courseGroupTable th,
+.standardTable th,
+.assessmentTable th {
+  padding: 0 12px 4px;
+  font-size: 0.66rem;
+}
+
+.courseTable td,
+.courseTypeTable td,
+.courseGroupTable td,
+.standardTable td,
+.assessmentTable td {
+  padding: 10px 12px;
+  font-size: 0.8rem;
+}
+
+.courseTable td strong,
+.courseTypeTable td:last-child,
+.courseGroupTable td:last-child {
+  font-size: 0.84rem;
+}
+
+.courseTable td span,
+.questionList span,
+.questionList p,
+.emptyState {
+  font-size: 0.74rem;
+}
+
+.statusPill,
+.questionList b {
+  padding: 3px 8px;
+  font-size: 0.66rem;
+}
+
+.checkItem {
+  padding: 8px;
+  font-size: 0.76rem;
+}
+
+.checkMark {
+  width: 20px;
+  height: 20px;
+  font-size: 0.78rem;
+}
+
+.formActions {
+  gap: 6px;
+  margin-top: 12px;
+}
+
+/* Premium dark-shell treatment */
+.page {
+  max-width: 1240px;
+  padding-top: 8px;
+  color: var(--ui-30-ink);
+}
+
+.hero,
+.toolbar,
+.listPanel,
+.formPanel {
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24);
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, var(--ui-60-surface) 0%, var(--ui-60-surface) 62%, var(--ui-60-surface-muted) 100%);
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--ui-10-accent);
+}
+
+.kicker {
+  color: var(--ui-30-primary);
+}
+
+.toolbar,
+.listPanel,
+.formPanel {
+  background: var(--ui-60-surface);
+}
+
+.inlinePanel .formPanel,
+.topDropPanel .formPanel {
+  border-color: var(--ui-30-primary-border);
+  background: var(--ui-60-surface-soft);
+  box-shadow: none;
+}
+
+.primaryButton {
+  background: var(--ui-10-accent);
+  box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
+}
+
+.secondaryButton:hover,
+.detailButton:hover,
+.closeButton:hover {
+  border-color: #8aa4cc;
+  background: var(--ui-60-surface-soft);
+}
+
+.tableWrap {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+}
+
+.courseTable th {
+  color: var(--ui-30-muted);
+}
+
+.courseTable tr:hover td,
+.selectedRow td {
+  background: var(--ui-60-surface-soft);
+}
+
+.selectedRow td:first-child {
+  box-shadow: inset 3px 0 0 var(--ui-10-accent);
+}
+
+.statusPill {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+/* Unified alignment with the Training Course hub */
+.page {
+  width: min(1180px, calc(100% - 48px));
+  max-width: none;
+  padding: 8px 0 48px;
+}
+
+@media (max-width: 640px) {
+  .page {
+    width: min(100% - 28px, 560px);
+    padding-inline: 0;
+  }
+}
+
+/* Course creation guidance */
+.formGuide {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 14px;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--ui-30-primary-soft), var(--ui-60-surface));
+  padding: 12px 14px;
+}
+
+.guideHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.guideHeader strong {
+  display: block;
+  color: var(--ui-30-ink);
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.guideHeader p {
+  margin: 3px 0 0;
+  color: var(--ui-30-text);
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.guideHeader > span {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-primary);
+  padding: 5px 9px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.guideProgress {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ui-30-border);
+}
+
+.guideProgress > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--ui-30-primary), var(--ui-10-accent));
+  transition: width 180ms ease;
+}
+
+.guideSteps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guideSteps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--ui-30-text);
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.guideSteps li > b {
+  display: grid;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--ui-30-primary);
+  color: var(--ui-60-surface);
+  font-size: 0.66rem;
+}
+
+.formGuide > small {
+  color: var(--ui-30-muted);
+  font-size: 0.66rem;
+}
+
+.formGuide > small b,
+.fieldLabel > b {
+  color: var(--ui-10-accent);
+}
+
+.fieldLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 18px;
+}
+
+.fieldLabel em {
+  margin-left: auto;
+  color: var(--ui-30-muted);
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.fieldHint,
+.catalogHint {
+  color: var(--ui-30-muted);
+  font-size: 0.66rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+@media (max-width: 760px) {
+  .guideHeader {
+    display: grid;
+  }
+
+  .guideHeader > span {
+    justify-self: start;
+  }
+
+  .guideSteps {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Unified Training Record visual alignment */
+.page,
+.moduleWorkspace {
+  width: min(1180px, calc(100% - 48px));
+  max-width: none;
+  margin: 0 auto;
+  padding: 8px 0 48px;
+  color: var(--ui-30-ink);
+  font-size: 0.88rem;
+}
+
+.hero,
+.moduleHero,
+.workspace,
+.panel,
+.formPanel,
+.listPanel,
+.editorPanel,
+.detailPanel {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
+}
+
+.hero,
+.moduleHero {
+  position: relative;
+  overflow: hidden;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 16px 18px 16px 22px;
+  background: linear-gradient(90deg, var(--ui-60-surface) 0%, var(--ui-60-surface) 66%, var(--ui-60-surface-muted) 100%);
+}
+
+.hero::before,
+.moduleHero::before,
+.workspace::before,
+.panel::before,
+.formPanel::before,
+.listPanel::before,
+.editorPanel::before,
+.detailPanel::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--ui-card-edge);
+  box-shadow: var(--ui-card-edge-shadow);
+  pointer-events: none;
+}
+
+.workspace,
+.panel,
+.formPanel,
+.listPanel,
+.editorPanel,
+.detailPanel {
+  position: relative;
+  overflow: hidden;
+  padding: 14px 16px 14px 18px;
+}
+
+.kicker,
+.panelKicker,
+.workspaceHeader span,
+.panelHeader span,
+.listMeta,
+.badge {
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hero h2,
+.moduleHero h2,
+.workspaceHeader h3,
+.panelHeader h3,
+.panel h3,
+.formPanel h3 {
+  margin: 0;
+  color: var(--ui-30-ink);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.hero h2,
+.moduleHero h2 {
+  font-size: 1.28rem;
+}
+
+.hero p,
+.moduleHero p,
+.panel p,
+.formPanel p {
+  color: var(--ui-30-text);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.toolbar {
+  border-bottom: 1px solid var(--ui-30-border);
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+}
+
+.toolbar input,
+.toolbar select,
+.editor input,
+.formGrid input,
+.formGrid select,
+.formGrid textarea,
+.questionGrid input,
+.questionGrid select,
+.questionGrid textarea {
+  min-height: 36px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 8px 10px;
+  outline: none;
+}
+
+.toolbar input:focus,
+.toolbar select:focus,
+.editor input:focus,
+.formGrid input:focus,
+.formGrid select:focus,
+.formGrid textarea:focus,
+.questionGrid input:focus,
+.questionGrid select:focus,
+.questionGrid textarea:focus {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
+}
+
+.primaryButton,
+.actionButton,
+.newButton,
+.saveButton {
+  border: 0;
+  border-radius: 8px;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
+  box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
+}
+
+.secondaryButton,
+.editButton,
+.refreshButton,
+.exportButton,
+.cancelButton,
+.detailButton,
+.closeButton {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
+}
+
+.dangerButton,
+.deleteButton {
+  border: 1px solid #f0b8b8;
+  border-radius: 8px;
+  background: #fff5f5;
+  color: #b42318;
+}
+
+.primaryButton,
+.actionButton,
+.newButton,
+.saveButton,
+.secondaryButton,
+.editButton,
+.refreshButton,
+.exportButton,
+.cancelButton,
+.detailButton,
+.closeButton,
+.dangerButton,
+.deleteButton {
+  min-height: 34px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  padding: 7px 11px;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.primaryButton:hover,
+.actionButton:hover,
+.newButton:hover,
+.saveButton:hover,
+.secondaryButton:hover,
+.editButton:hover,
+.refreshButton:hover,
+.exportButton:hover,
+.cancelButton:hover,
+.detailButton:hover,
+.closeButton:hover,
+.dangerButton:hover,
+.deleteButton:hover {
+  transform: translateY(-1px);
+}
+
+.secondaryButton:hover,
+.editButton:hover,
+.refreshButton:hover,
+.exportButton:hover,
+.cancelButton:hover,
+.detailButton:hover,
+.closeButton:hover {
+  border-color: #8aa4cc;
+  background: var(--ui-60-surface-soft);
+}
+
+.tableWrap {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  padding: 0;
+  overflow-x: auto;
+}
+
+.dataTable,
+.courseTable,
+.courseTypeTable,
+.courseGroupTable,
+.standardTable,
+.assessmentTable,
+.evaluationTable,
+.planTable,
+.rollingTable {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.dataTable th,
+.courseTable th,
+.courseTypeTable th,
+.courseGroupTable th,
+.standardTable th,
+.assessmentTable th,
+.evaluationTable th,
+.planTable th,
+.rollingTable th {
+  border-bottom: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  padding: 12px;
+  text-transform: uppercase;
+}
+
+.dataTable td,
+.courseTable td,
+.courseTypeTable td,
+.courseGroupTable td,
+.standardTable td,
+.assessmentTable td,
+.evaluationTable td,
+.planTable td,
+.rollingTable td {
+  border-bottom: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  box-shadow: none;
+  color: var(--ui-30-text);
+  font-size: 0.8rem;
+  padding: 10px 12px;
+}
+
+.dataTable tbody tr:hover td,
+.courseTable tbody tr:hover td,
+.courseTypeTable tbody tr:hover td,
+.courseGroupTable tbody tr:hover td,
+.standardTable tbody tr:hover td,
+.assessmentTable tbody tr:hover td,
+.evaluationTable tbody tr:hover td,
+.planTable tbody tr:hover td,
+.rollingTable tbody tr:hover td,
+.selectedRow td {
+  background: var(--ui-60-surface-soft);
+}
+
+.selectedRow td:first-child {
+  box-shadow: inset 3px 0 0 var(--ui-10-accent);
+}
+
+.statusPill,
+.codePill,
+.questionList b {
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 0.66rem;
+  font-weight: 900;
+  padding: 3px 8px;
+}
+
+@media (max-width: 760px) {
+  .page,
+  .moduleWorkspace {
+    width: min(100% - 28px, 560px);
+    padding-inline: 0;
+  }
+
+  .hero,
+  .moduleHero,
+  .toolbar,
+  .workspaceHeader,
+  .panelHeader,
+  .formGrid,
+  .questionGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+/* CRUD toolbar button alignment */
+.toolbar button {
+  display: inline-flex;
+  min-width: 64px;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0 13px;
+  white-space: nowrap;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.toolbar .primaryButton,
+.toolbar .actionButton,
+.toolbar .newButton {
+  border: 0;
+  background: var(--ui-30-primary);
+  color: var(--ui-60-surface);
+  box-shadow: 0 8px 18px rgba(0, 122, 61, 0.16);
+}
+
+.toolbar .secondaryButton,
+.toolbar .editButton,
+.toolbar .refreshButton,
+.toolbar .exportButton {
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  color: #0f2747;
+  box-shadow: none;
+}
+
+.toolbar .dangerButton,
+.toolbar .deleteButton {
+  min-width: 78px;
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+  color: #b42318;
+  box-shadow: none;
+}
+
+.toolbar .primaryButton:hover,
+.toolbar .actionButton:hover,
+.toolbar .newButton:hover {
+  background: var(--ui-30-primary-strong);
+  box-shadow: 0 12px 24px rgba(0, 122, 61, 0.22);
+  transform: translateY(-1px);
+}
+
+.toolbar .secondaryButton:hover,
+.toolbar .editButton:hover,
+.toolbar .refreshButton:hover,
+.toolbar .exportButton:hover {
+  border-color: #8aa4cc;
+  background: var(--ui-60-surface-soft);
+  transform: translateY(-1px);
+}
+
+.toolbar .dangerButton:hover,
+.toolbar .deleteButton:hover {
+  border-color: var(--ui-10-accent);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
+  transform: translateY(-1px);
+}
+
+.toolbar button:disabled {
+  border-color: var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
+  box-shadow: none;
+  color: #a4afbd;
+  cursor: not-allowed;
+  opacity: 1;
+  transform: none;
+}
+
+.exportStatus {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid #b7ddc5;
+  border-radius: 10px;
+  background: #f0faf4;
+  color: #17643a;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* Published Assessment / Evaluation catalog links */
+.linkedFormsHeader {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 4px;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 8px;
+  background: var(--ui-30-primary-soft);
+  padding: 11px 12px;
+}
+
+.linkedFormsHeader div {
+  display: grid;
+  gap: 3px;
+}
+
+.linkedFormsHeader span {
+  color: var(--ui-30-primary);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.linkedFormsHeader strong {
+  color: var(--ui-30-ink);
+  font-size: 0.86rem;
+}
+
+.linkedFormsHeader p {
+  margin: 0;
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.catalogHint {
+  display: block;
+  min-height: 1.3em;
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+@media (max-width: 760px) {
+  .linkedFormsHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .linkedFormsHeader p {
+    text-align: left;
+  }
+}
+
+/* Course Standard */
+.standard_page {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 18px 24px 48px;
+  color: var(--ui-30-ink);
+}
+
+.standard_hero,
+.standard_workspace,
+.standard_formPanel {
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.07);
+}
+
+.standard_hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 20px;
+  margin-bottom: 14px;
+}
+
+.standard_kicker {
+  margin: 0 0 6px;
+  color: var(--ui-30-primary);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.standard_hero h2,
+.standard_panelHeader h3,
+.standard_checkSection h4 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.standard_hero p {
+  margin: 8px 0 0;
+  color: var(--ui-30-muted);
+  line-height: 1.5;
+}
+
+.standard_summaryCard {
+  min-width: 150px;
+  border: 1px solid #d8e2f0;
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  padding: 14px;
+}
+
+.standard_summaryCard span {
+  display: block;
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.standard_summaryCard strong {
+  display: block;
+  margin-top: 4px;
+  color: var(--ui-30-primary-strong);
+  font-size: 1.45rem;
+}
+
+.standard_workspace {
+  padding: 16px;
+}
+
+.standard_toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--ui-30-border);
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+}
+
+.standard_listMeta {
+  margin-right: auto;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 999px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  padding: 6px 10px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.standard_toolbar input {
+  flex: 1 1 320px;
+  max-width: 520px;
+}
+
+.standard_toolbar input,
+.standard_formGrid input,
+.standard_formGrid select {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  min-height: 40px;
+  padding: 10px 12px;
+  outline: none;
+}
+
+.standard_toolbar input:focus,
+.standard_formGrid input:focus,
+.standard_formGrid select:focus {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.16);
+}
+
+.standard_primaryButton,
+.standard_secondaryButton,
+.standard_closeButton {
+  min-height: 38px;
+  border-radius: 8px;
+  padding: 9px 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.standard_primaryButton {
+  border: 0;
+  background: var(--ui-30-primary);
+  color: var(--ui-60-surface);
+}
+
+.standard_secondaryButton,
+.standard_closeButton {
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
+}
+
+.standard_formPanel {
+  box-shadow: none;
+  background: var(--ui-60-surface-soft);
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.standard_panelHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.standard_formGrid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.standard_formGrid label {
+  display: grid;
+  gap: 6px;
+  color: var(--ui-30-text);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.standard_checkSection {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 14px;
+}
+
+.standard_checkSection h4 {
+  color: var(--ui-30-ink);
+  font-size: 0.95rem;
+}
+
+.standard_checkGrid,
+.standard_levelGrid {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.standard_checkGrid {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.standard_levelGrid {
+  grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
+}
+
+.standard_checkItem {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  padding: 10px;
+  color: var(--ui-30-text);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.standard_checkItem input {
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  min-height: 16px;
+  flex: 0 0 16px;
+  margin: 0;
+  accent-color: var(--ui-30-primary);
+}
+
+.standard_checkItem.standard_checkItemSelected,
+.standard_checkItem.standard_checkItemSelected:hover {
+  border-color: #22a35a;
+  background: #eaf8ef;
+  box-shadow: inset 0 0 0 1px rgba(34, 163, 90, 0.16);
+  color: #17683b;
+}
+
+.standard_checkItemSelected input,
+.standard_checkItemSelected input[type="checkbox"] {
+  accent-color: #168a47;
+}
+
+.standard_formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.standard_tableWrap {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--ui-60-surface-soft) 0%, var(--ui-60-surface) 34%);
+  padding: 12px;
+  overflow-x: auto;
+}
+
+.standard_standardTable {
+  width: 100%;
+  min-width: 1820px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.standard_standardTable th,
+.standard_standardTable td {
+  border-bottom: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  padding: 12px 10px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.standard_standardTable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  background: var(--ui-60-surface-soft);
+}
+
+.standard_standardTable td:first-child,
+.standard_standardTable th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+.standard_standardTable th:first-child {
+  background: var(--ui-60-surface-soft);
+}
+
+.standard_standardTable td:first-child {
+  color: var(--ui-30-primary);
+  font-weight: 800;
+  background: var(--ui-60-surface);
+}
+
+.standard_standardTable tbody tr:hover td {
+  background: var(--ui-60-surface-soft);
+}
+
+.standard_centerCell {
+  text-align: center;
+}
+
+.standard_checkMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #e8f3ff;
+  color: var(--ui-30-primary);
+  font-size: 0.64rem;
+  font-weight: 900;
+}
+
+@media (max-width: 760px) {
+  .standard_page {
+    padding-inline: 14px;
+  }
+
+  .standard_hero,
+  .standard_formGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .standard_summaryCard {
+    min-width: 0;
+  }
+}
+
+/* Compact readability pass */
+.standard_page {
+  font-size: 0.88rem;
+}
+
+.standard_hero {
+  padding: 16px;
+  gap: 12px;
+}
+
+.standard_hero h2 {
+  font-size: 1.28rem;
+  line-height: 1.2;
+}
+
+.standard_hero p {
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.standard_kicker {
+  font-size: 0.68rem;
+}
+
+.standard_summaryCard,
+.standard_summaryCard strong,
+.standard_workspace,
+.standard_listPanel,
+.standard_formPanel,
+.standard_editorPanel,
+.standard_detailPanel {
+  padding: 12px;
+}
+
+.standard_toolbar {
+  gap: 6px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.standard_toolbar button,
+.standard_primaryButton,
+.standard_secondaryButton,
+.standard_dangerButton,
+.standard_detailButton,
+.standard_closeButton,
+.standard_saveButton,
+.standard_cancelButton {
+  min-height: 34px;
+  padding: 7px 11px;
+  font-size: 0.76rem;
+}
+
+.standard_toolbar input,
+.standard_editor input,
+.standard_formGrid input,
+.standard_formGrid select,
+.standard_formGrid textarea,
+.standard_questionGrid input,
+.standard_questionGrid select,
+.standard_questionGrid textarea {
+  min-height: 36px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+}
+
+.standard_panelHeader {
+  margin-bottom: 10px;
+}
+
+.standard_panelHeader h3,
+.standard_checkSection h4 {
+  font-size: 0.98rem;
+}
+
+.standard_panelHeader span,
+.standard_summaryCard span {
+  font-size: 0.68rem;
+}
+
+.standard_formGrid,
+.standard_questionGrid {
+  gap: 10px;
+}
+
+.standard_formGrid label,
+.standard_questionGrid label,
+.standard_editor label {
+  gap: 5px;
+  font-size: 0.76rem;
+}
+
+.standard_tableWrap {
+  padding: 10px;
+}
+
+.standard_courseTable th,
+.standard_courseTypeTable th,
+.standard_courseGroupTable th,
+.standard_standardTable th,
+.standard_assessmentTable th {
+  padding: 0 12px 4px;
+  font-size: 0.66rem;
+}
+
+.standard_courseTable td,
+.standard_courseTypeTable td,
+.standard_courseGroupTable td,
+.standard_standardTable td,
+.standard_assessmentTable td {
+  padding: 10px 12px;
+  font-size: 0.8rem;
+}
+
+.standard_courseTable td strong,
+.standard_courseTypeTable td:last-child,
+.standard_courseGroupTable td:last-child {
+  font-size: 0.84rem;
+}
+
+.standard_courseTable td span,
+.standard_questionList span,
+.standard_questionList p,
+.standard_emptyState {
+  font-size: 0.74rem;
+}
+
+.standard_statusPill,
+.standard_questionList b {
+  padding: 3px 8px;
+  font-size: 0.66rem;
+}
+
+.standard_checkItem {
+  padding: 8px;
+  font-size: 0.76rem;
+}
+
+.standard_checkMark {
+  width: 20px;
+  height: 20px;
+  font-size: 0.78rem;
+}
+
+.standard_formActions {
+  gap: 6px;
+  margin-top: 12px;
+}
+
+/* Premium dark-shell treatment */
+.standard_page {
+  max-width: 1280px;
+  padding-top: 8px;
+  color: var(--ui-30-ink);
+}
+
+.standard_hero,
+.standard_workspace,
+.standard_formPanel {
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24);
+}
+
+.standard_hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, var(--ui-60-surface) 0%, var(--ui-60-surface) 62%, var(--ui-60-surface-muted) 100%);
+}
+
+.standard_hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--ui-10-accent);
+}
+
+.standard_kicker {
+  color: var(--ui-30-primary);
+}
+
+.standard_summaryCard {
+  border-color: var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
+}
+
+.standard_summaryCard strong {
+  color: var(--ui-30-ink);
+}
+
+.standard_workspace,
+.standard_formPanel {
+  background: var(--ui-60-surface);
+}
+
+.standard_primaryButton {
+  background: var(--ui-10-accent);
+  box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
+}
+
+.standard_secondaryButton:hover,
+.standard_closeButton:hover {
+  border-color: #8aa4cc;
+  background: var(--ui-60-surface-soft);
+}
+
+.standard_checkItem:hover {
+  border-color: rgba(0, 122, 61, 0.3);
+  background: var(--ui-30-primary-soft);
+}
+
+.standard_checkItem input {
+  accent-color: var(--ui-10-accent);
+}
+
+.standard_tableWrap {
+  border-color: var(--ui-30-border);
+  background: var(--ui-60-surface);
+}
+
+.standard_standardTable th {
+  background: var(--ui-60-surface-soft);
+}
+
+.standard_standardTable tbody tr:hover td {
+  background: var(--ui-60-surface-soft);
+}
+
+.standard_standardTable tbody tr {
+  cursor: pointer;
+}
+
+.standard_toolbar button:disabled {
+  border-color: var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
+  box-shadow: none;
+  color: #a4afbd;
+  cursor: not-allowed;
+  opacity: 1;
+  transform: none;
+}
+
+/* Explicit green checkmark; consistent across browsers and read-only mode. */
+.standard_checkItem {
+  position: relative;
+}
+
+.standard_checkItem .standard_nativeCheckbox {
+  position: absolute;
+  width: 1px;
+  min-width: 1px;
+  height: 1px;
+  min-height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.standard_checkItem .standard_checkMark {
+  display: inline-flex;
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  min-height: 18px;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #9aa9ba;
+  border-radius: 4px;
+  background: #fff;
+  color: transparent;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.standard_checkItem .standard_nativeCheckbox:checked + .standard_checkMark {
+  border-color: #168a47;
+  background: #fff;
+  color: #168a47;
+}
+
+.standard_checkItem .standard_nativeCheckbox:focus-visible + .standard_checkMark {
+  outline: 2px solid rgba(22, 138, 71, 0.34);
+  outline-offset: 2px;
+}
+
+/* Compact Course Standard selection indicators */
+.standard_checkItem input[type="checkbox"] {
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  min-height: 16px;
+}
+
+.standard_checkMark {
+  width: 16px;
+  height: 16px;
+  font-size: 0.64rem;
+}
+
+.standard_checkMark {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+/* Unified alignment with the Training Course hub */
+.standard_page {
+  width: min(1180px, calc(100% - 48px));
+  max-width: none;
+  padding: 8px 0 48px;
+}
+
+@media (max-width: 760px) {
+  .standard_page {
+    width: min(100% - 28px, 560px);
+    padding-inline: 0;
+  }
+}
+
+/* Unified Training Record visual alignment */
+.standard_page,
+.standard_moduleWorkspace {
+  width: min(1180px, calc(100% - 48px));
+  max-width: none;
+  margin: 0 auto;
+  padding: 8px 0 48px;
+  color: var(--ui-30-ink);
+  font-size: 0.88rem;
+}
+
+.standard_hero,
+.standard_moduleHero,
+.standard_workspace,
+.standard_panel,
+.standard_formPanel,
+.standard_listPanel,
+.standard_editorPanel,
+.standard_detailPanel {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
+}
+
+.standard_hero,
+.standard_moduleHero {
+  position: relative;
+  overflow: hidden;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 16px 18px 16px 22px;
+  background: linear-gradient(90deg, var(--ui-60-surface) 0%, var(--ui-60-surface) 66%, var(--ui-60-surface-muted) 100%);
+}
+
+.standard_hero::before,
+.standard_moduleHero::before,
+.standard_workspace::before,
+.standard_panel::before,
+.standard_formPanel::before,
+.standard_listPanel::before,
+.standard_editorPanel::before,
+.standard_detailPanel::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--ui-card-edge);
+  box-shadow: var(--ui-card-edge-shadow);
+  pointer-events: none;
+}
+
+.standard_workspace,
+.standard_panel,
+.standard_formPanel,
+.standard_listPanel,
+.standard_editorPanel,
+.standard_detailPanel {
+  position: relative;
+  overflow: hidden;
+  padding: 14px 16px 14px 18px;
+}
+
+.standard_kicker,
+.standard_panelKicker,
+.standard_workspaceHeader span,
+.standard_panelHeader span,
+.standard_listMeta,
+.standard_badge {
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.standard_hero h2,
+.standard_moduleHero h2,
+.standard_workspaceHeader h3,
+.standard_panelHeader h3,
+.standard_panel h3,
+.standard_formPanel h3 {
+  margin: 0;
+  color: var(--ui-30-ink);
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.standard_hero h2,
+.standard_moduleHero h2 {
+  font-size: 1.28rem;
+}
+
+.standard_hero p,
+.standard_moduleHero p,
+.standard_panel p,
+.standard_formPanel p {
+  color: var(--ui-30-text);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.standard_toolbar {
+  border-bottom: 1px solid var(--ui-30-border);
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+}
+
+.standard_toolbar input,
+.standard_toolbar select,
+.standard_editor input,
+.standard_formGrid input,
+.standard_formGrid select,
+.standard_formGrid textarea,
+.standard_questionGrid input,
+.standard_questionGrid select,
+.standard_questionGrid textarea {
+  min-height: 36px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 8px 10px;
+  outline: none;
+}
+
+.standard_toolbar input:focus,
+.standard_toolbar select:focus,
+.standard_editor input:focus,
+.standard_formGrid input:focus,
+.standard_formGrid select:focus,
+.standard_formGrid textarea:focus,
+.standard_questionGrid input:focus,
+.standard_questionGrid select:focus,
+.standard_questionGrid textarea:focus {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
+}
+
+.standard_primaryButton,
+.standard_actionButton,
+.standard_newButton,
+.standard_saveButton {
+  border: 0;
+  border-radius: 8px;
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
+  box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
+}
+
+.standard_secondaryButton,
+.standard_editButton,
+.standard_refreshButton,
+.standard_exportButton,
+.standard_cancelButton,
+.standard_detailButton,
+.standard_closeButton {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
+}
+
+.standard_dangerButton,
+.standard_deleteButton {
+  border: 1px solid #f0b8b8;
+  border-radius: 8px;
+  background: #fff5f5;
+  color: #b42318;
+}
+
+.standard_primaryButton,
+.standard_actionButton,
+.standard_newButton,
+.standard_saveButton,
+.standard_secondaryButton,
+.standard_editButton,
+.standard_refreshButton,
+.standard_exportButton,
+.standard_cancelButton,
+.standard_detailButton,
+.standard_closeButton,
+.standard_dangerButton,
+.standard_deleteButton {
+  min-height: 34px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 900;
+  padding: 7px 11px;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.standard_primaryButton:hover,
+.standard_actionButton:hover,
+.standard_newButton:hover,
+.standard_saveButton:hover,
+.standard_secondaryButton:hover,
+.standard_editButton:hover,
+.standard_refreshButton:hover,
+.standard_exportButton:hover,
+.standard_cancelButton:hover,
+.standard_detailButton:hover,
+.standard_closeButton:hover,
+.standard_dangerButton:hover,
+.standard_deleteButton:hover {
+  transform: translateY(-1px);
+}
+
+.standard_secondaryButton:hover,
+.standard_editButton:hover,
+.standard_refreshButton:hover,
+.standard_exportButton:hover,
+.standard_cancelButton:hover,
+.standard_detailButton:hover,
+.standard_closeButton:hover {
+  border-color: #8aa4cc;
+  background: var(--ui-60-surface-soft);
+}
+
+.standard_tableWrap {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  padding: 0;
+  overflow-x: auto;
+}
+
+.standard_dataTable,
+.standard_courseTable,
+.standard_courseTypeTable,
+.standard_courseGroupTable,
+.standard_standardTable,
+.standard_assessmentTable,
+.standard_evaluationTable,
+.standard_planTable,
+.standard_rollingTable {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.standard_dataTable th,
+.standard_courseTable th,
+.standard_courseTypeTable th,
+.standard_courseGroupTable th,
+.standard_standardTable th,
+.standard_assessmentTable th,
+.standard_evaluationTable th,
+.standard_planTable th,
+.standard_rollingTable th {
+  border-bottom: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  padding: 12px;
+  text-transform: uppercase;
+}
+
+.standard_dataTable td,
+.standard_courseTable td,
+.standard_courseTypeTable td,
+.standard_courseGroupTable td,
+.standard_standardTable td,
+.standard_assessmentTable td,
+.standard_evaluationTable td,
+.standard_planTable td,
+.standard_rollingTable td {
+  border-bottom: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  box-shadow: none;
+  color: var(--ui-30-text);
+  font-size: 0.8rem;
+  padding: 10px 12px;
+}
+
+.standard_dataTable tbody tr:hover td,
+.standard_courseTable tbody tr:hover td,
+.standard_courseTypeTable tbody tr:hover td,
+.standard_courseGroupTable tbody tr:hover td,
+.standard_standardTable tbody tr:hover td,
+.standard_assessmentTable tbody tr:hover td,
+.standard_evaluationTable tbody tr:hover td,
+.standard_planTable tbody tr:hover td,
+.standard_rollingTable tbody tr:hover td,
+.standard_selectedRow td {
+  background: var(--ui-60-surface-soft);
+}
+
+.standard_selectedRow td:first-child {
+  box-shadow: inset 3px 0 0 var(--ui-10-accent);
+}
+
+.standard_statusPill,
+.standard_codePill,
+.standard_questionList b {
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 0.66rem;
+  font-weight: 900;
+  padding: 3px 8px;
+}
+
+@media (max-width: 760px) {
+  .standard_page,
+  .standard_moduleWorkspace {
+    width: min(100% - 28px, 560px);
+    padding-inline: 0;
+  }
+
+  .standard_hero,
+  .standard_moduleHero,
+  .standard_toolbar,
+  .standard_workspaceHeader,
+  .standard_panelHeader,
+  .standard_formGrid,
+  .standard_questionGrid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+/* CRUD toolbar button alignment */
+.standard_toolbar button {
+  display: inline-flex;
+  min-width: 64px;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0 13px;
+  white-space: nowrap;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    color 140ms ease,
+    transform 140ms ease;
+}
+
+.standard_toolbar .standard_primaryButton,
+.standard_toolbar .standard_actionButton,
+.standard_toolbar .standard_newButton {
+  border: 0;
+  background: var(--ui-30-primary);
+  color: var(--ui-60-surface);
+  box-shadow: 0 8px 18px rgba(0, 122, 61, 0.16);
+}
+
+.standard_toolbar .standard_secondaryButton,
+.standard_toolbar .standard_editButton,
+.standard_toolbar .standard_refreshButton,
+.standard_toolbar .standard_exportButton {
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  color: #0f2747;
+  box-shadow: none;
+}
+
+.standard_toolbar .standard_dangerButton,
+.standard_toolbar .standard_deleteButton {
+  min-width: 78px;
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+  color: #b42318;
+  box-shadow: none;
+}
+
+.standard_toolbar .standard_primaryButton:hover,
+.standard_toolbar .standard_actionButton:hover,
+.standard_toolbar .standard_newButton:hover {
+  background: var(--ui-30-primary-strong);
+  box-shadow: 0 12px 24px rgba(0, 122, 61, 0.22);
+  transform: translateY(-1px);
+}
+
+.standard_toolbar .standard_secondaryButton:hover,
+.standard_toolbar .standard_editButton:hover,
+.standard_toolbar .standard_refreshButton:hover,
+.standard_toolbar .standard_exportButton:hover {
+  border-color: #8aa4cc;
+  background: var(--ui-60-surface-soft);
+  transform: translateY(-1px);
+}
+
+.standard_toolbar .standard_dangerButton:hover,
+.standard_toolbar .standard_deleteButton:hover {
+  border-color: var(--ui-10-accent);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
+  transform: translateY(-1px);
+}
+
+.standard_toolbar button:disabled {
+  border-color: var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
+  box-shadow: none;
+  color: #a4afbd;
+  cursor: not-allowed;
+  opacity: 1;
+  transform: none;
+}

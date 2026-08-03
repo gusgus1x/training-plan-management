@@ -114,10 +114,7 @@ const centerAreas = [
   {
     title: "Training Course",
     modules: [
-      "Course Type",
-      "Course Group",
-      "Course Master",
-      "Course Standard",
+      "Course Master & Standard",
       "Assessment",
       "Evaluation Management",
     ],
@@ -125,6 +122,8 @@ const centerAreas = [
   {
     title: "Master Data",
     modules: [
+      "Course Type",
+      "Course Group",
       "Company Data",
       "Function Data",
       "Position Data",

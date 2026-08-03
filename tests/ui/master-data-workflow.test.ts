@@ -6,6 +6,22 @@ const readSource = (relativePath: string) =>
   readFileSync(join(process.cwd(), relativePath), "utf8");
 
 describe("Master Data workflow integration", () => {
+  it("places Course Type and Course Group under Master Data", () => {
+    const masterDataModules = readSource(
+      "app/components/center_factory/MasterDataManagement/modules/index.ts",
+    );
+    const trainingCourseModules = readSource(
+      "app/components/center_factory/TrainingCourseManagement/modules/index.ts",
+    );
+
+    expect(masterDataModules).toContain("courseTypeModule");
+    expect(masterDataModules).toContain("courseGroupModule");
+    expect(masterDataModules).toContain('from "./CourseType"');
+    expect(masterDataModules).toContain('from "./CourseGroup"');
+    expect(trainingCourseModules).not.toContain("courseTypeModule");
+    expect(trainingCourseModules).not.toContain("courseGroupModule");
+  });
+
   it("persists Function, Position, Level, and Instructor masters", () => {
     const workflowSource = readSource("app/lib/trainingWorkflow.ts");
 
@@ -34,7 +50,7 @@ describe("Master Data workflow integration", () => {
       "app/components/center_factory/MasterDataManagement/modules/EmployeeData.tsx",
     );
     const standardSource = readSource(
-      "app/components/center_factory/TrainingCourseManagement/modules/CourseStandard.tsx",
+      "app/components/center_factory/TrainingCourseManagement/modules/CourseMasterWorkspace.tsx",
     );
 
     expect(employeeSource).toContain("TRAINING_MASTER_KEYS.functions");

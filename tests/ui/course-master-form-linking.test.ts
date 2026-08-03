@@ -9,7 +9,7 @@ import {
 
 const courseMasterSource = readFileSync(
   new URL(
-    "../../app/components/center_factory/TrainingCourseManagement/modules/CourseMaster.tsx",
+    "../../app/components/center_factory/TrainingCourseManagement/modules/CourseMasterWorkspace.tsx",
     import.meta.url,
   ),
   "utf8",

@@ -1,16 +1,25 @@
+
+
+
+
 "use client";
 
 import { Fragment, useMemo, useState } from "react";
 import {
-  TRAINING_WORKFLOW_KEYS,
   TRAINING_MASTER_KEYS,
+  TRAINING_WORKFLOW_KEYS,
+  getCourseDisplayName,
+  getCourseSecondaryName,
   isWorkflowOwner,
   readMasterCollection,
   readWorkflowCollection,
   writeWorkflowCollection,
   type WorkflowCourse,
   type WorkflowOwner,
+  type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
+import { normalizeEmployeeLevel } from "../../../../lib/employeeMasterData";
+import { getCourseOutlineFileName } from "../../../../lib/courseOutlineExport";
 import {
   readPublishedAssessmentOptions,
   readPublishedEvaluationOptions,
@@ -18,14 +27,27 @@ import {
   type TrainingEvaluationOption,
 } from "../../../../lib/trainingFormCatalog";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
-import { defaultCourseGroups } from "./CourseGroup";
-import { defaultCourseTypes } from "./CourseType";
-import styles from "./CourseMaster.module.css";
+import { defaultCourseGroups } from "../../MasterDataManagement/modules/CourseGroup";
+import { defaultCourseTypes } from "../../MasterDataManagement/modules/CourseType";
+import { defaultFunctionRows } from "../../MasterDataManagement/modules/FunctionData";
+import { defaultLevelRows } from "../../MasterDataManagement/modules/LevelData";
+import { defaultPositionRows } from "../../MasterDataManagement/modules/PositionData";
+import styles from "./CourseMasterWorkspace.module.css";
+
+export const courseMasterWorkspaceModule = {
+  title: "Course Master & Standard",
+  subtitle: "Course database and standards",
+  description: "Create the course and define its training standard in one form.",
+} as const;
+
+export default function CourseMasterWorkspace() {
+  return <CourseMaster />;
+}
 
 export const courseMasterModule = {
-  title: "Course Master",
-  subtitle: "Course database",
-  description: "Create and maintain course master data for training plans, records, and reports.",
+  title: "Course Master & Standard",
+  subtitle: "Course database and standards",
+  description: "Create the course and define its training standard in one form.",
 } as const;
 
 type CourseStatus = "Active" | "Draft" | "Inactive";
@@ -54,6 +76,22 @@ type CourseForm = {
 };
 
 type CourseRecord = WorkflowCourse;
+type CourseStandardRecord = WorkflowStandard;
+
+const allFunctionOption = "All Function";
+const allFunctionCode = "__ALL__";
+
+const normalizeTargetPosition = (position: string) => {
+  const normalized = position.trim().toLowerCase();
+  const aliases: Record<string, string> = {
+    sh: "section head",
+    office: "supervisor",
+    "manager up": "manager",
+    "manager++": "manager",
+    "force man": "foreman",
+  };
+  return aliases[normalized] ?? normalized;
+};
 
 const emptyCourseForm: CourseForm = {
   courseCode: "",
@@ -78,7 +116,7 @@ const emptyCourseForm: CourseForm = {
   courseGroup: "",
 };
 
-export default function CourseMaster() {
+function CourseMaster() {
   const user = useAuthenticatedUser();
   const [courseTypes] = useState(() =>
     readMasterCollection(TRAINING_MASTER_KEYS.courseTypes, defaultCourseTypes).map(
@@ -104,6 +142,38 @@ export default function CourseMaster() {
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [openDetailCourseId, setOpenDetailCourseId] = useState("");
   const [search, setSearch] = useState("");
+  const [exportingCourseId, setExportingCourseId] = useState("");
+  const [exportMessage, setExportMessage] = useState("");
+  const [standards, setStandards] = useState<CourseStandardRecord[]>(() =>
+    readWorkflowCollection<CourseStandardRecord>(TRAINING_WORKFLOW_KEYS.standards),
+  );
+  const [standardFunctionCode, setStandardFunctionCode] = useState(allFunctionCode);
+  const [standardFunctionName, setStandardFunctionName] = useState(allFunctionOption);
+  const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
+  const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
+  const [functionRows, setFunctionRows] = useState(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.functions, defaultFunctionRows),
+  );
+  const [positionRows, setPositionRows] = useState(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows),
+  );
+  const [levelRows, setLevelRows] = useState(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows),
+  );
+  const functionOptions = [
+    { code: allFunctionCode, name: allFunctionOption },
+    ...functionRows.map((row) => ({
+      code: row.functionCode,
+      name: row.functionNameEn || row.functionNameTh,
+    })),
+  ];
+  const positionChecklist = positionRows
+    .map((row) => row.positionNameEn.trim())
+    .filter(Boolean);
+  const levelChecklist = levelRows
+    .map((row) => normalizeEmployeeLevel(row.levelKey))
+    .filter(Boolean);
+
   const requiredCourseValues = [
     form.courseCode,
     form.courseNameTh,
@@ -161,6 +231,12 @@ export default function CourseMaster() {
     [courses, user?.roleCode, userCompanyCode],
   );
   const selectedCourse = scopedCourses.find((course) => course.id === selectedCourseId) ?? null;
+  const selectedStandard =
+    standards.find(
+      (standard) =>
+        standard.courseId === selectedCourse?.id ||
+        standard.courseCode === selectedCourse?.courseCode,
+    ) ?? null;
   const filteredCourses = useMemo(
     () =>
       scopedCourses.filter((course) =>
@@ -177,10 +253,68 @@ export default function CourseMaster() {
       ),
     [scopedCourses, search],
   );
-
   const saveCourses = (nextCourses: CourseRecord[]) => {
     setCourses(nextCourses);
     writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.courses, nextCourses);
+  };
+
+  const saveStandards = (nextStandards: CourseStandardRecord[]) => {
+    setStandards(nextStandards);
+    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.standards, nextStandards);
+  };
+
+  const resetStandardForm = () => {
+    setStandardFunctionCode(allFunctionCode);
+    setStandardFunctionName(allFunctionOption);
+    setSelectedPositions([]);
+    setSelectedLevels([]);
+  };
+
+  const loadStandardForm = (course: CourseRecord) => {
+    const standard = standards.find(
+      (item) => item.courseId === course.id || item.courseCode === course.courseCode,
+    );
+
+    if (!standard) {
+      resetStandardForm();
+      return;
+    }
+
+    const matchingFunction = functionOptions.find(
+      (option) =>
+        option.code === standard.functionCode ||
+        option.name === standard.functionName,
+    );
+    setStandardFunctionCode(matchingFunction?.code ?? allFunctionCode);
+    setStandardFunctionName(standard.functionName || allFunctionOption);
+    setSelectedPositions(
+      positionChecklist.filter((position) =>
+        standard.positions.some(
+          (savedPosition) =>
+            normalizeTargetPosition(savedPosition) === normalizeTargetPosition(position),
+        ),
+      ),
+    );
+    setSelectedLevels(
+      levelChecklist.filter((level) =>
+        standard.levels.some(
+          (savedLevel) =>
+            normalizeEmployeeLevel(savedLevel) === normalizeEmployeeLevel(level),
+        ),
+      ),
+    );
+  };
+
+  const toggleStandardItem = (
+    value: string,
+    selectedValues: string[],
+    setSelectedValues: (next: string[]) => void,
+  ) => {
+    setSelectedValues(
+      selectedValues.includes(value)
+        ? selectedValues.filter((item) => item !== value)
+        : [...selectedValues, value],
+    );
   };
 
   const resolveAssessmentId = (
@@ -316,38 +450,53 @@ export default function CourseMaster() {
     setSelectedCourseId("");
     setOpenDetailCourseId("");
     setForm(emptyCourseForm);
+    resetStandardForm();
     setIsEditing(true);
     setIsNewOpen(true);
   };
 
-  const handleEdit = () => {
-    if (!selectedCourse) {
-      return;
-    }
-
+  const openCourseEditor = (course: CourseRecord) => {
     setAssessmentOptions(readPublishedAssessmentOptions());
     setEvaluationOptions(readPublishedEvaluationOptions());
-    setForm(buildCourseForm(selectedCourse));
+    setSelectedCourseId(course.id);
+    setForm(buildCourseForm(course));
+    loadStandardForm(course);
     setIsEditing(true);
     setIsNewOpen(false);
-    setOpenDetailCourseId(selectedCourse.id);
+    setOpenDetailCourseId(course.id);
+  };
+
+  const handleEdit = () => {
+    if (!selectedCourse) return;
+
+    openCourseEditor(selectedCourse);
   };
 
   const handleDelete = () => {
-    if (!selectedCourseId) {
-      return;
-    }
+    if (!selectedCourse) return;
 
-    saveCourses(courses.filter((course) => course.id !== selectedCourseId));
+    saveCourses(courses.filter((course) => course.id !== selectedCourse.id));
+    saveStandards(
+      standards.filter(
+        (standard) =>
+          standard.courseId !== selectedCourse.id &&
+          standard.courseCode !== selectedCourse.courseCode,
+      ),
+    );
     setSelectedCourseId("");
     setOpenDetailCourseId("");
     setIsEditing(false);
     setIsNewOpen(false);
     setForm(emptyCourseForm);
+    resetStandardForm();
   };
 
   const handleRefresh = () => {
     setCourses(readWorkflowCollection<CourseRecord>(TRAINING_WORKFLOW_KEYS.courses));
+    setStandards(readWorkflowCollection<CourseStandardRecord>(TRAINING_WORKFLOW_KEYS.standards));
+    setFunctionRows(readMasterCollection(TRAINING_MASTER_KEYS.functions, defaultFunctionRows));
+    setPositionRows(readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows));
+    setLevelRows(readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows));
     setAssessmentOptions(readPublishedAssessmentOptions());
     setEvaluationOptions(readPublishedEvaluationOptions());
     setSelectedCourseId("");
@@ -356,6 +505,48 @@ export default function CourseMaster() {
     setIsEditing(false);
     setIsNewOpen(false);
     setForm(emptyCourseForm);
+    resetStandardForm();
+  };
+
+  const handleExportOutline = async (course: CourseRecord) => {
+    const standard =
+      standards.find(
+        (item) =>
+          item.courseId === course.id || item.courseCode === course.courseCode,
+      ) ?? null;
+    setExportingCourseId(course.id);
+    setExportMessage("");
+
+    try {
+      const response = await fetch("/api/course-master/course-outline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ course, standard }),
+      });
+      const errorPayload = response.ok
+        ? null
+        : ((await response.json().catch(() => null)) as { error?: string } | null);
+      if (!response.ok) {
+        throw new Error(errorPayload?.error || "Unable to create Course Outline.");
+      }
+
+      const file = await response.blob();
+      const downloadUrl = URL.createObjectURL(file);
+      const downloadLink = document.createElement("a");
+      downloadLink.href = downloadUrl;
+      downloadLink.download = getCourseOutlineFileName(course);
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+      setExportMessage(`Exported Course Outline: ${course.courseCode}`);
+    } catch (error) {
+      setExportMessage(
+        error instanceof Error ? error.message : "Unable to export Course Outline.",
+      );
+    } finally {
+      setExportingCourseId("");
+    }
   };
 
   const handleShowDetails = (course: CourseRecord) => {
@@ -365,6 +556,7 @@ export default function CourseMaster() {
     setIsNewOpen(false);
     setIsEditing(false);
     setForm(buildCourseForm(course));
+    loadStandardForm(course);
   };
 
   const handleClosePanel = () => {
@@ -373,19 +565,19 @@ export default function CourseMaster() {
     setIsNewOpen(false);
     setIsEditing(false);
     setForm(emptyCourseForm);
+    resetStandardForm();
   };
 
   const handleSave = () => {
-    if (!isCourseFormReady) {
-      return;
-    }
+    if (!isCourseFormReady || !standardFunctionName.trim()) return;
 
+    const resolvedCourseCode =
+      form.courseCode.trim() ||
+      buildCourseCode(form.courseGroup, "", selectedCourseId);
     const nextCourse: CourseRecord = {
       ...form,
-      id: selectedCourseId || `course-${Date.now()}`,
-      courseCode:
-        form.courseCode.trim() ||
-        buildCourseCode(form.courseGroup, "", selectedCourseId),
+      id: selectedCourseId || `course-${resolvedCourseCode.toLowerCase()}`,
+      courseCode: resolvedCourseCode,
       courseNameTh: form.courseNameTh.trim(),
       courseNameEn: form.courseNameEn.trim(),
       status: "Active",
@@ -396,15 +588,36 @@ export default function CourseMaster() {
         selectedCourse?.createdBy ??
         profileValue(user?.displayName ?? user?.username),
     };
+    const nextCourses = selectedCourseId
+      ? courses.map((course) => course.id === selectedCourseId ? nextCourse : course)
+      : [nextCourse, ...courses];
 
-    const nextCourses =
-      selectedCourseId
-        ? courses.map((course) => (course.id === selectedCourseId ? nextCourse : course))
-        : [nextCourse, ...courses];
+    const nextStandard: CourseStandardRecord = {
+      id:
+        selectedStandard?.id ||
+        `standard-${nextCourse.id}-${standardFunctionCode.toLowerCase()}`,
+      courseId: nextCourse.id,
+      courseCode: nextCourse.courseCode,
+      courseName: getCourseDisplayName(nextCourse),
+      functionCode: standardFunctionCode === allFunctionCode ? "" : standardFunctionCode,
+      functionName: standardFunctionName.trim(),
+      positions: selectedPositions,
+      levels: selectedLevels,
+      owner: nextCourse.owner,
+      ownerCompany: nextCourse.ownerCompany,
+    };
+    const nextStandards = selectedStandard
+      ? standards.map((standard) =>
+          standard.id === selectedStandard.id ? nextStandard : standard,
+        )
+      : [nextStandard, ...standards];
+
     saveCourses(nextCourses);
+    saveStandards(nextStandards);
     setSelectedCourseId("");
     setOpenDetailCourseId("");
     setForm(emptyCourseForm);
+    resetStandardForm();
     setIsEditing(false);
     setIsNewOpen(false);
   };
@@ -436,6 +649,7 @@ export default function CourseMaster() {
             Close
           </button>
         </div>
+
       </div>
 
       {isEditing ? (
@@ -474,6 +688,17 @@ export default function CourseMaster() {
 
       <div className={styles.formGrid}>
         <label>
+          <span className={styles.fieldLabel}>Course Group <b>*</b></span>
+          <select value={form.courseGroup} disabled={!isEditing} onChange={(event) => handleCourseGroupChange(event.target.value)}>
+            <option value="">Select Course Group</option>
+            {courseGroups.map((group) => (
+              <option key={group} value={group}>{group}</option>
+
+            ))}
+          </select>
+          <small className={styles.fieldHint}>Controls course classification and the generated course code.</small>
+        </label>
+        <label>
           <span className={styles.fieldLabel}>Course Code <b>*</b></span>
           <input
             value={form.courseCode}
@@ -490,6 +715,7 @@ export default function CourseMaster() {
             disabled={!isEditing}
             placeholder="Example: หลักสูตรความปลอดภัยพื้นฐาน"
             onChange={(event) => updateForm("courseNameTh", event.target.value)}
+
           />
         </label>
         <label>
@@ -500,16 +726,6 @@ export default function CourseMaster() {
             placeholder="Example: Safety Basics"
             onChange={(event) => updateForm("courseNameEn", event.target.value)}
           />
-        </label>
-        <label>
-          <span className={styles.fieldLabel}>Course Group <b>*</b></span>
-          <select value={form.courseGroup} disabled={!isEditing} onChange={(event) => handleCourseGroupChange(event.target.value)}>
-            <option value="">Select Course Group</option>
-            {courseGroups.map((group) => (
-              <option key={group} value={group}>{group}</option>
-            ))}
-          </select>
-          <small className={styles.fieldHint}>Controls course classification and the generated course code.</small>
         </label>
         <label>
           <span className={styles.fieldLabel}>Course Type <b>*</b></span>
@@ -681,6 +897,7 @@ export default function CourseMaster() {
           <select
             value={form.evaluationAfter30DayId}
             disabled={!isEditing}
+
             onChange={(event) =>
               handleEvaluationSelection(
                 "evaluationAfter30DayId",
@@ -716,7 +933,105 @@ export default function CourseMaster() {
             onChange={(event) => updateForm("remark", event.target.value)}
           />
         </label>
+
+
       </div>
+
+      <section className={styles.standard_formPanel} aria-label="Course Standard setup">
+        <div className={styles.standard_panelHeader}>
+          <div>
+            <p className={styles.standard_kicker}>Course Standard</p>
+            <h3>Function, Position and Level</h3>
+            <p>Define the training target before saving the course.</p>
+          </div>
+        </div>
+
+        <div className={styles.standard_formGrid}>
+          <label>
+            Function Name
+            <select
+              value={standardFunctionCode}
+              disabled={!isEditing}
+              onChange={(event) => {
+                const nextCode = event.target.value;
+                setStandardFunctionCode(nextCode);
+                setStandardFunctionName(
+                  functionOptions.find((option) => option.code === nextCode)
+                    ?.name ?? allFunctionOption,
+                );
+              }}
+            >
+              {functionOptions.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className={styles.standard_checkSection}>
+          <div>
+            <h4>Check List Position</h4>
+            <div className={styles.standard_checkGrid}>
+              {positionChecklist.map((position) => (
+                <label
+                  className={`${styles.standard_checkItem} ${
+                    selectedPositions.includes(position)
+                      ? styles.standard_checkItemSelected
+                      : ""
+                  }`}
+                  key={position}
+                >
+                  <input
+                    className={styles.standard_nativeCheckbox}
+                    checked={selectedPositions.includes(position)}
+                    disabled={!isEditing}
+                    type="checkbox"
+                    onChange={() =>
+                      toggleStandardItem(position, selectedPositions, setSelectedPositions)
+                    }
+                  />
+                  <span className={styles.standard_checkMark} aria-hidden="true">
+                    {selectedPositions.includes(position) ? "✓" : ""}
+                  </span>
+                  <span>{position}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h4>Check List Level</h4>
+            <div className={styles.standard_levelGrid}>
+              {levelChecklist.map((level) => (
+                <label
+                  className={`${styles.standard_checkItem} ${
+                    selectedLevels.includes(level)
+                      ? styles.standard_checkItemSelected
+                      : ""
+                  }`}
+                  key={level}
+                >
+                  <input
+                    className={styles.standard_nativeCheckbox}
+                    checked={selectedLevels.includes(level)}
+                    disabled={!isEditing}
+                    type="checkbox"
+                    onChange={() =>
+                      toggleStandardItem(level, selectedLevels, setSelectedLevels)
+                    }
+                  />
+                  <span className={styles.standard_checkMark} aria-hidden="true">
+                    {selectedLevels.includes(level) ? "✓" : ""}
+                  </span>
+                  <span>{level}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
 
       {isEditing ? (
         <div className={styles.formActions}>
@@ -726,7 +1041,7 @@ export default function CourseMaster() {
             type="button"
             onClick={handleSave}
           >
-            Save course
+            บันทึกหลักสูตรและมาตรฐาน / Save Course & Standard
           </button>
           <button className={styles.secondaryButton} type="button" onClick={handleClosePanel}>
             Cancel
@@ -768,6 +1083,12 @@ export default function CourseMaster() {
         </button>
       </section>
 
+      {exportMessage ? (
+        <p className={styles.exportStatus} role="status">
+          {exportMessage}
+        </p>
+      ) : null}
+
       {isNewOpen ? (
         <div className={styles.topDropPanel}>
           {renderCoursePanel("New course", "New")}
@@ -789,25 +1110,41 @@ export default function CourseMaster() {
               <tr>
                 <th>Course Code</th>
                 <th>Course Name</th>
-                <th>Type</th>
-                <th>Group</th>
+                <th>Classification</th>
+                <th>Course Standard</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredCourses.map((course) => {
                 const isOpen = openDetailCourseId === course.id && !isNewOpen;
-
+                const courseStandard = standards.find(
+                  (standard) =>
+                    standard.courseId === course.id ||
+                    standard.courseCode === course.courseCode,
+                );
                 return (
                   <Fragment key={course.id}>
                     <tr className={course.id === selectedCourseId ? styles.selectedRow : undefined}>
                       <td>{course.courseCode}</td>
                       <td>
-                        <strong>{course.courseNameEn}</strong>
-                        <span>{course.courseNameTh}</span>
+                        <strong>{getCourseDisplayName(course)}</strong>
+                        {getCourseSecondaryName(course) ? (
+                          <span>{getCourseSecondaryName(course)}</span>
+                        ) : null}
                       </td>
-                      <td>{course.courseType}</td>
-                      <td>{course.courseGroup}</td>
+                      <td>
+                        <strong>{course.courseType}</strong>
+                        <span>{course.courseGroup}</span>
+                      </td>
+                      <td>
+                        <strong>{courseStandard?.functionName ?? "Not set"}</strong>
+                        <span>
+                          {courseStandard
+                            ? `${courseStandard.positions.length} positions · ${courseStandard.levels.length} levels`
+                            : "No standard"}
+                        </span>
+                      </td>
                       <td className={styles.actionCell}>
                         <button
                           className={styles.detailButton}
@@ -816,6 +1153,23 @@ export default function CourseMaster() {
                         >
                           {isOpen && !isEditing ? "Hide" : "Details"}
                         </button>
+                        <button
+                          className={styles.detailButton}
+                          type="button"
+                          onClick={() => openCourseEditor(course)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          className={styles.detailButton}
+                          type="button"
+                          disabled={Boolean(exportingCourseId)}
+                          onClick={() => void handleExportOutline(course)}
+                        >
+                          {exportingCourseId === course.id
+                            ? "Preparing..."
+                            : "Export Outline"}
+                        </button>
                       </td>
                     </tr>
                     {isOpen ? (
@@ -823,7 +1177,7 @@ export default function CourseMaster() {
                         <td colSpan={5}>
                           <div className={styles.inlinePanel}>
                             {renderCoursePanel(
-                              isEditing ? "Edit course" : course.courseNameEn,
+                              isEditing ? "Edit course" : getCourseDisplayName(course),
                               isEditing ? "Editing" : "Read only",
                             )}
                           </div>
@@ -837,6 +1191,7 @@ export default function CourseMaster() {
           </table>
         </div>
       </section>
+
     </section>
   );
 }

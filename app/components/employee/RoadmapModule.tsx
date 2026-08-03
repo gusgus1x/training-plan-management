@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   TRAINING_WORKFLOW_EVENT,
   TRAINING_WORKFLOW_KEYS,
+  getCourseDisplayName,
   readWorkflowCollection,
   type WorkflowCourse,
   type WorkflowOapPlan,
@@ -103,7 +104,7 @@ export default function RoadmapModule() {
 
         return {
           code: standard.courseCode,
-          title: standard.courseName,
+          title: course ? getCourseDisplayName(course) : standard.courseName,
           category: course?.courseGroup ?? "-",
           detail: course?.objective ?? "-",
           round: rollingPlan?.batch ?? "-",

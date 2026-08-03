@@ -28,6 +28,19 @@ export type WorkflowCourse = {
   createdBy: string;
 };
 
+export const getCourseDisplayName = (
+  course: Pick<WorkflowCourse, "courseNameTh" | "courseNameEn">,
+) => course.courseNameTh.trim() || course.courseNameEn.trim() || "-";
+
+export const getCourseSecondaryName = (
+  course: Pick<WorkflowCourse, "courseNameTh" | "courseNameEn">,
+) => {
+  const primaryName = getCourseDisplayName(course);
+  const englishName = course.courseNameEn.trim();
+
+  return englishName && englishName !== primaryName ? englishName : "";
+};
+
 export type WorkflowStandard = {
   id: string;
   courseId: string;

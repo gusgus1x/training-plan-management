@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   TRAINING_MASTER_EVENT,
+  TRAINING_MASTER_KEYS,
   TRAINING_WORKFLOW_EVENT,
   TRAINING_WORKFLOW_KEYS,
+  readMasterCollection,
   readWorkflowCollection,
   writeWorkflowCollection,
   type WorkflowAcceptance,
@@ -17,14 +19,15 @@ import {
   type EmployeeMasterRecord,
 } from "../../../../lib/employeeMasterData";
 import {
-  buildAttendanceSheetHtml,
   getAttendanceSheetFileName,
+  localizeAndSortAttendanceParticipants,
 } from "../../../../lib/attendanceSheetExport";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import {
   getRollingPlanCompanies,
   type RollingPlan,
 } from "./TrainingRolling";
+import { defaultPositionRows } from "../../MasterDataManagement/modules/PositionData";
 import styles from "./TrainingAcceptSurvey.module.css";
 
 export const trainingAcceptSurveyModule = {
@@ -61,6 +64,7 @@ type CourseSurvey = {
   location?: string;
   startTime?: string;
   endTime?: string;
+  trainer?: string;
   capacity: number;
   courseType: string;
   courseGroup: string;
@@ -390,6 +394,7 @@ export default function TrainingAcceptSurvey() {
   );
   const [hasUnsavedParticipants, setHasUnsavedParticipants] = useState(false);
   const [participantSaveMessage, setParticipantSaveMessage] = useState<string | null>(null);
+  const [isExportingAttendance, setIsExportingAttendance] = useState(false);
 
   useEffect(() => {
     const syncWorkflow = () => {
@@ -468,6 +473,7 @@ export default function TrainingAcceptSurvey() {
             location: plan.location,
             startTime: plan.startTime,
             endTime: plan.endTime,
+            trainer: plan.trainer,
             capacity: Number(plan.participants || 0),
             courseType: plan.course.courseType,
             courseGroup: plan.course.courseGroup,
@@ -802,7 +808,7 @@ export default function TrainingAcceptSurvey() {
     }
   };
 
-  const handleExportAttendanceSheet = () => {
+  const handleExportAttendanceSheet = async () => {
     if (
       !selectedCourse ||
       hasUnsavedParticipants ||
@@ -811,14 +817,37 @@ export default function TrainingAcceptSurvey() {
       return;
     }
 
+    setIsExportingAttendance(true);
+    setParticipantSaveMessage(null);
+
     try {
-      const sheetHtml = buildAttendanceSheetHtml(
-        selectedCourse,
-        acceptedParticipants,
+      const response = await fetch(
+        "/api/training-accept-survey/attendance-sheet",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            course: selectedCourse,
+            participants: localizeAndSortAttendanceParticipants(
+              acceptedParticipants,
+              readEmployeeMasterData(),
+              readMasterCollection(
+                TRAINING_MASTER_KEYS.positions,
+                defaultPositionRows,
+              ),
+            ),
+          }),
+        },
       );
-      const file = new Blob([`\uFEFF${sheetHtml}`], {
-        type: "application/vnd.ms-excel;charset=utf-8",
-      });
+      const errorPayload = response.ok
+        ? null
+        : ((await response.json().catch(() => null)) as { error?: string } | null);
+
+      if (!response.ok) {
+        throw new Error(errorPayload?.error || "Unable to create attendance sheet.");
+      }
+
+      const file = await response.blob();
       const downloadUrl = URL.createObjectURL(file);
       const downloadLink = document.createElement("a");
 
@@ -828,9 +857,15 @@ export default function TrainingAcceptSurvey() {
       downloadLink.click();
       downloadLink.remove();
       window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
-      setParticipantSaveMessage("Attendance sheet exported.");
-    } catch {
-      setParticipantSaveMessage("Unable to export attendance sheet.");
+      setParticipantSaveMessage("Attendance sheet exported from the v2 template.");
+    } catch (error) {
+      setParticipantSaveMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to export attendance sheet.",
+      );
+    } finally {
+      setIsExportingAttendance(false);
     }
   };
 
@@ -1013,7 +1048,9 @@ export default function TrainingAcceptSurvey() {
                 className={styles.exportAttendanceButton}
                 type="button"
                 disabled={
-                  hasUnsavedParticipants || acceptedParticipants.length === 0
+                  hasUnsavedParticipants ||
+                  acceptedParticipants.length === 0 ||
+                  isExportingAttendance
                 }
                 title={
                   hasUnsavedParticipants
@@ -1022,9 +1059,11 @@ export default function TrainingAcceptSurvey() {
                       ? "Add and save at least one participant before exporting."
                       : "Export attendance sheet"
                 }
-                onClick={handleExportAttendanceSheet}
+                onClick={() => void handleExportAttendanceSheet()}
               >
-                Export attendance sheet
+                {isExportingAttendance
+                  ? "Preparing Excel..."
+                  : "Export attendance sheet"}
               </button>
             </div>
           </div>

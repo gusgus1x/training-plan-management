@@ -58,7 +58,7 @@ export default function TrainingCourseManagement({
             <p className={styles.kicker}>Training Course</p>
             <h1>{selectedItem ? selectedItem.title : "Training Course Management"}</h1>
             <p>
-              Build and maintain course classifications, standards, assessments, and evaluation forms from one place.
+              Build and maintain courses, standards, assessments, and evaluation forms from one place.
             </p>
           </div>
         </div>

@@ -15,6 +15,9 @@ describe("Thai UI localization", () => {
   it("preserves whitespace and translates dynamic counters", () => {
     expect(translateUiText("  12 records  ")).toBe("  12 รายการ  ");
     expect(translateUiText("3 questions")).toBe("3 คำถาม");
+    expect(translateUiText("2 positions · 4 levels")).toBe(
+      "2 ตำแหน่ง · 4 ระดับ",
+    );
     expect(translateUiText("1 published Pre Test option")).toBe(
       "แบบทดสอบก่อนเรียนที่เผยแพร่แล้ว 1 รายการ",
     );
@@ -48,6 +51,9 @@ describe("Thai UI localization", () => {
 
   it("translates module headings, navigation, and role labels", () => {
     expect(translateUiText("Course Master")).toBe("ฐานข้อมูลหลักสูตร");
+    expect(translateUiText("Course Master & Standard")).toBe(
+      "ฐานข้อมูลและมาตรฐานหลักสูตร",
+    );
     expect(translateUiText("Evaluation Management")).toBe("จัดการแบบประเมิน");
     expect(translateUiText("Back to Dashboard")).toBe("กลับหน้าหลัก");
     expect(translateUiText("Management")).toBe("ระดับบริหาร");
