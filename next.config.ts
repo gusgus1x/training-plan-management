@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["10.123.23.38"],
+  allowedDevOrigins: ["10.123.23.38", "172.20.10.4"],
   outputFileTracingIncludes: {
     "/*": ["./app/Excel/*.xlsx"],
   },

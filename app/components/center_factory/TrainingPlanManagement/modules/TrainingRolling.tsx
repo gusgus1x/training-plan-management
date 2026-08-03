@@ -289,9 +289,10 @@ export default function TrainingRolling() {
   const [openDetailId, setOpenDetailId] = useState("");
   const [search, setSearch] = useState("");
   const [selectedYear, setSelectedYear] = useState("2026");
-  const [selectedMonth, setSelectedMonth] = useState("07");
+  const [selectedMonth, setSelectedMonth] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | RollingStatus>("all");
-  const selectedOap = oapSources.find((source) => source.id === form.oapId) ?? oapSources[0] ?? null;
+  const selectedOap =
+    oapSources.find((source) => source.id === form.oapId) ?? null;
   const scopedRollingPlans = useMemo(
     () =>
       rollingPlans.filter((plan) =>
@@ -304,14 +305,20 @@ export default function TrainingRolling() {
       ),
     [rollingPlans, user?.roleCode, userCompanyCode],
   );
-  const selectedMonthLabel = monthOptions.find((month) => month.value === selectedMonth)?.label ?? "Selected month";
+  const selectedMonthLabel =
+    selectedMonth === "all"
+      ? "All Year"
+      : monthOptions.find((month) => month.value === selectedMonth)?.label ??
+        "Selected month";
   const visiblePlans = useMemo(
     () =>
       [...scopedRollingPlans]
         .sort((a, b) => a.trainingDate.localeCompare(b.trainingDate))
         .map((plan, index) => ({ ...plan, sequence: index + 1 }))
         .filter((plan) =>
-          plan.trainingDate.startsWith(`${selectedYear}-${selectedMonth}`) &&
+          plan.trainingDate.startsWith(`${selectedYear}-`) &&
+          (selectedMonth === "all" ||
+            plan.trainingDate.startsWith(`${selectedYear}-${selectedMonth}`)) &&
           (statusFilter === "all" || plan.status === statusFilter) &&
           [
             plan.course.name,
@@ -478,7 +485,7 @@ export default function TrainingRolling() {
     const matchedOap = oapSources.find((source) => source.course.code === plan.course.code);
     setEditingId(plan.rollingId);
     setForm({
-      oapId: matchedOap?.id ?? oapSources[0]?.id ?? "",
+      oapId: matchedOap?.id ?? "",
       sessions: [
         {
           id: `session-${plan.rollingId}`,
@@ -517,7 +524,7 @@ export default function TrainingRolling() {
     setOpenDetailId("");
     setSearch("");
     setSelectedYear("2026");
-    setSelectedMonth("07");
+    setSelectedMonth("all");
     setStatusFilter("all");
   };
 
@@ -525,7 +532,6 @@ export default function TrainingRolling() {
     setEditingId("");
     setForm({
       ...createEmptyForm(),
-      oapId: oapSources[0]?.id ?? "",
       relatedCompanies:
         user?.roleCode === "HRD_FACTORY"
           ? [userCompanyCode]
@@ -595,6 +601,7 @@ export default function TrainingRolling() {
           <label className={styles.filterBox}>
             <span>Month</span>
             <select value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)}>
+              <option value="all">All Year</option>
               {monthOptions.map((month) => <option key={month.value} value={month.value}>{month.label}</option>)}
             </select>
           </label>
@@ -637,6 +644,7 @@ export default function TrainingRolling() {
               <label className={styles.fullField}>
                 Course Name
                 <select value={form.oapId} onChange={(event) => updateOap(event.target.value)}>
+                  <option value="">Select course first</option>
                   {oapSources.map((source) => <option key={source.id} value={source.id}>{source.course.name}</option>)}
                 </select>
               </label>
@@ -652,7 +660,7 @@ export default function TrainingRolling() {
                     <strong>Training sessions</strong>
                     <span>Add another session when the course has a different batch, date, time, or location.</span>
                   </div>
-                  <button className={styles.addSessionButton} type="button" onClick={addSession}>
+                  <button className={styles.addSessionButton} disabled={!selectedOap} type="button" onClick={addSession}>
                     Add session
                   </button>
                 </div>
@@ -664,7 +672,7 @@ export default function TrainingRolling() {
                         <strong>Session {index + 1}</strong>
                         <button
                           className={styles.removeSessionButton}
-                          disabled={form.sessions.length === 1}
+                          disabled={!selectedOap || form.sessions.length === 1}
                           type="button"
                           onClick={() => removeSession(session.id)}
                         >
@@ -675,6 +683,7 @@ export default function TrainingRolling() {
                         <label>
                           Batch
                           <input
+                            disabled={!selectedOap}
                             value={session.batch}
                             onChange={(event) =>
                               updateSession(session.id, "batch", event.target.value)
@@ -684,6 +693,7 @@ export default function TrainingRolling() {
                         <label>
                           Location
                           <input
+                            disabled={!selectedOap}
                             value={session.location}
                             onChange={(event) =>
                               updateSession(session.id, "location", event.target.value)
@@ -693,6 +703,7 @@ export default function TrainingRolling() {
                         <label>
                           Training Date
                           <input
+                            disabled={!selectedOap}
                             type="date"
                             value={session.trainingDate}
                             onChange={(event) =>
@@ -703,6 +714,7 @@ export default function TrainingRolling() {
                         <label>
                           Start Time
                           <input
+                            disabled={!selectedOap}
                             type="time"
                             value={session.startTime}
                             onChange={(event) =>
@@ -713,6 +725,7 @@ export default function TrainingRolling() {
                         <label>
                           End Time
                           <input
+                            disabled={!selectedOap}
                             type="time"
                             value={session.endTime}
                             onChange={(event) =>
@@ -736,7 +749,7 @@ export default function TrainingRolling() {
                         form.relatedCompanies.length ===
                         rollingCompanyOptions.length
                       }
-                      disabled={user?.roleCode === "HRD_FACTORY"}
+                      disabled={!selectedOap || user?.roleCode === "HRD_FACTORY"}
                       type="checkbox"
                       onChange={toggleAllCompanies}
                     />
@@ -746,7 +759,7 @@ export default function TrainingRolling() {
                     <label key={company}>
                       <input
                         checked={form.relatedCompanies.includes(company)}
-                        disabled={user?.roleCode === "HRD_FACTORY"}
+                        disabled={!selectedOap || user?.roleCode === "HRD_FACTORY"}
                         type="checkbox"
                         onChange={() => toggleCompany(company)}
                       />
@@ -771,7 +784,7 @@ export default function TrainingRolling() {
             <div className={styles.formActions}>
               <button
                 className={styles.primaryButton}
-                disabled={form.relatedCompanies.length === 0}
+                disabled={!selectedOap || form.relatedCompanies.length === 0}
                 type="button"
                 onClick={handleSave}
               >

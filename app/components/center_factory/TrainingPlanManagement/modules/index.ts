@@ -9,6 +9,7 @@ import TrainingOAP, { trainingOapModule } from "./TrainingOAP";
 import TrainingRolling, { trainingRollingModule } from "./TrainingRolling";
 
 export type PlanModuleTopic = {
+  icon: string;
   title: string;
   subtitle: string;
   description: string;
@@ -16,8 +17,8 @@ export type PlanModuleTopic = {
 };
 
 export const planItems: readonly PlanModuleTopic[] = [
-  { ...trainingOapModule, Component: TrainingOAP },
-  { ...trainingRollingModule, Component: TrainingRolling },
-  { ...requestTrainingNeedModule, Component: RequestTrainingNeed },
-  { ...trainingAcceptSurveyModule, Component: TrainingAcceptSurvey },
+  { ...trainingOapModule, icon: "🗓️", Component: TrainingOAP },
+  { ...trainingRollingModule, icon: "📆", Component: TrainingRolling },
+  { ...requestTrainingNeedModule, icon: "🙋", Component: RequestTrainingNeed },
+  { ...trainingAcceptSurveyModule, icon: "☑️", Component: TrainingAcceptSurvey },
 ];

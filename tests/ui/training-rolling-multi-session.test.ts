@@ -38,6 +38,18 @@ describe("Training Rolling multi-session workflow", () => {
     expect(rollingSource).toContain("Delete all");
   });
 
+  it("starts with an all-year view and requires a course before monthly entry", () => {
+    expect(rollingSource).toContain('useState("all")');
+    expect(rollingSource).toContain('<option value="all">All Year</option>');
+    expect(rollingSource).toContain('selectedMonth === "all" ||');
+    expect(rollingSource).toContain(
+      '<option value="">Select course first</option>',
+    );
+    expect(rollingSource).toContain(
+      "disabled={!selectedOap || form.relatedCompanies.length === 0}",
+    );
+  });
+
   it("uses related companies in employee and acceptance workflows", () => {
     const registrationSource = readSource(
       "app/components/employee/RegisterTrainingModule.tsx",

@@ -11,8 +11,10 @@
   z-index: 10;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
-  gap: clamp(24px, 5vw, 72px);
+  column-gap: clamp(24px, 5vw, 72px);
+  row-gap: 12px;
   align-items: center;
+  align-content: center;
   width: min(1240px, calc(100% - 48px));
   min-height: calc(100vh - 76px);
   margin: 0 auto;
@@ -144,6 +146,7 @@
   position: relative;
   z-index: 5;
   grid-column: 2;
+  grid-row: 1;
   align-self: center;
   justify-self: end;
   width: 100%;
@@ -266,72 +269,245 @@
 }
 
 .previewAccess {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--ui-30-border);
+  position: relative;
+  z-index: 6;
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  justify-self: end;
+  width: 100%;
+  max-width: 440px;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: var(--ui-radius-lg);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ui-30-ink);
+  padding: 14px;
+  box-shadow:
+    0 24px 58px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.previewAccess::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, var(--ui-30-primary) 0 72%, var(--ui-10-accent) 72%);
+  content: "";
 }
 
 .previewDivider {
   display: flex;
+  width: fit-content;
   align-items: center;
-  gap: 12px;
-  color: var(--ui-30-muted);
-  font-size: 10px;
+  gap: 7px;
+  border: 1px solid var(--ui-10-accent-border);
+  border-radius: 999px;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
+  font-size: 9px;
   font-weight: 900;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
+  padding: 5px 9px;
   text-transform: uppercase;
 }
 
 .previewDivider::before,
 .previewDivider::after {
-  flex: 1;
-  height: 1px;
-  background: var(--ui-30-border);
-  content: "";
+  display: none;
+}
+
+.previewStatusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--ui-10-accent);
+  box-shadow: 0 0 0 3px var(--ui-10-accent-glow);
+}
+
+.previewHeader {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  border-bottom: 1px solid var(--ui-30-border);
+  padding-bottom: 14px;
 }
 
 .previewAccess h3 {
-  margin: 12px 0 2px;
+  margin: 0 0 2px;
   color: var(--ui-30-ink);
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 16px;
+  font-weight: 900;
 }
 
 .previewAccess p {
-  margin: 0 0 12px;
+  margin: 0;
   color: var(--ui-30-muted);
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.4;
 }
 
-.previewButtons {
+.previewRoleButtons {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+  min-width: 246px;
 }
 
 .previewButton {
-  min-height: 38px;
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-sm);
-  background: var(--ui-60-surface-soft);
+  background: #fff;
   color: var(--ui-30-text);
   cursor: pointer;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 900;
   padding: 6px 8px;
   transition: all 0.15s ease;
 }
 
 .previewButton:hover {
-  border-color: var(--ui-10-accent-border);
-  background: var(--ui-10-accent-soft);
-  color: var(--ui-10-accent-strong);
+  border-color: var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
 }
 
 .previewButton:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.lockedPreviewButton,
+.lockedPreviewButton:hover {
+  border-style: dashed;
+  border-color: #cbd5e1;
+  background: #f1f5f9;
+  color: #64748b;
+  box-shadow: none;
+}
+
+.previewRoleIcon {
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
+  font-size: 0.92rem;
+  line-height: 1;
+}
+
+.previewLock {
+  margin-left: 1px;
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
+  font-size: 0.72rem;
+}
+
+.previewCompanyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 14px 0 8px;
+  color: var(--ui-30-text);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.previewCompanyHeader b {
+  border-radius: 999px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  font-size: 9px;
+  padding: 5px 8px;
+}
+
+.previewCompanyButtons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.previewCompanyButton {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 16px;
+  min-width: 0;
+  min-height: 52px;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-sm);
+  background: #fff;
+  color: var(--ui-30-ink);
+  cursor: pointer;
+  font: inherit;
+  padding: 8px 10px;
+  transition: all 0.15s ease;
+}
+
+.previewCompanyIcon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--ui-30-primary-soft);
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.previewCompanyCopy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  text-align: left;
+}
+
+.previewCompanyCopy strong {
+  color: var(--ui-30-primary);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.previewCompanyCopy small {
+  overflow: hidden;
+  color: var(--ui-30-muted);
+  font-size: 8px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.previewCompanyArrow {
+  color: var(--ui-30-muted);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform 150ms ease;
+}
+
+.previewCompanyButton:hover {
+  border-color: var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  transform: translateY(-1px);
+}
+
+.previewCompanyButton:hover .previewCompanyArrow {
+  color: var(--ui-30-primary);
+  transform: translateX(2px);
+}
+
+.previewCompanyButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
 }
 
 @media (max-width: 840px) {
@@ -351,8 +527,17 @@
 
   .loginCard {
     grid-column: 1;
+    grid-row: 1;
     justify-self: center;
     max-width: 440px;
+  }
+
+  .previewAccess {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: center;
+    width: min(100%, 440px);
+    margin-bottom: 0;
   }
 }
 
@@ -361,8 +546,21 @@
     padding: 24px;
   }
 
-  .previewButtons {
-    grid-template-columns: 1fr;
+  .previewAccess {
+    padding: 14px;
+  }
+
+  .previewHeader {
+    display: grid;
+  }
+
+  .previewRoleButtons {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .previewCompanyButtons {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -376,4 +574,56 @@
   0% { opacity: 0; transform: translateY(calc(-50% + 16px)); }
   6%, 20% { opacity: 1; transform: translateY(-50%); }
   26%, 100% { opacity: 0; transform: translateY(calc(-50% - 10px)); }
+}
+
+.passwordField {
+  position: relative;
+}
+
+.passwordField input {
+  padding-right: 52px;
+}
+
+.passwordToggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ui-30-muted);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.passwordToggle:hover {
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+}
+
+.passwordToggle:focus-visible {
+  outline: 3px solid var(--ui-focus-ring);
+  outline-offset: 1px;
+}
+
+.passwordToggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.passwordToggle svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
 }

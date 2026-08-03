@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import styles from "./CompanyData.module.css";
 
 type CompanyCode = "ATA" | "TEP" | "ATFB" | "NIC" | "SATI" | "SNF";
@@ -60,42 +61,62 @@ const defaultRows: CompanyRecord[] = companyCodes.map((compCode) => ({
   remark: "",
 }));
 
-const createBlankRecord = (): CompanyRecord => ({
+const createBlankRecord = (companyCode: CompanyCode = "ATA"): CompanyRecord => ({
   id: `company-${Date.now()}`,
-  compCode: "ATA",
-  ...companyNameByCode.ATA,
+  compCode: companyCode,
+  ...companyNameByCode[companyCode],
   remark: "",
 });
 
 export default function CompanyData() {
+  const user = useAuthenticatedUser();
+  const isFactoryUser = user?.roleCode === "HRD_FACTORY";
+  const factoryCompanyCode = companyCodes.find(
+    (companyCode) => companyCode === user?.companyCode,
+  );
+  const availableCompanyCodes: CompanyCode[] =
+    isFactoryUser && factoryCompanyCode ? [factoryCompanyCode] : companyCodes;
   const [rows, setRows] = useState<CompanyRecord[]>(defaultRows);
   const [search, setSearch] = useState("");
-  const [selectedCode, setSelectedCode] = useState<CompanyCode | "all">("all");
-  const [selectedId, setSelectedId] = useState<string | null>(defaultRows[0]?.id ?? null);
+  const [selectedCode, setSelectedCode] = useState<CompanyCode | "all">(
+    isFactoryUser && factoryCompanyCode ? factoryCompanyCode : "all",
+  );
+  const [selectedId, setSelectedId] = useState<string | null>(
+    factoryCompanyCode ?? defaultRows[0]?.id ?? null,
+  );
   const [formMode, setFormMode] = useState<FormMode>(null);
-  const [formValues, setFormValues] = useState<CompanyRecord>(createBlankRecord);
-
-  const selectedRecord = rows.find((row) => row.id === selectedId) ?? null;
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((row) => {
-        const searchableText = [
-          row.compCode,
-          row.compNameTh,
-          row.compNameEn,
-          row.remark,
-        ]
-          .join(" ")
-          .toLowerCase();
-        const matchesSearch = searchableText.includes(search.toLowerCase());
-        const matchesCode = selectedCode === "all" || row.compCode === selectedCode;
-
-        return matchesSearch && matchesCode;
-      }),
-    [rows, search, selectedCode],
+  const [formValues, setFormValues] = useState<CompanyRecord>(() =>
+    createBlankRecord(factoryCompanyCode),
   );
 
+  const selectedRecord =
+    rows.find(
+      (row) =>
+        row.id === selectedId &&
+        (!isFactoryUser || row.compCode === factoryCompanyCode),
+    ) ?? null;
+  const visibleRows = rows.filter((row) => {
+    const matchesFactoryScope =
+      !isFactoryUser || row.compCode === factoryCompanyCode;
+    const searchableText = [
+      row.compCode,
+      row.compNameTh,
+      row.compNameEn,
+      row.remark,
+    ]
+      .join(" ")
+      .toLowerCase();
+    const matchesSearch = searchableText.includes(search.toLowerCase());
+    const matchesCode = selectedCode === "all" || row.compCode === selectedCode;
+
+    return matchesFactoryScope && matchesSearch && matchesCode;
+  });
+
   const handleCodeChange = (compCode: CompanyCode) => {
+    if (isFactoryUser && compCode !== factoryCompanyCode) {
+      return;
+    }
+
     setFormValues((current) => ({
       ...current,
       compCode,
@@ -104,7 +125,7 @@ export default function CompanyData() {
   };
 
   const handleNew = () => {
-    setFormValues(createBlankRecord());
+    setFormValues(createBlankRecord(factoryCompanyCode));
     setFormMode("new");
   };
 
@@ -130,14 +151,15 @@ export default function CompanyData() {
   const handleRefresh = () => {
     setRows(defaultRows);
     setSearch("");
-    setSelectedCode("all");
-    setSelectedId(defaultRows[0]?.id ?? null);
+    setSelectedCode(isFactoryUser && factoryCompanyCode ? factoryCompanyCode : "all");
+    setSelectedId(factoryCompanyCode ?? defaultRows[0]?.id ?? null);
     setFormMode(null);
   };
 
   const handleSave = () => {
     const nextRecord: CompanyRecord = {
       ...formValues,
+      compCode: factoryCompanyCode ?? formValues.compCode,
       compNameTh:
         formValues.compNameTh.trim() || companyNameByCode[formValues.compCode].compNameTh,
       compNameEn:
@@ -189,10 +211,11 @@ export default function CompanyData() {
             <select
               aria-label="Filter company code"
               value={selectedCode}
+              disabled={isFactoryUser}
               onChange={(event) => setSelectedCode(event.target.value as CompanyCode | "all")}
             >
-              <option value="all">All comp code</option>
-              {companyCodes.map((compCode) => (
+              {!isFactoryUser ? <option value="all">All comp code</option> : null}
+              {availableCompanyCodes.map((compCode) => (
                 <option key={compCode} value={compCode}>
                   {compCode}
                 </option>
@@ -281,9 +304,10 @@ export default function CompanyData() {
               Comp Code
               <select
                 value={formValues.compCode}
+                disabled={isFactoryUser}
                 onChange={(event) => handleCodeChange(event.target.value as CompanyCode)}
               >
-                {companyCodes.map((compCode) => (
+                {availableCompanyCodes.map((compCode) => (
                   <option key={compCode} value={compCode}>
                     {compCode}
                   </option>

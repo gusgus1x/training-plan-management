@@ -12,8 +12,14 @@ describe("Report Management summary dashboard", () => {
     );
 
     expect(moduleIndex).toContain('from "./SummaryDashboard"');
-    expect(moduleIndex.indexOf("summaryDashboardModule")).toBeLessThan(
-      moduleIndex.indexOf("scheduleCalendarModule, Component"),
+    expect(
+      moduleIndex.indexOf(
+        '{ ...summaryDashboardModule, icon: "📊", Component: SummaryDashboard }',
+      ),
+    ).toBeLessThan(
+      moduleIndex.indexOf(
+        '{ ...scheduleCalendarModule, icon: "📅", Component: ScheduleCalendar }',
+      ),
     );
   });
 
@@ -94,7 +100,7 @@ describe("Report Management summary dashboard", () => {
     const navbarSource = readSource("app/components/Navbar.tsx");
 
     expect(moduleIndex).toContain(
-      "{ ...internalReportModule, Component: InternalReport, locked: true }",
+      '{ ...internalReportModule, icon: "✉️", Component: InternalReport, locked: true }',
     );
     expect(managementSource).toContain("if (item.locked)");
     expect(managementSource).toContain("disabled={item.locked}");

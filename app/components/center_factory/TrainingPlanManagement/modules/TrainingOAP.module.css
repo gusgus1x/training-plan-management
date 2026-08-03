@@ -236,6 +236,12 @@
   text-transform: uppercase;
 }
 
+.formGrid input:disabled {
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  cursor: not-allowed;
+}
+
 .formGrid label {
   grid-column: span 2;
 }
@@ -674,6 +680,7 @@
     width: min(100% - 28px, 560px);
     padding-inline: 0;
   }
+
 }
 
 /* CRUD toolbar button alignment */

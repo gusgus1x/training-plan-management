@@ -9,6 +9,7 @@ import CourseGroup, { courseGroupModule } from "./CourseGroup";
 import CourseType, { courseTypeModule } from "./CourseType";
 
 export type MasterDataModuleTopic = {
+  icon: string;
   title: string;
   subtitle: string;
   description: string;
@@ -16,12 +17,12 @@ export type MasterDataModuleTopic = {
 };
 
 export const masterDataItems: readonly MasterDataModuleTopic[] = [
-  { ...courseTypeModule, Component: CourseType },
-  { ...courseGroupModule, Component: CourseGroup },
-  { ...companyDataModule, Component: CompanyData },
-  { ...functionDataModule, Component: FunctionData },
-  { ...positionDataModule, Component: PositionData },
-  { ...levelDataModule, Component: LevelData },
-  { ...employeeDataModule, Component: EmployeeData },
-  { ...instructorDataModule, Component: InstructorData },
+  { ...courseTypeModule, icon: "🏷️", Component: CourseType },
+  { ...courseGroupModule, icon: "🗂️", Component: CourseGroup },
+  { ...companyDataModule, icon: "🏢", Component: CompanyData },
+  { ...functionDataModule, icon: "⚙️", Component: FunctionData },
+  { ...positionDataModule, icon: "💼", Component: PositionData },
+  { ...levelDataModule, icon: "📶", Component: LevelData },
+  { ...employeeDataModule, icon: "👥", Component: EmployeeData },
+  { ...instructorDataModule, icon: "🧑‍🏫", Component: InstructorData },
 ];

@@ -692,7 +692,7 @@ function CourseMaster() {
           <select value={form.courseGroup} disabled={!isEditing} onChange={(event) => handleCourseGroupChange(event.target.value)}>
             <option value="">Select Course Group</option>
             {courseGroups.map((group) => (
-              <option key={group} value={group}>{group}</option>
+              <option key={group} value={group} translate="no">{group}</option>
 
             ))}
           </select>

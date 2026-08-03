@@ -87,4 +87,39 @@ describe("Master Data workflow integration", () => {
     expect(oapSource).toContain('<datalist id="instructor-master-options">');
     expect(oapSource).toContain("type an external instructor name");
   });
+
+  it("guides OAP entry inside each field and requires a course first", () => {
+    const oapSource = readSource(
+      "app/components/center_factory/TrainingPlanManagement/modules/TrainingOAP.tsx",
+    );
+
+    expect(oapSource).toContain('<option value="">Select course first</option>');
+    expect(oapSource).toContain(
+      'placeholder="Enter participants per group, e.g. 20"',
+    );
+    expect(oapSource).toContain(
+      'placeholder="Enter total training hours, e.g. 6"',
+    );
+    expect(oapSource).toContain(
+      'placeholder="Enter budget amount, e.g. 15000"',
+    );
+    expect(oapSource).toContain(
+      'placeholder="Enter provider, e.g. HRD Center or institute name"',
+    );
+    expect(oapSource).toContain("disabled={!selectedCourse}");
+    expect(oapSource).not.toContain(
+      'courseCode: courseOptions[0]?.courseCode ?? ""',
+    );
+  });
+
+  it("keeps Employee Data company dropdowns collapsed initially", () => {
+    const employeeSource = readSource(
+      "app/components/center_factory/MasterDataManagement/modules/EmployeeData.tsx",
+    );
+
+    expect(employeeSource).toContain(
+      "useState<CompanyCode[]>([])",
+    );
+    expect(employeeSource).toContain("onClick={() => toggleCompany(companyGroup.code)}");
+  });
 });

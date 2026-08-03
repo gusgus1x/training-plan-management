@@ -28,6 +28,10 @@ import ReportModule from "./ReportModule";
 import RequestTrainingModule from "./RequestTrainingModule";
 import RoadmapModule from "./RoadmapModule";
 import styles from "./UserDashboard.module.css";
+import {
+  buildCalendarYearOptions,
+  getCurrentCalendarDate,
+} from "../../lib/calendarDate";
 
 type UserDashboardProps = {
   username: string;
@@ -36,7 +40,6 @@ type UserDashboardProps = {
 };
 
 const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const calendarYears = ["2026", "2027"] as const;
 const calendarMonths = [
   { value: "all", label: "All year" },
   { value: "01", label: "January" },
@@ -68,10 +71,13 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
   const [activeModule, setActiveModule] = useState<UserModule | null>(null);
   const [trainingNeed, setTrainingNeed] = useState("");
   const [reason, setReason] = useState("");
-  const [selectedCalendarYear, setSelectedCalendarYear] =
-    useState<(typeof calendarYears)[number]>("2026");
-  const [selectedCalendarMonth, setSelectedCalendarMonth] =
-    useState<(typeof calendarMonths)[number]["value"]>("07");
+  const [calendarToday] = useState(getCurrentCalendarDate);
+  const [selectedCalendarYear, setSelectedCalendarYear] = useState(
+    calendarToday.year,
+  );
+  const [selectedCalendarMonth, setSelectedCalendarMonth] = useState(
+    calendarToday.month,
+  );
   const [isMonthListOpen, setIsMonthListOpen] = useState(false);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [registrations, setRegistrations] = useState<WorkflowRegistration[]>([]);
@@ -142,9 +148,20 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
       })),
     [availableRollingPlans, employeeCode, registrations],
   );
+  const calendarYears = useMemo(
+    () =>
+      buildCalendarYearOptions(
+        calendarToday.year,
+        rollingPlans.map((plan) => plan.trainingDate),
+      ),
+    [calendarToday.year, rollingPlans],
+  );
 
   const selectedMonthLabel =
-    calendarMonths.find((month) => month.value === selectedCalendarMonth)?.label ?? "July";
+    calendarMonths.find((month) => month.value === selectedCalendarMonth)?.label ?? "Selected month";
+  const isViewingCurrentMonth =
+    selectedCalendarYear === calendarToday.year &&
+    selectedCalendarMonth === calendarToday.month;
 
   const filteredCalendarTrainings = employeeCalendarTrainings.filter((training) => {
     const [year, month] = training.date.split("-");
@@ -313,9 +330,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                   <span>Year</span>
                   <select
                     value={selectedCalendarYear}
-                    onChange={(event) =>
-                      setSelectedCalendarYear(event.target.value as (typeof calendarYears)[number])
-                    }
+                    onChange={(event) => setSelectedCalendarYear(event.target.value)}
                   >
                     {calendarYears.map((year) => (
                       <option key={year} value={year}>{year}</option>
@@ -326,9 +341,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                   <span>Month</span>
                   <select
                     value={selectedCalendarMonth}
-                    onChange={(event) =>
-                      setSelectedCalendarMonth(event.target.value as (typeof calendarMonths)[number]["value"])
-                    }
+                    onChange={(event) => setSelectedCalendarMonth(event.target.value)}
                   >
                     {calendarMonths.map((month) => (
                       <option key={month.value} value={month.value}>{month.label}</option>
@@ -344,7 +357,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                   ))}
                   {calendarDays.map((item, index) => (
                     <div
-                      className={`${styles.calendarDay} ${item.trainings.length > 0 ? styles.trainingDay : ""}`}
+                      className={`${styles.calendarDay} ${item.trainings.length > 0 ? styles.trainingDay : ""} ${isViewingCurrentMonth && item.day === calendarToday.day ? styles.today : ""}`}
                       key={`${item.day ?? "empty"}-${index}`}
                     >
                       {item.day ? (

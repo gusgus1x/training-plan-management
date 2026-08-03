@@ -1,10 +1,11 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   EVALUATION_STORAGE_KEY,
   initializeTrainingFormCatalog,
 } from "../../../../lib/trainingFormCatalog";
+import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import styles from "./EvaluationManagement.module.css";
 
 export const evaluationManagementModule = {
@@ -175,13 +176,25 @@ const createEvaluationCsv = (evaluations: EvaluationRecord[]) => {
 };
 
 export default function EvaluationManagement() {
+  const user = useAuthenticatedUser();
+  const isFactoryUser = user?.roleCode === "HRD_FACTORY";
+  const factoryCompanyCode = companies.find(
+    (company) => company === user?.companyCode,
+  );
+  const availableCompanies =
+    isFactoryUser && factoryCompanyCode ? [factoryCompanyCode] : companies;
+  const createScopedEmptyForm = (): EvaluationForm => ({
+    ...emptyForm,
+    scope: isFactoryUser ? "Company" : emptyForm.scope,
+    company: factoryCompanyCode ?? emptyForm.company,
+  });
   const [evaluations, setEvaluations] =
     useState<EvaluationRecord[]>(cloneInitialEvaluations);
   const [storageReady, setStorageReady] = useState(false);
   const [selectedId, setSelectedId] = useState("");
   const [openDetailId, setOpenDetailId] = useState("");
   const [mode, setMode] = useState<"idle" | "new" | "edit">("idle");
-  const [form, setForm] = useState<EvaluationForm>(emptyForm);
+  const [form, setForm] = useState<EvaluationForm>(createScopedEmptyForm);
   const [questions, setQuestions] = useState<EvaluationQuestion[]>([]);
   const [questionDraft, setQuestionDraft] =
     useState<QuestionDraft>(emptyQuestionDraft);
@@ -214,17 +227,24 @@ export default function EvaluationManagement() {
     }
   }, [evaluations, storageReady]);
 
-  const selectedEvaluation =
-    evaluations.find((evaluation) => evaluation.id === selectedId) ?? null;
+  const scopedEvaluations = evaluations.filter(
+    (evaluation) =>
+      !isFactoryUser ||
+      (evaluation.scope === "Company" &&
+        evaluation.company === factoryCompanyCode),
+  );
 
-  const visibleEvaluations = useMemo(() => {
+  const selectedEvaluation =
+    scopedEvaluations.find((evaluation) => evaluation.id === selectedId) ?? null;
+
+  const visibleEvaluations = (() => {
     const searchTerm = search.trim().toLowerCase();
 
     if (!searchTerm) {
-      return evaluations;
+      return scopedEvaluations;
     }
 
-    return evaluations.filter((evaluation) =>
+    return scopedEvaluations.filter((evaluation) =>
       [
         evaluation.code,
         evaluation.name,
@@ -238,7 +258,7 @@ export default function EvaluationManagement() {
         .toLowerCase()
         .includes(searchTerm),
     );
-  }, [evaluations, search]);
+  })();
 
   const updateForm = <K extends keyof EvaluationForm,>(
     field: K,
@@ -266,7 +286,7 @@ export default function EvaluationManagement() {
 
   const closeEditor = () => {
     setMode("idle");
-    setForm(emptyForm);
+    setForm(createScopedEmptyForm());
     setQuestions([]);
     setPreviewAnswers({});
     setFormErrors({});
@@ -277,7 +297,7 @@ export default function EvaluationManagement() {
     setSelectedId("");
     setOpenDetailId("");
     setMode("new");
-    setForm(emptyForm);
+    setForm(createScopedEmptyForm());
     setQuestions([]);
     setPreviewAnswers({});
     setFormErrors({});
@@ -388,7 +408,15 @@ export default function EvaluationManagement() {
       return;
     }
 
-    setEvaluations([]);
+    setEvaluations((current) =>
+      isFactoryUser
+        ? current.filter(
+            (evaluation) =>
+              evaluation.scope !== "Company" ||
+              evaluation.company !== factoryCompanyCode,
+          )
+        : [],
+    );
     setSelectedId("");
     setOpenDetailId("");
     setMode("idle");
@@ -582,10 +610,15 @@ export default function EvaluationManagement() {
 
     const nextEvaluation: EvaluationRecord = {
       ...form,
+      scope: isFactoryUser ? "Company" : form.scope,
       id: selectedId || `evaluation-${Date.now()}`,
       code: evaluationCode,
       name: form.name.trim(),
-      company: form.scope === "Central" ? "-" : form.company,
+      company: isFactoryUser
+        ? factoryCompanyCode ?? form.company
+        : form.scope === "Central"
+          ? "-"
+          : form.company,
       questions,
       updatedAt: new Date().toISOString().slice(0, 10),
     };
@@ -600,7 +633,7 @@ export default function EvaluationManagement() {
     setSelectedId("");
     setOpenDetailId("");
     setMode("idle");
-    setForm(emptyForm);
+    setForm(createScopedEmptyForm());
     setQuestions([]);
     setPreviewAnswers({});
     setFormErrors({});
@@ -787,6 +820,7 @@ export default function EvaluationManagement() {
           Scope
           <select
             value={form.scope}
+            disabled={isFactoryUser}
             onChange={(event) =>
               updateForm("scope", event.target.value as EvaluationScope)
             }
@@ -800,11 +834,11 @@ export default function EvaluationManagement() {
           <select
             aria-invalid={Boolean(formErrors.company)}
             className={formErrors.company ? styles.inputError : undefined}
-            disabled={form.scope === "Central"}
+            disabled={form.scope === "Central" || isFactoryUser}
             value={form.company}
             onChange={(event) => updateForm("company", event.target.value)}
           >
-            {companies.map((company) => (
+            {availableCompanies.map((company) => (
               <option key={company}>{company}</option>
             ))}
           </select>
@@ -1004,7 +1038,7 @@ export default function EvaluationManagement() {
       <section className={styles.workspace}>
         <div className={styles.toolbar}>
           <span className={styles.listMeta}>
-            {visibleEvaluations.length} / {evaluations.length} evaluations
+            {visibleEvaluations.length} / {scopedEvaluations.length} evaluations
           </span>
           <input
             aria-label="Search evaluation"

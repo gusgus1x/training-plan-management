@@ -14,10 +14,13 @@ import {
   useAuthenticatedUser,
 } from "../AuthenticatedUserContext";
 import type { RollingPlan } from "./TrainingPlanManagement/modules/TrainingRolling";
+import {
+  buildCalendarYearOptions,
+  getCurrentCalendarDate,
+} from "../../lib/calendarDate";
 import styles from "./CenterFactory_Dashboard.module.css";
 
 const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const calendarYears = ["2026", "2027"] as const;
 const calendarMonths = [
   { value: "all", label: "All year" },
   { value: "01", label: "January" },
@@ -129,10 +132,13 @@ export default function Dashboard({
   const userCompanyCode = profileValue(authenticatedUser?.companyCode);
   const dashboardScope = isCenterDashboard ? "Center" : "Factory";
   const dashboardTitle = `${dashboardScope} Dashboard`;
-  const [selectedCalendarYear, setSelectedCalendarYear] =
-    useState<(typeof calendarYears)[number]>("2026");
-  const [selectedCalendarMonth, setSelectedCalendarMonth] =
-    useState<(typeof calendarMonths)[number]["value"]>("07");
+  const [calendarToday] = useState(getCurrentCalendarDate);
+  const [selectedCalendarYear, setSelectedCalendarYear] = useState(
+    calendarToday.year,
+  );
+  const [selectedCalendarMonth, setSelectedCalendarMonth] = useState(
+    calendarToday.month,
+  );
   const [isMonthListOpen, setIsMonthListOpen] = useState(false);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>(() =>
     readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
@@ -173,10 +179,21 @@ export default function Dashboard({
       })),
     [scopedRollingPlans],
   );
+  const calendarYears = useMemo(
+    () =>
+      buildCalendarYearOptions(
+        calendarToday.year,
+        rollingPlans.map((plan) => plan.trainingDate),
+      ),
+    [calendarToday.year, rollingPlans],
+  );
 
   const selectedMonthLabel =
     calendarMonths.find((month) => month.value === selectedCalendarMonth)?.label ??
-    "July";
+    "Selected month";
+  const isViewingCurrentMonth =
+    selectedCalendarYear === calendarToday.year &&
+    selectedCalendarMonth === calendarToday.month;
 
   const filteredTrainingSchedule = trainingSchedule.filter((item) => {
     const [year, month] = item.date.split("-");
@@ -246,34 +263,39 @@ export default function Dashboard({
 
   const menuItems = [
     {
+      badge: "COURSE",
+      icon: "📚",
+      title: "Training Course",
+      description: "Course type, course group, master courses, standards, and assessments.",
+      onClick: onOpenTrainingCourse,
+    },
+    {
       badge: "PLAN",
+      icon: "📅",
       title: "Training Plan",
       description: "Annual plans, training needs, acceptance surveys, OAP, and rolling plans.",
       onClick: onOpenTrainingPlan,
     },
     {
       badge: "RECORD",
+      icon: "📋",
       title: "Training Record",
       description: "Actual training results, attendance records, and employee history.",
       onClick: onOpenTrainingRecord,
     },
     {
-      badge: "COURSE",
-      title: "Training Course",
-      description: "Course type, course group, master courses, standards, and assessments.",
-      onClick: onOpenTrainingCourse,
-    },
-    {
-      badge: "MASTER",
-      title: "Master Data",
-      description: "Companies, employees, instructors, levels, positions, and functions.",
-      onClick: onOpenMasterData,
-    },
-    {
       badge: "REPORT",
+      icon: "📊",
       title: "Reports",
       description: "Training schedules, result reports, expenses, and internal reports.",
       onClick: onOpenReport,
+    },
+    {
+      badge: "MASTER",
+      icon: "🗃️",
+      title: "Master Data",
+      description: "Companies, employees, instructors, levels, positions, and functions.",
+      onClick: onOpenMasterData,
     },
   ];
 
@@ -362,9 +384,7 @@ export default function Dashboard({
               <span>Year</span>
               <select
                 value={selectedCalendarYear}
-                onChange={(event) =>
-                  setSelectedCalendarYear(event.target.value as (typeof calendarYears)[number])
-                }
+                onChange={(event) => setSelectedCalendarYear(event.target.value)}
               >
                 {calendarYears.map((year) => (
                   <option key={year} value={year}>{year}</option>
@@ -375,9 +395,7 @@ export default function Dashboard({
               <span>Month</span>
               <select
                 value={selectedCalendarMonth}
-                onChange={(event) =>
-                  setSelectedCalendarMonth(event.target.value as (typeof calendarMonths)[number]["value"])
-                }
+                onChange={(event) => setSelectedCalendarMonth(event.target.value)}
               >
                 {calendarMonths.map((month) => (
                   <option key={month.value} value={month.value}>{month.label}</option>
@@ -398,7 +416,9 @@ export default function Dashboard({
                 const className = [
                   styles.calendarDay,
                   item.trainings.length > 0 ? styles.trainingDay : "",
-                  item.day === 9 ? styles.today : "",
+                  isViewingCurrentMonth && item.day === calendarToday.day
+                    ? styles.today
+                    : "",
                 ]
                   .filter(Boolean)
                   .join(" ");
@@ -460,7 +480,12 @@ export default function Dashboard({
               type="button"
               onClick={item.onClick}
             >
-              <span className={styles.cardIndex}>{String(index + 1).padStart(2, "0")}</span>
+              <span className={styles.cardIcon} aria-hidden="true">
+                <span className={styles.cardEmoji}>{item.icon}</span>
+              </span>
+              <span className={styles.cardIndex} aria-hidden="true">
+                {String(index + 1).padStart(2, "0")}
+              </span>
               <div>
                 <small>{item.badge}</small>
                 <strong>{item.title}</strong>

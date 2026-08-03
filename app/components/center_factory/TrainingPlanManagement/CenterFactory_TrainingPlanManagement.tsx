@@ -92,7 +92,12 @@ export default function TrainingPlanManagement({
                 type="button"
                 onClick={() => setSelectedItem(item)}
               >
-                <span className={styles.cardIndex}>{String(index + 1).padStart(2, "0")}</span>
+                <span className={styles.moduleIcon} aria-hidden="true">
+                  <span>{item.icon}</span>
+                </span>
+                <span className={styles.cardIndex} aria-hidden="true">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
                 <div>
                   <span className={styles.cardSubtitle}>{item.subtitle}</span>
                   <h3>{item.title}</h3>

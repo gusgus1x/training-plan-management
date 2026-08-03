@@ -183,9 +183,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     [approvedRequest, courses, standardCourseIds, user?.roleCode, userCompanyCode],
   );
   const selectedCourse =
-    courseOptions.find((course) => course.courseCode === form.courseCode) ??
-    courseOptions[0] ??
-    null;
+    courseOptions.find((course) => course.courseCode === form.courseCode) ?? null;
   const scopedPlans = useMemo(
     () =>
       plans.filter((plan) =>
@@ -251,7 +249,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     }
 
     const nextPlan: OapPlan = {
-      id: `oap-${Date.now()}`,
+      id: `oap-${crypto.randomUUID()}`,
       sequence: scopedPlans.length + 1,
       course: selectedCourse,
       participants: form.participants.trim() || "0",
@@ -319,10 +317,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
   const handleNew = () => {
     setEditingId("");
-    setForm({
-      ...emptyForm,
-      courseCode: courseOptions[0]?.courseCode ?? "",
-    });
+    setForm(emptyForm);
     setApprovedRequest(null);
     setOpenDetailId("");
     setIsNewOpen(true);
@@ -390,6 +385,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               <label className={styles.fullField}>
                 Course Name
                 <select value={form.courseCode} onChange={(event) => updateForm("courseCode", event.target.value)}>
+                  <option value="">Select course first</option>
                   {courseOptions.map((course) => {
                     const secondaryName = getCourseSecondaryName(course);
                     return (
@@ -401,13 +397,41 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                   })}
                 </select>
               </label>
-              <label>Participants / Group<input value={form.participants} inputMode="numeric" onChange={(event) => updateForm("participants", event.target.value)} /></label>
-              <label>Training Hours<input value={form.hours} inputMode="numeric" onChange={(event) => updateForm("hours", event.target.value)} /></label>
-              <label>Budget<input value={form.budget} inputMode="numeric" onChange={(event) => updateForm("budget", event.target.value)} /></label>
+              <label>
+                Participants / Group
+                <input
+                  disabled={!selectedCourse}
+                  inputMode="numeric"
+                  placeholder="Enter participants per group, e.g. 20"
+                  value={form.participants}
+                  onChange={(event) => updateForm("participants", event.target.value)}
+                />
+              </label>
+              <label>
+                Training Hours
+                <input
+                  disabled={!selectedCourse}
+                  inputMode="numeric"
+                  placeholder="Enter total training hours, e.g. 6"
+                  value={form.hours}
+                  onChange={(event) => updateForm("hours", event.target.value)}
+                />
+              </label>
+              <label>
+                Budget
+                <input
+                  disabled={!selectedCourse}
+                  inputMode="numeric"
+                  placeholder="Enter budget amount, e.g. 15000"
+                  value={form.budget}
+                  onChange={(event) => updateForm("budget", event.target.value)}
+                />
+              </label>
               <label>
                 Trainer Name
                 <input
                   list="instructor-master-options"
+                  disabled={!selectedCourse}
                   value={form.trainer}
                   onChange={(event) => updateForm("trainer", event.target.value)}
                   placeholder="Select from Instructor Master or enter another name"
@@ -420,7 +444,15 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                 </datalist>
                 <small>Select an existing instructor or type an external instructor name.</small>
               </label>
-              <label>Institute / Provider<input value={form.provider} onChange={(event) => updateForm("provider", event.target.value)} /></label>
+              <label>
+                Institute / Provider
+                <input
+                  disabled={!selectedCourse}
+                  placeholder="Enter provider, e.g. HRD Center or institute name"
+                  value={form.provider}
+                  onChange={(event) => updateForm("provider", event.target.value)}
+                />
+              </label>
             </div>
             {selectedCourse ? (
               <div className={styles.coursePreview}>
@@ -433,7 +465,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               </div>
             ) : null}
             <div className={styles.formActions}>
-              <button className={styles.primaryButton} type="button" onClick={handleSave}>{editingId ? "Save changes" : "Save Draft"}</button>
+              <button className={styles.primaryButton} disabled={!selectedCourse} type="button" onClick={handleSave}>{editingId ? "Save changes" : "Save Draft"}</button>
               <button className={styles.secondaryButton} type="button" onClick={() => { setEditingId(""); setForm(emptyForm); setIsNewOpen(false); }}>Cancel</button>
             </div>
           </section>

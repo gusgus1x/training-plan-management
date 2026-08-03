@@ -115,6 +115,9 @@ export default function ReportManagement({
                 type="button"
                 onClick={() => handleSelectItem(item)}
               >
+                <span className={styles.moduleIcon} aria-hidden="true">
+                  <span>{item.icon}</span>
+                </span>
                 <span className={styles.cardIndex} aria-hidden="true">
                   {item.locked ? "🔒" : String(index + 1).padStart(2, "0")}
                 </span>

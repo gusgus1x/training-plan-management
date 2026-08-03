@@ -163,7 +163,7 @@
   appearance: none;
   position: relative;
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr);
+  grid-template-columns: 58px minmax(0, 1fr);
   grid-template-rows: 1fr auto;
   gap: 14px;
   min-height: 168px;
@@ -202,24 +202,43 @@
   outline-offset: 3px;
 }
 
-.cardIndex {
+.moduleIcon {
   display: grid;
-  width: 32px;
-  height: 32px;
+  width: 54px;
+  height: 54px;
   place-items: center;
   border: 1px solid rgba(0, 122, 61, 0.18);
-  border-radius: 6px;
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary);
-  font-size: 0.72rem;
-  font-weight: 900;
-  line-height: 1;
+  border-radius: 15px;
+  background: linear-gradient(145deg, #ffffff 0%, var(--ui-30-primary-soft) 100%);
+  box-shadow:
+    0 8px 18px rgba(15, 39, 71, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
 }
 
-.moduleCard:nth-child(2n) .cardIndex {
-  border-color: rgba(215, 25, 32, 0.2);
-  background: var(--ui-10-accent-soft);
-  color: var(--ui-10-accent);
+.moduleIcon > span {
+  font-family: "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
+  font-size: 1.9rem;
+  line-height: 1;
+  filter: drop-shadow(0 3px 3px rgba(15, 39, 71, 0.16));
+}
+
+.cardIndex {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  min-width: 30px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid var(--ui-30-primary);
+  border-radius: 999px;
+  background: var(--ui-30-primary);
+  color: #fff;
+  font-size: 0.64rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  padding: 0 7px;
 }
 
 .moduleCard h3 {

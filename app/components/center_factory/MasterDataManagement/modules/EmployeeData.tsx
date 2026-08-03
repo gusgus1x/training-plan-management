@@ -10,6 +10,7 @@ import {
   TRAINING_MASTER_KEYS,
   readMasterCollection,
 } from "../../../../lib/trainingWorkflow";
+import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { defaultFunctionRows } from "./FunctionData";
 import { defaultLevelRows } from "./LevelData";
 import { defaultPositionRows } from "./PositionData";
@@ -270,13 +271,28 @@ const emptyRecord = (): EmployeeRecord => ({
 });
 
 export default function EmployeeData() {
+  const user = useAuthenticatedUser();
+  const isFactoryUser = user?.roleCode === "HRD_FACTORY";
+  const factoryCompanyCode = companies.find(
+    (company) => company === user?.companyCode,
+  );
+  const availableCompanies = useMemo<CompanyCode[]>(
+    () =>
+      isFactoryUser && factoryCompanyCode ? [factoryCompanyCode] : companies,
+    [factoryCompanyCode, isFactoryUser],
+  );
   const [rows, setRows] = useState<EmployeeRecord[]>(() => readEmployeeMasterData());
-  const [companyFilter, setCompanyFilter] = useState<CompanyCode | "all">("all");
+  const [companyFilter, setCompanyFilter] = useState<CompanyCode | "all">(
+    isFactoryUser && factoryCompanyCode ? factoryCompanyCode : "all",
+  );
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(
-    () => readEmployeeMasterData()[0]?.id ?? "",
+    () =>
+      readEmployeeMasterData().find(
+        (row) => !isFactoryUser || row.company === factoryCompanyCode,
+      )?.id ?? "",
   );
-  const [openCompanies, setOpenCompanies] = useState<CompanyCode[]>(["SATI"]);
+  const [openCompanies, setOpenCompanies] = useState<CompanyCode[]>([]);
   const [formMode, setFormMode] = useState<"new" | "edit" | null>(null);
   const [formValues, setFormValues] = useState<EmployeeRecord>(emptyRecord);
   const [functionRows, setFunctionRows] = useState(() =>
@@ -307,11 +323,18 @@ export default function EmployeeData() {
       window.removeEventListener(TRAINING_MASTER_EVENT, syncReferenceMasters);
   }, []);
 
-  const selectedRecord = rows.find((row) => row.id === selectedId) ?? null;
+  const selectedRecord =
+    rows.find(
+      (row) =>
+        row.id === selectedId &&
+        (!isFactoryUser || row.company === factoryCompanyCode),
+    ) ?? null;
   const visibleRows = useMemo(() => {
     const query = search.trim().toLowerCase();
 
     return rows.filter((row) => {
+      const matchesFactoryScope =
+        !isFactoryUser || row.company === factoryCompanyCode;
       const matchesCompany = companyFilter === "all" || row.company === companyFilter;
       const matchesSearch =
         !query ||
@@ -332,20 +355,20 @@ export default function EmployeeData() {
           .toLowerCase()
           .includes(query);
 
-      return matchesCompany && matchesSearch;
+      return matchesFactoryScope && matchesCompany && matchesSearch;
     });
-  }, [rows, companyFilter, search]);
+  }, [companyFilter, factoryCompanyCode, isFactoryUser, rows, search]);
 
   const visibleCompanyGroups = useMemo(
     () =>
-      companies
+      availableCompanies
         .filter((company) => companyFilter === "all" || company === companyFilter)
         .map((company) => ({
           code: company,
           rows: visibleRows.filter((row) => row.company === company),
           totalRecords: rows.filter((row) => row.company === company).length,
         })),
-    [companyFilter, rows, visibleRows],
+    [availableCompanies, companyFilter, rows, visibleRows],
   );
 
   const updateForm = (field: keyof EmployeeRecord, value: string) => {
@@ -380,8 +403,12 @@ export default function EmployeeData() {
   };
 
   const handleNew = () => {
-    setFormValues(emptyRecord());
-    setOpenCompanies((current) => (current.includes("ATA") ? current : ["ATA", ...current]));
+    const nextRecord = emptyRecord();
+    const targetCompany = factoryCompanyCode ?? nextRecord.company;
+    setFormValues({ ...nextRecord, company: targetCompany });
+    setOpenCompanies((current) =>
+      current.includes(targetCompany) ? current : [targetCompany, ...current],
+    );
     setFormMode("new");
   };
 
@@ -407,16 +434,21 @@ export default function EmployeeData() {
   const handleRefresh = () => {
     const nextRows = readEmployeeMasterData();
     setRows(nextRows);
-    setCompanyFilter("all");
+    setCompanyFilter(isFactoryUser && factoryCompanyCode ? factoryCompanyCode : "all");
     setSearch("");
-    setSelectedId(nextRows[0]?.id ?? "");
-    setOpenCompanies(["SATI"]);
+    setSelectedId(
+      nextRows.find(
+        (row) => !isFactoryUser || row.company === factoryCompanyCode,
+      )?.id ?? "",
+    );
+    setOpenCompanies([]);
     setFormMode(null);
   };
 
   const handleSave = () => {
     const nextRecord: EmployeeRecord = {
       ...formValues,
+      company: factoryCompanyCode ?? formValues.company,
       empCode: formValues.empCode.trim().toUpperCase(),
       idCard: formValues.idCard.trim(),
       nameTh: formValues.nameTh.trim(),
@@ -478,10 +510,11 @@ export default function EmployeeData() {
           <select
             aria-label="Filter employee company"
             value={companyFilter}
+            disabled={isFactoryUser}
             onChange={(event) => setCompanyFilter(event.target.value as CompanyCode | "all")}
           >
-            <option value="all">All Companies</option>
-            {companies.map((company) => (
+            {!isFactoryUser ? <option value="all">All Companies</option> : null}
+            {availableCompanies.map((company) => (
               <option key={company} value={company}>
                 {company}
               </option>
@@ -525,9 +558,10 @@ export default function EmployeeData() {
                 Company
                 <select
                   value={formValues.company}
+                  disabled={isFactoryUser}
                   onChange={(event) => updateForm("company", event.target.value)}
                 >
-                  {companies.map((company) => (
+                  {availableCompanies.map((company) => (
                     <option key={company} value={company}>
                       {company}
                     </option>

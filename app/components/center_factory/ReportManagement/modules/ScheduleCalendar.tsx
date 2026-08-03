@@ -3,10 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   formatRollingPlanCompanies,
-  initialRollingPlans,
   monthOptions,
   type RollingPlan,
-  yearOptions,
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
 import {
   TRAINING_WORKFLOW_EVENT,
@@ -15,6 +13,10 @@ import {
   readWorkflowCollection,
   writeWorkflowCollection,
 } from "../../../../lib/trainingWorkflow";
+import {
+  buildCalendarYearOptions,
+  getCurrentCalendarDate,
+} from "../../../../lib/calendarDate";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import type { InternalReportDraft } from "./InternalReport";
 import styles from "./ScheduleCalendar.module.css";
@@ -31,102 +33,6 @@ const calendarMonths = monthOptions.map((month) => ({
 }));
 
 const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
-
-const isWeekendDate = (date: string) => {
-  const day = new Date(`${date}T00:00:00`).getDay();
-  return day === 0 || day === 6;
-};
-
-const mockCourseTemplates = [
-  {
-    code: "CRS-101",
-    name: "Leadership Essentials",
-    group: "Management",
-    company: "ATFB",
-    time: ["09:00", "16:00"],
-  },
-  {
-    code: "CRS-122",
-    name: "Safety Awareness",
-    group: "Safety",
-    company: "SNF",
-    time: ["10:00", "12:00"],
-  },
-  {
-    code: "CRS-141",
-    name: "Quality Control Basics",
-    group: "Quality",
-    company: "SATI",
-    time: ["13:00", "16:00"],
-  },
-  {
-    code: "CRS-165",
-    name: "Excel for Workplace",
-    group: "Digital Skill",
-    company: "NIC",
-    time: ["09:00", "12:00"],
-  },
-  {
-    code: "CRS-188",
-    name: "First Aid & Emergency Response",
-    group: "Safety",
-    company: "TEP",
-    time: ["13:30", "16:30"],
-  },
-] as const;
-
-const createMockRollingPlans = (year: string) => {
-  const mockPlans: RollingPlan[] = [];
-
-  calendarMonths.forEach((month) => {
-    const existingPlanCount = initialRollingPlans.filter(
-      (plan) => plan.trainingDate.startsWith(`${year}-${month.value}`),
-    ).length;
-    const missingPlanCount = Math.max(5 - existingPlanCount, 0);
-
-    for (let index = 0; index < missingPlanCount; index += 1) {
-      const course = mockCourseTemplates[index % mockCourseTemplates.length];
-      const day = String(4 + index * 5).padStart(2, "0");
-
-      mockPlans.push({
-        rollingId: `mock-${year}-${month.value}-${index + 1}`,
-        sequence: index + 1,
-        id: `mock-oap-${month.value}-${index + 1}`,
-        participants: String(18 + index * 4),
-        hours: index % 2 === 0 ? "3" : "6",
-        budget: String(18000 + index * 4500),
-        trainer: "HRD Center",
-        provider: "Internal Trainer",
-        owner: "admin.hrd",
-        batch: `${index + 1}/${year}`,
-        location: course.company,
-        trainingDate: `${year}-${month.value}-${day}`,
-        startTime: course.time[0],
-        endTime: course.time[1],
-        company: course.company,
-        status: index % 2 === 0 ? "Planned" : "Planning",
-        updatedAt: `${year}-${month.value}-01`,
-        course: {
-          code: course.code,
-          name: course.name,
-          objective: `Mock-up schedule for ${course.name}.`,
-          learningContent: `${course.group} learning content.`,
-          targetGroup: "All related employees",
-          methodology: "Classroom",
-          preTest: "Pre test",
-          postTest: "Post test",
-          evaluation: "Course evaluation",
-          evaluationAfter30Day: "Supervisor follow-up",
-          lifeCycleMonth: "12",
-          courseType: "IN-HOUSE",
-          courseGroup: course.group,
-        },
-      });
-    }
-  });
-
-  return mockPlans;
-};
 
 const buildCalendarCells = (year: string, month: string, plans: RollingPlan[]) => {
   const yearNumber = Number(year);
@@ -177,12 +83,12 @@ type ScheduleCalendarProps = {
 
 export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarProps = {}) {
   const user = useAuthenticatedUser();
-  const [selectedYear, setSelectedYear] = useState("2026");
+  const [calendarToday] = useState(getCurrentCalendarDate);
+  const [selectedYear, setSelectedYear] = useState(calendarToday.year);
   const [selectedMonth, setSelectedMonth] = useState<"all" | string>("all");
   const [expandedTrainingMonth, setExpandedTrainingMonth] = useState("");
   const [expandedOverviewMonth, setExpandedOverviewMonth] = useState("");
   const [expandedOverviewCourse, setExpandedOverviewCourse] = useState("");
-  const [scheduleUpdates, setScheduleUpdates] = useState<Record<string, ScheduleEditForm>>({});
   const [editingPlanId, setEditingPlanId] = useState("");
   const [editForm, setEditForm] = useState<ScheduleEditForm | null>(null);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
@@ -211,14 +117,18 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
             userCompanyCode,
           ),
         )
-        .map((plan) => ({
-          ...plan,
-          ...(scheduleUpdates[plan.rollingId] ?? {}),
-        }))
-        .filter((plan) => !isWeekendDate(plan.trainingDate))
         .sort((a, b) => a.trainingDate.localeCompare(b.trainingDate)),
-    [rollingPlans, scheduleUpdates, user?.roleCode, userCompanyCode],
+    [rollingPlans, user?.roleCode, userCompanyCode],
   );
+  const calendarYears = useMemo(
+    () =>
+      buildCalendarYearOptions(
+        calendarToday.year,
+        rollingPlans.map((plan) => plan.trainingDate),
+      ),
+    [calendarToday.year, rollingPlans],
+  );
+  const todayDate = `${calendarToday.year}-${calendarToday.month}-${String(calendarToday.day).padStart(2, "0")}`;
   const editingPlan = schedulePlans.find((plan) => plan.rollingId === editingPlanId) ?? null;
 
   const monthSummaries = useMemo(
@@ -266,7 +176,7 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
     selectedMonth === "all"
       ? `${selectedYear}-12-31`
       : `${selectedYear}-${selectedMonth}-${String(new Date(Number(selectedYear), Number(selectedMonth), 0).getDate()).padStart(2, "0")}`;
-  const emailSendDate = new Date().toISOString().slice(0, 10);
+  const emailSendDate = todayDate;
 
   const handleExportExcel = () => {
     const headers = ["Month", "Date", "Course Code", "Course Name", "Time", "Company"];
@@ -362,7 +272,6 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
     );
     setRollingPlans(nextPlans);
     writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.rollingPlans, nextPlans);
-    setScheduleUpdates({});
     setSelectedMonth(editForm.trainingDate.slice(5, 7));
     setEditingPlanId("");
     setEditForm(null);
@@ -373,6 +282,13 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
     setEditForm(null);
   };
 
+  const handleShowCurrentMonth = () => {
+    setSelectedYear(calendarToday.year);
+    setSelectedMonth(calendarToday.month);
+    setExpandedTrainingMonth("");
+    setExpandedOverviewMonth(calendarToday.month);
+  };
+
   return (
     <section className={styles.moduleWorkspace} aria-label="Schedule calendar module">
       <section className={styles.panel}>
@@ -380,7 +296,7 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
           <label>
             <span>Year</span>
             <select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
-              {yearOptions.map((year) => (
+              {calendarYears.map((year) => (
                 <option key={year}>{year}</option>
               ))}
             </select>
@@ -389,6 +305,13 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
             <strong>{scheduleCount}</strong>
             <span>training schedules in {selectedYear}</span>
           </div>
+          <button
+            className={styles.todayButton}
+            type="button"
+            onClick={handleShowCurrentMonth}
+          >
+            Current month
+          </button>
           <button
             className={styles.exportButton}
             disabled={exportPlans.length === 0}
@@ -498,14 +421,14 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
             type="button"
             onClick={() => setSelectedMonth("all")}
           >
-            All year
+            All Year
           </button>
           {calendarMonths.map((month) => {
             const planCount = monthSummaries.find((item) => item.value === month.value)?.plans.length ?? 0;
 
             return (
               <button
-                className={selectedMonth === month.value ? styles.activeMonth : ""}
+                className={`${selectedMonth === month.value ? styles.activeMonth : ""} ${selectedYear === calendarToday.year && month.value === calendarToday.month ? styles.currentMonthTab : ""}`}
                 key={month.value}
                 type="button"
                 onClick={() => setSelectedMonth(month.value)}
@@ -521,7 +444,7 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
       {selectedMonth === "all" ? (
         <section className={styles.monthGrid} aria-label={`${selectedYear} monthly training detail`}>
           {displayedMonths.map((month) => (
-            <article className={`${styles.monthCard} ${month.plans.length > 0 ? styles.hasPlans : ""}`} key={month.value}>
+            <article className={`${styles.monthCard} ${month.plans.length > 0 ? styles.hasPlans : ""} ${selectedYear === calendarToday.year && month.value === calendarToday.month ? styles.currentMonthCard : ""}`} key={month.value}>
               <header>
                 <div>
                   <h3>{month.label}</h3>
@@ -551,7 +474,7 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
                   <div
                     className={`${cell.day ? "" : styles.blankMiniDay} ${
                       cell.plans.length > 0 ? styles.busyMiniDay : ""
-                    }`}
+                    } ${cell.date === todayDate ? styles.todayMiniDay : ""}`}
                     key={`${month.value}-${cell.date || "blank"}-${index}`}
                   >
                     {cell.day ? <span>{cell.day}</span> : null}
@@ -591,7 +514,7 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
               <div
                 className={`${styles.calendarDay} ${cell.day ? "" : styles.blankDay} ${
                   cell.plans.length > 0 ? styles.trainingDay : ""
-                }`}
+                } ${cell.date === todayDate ? styles.todayCalendarDay : ""}`}
                 key={`${cell.date || "blank"}-${index}`}
               >
                 {cell.day ? (
@@ -621,21 +544,22 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
         </section>
       )}
 
-      <section className={styles.courseOverview} aria-label="Monthly course overview">
-        <header>
-          <div>
-            <p className={styles.panelKicker}>Course overview</p>
-            <h3>What training is available</h3>
-          </div>
-          <span>{selectedMonth === "all" ? selectedYear : displayedMonths[0]?.label}</span>
-        </header>
-        <div className={styles.courseOverviewList}>
-          {displayedMonths.map((month) => {
-            const firstPlan = month.plans[0];
-            const isOpen = expandedOverviewMonth === month.value;
+      {selectedMonth !== "all" ? (
+        <section className={styles.courseOverview} aria-label="Monthly course overview">
+          <header>
+            <div>
+              <p className={styles.panelKicker}>Course overview</p>
+              <h3>What training is available</h3>
+            </div>
+            <span>{displayedMonths[0]?.label}</span>
+          </header>
+          <div className={styles.courseOverviewList}>
+            {displayedMonths.map((month) => {
+              const firstPlan = month.plans[0];
+              const isOpen = expandedOverviewMonth === month.value;
 
-            return (
-              <article className={styles.overviewRow} key={month.value}>
+              return (
+                <article className={styles.overviewRow} key={month.value}>
                 <div className={styles.overviewSummary}>
                   <div className={styles.monthBadge}>
                     <strong>{month.shortLabel}</strong>
@@ -715,11 +639,12 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
                     ))}
                   </ul>
                 ) : null}
-              </article>
-            );
-          })}
-        </div>
-      </section>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
     </section>
   );
 }
