@@ -12,7 +12,10 @@ type LoginHandlerDependencies = {
     username: string,
     password: string,
   ) => Promise<AuthenticatedPrincipal>;
-  createToken?: (userId: string) => string;
+  createToken?: (
+    userId: string,
+    principal: AuthenticatedPrincipal,
+  ) => string;
   production?: boolean;
 };
 
@@ -62,9 +65,9 @@ export const createLoginHandler = (
       const principal = await (
         dependencies.authenticate ?? authenticateCredentials
       )(credentials.username, credentials.password);
-      const token = (dependencies.createToken ?? createSessionToken)(
-        principal.userId,
-      );
+      const token = dependencies.createToken
+        ? dependencies.createToken(principal.userId, principal)
+        : createSessionToken(principal.userId, { principal });
       const response = apiSuccess({ user: principal });
 
       response.headers.set("Cache-Control", "no-store");

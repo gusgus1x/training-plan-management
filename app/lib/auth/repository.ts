@@ -52,7 +52,15 @@ const runWithPoolRetry = async <Result>(
   try {
     return await operation(await getPool());
   } catch (error) {
-    if (getPool === getSqlServerPool) {
+    const errorCode =
+      error && typeof error === "object" && "code" in error
+        ? String(error.code).toUpperCase()
+        : "";
+    const isClosedConnection = ["ECONNCLOSED", "ENOTOPEN", "ESOCKET"].includes(
+      errorCode,
+    );
+
+    if (getPool === getSqlServerPool && isClosedConnection) {
       await resetSqlServerPool();
       return operation(await getPool());
     }

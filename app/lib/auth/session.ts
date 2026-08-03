@@ -1,23 +1,38 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { NextResponse } from "next/server";
+import {
+  ROLE_CODES,
+  type AuthenticatedPrincipal,
+  type RoleCode,
+} from "./types";
 
 export const SESSION_COOKIE_NAME = "tpm_session";
 export const SESSION_IDLE_SECONDS = 30 * 60;
 export const SESSION_ABSOLUTE_SECONDS = 8 * 60 * 60;
+export const SESSION_REVALIDATE_SECONDS = 5 * 60;
 
 type SessionEnvironment = Record<string, string | undefined>;
 
-export type SessionPayload = {
-  version: 1;
+type SessionPayloadBase = {
   userId: string;
   issuedAt: number;
   lastSeenAt: number;
 };
 
+export type SessionPayload = SessionPayloadBase & ({
+  version: 1;
+} | {
+  version: 2;
+  validatedAt: number;
+  principal: AuthenticatedPrincipal;
+});
+
 type CreateSessionOptions = {
   secret?: string;
   now?: number;
   issuedAt?: number;
+  validatedAt?: number;
+  principal?: AuthenticatedPrincipal;
 };
 
 type VerifySessionOptions = {
@@ -49,19 +64,63 @@ export const getSessionSecret = (
 const sign = (encodedPayload: string, secret: string) =>
   createHmac("sha256", secret).update(encodedPayload).digest("base64url");
 
+const nullablePrincipalFields = [
+  "employeeId",
+  "companyId",
+  "email",
+  "employeeCode",
+  "displayName",
+  "companyCode",
+  "companyName",
+  "functionCode",
+  "functionName",
+  "positionCode",
+  "positionName",
+  "levelCode",
+  "levelName",
+  "pl",
+] as const;
+
+const isAuthenticatedPrincipal = (
+  value: unknown,
+): value is AuthenticatedPrincipal => {
+  if (!value || typeof value !== "object") return false;
+  const principal = value as Partial<AuthenticatedPrincipal>;
+  return (
+    typeof principal.userId === "string" &&
+    typeof principal.username === "string" &&
+    typeof principal.role === "string" &&
+    ROLE_CODES.includes(principal.role as RoleCode) &&
+    nullablePrincipalFields.every(
+      (field) =>
+        principal[field] === null || typeof principal[field] === "string",
+    )
+  );
+};
+
 const isValidPayload = (value: unknown): value is SessionPayload => {
   if (!value || typeof value !== "object") {
     return false;
   }
 
-  const payload = value as Partial<SessionPayload>;
+  const payload = value as Partial<SessionPayload> & Record<string, unknown>;
 
-  return (
-    payload.version === 1 &&
+  const validBase =
+    (payload.version === 1 || payload.version === 2) &&
     typeof payload.userId === "string" &&
     /^[1-9]\d*$/.test(payload.userId) &&
     Number.isInteger(payload.issuedAt) &&
-    Number.isInteger(payload.lastSeenAt)
+    Number.isInteger(payload.lastSeenAt);
+
+  if (!validBase) return false;
+  if (payload.version === 1) return true;
+
+  return (
+    Number.isInteger(payload.validatedAt) &&
+    Number(payload.validatedAt) >= Number(payload.issuedAt) &&
+    Number(payload.validatedAt) <= Number(payload.lastSeenAt) &&
+    isAuthenticatedPrincipal(payload.principal) &&
+    payload.principal.userId === payload.userId
   );
 };
 
@@ -73,12 +132,19 @@ export const createSessionToken = (
 ) => {
   const secret = options.secret ?? getSessionSecret();
   const now = options.now ?? currentEpochSeconds();
-  const payload: SessionPayload = {
-    version: 1,
+  const basePayload: SessionPayloadBase = {
     userId,
     issuedAt: options.issuedAt ?? now,
     lastSeenAt: now,
   };
+  const payload: SessionPayload = options.principal
+    ? {
+        ...basePayload,
+        version: 2,
+        validatedAt: options.validatedAt ?? now,
+        principal: options.principal,
+      }
+    : { ...basePayload, version: 1 };
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString(
     "base64url",
   );

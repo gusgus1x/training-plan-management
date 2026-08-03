@@ -29,6 +29,7 @@ export type ClientSessionUser = {
 };
 
 type Fetcher = typeof fetch;
+const SESSION_CHECK_TIMEOUT_MS = 6_000;
 
 export class AuthenticationClientError extends Error {
   constructor() {
@@ -140,12 +141,26 @@ export const loginWithCredentials = async (
   return readSessionUser(response);
 };
 
-export const getCurrentSession = async (fetcher: Fetcher = fetch) => {
-  const response = await fetcher("/api/auth/session", {
-    method: "GET",
-    credentials: "include",
-    cache: "no-store",
-  });
+export const getCurrentSession = async (
+  fetcher: Fetcher = fetch,
+  timeoutMs = SESSION_CHECK_TIMEOUT_MS,
+) => {
+  const controller = new AbortController();
+  const timeout = globalThis.setTimeout(() => controller.abort(), timeoutMs);
+  let response: Response;
+
+  try {
+    response = await fetcher("/api/auth/session", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } catch {
+    throw new AuthenticationClientError();
+  } finally {
+    globalThis.clearTimeout(timeout);
+  }
 
   if (response.status === 401) {
     return null;

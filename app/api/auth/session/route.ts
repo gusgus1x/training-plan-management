@@ -6,6 +6,7 @@ import {
   clearSessionCookie,
   createSessionToken,
   SESSION_COOKIE_NAME,
+  SESSION_REVALIDATE_SECONDS,
   setSessionCookie,
   verifySessionToken,
   type SessionPayload,
@@ -19,6 +20,8 @@ type SessionHandlerDependencies = {
   revalidate?: (userId: string) => Promise<AuthenticatedPrincipal>;
   rollToken?: (payload: SessionPayload) => string;
   production?: boolean;
+  now?: () => number;
+  revalidateAfterSeconds?: number;
 };
 
 const unauthenticated = () =>
@@ -42,16 +45,31 @@ export const createSessionHandler = (
         throw unauthenticated();
       }
 
-      const principal = await (
-        dependencies.revalidate ?? revalidateAuthenticatedUser
-      )(payload.userId);
-      const rolledToken = (
-        dependencies.rollToken ??
-        ((currentPayload: SessionPayload) =>
-          createSessionToken(currentPayload.userId, {
-            issuedAt: currentPayload.issuedAt,
-          }))
-      )(payload);
+      // Version 1 sessions contain only a user id and require a blocking SQL
+      // lookup. Expire them immediately so LAN clients can sign in once and
+      // receive the self-contained, signed version 2 session.
+      if (payload.version === 1) {
+        throw unauthenticated();
+      }
+
+      const now = dependencies.now?.() ?? Math.floor(Date.now() / 1000);
+      const revalidateAfterSeconds =
+        dependencies.revalidateAfterSeconds ?? SESSION_REVALIDATE_SECONDS;
+      const canUseCachedPrincipal =
+        now - payload.validatedAt < revalidateAfterSeconds;
+      const principal = canUseCachedPrincipal
+        ? payload.principal
+        : await (dependencies.revalidate ?? revalidateAuthenticatedUser)(
+            payload.userId,
+          );
+      const validatedAt = canUseCachedPrincipal ? payload.validatedAt : now;
+      const rolledToken = dependencies.rollToken
+        ? dependencies.rollToken(payload)
+        : createSessionToken(payload.userId, {
+            issuedAt: payload.issuedAt,
+            principal,
+            validatedAt,
+          });
       const response = apiSuccess({ user: principal });
 
       response.headers.set("Cache-Control", "no-store");
