@@ -1057,13 +1057,13 @@ export default function TrainingAcceptSurvey() {
                     ? "Save participant list before exporting."
                     : acceptedParticipants.length === 0
                       ? "Add and save at least one participant before exporting."
-                      : "Export attendance sheet"
+                      : "Export participant list to Excel"
                 }
                 onClick={() => void handleExportAttendanceSheet()}
               >
                 {isExportingAttendance
                   ? "Preparing Excel..."
-                  : "Export attendance sheet"}
+                  : "Export Excel"}
               </button>
             </div>
           </div>

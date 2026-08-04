@@ -525,6 +525,7 @@
 .actualCostPanel {
   position: sticky;
   top: 124px;
+  align-self: start;
   overflow: hidden;
   border-left: 0;
 }
@@ -749,17 +750,82 @@
   accent-color: var(--ui-30-primary);
 }
 
-.walkInPill {
-  display: inline-flex !important;
-  width: fit-content;
-  border-radius: 999px;
-  background: #fff7ed;
-  color: #b45309 !important;
-  font-size: 0.66rem !important;
+.attendanceHeaderActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.attendanceHeaderActions > span {
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
   font-weight: 900;
-  line-height: 1.2;
-  margin-top: 0 !important;
-  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.selectAllAttendance {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 8px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  cursor: pointer;
+  padding: 6px 10px;
+  font-size: 0.74rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.selectAllAttendance input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--ui-30-primary);
+}
+
+.selectAllAttendance input:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.attendanceTableWrap {
+  max-height: 420px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  scrollbar-gutter: stable;
+}
+
+.attendanceTableWrap .recordTable {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.attendanceTableWrap .recordTable th:nth-child(1) {
+  width: 28%;
+}
+
+.attendanceTableWrap .recordTable th:nth-child(2) {
+  width: 42%;
+}
+
+.attendanceTableWrap .recordTable th:nth-child(3) {
+  width: 30%;
+}
+
+.attendanceTableWrap .recordTable td {
+  overflow-wrap: anywhere;
+}
+
+.attendanceTableWrap .recordTable thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .actualCostHeader {
@@ -893,6 +959,17 @@
   .actualCostGrid input {
     text-align: left;
   }
+
+  .attendanceHeaderActions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .selectAllAttendance {
+    justify-content: center;
+  }
+
 }
 
 .recordOverviewGrid,

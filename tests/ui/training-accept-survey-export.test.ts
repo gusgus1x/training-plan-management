@@ -56,6 +56,7 @@ describe("Training Accept Survey attendance sheet export", () => {
       workbook,
       "xl/worksheets/sheet1.xml",
     ).toString("utf8");
+    const stylesXml = readXlsxEntry(workbook, "xl/styles.xml").toString("utf8");
 
     expect(workbook.subarray(0, 2).toString("ascii")).toBe("PK");
     expect(worksheetXml).toContain("หลักสูตรภาวะผู้นำ Leadership Essentials");
@@ -64,6 +65,9 @@ describe("Training Accept Survey attendance sheet export", () => {
     expect(worksheetXml).toContain("ATA-1001");
     expect(worksheetXml).toContain("Anan");
     expect(worksheetXml).toContain("Sukprasert");
+    expect(stylesXml).toMatch(
+      /<xf\b[^>]*fontId="5"[^>]*applyAlignment="1"[^>]*><alignment horizontal="center" vertical="center"\/><\/xf>/,
+    );
     expect(worksheetXml).toContain('<c r="B12"');
     expect(worksheetXml).toMatch(
       /<c r="B12" s="\d+" t="inlineStr"><is><t xml:space="preserve"><\/t>/,
@@ -120,7 +124,8 @@ describe("Training Accept Survey attendance sheet export", () => {
     expect(workbookXml).toContain('name="รายชื่อ 1-30"');
     expect(workbookXml).toContain('name="รายชื่อ 31-60"');
     expect(workbookXml).toContain('name="รายชื่อ 61-65"');
-    expect(secondSheetXml).toContain("หน้า 2/3");
+    expect(secondSheetXml).not.toContain("หน้า 2/3");
+    expect(secondSheetXml).not.toContain("หน้า 1/3");
     expect(secondSheetXml).toContain("EMP-31");
     expect(secondSheetXml).toContain(
       '<c r="B11" s="13" t="inlineStr"><is><t xml:space="preserve">31</t>',

@@ -94,6 +94,9 @@ describe("Training Rolling multi-session workflow", () => {
       "candidate.courseId === selectedCourse.id",
     );
     expect(surveySource).toContain("selectedCourse?.companies");
+    expect(surveySource).toContain("handleExportAttendanceSheet");
+    expect(surveySource).toContain("Export Excel");
+    expect(surveySource).not.toContain("Export PDF");
   });
 
   it("separates automatic target employees from later manual additions", () => {
@@ -115,6 +118,9 @@ describe("Training Rolling multi-session workflow", () => {
     const actualSource = readSource(
       "app/components/center_factory/TrainingRecordManagement/modules/TrainingActual.tsx",
     );
+    const actualStyles = readSource(
+      "app/components/center_factory/TrainingRecordManagement/modules/TrainingRecord.module.css",
+    );
 
     expect(actualSource).toContain("selectedCourseGroupId");
     expect(actualSource).toContain("availableCourseGroups");
@@ -123,6 +129,14 @@ describe("Training Rolling multi-session workflow", () => {
     expect(actualSource).toContain("rollingId: selectedCourse.id");
     expect(actualSource).toContain("scheduleGroupId: selectedCourse.groupId");
     expect(actualSource).toContain("course.ownerCompany ?? course.company");
+    expect(actualSource).toContain("const setAllAttendance");
+    expect(actualSource).toContain("setAllAttendance(!allAttended)");
+    expect(actualSource).toContain("Select all");
+    expect(actualSource).toContain("styles.attendanceTableWrap");
+    expect(actualStyles).toContain(".attendanceTableWrap");
+    expect(actualStyles).toContain("max-height: 420px");
+    expect(actualStyles).toContain("overflow-x: hidden");
+    expect(actualStyles).toContain("overflow-y: auto");
   });
 
   it("groups completed records while keeping each Rolling session separate", () => {

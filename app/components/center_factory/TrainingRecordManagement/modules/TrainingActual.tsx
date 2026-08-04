@@ -21,7 +21,7 @@ export const trainingActualModule = {
   title: "Training Actual",
   subtitle: "Actual Attendance",
   description:
-    "Check actual attendance, add unregistered attendees, record real training expenses, and save the completed actual record.",
+    "Check actual attendance, record real training expenses, and save the completed actual record.",
 } as const;
 
 type ExpenseKey =
@@ -358,13 +358,14 @@ export default function TrainingActual() {
   const actualCount = selectedCourse
     ? selectedCourse.attendees.filter((attendee) => attendee.attended).length
     : 0;
-  const walkInCount = selectedCourse
-    ? selectedCourse.attendees.filter((attendee) => attendee.attended && !attendee.registered).length
-    : 0;
   const registeredCount = selectedCourse
     ? selectedCourse.attendees.filter((attendee) => attendee.registered).length
     : 0;
   const absentCount = selectedCourse ? selectedCourse.attendees.length - actualCount : 0;
+  const allAttended = Boolean(
+    selectedCourse?.attendees.length &&
+      selectedCourse.attendees.every((attendee) => attendee.attended),
+  );
   const expenseTotal = selectedCourse
     ? expenseFields.reduce(
         (total, field) =>
@@ -389,6 +390,16 @@ export default function TrainingActual() {
       attendees: course.attendees.map((attendee) =>
         attendee.id === attendeeId ? { ...attendee, attended: !attendee.attended } : attendee,
       ),
+    }));
+  };
+
+  const setAllAttendance = (attended: boolean) => {
+    updateSelectedCourse((course) => ({
+      ...course,
+      attendees: course.attendees.map((attendee) => ({
+        ...attendee,
+        attended,
+      })),
     }));
   };
 
@@ -473,7 +484,6 @@ export default function TrainingActual() {
         </div>
         <div className={styles.heroMeta}>
             <span>{actualCount} Actual</span>
-            <span>{walkInCount} Walk-in</span>
             <span>
               {selectedCourseOwner
                 ? selectedCourseOwner === "CENTER"
@@ -594,10 +604,6 @@ export default function TrainingActual() {
                 <span>Absent</span>
                 <strong>{absentCount}</strong>
               </article>
-              <article>
-                <span>Walk-in</span>
-                <strong>{walkInCount}</strong>
-              </article>
             </div>
           </div>
 
@@ -612,17 +618,27 @@ export default function TrainingActual() {
               <p className={styles.kicker}>Attendance Check</p>
               <h3>Actual Attendees</h3>
             </div>
-            <span>{actualCount} attended</span>
+            <div className={styles.attendanceHeaderActions}>
+              <span>{actualCount} / {selectedCourse.attendees.length} attended</span>
+              <label className={styles.selectAllAttendance}>
+                <input
+                  checked={allAttended}
+                  disabled={selectedCourse.attendees.length === 0}
+                  type="checkbox"
+                  onChange={() => setAllAttendance(!allAttended)}
+                />
+                <span>{allAttended ? "Clear all" : "Select all"}</span>
+              </label>
+            </div>
           </div>
 
-          <div className={styles.tableWrap}>
+          <div className={`${styles.tableWrap} ${styles.attendanceTableWrap}`}>
             <table className={styles.recordTable}>
               <thead>
                 <tr>
                   <th>Attend</th>
                   <th>Employee</th>
                   <th>Department</th>
-                  <th>Source</th>
                 </tr>
               </thead>
               <tbody>
@@ -643,11 +659,6 @@ export default function TrainingActual() {
                       <span>{attendee.employeeCode}</span>
                     </td>
                     <td>{attendee.department}</td>
-                    <td>
-                      <span className={attendee.registered ? styles.statusPill : styles.walkInPill}>
-                        {attendee.registered ? "Registered" : "Walk-in"}
-                      </span>
-                    </td>
                   </tr>
                 ))}
               </tbody>
