@@ -316,9 +316,27 @@
 
 .toolbar {
   display: grid;
-  grid-template-columns: 160px minmax(0, 1fr) auto;
+  grid-template-columns: 160px minmax(0, 1fr) auto auto auto;
   align-items: end;
   gap: 14px;
+}
+
+.todayButton {
+  min-height: 40px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-primary);
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.todayButton:hover {
+  border-color: var(--ui-30-primary);
+  background: var(--ui-30-primary-soft);
 }
 
 .toolbar label {
@@ -459,6 +477,11 @@
   color: var(--ui-60-surface);
 }
 
+.monthTabs .currentMonthTab:not(.activeMonth) {
+  border-color: var(--ui-30-primary);
+  box-shadow: inset 0 -3px 0 var(--ui-30-primary);
+}
+
 .monthGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -489,6 +512,10 @@
 
 .monthCard.hasPlans::before {
   border-top-color: var(--ui-30-primary);
+}
+
+.monthCard.currentMonthCard {
+  border-color: var(--ui-10-accent);
 }
 
 .monthCard header {
@@ -642,6 +669,16 @@
 
 .miniCalendar .busyMiniDay span {
   color: var(--ui-30-primary);
+  font-weight: 900;
+}
+
+.miniCalendar .todayMiniDay {
+  border-color: var(--ui-10-accent);
+  box-shadow: inset 0 0 0 1px var(--ui-10-accent);
+}
+
+.miniCalendar .todayMiniDay span {
+  color: var(--ui-10-accent);
   font-weight: 900;
 }
 
@@ -814,6 +851,15 @@
 .trainingDay .dayNumber {
   background: var(--ui-30-primary-soft);
   color: var(--ui-30-primary);
+}
+
+.todayCalendarDay {
+  box-shadow: inset 0 0 0 2px rgba(215, 25, 32, 0.28);
+}
+
+.todayCalendarDay .dayNumber {
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
 }
 
 .calendarEvents {
@@ -1449,7 +1495,7 @@
 }
 
 .toolbar {
-  grid-template-columns: 190px minmax(260px, 1fr) auto auto;
+  grid-template-columns: 190px minmax(240px, 1fr) auto auto auto;
   align-items: stretch;
   gap: 12px;
   border: 0;
@@ -1459,6 +1505,7 @@
 
 .toolbar label,
 .yearNote,
+.todayButton,
 .exportButton,
 .emailButton {
   min-height: 54px;
@@ -1837,6 +1884,36 @@
   padding: 12px;
 }
 
+.monthTabs .currentMonthTab:not(.activeMonth) {
+  border-color: var(--ui-30-primary);
+  box-shadow: inset 0 -3px 0 var(--ui-30-primary);
+}
+
+.monthCard.currentMonthCard {
+  border-color: var(--ui-10-accent);
+}
+
+.miniCalendar .todayMiniDay {
+  border-color: var(--ui-10-accent);
+  box-shadow: inset 0 0 0 1px var(--ui-10-accent);
+}
+
+.miniCalendar .todayMiniDay span {
+  color: var(--ui-10-accent);
+  font-weight: 900;
+}
+
+.todayCalendarDay,
+.trainingDay.todayCalendarDay {
+  box-shadow: inset 0 0 0 2px rgba(215, 25, 32, 0.3);
+}
+
+.todayCalendarDay .dayNumber,
+.trainingDay.todayCalendarDay .dayNumber {
+  background: var(--ui-10-accent);
+  color: var(--ui-60-surface);
+}
+
 @media (max-width: 1080px) {
   .toolbar,
   .overviewSummary,
@@ -1847,6 +1924,7 @@
 
   .exportButton,
   .emailButton,
+  .todayButton,
   .saveEditButton,
   .overviewSummary button,
   .overviewDetails li button {

@@ -652,6 +652,10 @@
   background: #f0fdfa;
 }
 
+.today {
+  box-shadow: inset 0 0 0 2px rgba(215, 25, 32, 0.2);
+}
+
 .calendarTrainingList {
   margin-top: 12px;
 }

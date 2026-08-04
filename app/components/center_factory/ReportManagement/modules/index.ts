@@ -18,6 +18,7 @@ export type ReportModuleProps = {
 };
 
 export type ReportModuleTopic = {
+  icon: string;
   title: string;
   subtitle: string;
   description: string;
@@ -26,7 +27,7 @@ export type ReportModuleTopic = {
 };
 
 export const centerReportItems: readonly ReportModuleTopic[] = [
-  { ...summaryDashboardModule, Component: SummaryDashboard },
-  { ...scheduleCalendarModule, Component: ScheduleCalendar },
-  { ...internalReportModule, Component: InternalReport, locked: true },
+  { ...summaryDashboardModule, icon: "📊", Component: SummaryDashboard },
+  { ...scheduleCalendarModule, icon: "📅", Component: ScheduleCalendar },
+  { ...internalReportModule, icon: "✉️", Component: InternalReport, locked: true },
 ];

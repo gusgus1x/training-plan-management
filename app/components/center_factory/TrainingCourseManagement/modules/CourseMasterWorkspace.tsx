@@ -19,7 +19,6 @@ import {
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
 import { normalizeEmployeeLevel } from "../../../../lib/employeeMasterData";
-import { getCourseOutlineFileName } from "../../../../lib/courseOutlineExport";
 import {
   readPublishedAssessmentOptions,
   readPublishedEvaluationOptions,
@@ -136,8 +135,6 @@ function CourseMaster() {
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [openDetailCourseId, setOpenDetailCourseId] = useState("");
   const [search, setSearch] = useState("");
-  const [exportingCourseId, setExportingCourseId] = useState("");
-  const [exportMessage, setExportMessage] = useState("");
   const [standards, setStandards] = useState<CourseStandardRecord[]>(() =>
     readWorkflowCollection<CourseStandardRecord>(TRAINING_WORKFLOW_KEYS.standards),
   );
@@ -519,47 +516,6 @@ function CourseMaster() {
     resetStandardForm();
   };
 
-  const handleExportOutline = async (course: CourseRecord) => {
-    const standard =
-      standards.find(
-        (item) =>
-          item.courseId === course.id || item.courseCode === course.courseCode,
-      ) ?? null;
-    setExportingCourseId(course.id);
-    setExportMessage("");
-
-    try {
-      const response = await fetch("/api/course-master/course-outline", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ course, standard }),
-      });
-      const errorPayload = response.ok
-        ? null
-        : ((await response.json().catch(() => null)) as { error?: string } | null);
-      if (!response.ok) {
-        throw new Error(errorPayload?.error || "Unable to create Course Outline.");
-      }
-
-      const file = await response.blob();
-      const downloadUrl = URL.createObjectURL(file);
-      const downloadLink = document.createElement("a");
-      downloadLink.href = downloadUrl;
-      downloadLink.download = getCourseOutlineFileName(course);
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      downloadLink.remove();
-      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
-      setExportMessage(`Exported Course Outline: ${course.courseCode}`);
-    } catch (error) {
-      setExportMessage(
-        error instanceof Error ? error.message : "Unable to export Course Outline.",
-      );
-    } finally {
-      setExportingCourseId("");
-    }
-  };
-
   const handleShowDetails = (course: CourseRecord) => {
     const isSameOpen = openDetailCourseId === course.id && !isEditing;
     setSelectedCourseId(isSameOpen ? "" : course.id);
@@ -703,7 +659,7 @@ function CourseMaster() {
           <select value={form.courseGroup} disabled={!isEditing} onChange={(event) => handleCourseGroupChange(event.target.value)}>
             <option value="">Select Course Group</option>
             {courseGroups.map((group) => (
-              <option key={group} value={group}>{group}</option>
+              <option key={group} value={group} translate="no">{group}</option>
 
             ))}
           </select>
@@ -1094,12 +1050,6 @@ function CourseMaster() {
         </button>
       </section>
 
-      {exportMessage ? (
-        <p className={styles.exportStatus} role="status">
-          {exportMessage}
-        </p>
-      ) : null}
-
       {isNewOpen ? (
         <div className={styles.topDropPanel}>
           {renderCoursePanel("New course", "New")}
@@ -1170,16 +1120,6 @@ function CourseMaster() {
                           onClick={() => openCourseEditor(course)}
                         >
                           Edit
-                        </button>
-                        <button
-                          className={styles.detailButton}
-                          type="button"
-                          disabled={Boolean(exportingCourseId)}
-                          onClick={() => void handleExportOutline(course)}
-                        >
-                          {exportingCourseId === course.id
-                            ? "Preparing..."
-                            : "Export Outline"}
                         </button>
                       </td>
                     </tr>

@@ -153,6 +153,7 @@ export const setXlsxInlineCell = (
   worksheetXml: string,
   reference: string,
   value: unknown,
+  styleOverride?: string,
 ) => {
   const cellPattern = new RegExp(
     `<c\\b([^>]*\\br=["']${reference}["'][^>]*)>([\\s\\S]*?)<\\/c>`,
@@ -162,7 +163,8 @@ export const setXlsxInlineCell = (
   );
   const match = worksheetXml.match(selfClosingPattern) ?? worksheetXml.match(cellPattern);
   if (!match) throw new Error(`Invalid Excel template: cell ${reference} was not found.`);
-  const style = match[1].match(/\bs=["']([^"']+)["']/)?.[1];
+  const style =
+    styleOverride ?? match[1].match(/\bs=["']([^"']+)["']/)?.[1];
   const replacement = `<c r="${reference}"${style ? ` s="${style}"` : ""} t="inlineStr"><is><t xml:space="preserve">${escapeXlsxXml(value)}</t></is></c>`;
   return worksheetXml.replace(match[0], replacement);
 };

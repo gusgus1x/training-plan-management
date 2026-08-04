@@ -112,6 +112,7 @@
 
 .toolbarActions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   justify-content: flex-end;
   white-space: nowrap;
@@ -211,6 +212,24 @@
   margin-bottom: 14px;
 }
 
+.exportStatus {
+  margin: -2px 0 12px;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 8px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  padding: 9px 12px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.selectionHint {
+  margin: -4px 0 12px;
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
 .panelHeader {
   display: flex;
   justify-content: space-between;
@@ -234,6 +253,12 @@
   font-size: 0.72rem;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.formGrid input:disabled {
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  cursor: not-allowed;
 }
 
 .formGrid label {
@@ -308,17 +333,29 @@
   border-radius: 8px;
   background: var(--ui-60-surface-soft);
   padding: 8px;
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
 .planTable {
   width: 100%;
-  min-width: 1180px;
+  min-width: 0;
+  table-layout: fixed;
   border-collapse: collapse;
   background: var(--ui-60-surface);
   border-radius: 8px;
   overflow: hidden;
 }
+
+.planTable th:nth-child(1) { width: 54px; }
+.planTable th:nth-child(2) { width: 18%; }
+.planTable th:nth-child(3) { width: 7%; }
+.planTable th:nth-child(4) { width: 6%; }
+.planTable th:nth-child(5) { width: 8%; }
+.planTable th:nth-child(6) { width: 12%; }
+.planTable th:nth-child(7) { width: 12%; }
+.planTable th:nth-child(8) { width: 9%; }
+.planTable th:nth-child(9) { width: 8%; }
+.planTable th:nth-child(10) { width: 155px; }
 
 .planTable th {
   position: sticky;
@@ -340,6 +377,7 @@
   padding: 11px 12px;
   font-size: 0.8rem;
   vertical-align: middle;
+  overflow-wrap: anywhere;
 }
 
 .planTable tbody tr:hover td {
@@ -400,11 +438,83 @@
 }
 
 .actionCell {
-  display: flex;
-  gap: 6px;
-  justify-content: flex-end;
   text-align: right;
   white-space: nowrap;
+}
+
+.actionButtons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.rowActionButton,
+.rowActionState {
+  display: inline-flex;
+  width: auto;
+  min-width: 58px;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.rowActionButton {
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.detailsAction {
+  border: 1px solid #b8c5d6;
+  background: var(--ui-60-surface);
+  color: #17365f;
+}
+
+.detailsAction:hover {
+  border-color: #6f89ad;
+  background: #f3f7fc;
+  transform: translateY(-1px);
+}
+
+.confirmAction {
+  border: 1px solid #138a4b;
+  background: #138a4b;
+  color: #fff;
+  box-shadow: 0 7px 16px rgba(19, 138, 75, 0.18);
+}
+
+.confirmAction:hover {
+  border-color: #0c6f3b;
+  background: #0c6f3b;
+  transform: translateY(-1px);
+}
+
+.rowActionState {
+  border: 1px solid transparent;
+  text-align: center;
+}
+
+.confirmedAction {
+  border-color: #a7dec0;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.cancelledAction {
+  border-color: #fecaca;
+  background: #fff1f2;
+  color: #be123c;
 }
 
 .detailRow td {
@@ -631,7 +741,7 @@
   border-radius: 8px;
   background: var(--ui-60-surface);
   padding: 0;
-  overflow-x: auto;
+  overflow-x: hidden;
 }
 
 .dataTable th,
@@ -674,6 +784,24 @@
     width: min(100% - 28px, 560px);
     padding-inline: 0;
   }
+
+}
+
+.selectionControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+
+.selectionControl input {
+  accent-color: var(--ui-30-primary);
+}
+
+.selectionControl span {
+  margin: 0;
+  color: inherit;
+  font: inherit;
 }
 
 /* CRUD toolbar button alignment */

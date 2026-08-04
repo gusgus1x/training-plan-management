@@ -13,8 +13,22 @@ import type { ClientRoleCode } from "../lib/auth/client";
 
 type LoginPageProps = {
   onLogin: (username: string, password: string) => Promise<void>;
-  onPreviewLogin?: (roleCode: ClientRoleCode) => void;
+  onPreviewLogin?: (
+    roleCode: ClientRoleCode,
+    companyCode?: PreviewCompanyCode,
+  ) => void;
 };
+
+export type PreviewCompanyCode = "ATA" | "TEP" | "ATFB" | "NIC" | "SATI" | "SNF";
+
+const previewCompanyCodes: readonly PreviewCompanyCode[] = [
+  "ATA",
+  "TEP",
+  "ATFB",
+  "NIC",
+  "SATI",
+  "SNF",
+];
 
 const GENERIC_LOGIN_ERROR = "Unable to sign in. Check your username and password.";
 
@@ -24,6 +38,7 @@ export default function LoginPage({
 }: LoginPageProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -43,6 +58,7 @@ export default function LoginPage({
       setErrorMessage(GENERIC_LOGIN_ERROR);
     } finally {
       setPassword("");
+      setIsPasswordVisible(false);
       setIsSubmitting(false);
     }
   };
@@ -145,20 +161,44 @@ export default function LoginPage({
             />
           </label>
 
-          <label className={styles.field}>
-            <span>Password</span>
-            <input
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              maxLength={1024}
-              required
-              disabled={isSubmitting}
-              aria-describedby={errorMessage ? "login-error" : undefined}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
+          <div className={styles.field}>
+            <label htmlFor="login-password">Password</label>
+            <div className={styles.passwordField}>
+              <input
+                id="login-password"
+                name="password"
+                type={isPasswordVisible ? "text" : "password"}
+                autoComplete="current-password"
+                value={password}
+                maxLength={1024}
+                required
+                disabled={isSubmitting}
+                aria-describedby={errorMessage ? "login-error" : undefined}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+              <button
+                className={styles.passwordToggle}
+                type="button"
+                disabled={isSubmitting}
+                aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+                aria-pressed={isPasswordVisible}
+                title={isPasswordVisible ? "Hide password" : "Show password"}
+                onClick={() => setIsPasswordVisible((current) => !current)}
+              >
+                {isPasswordVisible ? (
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="m3 3 18 18" />
+                    <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 4.2A10.6 10.6 0 0 1 12 4c5.5 0 9 8 9 8a16.3 16.3 0 0 1-2.1 3.2M6.6 6.6C4.3 8.2 3 12 3 12s3.5 8 9 8a9.8 9.8 0 0 0 4-.9" />
+                  </svg>
+                ) : (
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="M3 12s3.5-8 9-8 9 8 9 8-3.5 8-9 8-9-8-9-8Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
 
           {errorMessage ? (
             <p
@@ -179,34 +219,69 @@ export default function LoginPage({
             {isSubmitting ? "Signing in..." : "Login"}
           </button>
 
-          {onPreviewLogin ? (
-            <section
-              className={styles.previewAccess}
-              aria-labelledby="preview-access-title"
-            >
-              <div className={styles.previewDivider}>
-                <span>Development only</span>
-              </div>
-              <h3 id="preview-access-title">Mock UI Preview</h3>
-              <p>เปิดหน้าทดสอบโดยไม่สร้าง authenticated session</p>
-              <div className={styles.previewButtons}>
-                {(["HRD_CENTER", "HRD_FACTORY", "EMPLOYEE"] as const).map(
-                  (roleCode) => (
-                    <button
-                      key={roleCode}
-                      className={styles.previewButton}
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => onPreviewLogin(roleCode)}
-                    >
-                      {roleCode}
-                    </button>
-                  ),
-                )}
-              </div>
-            </section>
-          ) : null}
         </form>
+
+        {onPreviewLogin ? (
+          <section
+            className={styles.previewAccess}
+            aria-labelledby="preview-access-title"
+          >
+            <div className={styles.previewDivider}>
+              <span className={styles.previewStatusDot} aria-hidden="true" />
+              <span>Development only</span>
+            </div>
+            <div className={styles.previewHeader}>
+              <div>
+                <h3 id="preview-access-title">Mock UI Preview</h3>
+                <p>เปิดหน้าทดสอบโดยไม่สร้าง authenticated session</p>
+              </div>
+              <div className={styles.previewRoleButtons}>
+                <button
+                  className={styles.previewButton}
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => onPreviewLogin("HRD_CENTER")}
+                >
+                  <span className={styles.previewRoleIcon} aria-hidden="true">🏢</span>
+                  <span>HRD CENTER</span>
+                </button>
+                <button
+                  className={`${styles.previewButton} ${styles.lockedPreviewButton}`}
+                  type="button"
+                  disabled
+                  aria-label="EMPLOYEE - Locked"
+                  title="Employee preview is locked"
+                >
+                  <span className={styles.previewRoleIcon} aria-hidden="true">👤</span>
+                  <span>EMPLOYEE</span>
+                  <span className={styles.previewLock} aria-hidden="true">🔒</span>
+                </button>
+              </div>
+            </div>
+            <div className={styles.previewCompanyHeader}>
+              <span>Mock Factory Users · 6 Companies</span>
+              <b>HRD FACTORY</b>
+            </div>
+            <div className={styles.previewCompanyButtons}>
+              {previewCompanyCodes.map((companyCode) => (
+                <button
+                  key={companyCode}
+                  className={styles.previewCompanyButton}
+                  type="button"
+                  disabled={isSubmitting}
+                  onClick={() => onPreviewLogin("HRD_FACTORY", companyCode)}
+                >
+                  <span className={styles.previewCompanyIcon} aria-hidden="true">🏭</span>
+                  <span className={styles.previewCompanyCopy}>
+                    <strong>{companyCode}</strong>
+                    <small>Mock Factory User</small>
+                  </span>
+                  <span className={styles.previewCompanyArrow} aria-hidden="true">›</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </section>
     </main>
   );

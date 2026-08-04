@@ -16,7 +16,7 @@ import CenterFactoryTrainingCourseManagement from "./center_factory/TrainingCour
 import CenterFactoryTrainingPlanManagement from "./center_factory/TrainingPlanManagement/CenterFactory_TrainingPlanManagement";
 import CenterFactoryTrainingRecordManagement from "./center_factory/TrainingRecordManagement/CenterFactory_TrainingRecordManagement";
 import UserDashboard from "./employee/UserDashboard";
-import LoginPage from "./LoginPage";
+import LoginPage, { type PreviewCompanyCode } from "./LoginPage";
 import Navbar from "./Navbar";
 import { AuthenticatedUserProvider } from "./AuthenticatedUserContext";
 import styles from "./TrainingPlanManagement.module.css";
@@ -40,6 +40,14 @@ const SESSION_CHECK_ERROR =
   "Unable to verify your session. Check the connection and try again.";
 const LOGOUT_ERROR = "Unable to sign out. Please try again.";
 const DEVELOPMENT_PREVIEW_ENABLED = process.env.NODE_ENV === "development";
+const DEVELOPMENT_PREVIEW_COMPANY_NAMES: Record<PreviewCompanyCode, string> = {
+  ATA: "Aisin Takaoka Asia Co., Ltd.",
+  TEP: "Thai Engineering Products Co., Ltd.",
+  ATFB: "Aisin Takaoka Foundry Bangpakong Co., Ltd.",
+  NIC: "The Nawaloha Industry Co., Ltd.",
+  SATI: "Siam AT Industry Co., Ltd.",
+  SNF: "The Siam Nawaloha Foundry Co., Ltd.",
+};
 
 const DEVELOPMENT_PREVIEW_USERS: Record<ClientRoleCode, ClientSessionUser> = {
   HRD_CENTER: {
@@ -148,16 +156,33 @@ export default function TrainingPlanManagement() {
     setAuthentication({ status: "authenticated", user });
   };
 
-  const handlePreviewLogin = (roleCode: ClientRoleCode) => {
-    if (!DEVELOPMENT_PREVIEW_ENABLED) {
+  const handlePreviewLogin = (
+    roleCode: ClientRoleCode,
+    companyCode?: PreviewCompanyCode,
+  ) => {
+    if (!DEVELOPMENT_PREVIEW_ENABLED || roleCode === "EMPLOYEE") {
       return;
     }
+
+    const previewUser =
+      roleCode === "HRD_FACTORY" && companyCode
+        ? {
+            ...DEVELOPMENT_PREVIEW_USERS.HRD_FACTORY,
+            userId: `preview-hrd-factory-${companyCode.toLowerCase()}`,
+            username: `Mock HRD Factory (${companyCode})`,
+            companyId: `preview-company-${companyCode.toLowerCase()}`,
+            email: `mock.hrd.factory.${companyCode.toLowerCase()}@example.invalid`,
+            displayName: `Mock HRD Factory (${companyCode})`,
+            companyCode,
+            companyName: DEVELOPMENT_PREVIEW_COMPANY_NAMES[companyCode],
+          }
+        : DEVELOPMENT_PREVIEW_USERS[roleCode];
 
     setView("dashboard");
     setLogoutMessage(null);
     setAuthentication({
       status: "preview",
-      user: DEVELOPMENT_PREVIEW_USERS[roleCode],
+      user: previewUser,
     });
   };
 

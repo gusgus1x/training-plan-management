@@ -8,6 +8,7 @@ import EvaluationManagement, {
 } from "./EvaluationManagement";
 
 export type CourseModuleTopic = {
+  icon: string;
   title: string;
   subtitle: string;
   description: string;
@@ -15,7 +16,7 @@ export type CourseModuleTopic = {
 };
 
 export const centerCourseItems: readonly CourseModuleTopic[] = [
-  { ...courseMasterWorkspaceModule, Component: CourseMasterWorkspace },
-  { ...assessmentModule, Component: Assessment },
-  { ...evaluationManagementModule, Component: EvaluationManagement },
+  { ...courseMasterWorkspaceModule, icon: "📘", Component: CourseMasterWorkspace },
+  { ...assessmentModule, icon: "📝", Component: Assessment },
+  { ...evaluationManagementModule, icon: "⭐", Component: EvaluationManagement },
 ];

@@ -93,6 +93,22 @@ describe("authentication UI client", () => {
       method: "GET",
       credentials: "include",
       cache: "no-store",
+      signal: expect.any(AbortSignal),
+    });
+  });
+
+  it("stops a session check that does not answer", async () => {
+    const fetcher = vi.fn(
+      (_input: RequestInfo | URL, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError")),
+          );
+        }),
+    ) as unknown as typeof fetch;
+
+    await expect(getCurrentSession(fetcher, 1)).rejects.toMatchObject({
+      name: "AuthenticationClientError",
     });
   });
 

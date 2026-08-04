@@ -180,4 +180,13 @@ describe("Course Master form linking contract", () => {
       'evaluation.timing === "30-Day Follow-up"',
     );
   });
+
+  it("keeps course group values in English while localizing the placeholder", () => {
+    expect(courseMasterSource).toContain(
+      '<option value="">Select Course Group</option>',
+    );
+    expect(courseMasterSource).toContain(
+      '<option key={group} value={group} translate="no">{group}</option>',
+    );
+  });
 });

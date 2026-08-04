@@ -67,6 +67,22 @@ describe("session tokens and auth cookies", () => {
     expect(verifySessionToken(tampered, { secret, now: 1_001 })).toBeNull();
   });
 
+  it("stores a signed principal in a version 2 session token", () => {
+    const token = createSessionToken("42", {
+      secret,
+      now: 1_000,
+      principal,
+    });
+    const payload = verifySessionToken(token, { secret, now: 1_001 });
+
+    expect(payload).toMatchObject({
+      version: 2,
+      userId: "42",
+      validatedAt: 1_000,
+      principal: { username: "factory.test", role: "HRD_FACTORY" },
+    });
+  });
+
   it("enforces idle and absolute expiry", () => {
     const idleToken = createSessionToken("42", { secret, now: 1_000 });
     expect(
@@ -117,17 +133,20 @@ describe("session tokens and auth cookies", () => {
     expect(cookie).not.toContain("not-returned");
   });
 
-  it("revalidates the account from the database contract and rolls a session", async () => {
+  it("revalidates a stale version 2 account and rolls a session", async () => {
     const revalidate = vi.fn().mockResolvedValue(principal);
     const handler = createSessionHandler({
       verifyToken: () => ({
-        version: 1,
+        version: 2,
         userId: "42",
         issuedAt: 100,
-        lastSeenAt: 200,
+        lastSeenAt: 500,
+        validatedAt: 100,
+        principal,
       }),
       revalidate,
       rollToken: () => "rolled-token",
+      now: () => 501,
       production: false,
     });
     const request = new NextRequest("http://localhost/api/auth/session", {
@@ -139,6 +158,91 @@ describe("session tokens and auth cookies", () => {
     expect(revalidate).toHaveBeenCalledWith("42");
     expect(response.headers.get("set-cookie")).toContain("rolled-token");
     expect(response.headers.get("set-cookie")).not.toContain("Secure");
+  });
+
+  it("expires a legacy session immediately without waiting for SQL", async () => {
+    const revalidate = vi.fn().mockRejectedValue(new Error("must not query SQL"));
+    const handler = createSessionHandler({
+      verifyToken: () => ({
+        version: 1,
+        userId: "42",
+        issuedAt: 100,
+        lastSeenAt: 200,
+      }),
+      revalidate,
+      production: false,
+    });
+    const response = await handler(
+      new NextRequest("http://10.123.23.38:3000/api/auth/session", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=legacy-token` },
+      }),
+    );
+
+    expect(response.status).toBe(401);
+    expect(revalidate).not.toHaveBeenCalled();
+    expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
+  });
+
+  it("restores a recently validated session without waiting for the database", async () => {
+    const revalidate = vi.fn().mockRejectedValue(new Error("database should not run"));
+    const rollToken = vi.fn().mockReturnValue("rolled-cached-token");
+    const handler = createSessionHandler({
+      verifyToken: () => ({
+        version: 2,
+        userId: "42",
+        issuedAt: 100,
+        lastSeenAt: 220,
+        validatedAt: 200,
+        principal,
+      }),
+      revalidate,
+      rollToken,
+      now: () => 250,
+      production: false,
+    });
+    const response = await handler(
+      new NextRequest("http://localhost/api/auth/session", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=valid-token` },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(revalidate).not.toHaveBeenCalled();
+    expect(rollToken).toHaveBeenCalledTimes(1);
+    await expect(response.json()).resolves.toMatchObject({
+      data: { user: { username: "factory.test" } },
+    });
+  });
+
+  it("revalidates a cached principal after the short cache window", async () => {
+    const refreshedPrincipal = { ...principal, displayName: "Factory Updated" };
+    const revalidate = vi.fn().mockResolvedValue(refreshedPrincipal);
+    const handler = createSessionHandler({
+      verifyToken: () => ({
+        version: 2,
+        userId: "42",
+        issuedAt: 100,
+        lastSeenAt: 500,
+        validatedAt: 200,
+        principal,
+      }),
+      revalidate,
+      rollToken: () => "rolled-refreshed-token",
+      now: () => 501,
+      revalidateAfterSeconds: 300,
+      production: false,
+    });
+    const response = await handler(
+      new NextRequest("http://localhost/api/auth/session", {
+        headers: { cookie: `${SESSION_COOKIE_NAME}=valid-token` },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(revalidate).toHaveBeenCalledWith("42");
+    await expect(response.json()).resolves.toMatchObject({
+      data: { user: { displayName: "Factory Updated" } },
+    });
   });
 
   it("clears an invalid session without exposing token details", async () => {

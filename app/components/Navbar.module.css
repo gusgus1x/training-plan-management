@@ -276,11 +276,30 @@
   gap: 6px;
   min-width: 0;
   overflow-x: auto;
-  scrollbar-width: none;
+  overscroll-behavior-inline: contain;
+  padding: 2px 4px 7px 2px;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  scrollbar-color: var(--ui-30-primary-border) transparent;
+  scrollbar-width: thin;
 }
 
 .contextItems::-webkit-scrollbar {
-  display: none;
+  display: block;
+  height: 6px;
+}
+
+.contextItems::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.contextItems::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--ui-30-primary-border);
+}
+
+.contextItems::-webkit-scrollbar-thumb:hover {
+  background: var(--ui-30-primary);
 }
 
 .contextItem,
@@ -333,6 +352,12 @@
 .scrolledNavbar {
   background: rgba(15, 23, 42, 0.94);
   color: var(--ui-on-dark);
+}
+
+.contextItem,
+.activeContextItem,
+.lockedContextItem {
+  scroll-snap-align: start;
 }
 
 .scrolledNavbar .groupName,

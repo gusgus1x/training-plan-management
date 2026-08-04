@@ -156,6 +156,7 @@ const thaiUiDictionary: Record<string, string> = {
   "Created By": "สร้างโดย",
   "Current access": "สิทธิ์การเข้าถึงปัจจุบัน",
   "Current User": "ผู้ใช้ปัจจุบัน",
+  "Current month": "เดือนปัจจุบัน",
   "Data Setup": "ตั้งค่าข้อมูล",
   Date: "วันที่",
   Delete: "ลบ",
@@ -503,6 +504,7 @@ const thaiUiDictionary: Record<string, string> = {
   "Add record": "เพิ่มรายการ",
   "All companies": "ทุกบริษัท",
   "All year": "ทุกปี",
+  "All Year": "ทั้งปี",
   "Anonymous responses": "ไม่แสดงชื่อผู้ตอบ",
   "Answer Type": "รูปแบบคำตอบ",
   "Approve & Create Training": "อนุมัติและสร้างรายการอบรม",
@@ -1041,6 +1043,7 @@ const thaiUiDictionary: Record<string, string> = {
   Mandatory: "หลักสูตรบังคับ",
   "Meeting Room 2": "ห้องประชุม 2",
   "Mock UI Preview": "ตัวอย่างหน้าจอจำลอง",
+  "Mock Factory Users · 6 Companies": "ผู้ใช้จำลอง HRD โรงงาน · 6 บริษัท",
   "New Request": "สร้างคำขอใหม่",
   "Pending Approval": "รออนุมัติ",
   "Prepare and send employee training reports by email.":
@@ -1152,6 +1155,14 @@ const thaiUiDictionary: Record<string, string> = {
 };
 
 const thaiAttributeDictionary: Record<string, string> = {
+  "Enter participants per group, e.g. 20":
+    "ใส่จำนวนผู้เข้าอบรมต่อรุ่น เช่น 20 คน",
+  "Enter total training hours, e.g. 6":
+    "ใส่จำนวนชั่วโมงอบรมทั้งหมด เช่น 6 ชั่วโมง",
+  "Enter budget amount, e.g. 15000":
+    "ใส่งบประมาณ เช่น 15,000 บาท",
+  "Enter provider, e.g. HRD Center or institute name":
+    "ใส่หน่วยงานหรือชื่อสถาบัน เช่น HRD Center",
   "Saved Course Standard matrix": "ตารางมาตรฐานหลักสูตรที่บันทึกแล้ว",
   "Course Master and Course Standard workspace":
     "พื้นที่ทำงานฐานข้อมูลและมาตรฐานหลักสูตร",

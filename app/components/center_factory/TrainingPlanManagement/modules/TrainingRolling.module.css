@@ -113,6 +113,7 @@
 
 .toolbarActions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   justify-content: flex-end;
   white-space: nowrap;
@@ -317,6 +318,23 @@
 .rollingTable th:first-child {
   color: var(--ui-30-primary);
   font-weight: 900;
+}
+
+.selectionControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+
+.selectionControl input {
+  accent-color: var(--ui-30-primary);
+}
+
+.selectionControl span {
+  margin: 0;
+  color: inherit;
+  font: inherit;
 }
 
 .rollingTable td strong {

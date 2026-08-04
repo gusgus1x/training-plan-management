@@ -23,7 +23,8 @@ const findTemplatePath = async () => {
 
 export async function POST(request: Request) {
   try {
-    const { course, standard } = (await request.json()) as CourseOutlineRequest;
+    const { course, standard, oapPlan } =
+      (await request.json()) as CourseOutlineRequest;
     if (!course || !course.courseCode || !course.courseNameTh) {
       return NextResponse.json(
         { error: "ข้อมูล Course Master ไม่ครบถ้วน" },
@@ -31,7 +32,12 @@ export async function POST(request: Request) {
       );
     }
     const template = await readFile(await findTemplatePath());
-    const workbook = buildCourseOutlineWorkbook(template, course, standard);
+    const workbook = buildCourseOutlineWorkbook(
+      template,
+      course,
+      standard,
+      oapPlan,
+    );
     return new Response(new Uint8Array(workbook), {
       headers: {
         "Content-Type":

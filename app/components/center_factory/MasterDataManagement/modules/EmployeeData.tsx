@@ -107,11 +107,7 @@ export default function EmployeeData() {
           employeeResult.items.map((employee) => employee.companyId),
         );
         const retained = current.filter((companyId) => companyIds.has(companyId));
-        return retained.length > 0
-          ? retained
-          : employeeResult.items[0]
-            ? [employeeResult.items[0].companyId]
-            : [];
+        return retained;
       });
     } catch (loadError) {
       setError(
