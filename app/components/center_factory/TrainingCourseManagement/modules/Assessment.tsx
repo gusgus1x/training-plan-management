@@ -1,894 +1,480 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import {
-  ASSESSMENT_STORAGE_KEY,
-  initializeTrainingFormCatalog,
-} from "../../../../lib/trainingFormCatalog";
+  createAssessment,
+  createAssessmentVersion,
+  deleteAssessment,
+  listAssessments,
+  updateAssessment,
+} from "../../../../lib/assessments/client";
+import type {
+  AssessmentChoiceInput,
+  AssessmentPurpose,
+  AssessmentQuestionInput,
+  AssessmentRecord,
+  AssessmentScope,
+  AssessmentStatus,
+  AssessmentWriteInput,
+} from "../../../../lib/assessments/types";
+import { listCompanies } from "../../../../lib/companies/client";
+import type { CompanyRecord } from "../../../../lib/companies/types";
 import styles from "./Assessment.module.css";
 
 export const assessmentModule = {
   title: "Assessment",
   subtitle: "Pre / Post Test",
-  description: "Create assessment sets and question banks for training courses.",
+  description: "Manage versioned assessment series and question banks stored in SQL Server.",
 } as const;
 
-type QuestionType = "Choice" | "Text";
-type AssessmentStatus = "Draft" | "Published" | "Inactive";
-
-type AssessmentQuestion = {
-  id: string;
-  question: string;
-  type: QuestionType;
-  options: string[];
-  correctAnswer: string;
-};
-
-type AssessmentRecord = {
-  id: string;
-  assessmentCode: string;
-  assessmentName: string;
-  courseName: string;
-  assessmentType: "Pre Test" | "Post Test";
-  passScore: string;
+type Mode = "idle" | "new" | "edit" | "version";
+type Feedback = { tone: "success" | "error" | "info"; message: string };
+type FormErrors = Partial<Record<
+  "companyId" | "seriesCode" | "seriesName" | "passingScorePercent" |
+  "timeLimitMinutes" | "questions" | "question",
+  string
+>>;
+type Draft = {
+  scope: AssessmentScope;
+  companyId: string;
+  seriesCode: string;
+  seriesName: string;
+  purpose: AssessmentPurpose;
+  versionNote: string;
+  instructions: string;
+  passingScorePercent: string;
+  timeLimitMinutes: string;
   status: AssessmentStatus;
-  questions: AssessmentQuestion[];
-  updatedAt: string;
+};
+type DraftChoice = AssessmentChoiceInput & { id: string };
+type MockQuestionType = "Choice" | "Text";
+type DraftQuestion = Omit<AssessmentQuestionInput, "choices" | "questionType"> & {
+  id: string;
+  questionType: MockQuestionType;
+  choices: DraftChoice[];
 };
 
-type AssessmentForm = Omit<AssessmentRecord, "id" | "questions" | "updatedAt">;
-type FormErrors = Partial<Record<keyof AssessmentForm | "questions" | "question", string>>;
-type Feedback = {
-  tone: "success" | "error" | "info";
-  message: string;
-};
+const blankDraft = (companyId = "", factory = false): Draft => ({
+  scope: factory ? "COMPANY" : "CENTRAL",
+  companyId,
+  seriesCode: "",
+  seriesName: "",
+  purpose: "PRE_TEST",
+  versionNote: "",
+  instructions: "",
+  passingScorePercent: "80",
+  timeLimitMinutes: "",
+  status: "DRAFT",
+});
 
-const emptyForm: AssessmentForm = {
-  assessmentCode: "",
-  assessmentName: "",
-  courseName: "",
-  assessmentType: "Pre Test",
-  passScore: "80",
-  status: "Draft",
-};
+const key = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const blankChoices = (): DraftChoice[] => [
+  { id: key(), choiceText: "", isCorrect: true, optionScore: "1" },
+  { id: key(), choiceText: "", isCorrect: false, optionScore: "0" },
+  { id: key(), choiceText: "", isCorrect: false, optionScore: "0" },
+  { id: key(), choiceText: "", isCorrect: false, optionScore: "0" },
+];
+const blankQuestion = (): DraftQuestion => ({
+  id: key(),
+  questionText: "",
+  questionType: "Choice",
+  questionScore: "1",
+  isRequired: true,
+  choices: blankChoices(),
+});
 
-const initialAssessments: AssessmentRecord[] = [];
-
-const storageKey = ASSESSMENT_STORAGE_KEY;
-
-const cloneInitialAssessments = () =>
-  initialAssessments.map((assessment) => ({
-    ...assessment,
-    questions: assessment.questions.map((question) => ({
-      ...question,
-      options: [...question.options],
-    })),
-  }));
-
-const readStoredAssessments = () => {
-  if (typeof window === "undefined") {
-    return cloneInitialAssessments();
-  }
-
-  try {
-    initializeTrainingFormCatalog();
-    const storedValue = window.localStorage.getItem(storageKey);
-
-    if (!storedValue) {
-      return cloneInitialAssessments();
+const toDraftQuestions = (record: AssessmentRecord): DraftQuestion[] =>
+  record.questions.map((question) => {
+    const questionType: MockQuestionType = question.questionType === "SHORT_ANSWER" ? "Text" : "Choice";
+    const storedChoices = question.choices.slice(0, 4).map((choice, index) => ({
+      id: choice.choiceId,
+      choiceText: choice.choiceText,
+      isCorrect: questionType === "Choice" && index === question.choices.findIndex((candidate) => candidate.isCorrect),
+      optionScore: choice.optionScore,
+    }));
+    const choices = questionType === "Choice"
+      ? [...storedChoices, ...blankChoices()].slice(0, 4)
+      : [];
+    if (questionType === "Choice") {
+      const correctIndex = Math.max(0, choices.findIndex((choice) => choice.isCorrect));
+      choices.forEach((choice, index) => { choice.isCorrect = index === correctIndex; });
     }
+    return {
+      id: question.questionId,
+      questionText: question.questionText,
+      questionType,
+      questionScore: question.questionScore,
+      isRequired: question.isRequired,
+      choices,
+    };
+  });
 
-    const parsedValue = JSON.parse(storedValue) as unknown;
-    return Array.isArray(parsedValue)
-      ? (parsedValue as AssessmentRecord[])
-      : cloneInitialAssessments();
-  } catch {
-    return cloneInitialAssessments();
-  }
-};
+const displayQuestionType = (value: AssessmentRecord["questions"][number]["questionType"]) =>
+  value === "SHORT_ANSWER" ? "Text" : "Choice";
 
-const generateAssessmentCode = (assessments: AssessmentRecord[]) => {
-  const latestNumber = assessments.reduce((maximum, assessment) => {
-    const match = assessment.assessmentCode.match(/^ASM-(\d+)$/i);
-    return match ? Math.max(maximum, Number(match[1])) : maximum;
-  }, 0);
+const csvCell = (value: string | number) => `"${String(value).replaceAll('"', '""')}"`;
+const createAssessmentCsv = (items: AssessmentRecord[]) => [
+  ["Code", "Name", "Scope", "Company", "Purpose", "Version", "Pass Score", "Questions", "Status", "Updated At"],
+  ...items.map((item) => [
+    item.seriesCode,
+    item.seriesName,
+    item.scope,
+    item.companyCode ?? "Central",
+    item.purpose,
+    item.versionNo,
+    item.passingScorePercent,
+    item.questions.length,
+    item.status,
+    item.updatedAt ?? item.createdAt,
+  ]),
+].map((row) => row.map(csvCell).join(",")).join("\r\n");
 
-  return `ASM-${String(latestNumber + 1).padStart(3, "0")}`;
-};
-
-const escapeCsvCell = (value: string | number) =>
-  `"${String(value).replaceAll('"', '""')}"`;
-
-const createAssessmentCsv = (assessments: AssessmentRecord[]) => {
-  const header = [
-    "Assessment Code",
-    "Assessment Name",
-    "Course Name",
-    "Type",
-    "Pass Score",
-    "Questions",
-    "Status",
-    "Updated At",
-  ];
-  const rows = assessments.map((assessment) => [
-    assessment.assessmentCode,
-    assessment.assessmentName,
-    assessment.courseName,
-    assessment.assessmentType,
-    assessment.passScore,
-    assessment.questions.length,
-    assessment.status,
-    assessment.updatedAt,
-  ]);
-
-  return [header, ...rows]
-    .map((row) => row.map(escapeCsvCell).join(","))
-    .join("\r\n");
+const statusOptions = (current?: AssessmentStatus): AssessmentStatus[] => {
+  if (!current || current === "DRAFT") return ["DRAFT", "ACTIVE"];
+  return current === "ACTIVE" ? ["ACTIVE", "INACTIVE"] : ["INACTIVE", "ACTIVE"];
 };
 
 export default function Assessment() {
-  const [assessments, setAssessments] = useState<AssessmentRecord[]>(cloneInitialAssessments);
-  const [storageReady, setStorageReady] = useState(false);
+  const user = useAuthenticatedUser();
+  const isCenter = user?.roleCode === "HRD_CENTER";
+  const [items, setItems] = useState<AssessmentRecord[]>([]);
+  const [companies, setCompanies] = useState<CompanyRecord[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [openDetailId, setOpenDetailId] = useState("");
-  const [mode, setMode] = useState<"idle" | "new" | "edit">("idle");
-  const [form, setForm] = useState<AssessmentForm>(emptyForm);
-  const [questions, setQuestions] = useState<AssessmentQuestion[]>([]);
-  const [questionText, setQuestionText] = useState("");
-  const [questionType, setQuestionType] = useState<QuestionType>("Choice");
-  const [options, setOptions] = useState(["", "", "", ""]);
-  const [correctAnswer, setCorrectAnswer] = useState("A");
+  const [mode, setMode] = useState<Mode>("idle");
+  const [draft, setDraft] = useState<Draft>(() => blankDraft(user?.companyId ?? "", !isCenter));
+  const [questions, setQuestions] = useState<DraftQuestion[]>([]);
+  const [question, setQuestion] = useState<DraftQuestion>(blankQuestion);
   const [editingQuestionId, setEditingQuestionId] = useState("");
   const [search, setSearch] = useState("");
-  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
 
-  useEffect(() => {
-    const loadTimer = window.setTimeout(() => {
-      setAssessments(readStoredAssessments());
-      setStorageReady(true);
-    }, 0);
-
-    return () => window.clearTimeout(loadTimer);
-  }, []);
-
-  useEffect(() => {
-    if (!storageReady) {
-      return;
-    }
-
-    try {
-      window.localStorage.setItem(storageKey, JSON.stringify(assessments));
-    } catch {
-      // The in-memory mock remains usable when browser storage is unavailable.
-    }
-  }, [assessments, storageReady]);
-
-  const selectedAssessment = assessments.find((assessment) => assessment.id === selectedId) ?? null;
-  const visibleAssessments = useMemo(
-    () => {
-      const searchTerm = search.trim().toLowerCase();
-
-      if (!searchTerm) {
-        return assessments;
-      }
-
-      return assessments.filter((assessment) =>
-        [
-          assessment.assessmentCode,
-          assessment.assessmentName,
-          assessment.courseName,
-          assessment.assessmentType,
-          assessment.status,
-        ]
-          .join(" ")
-          .toLowerCase()
-          .includes(searchTerm),
-      );
-    },
-    [assessments, search],
+  const selected = useMemo(
+    () => items.find((item) => item.assessmentId === selectedId) ?? null,
+    [items, selectedId],
   );
+  const visible = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return query
+      ? items.filter((item) => [item.seriesCode, item.seriesName, item.companyCode, item.purpose, item.status]
+        .filter(Boolean).join(" ").toLowerCase().includes(query))
+      : items;
+  }, [items, search]);
 
-  const updateForm = (field: keyof AssessmentForm, value: string) => {
-    setForm((current) => ({ ...current, [field]: value }));
-    setFormErrors((current) => ({ ...current, [field]: undefined }));
+  const load = useCallback(async () => {
+    setBusy(true);
     setFeedback(null);
-  };
+    try {
+      const [assessmentResult, companyResult] = await Promise.all([
+        listAssessments(),
+        isCenter ? listCompanies() : Promise.resolve({ items: [] as CompanyRecord[] }),
+      ]);
+      setItems(assessmentResult.items);
+      setCompanies(companyResult.items);
+      setSelectedId((current) => assessmentResult.items.some((item) => item.assessmentId === current) ? current : "");
+    } catch (error) {
+      setFeedback({ tone: "error", message: error instanceof Error ? error.message : "Unable to load assessments" });
+    } finally {
+      setBusy(false);
+    }
+  }, [isCenter]);
 
-  const resetQuestionEditor = () => {
-    setQuestionText("");
-    setQuestionType("Choice");
-    setOptions(["", "", "", ""]);
-    setCorrectAnswer("A");
-    setEditingQuestionId("");
-    setFormErrors((current) => ({ ...current, question: undefined }));
-  };
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const closeEditor = () => {
     setMode("idle");
-    setForm(emptyForm);
+    setDraft(blankDraft(user?.companyId ?? "", !isCenter));
     setQuestions([]);
+    setQuestion(blankQuestion());
+    setEditingQuestionId("");
     setFormErrors({});
-    resetQuestionEditor();
   };
 
-  const handleNew = () => {
+  const startNew = () => {
+    setSelectedId("");
+    setOpenDetailId("");
+    setDraft(blankDraft(user?.companyId ?? "", !isCenter));
+    setQuestions([]);
+    setQuestion(blankQuestion());
+    setEditingQuestionId("");
+    setFeedback(null);
+    setFormErrors({});
     setMode("new");
-    setSelectedId("");
-    setOpenDetailId("");
-    setForm(emptyForm);
-    setQuestions([]);
-    setFormErrors({});
-    resetQuestionEditor();
-    setFeedback(null);
   };
 
-  const handleEdit = () => {
-    if (!selectedAssessment) {
-      return;
-    }
-
-    setForm({
-      assessmentCode: selectedAssessment.assessmentCode,
-      assessmentName: selectedAssessment.assessmentName,
-      courseName: selectedAssessment.courseName,
-      assessmentType: selectedAssessment.assessmentType,
-      passScore: selectedAssessment.passScore,
-      status: selectedAssessment.status,
+  const startEdit = () => {
+    if (!selected?.canModify) return;
+    setDraft({
+      scope: selected.scope,
+      companyId: selected.companyId ?? "",
+      seriesCode: selected.seriesCode,
+      seriesName: selected.seriesName,
+      purpose: selected.purpose,
+      versionNote: selected.versionNote ?? "",
+      instructions: selected.instructions ?? "",
+      passingScorePercent: selected.passingScorePercent,
+      timeLimitMinutes: selected.timeLimitMinutes?.toString() ?? "",
+      status: selected.status,
     });
-    setQuestions(
-      selectedAssessment.questions.map((question) => ({
-        ...question,
-        options: [...question.options],
-      })),
-    );
+    setQuestions(toDraftQuestions(selected));
+    setQuestion(blankQuestion());
+    setEditingQuestionId("");
+    setFeedback(null);
+    setFormErrors({});
     setMode("edit");
-    setOpenDetailId(selectedAssessment.id);
+  };
+
+  const startVersion = () => {
+    if (!selected?.canCreateVersion) return;
+    setDraft({
+      scope: selected.scope,
+      companyId: selected.companyId ?? "",
+      seriesCode: selected.seriesCode,
+      seriesName: selected.seriesName,
+      purpose: selected.purpose,
+      versionNote: `New version from v${selected.versionNo}`,
+      instructions: selected.instructions ?? "",
+      passingScorePercent: selected.passingScorePercent,
+      timeLimitMinutes: selected.timeLimitMinutes?.toString() ?? "",
+      status: "DRAFT",
+    });
+    setQuestions(toDraftQuestions(selected).map((item) => ({
+      ...item,
+      id: key(),
+      choices: item.choices.map((choice) => ({ ...choice, id: key() })),
+    })));
+    setQuestion(blankQuestion());
+    setEditingQuestionId("");
+    setFeedback(null);
     setFormErrors({});
-    resetQuestionEditor();
-    setFeedback(null);
+    setMode("version");
   };
 
-  const handleDelete = () => {
-    if (!selectedAssessment) {
-      return;
-    }
-
-    const shouldDelete = window.confirm(
-      `Delete "${selectedAssessment.assessmentName}"? This record will be removed from this browser.`,
-    );
-
-    if (!shouldDelete) {
-      return;
-    }
-
-    setAssessments((current) => current.filter((assessment) => assessment.id !== selectedId));
-    setSelectedId("");
-    setOpenDetailId("");
-    setMode("idle");
-    setFeedback({
-      tone: "success",
-      message: "Assessment deleted.",
-    });
-  };
-
-  const handleRefresh = () => {
-    setAssessments(readStoredAssessments());
-    setSelectedId("");
-    setOpenDetailId("");
-    setMode("idle");
-    setFeedback({
-      tone: "info",
-      message: "Assessment data refreshed from browser storage.",
-    });
-  };
-
-  const handleClearAllData = () => {
-    const shouldClear = window.confirm(
-      "Clear all Assessment data from this browser? This cannot be undone.",
-    );
-
-    if (!shouldClear) {
-      return;
-    }
-
-    setAssessments([]);
-    setSelectedId("");
-    setOpenDetailId("");
-    setMode("idle");
-    setSearch("");
-    setFeedback({
-      tone: "success",
-      message: "All Assessment data cleared.",
-    });
-  };
-
-  const handleExport = () => {
-    if (!visibleAssessments.length) {
-      setFeedback({
-        tone: "error",
-        message: "There are no assessments to export.",
-      });
-      return;
-    }
-
-    const csvContent = createAssessmentCsv(visibleAssessments);
-    const downloadUrl = URL.createObjectURL(
-      new Blob(["\uFEFF", csvContent], { type: "text/csv;charset=utf-8" }),
-    );
-    const downloadLink = document.createElement("a");
-    downloadLink.href = downloadUrl;
-    downloadLink.download = `assessment-export-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    downloadLink.remove();
-    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
-    setFeedback({
-      tone: "success",
-      message: `Exported ${visibleAssessments.length} assessment${visibleAssessments.length === 1 ? "" : "s"} to CSV.`,
-    });
-  };
-
-  const handleShowDetails = (assessment: AssessmentRecord) => {
-    const isOpen = openDetailId === assessment.id && mode === "idle";
-    setSelectedId(isOpen ? "" : assessment.id);
-    setOpenDetailId(isOpen ? "" : assessment.id);
-    setMode("idle");
-    setFeedback(null);
-  };
-
-  const handleAddQuestion = () => {
-    const cleanQuestion = questionText.trim();
-    const cleanOptions = options.map((option) => option.trim());
-    const correctOptionIndex = correctAnswer.charCodeAt(0) - 65;
-
-    if (!cleanQuestion) {
-      setFormErrors((current) => ({
-        ...current,
-        question: "Enter a question before adding it.",
-      }));
-      return;
-    }
-
-    if (
-      questionType === "Choice" &&
-      (cleanOptions.filter(Boolean).length < 2 || !cleanOptions[correctOptionIndex])
-    ) {
-      setFormErrors((current) => ({
-        ...current,
-        question: "Choice questions need at least two options and a valid correct answer.",
-      }));
-      return;
-    }
-
-    const nextQuestion: AssessmentQuestion = {
-      id: editingQuestionId || `question-${Date.now()}`,
-      question: cleanQuestion,
-      type: questionType,
-      options: questionType === "Choice" ? cleanOptions : [],
-      correctAnswer: questionType === "Choice" ? correctAnswer : "Manual scoring",
-    };
-
-    setQuestions((current) =>
-      editingQuestionId
-        ? current.map((question) =>
-            question.id === editingQuestionId ? nextQuestion : question,
-          )
-        : [...current, nextQuestion],
-    );
-    setFormErrors((current) => ({
+  const setQuestionType = (questionType: MockQuestionType) => {
+    setQuestion((current) => ({
       ...current,
-      question: undefined,
-      questions: undefined,
+      questionType,
+      choices: questionType === "Text"
+        ? []
+        : [...current.choices, ...blankChoices()].slice(0, 4),
     }));
-    setFeedback({
-      tone: "success",
-      message: editingQuestionId ? "Question updated." : "Question added.",
-    });
-    resetQuestionEditor();
   };
 
-  const handleEditQuestion = (question: AssessmentQuestion) => {
-    setQuestionText(question.question);
-    setQuestionType(question.type);
-    setOptions(
-      question.type === "Choice"
-        ? [...question.options, "", "", "", ""].slice(0, 4)
-        : ["", "", "", ""],
-    );
-    setCorrectAnswer(question.type === "Choice" ? question.correctAnswer : "A");
-    setEditingQuestionId(question.id);
-    setFormErrors((current) => ({ ...current, question: undefined }));
-    setFeedback(null);
-  };
-
-  const handleRemoveQuestion = (questionId: string) => {
-    setQuestions((current) =>
-      current.filter((question) => question.id !== questionId),
-    );
-
-    if (editingQuestionId === questionId) {
-      resetQuestionEditor();
+  const saveQuestion = () => {
+    if (!question.questionText.trim() || Number(question.questionScore) <= 0) {
+      setFormErrors((current) => ({ ...current, question: "Enter a question and a positive score before adding it." }));
+      setFeedback({ tone: "error", message: "Question text and a positive score are required." });
+      return;
     }
-
-    setFeedback({
-      tone: "success",
-      message: "Question removed.",
-    });
+    if (question.questionType === "Choice" && (question.choices.length !== 4 || question.choices.some((choice) => !choice.choiceText.trim()))) {
+      setFormErrors((current) => ({ ...current, question: "Choice questions require Option A, B, C, and D." }));
+      setFeedback({ tone: "error", message: "Complete all four answer options." });
+      return;
+    }
+    const correctCount = question.choices.filter((choice) => choice.isCorrect).length;
+    if (question.questionType === "Choice" && correctCount !== 1) {
+      setFormErrors((current) => ({ ...current, question: "Select exactly one correct answer." }));
+      setFeedback({ tone: "error", message: "Select exactly one correct answer." });
+      return;
+    }
+    const next = { ...question, questionText: question.questionText.trim() };
+    setQuestions((current) => editingQuestionId
+      ? current.map((item) => item.id === editingQuestionId ? next : item)
+      : [...current, next]);
+    setQuestion(blankQuestion());
+    setEditingQuestionId("");
+    setFormErrors((current) => ({ ...current, question: undefined, questions: undefined }));
+    setFeedback({ tone: "success", message: editingQuestionId ? "Question updated." : "Question added." });
   };
 
-  const handleMoveQuestion = (questionIndex: number, direction: -1 | 1) => {
+  const moveQuestion = (index: number, direction: -1 | 1) => {
     setQuestions((current) => {
-      const destinationIndex = questionIndex + direction;
-
-      if (destinationIndex < 0 || destinationIndex >= current.length) {
-        return current;
-      }
-
-      const reorderedQuestions = [...current];
-      [reorderedQuestions[questionIndex], reorderedQuestions[destinationIndex]] = [
-        reorderedQuestions[destinationIndex],
-        reorderedQuestions[questionIndex],
-      ];
-      return reorderedQuestions;
+      const destination = index + direction;
+      if (destination < 0 || destination >= current.length) return current;
+      const reordered = [...current];
+      [reordered[index], reordered[destination]] = [reordered[destination], reordered[index]];
+      return reordered;
     });
   };
 
-  const handleSave = () => {
-    const passScore = Number(form.passScore);
+  const payload = (): AssessmentWriteInput => ({
+    scope: isCenter ? draft.scope : "COMPANY",
+    companyId: isCenter ? (draft.scope === "COMPANY" ? draft.companyId : null) : user?.companyId ?? null,
+    seriesCode: draft.seriesCode,
+    seriesName: draft.seriesName,
+    purpose: draft.purpose,
+    versionNote: draft.versionNote.trim() || null,
+    instructions: draft.instructions.trim() || null,
+    passingScorePercent: draft.passingScorePercent,
+    timeLimitMinutes: draft.timeLimitMinutes ? Number(draft.timeLimitMinutes) : null,
+    status: draft.status,
+    questions: questions.map(({ questionText, questionType, questionScore, isRequired, choices }) => ({
+      questionText,
+      questionType: questionType === "Choice" ? "SINGLE_CHOICE" : "SHORT_ANSWER",
+      questionScore,
+      isRequired,
+      choices: questionType === "Choice"
+        ? choices.map(({ choiceText, isCorrect }) => ({
+            choiceText,
+            isCorrect,
+            optionScore: isCorrect ? questionScore : "0",
+          }))
+        : [],
+    })),
+  });
+
+  const save = async () => {
     const errors: FormErrors = {};
-    const assessmentCode =
-      form.assessmentCode.trim() || generateAssessmentCode(assessments);
-
-    if (!form.assessmentName.trim()) {
-      errors.assessmentName = "Assessment name is required.";
-    }
-
-    if (!Number.isInteger(passScore) || passScore < 0 || passScore > 100) {
-      errors.passScore = "Pass score must be a whole number from 0 to 100.";
-    }
-
-    if (
-      assessments.some(
-        (assessment) =>
-          assessment.id !== selectedId &&
-          assessment.assessmentCode.toLowerCase() === assessmentCode.toLowerCase(),
-      )
-    ) {
-      errors.assessmentCode = "Assessment code already exists.";
-    }
-
-    if (form.status === "Published" && !questions.length) {
-      errors.questions = "Add at least one question before publishing.";
-    }
-
+    if (mode !== "new" && !draft.seriesCode.trim()) errors.seriesCode = "Assessment code is required.";
+    if (!draft.seriesName.trim()) errors.seriesName = "Assessment name is required.";
+    if (isCenter && draft.scope === "COMPANY" && !draft.companyId) errors.companyId = "Select a company.";
+    const passingScore = Number(draft.passingScorePercent);
+    if (!Number.isFinite(passingScore) || passingScore < 0 || passingScore > 100) errors.passingScorePercent = "Pass score must be from 0 to 100.";
+    if (draft.timeLimitMinutes && (!Number.isInteger(Number(draft.timeLimitMinutes)) || Number(draft.timeLimitMinutes) <= 0)) errors.timeLimitMinutes = "Time limit must be a positive whole number.";
+    if (draft.status === "ACTIVE" && !questions.length) errors.questions = "Add at least one question before publishing.";
     if (Object.keys(errors).length) {
       setFormErrors(errors);
-      setFeedback({
-        tone: "error",
-        message: "Please correct the highlighted fields.",
-      });
+      setFeedback({ tone: "error", message: "Please correct the highlighted fields." });
       return;
     }
-
-    const nextAssessment: AssessmentRecord = {
-      ...form,
-      id: selectedId || `assessment-${Date.now()}`,
-      assessmentCode,
-      assessmentName: form.assessmentName.trim(),
-      passScore: String(passScore),
-      questions,
-      updatedAt: new Date().toISOString().slice(0, 10),
-    };
-
-    setAssessments((current) =>
-      selectedId
-        ? current.map((assessment) => (assessment.id === selectedId ? nextAssessment : assessment))
-        : [nextAssessment, ...current],
-    );
-    setSelectedId("");
-    setOpenDetailId("");
-    setMode("idle");
-    setForm(emptyForm);
-    setQuestions([]);
-    setFormErrors({});
-    resetQuestionEditor();
-    setFeedback({
-      tone: "success",
-      message: selectedId ? "Assessment updated." : "Assessment created.",
-    });
+    setBusy(true);
+    setFeedback(null);
+    try {
+      const saved = mode === "edit" && selected
+        ? (await updateAssessment(selected.assessmentId, payload())).assessment
+        : mode === "version" && selected
+          ? (await createAssessmentVersion(selected.assessmentId, { ...payload(), status: "DRAFT" })).assessment
+          : (await createAssessment(payload())).assessment;
+      const successMessage = mode === "edit"
+        ? "Assessment updated."
+        : mode === "version"
+          ? "New assessment version created."
+          : "Assessment created.";
+      setItems((current) => mode === "edit"
+        ? current.map((item) => item.assessmentId === saved.assessmentId ? saved : item)
+        : [saved, ...current.filter((item) => item.assessmentSeriesId !== saved.assessmentSeriesId)]);
+      setSelectedId(saved.assessmentId);
+      setOpenDetailId("");
+      closeEditor();
+      setFeedback({ tone: "success", message: successMessage });
+      void listAssessments().then((result) => setItems(result.items)).catch(() => {
+        setFeedback({ tone: "info", message: `${successMessage} The list could not be refreshed; press Refresh to try again.` });
+      });
+    } catch (error) {
+      setFeedback({ tone: "error", message: error instanceof Error ? error.message : "Unable to save assessment" });
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const renderEditor = (title: string) => (
+  const remove = async () => {
+    if (!selected?.canModify || !window.confirm(`Delete "${selected.seriesName}"?`)) return;
+    setBusy(true);
+    try {
+      await deleteAssessment(selected.assessmentId);
+      setSelectedId("");
+      setOpenDetailId("");
+      closeEditor();
+      await load();
+      setFeedback({ tone: "success", message: "Assessment deleted." });
+    } catch (error) {
+      setFeedback({ tone: "error", message: error instanceof Error ? error.message : "Unable to delete assessment" });
+    } finally { setBusy(false); }
+  };
+
+  const exportCsv = () => {
+    if (!visible.length) return setFeedback({ tone: "error", message: "There are no assessments to export." });
+    const url = URL.createObjectURL(new Blob(["\uFEFF", createAssessmentCsv(visible)], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `assessment-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const renderEditor = () => (
     <section className={styles.editorPanel}>
       <div className={styles.panelHeader}>
-        <div>
-          <p className={styles.kicker}>{mode === "new" ? "New assessment" : "Edit assessment"}</p>
-          <h3>{title}</h3>
-        </div>
-        <button className={styles.closeButton} type="button" onClick={closeEditor}>
-          Close
-        </button>
+        <div><p className={styles.kicker}>{mode === "new" ? "New assessment" : mode === "version" ? "New version" : "Edit assessment"}</p><h3>{mode === "new" ? "Create assessment series" : selected?.seriesName}</h3></div>
+        <button className={styles.closeButton} type="button" onClick={closeEditor}>Close</button>
       </div>
-
       <div className={styles.formGrid}>
-        <label>
-          Assessment Code
-          <input
-            aria-invalid={Boolean(formErrors.assessmentCode)}
-            className={formErrors.assessmentCode ? styles.inputError : undefined}
-            value={form.assessmentCode}
-            onChange={(event) => updateForm("assessmentCode", event.target.value)}
-            placeholder="Auto-generated when left blank"
-          />
-          {formErrors.assessmentCode ? <small>{formErrors.assessmentCode}</small> : null}
-        </label>
-        <label>
-          Assessment Name
-          <input
-            aria-invalid={Boolean(formErrors.assessmentName)}
-            className={formErrors.assessmentName ? styles.inputError : undefined}
-            value={form.assessmentName}
-            onChange={(event) => updateForm("assessmentName", event.target.value)}
-            placeholder="e.g. Safety Basics Pre Test"
-          />
-          {formErrors.assessmentName ? <small>{formErrors.assessmentName}</small> : null}
-        </label>
-        <label>
-          Course Reference (optional)
-          <input
-            value={form.courseName}
-            onChange={(event) => updateForm("courseName", event.target.value)}
-            placeholder="Course name or leave blank for a reusable test"
-          />
-        </label>
-        <label>
-          Assessment Type
-          <select value={form.assessmentType} onChange={(event) => updateForm("assessmentType", event.target.value)}>
-            <option>Pre Test</option>
-            <option>Post Test</option>
-          </select>
-        </label>
-        <label>
-          Pass Score
-          <input
-            aria-invalid={Boolean(formErrors.passScore)}
-            className={formErrors.passScore ? styles.inputError : undefined}
-            value={form.passScore}
-            inputMode="numeric"
-            onChange={(event) => updateForm("passScore", event.target.value)}
-          />
-          {formErrors.passScore ? <small>{formErrors.passScore}</small> : null}
-        </label>
-        <label>
-          Status
-          <select value={form.status} onChange={(event) => updateForm("status", event.target.value)}>
-            <option>Draft</option>
-            <option>Published</option>
-            <option>Inactive</option>
-          </select>
-        </label>
+        {isCenter ? <label>Scope<select disabled={mode === "version"} value={draft.scope} onChange={(event) => setDraft({ ...draft, scope: event.target.value as AssessmentScope })}><option value="CENTRAL">Central</option><option value="COMPANY">Company</option></select></label> : null}
+        {isCenter && draft.scope === "COMPANY" ? <label>Company<select aria-invalid={Boolean(formErrors.companyId)} className={formErrors.companyId ? styles.inputError : undefined} disabled={mode === "version"} value={draft.companyId} onChange={(event) => { setDraft({ ...draft, companyId: event.target.value }); setFormErrors((current) => ({ ...current, companyId: undefined })); }}><option value="">Select company</option>{companies.map((company) => <option key={company.companyId} value={company.companyId}>{company.companyCode} — {company.companyNameTh}</option>)}</select>{formErrors.companyId ? <small>{formErrors.companyId}</small> : null}</label> : null}
+        <label>Assessment Code<input aria-invalid={Boolean(formErrors.seriesCode)} className={formErrors.seriesCode ? styles.inputError : undefined} disabled maxLength={50} value={draft.seriesCode} placeholder="Auto-generated on save" />{formErrors.seriesCode ? <small>{formErrors.seriesCode}</small> : null}</label>
+        <label>Series Name<input aria-invalid={Boolean(formErrors.seriesName)} className={formErrors.seriesName ? styles.inputError : undefined} disabled={mode === "version"} maxLength={255} value={draft.seriesName} onChange={(event) => { setDraft({ ...draft, seriesName: event.target.value }); setFormErrors((current) => ({ ...current, seriesName: undefined })); }} />{formErrors.seriesName ? <small>{formErrors.seriesName}</small> : null}</label>
+        <label>Purpose<select disabled={mode === "version"} value={draft.purpose} onChange={(event) => setDraft({ ...draft, purpose: event.target.value as AssessmentPurpose })}><option value="PRE_TEST">PRE TEST</option><option value="POST_TEST">POST TEST</option><option value="GENERAL">GENERAL</option></select></label>
+        <label>Passing Score (%)<input aria-invalid={Boolean(formErrors.passingScorePercent)} className={formErrors.passingScorePercent ? styles.inputError : undefined} type="number" min="0" max="100" step="0.01" value={draft.passingScorePercent} onChange={(event) => { setDraft({ ...draft, passingScorePercent: event.target.value }); setFormErrors((current) => ({ ...current, passingScorePercent: undefined })); }} />{formErrors.passingScorePercent ? <small>{formErrors.passingScorePercent}</small> : null}</label>
+        <label>Time Limit (minutes)<input aria-invalid={Boolean(formErrors.timeLimitMinutes)} className={formErrors.timeLimitMinutes ? styles.inputError : undefined} type="number" min="1" value={draft.timeLimitMinutes} onChange={(event) => { setDraft({ ...draft, timeLimitMinutes: event.target.value }); setFormErrors((current) => ({ ...current, timeLimitMinutes: undefined })); }} placeholder="Optional" />{formErrors.timeLimitMinutes ? <small>{formErrors.timeLimitMinutes}</small> : null}</label>
+        <label>Status<select disabled={mode === "version"} value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value as AssessmentStatus })}>{statusOptions(mode === "edit" ? selected?.status : undefined).map((status) => <option key={status}>{status}</option>)}</select></label>
+        <label className={styles.fullWidth}>Version Note<input maxLength={500} value={draft.versionNote} onChange={(event) => setDraft({ ...draft, versionNote: event.target.value })} placeholder="Optional" /></label>
+        <label className={styles.fullWidth}>Instructions<textarea value={draft.instructions} onChange={(event) => setDraft({ ...draft, instructions: event.target.value })} placeholder="Instructions shown to learners" /></label>
       </div>
 
       <div className={styles.questionBuilder}>
-        <div className={styles.panelHeader}>
-          <div>
-            <p className={styles.kicker}>Question builder</p>
-            <h3>Add question</h3>
-          </div>
-          <span>{questions.length} questions</span>
-        </div>
+        <div className={styles.panelHeader}><div><p className={styles.kicker}>Question builder</p><h3>{editingQuestionId ? "Edit question" : "Add question"}</h3></div><span>{questions.length} questions</span></div>
         <div className={styles.questionGrid}>
-          <label className={styles.fullWidth}>
-            Question
-            <textarea
-              aria-invalid={Boolean(formErrors.question)}
-              className={formErrors.question ? styles.inputError : undefined}
-              value={questionText}
-              onChange={(event) => {
-                setQuestionText(event.target.value);
-                setFormErrors((current) => ({ ...current, question: undefined }));
-              }}
-              placeholder="Enter the question shown to learners"
-            />
-          </label>
-          <label>
-            Question Type
-            <select value={questionType} onChange={(event) => setQuestionType(event.target.value as QuestionType)}>
-              <option>Choice</option>
-              <option>Text</option>
-            </select>
-          </label>
-          {questionType === "Choice" ? (
-            <>
-              {options.map((option, index) => (
-                <label key={`option-${index}`}>
-                  Option {String.fromCharCode(65 + index)}
-                  <input
-                    value={option}
-                    onChange={(event) =>
-                      setOptions((current) =>
-                        current.map((item, itemIndex) => itemIndex === index ? event.target.value : item),
-                      )
-                    }
-                  />
-                </label>
-              ))}
-              <label>
-                Correct Answer
-                <select value={correctAnswer} onChange={(event) => setCorrectAnswer(event.target.value)}>
-                  {options.map((_, index) => {
-                    const answer = String.fromCharCode(65 + index);
-                    return <option key={answer}>{answer}</option>;
-                  })}
-                </select>
-              </label>
-            </>
-          ) : null}
+          <label className={styles.fullWidth}>Question<textarea aria-invalid={Boolean(formErrors.question)} className={formErrors.question ? styles.inputError : undefined} value={question.questionText} onChange={(event) => { setQuestion({ ...question, questionText: event.target.value }); setFormErrors((current) => ({ ...current, question: undefined })); }} /></label>
+          <label>Question Type<select value={question.questionType} onChange={(event) => setQuestionType(event.target.value as MockQuestionType)}><option value="Choice">Choice</option><option value="Text">Text</option></select></label>
+          <label>Score<input type="number" min="0.01" step="0.01" value={question.questionScore} onChange={(event) => setQuestion({ ...question, questionScore: event.target.value })} /></label>
+          <label>Required<select value={question.isRequired ? "YES" : "NO"} onChange={(event) => setQuestion({ ...question, isRequired: event.target.value === "YES" })}><option value="YES">Yes</option><option value="NO">No</option></select></label>
+          {question.choices.map((choice, index) => <label key={choice.id}>Option {String.fromCharCode(65 + index)}<input value={choice.choiceText} onChange={(event) => setQuestion({ ...question, choices: question.choices.map((item) => item.id === choice.id ? { ...item, choiceText: event.target.value } : item) })} /></label>)}
+          {question.questionType === "Choice" ? <label>Correct Answer<select value={String.fromCharCode(65 + Math.max(0, question.choices.findIndex((choice) => choice.isCorrect)))} onChange={(event) => { const correctIndex = event.target.value.charCodeAt(0) - 65; setQuestion({ ...question, choices: question.choices.map((choice, index) => ({ ...choice, isCorrect: index === correctIndex })) }); }}>{question.choices.map((choice, index) => <option key={choice.id} value={String.fromCharCode(65 + index)}>{String.fromCharCode(65 + index)}</option>)}</select></label> : null}
         </div>
-        {formErrors.question ? (
-          <p className={styles.validationMessage} role="alert">
-            {formErrors.question}
-          </p>
-        ) : null}
+        {formErrors.question ? <p className={styles.validationMessage} role="alert">{formErrors.question}</p> : null}
         <div className={styles.formActions}>
-          <button className={styles.secondaryButton} type="button" onClick={handleAddQuestion}>
-            {editingQuestionId ? "Update question" : "Add question"}
-          </button>
-          {editingQuestionId ? (
-            <button className={styles.closeButton} type="button" onClick={resetQuestionEditor}>
-              Cancel question edit
-            </button>
-          ) : null}
-          <button className={styles.primaryButton} type="button" onClick={handleSave}>
-            Save assessment
-          </button>
+          <button className={styles.secondaryButton} type="button" onClick={saveQuestion}>{editingQuestionId ? "Update question" : "Add question"}</button>
+          {editingQuestionId ? <button className={styles.closeButton} type="button" onClick={() => { setQuestion(blankQuestion()); setEditingQuestionId(""); setFormErrors((current) => ({ ...current, question: undefined })); }}>Cancel question edit</button> : null}
+          <button className={styles.primaryButton} type="button" disabled={busy} onClick={() => void save()}>Save assessment</button>
         </div>
-        {formErrors.questions ? (
-          <p className={styles.validationMessage} role="alert">
-            {formErrors.questions}
-          </p>
-        ) : null}
+        {formErrors.questions ? <p className={styles.validationMessage} role="alert">{formErrors.questions}</p> : null}
       </div>
 
       <div className={styles.previewPanel}>
-        <div className={styles.panelHeader}>
-          <div>
-            <p className={styles.kicker}>Preview</p>
-            <h3>Question preview</h3>
-          </div>
-        </div>
-        {questions.length ? (
-          <div className={styles.questionList}>
-            {questions.map((question, index) => (
-              <article key={question.id}>
-                <div className={styles.questionHeading}>
-                  <strong>{index + 1}. {question.question}</strong>
-                  <span>{question.type}</span>
-                </div>
-                {question.options.map((option, optionIndex) => (
-                  option ? (
-                    <p key={`${question.id}-${optionIndex}`}>
-                      {String.fromCharCode(65 + optionIndex)}. {option}
-                    </p>
-                  ) : null
-                ))}
-                <b>{question.correctAnswer}</b>
-                <div className={styles.questionActions}>
-                  <button
-                    className={styles.secondaryButton}
-                    type="button"
-                    onClick={() => handleMoveQuestion(index, -1)}
-                    disabled={index === 0}
-                  >
-                    Up
-                  </button>
-                  <button
-                    className={styles.secondaryButton}
-                    type="button"
-                    onClick={() => handleMoveQuestion(index, 1)}
-                    disabled={index === questions.length - 1}
-                  >
-                    Down
-                  </button>
-                  <button
-                    className={styles.secondaryButton}
-                    type="button"
-                    onClick={() => handleEditQuestion(question)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className={styles.dangerButton}
-                    type="button"
-                    onClick={() => handleRemoveQuestion(question.id)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className={styles.emptyState}>No questions added yet.</div>
-        )}
+        <div className={styles.panelHeader}><div><p className={styles.kicker}>Preview</p><h3>Question preview</h3></div></div>
+        {questions.length ? <div className={styles.questionList}>{questions.map((item, index) => <article key={item.id}>
+          <div className={styles.questionHeading}><strong>{index + 1}. {item.questionText}</strong><span>{item.questionType} · {item.questionScore} points</span></div>
+          {item.choices.map((choice, choiceIndex) => <p key={choice.id}>{choice.isCorrect ? "✓ " : ""}{String.fromCharCode(65 + choiceIndex)}. {choice.choiceText}</p>)}
+          <div className={styles.questionActions}><button className={styles.secondaryButton} type="button" disabled={index === 0} onClick={() => moveQuestion(index, -1)}>Up</button><button className={styles.secondaryButton} type="button" disabled={index === questions.length - 1} onClick={() => moveQuestion(index, 1)}>Down</button><button className={styles.secondaryButton} type="button" onClick={() => { setQuestion(item); setEditingQuestionId(item.id); setFormErrors((current) => ({ ...current, question: undefined })); }}>Edit</button><button className={styles.dangerButton} type="button" onClick={() => setQuestions((current) => current.filter((candidate) => candidate.id !== item.id))}>Remove</button></div>
+        </article>)}</div> : <div className={styles.emptyState}>No questions added yet.</div>}
       </div>
     </section>
   );
 
-  return (
-    <section className={styles.page} aria-label="Assessment management">
-      <section className={styles.hero}>
-        <div>
-          <p className={styles.kicker}>{assessmentModule.subtitle}</p>
-          <h2>{assessmentModule.title}</h2>
-          <p>{assessmentModule.description}</p>
-        </div>
-      </section>
-
-      <section className={styles.workspace}>
-        <div className={styles.toolbar}>
-          <span className={styles.listMeta}>{visibleAssessments.length} / {assessments.length} assessments</span>
-          <input
-            aria-label="Search assessment"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search assessment, course, type, status"
-          />
-          <button className={styles.primaryButton} type="button" onClick={handleNew}>
-            New
-          </button>
-          <button className={styles.secondaryButton} type="button" onClick={handleEdit} disabled={!selectedAssessment}>
-            Edit
-          </button>
-          <button className={styles.dangerButton} type="button" onClick={handleDelete} disabled={!selectedAssessment}>
-            Delete
-          </button>
-          <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>
-            Refresh
-          </button>
-          <button className={styles.secondaryButton} type="button" onClick={handleExport}>
-            Export
-          </button>
-          <button className={styles.dangerButton} type="button" onClick={handleClearAllData}>
-            Clear all
-          </button>
-        </div>
-
-        {mode !== "idle" ? renderEditor(mode === "new" ? "Create assessment" : "Edit assessment") : null}
-        {feedback ? (
-          <p
-            className={`${styles.feedback} ${styles[`feedback${feedback.tone[0].toUpperCase()}${feedback.tone.slice(1)}`]}`}
-            role={feedback.tone === "error" ? "alert" : "status"}
-          >
-            {feedback.message}
-          </p>
-        ) : null}
-
-        <div className={styles.tableWrap}>
-          <table className={styles.assessmentTable}>
-            <thead>
-              <tr>
-                <th>Assessment Code</th>
-                <th>Assessment Name</th>
-                <th>Course Name</th>
-                <th>Type</th>
-                <th>Pass Score</th>
-                <th>Questions</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {!visibleAssessments.length ? (
-                <tr>
-                  <td className={styles.emptyTableCell} colSpan={8}>
-                    {assessments.length
-                      ? "No assessments match your search."
-                      : "No assessments yet. Select New to create the first record."}
-                  </td>
-                </tr>
-              ) : null}
-              {visibleAssessments.map((assessment) => {
-                const isOpen = openDetailId === assessment.id && mode === "idle";
-                const isSelected = assessment.id === selectedId;
-                const statusClass =
-                  assessment.status === "Published"
-                    ? styles.statusPublished
-                    : assessment.status === "Draft"
-                      ? styles.statusDraft
-                      : styles.statusInactive;
-
-                return (
-                  <Fragment key={assessment.id}>
-                    <tr
-                      aria-selected={isSelected}
-                      className={`${styles.selectableRow} ${isSelected ? styles.selectedRow : ""}`}
-                      tabIndex={0}
-                      onClick={() => {
-                        setSelectedId(isSelected ? "" : assessment.id);
-                        setOpenDetailId("");
-                        setFeedback(null);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          setSelectedId(isSelected ? "" : assessment.id);
-                          setOpenDetailId("");
-                          setFeedback(null);
-                        }
-                      }}
-                    >
-                      <td>{assessment.assessmentCode}</td>
-                      <td>{assessment.assessmentName}</td>
-                      <td>{assessment.courseName || "Reusable"}</td>
-                      <td>{assessment.assessmentType}</td>
-                      <td>{assessment.passScore}%</td>
-                      <td>{assessment.questions.length}</td>
-                      <td>
-                        <span className={`${styles.statusPill} ${statusClass}`}>
-                          {assessment.status}
-                        </span>
-                      </td>
-                      <td className={styles.actionCell}>
-                        <button
-                          className={styles.detailButton}
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleShowDetails(assessment);
-                          }}
-                        >
-                          {isOpen ? "Hide" : "Details"}
-                        </button>
-                      </td>
-                    </tr>
-                    {isOpen ? (
-                      <tr className={styles.detailRow}>
-                        <td colSpan={8}>
-                          <div className={styles.detailPanel}>
-                            <div className={styles.panelHeader}>
-                              <div>
-                                <p className={styles.kicker}>Assessment detail</p>
-                                <h3>{assessment.assessmentName}</h3>
-                              </div>
-                              <button className={styles.closeButton} type="button" onClick={() => setOpenDetailId("")}>
-                                Close
-                              </button>
-                            </div>
-                            {assessment.questions.length ? (
-                              <div className={styles.questionList}>
-                                {assessment.questions.map((question, index) => (
-                                  <article key={question.id}>
-                                    <strong>{index + 1}. {question.question}</strong>
-                                    <span>{question.type}</span>
-                                    {question.options.map((option, optionIndex) => (
-                                      option ? (
-                                        <p key={`${question.id}-detail-${optionIndex}`}>
-                                          {String.fromCharCode(65 + optionIndex)}. {option}
-                                        </p>
-                                      ) : null
-                                    ))}
-                                    <b>{question.correctAnswer}</b>
-                                  </article>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className={styles.emptyState}>
-                                This draft does not have questions yet.
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ) : null}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
+  return <section className={styles.page} aria-label="Assessment management">
+    <section className={styles.hero}><div><p className={styles.kicker}>{assessmentModule.subtitle}</p><h2>{assessmentModule.title}</h2><p>{assessmentModule.description}</p></div></section>
+    <section className={styles.workspace}>
+      <div className={styles.toolbar}>
+        <span className={styles.listMeta}>{visible.length} / {items.length} assessments</span>
+        <input aria-label="Search assessment" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search code, name, company, purpose, status" />
+        <button className={styles.primaryButton} type="button" disabled={busy} onClick={startNew}>New</button>
+        <button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canModify} onClick={startEdit}>Edit</button>
+        <button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canCreateVersion} onClick={startVersion}>New Version</button>
+        <button className={styles.dangerButton} type="button" disabled={busy || !selected?.canModify} onClick={() => void remove()}>Delete</button>
+        <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void load()}>Refresh</button>
+        <button className={styles.secondaryButton} type="button" onClick={exportCsv}>Export</button>
+      </div>
+      {mode !== "idle" ? renderEditor() : null}
+      {feedback ? <p className={`${styles.feedback} ${styles[`feedback${feedback.tone[0].toUpperCase()}${feedback.tone.slice(1)}`]}`} role={feedback.tone === "error" ? "alert" : "status"}>{feedback.message}</p> : null}
+      <div className={styles.tableWrap}><table className={styles.assessmentTable}><thead><tr><th>Code</th><th>Assessment Name</th><th>Scope</th><th>Purpose</th><th>Version</th><th>Pass</th><th>Questions</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+        {!visible.length ? <tr><td className={styles.emptyTableCell} colSpan={9}>{busy ? "Loading assessments..." : "No assessments found."}</td></tr> : null}
+        {visible.map((item) => {
+          const isSelected = item.assessmentId === selectedId;
+          const isOpen = item.assessmentId === openDetailId;
+          const statusClass = item.status === "ACTIVE" ? styles.statusPublished : item.status === "DRAFT" ? styles.statusDraft : styles.statusInactive;
+          return <Fragment key={item.assessmentId}><tr aria-selected={isSelected} tabIndex={0} className={`${styles.selectableRow} ${isSelected ? styles.selectedRow : ""}`} onClick={() => { setSelectedId(isSelected ? "" : item.assessmentId); setOpenDetailId(""); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedId(isSelected ? "" : item.assessmentId); setOpenDetailId(""); } }}><td>{item.seriesCode}</td><td>{item.seriesName}</td><td>{item.companyCode ?? "Central"}</td><td>{item.purpose}</td><td>v{item.versionNo}</td><td>{item.passingScorePercent}%</td><td>{item.questions.length}</td><td><span className={`${styles.statusPill} ${statusClass}`}>{item.status}</span></td><td className={styles.actionCell}><button className={styles.detailButton} type="button" onClick={(event) => { event.stopPropagation(); setSelectedId(item.assessmentId); setOpenDetailId(isOpen ? "" : item.assessmentId); }}>{isOpen ? "Hide" : "Details"}</button></td></tr>
+            {isOpen ? <tr className={styles.detailRow}><td colSpan={9}><div className={styles.detailPanel}><div className={styles.panelHeader}><div><p className={styles.kicker}>{item.scope} · {item.purpose} · v{item.versionNo}</p><h3>{item.seriesName}</h3></div><span>{item.isUsed ? "Locked — already in use" : "Unused"}</span></div><p>{item.instructions || "No instructions"}</p>{item.questions.length ? <div className={styles.questionList}>{item.questions.map((detail, index) => <article key={detail.questionId}><strong>{index + 1}. {detail.questionText}</strong><span>{displayQuestionType(detail.questionType)} · {detail.questionScore} points</span>{detail.choices.map((choice, choiceIndex) => <p key={choice.choiceId}>{choice.isCorrect ? "✓ " : ""}{String.fromCharCode(65 + choiceIndex)}. {choice.choiceText}</p>)}</article>)}</div> : <div className={styles.emptyState}>This draft does not have questions yet.</div>}</div></td></tr> : null}
+          </Fragment>;
+        })}
+      </tbody></table></div>
     </section>
-  );
+  </section>;
 }
