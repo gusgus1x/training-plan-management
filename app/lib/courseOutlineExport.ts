@@ -1,8 +1,13 @@
-import type { WorkflowCourse, WorkflowStandard } from "./trainingWorkflow";
+import type {
+  WorkflowCourse,
+  WorkflowOapPlan,
+  WorkflowStandard,
+} from "./trainingWorkflow";
 
 export type CourseOutlineRequest = {
   course: WorkflowCourse;
   standard?: WorkflowStandard | null;
+  oapPlan?: WorkflowOapPlan | null;
 };
 
 export const getCourseOutlineFileName = (

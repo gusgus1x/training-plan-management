@@ -34,8 +34,20 @@ describe("Training Rolling multi-session workflow", () => {
     expect(rollingSource).toContain("Session schedule");
     expect(rollingSource).toContain("handleConfirmGroup");
     expect(rollingSource).toContain("handleDeleteGroup");
+    expect(rollingSource).toContain("handleEditGroup");
     expect(rollingSource).toContain("Publish all");
-    expect(rollingSource).toContain("Delete all");
+  });
+
+  it("places group edit and delete actions beside New", () => {
+    expect(rollingSource).toContain("selectedGroupId");
+    expect(rollingSource).toContain("selected-rolling-group");
+    expect(rollingSource).toContain(
+      "selectedGroup && handleEditGroup(selectedGroup.plans)",
+    );
+    expect(rollingSource).toContain(
+      "handleDeleteGroup(selectedGroup.id, selectedGroup.plans)",
+    );
+    expect(rollingSource).not.toContain("Delete all");
   });
 
   it("starts with an all-year view and requires a course before monthly entry", () => {

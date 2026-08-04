@@ -1,4 +1,8 @@
-import type { WorkflowCourse, WorkflowStandard } from "./trainingWorkflow";
+import type {
+  WorkflowCourse,
+  WorkflowOapPlan,
+  WorkflowStandard,
+} from "./trainingWorkflow";
 import {
   readXlsxEntries,
   setXlsxInlineCell,
@@ -26,39 +30,57 @@ const setTextBlock = (
   references: string[],
   value: string,
   width: number,
+  options?: {
+    overflowSeparator?: string;
+    styleOverride?: string;
+  },
 ) => {
   const wrapped = wrapText(value, width);
   if (wrapped.length > references.length) {
     wrapped[references.length - 1] = wrapped
       .slice(references.length - 1)
-      .join(" ");
+      .join(options?.overflowSeparator ?? " ");
   }
   return references.reduce(
     (xml, reference, index) =>
-      setXlsxInlineCell(xml, reference, wrapped[index] ?? ""),
+      setXlsxInlineCell(
+        xml,
+        reference,
+        wrapped[index] ?? "",
+        options?.styleOverride,
+      ),
     worksheetXml,
+  );
+};
+
+const setRowHeight = (
+  worksheetXml: string,
+  rowNumber: number,
+  height: number,
+) => {
+  const rowPattern = new RegExp(`<row\\b([^>]*\\br=["']${rowNumber}["'][^>]*)>`);
+  const match = worksheetXml.match(rowPattern);
+  if (!match) {
+    throw new Error(`Invalid course outline template: row ${rowNumber} was not found.`);
+  }
+  const attributes = match[1]
+    .replace(/\\s+ht=["'][^"']*["']/g, "")
+    .replace(/\\s+customHeight=["'][^"']*["']/g, "");
+  return worksheetXml.replace(
+    match[0],
+    `<row${attributes} ht="${height}" customHeight="1">`,
   );
 };
 
 const buildTargetGroup = (
   course: WorkflowCourse,
-  standard: WorkflowStandard | null | undefined,
+  oapPlan: WorkflowOapPlan | null | undefined,
   language: "th" | "en",
 ) => {
-  const labels =
-    language === "th"
-      ? { function: "หน่วยงาน", positions: "ตำแหน่ง", levels: "ระดับ" }
-      : { function: "Function", positions: "Positions", levels: "Levels" };
   return [
     course.targetGroup,
-    standard?.functionName
-      ? `${labels.function}: ${standard.functionName}`
-      : "",
-    standard?.positions.length
-      ? `${labels.positions}: ${standard.positions.join(", ")}`
-      : "",
-    standard?.levels.length
-      ? `${labels.levels}: ${standard.levels.join(", ")}`
+    oapPlan?.participants
+      ? `${language === "th" ? "จำนวนผู้เข้าอบรม / รุ่น" : "Participants / group"}: ${oapPlan.participants}`
       : "",
   ]
     .filter(Boolean)
@@ -97,7 +119,7 @@ const buildEvaluation = (course: WorkflowCourse, language: "th" | "en") => {
 const fillOutlineSheet = (
   templateXml: string,
   course: WorkflowCourse,
-  standard: WorkflowStandard | null | undefined,
+  oapPlan: WorkflowOapPlan | null | undefined,
   language: "th" | "en",
 ) => {
   const isThai = language === "th";
@@ -123,13 +145,25 @@ const fillOutlineSheet = (
     background,
     65,
   );
-  xml = setXlsxInlineCell(xml, "K10", "-");
+  xml = setXlsxInlineCell(
+    xml,
+    "K10",
+    oapPlan
+      ? [oapPlan.trainer, oapPlan.provider].filter(Boolean).join(" / ") || "-"
+      : "-",
+  );
   xml = setTextBlock(
     xml,
-    ["K14", "K15", "K16"],
-    buildTargetGroup(course, standard, language),
-    32,
+    ["K14", "K15", "K16", "K17"],
+    buildTargetGroup(course, oapPlan, language),
+    52,
+    { overflowSeparator: "\n", styleOverride: "48" },
   );
+  const lastTargetCell = xml.match(
+    /<c\b[^>]*\br=["']K17["'][^>]*>[\s\S]*?<t\b[^>]*>([\s\S]*?)<\/t>[\s\S]*?<\/c>/,
+  )?.[1] ?? "";
+  const targetLineCount = Math.max(1, lastTargetCell.split("\n").length);
+  xml = setRowHeight(xml, 17, Math.max(15, targetLineCount * 15));
   xml = setTextBlock(
     xml,
     ["B19", "B20", "B21", "B22", "B23", "B24", "B25", "B26"],
@@ -137,9 +171,23 @@ const fillOutlineSheet = (
     65,
   );
   xml = setXlsxInlineCell(xml, "K19", isThai ? "วันที่ : -" : "Date: -");
-  xml = setXlsxInlineCell(xml, "K20", isThai ? "เวลา : -" : "Time: -");
+  xml = setXlsxInlineCell(
+    xml,
+    "K20",
+    oapPlan?.hours
+      ? `${isThai ? "ชั่วโมงอบรม" : "Training hours"}: ${oapPlan.hours}`
+      : isThai
+        ? "เวลา : -"
+        : "Time: -",
+  );
   xml = setXlsxInlineCell(xml, "K21", isThai ? "สถานที่ : -" : "Location: -");
-  xml = setXlsxInlineCell(xml, "K25", "-");
+  xml = setXlsxInlineCell(
+    xml,
+    "K25",
+    oapPlan?.budget
+      ? `${Number(oapPlan.budget).toLocaleString("en-US")} THB`
+      : "-",
+  );
   xml = setTextBlock(
     xml,
     ["B29", "B30", "B31", "B32", "B33", "B34", "B35", "B36", "B37", "B38"],
@@ -157,7 +205,8 @@ const fillOutlineSheet = (
 export const buildCourseOutlineWorkbook = (
   template: Buffer,
   course: WorkflowCourse,
-  standard?: WorkflowStandard | null,
+  _standard?: WorkflowStandard | null,
+  oapPlan?: WorkflowOapPlan | null,
 ) => {
   const entries = readXlsxEntries(template);
   for (const [sheetNumber, language] of [
@@ -171,7 +220,12 @@ export const buildCourseOutlineWorkbook = (
       throw new Error(`Invalid course outline template: sheet${sheetNumber} was not found.`);
     }
     worksheet.data = Buffer.from(
-      fillOutlineSheet(worksheet.data.toString("utf8"), course, standard, language),
+      fillOutlineSheet(
+        worksheet.data.toString("utf8"),
+        course,
+        oapPlan,
+        language,
+      ),
       "utf8",
     );
   }

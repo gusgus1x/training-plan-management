@@ -286,7 +286,9 @@ export default function TrainingRolling() {
   const [form, setForm] = useState<RollingForm>(createEmptyForm);
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [editingId, setEditingId] = useState("");
+  const [editingPlanIds, setEditingPlanIds] = useState<string[]>([]);
   const [openDetailId, setOpenDetailId] = useState("");
+  const [selectedGroupId, setSelectedGroupId] = useState("");
   const [search, setSearch] = useState("");
   const [selectedYear, setSelectedYear] = useState("2026");
   const [selectedMonth, setSelectedMonth] = useState("all");
@@ -355,6 +357,8 @@ export default function TrainingRolling() {
       ),
     }));
   }, [visiblePlans]);
+  const selectedGroup =
+    visiblePlanGroups.find((group) => group.id === selectedGroupId) ?? null;
 
   const saveRollingPlans = (nextPlans: RollingPlan[]) => {
     setRollingPlans(nextPlans);
@@ -440,43 +444,53 @@ export default function TrainingRolling() {
     const scheduleGroupId =
       existingPlan?.scheduleGroupId ?? `rolling-group-${now}`;
     const nextSessionPlans = form.sessions.map<RollingPlan>(
-      (session, index) => ({
-        ...selectedOap,
-        rollingId:
-          index === 0 && existingPlan
-            ? existingPlan.rollingId
-            : `rolling-${now}-${index}`,
-        scheduleGroupId,
-        sequence:
-          index === 0 && existingPlan
-            ? existingPlan.sequence
-            : scopedRollingPlans.length + index + 1,
-        batch: session.batch.trim() || `Batch ${index + 1}`,
-        location: session.location.trim() || "Pending location",
-        trainingDate: session.trainingDate || today,
-        startTime: session.startTime || "09:00",
-        endTime: session.endTime || "16:00",
-        company,
-        relatedCompanies: selectedCompanies,
-        status:
-          index === 0 && existingPlan ? existingPlan.status : "Planning",
-        updatedAt: today,
-      }),
+      (session, index) => {
+        const matchedExistingPlan = rollingPlans.find(
+          (plan) => plan.rollingId === session.id,
+        );
+
+        return {
+          ...selectedOap,
+          rollingId: matchedExistingPlan
+            ? matchedExistingPlan.rollingId
+            : index === 0 && existingPlan
+              ? existingPlan.rollingId
+              : `rolling-${now}-${index}`,
+          scheduleGroupId,
+          sequence: matchedExistingPlan
+            ? matchedExistingPlan.sequence
+            : index === 0 && existingPlan
+              ? existingPlan.sequence
+              : scopedRollingPlans.length + index + 1,
+          batch: session.batch.trim() || `Batch ${index + 1}`,
+          location: session.location.trim() || "Pending location",
+          trainingDate: session.trainingDate || today,
+          startTime: session.startTime || "09:00",
+          endTime: session.endTime || "16:00",
+          company,
+          relatedCompanies: selectedCompanies,
+          status:
+            matchedExistingPlan?.status ??
+            (index === 0 && existingPlan ? existingPlan.status : "Planning"),
+          updatedAt: today,
+        };
+      },
     );
 
     if (existingPlan) {
-      const [updatedPlan, ...additionalPlans] = nextSessionPlans;
+      const replacedPlanIds = new Set(
+        editingPlanIds.length > 0 ? editingPlanIds : [existingPlan.rollingId],
+      );
       saveRollingPlans([
-        ...additionalPlans,
-        ...rollingPlans.map((plan) =>
-          plan.rollingId === editingId ? updatedPlan : plan,
-        ),
+        ...nextSessionPlans,
+        ...rollingPlans.filter((plan) => !replacedPlanIds.has(plan.rollingId)),
       ]);
     } else {
       saveRollingPlans([...nextSessionPlans, ...rollingPlans]);
     }
 
     setEditingId("");
+    setEditingPlanIds([]);
     setForm(createEmptyForm());
     setIsNewOpen(false);
   };
@@ -484,11 +498,12 @@ export default function TrainingRolling() {
   const handleEdit = (plan: RollingPlan) => {
     const matchedOap = oapSources.find((source) => source.course.code === plan.course.code);
     setEditingId(plan.rollingId);
+    setEditingPlanIds([plan.rollingId]);
     setForm({
       oapId: matchedOap?.id ?? "",
       sessions: [
         {
-          id: `session-${plan.rollingId}`,
+          id: plan.rollingId,
           batch: plan.batch,
           location: plan.location,
           trainingDate: plan.trainingDate,
@@ -502,6 +517,33 @@ export default function TrainingRolling() {
     setOpenDetailId("");
   };
 
+  const handleEditGroup = (groupPlans: RollingPlan[]) => {
+    const [firstPlan] = groupPlans;
+    if (!firstPlan) {
+      return;
+    }
+
+    const matchedOap = oapSources.find(
+      (source) => source.course.code === firstPlan.course.code,
+    );
+    setEditingId(firstPlan.rollingId);
+    setEditingPlanIds(groupPlans.map((plan) => plan.rollingId));
+    setForm({
+      oapId: matchedOap?.id ?? "",
+      sessions: groupPlans.map((plan) => ({
+        id: plan.rollingId,
+        batch: plan.batch,
+        location: plan.location,
+        trainingDate: plan.trainingDate,
+        startTime: plan.startTime,
+        endTime: plan.endTime,
+      })),
+      relatedCompanies: getRollingPlanCompanies(firstPlan),
+    });
+    setIsNewOpen(true);
+    setOpenDetailId("");
+  };
+
   const handleDelete = (rollingId: string) => {
     saveRollingPlans(rollingPlans.filter((plan) => plan.rollingId !== rollingId));
     if (openDetailId === rollingId) {
@@ -509,6 +551,7 @@ export default function TrainingRolling() {
     }
     if (editingId === rollingId) {
       setEditingId("");
+      setEditingPlanIds([]);
       setForm(createEmptyForm());
       setIsNewOpen(false);
     }
@@ -521,7 +564,9 @@ export default function TrainingRolling() {
     setForm(createEmptyForm());
     setIsNewOpen(false);
     setEditingId("");
+    setEditingPlanIds([]);
     setOpenDetailId("");
+    setSelectedGroupId("");
     setSearch("");
     setSelectedYear("2026");
     setSelectedMonth("all");
@@ -530,6 +575,7 @@ export default function TrainingRolling() {
 
   const handleNew = () => {
     setEditingId("");
+    setEditingPlanIds([]);
     setForm({
       ...createEmptyForm(),
       relatedCompanies:
@@ -538,6 +584,7 @@ export default function TrainingRolling() {
           : [...rollingCompanyOptions],
     });
     setOpenDetailId("");
+    setSelectedGroupId("");
     setIsNewOpen(true);
   };
 
@@ -564,9 +611,11 @@ export default function TrainingRolling() {
       rollingPlans.filter((plan) => !planIds.has(plan.rollingId)),
     );
     setOpenDetailId((current) => (current === groupId ? "" : current));
+    setSelectedGroupId((current) => (current === groupId ? "" : current));
 
     if (editingId && planIds.has(editingId)) {
       setEditingId("");
+      setEditingPlanIds([]);
       setForm(createEmptyForm());
       setIsNewOpen(false);
     }
@@ -627,6 +676,25 @@ export default function TrainingRolling() {
             >
               New
             </button>
+            <button
+              className={styles.secondaryButton}
+              disabled={!selectedGroup}
+              type="button"
+              onClick={() => selectedGroup && handleEditGroup(selectedGroup.plans)}
+            >
+              Edit
+            </button>
+            <button
+              className={styles.dangerButton}
+              disabled={!selectedGroup}
+              type="button"
+              onClick={() =>
+                selectedGroup &&
+                handleDeleteGroup(selectedGroup.id, selectedGroup.plans)
+              }
+            >
+              Delete
+            </button>
             <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>Refresh</button>
           </div>
         </div>
@@ -638,7 +706,7 @@ export default function TrainingRolling() {
                 <p className={styles.kicker}>New monthly plan</p>
                 <h3>{editingId ? "Edit Training Rolling" : "Create Training Rolling"}</h3>
               </div>
-              <button className={styles.closeButton} type="button" onClick={() => setIsNewOpen(false)}>Close</button>
+              <button className={styles.closeButton} type="button" onClick={() => { setEditingPlanIds([]); setIsNewOpen(false); }}>Close</button>
             </div>
             <div className={styles.formGrid}>
               <label className={styles.fullField}>
@@ -790,7 +858,7 @@ export default function TrainingRolling() {
               >
                 {editingId ? "Save changes" : "Save Draft"}
               </button>
-              <button className={styles.secondaryButton} type="button" onClick={() => { setEditingId(""); setForm(createEmptyForm()); setIsNewOpen(false); }}>Cancel</button>
+              <button className={styles.secondaryButton} type="button" onClick={() => { setEditingId(""); setEditingPlanIds([]); setForm(createEmptyForm()); setIsNewOpen(false); }}>Cancel</button>
             </div>
           </section>
         ) : null}
@@ -829,8 +897,19 @@ export default function TrainingRolling() {
 
                 return (
                   <Fragment key={group.id}>
-                    <tr>
-                      <td>{group.sequence}</td>
+                    <tr className={group.id === selectedGroupId ? styles.selectedRow : undefined}>
+                      <td>
+                        <label className={styles.selectionControl}>
+                          <input
+                            aria-label={`Select ${plan.course.code}`}
+                            checked={group.id === selectedGroupId}
+                            name="selected-rolling-group"
+                            type="radio"
+                            onChange={() => setSelectedGroupId(group.id)}
+                          />
+                          <span>{group.sequence}</span>
+                        </label>
+                      </td>
                       <td><strong>{plan.course.name}</strong><span>{plan.course.code}</span></td>
                       <td>
                         <strong>{group.plans.length} sessions</strong>
@@ -855,13 +934,6 @@ export default function TrainingRolling() {
                           onClick={() => handleConfirmGroup(group.plans)}
                         >
                           {allPublished ? "All published" : "Publish all"}
-                        </button>
-                        <button
-                          className={styles.dangerButton}
-                          type="button"
-                          onClick={() => handleDeleteGroup(group.id, group.plans)}
-                        >
-                          Delete all
                         </button>
                       </td>
                     </tr>

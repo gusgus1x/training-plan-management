@@ -19,6 +19,7 @@ import {
   type WorkflowOapPlan,
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
+import { getCourseOutlineFileName } from "../../../../lib/courseOutlineExport";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import {
   defaultInstructorRows,
@@ -102,6 +103,9 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [openDetailId, setOpenDetailId] = useState("");
+  const [selectedPlanId, setSelectedPlanId] = useState("");
+  const [exportingPlanId, setExportingPlanId] = useState("");
+  const [exportMessage, setExportMessage] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | OapStatus>("all");
   const [instructors, setInstructors] = useState<InstructorRecord[]>(() =>
@@ -209,6 +213,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       .filter((plan) => statusFilter === "all" || plan.status === statusFilter),
     [scopedPlans, search, statusFilter],
   );
+  const selectedPlan =
+    visiblePlans.find((plan) => plan.id === selectedPlanId) ?? null;
 
   const savePlans = (nextPlans: OapPlan[]) => {
     setPlans(nextPlans);
@@ -285,6 +291,9 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
   const handleDelete = (planId: string) => {
     savePlans(plans.filter((plan) => plan.id !== planId));
+    if (selectedPlanId === planId) {
+      setSelectedPlanId("");
+    }
     if (openDetailId === planId) {
       setOpenDetailId("");
     }
@@ -299,6 +308,48 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     savePlans(plans.map((plan) => plan.id === planId ? { ...plan, status } : plan));
   };
 
+  const handleExportOutline = async (plan: OapPlan) => {
+    const standard =
+      standards.find(
+        (item) =>
+          item.courseId === plan.course.id ||
+          item.courseCode === plan.course.courseCode,
+      ) ?? null;
+    setExportingPlanId(plan.id);
+    setExportMessage("");
+
+    try {
+      const response = await fetch("/api/course-master/course-outline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ course: plan.course, standard, oapPlan: plan }),
+      });
+      const errorPayload = response.ok
+        ? null
+        : ((await response.json().catch(() => null)) as { error?: string } | null);
+      if (!response.ok) {
+        throw new Error(errorPayload?.error || "Unable to create Course Outline.");
+      }
+
+      const file = await response.blob();
+      const downloadUrl = URL.createObjectURL(file);
+      const downloadLink = document.createElement("a");
+      downloadLink.href = downloadUrl;
+      downloadLink.download = getCourseOutlineFileName(plan.course);
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+      setExportMessage(`Exported Course Outline: ${plan.course.courseCode}`);
+    } catch (error) {
+      setExportMessage(
+        error instanceof Error ? error.message : "Unable to export Course Outline.",
+      );
+    } finally {
+      setExportingPlanId("");
+    }
+  };
+
   const handleRefresh = () => {
     setCourses(readWorkflowCollection<WorkflowCourse>(TRAINING_WORKFLOW_KEYS.courses));
     setStandards(
@@ -311,6 +362,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     setIsNewOpen(false);
     setEditingId("");
     setOpenDetailId("");
+    setSelectedPlanId("");
+    setExportMessage("");
     setSearch("");
     setStatusFilter("all");
   };
@@ -320,6 +373,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     setForm(emptyForm);
     setApprovedRequest(null);
     setOpenDetailId("");
+    setSelectedPlanId("");
     setIsNewOpen(true);
   };
 
@@ -358,9 +412,31 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
           </label>
           <div className={styles.toolbarActions}>
             <button className={styles.primaryButton} disabled={courseOptions.length === 0} type="button" onClick={handleNew}>New</button>
+            <button className={styles.secondaryButton} disabled={!selectedPlan} type="button" onClick={() => selectedPlan && handleEdit(selectedPlan)}>Edit</button>
+            <button className={styles.dangerButton} disabled={!selectedPlan} type="button" onClick={() => selectedPlan && handleDelete(selectedPlan.id)}>Delete</button>
+            <button
+              className={styles.secondaryButton}
+              disabled={!selectedPlan || Boolean(exportingPlanId)}
+              type="button"
+              onClick={() => selectedPlan && void handleExportOutline(selectedPlan)}
+            >
+              {exportingPlanId ? "Preparing..." : "Export Outline"}
+            </button>
             <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>Refresh</button>
           </div>
         </div>
+
+        <p className={styles.selectionHint} aria-live="polite">
+          {selectedPlan
+            ? `Selected: ${selectedPlan.course.courseCode} / ${getCourseDisplayName(selectedPlan.course)}`
+            : "Select a row using the circle under Seq. to Edit, Delete, or Export Outline."}
+        </p>
+
+        {exportMessage ? (
+          <p className={styles.exportStatus} role="status">
+            {exportMessage}
+          </p>
+        ) : null}
 
         {isNewOpen ? (
           <section className={styles.formPanel}>
@@ -492,8 +568,19 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                 const isOpen = openDetailId === plan.id;
                 return (
                   <Fragment key={plan.id}>
-                    <tr>
-                      <td>{plan.sequence}</td>
+                    <tr className={plan.id === selectedPlanId ? styles.selectedRow : undefined}>
+                      <td>
+                        <label className={styles.selectionControl}>
+                          <input
+                            aria-label={`Select ${plan.course.courseCode}`}
+                            checked={plan.id === selectedPlanId}
+                            name="selected-oap-plan"
+                            type="radio"
+                            onChange={() => setSelectedPlanId(plan.id)}
+                          />
+                          <span>{plan.sequence}</span>
+                        </label>
+                      </td>
                       <td>
                         <strong>{getCourseDisplayName(plan.course)}</strong>
                         <span>
@@ -511,23 +598,41 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                       <td>{plan.createdBy}</td>
                       <td><span className={`${styles.statusPill} ${styles[`status${plan.status}`]}`}>{plan.status}</span></td>
                       <td className={styles.actionCell}>
-                        <button className={styles.detailButton} type="button" onClick={() => setOpenDetailId(isOpen ? "" : plan.id)}>
-                          {isOpen ? "Hide" : "Details"}
-                        </button>
-                        <button className={styles.detailButton} type="button" onClick={() => handleEdit(plan)}>Edit</button>
-                        <button
-                          className={styles.primaryButton}
-                          disabled={plan.status !== "Planning"}
-                          type="button"
-                          onClick={() => updateStatus(plan.id, "Planned")}
-                        >
-                          {plan.status === "Planned"
-                            ? "Confirmed"
-                            : plan.status === "Cancel"
-                              ? "Cancelled"
-                              : "Confirm"}
-                        </button>
-                        <button className={styles.dangerButton} type="button" onClick={() => handleDelete(plan.id)}>Delete</button>
+                        <div className={styles.actionButtons}>
+                          <button
+                            aria-expanded={isOpen}
+                            className={`${styles.rowActionButton} ${styles.detailsAction}`}
+                            type="button"
+                            onClick={() => {
+                              setSelectedPlanId(plan.id);
+                              setOpenDetailId(isOpen ? "" : plan.id);
+                            }}
+                          >
+                            {isOpen ? "Hide" : "Details"}
+                          </button>
+                          {plan.status === "Planning" ? (
+                            <button
+                              className={`${styles.rowActionButton} ${styles.confirmAction}`}
+                              type="button"
+                              onClick={() => {
+                                setSelectedPlanId(plan.id);
+                                updateStatus(plan.id, "Planned");
+                              }}
+                            >
+                              Confirm
+                            </button>
+                          ) : (
+                            <span
+                              className={`${styles.rowActionState} ${
+                                plan.status === "Planned"
+                                  ? styles.confirmedAction
+                                  : styles.cancelledAction
+                              }`}
+                            >
+                              {plan.status === "Planned" ? "Confirmed" : "Cancelled"}
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                     {isOpen ? (
