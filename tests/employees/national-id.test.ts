@@ -14,9 +14,12 @@ const env = {
 };
 
 describe("National ID protection", () => {
-  it("accepts only valid 13-digit Thai IDs", () => {
+  it("accepts any value containing exactly 13 digits", () => {
     expect(isValidThaiNationalId("1101700207030")).toBe(true);
-    expect(isValidThaiNationalId("1101700207031")).toBe(false);
+    expect(isValidThaiNationalId("1101700207031")).toBe(true);
+    expect(isValidThaiNationalId("1234567890123")).toBe(true);
+    expect(isValidThaiNationalId("123456789012")).toBe(false);
+    expect(isValidThaiNationalId("12345678901234")).toBe(false);
     expect(isValidThaiNationalId("MOCK-ATA-1001")).toBe(false);
   });
   it("round trips encrypted data without exposing it", () => {

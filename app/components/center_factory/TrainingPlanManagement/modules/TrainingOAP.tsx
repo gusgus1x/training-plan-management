@@ -6,24 +6,19 @@ import {
   type EmployeeTrainingNeedRequest,
 } from "../../../../lib/trainingRequests";
 import {
-  TRAINING_MASTER_EVENT,
-  TRAINING_MASTER_KEYS,
   TRAINING_WORKFLOW_KEYS,
   getCourseDisplayName,
   getCourseSecondaryName,
   isWorkflowOwner,
-  readMasterCollection,
   readWorkflowCollection,
   writeWorkflowCollection,
   type WorkflowCourse,
   type WorkflowOapPlan,
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
+import { listInstructors } from "../../../../lib/instructors/client";
+import type { InstructorRecord } from "../../../../lib/instructors/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
-import {
-  defaultInstructorRows,
-  type InstructorRecord,
-} from "../../MasterDataManagement/modules/InstructorData";
 import styles from "./TrainingOAP.module.css";
 
 export const trainingOapModule = {
@@ -104,9 +99,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const [openDetailId, setOpenDetailId] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | OapStatus>("all");
-  const [instructors, setInstructors] = useState<InstructorRecord[]>(() =>
-    readMasterCollection(TRAINING_MASTER_KEYS.instructors, defaultInstructorRows),
-  );
+  const [instructors, setInstructors] = useState<InstructorRecord[]>([]);
   const userCompanyCode = profileValue(user?.companyCode);
 
   useEffect(() => {
@@ -140,17 +133,17 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   }, []);
 
   useEffect(() => {
-    const syncInstructorMaster = () =>
-      setInstructors(
-        readMasterCollection(
-          TRAINING_MASTER_KEYS.instructors,
-          defaultInstructorRows,
-        ),
-      );
-
-    window.addEventListener(TRAINING_MASTER_EVENT, syncInstructorMaster);
-    return () =>
-      window.removeEventListener(TRAINING_MASTER_EVENT, syncInstructorMaster);
+    let current = true;
+    listInstructors({ status: "ACTIVE" })
+      .then((result) => {
+        if (current) setInstructors(result.items);
+      })
+      .catch(() => {
+        if (current) setInstructors([]);
+      });
+    return () => {
+      current = false;
+    };
   }, []);
 
   const standardCourseIds = useMemo(
@@ -415,7 +408,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                 <datalist id="instructor-master-options">
                   {instructors.map((instructor) => {
                     const fullName = `${instructor.firstName} ${instructor.lastName}`.trim();
-                    return <option key={instructor.id} value={fullName}>{instructor.education}</option>;
+                    return <option key={instructor.instructorId} value={fullName}>{instructor.education}</option>;
                   })}
                 </datalist>
                 <small>Select an existing instructor or type an external instructor name.</small>

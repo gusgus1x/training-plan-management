@@ -1,0 +1,10 @@
+"use client";
+import type { CourseGroupRecord, CourseGroupStatus, CreateCourseGroupInput, UpdateCourseGroupInput } from "./types";
+type Fetcher = typeof fetch; type Envelope<T> = { ok: true; data: T } | { ok: false; error?: { code?: string; message?: string } };
+export class CourseGroupClientError extends Error { constructor(readonly code = "COURSE_GROUP_REQUEST_FAILED", message = "Course group request failed") { super(message); this.name = "CourseGroupClientError"; } }
+const read = async <T>(response: Response): Promise<T> => { let body: Envelope<T>; try { body = await response.json() as Envelope<T>; } catch { throw new CourseGroupClientError(); } if (!response.ok || body.ok !== true) { const e = body.ok === false ? body.error : undefined; throw new CourseGroupClientError(e?.code, e?.message); } return body.data; };
+const json = (method: string, body: unknown): RequestInit => ({ method, credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+export const listCourseGroups = async (filters: { status?: CourseGroupStatus } = {}, fetcher: Fetcher = fetch) => { const p = new URLSearchParams({ page: "1", pageSize: "100" }); if (filters.status) p.set("status", filters.status); return read<{ items: CourseGroupRecord[] }>(await fetcher(`/api/master-data/course-groups?${p}`, { credentials: "include", cache: "no-store" })); };
+export const createCourseGroup = async (input: CreateCourseGroupInput, fetcher: Fetcher = fetch) => read<{ courseGroup: CourseGroupRecord }>(await fetcher("/api/master-data/course-groups", json("POST", input)));
+export const updateCourseGroup = async (id: string, input: UpdateCourseGroupInput, fetcher: Fetcher = fetch) => read<{ courseGroup: CourseGroupRecord }>(await fetcher(`/api/master-data/course-groups/${id}`, json("PATCH", input)));
+export const deleteCourseGroup = async (id: string, fetcher: Fetcher = fetch) => read<{ courseGroup: CourseGroupRecord; outcome: "DELETED" }>(await fetcher(`/api/master-data/course-groups/${id}`, { method: "DELETE", credentials: "include" }));

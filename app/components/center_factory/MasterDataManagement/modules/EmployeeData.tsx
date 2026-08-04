@@ -7,6 +7,7 @@ import type { CompanyRecord } from "../../../../lib/companies/types";
 import {
   createEmployee,
   deleteEmployee,
+  EmployeeClientError,
   listEmployees,
   revealEmployeeNationalId,
   updateEmployee,
@@ -15,6 +16,7 @@ import type {
   EmployeeInput,
   EmployeeRecord,
 } from "../../../../lib/employees/types";
+import { isValidThaiNationalId } from "../../../../lib/employees/nationalIdValidation";
 import { listFunctions } from "../../../../lib/functions/client";
 import type { OrganizationFunctionRecord as FunctionRecord } from "../../../../lib/functions/types";
 import { listLevels } from "../../../../lib/levels/client";
@@ -72,6 +74,7 @@ export default function EmployeeData() {
     Record<string, string>
   >({});
   const [revealingNationalIds, setRevealingNationalIds] = useState(false);
+  const [loadingEditor, setLoadingEditor] = useState(false);
   const [saving, setSaving] = useState(false);
   const selected =
     rows.find((employee) => employee.employeeId === selectedId) ?? null;
@@ -209,47 +212,105 @@ export default function EmployeeData() {
     value: EmployeeInput[Key],
   ) => setForm((current) => ({ ...current, [key]: value }));
 
-  const edit = () => {
-    if (!selected) return;
-    setRevealedNationalIds({});
-    setForm({
-      companyId: selected.companyId,
-      employeeCode: selected.employeeCode,
-      functionId: selected.functionId,
-      positionId: selected.positionId,
-      levelId: selected.levelId,
-      nationalId: "",
-      titleTh: selected.titleTh,
-      titleEn: selected.titleEn,
-      firstNameTh: selected.firstNameTh,
-      lastNameTh: selected.lastNameTh,
-      firstNameEn: selected.firstNameEn,
-      lastNameEn: selected.lastNameEn,
-      birthDate: selected.birthDate,
-      hireDate: selected.hireDate,
-      telephone: selected.telephone,
-      email: selected.email,
-      employmentStatus: selected.employmentStatus,
-    });
-    setMode("edit");
+  const edit = async () => {
+    const employee = selected;
+    if (!employee || saving || loadingEditor) return;
+
+    setLoadingEditor(true);
+    setError(null);
+    setMessage(null);
+    const openEditor = (nationalId: string) => {
+      setRevealedNationalIds({});
+      setForm({
+        companyId: employee.companyId,
+        employeeCode: employee.employeeCode,
+        functionId: employee.functionId,
+        positionId: employee.positionId,
+        levelId: employee.levelId,
+        nationalId,
+        titleTh: employee.titleTh,
+        titleEn: employee.titleEn,
+        firstNameTh: employee.firstNameTh,
+        lastNameTh: employee.lastNameTh,
+        firstNameEn: employee.firstNameEn,
+        lastNameEn: employee.lastNameEn,
+        birthDate: employee.birthDate,
+        hireDate: employee.hireDate,
+        telephone: employee.telephone,
+        email: employee.email,
+        employmentStatus: employee.employmentStatus,
+      });
+      setSelectedId(employee.employeeId);
+      setMode("edit");
+    };
+    if (employee.nationalIdMasked === "*************") {
+      openEditor("");
+      setMessage(
+        "This employee has no protected National ID yet. Enter a valid 13-digit National ID before saving.",
+      );
+      setLoadingEditor(false);
+      return;
+    }
+    try {
+      const { nationalId } = await revealEmployeeNationalId(
+        employee.employeeId,
+      );
+      openEditor(nationalId);
+    } catch (editError) {
+      if (
+        editError instanceof EmployeeClientError &&
+        editError.code === "NATIONAL_ID_UNAVAILABLE"
+      ) {
+        openEditor("");
+        setMessage(
+          "This employee has no protected National ID yet. Enter a valid 13-digit National ID before saving.",
+        );
+      } else {
+        setError(
+          editError instanceof Error
+            ? editError.message
+            : "Unable to load National ID for editing",
+        );
+      }
+    } finally {
+      setLoadingEditor(false);
+    }
   };
 
   const save = async () => {
+    if (saving || !mode) return;
+    const savingMode = mode;
+    const editingEmployeeId = selected?.employeeId ?? null;
+    if (savingMode === "edit" && !editingEmployeeId) {
+      setError("Select an Employee before saving changes.");
+      return;
+    }
+    const nationalId = form.nationalId.trim();
+    const requiresNationalId =
+      savingMode === "new" || selected?.nationalIdMasked === "*************";
+    if (!nationalId && requiresNationalId) {
+      setError("National ID is required and must contain exactly 13 digits.");
+      return;
+    }
+    if (nationalId && !isValidThaiNationalId(nationalId)) {
+      setError("National ID must contain exactly 13 digits.");
+      return;
+    }
     setSaving(true);
     setError(null);
     setMessage(null);
     try {
-      const payload = { ...form, nationalId: form.nationalId.trim() };
-      const { nationalId, ...withoutNationalId } = payload;
+      const payload = { ...form, nationalId };
+      const { nationalId: submittedNationalId, ...withoutNationalId } = payload;
       const result =
-        mode === "edit" && selected
+        savingMode === "edit" && editingEmployeeId
           ? await updateEmployee(
-              selected.employeeId,
-              nationalId ? payload : withoutNationalId,
+              editingEmployeeId,
+              submittedNationalId ? payload : withoutNationalId,
             )
           : await createEmployee(payload);
       setRows((current) =>
-        mode === "edit"
+        savingMode === "edit"
           ? current.map((employee) =>
               employee.employeeId === result.employee.employeeId
                 ? result.employee
@@ -257,6 +318,9 @@ export default function EmployeeData() {
             )
           : [...current, result.employee],
       );
+      void listEmployees()
+        .then((refreshed) => setRows(refreshed.items))
+        .catch(() => undefined);
       setSelectedId(result.employee.employeeId);
       setOpenCompanies((current) =>
         current.includes(result.employee.companyId)
@@ -264,6 +328,7 @@ export default function EmployeeData() {
           : [...current, result.employee.companyId],
       );
       setMode(null);
+      setForm(blank(center ? result.employee.companyId : user?.companyId ?? ""));
       setMessage(`${result.employee.employeeCode} saved`);
     } catch (saveError) {
       setError(
@@ -275,7 +340,11 @@ export default function EmployeeData() {
   };
 
   const remove = async () => {
-    if (!selected || !confirm(`Delete ${selected.employeeCode}?`)) return;
+    if (saving || !selected || !confirm(`Delete ${selected.employeeCode}?`))
+      return;
+    setSaving(true);
+    setError(null);
+    setMessage(null);
     try {
       await deleteEmployee(selected.employeeId);
       setRows((current) =>
@@ -285,13 +354,26 @@ export default function EmployeeData() {
       );
       setSelectedId(null);
       setRevealedNationalIds({});
+      setMode(null);
+      void listEmployees()
+        .then((refreshed) => setRows(refreshed.items))
+        .catch(() => undefined);
     } catch (deleteError) {
       setError(
         deleteError instanceof Error
           ? deleteError.message
           : "Unable to delete Employee",
       );
+    } finally {
+      setSaving(false);
     }
+  };
+
+  const refresh = () => {
+    setMode(null);
+    setForm(blank(center ? (companies[0]?.companyId ?? "") : (user?.companyId ?? "")));
+    setMessage(null);
+    void load();
   };
 
   const revealAll = async () => {
@@ -352,6 +434,7 @@ export default function EmployeeData() {
           <button
             className={styles.newButton}
             type="button"
+            disabled={saving || loadingEditor}
             onClick={() => {
               setForm(
                 blank(center ? (companies[0]?.companyId ?? "") : (user?.companyId ?? "")),
@@ -364,15 +447,15 @@ export default function EmployeeData() {
           <button
             className={styles.editButton}
             type="button"
-            disabled={!selected}
-            onClick={edit}
+            disabled={!selected || saving || loadingEditor}
+            onClick={() => void edit()}
           >
-            Edit
+            {loadingEditor ? "Loading..." : "Edit"}
           </button>
           <button
             className={styles.deleteButton}
             type="button"
-            disabled={!selected}
+            disabled={!selected || saving || loadingEditor}
             onClick={() => void remove()}
           >
             Delete
@@ -380,14 +463,20 @@ export default function EmployeeData() {
           <button
             className={styles.refreshButton}
             type="button"
-            onClick={() => void load()}
+            disabled={saving || loadingEditor}
+            onClick={refresh}
           >
             Refresh
           </button>
           <button
             className={styles.refreshButton}
             type="button"
-            disabled={rows.length === 0 || revealingNationalIds}
+            disabled={
+              rows.length === 0 ||
+              revealingNationalIds ||
+              saving ||
+              loadingEditor
+            }
             onClick={() => void revealAll()}
           >
             {revealingNationalIds
@@ -430,11 +519,18 @@ export default function EmployeeData() {
                   inputMode="numeric"
                   maxLength={13}
                   value={form.nationalId}
-                  placeholder={mode === "edit" ? "Leave blank to keep current ID" : ""}
+                  autoComplete="off"
                   onChange={(event) =>
                     change("nationalId", event.target.value.replace(/\D/g, ""))
                   }
+                  aria-invalid={
+                    Boolean(form.nationalId) &&
+                    !isValidThaiNationalId(form.nationalId)
+                  }
                 />
+                <small>
+                  Must contain exactly 13 digits.
+                </small>
               </label>
               <label>
                 Title TH
@@ -556,6 +652,7 @@ export default function EmployeeData() {
                 </select>
               </label>
             </div>
+            {error ? <p role="alert">{error}</p> : null}
             <div className={styles.formActions}>
               <button
                 className={styles.saveButton}
@@ -563,11 +660,12 @@ export default function EmployeeData() {
                 disabled={saving}
                 onClick={() => void save()}
               >
-                Save
+                {saving ? "Saving..." : "Save"}
               </button>
               <button
                 className={styles.cancelButton}
                 type="button"
+                disabled={saving}
                 onClick={() => setMode(null)}
               >
                 Cancel

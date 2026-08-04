@@ -1,0 +1,11 @@
+import { ApiError } from "../api/errors";
+import { readRequiredString, type InputObject } from "../api/validation";
+import { COURSE_GROUP_STATUSES, type CourseGroupListFilters, type CourseGroupStatus, type CreateCourseGroupInput, type UpdateCourseGroupInput } from "./types";
+const hasOwn = (input: InputObject, field: string) => Object.prototype.hasOwnProperty.call(input, field);
+const invalid = (field: string, reason: string) => new ApiError({ code: "INVALID_INPUT", message: "The submitted course group data is invalid", status: 400, details: { field, reason } });
+const code = (input: InputObject) => { const value = readRequiredString(input, "code", { maxLength: 2 }).toUpperCase(); if (!/^[A-Z]{2}$/.test(value)) throw invalid("code", "Group ID must be exactly two uppercase letters"); return value; };
+const name = (input: InputObject) => readRequiredString(input, "name", { maxLength: 255 });
+const status = (value: unknown, fallback?: CourseGroupStatus): CourseGroupStatus => { if (value === undefined && fallback) return fallback; if (typeof value !== "string" || !COURSE_GROUP_STATUSES.includes(value.toUpperCase() as CourseGroupStatus)) throw invalid("status", "Status must be ACTIVE or INACTIVE"); return value.toUpperCase() as CourseGroupStatus; };
+export const parseCreateCourseGroup = (input: InputObject): CreateCourseGroupInput => ({ code: code(input), name: name(input), status: status(input.status, "ACTIVE") });
+export const parseUpdateCourseGroup = (input: InputObject): UpdateCourseGroupInput => { const update: UpdateCourseGroupInput = {}; if (hasOwn(input, "code")) update.code = code(input); if (hasOwn(input, "name")) update.name = name(input); if (hasOwn(input, "status")) update.status = status(input.status); if (!Object.keys(update).length) throw invalid("body", "At least one editable field is required"); return update; };
+export const parseCourseGroupListFilters = (params: URLSearchParams, pagination: Pick<CourseGroupListFilters, "skip" | "take">): CourseGroupListFilters => { const search = params.get("search")?.trim() || null; if (search && search.length > 100) throw invalid("search", "Search must contain no more than 100 characters"); const rawStatus = params.get("status"); return { search, status: rawStatus ? status(rawStatus) : null, ...pagination }; };

@@ -1,0 +1,16 @@
+import { apiSuccess } from "../../../../lib/api/response";
+import { readJsonObject, readPositiveId } from "../../../../lib/api/validation";
+import { createProtectedRoute, type ProtectedRouteOptions } from "../../../../lib/auth/guard";
+import { courseGroupService, type CourseGroupService } from "../../../../lib/courseGroups/service";
+import { parseUpdateCourseGroup } from "../../../../lib/courseGroups/validation";
+type Context = { params: Promise<{ courseGroupId: string }> };
+type Dependencies = { auth?: ProtectedRouteOptions; service?: CourseGroupService };
+const readOptions = (auth?: ProtectedRouteOptions) => ({ ...auth, allowedRoles: ["HRD_CENTER", "HRD_FACTORY"] as const });
+const writeOptions = (auth?: ProtectedRouteOptions) => ({ ...auth, allowedRoles: ["HRD_CENTER"] as const });
+const id = async (context: Context) => readPositiveId((await context.params).courseGroupId, "courseGroupId");
+export const createGetCourseGroupHandler = (dependencies: Dependencies = {}) => createProtectedRoute<Context>(async (_request, _principal, context) => apiSuccess({ courseGroup: await (dependencies.service ?? courseGroupService).getCourseGroup(await id(context)) }), readOptions(dependencies.auth));
+export const createUpdateCourseGroupHandler = (dependencies: Dependencies = {}) => createProtectedRoute<Context>(async (request, principal, context) => apiSuccess({ courseGroup: await (dependencies.service ?? courseGroupService).updateCourseGroup(await id(context), parseUpdateCourseGroup(await readJsonObject(request)), principal.userId) }), writeOptions(dependencies.auth));
+export const createDeleteCourseGroupHandler = (dependencies: Dependencies = {}) => createProtectedRoute<Context>(async (_request, _principal, context) => apiSuccess(await (dependencies.service ?? courseGroupService).deleteCourseGroup(await id(context))), writeOptions(dependencies.auth));
+export const GET = createGetCourseGroupHandler();
+export const PATCH = createUpdateCourseGroupHandler();
+export const DELETE = createDeleteCourseGroupHandler();

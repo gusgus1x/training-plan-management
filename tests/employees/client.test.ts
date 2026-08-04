@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   listEmployees,
   revealEmployeeNationalId,
+  updateEmployee,
 } from "../../app/lib/employees/client";
 
 afterEach(() => {
@@ -40,6 +41,32 @@ describe("employee client", () => {
     expect(fetcher).toHaveBeenCalledWith(
       "/api/master-data/employee-national-ids/2",
       { credentials: "include", cache: "no-store" },
+    );
+  });
+
+  it("shows the National ID validation reason returned by the API", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            ok: false,
+            error: {
+              code: "INVALID_INPUT",
+              message: "The submitted employee data is invalid",
+              details: {
+                field: "nationalId",
+                reason: "National ID must contain exactly 13 digits",
+              },
+            },
+          }),
+          { status: 400, headers: { "content-type": "application/json" } },
+        ),
+      ),
+    );
+
+    await expect(updateEmployee("2", { nationalId: "invalid" })).rejects.toThrow(
+      "The submitted employee data is invalid: National ID must contain exactly 13 digits",
     );
   });
 });

@@ -15,5 +15,11 @@ describe("Function Data UI contract", () => {
     expect(source).not.toContain("Company Function Mapping");
     expect(source).not.toContain("readMasterCollection(");
     expect(source).not.toContain("writeMasterCollection(");
+    expect(source).toContain("const savingMode = formMode");
+    expect(source).toContain("const editingFunctionId = selected?.functionId");
+    expect(source).toContain("void listFunctions()");
+    expect(source).toContain(".then((refreshed) => applyRows(refreshed.items))");
+    expect(source).toContain("const refresh = () =>");
+    expect(source).toContain("onClick={refresh}");
   });
 });

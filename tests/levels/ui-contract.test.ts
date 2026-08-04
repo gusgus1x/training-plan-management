@@ -19,6 +19,12 @@ describe("Level Data UI contract", () => {
     expect(source).toContain("remark");
     expect(source).not.toContain("readMasterCollection(");
     expect(source).not.toContain("writeMasterCollection(");
+    expect(source).toContain("const savingMode = formMode");
+    expect(source).toContain("const editingLevelId = selected?.levelId");
+    expect(source).toContain("void listLevels()");
+    expect(source).toContain(".then((refreshed) => setRows(refreshed.items))");
+    expect(source).toContain("const refresh = () =>");
+    expect(source).toContain("onClick={refresh}");
   });
 
   it("renders write controls only for HRD_CENTER", () => {

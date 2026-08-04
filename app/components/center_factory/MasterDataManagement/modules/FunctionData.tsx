@@ -168,7 +168,13 @@ export default function FunctionData() {
   };
 
   const save = async () => {
-    if (!isCenter || isSaving) return;
+    if (!isCenter || isSaving || !formMode) return;
+    const savingMode = formMode;
+    const editingFunctionId = selected?.functionId ?? null;
+    if (savingMode === "edit" && !editingFunctionId) {
+      setError("Select a Function before saving changes.");
+      return;
+    }
     setIsSaving(true);
     setError(null);
     try {
@@ -179,11 +185,11 @@ export default function FunctionData() {
         status: form.status,
       };
       const result =
-        formMode === "edit" && selected
-          ? await updateFunction(selected.functionId, input)
+        savingMode === "edit" && editingFunctionId
+          ? await updateFunction(editingFunctionId, input)
           : await createFunction(input);
       setRows((current) =>
-        formMode === "edit"
+        savingMode === "edit"
           ? current.map((item) =>
               item.functionId === result.function.functionId
                 ? result.function
@@ -191,8 +197,12 @@ export default function FunctionData() {
             )
           : [...current, result.function],
       );
+      void listFunctions()
+        .then((refreshed) => applyRows(refreshed.items))
+        .catch(() => undefined);
       setSelectedId(result.function.functionId);
       setFormMode(null);
+      setForm(blankForm());
       setMessage(`${result.function.functionCode} was saved.`);
     } catch (caught: unknown) {
       setError(errorText(caught));
@@ -221,11 +231,21 @@ export default function FunctionData() {
       setSelectedId(nextRows[0]?.functionId ?? null);
       setFormMode(null);
       setMessage(`${result.function.functionCode} was deleted.`);
+      void listFunctions()
+        .then((refreshed) => applyRows(refreshed.items))
+        .catch(() => undefined);
     } catch (caught: unknown) {
       setError(errorText(caught));
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const refresh = () => {
+    setFormMode(null);
+    setForm(blankForm());
+    setMessage(null);
+    void loadRows();
   };
 
   return (
@@ -281,7 +301,7 @@ export default function FunctionData() {
           <button
             className={styles.refreshButton}
             type="button"
-            onClick={() => void loadRows()}
+            onClick={refresh}
             disabled={isLoading || isSaving}
           >
             Refresh

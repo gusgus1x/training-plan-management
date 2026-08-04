@@ -582,7 +582,8 @@
   padding: 7px 11px;
 }
 
-.toolbar button:disabled {
+.toolbar button:disabled,
+.formPanel button:disabled {
   border-color: var(--ui-30-border);
   background: var(--ui-60-surface-soft);
   color: #a4afbd;

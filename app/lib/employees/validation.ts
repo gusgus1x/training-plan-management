@@ -8,7 +8,7 @@ const invalid=(field:string,reason:string)=>new ApiError({code:"INVALID_INPUT",m
 const optionalId=(o:InputObject,k:string)=>{const v=o[k];return v===null||v===undefined||v===""?null:readPositiveId(v,k)};
 const date=(o:InputObject,k:string)=>{const v=readOptionalString(o,k,{maxLength:10});if(v&&!/^\d{4}-\d{2}-\d{2}$/.test(v))throw invalid(k,"Use YYYY-MM-DD");return v};
 const status=(v:unknown,fallback?:EmploymentStatus):EmploymentStatus=>{if(v===undefined&&fallback)return fallback;if(typeof v!=="string"||!["ACTIVE","INACTIVE"].includes(v.toUpperCase()))throw invalid("employmentStatus","Status must be ACTIVE or INACTIVE");return v.toUpperCase() as EmploymentStatus};
-const national=(o:InputObject)=>{const v=readRequiredString(o,"nationalId",{maxLength:13});if(!isValidThaiNationalId(v))throw invalid("nationalId","National ID must be 13 digits with a valid Thai checksum");return v};
+const national=(o:InputObject)=>{const v=readRequiredString(o,"nationalId",{maxLength:13});if(!isValidThaiNationalId(v))throw invalid("nationalId","National ID must contain exactly 13 digits");return v};
 const thaiTitle=(o:InputObject)=>{const v=readRequiredString(o,"titleTh",{maxLength:50});if(!["นาย","นาง","นางสาว"].includes(v))throw invalid("titleTh","Title TH must be นาย, นาง, or นางสาว");return v};
 export const parseCreateEmployee=(o:InputObject):EmployeeInput=>({
   companyId:readPositiveId(o.companyId,"companyId"),employeeCode:readRequiredString(o,"employeeCode",{maxLength:50}).toUpperCase(),

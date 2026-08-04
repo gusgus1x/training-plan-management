@@ -186,7 +186,13 @@ export default function LevelData() {
     setError(null);
   };
   const save = async () => {
-    if (!isCenter || isSaving) return;
+    if (!isCenter || isSaving || !formMode) return;
+    const savingMode = formMode;
+    const editingLevelId = selected?.levelId ?? null;
+    if (savingMode === "edit" && !editingLevelId) {
+      setError("Select a Level before saving changes.");
+      return;
+    }
     setIsSaving(true);
     setError(null);
     setMessage(null);
@@ -202,18 +208,22 @@ export default function LevelData() {
         status: form.status,
       };
       const result =
-        formMode === "edit" && selected
-          ? await updateLevel(selected.levelId, input)
+        savingMode === "edit" && editingLevelId
+          ? await updateLevel(editingLevelId, input)
           : await createLevel(input);
       setRows((current) =>
-        formMode === "edit"
+        savingMode === "edit"
           ? current.map((item) =>
               item.levelId === result.level.levelId ? result.level : item,
             )
           : [...current, result.level],
       );
+      void listLevels()
+        .then((refreshed) => setRows(refreshed.items))
+        .catch(() => undefined);
       setSelectedId(result.level.levelId);
       setFormMode(null);
+      setForm(blankForm());
       setMessage(`${result.level.levelCode} was saved.`);
     } catch (caught: unknown) {
       setError(errorText(caught));
@@ -241,11 +251,21 @@ export default function LevelData() {
       setSelectedId(nextRows[0]?.levelId ?? null);
       setFormMode(null);
       setMessage(`${result.level.levelCode} was deleted.`);
+      void listLevels()
+        .then((refreshed) => setRows(refreshed.items))
+        .catch(() => undefined);
     } catch (caught: unknown) {
       setError(errorText(caught));
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const refresh = () => {
+    setFormMode(null);
+    setForm(blankForm());
+    setMessage(null);
+    void loadRows();
   };
 
   return (
@@ -273,12 +293,12 @@ export default function LevelData() {
           />
           {isCenter ? (
             <>
-              <button className={styles.newButton} type="button" onClick={startNew}>New</button>
+              <button className={styles.newButton} type="button" onClick={startNew} disabled={isSaving}>New</button>
               <button className={styles.editButton} type="button" onClick={startEdit} disabled={!selected || isSaving}>Edit</button>
               <button className={styles.deleteButton} type="button" onClick={() => void remove()} disabled={!selected || isSaving}>Delete</button>
             </>
           ) : null}
-          <button className={styles.refreshButton} type="button" onClick={() => void loadRows()} disabled={isLoading || isSaving}>Refresh</button>
+          <button className={styles.refreshButton} type="button" onClick={refresh} disabled={isLoading || isSaving}>Refresh</button>
         </div>
 
         {error ? <p role="alert">{error}</p> : null}

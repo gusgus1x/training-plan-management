@@ -1,5 +1,8 @@
 import { createCipheriv, createDecipheriv, createHmac } from "node:crypto";
 import { ApiError } from "../api/errors";
+import { isValidThaiNationalId } from "./nationalIdValidation";
+
+export { isValidThaiNationalId } from "./nationalIdValidation";
 
 const FORMAT_VERSION = 1;
 const IV_LENGTH = 12;
@@ -8,19 +11,9 @@ const TAG_LENGTH = 16;
 const invalid = () =>
   new ApiError({
     code: "INVALID_NATIONAL_ID",
-    message: "National ID must be a valid 13-digit Thai National ID",
+    message: "National ID must contain exactly 13 digits",
     status: 400,
   });
-
-export const isValidThaiNationalId = (value: string) => {
-  if (!/^\d{13}$/.test(value)) return false;
-  const digits = [...value].map(Number);
-  const sum = digits.slice(0, 12).reduce(
-    (total, digit, index) => total + digit * (13 - index),
-    0,
-  );
-  return ((11 - (sum % 11)) % 10) === digits[12];
-};
 
 type NationalIdEnvironment = Record<string, string | undefined>;
 

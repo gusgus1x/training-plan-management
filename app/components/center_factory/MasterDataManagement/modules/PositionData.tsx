@@ -156,7 +156,13 @@ export default function PositionData() {
   };
 
   const save = async () => {
-    if (!isCenter || isSaving) return;
+    if (!isCenter || isSaving || !formMode) return;
+    const savingMode = formMode;
+    const editingPositionId = selected?.positionId ?? null;
+    if (savingMode === "edit" && !editingPositionId) {
+      setError("Select a Position before saving changes.");
+      return;
+    }
     setIsSaving(true);
     setError(null);
     try {
@@ -167,11 +173,11 @@ export default function PositionData() {
         status: form.status,
       };
       const result =
-        formMode === "edit" && selected
-          ? await updatePosition(selected.positionId, input)
+        savingMode === "edit" && editingPositionId
+          ? await updatePosition(editingPositionId, input)
           : await createPosition(input);
       setRows((current) =>
-        formMode === "edit"
+        savingMode === "edit"
           ? current.map((item) =>
               item.positionId === result.position.positionId
                 ? result.position
@@ -179,8 +185,12 @@ export default function PositionData() {
             )
           : [...current, result.position],
       );
+      void listPositions()
+        .then((refreshed) => setRows(refreshed.items))
+        .catch(() => undefined);
       setSelectedId(result.position.positionId);
       setFormMode(null);
+      setForm(blankForm());
       setMessage(`${result.position.positionCode} was saved.`);
     } catch (caught: unknown) {
       setError(errorText(caught));
@@ -209,11 +219,21 @@ export default function PositionData() {
       setSelectedId(nextRows[0]?.positionId ?? null);
       setFormMode(null);
       setMessage(`${result.position.positionCode} was deleted.`);
+      void listPositions()
+        .then((refreshed) => setRows(refreshed.items))
+        .catch(() => undefined);
     } catch (caught: unknown) {
       setError(errorText(caught));
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const refresh = () => {
+    setFormMode(null);
+    setForm(blankForm());
+    setMessage(null);
+    void loadRows();
   };
 
   return (
@@ -240,7 +260,7 @@ export default function PositionData() {
           />
           {isCenter ? (
             <>
-              <button className={styles.newButton} type="button" onClick={startNew}>
+              <button className={styles.newButton} type="button" onClick={startNew} disabled={isSaving}>
                 New
               </button>
               <button
@@ -264,7 +284,7 @@ export default function PositionData() {
           <button
             className={styles.refreshButton}
             type="button"
-            onClick={() => void loadRows()}
+            onClick={refresh}
             disabled={isLoading || isSaving}
           >
             Refresh

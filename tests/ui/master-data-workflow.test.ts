@@ -22,7 +22,7 @@ describe("Master Data workflow integration", () => {
     expect(trainingCourseModules).not.toContain("courseGroupModule");
   });
 
-  it("persists Function, Position, Level, and Employee through APIs and keeps Instructor local", () => {
+  it("persists Function, Position, Level, Employee, and Instructor through APIs", () => {
     const workflowSource = readSource("app/lib/trainingWorkflow.ts");
 
     expect(workflowSource).toContain('functions: "tpm_master_functions"');
@@ -53,15 +53,12 @@ describe("Master Data workflow integration", () => {
     expect(levelSource).not.toContain("readMasterCollection(");
     expect(levelSource).not.toContain("writeMasterCollection(");
 
-    ["InstructorData.tsx"].forEach(
-      (fileName) => {
-      const source = readSource(
-        `app/components/center_factory/MasterDataManagement/modules/${fileName}`,
-      );
-      expect(source).toContain("readMasterCollection");
-      expect(source).toContain("writeMasterCollection");
-      },
+    const instructorSource = readSource(
+      "app/components/center_factory/MasterDataManagement/modules/InstructorData.tsx",
     );
+    expect(instructorSource).toContain("listInstructors()");
+    expect(instructorSource).not.toContain("readMasterCollection(");
+    expect(instructorSource).not.toContain("writeMasterCollection(");
   });
 
   it("uses the reference masters in Employee Data and Course Standard", () => {
@@ -76,6 +73,37 @@ describe("Master Data workflow integration", () => {
     expect(employeeSource).toContain("listFunctions()");
     expect(employeeSource).toContain("listPositions()");
     expect(employeeSource).toContain("listLevels()");
+    expect(employeeSource).toContain("const savingMode = mode");
+    expect(employeeSource).toContain("const editingEmployeeId = selected?.employeeId");
+    expect(employeeSource).toContain("void listEmployees()");
+    expect(employeeSource).toContain(
+      ".then((refreshed) => setRows(refreshed.items))",
+    );
+    expect(employeeSource).toContain('{saving ? "Saving..." : "Save"}');
+    expect(employeeSource).toContain("const refresh = () =>");
+    expect(employeeSource).toContain("onClick={refresh}");
+    expect(employeeSource).toContain("const edit = async () =>");
+    expect(employeeSource).toContain(
+      "const { nationalId } = await revealEmployeeNationalId(",
+    );
+    expect(employeeSource).toContain("nationalId,");
+    expect(employeeSource).toContain(
+      '{loadingEditor ? "Loading..." : "Edit"}',
+    );
+    expect(employeeSource).toContain(
+      'editError.code === "NATIONAL_ID_UNAVAILABLE"',
+    );
+    expect(employeeSource).toContain(
+      'employee.nationalIdMasked === "*************"',
+    );
+    expect(employeeSource).toContain('openEditor("")');
+    expect(employeeSource).toContain(
+      "if (nationalId && !isValidThaiNationalId(nationalId))",
+    );
+    expect(employeeSource).toContain(
+      "National ID must contain exactly 13 digits.",
+    );
+    expect(employeeSource).toContain("aria-invalid={");
     expect(employeeSource).not.toContain("readEmployeeMasterData");
     expect(employeeSource).toContain("<th>Title(TH)</th>");
     expect(employeeSource).not.toContain("<th>Telephone</th>");
@@ -120,7 +148,7 @@ describe("Master Data workflow integration", () => {
       "app/components/center_factory/TrainingPlanManagement/modules/TrainingOAP.tsx",
     );
 
-    expect(oapSource).toContain("TRAINING_MASTER_KEYS.instructors");
+    expect(oapSource).toContain('listInstructors({ status: "ACTIVE" })');
     expect(oapSource).toContain('list="instructor-master-options"');
     expect(oapSource).toContain('<datalist id="instructor-master-options">');
     expect(oapSource).toContain("type an external instructor name");

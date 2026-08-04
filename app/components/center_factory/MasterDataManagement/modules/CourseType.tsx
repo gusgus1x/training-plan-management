@@ -1,243 +1,32 @@
 "use client";
-
-import { useMemo, useState } from "react";
-import {
-  TRAINING_MASTER_KEYS,
-  readMasterCollection,
-  writeMasterCollection,
-} from "../../../../lib/trainingWorkflow";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { createCourseType, deleteCourseType, listCourseTypes, updateCourseType } from "../../../../lib/courseTypes/client";
+import type { CourseTypeRecord, CourseTypeStatus } from "../../../../lib/courseTypes/types";
 import styles from "./CourseType.module.css";
-
-export const courseTypeModule = {
-  title: "Course Type",
-  subtitle: "Course category",
-  description: "Maintain course type master data for Course Master and training planning.",
-} as const;
-
-export type CourseTypeRecord = {
-  id: string;
-  name: string;
-};
-
-export const defaultCourseTypes: CourseTypeRecord[] = [
-  { id: "type-001", name: "ATA-TC" },
-  { id: "type-002", name: "IN-HOUSE" },
-  { id: "type-003", name: "PUBLIC" },
-  { id: "type-004", name: "OJT" },
-];
-
+export const courseTypeModule = { title: "Course Type", subtitle: "Course category", description: "Maintain course type master data for Course Master and training planning." } as const;
+type Mode = "idle" | "new" | "edit"; type Draft = { code: string; name: string; description: string; status: CourseTypeStatus }; const emptyDraft: Draft = { code: "", name: "", description: "", status: "ACTIVE" };
 export default function CourseType() {
-  const [courseTypes, setCourseTypes] = useState<CourseTypeRecord[]>(() =>
-    readMasterCollection(TRAINING_MASTER_KEYS.courseTypes, defaultCourseTypes),
-  );
-  const [selectedId, setSelectedId] = useState("");
-  const [draftName, setDraftName] = useState("");
-  const [query, setQuery] = useState("");
-  const [mode, setMode] = useState<"idle" | "new" | "edit">("idle");
-  const [exportMessage, setExportMessage] = useState("");
-
-  const selectedCourseType = useMemo(
-    () => courseTypes.find((courseType) => courseType.id === selectedId) ?? null,
-    [courseTypes, selectedId],
-  );
-
-  const filteredCourseTypes = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-
-    if (!normalizedQuery) {
-      return courseTypes;
-    }
-
-    return courseTypes.filter((courseType) => courseType.name.toLowerCase().includes(normalizedQuery));
-  }, [courseTypes, query]);
-
-  const handleNew = () => {
-    setSelectedId("");
-    setDraftName("");
-    setMode("new");
-    setExportMessage("");
-  };
-
-  const handleEdit = () => {
-    if (!selectedCourseType) {
-      return;
-    }
-
-    setDraftName(selectedCourseType.name);
-    setMode("edit");
-    setExportMessage("");
-  };
-
-  const handleDelete = () => {
-    if (!selectedId) {
-      return;
-    }
-
-    const nextCourseTypes = courseTypes.filter(
-      (courseType) => courseType.id !== selectedId,
-    );
-    setCourseTypes(nextCourseTypes);
-    writeMasterCollection(TRAINING_MASTER_KEYS.courseTypes, nextCourseTypes);
-    setSelectedId("");
-    setDraftName("");
-    setMode("idle");
-    setExportMessage("");
-  };
-
-  const handleRefresh = () => {
-    setCourseTypes(
-      readMasterCollection(TRAINING_MASTER_KEYS.courseTypes, defaultCourseTypes),
-    );
-    setSelectedId("");
-    setDraftName("");
-    setQuery("");
-    setMode("idle");
-    setExportMessage("");
-  };
-
-  const handleExport = () => {
-    setExportMessage(`Export ready: ${courseTypes.length} course types`);
-  };
-
-  const handleSave = () => {
-    const nextName = draftName.trim().toUpperCase();
-    if (!nextName) {
-      return;
-    }
-
-    if (mode === "edit" && selectedId) {
-      const nextCourseTypes = courseTypes.map((courseType) =>
-        courseType.id === selectedId ? { ...courseType, name: nextName } : courseType,
-      );
-      setCourseTypes(nextCourseTypes);
-      writeMasterCollection(TRAINING_MASTER_KEYS.courseTypes, nextCourseTypes);
-      setMode("idle");
-      setDraftName("");
-      return;
-    }
-
-    const nextRecord: CourseTypeRecord = {
-      id: `type-${Date.now()}`,
-      name: nextName,
-    };
-    const nextCourseTypes = [...courseTypes, nextRecord];
-    setCourseTypes(nextCourseTypes);
-    writeMasterCollection(TRAINING_MASTER_KEYS.courseTypes, nextCourseTypes);
-    setSelectedId(nextRecord.id);
-    setMode("idle");
-    setDraftName("");
-  };
-
-  return (
-    <section className={styles.page} aria-label="Course Type management">
-      <section className={styles.hero}>
-        <div className={styles.heroCopy}>
-          <p className={styles.kicker}>{courseTypeModule.subtitle}</p>
-          <h2>{courseTypeModule.title}</h2>
-        </div>
-      </section>
-
-      <section className={styles.workspace}>
-        <div className={styles.workspaceHeader}>
-          <div>
-            <span>Master List</span>
-            <h3>Course type library</h3>
-          </div>
-          <span className={styles.listMeta}>{filteredCourseTypes.length} / {courseTypes.length} types</span>
-        </div>
-
-        <div className={styles.toolbar} aria-label="Course type actions">
-          <label className={styles.searchBox}>
-            <span>Search</span>
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search course type"
-              type="search"
-            />
-          </label>
-          <div className={styles.actionGroup}>
-            <button className={styles.primaryButton} type="button" onClick={handleNew}>
-              New
-            </button>
-            <button className={styles.secondaryButton} type="button" onClick={handleEdit} disabled={!selectedCourseType}>
-              Edit
-            </button>
-            <button className={styles.dangerButton} type="button" onClick={handleDelete} disabled={!selectedCourseType}>
-              Delete
-            </button>
-            <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>
-              Refresh
-            </button>
-            <button className={styles.secondaryButton} type="button" onClick={handleExport}>
-              Export
-            </button>
-          </div>
-        </div>
-
-        {mode !== "idle" ? (
-          <div className={styles.editor}>
-            <div className={styles.editorHeader}>
-              <span>{mode === "edit" ? "Edit record" : "New record"}</span>
-              <strong>{mode === "edit" ? selectedCourseType?.name : "Course Type"}</strong>
-            </div>
-            <label>
-              Course Type
-              <input
-                value={draftName}
-                onChange={(event) => setDraftName(event.target.value)}
-                placeholder="Enter course type"
-              />
-            </label>
-            <div className={styles.formActions}>
-              <button className={styles.saveButton} type="button" onClick={handleSave}>
-                Save
-              </button>
-              <button className={styles.cancelButton} type="button" onClick={() => setMode("idle")}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {exportMessage ? <p className={styles.exportMessage}>{exportMessage}</p> : null}
-
-        <div className={styles.contentGrid}>
-          <div className={styles.tableWrap}>
-            <table className={styles.courseTypeTable}>
-              <thead>
-                <tr>
-                  <th>No.</th>
-                  <th>Course Type</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCourseTypes.map((courseType, index) => (
-                  <tr
-                    className={courseType.id === selectedId ? styles.selectedRow : undefined}
-                    key={courseType.id}
-                    onClick={() => {
-                      setSelectedId(courseType.id);
-                      setExportMessage("");
-                    }}
-                  >
-                    <td>{index + 1}</td>
-                    <td>
-                      <strong>{courseType.name}</strong>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {filteredCourseTypes.length === 0 ? (
-              <div className={styles.emptyState}>
-                <strong>No course type found</strong>
-                <span>Try a different keyword or add a new course type.</span>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </section>
-    </section>
-  );
+  const user = useAuthenticatedUser(); const canWrite = user?.roleCode === "HRD_CENTER";
+  const [items, setItems] = useState<CourseTypeRecord[]>([]); const [selectedId, setSelectedId] = useState(""); const [draft, setDraft] = useState<Draft>(emptyDraft); const [query, setQuery] = useState(""); const [mode, setMode] = useState<Mode>("idle"); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
+  const selected = useMemo(() => items.find((item) => item.courseTypeId === selectedId) ?? null, [items, selectedId]);
+  const filtered = useMemo(() => { const q = query.trim().toLowerCase(); return q ? items.filter((item) => `${item.code} ${item.name} ${item.status}`.toLowerCase().includes(q)) : items; }, [items, query]);
+  const load = useCallback(async () => { setBusy(true); setMessage(""); try { const result = await listCourseTypes(); setItems(result.items); setSelectedId((current) => result.items.some((item) => item.courseTypeId === current) ? current : ""); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to load course types"); } finally { setBusy(false); } }, []);
+  useEffect(() => {
+    let active = true;
+    void listCourseTypes().then((result) => {
+      if (active) setItems(result.items);
+    }).catch((error: unknown) => {
+      if (active) setMessage(error instanceof Error ? error.message : "Unable to load course types");
+    });
+    return () => { active = false; };
+  }, []);
+  const save = async () => { if (!canWrite || !draft.code.trim() || !draft.name.trim()) return; setBusy(true); setMessage(""); try { const input = { code: draft.code, name: draft.name, description: draft.description.trim() || null, status: draft.status }; if (mode === "edit" && selected) await updateCourseType(selected.courseTypeId, input); else await createCourseType(input); setMode("idle"); setDraft(emptyDraft); await load(); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to save course type"); } finally { setBusy(false); } };
+  const remove = async () => { if (!canWrite || !selected) return; setBusy(true); setMessage(""); try { await deleteCourseType(selected.courseTypeId); setSelectedId(""); setMode("idle"); await load(); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to delete course type"); } finally { setBusy(false); } };
+  return <section className={styles.page} aria-label="Course Type management"><section className={styles.hero}><div className={styles.heroCopy}><p className={styles.kicker}>{courseTypeModule.subtitle}</p><h2>{courseTypeModule.title}</h2><p>{canWrite ? courseTypeModule.description : "Shared course types — read only"}</p></div></section><section className={styles.workspace}>
+    <div className={styles.workspaceHeader}><div><span>Master List</span><h3>Course type library</h3></div><span className={styles.listMeta}>{filtered.length} / {items.length} types</span></div>
+    <div className={styles.toolbar}><label className={styles.searchBox}><span>Search</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search code, name, or status" type="search" /></label><div className={styles.actionGroup}><button className={styles.primaryButton} type="button" disabled={!canWrite || busy} onClick={() => { setSelectedId(""); setDraft(emptyDraft); setMode("new"); setMessage(""); }}>New</button><button className={styles.secondaryButton} type="button" disabled={!canWrite || !selected || busy} onClick={() => { if (selected) { setDraft({ code: selected.code, name: selected.name, description: selected.description ?? "", status: selected.status }); setMode("edit"); setMessage(""); } }}>Edit</button><button className={styles.dangerButton} type="button" disabled={!canWrite || !selected || busy} onClick={() => void remove()}>Delete</button><button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void load()}>Refresh</button><button className={styles.secondaryButton} type="button" onClick={() => setMessage(`Export ready: ${items.length} course types`)}>Export</button></div></div>
+    {mode !== "idle" ? <div className={styles.editor}><div className={styles.editorHeader}><span>{mode === "edit" ? "Edit record" : "New record"}</span><strong>{selected?.name ?? "Course Type"}</strong>{mode === "edit" ? <small>Used: {selected?.hasBeenUsed ? "Yes" : "No"}</small> : null}</div><label>Course Type Code<input maxLength={30} disabled={mode === "edit" && selected?.hasBeenUsed} value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value.toUpperCase() })} placeholder="IN-HOUSE" /></label><label>Course Type Name<input maxLength={150} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="In-house Training" /></label><label>Description<textarea maxLength={500} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder="Optional description" /></label><label>Status<select value={draft.status} onChange={(e) => setDraft({ ...draft, status: e.target.value as CourseTypeStatus })}><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select></label><div className={styles.formActions}><button className={styles.saveButton} type="button" disabled={busy} onClick={() => void save()}>Save</button><button className={styles.cancelButton} type="button" disabled={busy} onClick={() => setMode("idle")}>Cancel</button></div></div> : null}
+    {message ? <p className={styles.exportMessage} role="status">{message}</p> : null}<div className={styles.tableWrap}><table className={styles.courseTypeTable}><thead><tr><th>No.</th><th>Course Type Code</th><th>Course Type Name</th><th>Status</th></tr></thead><tbody>{filtered.map((item, index) => <tr className={item.courseTypeId === selectedId ? styles.selectedRow : undefined} key={item.courseTypeId} onClick={() => { setSelectedId(item.courseTypeId); setMessage(""); }}><td>{index + 1}</td><td><strong>{item.code}</strong></td><td>{item.name}</td><td><span className={styles.statusPill}>{item.status}</span></td></tr>)}</tbody></table>{!busy && !filtered.length ? <div className={styles.emptyState}><strong>No course type found</strong><span>Try a different keyword or add a new course type.</span></div> : null}</div>
+  </section></section>;
 }

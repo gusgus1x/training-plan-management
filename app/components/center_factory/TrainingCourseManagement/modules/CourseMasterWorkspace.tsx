@@ -4,7 +4,7 @@
 
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   TRAINING_MASTER_KEYS,
   TRAINING_WORKFLOW_KEYS,
@@ -27,8 +27,8 @@ import {
   type TrainingEvaluationOption,
 } from "../../../../lib/trainingFormCatalog";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
-import { defaultCourseGroups } from "../../MasterDataManagement/modules/CourseGroup";
-import { defaultCourseTypes } from "../../MasterDataManagement/modules/CourseType";
+import { listCourseGroups } from "../../../../lib/courseGroups/client";
+import { listCourseTypes } from "../../../../lib/courseTypes/client";
 import { defaultFunctionRows } from "../../MasterDataManagement/modules/FunctionData";
 import { defaultLevelRows } from "../../MasterDataManagement/modules/LevelData";
 import { defaultPositionRows } from "../../MasterDataManagement/modules/PositionData";
@@ -118,14 +118,8 @@ const emptyCourseForm: CourseForm = {
 
 function CourseMaster() {
   const user = useAuthenticatedUser();
-  const [courseTypes] = useState(() =>
-    readMasterCollection(TRAINING_MASTER_KEYS.courseTypes, defaultCourseTypes).map(
-      (type) => type.name,
-    ),
-  );
-  const [courseGroupOptions] = useState(() =>
-    readMasterCollection(TRAINING_MASTER_KEYS.courseGroups, defaultCourseGroups),
-  );
+  const [courseTypes, setCourseTypes] = useState<string[]>([]);
+  const [courseGroupOptions, setCourseGroupOptions] = useState<Array<{ name: string; groupId: string }>>([]);
   const courseGroups = courseGroupOptions.map((group) => group.name);
   const [assessmentOptions, setAssessmentOptions] = useState<
     TrainingAssessmentOption[]
@@ -149,6 +143,23 @@ function CourseMaster() {
   );
   const [standardFunctionCode, setStandardFunctionCode] = useState(allFunctionCode);
   const [standardFunctionName, setStandardFunctionName] = useState(allFunctionOption);
+
+  useEffect(() => {
+    let active = true;
+    void Promise.all([
+      listCourseTypes({ status: "ACTIVE" }),
+      listCourseGroups({ status: "ACTIVE" }),
+    ]).then(([types, groups]) => {
+      if (!active) return;
+      setCourseTypes(types.items.map((item) => item.name));
+      setCourseGroupOptions(groups.items.map((item) => ({ name: item.name, groupId: item.code })));
+    }).catch(() => {
+      if (!active) return;
+      setCourseTypes([]);
+      setCourseGroupOptions([]);
+    });
+    return () => { active = false; };
+  }, []);
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   const [functionRows, setFunctionRows] = useState(() =>

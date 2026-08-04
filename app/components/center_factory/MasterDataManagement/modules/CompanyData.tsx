@@ -77,11 +77,7 @@ export default function CompanyData() {
 
   const selectedRecord =
     rows.find((row) => row.companyId === selectedId) ?? null;
-  const canModifySelected =
-    authenticatedUser?.roleCode === "HRD_CENTER" ||
-    (authenticatedUser?.roleCode === "HRD_FACTORY" &&
-      authenticatedUser.companyId !== null &&
-      selectedRecord?.companyId === authenticatedUser.companyId);
+  const canModifySelected = authenticatedUser?.roleCode === "HRD_CENTER";
   const companyCodes = useMemo(
     () => [...new Set(rows.map((row) => row.companyCode))].sort(),
     [rows],
@@ -211,6 +207,9 @@ export default function CompanyData() {
       setSelectedId(nextRows[0]?.companyId ?? null);
       setFormMode(null);
       setFeedbackMessage(`${result.company.companyCode} was deleted.`);
+      void listCompanies()
+        .then((refreshed) => setRows(refreshed.items))
+        .catch(() => undefined);
     } catch (error: unknown) {
       setErrorMessage(readableError(error));
     } finally {
@@ -222,12 +221,20 @@ export default function CompanyData() {
     setSearch("");
     setSelectedCode("all");
     setFormMode(null);
+    setFormValues(createBlankForm());
     setFeedbackMessage(null);
     void loadRows(selectedId);
   };
 
   const handleSave = async () => {
-    if (isSaving) {
+    if (isSaving || !formMode) {
+      return;
+    }
+    const savingMode = formMode;
+    const editingCompanyId = selectedRecord?.companyId ?? null;
+
+    if (savingMode === "edit" && !editingCompanyId) {
+      setErrorMessage("Select a company before saving changes.");
       return;
     }
 
@@ -244,12 +251,12 @@ export default function CompanyData() {
 
     try {
       const result =
-        formMode === "edit" && selectedRecord
-          ? await updateCompany(selectedRecord.companyId, input)
+        savingMode === "edit" && editingCompanyId
+          ? await updateCompany(editingCompanyId, input)
           : await createCompany(input);
 
       setRows((current) =>
-        formMode === "edit"
+        savingMode === "edit"
           ? current.map((row) =>
               row.companyId === result.company.companyId
                 ? result.company
@@ -257,8 +264,12 @@ export default function CompanyData() {
             )
           : [result.company, ...current],
       );
+      void listCompanies()
+        .then((refreshed) => setRows(refreshed.items))
+        .catch(() => undefined);
       setSelectedId(result.company.companyId);
       setFormMode(null);
+      setFormValues(createBlankForm());
       setFeedbackMessage(
         `${result.company.companyCode} was saved successfully.`,
       );

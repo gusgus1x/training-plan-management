@@ -1,0 +1,13 @@
+import type { NextRequest } from "next/server";
+import { createPaginationMeta, readPagination } from "../../../lib/api/pagination";
+import { apiSuccess } from "../../../lib/api/response";
+import { readJsonObject } from "../../../lib/api/validation";
+import { createProtectedRoute, type ProtectedRouteOptions } from "../../../lib/auth/guard";
+import { courseTypeService, type CourseTypeService } from "../../../lib/courseTypes/service";
+import { parseCourseTypeListFilters, parseCreateCourseType } from "../../../lib/courseTypes/validation";
+type Dependencies = { auth?: ProtectedRouteOptions; service?: CourseTypeService };
+const readOptions = (auth?: ProtectedRouteOptions) => ({ ...auth, allowedRoles: ["HRD_CENTER", "HRD_FACTORY"] as const });
+const writeOptions = (auth?: ProtectedRouteOptions) => ({ ...auth, allowedRoles: ["HRD_CENTER"] as const });
+export const createListCourseTypesHandler = (dependencies: Dependencies = {}) => createProtectedRoute(async (request: NextRequest) => { const pagination = readPagination(request); const result = await (dependencies.service ?? courseTypeService).listCourseTypes(parseCourseTypeListFilters(request.nextUrl.searchParams, pagination)); return apiSuccess({ items: result.items, pagination: createPaginationMeta(pagination.page, pagination.pageSize, result.totalItems) }); }, readOptions(dependencies.auth));
+export const createCreateCourseTypeHandler = (dependencies: Dependencies = {}) => createProtectedRoute(async (request, principal) => apiSuccess({ courseType: await (dependencies.service ?? courseTypeService).createCourseType(parseCreateCourseType(await readJsonObject(request)), principal.userId) }, 201), writeOptions(dependencies.auth));
+export const GET = createListCourseTypesHandler(); export const POST = createCreateCourseTypeHandler();

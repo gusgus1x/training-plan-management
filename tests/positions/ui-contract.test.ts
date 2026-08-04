@@ -15,5 +15,11 @@ describe("Position Data UI contract", () => {
     expect(source).not.toContain("readMasterCollection(");
     expect(source).not.toContain("writeMasterCollection(");
     expect(source).not.toContain("Remark.");
+    expect(source).toContain("const savingMode = formMode");
+    expect(source).toContain("const editingPositionId = selected?.positionId");
+    expect(source).toContain("void listPositions()");
+    expect(source).toContain(".then((refreshed) => setRows(refreshed.items))");
+    expect(source).toContain("const refresh = () =>");
+    expect(source).toContain("onClick={refresh}");
   });
 });

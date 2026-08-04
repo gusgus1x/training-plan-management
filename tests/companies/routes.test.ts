@@ -228,7 +228,7 @@ describe("company API routes", () => {
     expect(service.getCompany).not.toHaveBeenCalled();
   });
 
-  it("allows HRD_FACTORY to read all companies but modify only its session company", async () => {
+  it("allows HRD_FACTORY to read all companies but keeps every company read-only", async () => {
     const service = createService();
     const ownContext = { params: Promise.resolve({ companyId: "1" }) };
     const otherContext = { params: Promise.resolve({ companyId: "2" }) };
@@ -271,7 +271,7 @@ describe("company API routes", () => {
           ownContext,
         )
       ).status,
-    ).toBe(200);
+    ).toBe(403);
     expect(
       (
         await patchHandler(
@@ -297,10 +297,7 @@ describe("company API routes", () => {
     expect(service.getCompany).toHaveBeenCalledTimes(2);
     expect(service.getCompany).toHaveBeenNthCalledWith(1, "1");
     expect(service.getCompany).toHaveBeenNthCalledWith(2, "2");
-    expect(service.updateCompany).toHaveBeenCalledWith("1", {
-      remark: "Own company",
-    });
-    expect(service.updateCompany).toHaveBeenCalledTimes(1);
+    expect(service.updateCompany).not.toHaveBeenCalled();
     expect(service.deleteCompany).not.toHaveBeenCalled();
   });
 

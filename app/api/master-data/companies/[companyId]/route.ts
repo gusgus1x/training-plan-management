@@ -7,7 +7,6 @@ import {
   createProtectedRoute,
   type ProtectedRouteOptions,
 } from "../../../../lib/auth/guard";
-import { requireCompanyScope } from "../../../../lib/auth/authorization";
 import {
   companyService,
   type CompanyService,
@@ -23,9 +22,13 @@ type CompanyItemDependencies = {
   service?: CompanyService;
 };
 
-const protectedOptions = (auth: ProtectedRouteOptions | undefined) => ({
+const readOptions = (auth: ProtectedRouteOptions | undefined) => ({
   ...auth,
   allowedRoles: ["HRD_CENTER", "HRD_FACTORY"] as const,
+});
+const writeOptions = (auth: ProtectedRouteOptions | undefined) => ({
+  ...auth,
+  allowedRoles: ["HRD_CENTER"] as const,
 });
 
 const readCompanyId = async (context: CompanyRouteContext) =>
@@ -43,16 +46,15 @@ export const createGetCompanyHandler = (
 
       return apiSuccess({ company });
     },
-    protectedOptions(dependencies.auth),
+    readOptions(dependencies.auth),
   );
 
 export const createUpdateCompanyHandler = (
   dependencies: CompanyItemDependencies = {},
 ) =>
   createProtectedRoute<CompanyRouteContext>(
-    async (request, principal, context) => {
+    async (request, _principal, context) => {
       const companyId = await readCompanyId(context);
-      requireCompanyScope(principal, companyId, { allowHrdCenter: true });
       const input = parseUpdateCompanyInput(await readJsonObject(request));
       const company = await (
         dependencies.service ?? companyService
@@ -60,23 +62,22 @@ export const createUpdateCompanyHandler = (
 
       return apiSuccess({ company });
     },
-    protectedOptions(dependencies.auth),
+    writeOptions(dependencies.auth),
   );
 
 export const createDeleteCompanyHandler = (
   dependencies: CompanyItemDependencies = {},
 ) =>
   createProtectedRoute<CompanyRouteContext>(
-    async (_request, principal, context) => {
+    async (_request, _principal, context) => {
       const companyId = await readCompanyId(context);
-      requireCompanyScope(principal, companyId, { allowHrdCenter: true });
       const company = await (
         dependencies.service ?? companyService
       ).deleteCompany(companyId);
 
       return apiSuccess({ company });
     },
-    protectedOptions(dependencies.auth),
+    writeOptions(dependencies.auth),
   );
 
 export const GET = createGetCompanyHandler();

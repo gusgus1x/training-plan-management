@@ -74,9 +74,13 @@ describe("company client and UI integration", () => {
     expect(source).toContain("updateCompany");
     expect(source).toContain("deleteCompany");
     expect(source).toContain(
-      "selectedRecord?.companyId === authenticatedUser.companyId",
+      'const canModifySelected = authenticatedUser?.roleCode === "HRD_CENTER"',
     );
     expect(source).toContain("disabled={!canModifySelected || isSaving}");
+    expect(source).toContain("const savingMode = formMode");
+    expect(source).toContain("const editingCompanyId = selectedRecord?.companyId");
+    expect(source).toContain("void listCompanies()");
+    expect(source).toContain(".then((refreshed) => setRows(refreshed.items))");
     expect(source).not.toContain("defaultRows");
     expect(source).not.toContain("companyNameByCode");
     expect(source).toContain("handleDelete");
