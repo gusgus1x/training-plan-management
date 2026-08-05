@@ -10,24 +10,33 @@ const evaluationSource = readFileSync(
 );
 
 describe("evaluation management functional mockup contract", () => {
-  it("starts with sample forms and persists local mock changes", () => {
+  it("loads and saves evaluations through API clients", () => {
     expect(evaluationSource).toContain(
-      "useState<EvaluationRecord[]>(cloneInitialEvaluations)",
+      "useState<EvaluationRecord[]>([])",
     );
     expect(evaluationSource).toContain(
-      "window.localStorage.getItem(storageKey)",
+      "listEvaluations()",
     );
     expect(evaluationSource).toContain(
-      "window.localStorage.setItem(storageKey",
+      "createEvaluation(payload())",
+    );
+    expect(evaluationSource).toContain(
+      "updateEvaluation(selected.evaluationFormId, payload())",
+    );
+    expect(evaluationSource).toContain(
+      "deleteEvaluation(selected.evaluationFormId)",
+    );
+    expect(evaluationSource).not.toContain(
+      "window.localStorage",
     );
   });
 
   it("models the evaluation timing, respondent, identity, and question rules", () => {
     expect(evaluationSource).toContain(
-      'type EvaluationTiming = "After Training" | "30-Day Follow-up"',
+      'type MockTiming = "After Training" | "30-Day Follow-up"',
     );
     expect(evaluationSource).toContain(
-      'type EvaluationRespondent = "Employee" | "Manager"',
+      'type MockRespondent = "Employee" | "Manager"',
     );
     expect(evaluationSource).toContain("anonymous: boolean");
     expect(evaluationSource).toContain("required: boolean");
@@ -61,7 +70,7 @@ describe("evaluation management functional mockup contract", () => {
     expect(evaluationSource).toContain("renderQuestionPreview");
     expect(evaluationSource).toContain("setPreviewAnswers");
     expect(evaluationSource).toContain(
-      "createEvaluationCsv(visibleEvaluations)",
+      "createEvaluationCsv(visible)",
     );
     expect(evaluationSource).toContain('type: "text/csv;charset=utf-8"');
   });

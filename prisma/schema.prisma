@@ -418,6 +418,9 @@ model evaluation_form {
   created_by            BigInt
   created_at            DateTime
   updated_at            DateTime?
+  timing                String                  @db.NVarChar(30)
+  respondent_type       String                  @db.NVarChar(20)
+  is_anonymous          Boolean
   course                course[]
   company               company?                @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_evaluation_form_company_company_id")
   user_account          user_account            @relation(fields: [created_by], references: [user_id], onUpdate: NoAction, map: "FK_evaluation_form_user_account_created_by")
@@ -448,6 +451,7 @@ model evaluation_question {
   question_text          String              @db.NVarChar(Max)
   question_type          String              @db.NVarChar(30)
   is_required            Boolean
+  section_name           String?             @db.NVarChar(150)
   evaluation_answer      evaluation_answer[]
   evaluation_option      evaluation_option[]
   evaluation_form        evaluation_form     @relation(fields: [evaluation_form_id], references: [evaluation_form_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_evaluation_question_evaluation_form_evaluation_form_id")

@@ -1,1258 +1,349 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
-import {
-  EVALUATION_STORAGE_KEY,
-  initializeTrainingFormCatalog,
-} from "../../../../lib/trainingFormCatalog";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { listCompanies } from "../../../../lib/companies/client";
+import type { CompanyRecord } from "../../../../lib/companies/types";
+import {
+  createEvaluation,
+  deleteEvaluation,
+  listEvaluations,
+  updateEvaluation,
+} from "../../../../lib/evaluations/client";
+import type {
+  EvaluationQuestionType,
+  EvaluationRecord,
+  EvaluationRespondent,
+  EvaluationScope,
+  EvaluationStatus,
+  EvaluationTiming,
+  EvaluationWriteInput,
+} from "../../../../lib/evaluations/types";
 import styles from "./EvaluationManagement.module.css";
 
 export const evaluationManagementModule = {
   title: "Evaluation Management",
   subtitle: "Evaluation form",
-  description:
-    "Build post-training and follow-up evaluation forms for employees and managers.",
+  description: "Build post-training and follow-up evaluation forms for employees and managers.",
 } as const;
 
-type EvaluationStatus = "Draft" | "Published" | "Inactive";
-type EvaluationScope = "Central" | "Company";
-type EvaluationTiming = "After Training" | "30-Day Follow-up";
-type EvaluationRespondent = "Employee" | "Manager";
-type QuestionType = "Rating" | "Single Choice" | "Text";
-type EvaluationSection =
-  | "Course Content"
-  | "Instructor"
-  | "Learning Experience"
-  | "Application & Impact"
-  | "Comments";
-
-type EvaluationQuestion = {
+type Mode = "idle" | "new" | "edit";
+type MockTiming = "After Training" | "30-Day Follow-up";
+type MockRespondent = "Employee" | "Manager";
+type MockStatus = "Draft" | "Published" | "Inactive";
+type MockQuestionType = "Rating" | "Single Choice" | "Text";
+type EvaluationSection = "Course Content" | "Instructor" | "Learning Experience" | "Application & Impact" | "Comments";
+type Feedback = { tone: "success" | "error" | "info"; message: string };
+type FormErrors = Partial<Record<"name" | "companyId" | "questions" | "question", string>>;
+type Draft = {
+  formCode: string;
+  formName: string;
+  scope: EvaluationScope;
+  companyId: string;
+  timing: MockTiming;
+  respondent: MockRespondent;
+  anonymous: boolean;
+  status: MockStatus;
+};
+type DraftQuestion = {
   id: string;
   prompt: string;
-  type: QuestionType;
+  type: MockQuestionType;
   section: EvaluationSection;
   required: boolean;
   options: string[];
 };
 
-type EvaluationRecord = {
-  id: string;
-  code: string;
-  name: string;
-  scope: EvaluationScope;
-  company: string;
-  timing: EvaluationTiming;
-  respondent: EvaluationRespondent;
-  anonymous: boolean;
-  status: EvaluationStatus;
-  questions: EvaluationQuestion[];
-  updatedAt: string;
-};
-
-type EvaluationForm = Omit<EvaluationRecord, "id" | "questions" | "updatedAt">;
-type QuestionDraft = Omit<EvaluationQuestion, "id">;
-type FormErrors = Partial<
-  Record<keyof EvaluationForm | "questions" | "question", string>
->;
-type Feedback = {
-  tone: "success" | "error" | "info";
-  message: string;
-};
-
-const companies = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
-const sections: EvaluationSection[] = [
-  "Course Content",
-  "Instructor",
-  "Learning Experience",
-  "Application & Impact",
-  "Comments",
-];
-const ratingOptions = [
-  "1 - Strongly disagree",
-  "2 - Disagree",
-  "3 - Neutral",
-  "4 - Agree",
-  "5 - Strongly agree",
-];
-
-const emptyForm: EvaluationForm = {
-  code: "",
-  name: "",
-  scope: "Central",
-  company: companies[0],
+const sections: EvaluationSection[] = ["Course Content", "Instructor", "Learning Experience", "Application & Impact", "Comments"];
+const ratingOptions = ["1 - Strongly disagree", "2 - Disagree", "3 - Neutral", "4 - Agree", "5 - Strongly agree"];
+const key = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+const blankDraft = (companyId = "", factory = false): Draft => ({
+  formCode: "",
+  formName: "",
+  scope: factory ? "COMPANY" : "CENTRAL",
+  companyId,
   timing: "After Training",
   respondent: "Employee",
   anonymous: true,
   status: "Draft",
-};
-
-const emptyQuestionDraft: QuestionDraft = {
+});
+const blankQuestion = (): DraftQuestion => ({
+  id: key(),
   prompt: "",
   type: "Rating",
   section: "Course Content",
   required: true,
   options: ["", "", "", ""],
-};
+});
 
-const initialEvaluations: EvaluationRecord[] = [];
+const timingToApi = (value: MockTiming): EvaluationTiming => value === "After Training" ? "AFTER_TRAINING" : "FOLLOW_UP_30_DAYS";
+const timingFromApi = (value: EvaluationTiming): MockTiming => value === "AFTER_TRAINING" ? "After Training" : "30-Day Follow-up";
+const respondentToApi = (value: MockRespondent): EvaluationRespondent => value === "Employee" ? "EMPLOYEE" : "MANAGER";
+const respondentFromApi = (value: EvaluationRespondent): MockRespondent => value === "EMPLOYEE" ? "Employee" : "Manager";
+const statusToApi = (value: MockStatus): EvaluationStatus => value.toUpperCase() as EvaluationStatus;
+const statusFromApi = (value: EvaluationStatus): MockStatus => value === "DRAFT" ? "Draft" : value === "PUBLISHED" ? "Published" : "Inactive";
+const typeToApi = (value: MockQuestionType): EvaluationQuestionType => value === "Rating" ? "RATING" : value === "Single Choice" ? "SINGLE_CHOICE" : "SHORT_TEXT";
+const typeFromApi = (value: EvaluationQuestionType): MockQuestionType => value === "RATING" ? "Rating" : value === "SINGLE_CHOICE" || value === "MULTIPLE_CHOICE" ? "Single Choice" : "Text";
 
-const storageKey = EVALUATION_STORAGE_KEY;
+const toDraftQuestions = (record: EvaluationRecord): DraftQuestion[] => record.questions.map((question) => ({
+  id: question.evaluationQuestionId,
+  prompt: question.questionText,
+  type: typeFromApi(question.questionType),
+  section: sections.includes(question.sectionName as EvaluationSection) ? question.sectionName as EvaluationSection : "Comments",
+  required: question.isRequired,
+  options: question.questionType === "SINGLE_CHOICE" || question.questionType === "MULTIPLE_CHOICE"
+    ? [...question.options.map((option) => option.optionText), "", "", "", ""].slice(0, 4)
+    : ["", "", "", ""],
+}));
 
-const cloneInitialEvaluations = () =>
-  initialEvaluations.map((evaluation) => ({
-    ...evaluation,
-    questions: evaluation.questions.map((question) => ({
-      ...question,
-      options: [...question.options],
-    })),
-  }));
+const csvCell = (value: string | number | boolean) => `"${String(value).replaceAll('"', '""')}"`;
+const createEvaluationCsv = (items: EvaluationRecord[]) => [
+  ["Code", "Evaluation Name", "Timing", "Respondent", "Scope", "Company", "Anonymous", "Questions", "Required Questions", "Status", "Updated At"],
+  ...items.map((item) => [
+    item.formCode,
+    item.formName,
+    timingFromApi(item.timing),
+    respondentFromApi(item.respondentType),
+    item.scope === "CENTRAL" ? "Central" : "Company",
+    item.companyCode ?? "-",
+    item.isAnonymous,
+    item.questions.length,
+    item.questions.filter((question) => question.isRequired).length,
+    statusFromApi(item.status),
+    item.updatedAt ?? item.createdAt,
+  ]),
+].map((row) => row.map(csvCell).join(",")).join("\r\n");
 
-const readStoredEvaluations = () => {
-  if (typeof window === "undefined") {
-    return cloneInitialEvaluations();
-  }
-
-  try {
-    initializeTrainingFormCatalog();
-    const storedValue = window.localStorage.getItem(storageKey);
-
-    if (!storedValue) {
-      return cloneInitialEvaluations();
-    }
-
-    const parsedValue = JSON.parse(storedValue) as unknown;
-    return Array.isArray(parsedValue)
-      ? (parsedValue as EvaluationRecord[])
-      : cloneInitialEvaluations();
-  } catch {
-    return cloneInitialEvaluations();
-  }
-};
-
-const generateEvaluationCode = (evaluations: EvaluationRecord[]) => {
-  const latestNumber = evaluations.reduce((maximum, evaluation) => {
-    const match = evaluation.code.match(/^EVA-(\d+)$/i);
-    return match ? Math.max(maximum, Number(match[1])) : maximum;
-  }, 0);
-
-  return `EVA-${String(latestNumber + 1).padStart(3, "0")}`;
-};
-
-const escapeCsvCell = (value: string | number | boolean) =>
-  `"${String(value).replaceAll('"', '""')}"`;
-
-const createEvaluationCsv = (evaluations: EvaluationRecord[]) => {
-  const header = [
-    "Code",
-    "Evaluation Name",
-    "Timing",
-    "Respondent",
-    "Scope",
-    "Company",
-    "Anonymous",
-    "Questions",
-    "Required Questions",
-    "Status",
-    "Updated At",
-  ];
-  const rows = evaluations.map((evaluation) => [
-    evaluation.code,
-    evaluation.name,
-    evaluation.timing,
-    evaluation.respondent,
-    evaluation.scope,
-    evaluation.company,
-    evaluation.anonymous,
-    evaluation.questions.length,
-    evaluation.questions.filter((question) => question.required).length,
-    evaluation.status,
-    evaluation.updatedAt,
-  ]);
-
-  return [header, ...rows]
-    .map((row) => row.map(escapeCsvCell).join(","))
-    .join("\r\n");
+const allowedStatuses = (current?: EvaluationStatus): MockStatus[] => {
+  if (!current || current === "DRAFT") return ["Draft", "Published"];
+  return current === "PUBLISHED" ? ["Published", "Inactive"] : ["Inactive", "Published"];
 };
 
 export default function EvaluationManagement() {
   const user = useAuthenticatedUser();
-  const isFactoryUser = user?.roleCode === "HRD_FACTORY";
-  const factoryCompanyCode = companies.find(
-    (company) => company === user?.companyCode,
-  );
-  const availableCompanies =
-    isFactoryUser && factoryCompanyCode ? [factoryCompanyCode] : companies;
-  const createScopedEmptyForm = (): EvaluationForm => ({
-    ...emptyForm,
-    scope: isFactoryUser ? "Company" : emptyForm.scope,
-    company: factoryCompanyCode ?? emptyForm.company,
-  });
-  const [evaluations, setEvaluations] =
-    useState<EvaluationRecord[]>(cloneInitialEvaluations);
-  const [storageReady, setStorageReady] = useState(false);
+  const isFactory = user?.roleCode === "HRD_FACTORY";
+  const [items, setItems] = useState<EvaluationRecord[]>([]);
+  const [companies, setCompanies] = useState<CompanyRecord[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [openDetailId, setOpenDetailId] = useState("");
-  const [mode, setMode] = useState<"idle" | "new" | "edit">("idle");
-  const [form, setForm] = useState<EvaluationForm>(createScopedEmptyForm);
-  const [questions, setQuestions] = useState<EvaluationQuestion[]>([]);
-  const [questionDraft, setQuestionDraft] =
-    useState<QuestionDraft>(emptyQuestionDraft);
+  const [mode, setMode] = useState<Mode>("idle");
+  const [draft, setDraft] = useState<Draft>(() => blankDraft(user?.companyId ?? "", isFactory));
+  const [questions, setQuestions] = useState<DraftQuestion[]>([]);
+  const [questionDraft, setQuestionDraft] = useState<DraftQuestion>(blankQuestion);
   const [editingQuestionId, setEditingQuestionId] = useState("");
-  const [previewAnswers, setPreviewAnswers] = useState<Record<string, string>>(
-    {},
-  );
+  const [previewAnswers, setPreviewAnswers] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
-  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [errors, setErrors] = useState<FormErrors>({});
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    const loadTimer = window.setTimeout(() => {
-      setEvaluations(readStoredEvaluations());
-      setStorageReady(true);
-    }, 0);
+  const selected = useMemo(() => items.find((item) => item.evaluationFormId === selectedId) ?? null, [items, selectedId]);
+  const visible = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return query ? items.filter((item) => [item.formCode, item.formName, item.companyCode, timingFromApi(item.timing), respondentFromApi(item.respondentType), statusFromApi(item.status)].filter(Boolean).join(" ").toLowerCase().includes(query)) : items;
+  }, [items, search]);
 
-    return () => window.clearTimeout(loadTimer);
-  }, []);
-
-  useEffect(() => {
-    if (!storageReady) {
-      return;
-    }
-
+  const load = useCallback(async () => {
+    setBusy(true);
+    setFeedback(null);
     try {
-      window.localStorage.setItem(storageKey, JSON.stringify(evaluations));
-    } catch {
-      // The in-memory mock remains usable when browser storage is unavailable.
-    }
-  }, [evaluations, storageReady]);
+      const [evaluationResult, companyResult] = await Promise.all([
+        listEvaluations(),
+        isFactory ? Promise.resolve({ items: [] as CompanyRecord[] }) : listCompanies(),
+      ]);
+      setItems(evaluationResult.items);
+      setCompanies(companyResult.items);
+      setSelectedId((current) => evaluationResult.items.some((item) => item.evaluationFormId === current) ? current : "");
+    } catch (error) {
+      setFeedback({ tone: "error", message: error instanceof Error ? error.message : "Unable to load evaluations" });
+    } finally { setBusy(false); }
+  }, [isFactory]);
 
-  const scopedEvaluations = evaluations.filter(
-    (evaluation) =>
-      !isFactoryUser ||
-      (evaluation.scope === "Company" &&
-        evaluation.company === factoryCompanyCode),
-  );
-
-  const selectedEvaluation =
-    scopedEvaluations.find((evaluation) => evaluation.id === selectedId) ?? null;
-
-  const visibleEvaluations = (() => {
-    const searchTerm = search.trim().toLowerCase();
-
-    if (!searchTerm) {
-      return scopedEvaluations;
-    }
-
-    return scopedEvaluations.filter((evaluation) =>
-      [
-        evaluation.code,
-        evaluation.name,
-        evaluation.scope,
-        evaluation.company,
-        evaluation.timing,
-        evaluation.respondent,
-        evaluation.status,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(searchTerm),
-    );
-  })();
-
-  const updateForm = <K extends keyof EvaluationForm,>(
-    field: K,
-    value: EvaluationForm[K],
-  ) => {
-    setForm((current) => ({ ...current, [field]: value }));
-    setFormErrors((current) => ({ ...current, [field]: undefined }));
-    setFeedback(null);
-  };
-
-  const updateQuestionDraft = <K extends keyof QuestionDraft,>(
-    field: K,
-    value: QuestionDraft[K],
-  ) => {
-    setQuestionDraft((current) => ({ ...current, [field]: value }));
-    setFormErrors((current) => ({ ...current, question: undefined }));
-    setFeedback(null);
-  };
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
 
   const resetQuestionEditor = () => {
-    setQuestionDraft(emptyQuestionDraft);
+    setQuestionDraft(blankQuestion());
     setEditingQuestionId("");
-    setFormErrors((current) => ({ ...current, question: undefined }));
+    setErrors((current) => ({ ...current, question: undefined }));
   };
-
   const closeEditor = () => {
     setMode("idle");
-    setForm(createScopedEmptyForm());
+    setDraft(blankDraft(user?.companyId ?? "", isFactory));
     setQuestions([]);
     setPreviewAnswers({});
-    setFormErrors({});
+    setErrors({});
     resetQuestionEditor();
   };
-
   const handleNew = () => {
-    setSelectedId("");
-    setOpenDetailId("");
-    setMode("new");
-    setForm(createScopedEmptyForm());
-    setQuestions([]);
-    setPreviewAnswers({});
-    setFormErrors({});
-    resetQuestionEditor();
-    setFeedback(null);
+    setSelectedId(""); setOpenDetailId(""); setFeedback(null);
+    setDraft(blankDraft(user?.companyId ?? "", isFactory));
+    setQuestions([]); setPreviewAnswers({}); setErrors({}); resetQuestionEditor(); setMode("new");
   };
-
   const handleEdit = () => {
-    if (!selectedEvaluation) {
-      return;
-    }
-
-    setMode("edit");
-    setOpenDetailId(selectedEvaluation.id);
-    setForm({
-      code: selectedEvaluation.code,
-      name: selectedEvaluation.name,
-      scope: selectedEvaluation.scope,
-      company:
-        selectedEvaluation.company === "-"
-          ? companies[0]
-          : selectedEvaluation.company,
-      timing: selectedEvaluation.timing,
-      respondent: selectedEvaluation.respondent,
-      anonymous: selectedEvaluation.anonymous,
-      status: selectedEvaluation.status,
+    if (!selected?.canModify) return;
+    setDraft({
+      formCode: selected.formCode,
+      formName: selected.formName,
+      scope: selected.scope,
+      companyId: selected.companyId ?? "",
+      timing: timingFromApi(selected.timing),
+      respondent: respondentFromApi(selected.respondentType),
+      anonymous: selected.isAnonymous,
+      status: statusFromApi(selected.status),
     });
-    setQuestions(
-      selectedEvaluation.questions.map((question) => ({
-        ...question,
-        options: [...question.options],
-      })),
-    );
-    setPreviewAnswers({});
-    setFormErrors({});
-    resetQuestionEditor();
-    setFeedback(null);
+    setQuestions(toDraftQuestions(selected)); setPreviewAnswers({}); setErrors({}); resetQuestionEditor(); setFeedback(null); setMode("edit");
   };
 
-  const handleDuplicate = () => {
-    if (!selectedEvaluation) {
-      return;
-    }
+  const payload = (sourceDraft = draft, sourceQuestions = questions): EvaluationWriteInput => ({
+    scope: isFactory ? "COMPANY" : sourceDraft.scope,
+    companyId: isFactory ? user?.companyId ?? null : sourceDraft.scope === "COMPANY" ? sourceDraft.companyId : null,
+    formCode: sourceDraft.formCode,
+    formName: sourceDraft.formName,
+    description: null,
+    timing: timingToApi(sourceDraft.timing),
+    respondentType: respondentToApi(sourceDraft.respondent),
+    isAnonymous: sourceDraft.anonymous,
+    status: statusToApi(sourceDraft.status),
+    questions: sourceQuestions.map((question) => ({
+      questionText: question.prompt,
+      questionType: typeToApi(question.type),
+      sectionName: question.section,
+      isRequired: question.required,
+      options: question.type === "Rating"
+        ? ratingOptions.map((option, index) => ({ optionText: option, optionValue: String(index + 1) }))
+        : question.type === "Single Choice"
+          ? question.options.filter((option) => option.trim()).map((option) => ({ optionText: option, optionValue: null }))
+          : [],
+    })),
+  });
 
-    const duplicateId = `evaluation-${Date.now()}`;
-    const duplicatedEvaluation: EvaluationRecord = {
-      ...selectedEvaluation,
-      id: duplicateId,
-      code: generateEvaluationCode(evaluations),
-      name: `${selectedEvaluation.name} (Copy)`,
-      status: "Draft",
-      updatedAt: new Date().toISOString().slice(0, 10),
-      questions: selectedEvaluation.questions.map((question, index) => ({
-        ...question,
-        id: `${duplicateId}-question-${index + 1}`,
-        options: [...question.options],
-      })),
-    };
-
-    setEvaluations((current) => [duplicatedEvaluation, ...current]);
-    setSelectedId(duplicateId);
-    setOpenDetailId("");
-    setFeedback({
-      tone: "success",
-      message: "Evaluation duplicated as a new draft.",
-    });
+  const handleDuplicate = async () => {
+    if (!selected?.canDuplicate) return;
+    setBusy(true); setFeedback(null);
+    try {
+      const duplicateDraft: Draft = {
+        formCode: "",
+        formName: `${selected.formName} (Copy)`,
+        scope: selected.scope,
+        companyId: selected.companyId ?? "",
+        timing: timingFromApi(selected.timing),
+        respondent: respondentFromApi(selected.respondentType),
+        anonymous: selected.isAnonymous,
+        status: "Draft",
+      };
+      const result = await createEvaluation(payload(duplicateDraft, toDraftQuestions(selected)));
+      setItems((current) => [result.evaluation, ...current]);
+      setSelectedId(result.evaluation.evaluationFormId);
+      setFeedback({ tone: "success", message: "Evaluation duplicated as a new draft." });
+    } catch (error) { setFeedback({ tone: "error", message: error instanceof Error ? error.message : "Unable to duplicate evaluation" }); }
+    finally { setBusy(false); }
   };
 
-  const handleDelete = () => {
-    if (!selectedEvaluation) {
-      return;
-    }
-
-    const shouldDelete = window.confirm(
-      `Delete "${selectedEvaluation.name}"? This record will be removed from this browser.`,
-    );
-
-    if (!shouldDelete) {
-      return;
-    }
-
-    setEvaluations((current) =>
-      current.filter((evaluation) => evaluation.id !== selectedEvaluation.id),
-    );
-    setSelectedId("");
-    setOpenDetailId("");
-    setMode("idle");
-    setFeedback({ tone: "success", message: "Evaluation deleted." });
-  };
-
-  const handleRefresh = () => {
-    setEvaluations(readStoredEvaluations());
-    setSelectedId("");
-    setOpenDetailId("");
-    setMode("idle");
-    setFeedback({
-      tone: "info",
-      message: "Evaluation data refreshed from browser storage.",
-    });
-  };
-
-  const handleClearAllData = () => {
-    const shouldClear = window.confirm(
-      "Clear all Evaluation Management data from this browser? This cannot be undone.",
-    );
-
-    if (!shouldClear) {
-      return;
-    }
-
-    setEvaluations((current) =>
-      isFactoryUser
-        ? current.filter(
-            (evaluation) =>
-              evaluation.scope !== "Company" ||
-              evaluation.company !== factoryCompanyCode,
-          )
-        : [],
-    );
-    setSelectedId("");
-    setOpenDetailId("");
-    setMode("idle");
-    setSearch("");
-    setFeedback({
-      tone: "success",
-      message: "All Evaluation Management data cleared.",
-    });
-  };
-
-  const handleExport = () => {
-    if (!visibleEvaluations.length) {
-      setFeedback({
-        tone: "error",
-        message: "There are no evaluations to export.",
-      });
-      return;
-    }
-
-    const csvContent = createEvaluationCsv(visibleEvaluations);
-    const downloadUrl = URL.createObjectURL(
-      new Blob(["\uFEFF", csvContent], { type: "text/csv;charset=utf-8" }),
-    );
-    const downloadLink = document.createElement("a");
-    downloadLink.href = downloadUrl;
-    downloadLink.download = `evaluation-export-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    downloadLink.remove();
-    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
-    setFeedback({
-      tone: "success",
-      message: `Exported ${visibleEvaluations.length} evaluation${visibleEvaluations.length === 1 ? "" : "s"} to CSV.`,
-    });
-  };
-
-  const handleShowDetails = (evaluation: EvaluationRecord) => {
-    const isOpen = openDetailId === evaluation.id && mode === "idle";
-    setSelectedId(isOpen ? "" : evaluation.id);
-    setOpenDetailId(isOpen ? "" : evaluation.id);
-    setMode("idle");
-    setPreviewAnswers({});
-    setFeedback(null);
+  const handleDelete = async () => {
+    if (!selected?.canModify || !window.confirm(`Delete "${selected.formName}"?`)) return;
+    setBusy(true); setFeedback(null);
+    try {
+      await deleteEvaluation(selected.evaluationFormId);
+      setItems((current) => current.filter((item) => item.evaluationFormId !== selected.evaluationFormId));
+      setSelectedId(""); setOpenDetailId(""); closeEditor();
+      setFeedback({ tone: "success", message: "Evaluation deleted." });
+    } catch (error) { setFeedback({ tone: "error", message: error instanceof Error ? error.message : "Unable to delete evaluation" }); }
+    finally { setBusy(false); }
   };
 
   const handleAddQuestion = () => {
-    const prompt = questionDraft.prompt.trim();
-    const choiceOptions = questionDraft.options.map((option) => option.trim());
+    const cleanOptions = questionDraft.options.map((option) => option.trim());
+    if (!questionDraft.prompt.trim()) return setErrors((current) => ({ ...current, question: "Enter an evaluation question." }));
+    if (questionDraft.type === "Single Choice" && cleanOptions.filter(Boolean).length < 2) return setErrors((current) => ({ ...current, question: "Single Choice questions need at least two options." }));
+    const next: DraftQuestion = { ...questionDraft, prompt: questionDraft.prompt.trim(), options: questionDraft.type === "Single Choice" ? cleanOptions : ["", "", "", ""] };
+    setQuestions((current) => editingQuestionId ? current.map((item) => item.id === editingQuestionId ? next : item) : [...current, next]);
+    setErrors((current) => ({ ...current, question: undefined, questions: undefined }));
+    setFeedback({ tone: "success", message: editingQuestionId ? "Question updated." : "Question added." });
+    setPreviewAnswers({}); resetQuestionEditor();
+  };
+  const handleEditQuestion = (question: DraftQuestion) => { setQuestionDraft({ ...question, options: [...question.options, "", "", "", ""].slice(0, 4) }); setEditingQuestionId(question.id); setErrors((current) => ({ ...current, question: undefined })); };
+  const handleRemoveQuestion = (id: string) => { setQuestions((current) => current.filter((item) => item.id !== id)); if (editingQuestionId === id) resetQuestionEditor(); setPreviewAnswers({}); };
+  const handleMoveQuestion = (index: number, direction: -1 | 1) => setQuestions((current) => {
+    const destination = index + direction; if (destination < 0 || destination >= current.length) return current;
+    const reordered = [...current]; [reordered[index], reordered[destination]] = [reordered[destination], reordered[index]]; return reordered;
+  });
 
-    if (!prompt) {
-      setFormErrors((current) => ({
-        ...current,
-        question: "Enter an evaluation question.",
-      }));
-      return;
-    }
-
-    if (
-      questionDraft.type === "Single Choice" &&
-      choiceOptions.filter(Boolean).length < 2
-    ) {
-      setFormErrors((current) => ({
-        ...current,
-        question: "Single Choice questions need at least two options.",
-      }));
-      return;
-    }
-
-    const nextQuestion: EvaluationQuestion = {
-      ...questionDraft,
-      id: editingQuestionId || `evaluation-question-${Date.now()}`,
-      prompt,
-      options:
-        questionDraft.type === "Rating"
-          ? [...ratingOptions]
-          : questionDraft.type === "Single Choice"
-            ? choiceOptions.filter(Boolean)
-            : [],
-    };
-
-    setQuestions((current) =>
-      editingQuestionId
-        ? current.map((question) =>
-            question.id === editingQuestionId ? nextQuestion : question,
-          )
-        : [...current, nextQuestion],
-    );
-    setPreviewAnswers({});
-    setFormErrors((current) => ({
-      ...current,
-      question: undefined,
-      questions: undefined,
-    }));
-    setFeedback({
-      tone: "success",
-      message: editingQuestionId ? "Question updated." : "Question added.",
-    });
-    resetQuestionEditor();
+  const handleSave = async () => {
+    const nextErrors: FormErrors = {};
+    if (!draft.formName.trim()) nextErrors.name = "Evaluation name is required.";
+    if (!isFactory && draft.scope === "COMPANY" && !draft.companyId) nextErrors.companyId = "Select a company for a company-specific form.";
+    if (draft.status === "Published" && !questions.length) nextErrors.questions = "Add at least one question before publishing.";
+    if (draft.status === "Published" && !questions.some((question) => question.required)) nextErrors.questions = "Published evaluations need at least one required question.";
+    if (Object.keys(nextErrors).length) { setErrors(nextErrors); setFeedback({ tone: "error", message: "Please correct the highlighted fields." }); return; }
+    setBusy(true); setFeedback(null);
+    try {
+      const saved = mode === "edit" && selected
+        ? (await updateEvaluation(selected.evaluationFormId, payload())).evaluation
+        : (await createEvaluation(payload())).evaluation;
+      setItems((current) => mode === "edit" ? current.map((item) => item.evaluationFormId === saved.evaluationFormId ? saved : item) : [saved, ...current]);
+      setSelectedId(saved.evaluationFormId); setOpenDetailId(""); closeEditor();
+      setFeedback({ tone: "success", message: mode === "edit" ? "Evaluation updated." : "Evaluation created." });
+      void listEvaluations().then((result) => setItems(result.items)).catch(() => undefined);
+    } catch (error) { setFeedback({ tone: "error", message: error instanceof Error ? error.message : "Unable to save evaluation" }); }
+    finally { setBusy(false); }
   };
 
-  const handleEditQuestion = (question: EvaluationQuestion) => {
-    setQuestionDraft({
-      prompt: question.prompt,
-      type: question.type,
-      section: question.section,
-      required: question.required,
-      options:
-        question.type === "Single Choice"
-          ? [...question.options, "", "", "", ""].slice(0, 4)
-          : ["", "", "", ""],
-    });
-    setEditingQuestionId(question.id);
-    setFormErrors((current) => ({ ...current, question: undefined }));
-    setFeedback(null);
+  const handleExport = () => {
+    if (!visible.length) return setFeedback({ tone: "error", message: "There are no evaluations to export." });
+    const url = URL.createObjectURL(new Blob(["\uFEFF", createEvaluationCsv(visible)], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a"); link.href = url; link.download = `evaluation-export-${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
   };
 
-  const handleRemoveQuestion = (questionId: string) => {
-    setQuestions((current) =>
-      current.filter((question) => question.id !== questionId),
-    );
+  const renderQuestionPreview = (previewQuestions: DraftQuestion[], previewKey: string, editable: boolean) => previewQuestions.length ? <div className={styles.questionList}>{previewQuestions.map((item, index) => {
+    const answerKey = `${previewKey}-${item.id}`;
+    const options = item.type === "Rating" ? ratingOptions : item.options.filter(Boolean);
+    return <article key={item.id}><div className={styles.questionHeading}><div><span>{item.section}</span><strong>{index + 1}. {item.prompt}{item.required ? <em className={styles.requiredMark}> *</em> : null}</strong></div><b>{item.type}</b></div>
+      {item.type === "Text" ? <textarea aria-label={`Preview answer for question ${index + 1}`} placeholder="Type a preview response" value={previewAnswers[answerKey] ?? ""} onChange={(event) => setPreviewAnswers((current) => ({ ...current, [answerKey]: event.target.value }))} /> : <div className={styles.previewOptions}>{options.map((option) => <label key={`${item.id}-${option}`}><input checked={previewAnswers[answerKey] === option} name={answerKey} type="radio" value={option} onChange={(event) => setPreviewAnswers((current) => ({ ...current, [answerKey]: event.target.value }))} /><span>{option}</span></label>)}</div>}
+      {editable ? <div className={styles.questionActions}><button className={styles.secondaryButton} type="button" disabled={index === 0} onClick={() => handleMoveQuestion(index, -1)}>Up</button><button className={styles.secondaryButton} type="button" disabled={index === previewQuestions.length - 1} onClick={() => handleMoveQuestion(index, 1)}>Down</button><button className={styles.secondaryButton} type="button" onClick={() => handleEditQuestion(item)}>Edit</button><button className={styles.dangerButton} type="button" onClick={() => handleRemoveQuestion(item.id)}>Remove</button></div> : null}
+    </article>;
+  })}</div> : <div className={styles.emptyState}>No questions yet. Add a question to preview the evaluation form.</div>;
 
-    if (editingQuestionId === questionId) {
-      resetQuestionEditor();
-    }
-
-    setPreviewAnswers({});
-    setFeedback({ tone: "success", message: "Question removed." });
-  };
-
-  const handleMoveQuestion = (questionIndex: number, direction: -1 | 1) => {
-    setQuestions((current) => {
-      const destinationIndex = questionIndex + direction;
-
-      if (destinationIndex < 0 || destinationIndex >= current.length) {
-        return current;
-      }
-
-      const reorderedQuestions = [...current];
-      [reorderedQuestions[questionIndex], reorderedQuestions[destinationIndex]] =
-        [
-          reorderedQuestions[destinationIndex],
-          reorderedQuestions[questionIndex],
-        ];
-      return reorderedQuestions;
-    });
-  };
-
-  const handleSave = () => {
-    const errors: FormErrors = {};
-    const evaluationCode =
-      form.code.trim() || generateEvaluationCode(evaluations);
-
-    if (!form.name.trim()) {
-      errors.name = "Evaluation name is required.";
-    }
-
-    if (
-      evaluations.some(
-        (evaluation) =>
-          evaluation.id !== selectedId &&
-          evaluation.code.toLowerCase() === evaluationCode.toLowerCase(),
-      )
-    ) {
-      errors.code = "Evaluation code already exists.";
-    }
-
-    if (form.scope === "Company" && !form.company) {
-      errors.company = "Select a company for a company-specific form.";
-    }
-
-    if (form.status === "Published" && !questions.length) {
-      errors.questions = "Add at least one question before publishing.";
-    }
-
-    if (
-      form.status === "Published" &&
-      !questions.some((question) => question.required)
-    ) {
-      errors.questions =
-        "Published evaluations need at least one required question.";
-    }
-
-    if (Object.keys(errors).length) {
-      setFormErrors(errors);
-      setFeedback({
-        tone: "error",
-        message: "Please correct the highlighted fields.",
-      });
-      return;
-    }
-
-    const nextEvaluation: EvaluationRecord = {
-      ...form,
-      scope: isFactoryUser ? "Company" : form.scope,
-      id: selectedId || `evaluation-${Date.now()}`,
-      code: evaluationCode,
-      name: form.name.trim(),
-      company: isFactoryUser
-        ? factoryCompanyCode ?? form.company
-        : form.scope === "Central"
-          ? "-"
-          : form.company,
-      questions,
-      updatedAt: new Date().toISOString().slice(0, 10),
-    };
-
-    setEvaluations((current) =>
-      selectedId
-        ? current.map((evaluation) =>
-            evaluation.id === selectedId ? nextEvaluation : evaluation,
-          )
-        : [nextEvaluation, ...current],
-    );
-    setSelectedId("");
-    setOpenDetailId("");
-    setMode("idle");
-    setForm(createScopedEmptyForm());
-    setQuestions([]);
-    setPreviewAnswers({});
-    setFormErrors({});
-    resetQuestionEditor();
-    setFeedback({
-      tone: "success",
-      message: selectedId ? "Evaluation updated." : "Evaluation created.",
-    });
-  };
-
-  const renderQuestionPreview = (
-    previewQuestions: EvaluationQuestion[],
-    previewKey: string,
-    editable: boolean,
-  ) => {
-    if (!previewQuestions.length) {
-      return (
-        <div className={styles.emptyState}>
-          No questions yet. Add a question to preview the evaluation form.
-        </div>
-      );
-    }
-
-    return (
-      <div className={styles.questionList}>
-        {previewQuestions.map((item, index) => {
-          const answerKey = `${previewKey}-${item.id}`;
-
-          return (
-            <article key={item.id}>
-              <div className={styles.questionHeading}>
-                <div>
-                  <span>{item.section}</span>
-                  <strong>
-                    {index + 1}. {item.prompt}
-                    {item.required ? (
-                      <em className={styles.requiredMark}> *</em>
-                    ) : null}
-                  </strong>
-                </div>
-                <b>{item.type}</b>
-              </div>
-
-              {item.type === "Text" ? (
-                <textarea
-                  aria-label={`Preview answer for question ${index + 1}`}
-                  placeholder="Type a preview response"
-                  value={previewAnswers[answerKey] ?? ""}
-                  onChange={(event) =>
-                    setPreviewAnswers((current) => ({
-                      ...current,
-                      [answerKey]: event.target.value,
-                    }))
-                  }
-                />
-              ) : (
-                <div className={styles.previewOptions}>
-                  {item.options.map((option) => (
-                    <label key={`${item.id}-${option}`}>
-                      <input
-                        checked={previewAnswers[answerKey] === option}
-                        name={answerKey}
-                        type="radio"
-                        value={option}
-                        onChange={(event) =>
-                          setPreviewAnswers((current) => ({
-                            ...current,
-                            [answerKey]: event.target.value,
-                          }))
-                        }
-                      />
-                      <span>{option}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-
-              {editable ? (
-                <div className={styles.questionActions}>
-                  <button
-                    className={styles.secondaryButton}
-                    type="button"
-                    onClick={() => handleMoveQuestion(index, -1)}
-                    disabled={index === 0}
-                  >
-                    Up
-                  </button>
-                  <button
-                    className={styles.secondaryButton}
-                    type="button"
-                    onClick={() => handleMoveQuestion(index, 1)}
-                    disabled={index === previewQuestions.length - 1}
-                  >
-                    Down
-                  </button>
-                  <button
-                    className={styles.secondaryButton}
-                    type="button"
-                    onClick={() => handleEditQuestion(item)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className={styles.dangerButton}
-                    type="button"
-                    onClick={() => handleRemoveQuestion(item.id)}
-                  >
-                    Remove
-                  </button>
-                </div>
-              ) : null}
-            </article>
-          );
-        })}
+  const renderEditor = () => <section className={styles.editorPanel}>
+    <div className={styles.panelHeader}><div><p className={styles.kicker}>{mode === "new" ? "New evaluation" : "Edit evaluation"}</p><h3>Evaluation form settings</h3></div><button className={styles.closeButton} type="button" onClick={closeEditor}>Close</button></div>
+    <div className={styles.formGrid}>
+      <label>Evaluation Code<input disabled value={draft.formCode} placeholder="Auto-generated on save" /></label>
+      <label>Evaluation Name<input aria-invalid={Boolean(errors.name)} className={errors.name ? styles.inputError : undefined} value={draft.formName} onChange={(event) => { setDraft({ ...draft, formName: event.target.value }); setErrors((current) => ({ ...current, name: undefined })); }} placeholder="e.g. Standard Course Evaluation" />{errors.name ? <small>{errors.name}</small> : null}</label>
+      <label>Timing<select value={draft.timing} onChange={(event) => setDraft({ ...draft, timing: event.target.value as MockTiming })}><option>After Training</option><option>30-Day Follow-up</option></select></label>
+      <label>Respondent<select value={draft.respondent} onChange={(event) => setDraft({ ...draft, respondent: event.target.value as MockRespondent })}><option>Employee</option><option>Manager</option></select></label>
+      {!isFactory ? <label>Scope<select value={draft.scope} onChange={(event) => setDraft({ ...draft, scope: event.target.value as EvaluationScope })}><option value="CENTRAL">Central</option><option value="COMPANY">Company</option></select></label> : null}
+      {!isFactory && draft.scope === "COMPANY" ? <label>Company<select aria-invalid={Boolean(errors.companyId)} className={errors.companyId ? styles.inputError : undefined} value={draft.companyId} onChange={(event) => { setDraft({ ...draft, companyId: event.target.value }); setErrors((current) => ({ ...current, companyId: undefined })); }}><option value="">Select company</option>{companies.map((company) => <option key={company.companyId} value={company.companyId}>{company.companyCode}</option>)}</select>{errors.companyId ? <small>{errors.companyId}</small> : null}</label> : null}
+      <label>Status<select value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value as MockStatus })}>{allowedStatuses(mode === "edit" ? selected?.status : undefined).map((status) => <option key={status}>{status}</option>)}</select></label>
+      <label className={styles.toggleLabel}><input checked={draft.anonymous} type="checkbox" onChange={(event) => setDraft({ ...draft, anonymous: event.target.checked })} />Anonymous responses<small>Hide the respondent identity in evaluation results.</small></label>
+    </div>
+    <div className={styles.questionBuilder}><div className={styles.panelHeader}><div><p className={styles.kicker}>Question builder</p><h3>{editingQuestionId ? "Edit question" : "Add evaluation question"}</h3></div><span>{questions.length} questions</span></div>
+      <div className={styles.questionGrid}><label className={styles.fullWidth}>Question<textarea aria-invalid={Boolean(errors.question)} className={errors.question ? styles.inputError : undefined} value={questionDraft.prompt} onChange={(event) => { setQuestionDraft({ ...questionDraft, prompt: event.target.value }); setErrors((current) => ({ ...current, question: undefined })); }} placeholder="Enter the question shown to respondents" /></label>
+        <label>Section<select value={questionDraft.section} onChange={(event) => setQuestionDraft({ ...questionDraft, section: event.target.value as EvaluationSection })}>{sections.map((section) => <option key={section}>{section}</option>)}</select></label>
+        <label>Answer Type<select value={questionDraft.type} onChange={(event) => setQuestionDraft({ ...questionDraft, type: event.target.value as MockQuestionType })}><option>Rating</option><option>Single Choice</option><option>Text</option></select></label>
+        <label className={styles.toggleLabel}><input checked={questionDraft.required} type="checkbox" onChange={(event) => setQuestionDraft({ ...questionDraft, required: event.target.checked })} />Required question</label>
+        {questionDraft.type === "Single Choice" ? questionDraft.options.map((option, index) => <label key={`choice-${index}`}>Choice {index + 1}<input value={option} onChange={(event) => setQuestionDraft({ ...questionDraft, options: questionDraft.options.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} /></label>) : null}
       </div>
-    );
-  };
+      {questionDraft.type === "Rating" ? <p className={styles.helperText}>Rating uses the standard five-point scale from Strongly disagree to Strongly agree.</p> : null}
+      {errors.question ? <p className={styles.validationMessage} role="alert">{errors.question}</p> : null}
+      <div className={styles.formActions}><button className={styles.secondaryButton} type="button" onClick={handleAddQuestion}>{editingQuestionId ? "Update question" : "Add question"}</button>{editingQuestionId ? <button className={styles.closeButton} type="button" onClick={resetQuestionEditor}>Cancel question edit</button> : null}</div>
+    </div>
+    <div className={styles.previewPanel}><div className={styles.panelHeader}><div><p className={styles.kicker}>Live preview</p><h3>{draft.formName.trim() || "Untitled evaluation form"}</h3></div><span>{draft.timing} · {draft.respondent}</span></div>{renderQuestionPreview(questions, "editor-preview", true)}</div>
+    {errors.questions ? <p className={styles.validationMessage} role="alert">{errors.questions}</p> : null}
+    <div className={styles.editorActions}><button className={styles.closeButton} type="button" onClick={closeEditor}>Cancel</button><button className={styles.primaryButton} type="button" disabled={busy} onClick={() => void handleSave()}>Save evaluation</button></div>
+  </section>;
 
-  const renderEditor = () => (
-    <section className={styles.editorPanel}>
-      <div className={styles.panelHeader}>
-        <div>
-          <p className={styles.kicker}>
-            {mode === "new" ? "New evaluation" : "Edit evaluation"}
-          </p>
-          <h3>Evaluation form settings</h3>
-        </div>
-        <button className={styles.closeButton} type="button" onClick={closeEditor}>
-          Close
-        </button>
-      </div>
-
-      <div className={styles.formGrid}>
-        <label>
-          Evaluation Code
-          <input
-            aria-invalid={Boolean(formErrors.code)}
-            className={formErrors.code ? styles.inputError : undefined}
-            value={form.code}
-            onChange={(event) => updateForm("code", event.target.value)}
-            placeholder="Auto-generated when left blank"
-          />
-          {formErrors.code ? <small>{formErrors.code}</small> : null}
-        </label>
-        <label>
-          Evaluation Name
-          <input
-            aria-invalid={Boolean(formErrors.name)}
-            className={formErrors.name ? styles.inputError : undefined}
-            value={form.name}
-            onChange={(event) => updateForm("name", event.target.value)}
-            placeholder="e.g. Standard Course Evaluation"
-          />
-          {formErrors.name ? <small>{formErrors.name}</small> : null}
-        </label>
-        <label>
-          Timing
-          <select
-            value={form.timing}
-            onChange={(event) =>
-              updateForm("timing", event.target.value as EvaluationTiming)
-            }
-          >
-            <option>After Training</option>
-            <option>30-Day Follow-up</option>
-          </select>
-        </label>
-        <label>
-          Respondent
-          <select
-            value={form.respondent}
-            onChange={(event) =>
-              updateForm(
-                "respondent",
-                event.target.value as EvaluationRespondent,
-              )
-            }
-          >
-            <option>Employee</option>
-            <option>Manager</option>
-          </select>
-        </label>
-        <label>
-          Scope
-          <select
-            value={form.scope}
-            disabled={isFactoryUser}
-            onChange={(event) =>
-              updateForm("scope", event.target.value as EvaluationScope)
-            }
-          >
-            <option>Central</option>
-            <option>Company</option>
-          </select>
-        </label>
-        <label>
-          Company
-          <select
-            aria-invalid={Boolean(formErrors.company)}
-            className={formErrors.company ? styles.inputError : undefined}
-            disabled={form.scope === "Central" || isFactoryUser}
-            value={form.company}
-            onChange={(event) => updateForm("company", event.target.value)}
-          >
-            {availableCompanies.map((company) => (
-              <option key={company}>{company}</option>
-            ))}
-          </select>
-          {formErrors.company ? <small>{formErrors.company}</small> : null}
-        </label>
-        <label>
-          Status
-          <select
-            value={form.status}
-            onChange={(event) =>
-              updateForm("status", event.target.value as EvaluationStatus)
-            }
-          >
-            <option>Draft</option>
-            <option>Published</option>
-            <option>Inactive</option>
-          </select>
-        </label>
-        <label className={styles.toggleLabel}>
-          <input
-            checked={form.anonymous}
-            type="checkbox"
-            onChange={(event) => updateForm("anonymous", event.target.checked)}
-          />
-          Anonymous responses
-          <small>Hide the respondent identity in evaluation results.</small>
-        </label>
-      </div>
-
-      <div className={styles.questionBuilder}>
-        <div className={styles.panelHeader}>
-          <div>
-            <p className={styles.kicker}>Question builder</p>
-            <h3>
-              {editingQuestionId ? "Edit question" : "Add evaluation question"}
-            </h3>
-          </div>
-          <span>{questions.length} questions</span>
-        </div>
-
-        <div className={styles.questionGrid}>
-          <label className={styles.fullWidth}>
-            Question
-            <textarea
-              aria-invalid={Boolean(formErrors.question)}
-              className={formErrors.question ? styles.inputError : undefined}
-              value={questionDraft.prompt}
-              onChange={(event) =>
-                updateQuestionDraft("prompt", event.target.value)
-              }
-              placeholder="Enter the question shown to respondents"
-            />
-          </label>
-          <label>
-            Section
-            <select
-              value={questionDraft.section}
-              onChange={(event) =>
-                updateQuestionDraft(
-                  "section",
-                  event.target.value as EvaluationSection,
-                )
-              }
-            >
-              {sections.map((section) => (
-                <option key={section}>{section}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Answer Type
-            <select
-              value={questionDraft.type}
-              onChange={(event) =>
-                updateQuestionDraft(
-                  "type",
-                  event.target.value as QuestionType,
-                )
-              }
-            >
-              <option>Rating</option>
-              <option>Single Choice</option>
-              <option>Text</option>
-            </select>
-          </label>
-          <label className={styles.toggleLabel}>
-            <input
-              checked={questionDraft.required}
-              type="checkbox"
-              onChange={(event) =>
-                updateQuestionDraft("required", event.target.checked)
-              }
-            />
-            Required question
-          </label>
-
-          {questionDraft.type === "Single Choice"
-            ? questionDraft.options.map((option, optionIndex) => (
-                <label key={`choice-option-${optionIndex}`}>
-                  Choice {optionIndex + 1}
-                  <input
-                    value={option}
-                    onChange={(event) =>
-                      updateQuestionDraft(
-                        "options",
-                        questionDraft.options.map((item, itemIndex) =>
-                          itemIndex === optionIndex ? event.target.value : item,
-                        ),
-                      )
-                    }
-                  />
-                </label>
-              ))
-            : null}
-        </div>
-
-        {questionDraft.type === "Rating" ? (
-          <p className={styles.helperText}>
-            Rating uses the standard five-point scale from Strongly disagree to
-            Strongly agree.
-          </p>
-        ) : null}
-        {formErrors.question ? (
-          <p className={styles.validationMessage} role="alert">
-            {formErrors.question}
-          </p>
-        ) : null}
-
-        <div className={styles.formActions}>
-          <button
-            className={styles.secondaryButton}
-            type="button"
-            onClick={handleAddQuestion}
-          >
-            {editingQuestionId ? "Update question" : "Add question"}
-          </button>
-          {editingQuestionId ? (
-            <button
-              className={styles.closeButton}
-              type="button"
-              onClick={resetQuestionEditor}
-            >
-              Cancel question edit
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      <div className={styles.previewPanel}>
-        <div className={styles.panelHeader}>
-          <div>
-            <p className={styles.kicker}>Live preview</p>
-            <h3>{form.name.trim() || "Untitled evaluation form"}</h3>
-          </div>
-          <span>
-            {form.timing} · {form.respondent}
-          </span>
-        </div>
-        {renderQuestionPreview(questions, "editor-preview", true)}
-      </div>
-
-      {formErrors.questions ? (
-        <p className={styles.validationMessage} role="alert">
-          {formErrors.questions}
-        </p>
-      ) : null}
-
-      <div className={styles.editorActions}>
-        <button className={styles.closeButton} type="button" onClick={closeEditor}>
-          Cancel
-        </button>
-        <button className={styles.primaryButton} type="button" onClick={handleSave}>
-          Save evaluation
-        </button>
-      </div>
-    </section>
-  );
-
-  const feedbackClass = feedback
-    ? {
-        success: styles.feedbackSuccess,
-        error: styles.feedbackError,
-        info: styles.feedbackInfo,
-      }[feedback.tone]
-    : "";
-
-  return (
-    <section className={styles.page} aria-label="Evaluation Management">
-      <section className={styles.hero}>
-        <div>
-          <p className={styles.kicker}>{evaluationManagementModule.subtitle}</p>
-          <h2>{evaluationManagementModule.title}</h2>
-          <p>{evaluationManagementModule.description}</p>
-        </div>
-      </section>
-
-      <section className={styles.workspace}>
-        <div className={styles.toolbar}>
-          <span className={styles.listMeta}>
-            {visibleEvaluations.length} / {scopedEvaluations.length} evaluations
-          </span>
-          <input
-            aria-label="Search evaluation"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search name, timing, respondent, scope, company, status"
-          />
-          <button className={styles.primaryButton} type="button" onClick={handleNew}>
-            New
-          </button>
-          <button
-            className={styles.secondaryButton}
-            type="button"
-            onClick={handleEdit}
-            disabled={!selectedEvaluation}
-          >
-            Edit
-          </button>
-          <button
-            className={styles.secondaryButton}
-            type="button"
-            onClick={handleDuplicate}
-            disabled={!selectedEvaluation}
-          >
-            Duplicate
-          </button>
-          <button
-            className={styles.dangerButton}
-            type="button"
-            onClick={handleDelete}
-            disabled={!selectedEvaluation}
-          >
-            Delete
-          </button>
-          <button
-            className={styles.secondaryButton}
-            type="button"
-            onClick={handleRefresh}
-          >
-            Refresh
-          </button>
-          <button
-            className={styles.secondaryButton}
-            type="button"
-            onClick={handleExport}
-          >
-            Export
-          </button>
-          <button
-            className={styles.dangerButton}
-            type="button"
-            onClick={handleClearAllData}
-          >
-            Clear all
-          </button>
-        </div>
-
-        {mode !== "idle" ? renderEditor() : null}
-        {feedback ? (
-          <p
-            className={`${styles.feedback} ${feedbackClass}`}
-            role={feedback.tone === "error" ? "alert" : "status"}
-          >
-            {feedback.message}
-          </p>
-        ) : null}
-
-        <div className={styles.tableWrap}>
-          <table className={styles.evaluationTable}>
-            <thead>
-              <tr>
-                <th>Code</th>
-                <th>Evaluation Name</th>
-                <th>Timing</th>
-                <th>Respondent</th>
-                <th>Scope</th>
-                <th>Questions</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {!visibleEvaluations.length ? (
-                <tr>
-                  <td className={styles.emptyTableCell} colSpan={8}>
-                    {evaluations.length
-                      ? "No evaluations match your search."
-                      : "No evaluations yet. Select New to create the first form."}
-                  </td>
-                </tr>
-              ) : null}
-              {visibleEvaluations.map((evaluation) => {
-                const isOpen =
-                  openDetailId === evaluation.id && mode === "idle";
-                const isSelected = evaluation.id === selectedId;
-                const statusClass =
-                  evaluation.status === "Published"
-                    ? styles.statusPublished
-                    : evaluation.status === "Draft"
-                      ? styles.statusDraft
-                      : styles.statusInactive;
-
-                return (
-                  <Fragment key={evaluation.id}>
-                    <tr
-                      aria-selected={isSelected}
-                      className={`${styles.selectableRow} ${isSelected ? styles.selectedRow : ""}`}
-                      tabIndex={0}
-                      onClick={() => {
-                        setSelectedId(isSelected ? "" : evaluation.id);
-                        setOpenDetailId("");
-                        setFeedback(null);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          setSelectedId(isSelected ? "" : evaluation.id);
-                          setOpenDetailId("");
-                          setFeedback(null);
-                        }
-                      }}
-                    >
-                      <td>{evaluation.code}</td>
-                      <td>{evaluation.name}</td>
-                      <td>{evaluation.timing}</td>
-                      <td>{evaluation.respondent}</td>
-                      <td>
-                        {evaluation.scope}
-                        {evaluation.scope === "Company"
-                          ? ` · ${evaluation.company}`
-                          : ""}
-                      </td>
-                      <td>{evaluation.questions.length}</td>
-                      <td>
-                        <span className={`${styles.statusPill} ${statusClass}`}>
-                          {evaluation.status}
-                        </span>
-                      </td>
-                      <td className={styles.actionCell}>
-                        <button
-                          className={styles.detailButton}
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleShowDetails(evaluation);
-                          }}
-                        >
-                          {isOpen ? "Hide" : "Preview"}
-                        </button>
-                      </td>
-                    </tr>
-                    {isOpen ? (
-                      <tr className={styles.detailRow}>
-                        <td colSpan={8}>
-                          <div className={styles.detailPanel}>
-                            <div className={styles.panelHeader}>
-                              <div>
-                                <p className={styles.kicker}>
-                                  Evaluation preview
-                                </p>
-                                <h3>{evaluation.name}</h3>
-                              </div>
-                              <button
-                                className={styles.closeButton}
-                                type="button"
-                                onClick={() => setOpenDetailId("")}
-                              >
-                                Close
-                              </button>
-                            </div>
-
-                            <div className={styles.detailMeta}>
-                              <article>
-                                <span>Timing</span>
-                                <strong>{evaluation.timing}</strong>
-                              </article>
-                              <article>
-                                <span>Respondent</span>
-                                <strong>{evaluation.respondent}</strong>
-                              </article>
-                              <article>
-                                <span>Scope</span>
-                                <strong>
-                                  {evaluation.scope === "Central"
-                                    ? "All companies"
-                                    : evaluation.company}
-                                </strong>
-                              </article>
-                              <article>
-                                <span>Response identity</span>
-                                <strong>
-                                  {evaluation.anonymous
-                                    ? "Anonymous"
-                                    : "Identified"}
-                                </strong>
-                              </article>
-                            </div>
-
-                            {renderQuestionPreview(
-                              evaluation.questions,
-                              `detail-${evaluation.id}`,
-                              false,
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ) : null}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </section>
-  );
+  const feedbackClass = feedback ? { success: styles.feedbackSuccess, error: styles.feedbackError, info: styles.feedbackInfo }[feedback.tone] : "";
+  return <section className={styles.page} aria-label="Evaluation Management"><section className={styles.hero}><div><p className={styles.kicker}>{evaluationManagementModule.subtitle}</p><h2>{evaluationManagementModule.title}</h2><p>{evaluationManagementModule.description}</p></div></section><section className={styles.workspace}>
+    <div className={styles.toolbar}><span className={styles.listMeta}>{visible.length} / {items.length} evaluations</span><input aria-label="Search evaluation" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, timing, respondent, scope, company, status" /><button className={styles.primaryButton} type="button" disabled={busy} onClick={handleNew}>New</button><button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canModify} onClick={handleEdit}>Edit</button><button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canDuplicate} onClick={() => void handleDuplicate()}>Duplicate</button><button className={styles.dangerButton} type="button" disabled={busy || !selected?.canModify} onClick={() => void handleDelete()}>Delete</button><button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void load()}>Refresh</button><button className={styles.secondaryButton} type="button" onClick={handleExport}>Export</button></div>
+    {mode !== "idle" ? renderEditor() : null}{feedback ? <p className={`${styles.feedback} ${feedbackClass}`} role={feedback.tone === "error" ? "alert" : "status"}>{feedback.message}</p> : null}
+    <div className={styles.tableWrap}><table className={styles.evaluationTable}><thead><tr><th>Code</th><th>Evaluation Name</th><th>Timing</th><th>Respondent</th><th>Scope</th><th>Questions</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+      {!visible.length ? <tr><td className={styles.emptyTableCell} colSpan={8}>{busy ? "Loading evaluations..." : "No evaluations yet. Select New to create the first form."}</td></tr> : null}
+      {visible.map((item) => { const isSelected = item.evaluationFormId === selectedId; const isOpen = item.evaluationFormId === openDetailId; const draftQuestions = toDraftQuestions(item); const status = statusFromApi(item.status); const statusClass = status === "Published" ? styles.statusPublished : status === "Draft" ? styles.statusDraft : styles.statusInactive;
+        return <Fragment key={item.evaluationFormId}><tr aria-selected={isSelected} tabIndex={0} className={`${styles.selectableRow} ${isSelected ? styles.selectedRow : ""}`} onClick={() => { setSelectedId(isSelected ? "" : item.evaluationFormId); setOpenDetailId(""); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedId(isSelected ? "" : item.evaluationFormId); setOpenDetailId(""); } }}><td>{item.formCode}</td><td>{item.formName}</td><td>{timingFromApi(item.timing)}</td><td>{respondentFromApi(item.respondentType)}</td><td>{item.scope === "CENTRAL" ? "Central" : `Company · ${item.companyCode}`}</td><td>{item.questions.length}</td><td><span className={`${styles.statusPill} ${statusClass}`}>{status}</span></td><td className={styles.actionCell}><button className={styles.detailButton} type="button" onClick={(event) => { event.stopPropagation(); setSelectedId(item.evaluationFormId); setOpenDetailId(isOpen ? "" : item.evaluationFormId); }}>{isOpen ? "Hide" : "Preview"}</button></td></tr>
+          {isOpen ? <tr className={styles.detailRow}><td colSpan={8}><div className={styles.detailPanel}><div className={styles.panelHeader}><div><p className={styles.kicker}>Evaluation preview</p><h3>{item.formName}</h3></div><button className={styles.closeButton} type="button" onClick={() => setOpenDetailId("")}>Close</button></div><div className={styles.detailMeta}><article><span>Timing</span><strong>{timingFromApi(item.timing)}</strong></article><article><span>Respondent</span><strong>{respondentFromApi(item.respondentType)}</strong></article><article><span>Scope</span><strong>{item.companyCode ?? "All companies"}</strong></article><article><span>Response identity</span><strong>{item.isAnonymous ? "Anonymous" : "Identified"}</strong></article></div>{renderQuestionPreview(draftQuestions, `detail-${item.evaluationFormId}`, false)}</div></td></tr> : null}
+        </Fragment>; })}
+    </tbody></table></div>
+  </section></section>;
 }
