@@ -21,6 +21,13 @@ import Navbar from "./Navbar";
 import { AuthenticatedUserProvider } from "./AuthenticatedUserContext";
 import styles from "./TrainingPlanManagement.module.css";
 
+type AuthenticationState =
+  | { status: "checking" }
+  | { status: "anonymous" }
+  | { status: "error"; message: string }
+  | { status: "authenticated"; user: ClientSessionUser }
+  | { status: "preview"; user: ClientSessionUser };
+
 type AppView =
   | "dashboard"
   | "training-plan"
@@ -28,13 +35,6 @@ type AppView =
   | "master-data"
   | "report"
   | "training-course";
-
-type AuthenticationState =
-  | { status: "checking" }
-  | { status: "anonymous" }
-  | { status: "error"; message: string }
-  | { status: "authenticated"; user: ClientSessionUser }
-  | { status: "preview"; user: ClientSessionUser };
 
 const SESSION_CHECK_ERROR =
   "Unable to verify your session. Check the connection and try again.";
@@ -178,12 +178,12 @@ export default function TrainingPlanManagement() {
           }
         : DEVELOPMENT_PREVIEW_USERS[roleCode];
 
-    setView("dashboard");
     setLogoutMessage(null);
     setAuthentication({
       status: "preview",
       user: previewUser,
     });
+    setView("dashboard");
   };
 
   const handleRetrySession = async () => {

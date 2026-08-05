@@ -108,7 +108,7 @@ const emptyCourseForm: CourseForm = {
   evaluation: "",
   evaluationAfter30DayId: "",
   evaluationAfter30Day: "",
-  lifeCycleMonth: "12",
+  lifeCycleMonth: "0",
   remark: "",
   status: "Active",
   courseType: "",
@@ -665,25 +665,6 @@ function CourseMaster() {
           <small className={styles.fieldHint}>Generated automatically from the selected course group.</small>
         </label>
         <label>
-          <span className={styles.fieldLabel}>Course Name (TH) <b>*</b></span>
-          <input
-            value={form.courseNameTh}
-            disabled={!isEditing}
-            placeholder="Example: หลักสูตรความปลอดภัยพื้นฐาน"
-            onChange={(event) => updateForm("courseNameTh", event.target.value)}
-
-          />
-        </label>
-        <label>
-          <span className={styles.fieldLabel}>Course Name (EN) <b>*</b></span>
-          <input
-            value={form.courseNameEn}
-            disabled={!isEditing}
-            placeholder="Example: Safety Basics"
-            onChange={(event) => updateForm("courseNameEn", event.target.value)}
-          />
-        </label>
-        <label>
           <span className={styles.fieldLabel}>Course Type <b>*</b></span>
           <select
             value={form.courseType}
@@ -708,6 +689,25 @@ function CourseMaster() {
             onChange={(event) => updateForm("lifeCycleMonth", event.target.value)}
           />
           <small className={styles.fieldHint}>Number of months before the course should be reviewed.</small>
+        </label>
+        <label>
+          <span className={styles.fieldLabel}>Course Name (TH) <b>*</b></span>
+          <input
+            value={form.courseNameTh}
+            disabled={!isEditing}
+            placeholder="Example: หลักสูตรความปลอดภัยพื้นฐาน"
+            onChange={(event) => updateForm("courseNameTh", event.target.value)}
+
+          />
+        </label>
+        <label>
+          <span className={styles.fieldLabel}>Course Name (EN) <b>*</b></span>
+          <input
+            value={form.courseNameEn}
+            disabled={!isEditing}
+            placeholder="Example: Safety Basics"
+            onChange={(event) => updateForm("courseNameEn", event.target.value)}
+          />
         </label>
         <label className={styles.fullWidth}>
           <span className={styles.fieldLabel}>Objective <b>*</b></span>

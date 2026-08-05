@@ -47,12 +47,17 @@ describe("Course Master and Course Standard workspace", () => {
     );
     const groupIndex = workspaceSource.indexOf("Course Group <b>");
     const codeIndex = workspaceSource.indexOf("Course Code <b>");
+    const courseTypeIndex = workspaceSource.indexOf("Course Type <b>");
+    const lifeCycleIndex = workspaceSource.indexOf("Life Cycle (Month)");
     const thaiNameIndex = workspaceSource.indexOf("Course Name (TH) <b>");
     const englishNameIndex = workspaceSource.indexOf("Course Name (EN) <b>");
 
     expect(groupIndex).toBeGreaterThan(-1);
     expect(groupIndex).toBeLessThan(codeIndex);
     expect(codeIndex).toBeLessThan(thaiNameIndex);
+    expect(codeIndex).toBeLessThan(courseTypeIndex);
+    expect(courseTypeIndex).toBeLessThan(lifeCycleIndex);
+    expect(lifeCycleIndex).toBeLessThan(thaiNameIndex);
     expect(thaiNameIndex).toBeLessThan(englishNameIndex);
   });
 
