@@ -118,7 +118,7 @@ const emptyCourseForm: CourseForm = {
   postTestLink: "",
   evaluationLink: "",
   evaluationAfter30DayLink: "",
-  lifeCycleMonth: "0",
+  lifeCycleMonth: "",
   remark: "",
   status: "Active",
   courseType: "",
@@ -612,6 +612,7 @@ function CourseMaster() {
       courseCode: resolvedCourseCode,
       courseNameTh: form.courseNameTh.trim(),
       courseNameEn: form.courseNameEn.trim(),
+      lifeCycleMonth: form.lifeCycleMonth.trim() || "0",
       status: "Active",
       updatedAt: new Date().toISOString().slice(0, 10),
       owner: selectedCourse?.owner ?? owner,
@@ -765,12 +766,11 @@ function CourseMaster() {
             value={form.lifeCycleMonth}
             disabled={!isEditing}
             inputMode="numeric"
-            min="1"
-            placeholder="Example: 12"
+            min="0"
+            placeholder="Enter 0 for no course expiration"
             type="number"
             onChange={(event) => updateForm("lifeCycleMonth", event.target.value)}
           />
-          <small className={styles.fieldHint}>Number of months before the course should be reviewed.</small>
         </label>
         <label>
           <span className={styles.fieldLabel}>Course Name (TH) <b>*</b></span>

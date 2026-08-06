@@ -943,6 +943,7 @@ const thaiUiDictionary: Record<string, string> = {
     "ใช้จัดประเภทหลักสูตรและกำหนดรหัสที่ระบบสร้างให้",
   "Life Cycle (Month)": "อายุหลักสูตร (เดือน)",
   "Example: 12": "ตัวอย่าง: 12",
+  "Enter 0 for no course expiration": "ถ้าไม่มีวันหมดอายุให้ใส่ 0",
   "Number of months before the course should be reviewed.":
     "จำนวนเดือนก่อนถึงรอบทบทวนหลักสูตรครั้งถัดไป",
   "Describe what learners should achieve after completing the course.":

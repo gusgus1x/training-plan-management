@@ -36,6 +36,11 @@ describe("Course Master and Course Standard workspace", () => {
     expect(workspaceSource).not.toContain("Course Standard Records");
     expect(workspaceSource).toContain("Classification");
     expect(workspaceSource).toContain("Course Standard");
+    expect(workspaceSource).toContain('lifeCycleMonth: ""');
+    expect(workspaceSource).toContain('lifeCycleMonth: form.lifeCycleMonth.trim() || "0"');
+    expect(workspaceSource).toContain('min="0"');
+    expect(workspaceSource).toContain('placeholder="Enter 0 for no course expiration"');
+    expect(workspaceSource).not.toContain("Number of months before the course should be reviewed.");
     expect(workspaceSource).toContain('<h2 translate="no">{courseMasterModule.title}</h2>');
     expect(workspaceSource).toContain('<option key={type} value={type} translate="no">{type}</option>');
     expect(workspaceSource).toContain('<option key={option.code} value={option.code} translate="no">');
@@ -99,8 +104,9 @@ describe("Course Master and Course Standard workspace", () => {
     );
 
     expect(workspaceSource).toContain('const allFunctionOption = "All Function"');
-    expect(workspaceSource).toContain('const allFunctionDisplayName = "ทุกหน่วยงาน"');
-    expect(workspaceSource).toContain("name: row.functionNameTh || row.functionNameEn");
+    expect(workspaceSource).toContain("const allFunctionThaiDisplayName");
+    expect(workspaceSource).toContain('language === "th" ? allFunctionThaiDisplayName : allFunctionOption');
+    expect(workspaceSource).toContain("row.functionNameTh || row.functionNameEn");
     expect(workspaceSource).toContain("getFunctionDisplayName");
     expect(workspaceSource).toContain("matchingFunctionRow?.functionCode");
     expect(workspaceSource).toContain("standardFunctionCode === allFunctionCode");
