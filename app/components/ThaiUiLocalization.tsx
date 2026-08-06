@@ -31,9 +31,12 @@ const readUiLanguage = (): UiLanguage => {
 
     if (savedLanguage === "en" || savedLanguage === "th") {
       inMemoryLanguage = savedLanguage;
+    } else {
+      window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, "th");
+      inMemoryLanguage = "th";
     }
   } catch {
-    // Fall back to the in-memory preference when storage is unavailable.
+    inMemoryLanguage = "th";
   }
 
   return inMemoryLanguage;

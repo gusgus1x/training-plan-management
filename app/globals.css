@@ -7,21 +7,21 @@
    * 30% Secondary Structure: Deep Slate Ink (#0f172a / #1e293b) & ATTG Corporate Forest Green (#007a3d)
    * 10% Accent Action: ATTG Vibrant Red (#d71920) for CTAs, active highlights & focus rings
    */
-  --ui-60-canvas: #f1f5f9;
+  --ui-60-canvas: #f8fafc;
   --ui-60-surface: #ffffff;
-  --ui-60-surface-soft: #f8fafc;
+  --ui-60-surface-soft: #f1f5f9;
   --ui-60-surface-muted: #e2e8f0;
   --ui-60-glass: rgba(255, 255, 255, 0.94);
-  --ui-60-glass-border: rgba(203, 213, 225, 0.9);
+  --ui-60-glass-border: rgba(226, 232, 240, 0.9);
 
   --ui-30-primary: #007a3d;
   --ui-30-primary-strong: #005c2e;
   --ui-30-primary-soft: #eef7f2;
   --ui-30-primary-border: #bce3cb;
   --ui-30-ink: #0f172a;
-  --ui-30-text: #1e293b;
-  --ui-30-muted: #475569;
-  --ui-30-border: #aeb8c4;
+  --ui-30-text: #334155;
+  --ui-30-muted: #64748b;
+  --ui-30-border: #cbd5e1;
   --ui-on-dark: #ffffff;
   --ui-on-dark-muted: #d7e0eb;
   --ui-on-dark-subtle: #b8c5d6;
@@ -33,24 +33,21 @@
   --ui-10-accent-glow: rgba(215, 25, 32, 0.18);
   --ui-10-accent-on-dark: #ff9195;
 
-  --ui-focus-ring: rgba(215, 25, 32, 0.25);
-  --ui-shadow-sm: 2px 3px 8px -4px rgba(15, 23, 42, 0.2);
-  --ui-shadow-md: 4px 6px 18px -7px rgba(15, 23, 42, 0.24), 0 1px 3px rgba(15, 23, 42, 0.05);
-  --ui-shadow-lg: 7px 11px 30px -10px rgba(15, 23, 42, 0.28), 0 3px 8px -4px rgba(15, 23, 42, 0.12);
+  --ui-focus-ring: rgba(0, 122, 61, 0.25);
+  --ui-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
+  --ui-shadow-md: 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 2px 4px -1px rgba(15, 23, 42, 0.03);
+  --ui-shadow-lg: 0 12px 32px -4px rgba(15, 23, 42, 0.08), 0 4px 8px -2px rgba(15, 23, 42, 0.03);
   --ui-card-edge: transparent;
   --ui-card-edge-shadow: none;
-  --ui-card-shadow: 6px 8px 20px -8px rgba(15, 23, 42, 0.28), 0 2px 5px -2px rgba(15, 23, 42, 0.08);
-  --ui-card-shadow-hover: 8px 12px 30px -10px rgba(15, 23, 42, 0.32), 0 4px 9px -4px rgba(15, 23, 42, 0.14);
+  --ui-card-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.03);
+  --ui-card-shadow-hover: 0 12px 28px -4px rgba(15, 23, 42, 0.1), 0 4px 8px -2px rgba(15, 23, 42, 0.04);
   --ui-radius-sm: 10px;
   --ui-radius-md: 14px;
-  --ui-radius-lg: 20px;
-  --ui-radius-xl: 24px;
+  --ui-radius-lg: 18px;
+  --ui-radius-xl: 22px;
   --ui-radius-full: 9999px;
   --ui-font-en: var(--font-geist-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --ui-font-th: var(--font-noto-sans-thai), "Leelawadee UI", Tahoma, sans-serif;
-
-  --background: var(--ui-60-canvas);
-  --foreground: var(--ui-30-ink);
   --attg-red: var(--ui-10-accent);
   --attg-red-dark: var(--ui-10-accent-strong);
   --attg-green: var(--ui-30-primary);

@@ -13,12 +13,46 @@ import {
   profileValue,
   useAuthenticatedUser,
 } from "../AuthenticatedUserContext";
-import type { RollingPlan } from "./TrainingPlanManagement/modules/TrainingRolling";
+import {
+  formatRollingPlanCompanies,
+  getRollingPlanCompanies,
+  type RollingPlan,
+} from "./TrainingPlanManagement/modules/TrainingRolling";
 import {
   buildCalendarYearOptions,
   getCurrentCalendarDate,
 } from "../../lib/calendarDate";
 import styles from "./CenterFactory_Dashboard.module.css";
+
+const CourseIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM3.82 9L12 4.54 20.18 9 12 13.46 3.82 9zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" />
+  </svg>
+);
+
+const PlanIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-7 5h5v5h-5z" />
+  </svg>
+);
+
+const RecordIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
+  </svg>
+);
+
+const ReportIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 14H7v-2h10v2zm0-4H7v-2h10v2zm0-4H7V7h10v2z" />
+  </svg>
+);
+
+const MasterIcon = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const calendarMonths = [
@@ -103,6 +137,8 @@ type DashboardTraining = {
   time: string;
   room: string;
   status: string;
+  company: string;
+  isCenterPlan: boolean;
 };
 
 type DashboardProps = {
@@ -139,7 +175,7 @@ export default function Dashboard({
   const [selectedCalendarMonth, setSelectedCalendarMonth] = useState(
     calendarToday.month,
   );
-  const [isMonthListOpen, setIsMonthListOpen] = useState(false);
+  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("all");
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>(() =>
     readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
   );
@@ -157,26 +193,63 @@ export default function Dashboard({
 
   const scopedRollingPlans = useMemo(
     () =>
-      rollingPlans.filter((plan) =>
-        isWorkflowOwner(
-          plan.ownerScope ?? (plan.provider === "HRD Center" ? "CENTER" : "FACTORY"),
-          plan.ownerCompany ?? plan.company,
-          authenticatedUser?.roleCode,
-          userCompanyCode,
-        ),
-      ),
-    [authenticatedUser?.roleCode, rollingPlans, userCompanyCode],
+      rollingPlans.filter((plan) => {
+        const planCompanies = getRollingPlanCompanies(plan);
+        const isCenterPlan =
+          plan.ownerScope === "CENTER" ||
+          plan.ownerCompany === "HRD Center" ||
+          plan.provider === "HRD Center" ||
+          plan.owner === "admin.hrd";
+
+        if (isCenterDashboard) {
+          if (selectedCompanyFilter === "all" || selectedCompanyFilter === "All Companies") {
+            return true;
+          }
+          return (
+            plan.company === selectedCompanyFilter ||
+            planCompanies.includes(selectedCompanyFilter) ||
+            plan.company === "All Companies"
+          );
+        }
+
+        // Factory Scope (e.g. ATA): Sees own courses + Center-created courses
+        const isOwnCompany =
+          plan.company === userCompanyCode ||
+          planCompanies.includes(userCompanyCode || "");
+
+        if (isCenterPlan) {
+          return (
+            plan.company === "All Companies" ||
+            isOwnCompany ||
+            planCompanies.length === 0 ||
+            planCompanies.includes(userCompanyCode || "")
+          );
+        }
+
+        return isOwnCompany;
+      }),
+    [isCenterDashboard, rollingPlans, selectedCompanyFilter, userCompanyCode],
   );
   const trainingSchedule = useMemo<DashboardTraining[]>(
     () =>
-      scopedRollingPlans.map((plan) => ({
-        date: plan.trainingDate,
-        course: plan.course.name,
-        shortName: plan.course.code,
-        time: `${plan.startTime} - ${plan.endTime}`,
-        room: plan.location,
-        status: plan.status === "Planned" ? "Published" : "Draft",
-      })),
+      scopedRollingPlans.map((plan) => {
+        const isCenterPlan =
+          plan.ownerScope === "CENTER" ||
+          plan.ownerCompany === "HRD Center" ||
+          plan.provider === "HRD Center" ||
+          plan.owner === "admin.hrd";
+
+        return {
+          date: plan.trainingDate,
+          course: plan.course.name,
+          shortName: plan.course.code,
+          time: `${plan.startTime} - ${plan.endTime}`,
+          room: plan.location,
+          status: plan.status === "Planned" ? "Published" : "Draft",
+          company: formatRollingPlanCompanies(plan),
+          isCenterPlan,
+        };
+      }),
     [scopedRollingPlans],
   );
   const calendarYears = useMemo(
@@ -231,70 +304,75 @@ export default function Dashboard({
     selectedCalendarMonth === "all"
       ? []
       : (() => {
-          const year = Number(selectedCalendarYear);
-          const month = Number(selectedCalendarMonth);
-          const firstDay = new Date(year, month - 1, 1);
-          const daysInMonth = new Date(year, month, 0).getDate();
-          const leadingBlankDays = (firstDay.getDay() + 6) % 7;
-          const baseDays = Array.from(
-            { length: leadingBlankDays + daysInMonth },
-            (_, index) => {
-              if (index < leadingBlankDays) {
-                return { day: null, trainings: [] as DashboardTraining[] };
-              }
+        const year = Number(selectedCalendarYear);
+        const month = Number(selectedCalendarMonth);
+        const firstDay = new Date(year, month - 1, 1);
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const leadingBlankDays = (firstDay.getDay() + 6) % 7;
+        const baseDays = Array.from(
+          { length: leadingBlankDays + daysInMonth },
+          (_, index) => {
+            if (index < leadingBlankDays) {
+              return { day: null, trainings: [] as DashboardTraining[] };
+            }
 
-              const day = index - leadingBlankDays + 1;
-              const trainings = filteredTrainingSchedule.filter(
-                (item) => Number(item.date.slice(8, 10)) === day,
-              );
+            const day = index - leadingBlankDays + 1;
+            const trainings = filteredTrainingSchedule.filter(
+              (item) => Number(item.date.slice(8, 10)) === day,
+            );
 
-              return { day, trainings };
-            },
-          );
+            return { day, trainings };
+          },
+        );
 
-          return [
-            ...baseDays,
-            ...Array.from({ length: (7 - (baseDays.length % 7)) % 7 }, () => ({
-              day: null,
-              trainings: [] as DashboardTraining[],
-            })),
-          ];
-        })();
+        return [
+          ...baseDays,
+          ...Array.from({ length: (7 - (baseDays.length % 7)) % 7 }, () => ({
+            day: null,
+            trainings: [] as DashboardTraining[],
+          })),
+        ];
+      })();
 
   const menuItems = [
     {
-      badge: "COURSE",
+      badge: "COURSE MANAGEMENT",
+      step: "01",
       icon: "📚",
       title: "Training Course",
-      description: "Course type, course group, master courses, standards, and assessments.",
+      description: "Manage course master, target standards, course types, and pre/post evaluation forms.",
       onClick: onOpenTrainingCourse,
     },
     {
-      badge: "PLAN",
+      badge: "PLAN MANAGEMENT",
+      step: "02",
       icon: "📅",
       title: "Training Plan",
-      description: "Annual plans, training needs, acceptance surveys, OAP, and rolling plans.",
+      description: "Annual OAP plans, training needs, company acceptance surveys, and monthly rolling schedules.",
       onClick: onOpenTrainingPlan,
     },
     {
-      badge: "RECORD",
+      badge: "RECORD MANAGEMENT",
+      step: "03",
       icon: "📋",
       title: "Training Record",
-      description: "Actual training results, attendance records, and employee history.",
+      description: "Record actual attendance, post-training evaluations, expenses, and participant additions.",
       onClick: onOpenTrainingRecord,
     },
     {
-      badge: "REPORT",
+      badge: "REPORT MANAGEMENT",
+      step: "04",
       icon: "📊",
-      title: "Reports",
-      description: "Training schedules, result reports, expenses, and internal reports.",
+      title: "Reports & Analytics",
+      description: "Training schedule calendars, progress summaries, expense breakdowns, and email drafts.",
       onClick: onOpenReport,
     },
     {
-      badge: "MASTER",
+      badge: "MASTER DATA",
+      step: "05",
       icon: "🗃️",
       title: "Master Data",
-      description: "Companies, employees, instructors, levels, positions, and functions.",
+      description: "Companies, employees, instructors, levels, positions, and function master data.",
       onClick: onOpenMasterData,
     },
   ];
@@ -326,14 +404,24 @@ export default function Dashboard({
           <div className={styles.panelHeader}>
             <div>
               <span>Current User</span>
-              <h2>Profile</h2>
+              <h2>Profile Overview</h2>
             </div>
-            <b>Online</b>
+            <span className={styles.onlineBadge}>
+              <span className={styles.onlineDot} aria-hidden="true" />
+              Online
+            </span>
           </div>
 
-          <div className={styles.employeeProfile}>
-            <div className={styles.photoBox} aria-hidden="true">HC</div>
+          <div className={styles.employeeProfileCard}>
+            <div className={styles.avatarWrapper}>
+              <div className={styles.photoBox} aria-hidden="true">
+                {username ? username.slice(0, 2).toUpperCase() : "HC"}
+              </div>
+            </div>
             <div className={styles.employeeTitle}>
+              <span className={styles.userRoleTag}>
+                {authenticatedUser?.roleCode?.replace("_", " ") ?? "USER"}
+              </span>
               <strong>{username}</strong>
               <p>
                 {profileValue(authenticatedUser?.positionName)} /{" "}
@@ -342,21 +430,23 @@ export default function Dashboard({
             </div>
           </div>
 
-          <div className={styles.employeeDetails}>
+          <div className={styles.employeeDetailsGrid}>
             {employeeInfo.slice(0, 4).map((item) => (
-              <p key={item.label}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-              </p>
+              <div className={styles.detailCard} key={item.label}>
+                <span className={styles.detailLabel}>{item.label}</span>
+                <strong className={styles.detailValue}>{item.value}</strong>
+              </div>
             ))}
           </div>
 
           <div className={styles.employeeSummary} aria-label="Training summary">
             {employeeTrainingSummary.map((item) => (
-              <article key={item.label}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-                <small>{item.helper}</small>
+              <article className={styles.summaryCard} key={item.label}>
+                <span className={styles.summaryLabel}>{item.label}</span>
+                <div className={styles.summaryValueRow}>
+                  <strong className={styles.summaryValue}>{item.value}</strong>
+                  <small className={styles.summaryHelper}>{item.helper}</small>
+                </div>
               </article>
             ))}
           </div>
@@ -369,17 +459,29 @@ export default function Dashboard({
               <h2>Training Calendar</h2>
             </div>
             <div className={styles.calendarHeaderActions}>
-              <b>{filteredTrainingSchedule.length} courses</b>
-              <button
-                type="button"
-                onClick={() => setIsMonthListOpen((current) => !current)}
-              >
-                {isMonthListOpen ? "Hide month list" : "Show month list"}
-              </button>
+              <b className={styles.courseCountBadge}>{filteredTrainingSchedule.length} courses</b>
             </div>
           </div>
 
           <div className={styles.calendarFilters}>
+            <label>
+              <span>Company</span>
+              <select
+                disabled={!isCenterDashboard}
+                value={isCenterDashboard ? selectedCompanyFilter : userCompanyCode}
+                onChange={(event) => setSelectedCompanyFilter(event.target.value)}
+              >
+                <option value="all">
+                  {isCenterDashboard ? "All Companies" : `${userCompanyCode} + Center Courses`}
+                </option>
+                <option value="ATA">ATA</option>
+                <option value="ATFB">ATFB</option>
+                <option value="NIC">NIC</option>
+                <option value="SATI">SATI</option>
+                <option value="SNF">SNF</option>
+                <option value="TEP">TEP</option>
+              </select>
+            </label>
             <label>
               <span>Year</span>
               <select
@@ -429,7 +531,15 @@ export default function Dashboard({
                       <>
                         <span>{item.day}</span>
                         {item.trainings.map((training) => (
-                          <small key={`${training.date}-${training.course}-${training.time}`}>{training.shortName}</small>
+                          <small
+                            key={`${training.date}-${training.course}-${training.time}`}
+                            title={`${training.course} (${training.company})`}
+                          >
+                            <b style={{ color: training.isCenterPlan ? "#007a3d" : "#475569" }}>
+                              [{training.company}]
+                            </b>{" "}
+                            {training.shortName}
+                          </small>
                         ))}
                       </>
                     ) : null}
@@ -439,7 +549,7 @@ export default function Dashboard({
             </div>
           )}
 
-          {isMonthListOpen ? (
+          {filteredTrainingSchedule.length > 0 ? (
             <div className={styles.trainingList} aria-label="Upcoming training courses">
               {filteredTrainingSchedule.map((item) => {
                 const date = new Date(`${item.date}T00:00:00`);
@@ -453,7 +563,12 @@ export default function Dashboard({
                     <time dateTime={item.date}>{dateLabel}</time>
                     <div>
                       <strong>{item.course}</strong>
-                      <span>{item.time} / {item.room}</span>
+                      <span>
+                        <b style={{ color: item.isCenterPlan ? "#007a3d" : "#0f172a", fontWeight: 700 }}>
+                          {item.isCenterPlan ? "HRD Center" : item.company}
+                        </b>{" "}
+                        ({item.company}) • {item.time} / {item.room}
+                      </span>
                     </div>
                     <b>{item.status}</b>
                   </article>
@@ -464,34 +579,41 @@ export default function Dashboard({
         </section>
       </div>
 
-      <section className={styles.menuPanel} aria-label="Main menu">
+      <section className={styles.menuPanel} aria-label="Main workspace menu">
         <div className={styles.menuHeader}>
           <div>
-            <span>Workspace Operation</span>
-            <h2>Select a workspace</h2>
+            <span>Workspace Operations</span>
+            <h2>Select a Workspace Module</h2>
           </div>
-          <p>{menuItems.length} modules</p>
+          <p>{menuItems.length} Core Modules</p>
         </div>
         <div className={styles.menuRow}>
-          {menuItems.map((item, index) => (
+          {menuItems.map((item) => (
             <button
               className={styles.menuBox}
               key={item.title}
               type="button"
               onClick={item.onClick}
             >
-              <span className={styles.cardIcon} aria-hidden="true">
-                <span className={styles.cardEmoji}>{item.icon}</span>
-              </span>
-              <span className={styles.cardIndex} aria-hidden="true">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <div>
+              <div className={styles.cardHeader}>
+                <div className={styles.cardIcon} aria-hidden="true">
+                  <span className={styles.cardEmoji}>{item.icon}</span>
+                </div>
+                <span className={styles.cardIndex} aria-hidden="true">
+                  {item.step}
+                </span>
+              </div>
+              <div className={styles.cardContent}>
                 <small>{item.badge}</small>
                 <strong>{item.title}</strong>
                 <em>{item.description}</em>
               </div>
-              <b>Open</b>
+              <div className={styles.cardActionRow}>
+                <b>Open Workspace</b>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </div>
             </button>
           ))}
         </div>

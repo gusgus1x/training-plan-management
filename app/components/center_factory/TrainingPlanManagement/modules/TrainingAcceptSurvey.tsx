@@ -10,6 +10,7 @@ import {
   readWorkflowCollection,
   writeWorkflowCollection,
   type WorkflowAcceptance,
+  type WorkflowCompletedCourse,
   type WorkflowRegistration,
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
@@ -378,6 +379,9 @@ export default function TrainingAcceptSurvey() {
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>(() =>
     readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
   );
+  const [completedCourses, setCompletedCourses] = useState<WorkflowCompletedCourse[]>(() =>
+    readWorkflowCollection<WorkflowCompletedCourse>(TRAINING_WORKFLOW_KEYS.completedCourses),
+  );
   const [standards, setStandards] = useState<WorkflowStandard[]>(() =>
     readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards),
   );
@@ -406,6 +410,9 @@ export default function TrainingAcceptSurvey() {
       );
       setRollingPlans(
         readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
+      );
+      setCompletedCourses(
+        readWorkflowCollection<WorkflowCompletedCourse>(TRAINING_WORKFLOW_KEYS.completedCourses),
       );
       setStandards(
         readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards),
@@ -442,10 +449,15 @@ export default function TrainingAcceptSurvey() {
     };
   }, []);
 
+  const completedRollingIds = useMemo(
+    () => new Set(completedCourses.map((c) => c.rollingId).filter(Boolean)),
+    [completedCourses],
+  );
+
   const courseSurveys = useMemo<CourseSurvey[]>(
     () =>
       rollingPlans
-        .filter((plan) => plan.status === "Planned")
+        .filter((plan) => plan.status === "Planned" && !completedRollingIds.has(plan.rollingId))
         .map((plan) => {
           const standard = standards.find(
             (item) => item.courseCode === plan.course.code,

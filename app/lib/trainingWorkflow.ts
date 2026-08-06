@@ -3,38 +3,45 @@ export type WorkflowOwner = "CENTER" | "FACTORY";
 export type WorkflowCourse = {
   id: string;
   courseCode: string;
-  courseNameTh: string;
   courseNameEn: string;
+  courseNameTh: string;
   objective: string;
   learningContent: string;
   targetGroup: string;
   methodology: string;
-  preTestId?: string;
   preTest: string;
-  postTestId?: string;
   postTest: string;
-  evaluationId?: string;
   evaluation: string;
-  evaluationAfter30DayId?: string;
   evaluationAfter30Day: string;
   lifeCycleMonth: string;
-  remark: string;
-  status: "Active" | "Draft" | "Inactive";
   courseType: string;
   courseGroup: string;
+  remark: string;
+  status: "Active" | "Inactive";
   updatedAt: string;
+  preTestId?: string;
+  postTestId?: string;
+  evaluationId?: string;
+  evaluationAfter30DayId?: string;
   owner: WorkflowOwner;
-  ownerCompany: string;
-  createdBy: string;
+  ownerCompany?: string;
+  createdBy?: string;
 };
 
-export const getCourseDisplayName = (
-  course: Pick<WorkflowCourse, "courseNameTh" | "courseNameEn">,
-) => course.courseNameTh.trim() || course.courseNameEn.trim() || "-";
+export const getCourseDisplayName = (course?: WorkflowCourse | null): string => {
+  if (!course) {
+    return "";
+  }
 
-export const getCourseSecondaryName = (
-  course: Pick<WorkflowCourse, "courseNameTh" | "courseNameEn">,
-) => {
+  const primaryName = course.courseNameTh.trim() || course.courseNameEn.trim();
+  return primaryName || course.courseCode;
+};
+
+export const getCourseSecondaryName = (course?: WorkflowCourse | null): string => {
+  if (!course) {
+    return "";
+  }
+
   const primaryName = getCourseDisplayName(course);
   const englishName = course.courseNameEn.trim();
 
@@ -65,6 +72,7 @@ export type WorkflowOapPlan = {
   provider: string;
   createdBy: string;
   status: "Planning" | "Planned" | "Cancel";
+  year?: string;
   owner: WorkflowOwner;
   ownerCompany: string;
 };
@@ -202,70 +210,87 @@ const initializeWorkflow = () => {
     return;
   }
 
-  if (window.localStorage.getItem(WORKFLOW_VERSION_KEY) === WORKFLOW_VERSION) {
+  const existingVersion = window.localStorage.getItem(WORKFLOW_VERSION_KEY);
+  if (existingVersion === WORKFLOW_VERSION) {
     return;
   }
 
-  Object.values(TRAINING_WORKFLOW_KEYS).forEach((key) => window.localStorage.removeItem(key));
   LEGACY_TRANSACTION_KEYS.forEach((key) => window.localStorage.removeItem(key));
+  Object.values(TRAINING_WORKFLOW_KEYS).forEach((key) =>
+    window.localStorage.removeItem(key),
+  );
   window.localStorage.setItem(WORKFLOW_VERSION_KEY, WORKFLOW_VERSION);
 };
 
-export const initializeTrainingWorkflow = initializeWorkflow;
+export const initializeTrainingWorkflow = () => {
+  initializeWorkflow();
+};
 
-export const readWorkflowCollection = <T>(key: string): T[] => {
+export const readWorkflowCollection = <T,>(key: string): T[] => {
   if (typeof window === "undefined") {
     return [];
   }
 
-  initializeWorkflow();
-
   try {
-    const storedValue = window.localStorage.getItem(key);
-    return storedValue ? (JSON.parse(storedValue) as T[]) : [];
+    const raw = window.localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T[]) : [];
   } catch {
     return [];
   }
 };
 
-export const writeWorkflowCollection = <T>(key: string, records: T[]) => {
+export const writeWorkflowCollection = <T,>(key: string, items: T[]) => {
   if (typeof window === "undefined") {
     return;
   }
 
-  initializeWorkflow();
-  window.localStorage.setItem(key, JSON.stringify(records));
-  window.dispatchEvent(new CustomEvent(TRAINING_WORKFLOW_EVENT, { detail: { key } }));
+  window.localStorage.setItem(key, JSON.stringify(items));
+  window.dispatchEvent(new CustomEvent(TRAINING_WORKFLOW_EVENT));
 };
 
-export const readMasterCollection = <T>(key: string, defaults: T[]): T[] => {
+export const readMasterCollection = <T,>(key: string, fallback: T[]): T[] => {
   if (typeof window === "undefined") {
-    return defaults;
+    return fallback;
   }
 
   try {
-    const storedValue = window.localStorage.getItem(key);
-    return storedValue ? (JSON.parse(storedValue) as T[]) : defaults;
+    const raw = window.localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T[]) : fallback;
   } catch {
-    return defaults;
+    return fallback;
   }
 };
 
-export const writeMasterCollection = <T>(key: string, records: T[]) => {
+export const writeMasterCollection = <T,>(key: string, items: T[]) => {
   if (typeof window === "undefined") {
     return;
   }
 
-  window.localStorage.setItem(key, JSON.stringify(records));
-  window.dispatchEvent(new CustomEvent(TRAINING_MASTER_EVENT, { detail: { key } }));
+  window.localStorage.setItem(key, JSON.stringify(items));
+  window.dispatchEvent(new CustomEvent(TRAINING_MASTER_EVENT));
 };
 
 export const isWorkflowOwner = (
-  owner: WorkflowOwner,
-  ownerCompany: string,
-  roleCode: string | undefined,
-  companyCode: string,
-) =>
-  roleCode === "HRD_CENTER"
-    ? owner === "CENTER"
-    : owner === "FACTORY" && ownerCompany === companyCode;
+  owner: WorkflowOwner | undefined,
+  ownerCompany: string | undefined,
+  userRoleCode: string | undefined,
+  userCompanyCode: string | undefined,
+): boolean => {
+  if (userRoleCode === "HRD_CENTER") {
+    return true;
+  }
+
+  if (userRoleCode === "HRD_FACTORY") {
+    if (!ownerCompany || ownerCompany === "All Companies") {
+      return true;
+    }
+
+    if (owner === "CENTER") {
+      return true;
+    }
+
+    return ownerCompany === userCompanyCode;
+  }
+
+  return true;
+};

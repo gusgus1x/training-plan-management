@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   formatRollingPlanCompanies,
+  getRollingPlanCompanies,
   monthOptions,
   type RollingPlan,
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
@@ -92,6 +93,8 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
   const [editingPlanId, setEditingPlanId] = useState("");
   const [editForm, setEditForm] = useState<ScheduleEditForm | null>(null);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
+  const [companyFilter, setCompanyFilter] = useState<string>("all");
+  const isCenterUser = user?.roleCode === "HRD_CENTER";
   const userCompanyCode = profileValue(user?.companyCode);
 
   useEffect(() => {
@@ -109,16 +112,43 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
   const schedulePlans = useMemo(
     () =>
       rollingPlans
-        .filter((plan) =>
-          isWorkflowOwner(
-            plan.ownerScope ?? (plan.owner === "admin.hrd" ? "CENTER" : "FACTORY"),
-            plan.ownerCompany ?? plan.company,
-            user?.roleCode,
-            userCompanyCode,
-          ),
-        )
+        .filter((plan) => {
+          const planCompanies = getRollingPlanCompanies(plan);
+          const isCenterPlan =
+            plan.ownerScope === "CENTER" ||
+            plan.ownerCompany === "HRD Center" ||
+            plan.provider === "HRD Center" ||
+            plan.owner === "admin.hrd";
+
+          if (isCenterUser) {
+            if (companyFilter === "all" || companyFilter === "All Companies") {
+              return true;
+            }
+            return (
+              plan.company === companyFilter ||
+              planCompanies.includes(companyFilter) ||
+              plan.company === "All Companies"
+            );
+          }
+
+          // Factory User Scope (e.g. ATA): Sees own courses + Center-created courses!
+          const isOwnCompany =
+            plan.company === userCompanyCode ||
+            planCompanies.includes(userCompanyCode || "");
+
+          if (isCenterPlan) {
+            return (
+              plan.company === "All Companies" ||
+              isOwnCompany ||
+              planCompanies.length === 0 ||
+              planCompanies.includes(userCompanyCode || "")
+            );
+          }
+
+          return isOwnCompany;
+        })
         .sort((a, b) => a.trainingDate.localeCompare(b.trainingDate)),
-    [rollingPlans, user?.roleCode, userCompanyCode],
+    [companyFilter, isCenterUser, rollingPlans, userCompanyCode],
   );
   const calendarYears = useMemo(
     () =>
@@ -293,6 +323,24 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
     <section className={styles.moduleWorkspace} aria-label="Schedule calendar module">
       <section className={styles.panel}>
         <div className={styles.toolbar}>
+          <label>
+            <span>Company</span>
+            <select
+              disabled={!isCenterUser}
+              value={isCenterUser ? companyFilter : userCompanyCode}
+              onChange={(event) => setCompanyFilter(event.target.value)}
+            >
+              <option value="all">
+                {isCenterUser ? "All Companies" : `${userCompanyCode} + Center Courses`}
+              </option>
+              <option value="ATA">ATA</option>
+              <option value="ATFB">ATFB</option>
+              <option value="NIC">NIC</option>
+              <option value="SATI">SATI</option>
+              <option value="SNF">SNF</option>
+              <option value="TEP">TEP</option>
+            </select>
+          </label>
           <label>
             <span>Year</span>
             <select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>

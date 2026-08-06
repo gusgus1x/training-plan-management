@@ -8,6 +8,7 @@ import {
 import {
   TRAINING_MASTER_EVENT,
   TRAINING_MASTER_KEYS,
+  TRAINING_WORKFLOW_EVENT,
   TRAINING_WORKFLOW_KEYS,
   getCourseDisplayName,
   getCourseSecondaryName,
@@ -108,10 +109,22 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const [exportMessage, setExportMessage] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | OapStatus>("all");
+  const [yearFilter, setYearFilter] = useState<string>("all");
   const [instructors, setInstructors] = useState<InstructorRecord[]>(() =>
     readMasterCollection(TRAINING_MASTER_KEYS.instructors, defaultInstructorRows),
   );
   const userCompanyCode = profileValue(user?.companyCode);
+
+  useEffect(() => {
+    const syncWorkflowData = () => {
+      setCourses(readWorkflowCollection<WorkflowCourse>(TRAINING_WORKFLOW_KEYS.courses));
+      setStandards(readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards));
+      setPlans(readWorkflowCollection<OapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans));
+    };
+
+    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflowData);
+    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflowData);
+  }, []);
 
   useEffect(() => {
     const syncApprovedRequest = () => {
@@ -195,23 +208,44 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       ),
     [plans, user?.roleCode, userCompanyCode],
   );
+
+  const availableYears = useMemo(() => {
+    const currentYear = new Date().getFullYear().toString();
+    const planYears = scopedPlans
+      .map((plan) => plan.year ?? (plan.course.updatedAt ? plan.course.updatedAt.slice(0, 4) : currentYear))
+      .filter(Boolean);
+    const uniqueYears = Array.from(new Set([currentYear, "2026", "2025", "2027", ...planYears])).sort((a, b) =>
+      b.localeCompare(a),
+    );
+    return uniqueYears;
+  }, [scopedPlans]);
+
   const visiblePlans = useMemo(
     () =>
-      scopedPlans.filter((plan) =>
-        [
-          plan.course.courseCode,
-          plan.course.courseNameTh,
-          plan.course.courseNameEn,
-          plan.status,
-          plan.trainer,
-          plan.provider,
-        ]
-          .join(" ")
-          .toLowerCase()
-          .includes(search.toLowerCase()),
-      )
-      .filter((plan) => statusFilter === "all" || plan.status === statusFilter),
-    [scopedPlans, search, statusFilter],
+      scopedPlans
+        .filter((plan) =>
+          [
+            plan.course.courseCode,
+            plan.course.courseNameTh,
+            plan.course.courseNameEn,
+            plan.status,
+            plan.trainer,
+            plan.provider,
+            plan.year ?? (plan.course.updatedAt ? plan.course.updatedAt.slice(0, 4) : "2026"),
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(search.toLowerCase()),
+        )
+        .filter((plan) => statusFilter === "all" || plan.status === statusFilter)
+        .filter((plan) => {
+          if (yearFilter === "all") {
+            return true;
+          }
+          const planYear = plan.year ?? (plan.course.updatedAt ? plan.course.updatedAt.slice(0, 4) : "2026");
+          return planYear === yearFilter;
+        }),
+    [scopedPlans, search, statusFilter, yearFilter],
   );
   const selectedPlan =
     visiblePlans.find((plan) => plan.id === selectedPlanId) ?? null;
@@ -265,8 +299,9 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       provider: form.provider.trim() || "Pending provider",
       createdBy: username,
       status: "Planning",
+      year: yearFilter === "all" ? new Date().getFullYear().toString() : yearFilter,
       owner: selectedCourse.owner,
-      ownerCompany: selectedCourse.ownerCompany,
+      ownerCompany: selectedCourse.ownerCompany ?? "HRD Center",
     };
     savePlans([nextPlan, ...plans]);
     setForm(emptyForm);
@@ -400,6 +435,17 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
           <label className={styles.searchBox}>
             <span>Search</span>
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Course, trainer, provider, status" />
+          </label>
+          <label className={styles.filterBox}>
+            <span>Year</span>
+            <select value={yearFilter} onChange={(event) => setYearFilter(event.target.value)}>
+              <option value="all">All years</option>
+              {availableYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
           </label>
           <label className={styles.filterBox}>
             <span>Status</span>

@@ -1792,9 +1792,102 @@
     grid-template-columns: 1fr;
   }
 
+
   .completedCourseHero {
     display: grid;
   }
+}
+
+.addAttendeePanel {
+  margin-top: 14px;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-60-surface);
+  box-shadow: var(--ui-card-shadow);
+  padding: 18px;
+}
+
+.addAttendeePanel .panelHeader button {
+  min-height: 32px;
+  border: 1px solid var(--ui-30-primary);
+  border-radius: 999px;
+  background: var(--ui-30-primary);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 0 14px;
+  transition: all 150ms ease;
+}
+
+.addAttendeePanel .panelHeader button:hover {
+  background: var(--ui-30-primary-strong);
+}
+
+.addAttendeeWorkspace {
+  margin-top: 14px;
+  border-top: 1px solid var(--ui-60-surface-muted);
+  padding-top: 14px;
+}
+
+.addAttendeeControls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.addAttendeeControls label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.addAttendeeControls select,
+.addAttendeeControls input {
+  height: 36px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-sm);
+  background: #ffffff;
+  color: var(--ui-30-ink);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 0 10px;
+}
+
+.addAttendeeControls select:focus,
+.addAttendeeControls input:focus {
+  border-color: var(--ui-30-primary);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ui-focus-ring);
+}
+
+.addAttendeeActions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.addAttendeeActions button {
+  min-height: 36px;
+  border: 1px solid var(--ui-30-primary);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-30-primary);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 0 18px;
+  transition: all 150ms ease;
+}
+
+.addAttendeeActions button:hover {
+  background: var(--ui-30-primary-strong);
 }
 
 @media (max-width: 640px) {

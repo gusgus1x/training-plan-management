@@ -560,7 +560,7 @@ function CourseMaster() {
       positions: selectedPositions,
       levels: selectedLevels,
       owner: nextCourse.owner,
-      ownerCompany: nextCourse.ownerCompany,
+      ownerCompany: nextCourse.ownerCompany ?? "HRD Center",
     };
     const nextStandards = selectedStandard
       ? standards.map((standard) =>

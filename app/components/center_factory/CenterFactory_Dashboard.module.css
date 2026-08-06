@@ -2,12 +2,10 @@
   min-height: 100vh;
   overflow-x: clip;
   background:
-    radial-gradient(
-      circle 620px at 100% 100%,
+    radial-gradient(circle 620px at 100% 100%,
       rgba(0, 122, 61, 0.18) 0%,
       rgba(0, 122, 61, 0.08) 35%,
-      rgba(238, 243, 240, 0) 72%
-    ),
+      rgba(238, 243, 240, 0) 72%),
     var(--ui-60-canvas);
   color: var(--ui-30-ink);
 }
@@ -63,9 +61,12 @@
   position: relative;
   overflow: hidden;
   width: 100%;
-  min-height: 128px;
-  margin-bottom: 14px;
-  box-shadow: 0 24px 54px rgba(31, 41, 55, 0.22);
+  min-height: 120px;
+  margin-bottom: 16px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-xl);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: var(--ui-shadow-md);
 }
 
 .heroPanel::before {
@@ -73,44 +74,41 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: var(--ui-card-edge);
-  box-shadow: var(--ui-card-edge-shadow);
+  background: var(--ui-30-primary);
+  box-shadow: 0 0 10px rgba(0, 122, 61, 0.35);
 }
 
 .heroCopy {
-  padding: 28px 30px 26px 34px;
-  background: var(--ui-60-surface);
+  padding: 24px 28px 22px 30px;
 }
 
 .heroCopy span,
 .panelHeader span,
 .menuHeader span,
-.employeeDetails span,
-.employeeSummary span,
-.employeeSummary small,
 .calendarFilters span,
 .menuBox small {
   color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .heroCopy h1 {
   margin: 6px 0 0;
   color: var(--ui-30-ink);
-  font-size: clamp(2.15rem, 3.2vw, 2.75rem);
+  font-size: clamp(1.85rem, 2.8vw, 2.35rem);
   font-weight: 900;
-  line-height: 1.02;
-  letter-spacing: 0;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
 }
 
 .heroCopy p {
   max-width: 860px;
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   color: var(--ui-30-text);
-  font-size: 0.82rem;
-  line-height: 1.5;
+  font-size: 0.84rem;
+  line-height: 1.55;
 }
 
 .menuPanel {
@@ -156,28 +154,26 @@
 .menuBox {
   appearance: none;
   position: relative;
-  display: grid;
-  grid-template-columns: 54px minmax(0, 1fr);
-  grid-template-rows: 1fr auto;
-  gap: 12px;
-  min-height: 168px;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 172px;
   overflow: hidden;
   border: 1px solid var(--ui-30-border);
-  border-left: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-xl);
-  background: var(--ui-60-surface);
+  background: #ffffff;
   color: var(--ui-30-ink);
   cursor: pointer;
   font: inherit;
-  padding: 16px;
+  padding: 18px;
   text-align: left;
-  box-shadow: var(--ui-card-shadow);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
   transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
+    background 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    transform 200ms ease;
 }
 
 .menuBox:nth-child(1),
@@ -194,103 +190,135 @@
   grid-column: 4 / span 2;
 }
 
-.menuBox:nth-child(2n) {
-  border-left-color: var(--ui-30-border);
+.menuBox::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--ui-30-primary);
+  opacity: 0.85;
+  transition: opacity 200ms ease, height 200ms ease;
 }
 
 .menuBox:hover {
-  border-color: var(--ui-30-border);
-  border-left-color: var(--ui-30-border);
-  background: var(--ui-60-surface-soft);
-  box-shadow: var(--ui-card-shadow-hover);
-  transform: translateY(-2px);
+  border-color: var(--ui-30-primary);
+  background: linear-gradient(180deg, #ffffff 0%, rgba(240, 253, 244, 0.5) 100%);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  transform: translateY(-3px);
+}
+
+.menuBox:hover::before {
+  height: 4px;
+  opacity: 1;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .cardIcon {
   display: grid;
-  width: 52px;
-  height: 52px;
+  width: 44px;
+  height: 44px;
   place-items: center;
-  border: 1px solid rgba(0, 122, 61, 0.18);
-  border-radius: 14px;
-  background: linear-gradient(145deg, #ffffff 0%, var(--ui-30-primary-soft) 100%);
-  color: var(--ui-30-primary);
-  box-shadow:
-    0 8px 18px rgba(15, 39, 71, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--ui-30-border);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.9);
+  color: var(--ui-30-ink);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+  transition: transform 200ms ease, border-color 200ms ease, background 200ms ease;
 }
 
 .cardEmoji {
   font-family: "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
-  font-size: 1.85rem;
+  font-size: 1.55rem;
   line-height: 1;
-  filter: drop-shadow(0 3px 3px rgba(15, 39, 71, 0.18));
+}
+
+.menuBox:hover .cardIcon {
+  border-color: var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  transform: scale(1.05);
 }
 
 .cardIndex {
-  position: absolute;
-  top: 14px;
-  right: 14px;
   display: grid;
-  min-width: 30px;
-  height: 24px;
+  min-width: 28px;
+  height: 22px;
   place-items: center;
-  border: 1px solid var(--ui-30-primary);
-  border-radius: 999px;
-  background: var(--ui-30-primary);
-  color: #fff;
-  font-size: 0.64rem;
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: 0.08em;
-  padding: 0 7px;
-}
-
-.menuBox:nth-child(2n) .cardIcon {
-  border-color: rgba(215, 25, 32, 0.2);
-  background: linear-gradient(145deg, #ffffff 0%, var(--ui-10-accent-soft) 100%);
-  color: var(--ui-10-accent);
-}
-
-.menuBox div {
-  min-width: 0;
-}
-
-.menuBox small {
-  display: block;
-  margin-bottom: 6px;
-}
-
-.menuBox strong {
-  display: block;
-  color: var(--ui-30-ink);
-  font-size: 1.08rem;
-  font-weight: 900;
-  line-height: 1.18;
-}
-
-.menuBox em {
-  display: block;
-  margin-top: 8px;
-  color: var(--ui-30-text);
-  font-size: 0.76rem;
-  font-style: normal;
-  font-weight: 600;
-  line-height: 1.45;
-}
-
-.menuBox b {
-  grid-column: 2;
-  width: fit-content;
-  align-self: end;
-  border: 1px solid var(--ui-30-primary-border);
+  border: 1px solid var(--ui-30-border);
   border-radius: 999px;
   background: var(--ui-60-surface-soft);
-  color: #0f2747;
+  color: var(--ui-30-ink);
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  padding: 0 8px;
+}
+
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-grow: 1;
+}
+
+.cardContent small {
+  display: block;
+  color: var(--ui-30-primary);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.cardContent strong {
+  display: block;
+  color: var(--ui-30-ink);
+  font-size: 1.02rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.cardContent em {
+  display: block;
+  margin-top: 4px;
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.cardActionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ui-60-surface-muted);
+  color: var(--ui-30-primary);
+  font-size: 0.74rem;
+  font-weight: 800;
+  transition: color 200ms ease;
+}
+
+.cardActionRow b {
   font-size: 0.72rem;
   font-weight: 900;
-  line-height: 1;
-  padding: 8px 10px;
+}
+
+.cardActionRow svg {
+  transition: transform 200ms ease;
+}
+
+.menuBox:hover .cardActionRow svg {
+  transform: translateX(4px);
 }
 
 .topRow {
@@ -326,8 +354,10 @@
 .employeePanel {
   position: relative;
   overflow: hidden;
-  align-content: start;
-  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
 }
 
 .employeePanel::before {
@@ -335,160 +365,161 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: var(--ui-card-edge);
-  box-shadow: var(--ui-card-edge-shadow);
+  background: var(--ui-30-primary);
+  box-shadow: 0 0 10px rgba(0, 122, 61, 0.35);
   pointer-events: none;
 }
 
 .employeePanel .panelHeader {
-  margin: -2px 0 14px;
+  margin: -2px 0 0;
   border-bottom: 1px solid var(--ui-60-canvas);
-  padding: 0 0 12px 8px;
+  padding: 0 0 12px 4px;
 }
 
-.panelHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.panelHeader h2 {
-  margin: 5px 0 0;
-  color: var(--ui-30-ink);
-  font-size: 1.08rem;
-  line-height: 1.2;
-  letter-spacing: 0;
-}
-
-.panelHeader b {
-  margin: 0;
+.onlineBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
   background: var(--ui-30-primary-soft);
   color: var(--ui-30-primary);
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 900;
+  padding: 5px 10px;
   line-height: 1;
-  padding: 7px 10px;
-  white-space: nowrap;
 }
 
-.calendarHeaderActions {
+.onlineDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulseDot 2s infinite;
+}
+
+@keyframes pulseDot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.employeeProfileCard {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.calendarHeaderActions button {
-  min-height: 30px;
-  border: 1px solid rgba(215, 25, 32, 0.2);
-  border-radius: 999px;
-  background: #fff7f8;
-  color: var(--ui-10-accent);
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.7rem;
-  font-weight: 900;
-  padding: 0 10px;
-  white-space: nowrap;
-}
-
-.calendarHeaderActions button:hover {
-  border-color: rgba(215, 25, 32, 0.34);
-  background: var(--ui-10-accent-soft);
-}
-
-.employeeProfile {
-  display: grid;
-  grid-template-columns: 50px minmax(0, 1fr);
-  gap: 10px;
   align-items: center;
-  margin-bottom: 14px;
-  border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
-  background:
-    linear-gradient(90deg, rgba(240, 253, 244, 0.86), rgba(255, 255, 255, 0.96) 46%),
-    var(--ui-60-surface);
-  padding: 12px;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(0, 122, 61, 0.18);
+  border-radius: var(--ui-radius-md);
+  background: linear-gradient(135deg, rgba(238, 247, 242, 0.95) 0%, rgba(255, 255, 255, 0.98) 100%);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.avatarWrapper {
+  position: relative;
+  flex-shrink: 0;
 }
 
 .photoBox {
   display: grid;
-  width: 48px;
-  min-height: 48px;
+  width: 50px;
+  height: 50px;
   place-items: center;
-  border: 1px solid rgba(0, 122, 61, 0.2);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
-  color: var(--ui-30-primary);
-  font-size: 1rem;
+  border: 2px solid var(--ui-30-primary-border);
+  border-radius: 14px;
+  background: linear-gradient(145deg, #007a3d 0%, #005c2e 100%);
+  color: #ffffff;
+  font-size: 1.1rem;
   font-weight: 900;
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+  letter-spacing: 0.05em;
+  box-shadow: 0 6px 16px rgba(0, 122, 61, 0.25);
 }
 
 .employeeTitle {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.userRoleTag {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ui-30-primary);
+  background: var(--ui-30-primary-soft);
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 4px;
+  padding: 2px 6px;
 }
 
 .employeeTitle strong {
-  display: block;
   overflow: hidden;
   color: var(--ui-30-ink);
-  font-size: 1.1rem;
+  font-size: 1.12rem;
   font-weight: 900;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.2;
 }
 
 .employeeTitle p {
-  margin: 5px 0 0;
+  margin: 0;
   overflow: hidden;
   color: var(--ui-30-muted);
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.employeeDetails {
+.employeeDetailsGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
-.employeeDetails p {
-  position: relative;
-  overflow: hidden;
-  display: grid;
-  gap: 5px;
-  min-width: 0;
-  margin: 0;
-  border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
-  min-height: 58px;
-  padding: 10px 11px 10px 15px;
+.detailCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-60-surface-muted);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-60-surface-soft);
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
 }
 
-.employeeDetails p::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--ui-card-edge);
-  box-shadow: var(--ui-card-edge-shadow);
-  pointer-events: none;
+.detailCard:hover {
+  border-color: var(--ui-30-primary-border);
+  background: #ffffff;
+  transform: translateY(-1px);
 }
 
-.employeeDetails strong {
+.detailLabel {
+  color: var(--ui-30-muted);
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.detailValue {
   overflow: hidden;
   color: var(--ui-30-ink);
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 800;
-  line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -497,48 +528,56 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  margin-top: 14px;
+  margin-top: 2px;
 }
 
-.employeeSummary article {
-  position: relative;
-  overflow: hidden;
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-  border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
-  background: var(--ui-60-surface-soft);
-  min-height: 72px;
-  padding: 11px 12px 11px 15px;
+.summaryCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 12px;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: var(--ui-radius-sm);
+  background: linear-gradient(180deg, #ffffff 0%, var(--ui-30-primary-soft) 100%);
+  box-shadow: 0 2px 6px rgba(0, 122, 61, 0.05);
+  transition: transform 150ms ease, box-shadow 150ms ease;
 }
 
-.employeeSummary article::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--ui-card-edge);
-  box-shadow: var(--ui-card-edge-shadow);
-  pointer-events: none;
+.summaryCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 122, 61, 0.12);
 }
 
-.employeeSummary strong {
-  color: var(--ui-10-accent);
-  font-size: 0.92rem;
+.summaryLabel {
+  color: var(--ui-30-muted);
+  font-size: 0.64rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summaryValueRow {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.summaryValue {
+  color: var(--ui-30-primary);
+  font-size: 1.25rem;
   font-weight: 900;
   line-height: 1;
 }
 
-.employeeSummary small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.summaryHelper {
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
 }
 
 .calendarFilters {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 14px;
 }

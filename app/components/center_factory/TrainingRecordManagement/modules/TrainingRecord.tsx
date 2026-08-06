@@ -5,8 +5,10 @@ import {
   TRAINING_WORKFLOW_EVENT,
   TRAINING_WORKFLOW_KEYS,
   readWorkflowCollection,
+  writeWorkflowCollection,
   type WorkflowCompletedCourse,
 } from "../../../../lib/trainingWorkflow";
+import { readEmployeeMasterData } from "../../../../lib/employeeMasterData";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import {
   getRollingPlanCompanies,
@@ -578,6 +580,13 @@ export default function TrainingRecord() {
   const [savedRecordRows, setSavedRecordRows] = useState<UploadedTrainingRecord[]>([]);
   const [importMessage, setImportMessage] = useState("");
   const [importFileName, setImportFileName] = useState("");
+  const [isAddingAttendee, setIsAddingAttendee] = useState(false);
+  const [selectedEmpCode, setSelectedEmpCode] = useState("");
+  const [customEmpCode, setCustomEmpCode] = useState("");
+  const [customEmpName, setCustomEmpName] = useState("");
+  const [customCompany, setCustomCompany] = useState("");
+  const [customDepartment, setCustomDepartment] = useState("");
+  const [addAttendeeMessage, setAddAttendeeMessage] = useState("");
 
   useEffect(() => {
     const syncCompletedCourses = () => {
@@ -840,6 +849,81 @@ export default function TrainingRecord() {
     setImportMessage(
       `Saved ${savedCourses.length} imported courses and ${importedRecordRows.length} record rows from ${importFileName}.`,
     );
+  };
+
+  const handleAddAttendee = () => {
+    if (!selectedCourse) {
+      return;
+    }
+
+    const masterEmployees = readEmployeeMasterData();
+    const selectedMaster = masterEmployees.find((emp) => emp.empCode === selectedEmpCode);
+
+    const empCode =
+      selectedMaster?.empCode || customEmpCode.trim() || `EMP-${Date.now().toString().slice(-4)}`;
+    const empName = selectedMaster
+      ? `${selectedMaster.titleEn || ""} ${selectedMaster.nameEn || selectedMaster.nameTh} ${selectedMaster.surnameEn || selectedMaster.surnameTh}`.trim()
+      : customEmpName.trim() || "New Participant";
+    const company = selectedMaster?.company || customCompany.trim() || selectedCourse.company || "SNF";
+    const department = selectedMaster?.functionName || customDepartment.trim() || "General";
+
+    const completedCourses = readWorkflowCollection<WorkflowCompletedCourse>(
+      TRAINING_WORKFLOW_KEYS.completedCourses,
+    );
+
+    const targetCourse = completedCourses.find(
+      (c) => c.id === selectedCourse.id || c.rollingId === selectedCourse.rollingId,
+    );
+
+    const newAttendeeObj = {
+      id: `att-add-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      company,
+      employeeCode: empCode,
+      name: empName,
+      department,
+      registered: true,
+      attended: true,
+    };
+
+    let nextCompletedCourses: WorkflowCompletedCourse[];
+
+    if (targetCourse) {
+      nextCompletedCourses = completedCourses.map((c) =>
+        c.id === targetCourse.id
+          ? {
+              ...c,
+              attendees: [...c.attendees, newAttendeeObj],
+            }
+          : c,
+      );
+    } else {
+      const newCompletedCourse: WorkflowCompletedCourse = {
+        id: selectedCourse.id,
+        rollingId: selectedCourse.rollingId ?? selectedCourse.id,
+        code: selectedCourse.code,
+        title: selectedCourse.title,
+        date: selectedCourse.date,
+        batch: selectedCourse.batch,
+        company: selectedCourse.company,
+        owner: selectedCourse.owner,
+        room: selectedCourse.room,
+        instructor: selectedCourse.instructor,
+        hours: 8,
+        attendees: [newAttendeeObj],
+        expenses: selectedCourse.actualCost,
+        savedAt: new Date().toISOString(),
+      };
+      nextCompletedCourses = [newCompletedCourse, ...completedCourses];
+    }
+
+    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.completedCourses, nextCompletedCourses);
+    setAddAttendeeMessage(`Successfully added ${empName} (${empCode}) to ${selectedCourse.code}`);
+    setSelectedEmpCode("");
+    setCustomEmpCode("");
+    setCustomEmpName("");
+    setCustomDepartment("");
+    setCustomCompany("");
+    setIsAddingAttendee(false);
   };
 
   return (
@@ -1136,6 +1220,94 @@ export default function TrainingRecord() {
                 <span>Download by person or export all evaluation forms.</span>
               </div>
             </article>
+          </section>
+
+          <section className={styles.addAttendeePanel} aria-label="Add attendee to recorded course">
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.kicker}>Post-Record Registration</p>
+                <h3>Add Attendee / เพิ่มผู้เข้าร่วม (ส่งคนเพิ่ม)</h3>
+              </div>
+              <button type="button" onClick={() => setIsAddingAttendee(!isAddingAttendee)}>
+                {isAddingAttendee ? "Cancel" : "+ Add Attendee"}
+              </button>
+            </div>
+
+            {isAddingAttendee ? (
+              <div className={styles.addAttendeeWorkspace}>
+                <div className={styles.addAttendeeControls}>
+                  <label>
+                    Select Employee from Master Data
+                    <select
+                      value={selectedEmpCode}
+                      onChange={(event) => {
+                        setSelectedEmpCode(event.target.value);
+                        const master = readEmployeeMasterData().find((e) => e.empCode === event.target.value);
+                        if (master) {
+                          setCustomEmpCode(master.empCode);
+                          setCustomEmpName(`${master.titleEn || ""} ${master.nameEn || master.nameTh} ${master.surnameEn || master.surnameTh}`.trim());
+                          setCustomCompany(master.company);
+                          setCustomDepartment(master.functionName);
+                        }
+                      }}
+                    >
+                      <option value="">Select Employee (Optional)</option>
+                      {readEmployeeMasterData().map((emp) => (
+                        <option key={emp.id} value={emp.empCode}>
+                          {emp.empCode} / {emp.nameEn || emp.nameTh} {emp.surnameEn || emp.surnameTh} / {emp.company} / {emp.functionName}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    Employee Code
+                    <input
+                      value={customEmpCode}
+                      onChange={(event) => setCustomEmpCode(event.target.value)}
+                      placeholder="e.g. ATA-1001"
+                    />
+                  </label>
+
+                  <label>
+                    Full Name
+                    <input
+                      value={customEmpName}
+                      onChange={(event) => setCustomEmpName(event.target.value)}
+                      placeholder="e.g. Mr. Somchai Promjai"
+                    />
+                  </label>
+
+                  <label>
+                    Company
+                    <input
+                      value={customCompany}
+                      onChange={(event) => setCustomCompany(event.target.value)}
+                      placeholder="e.g. ATA / SNF"
+                    />
+                  </label>
+
+                  <label>
+                    Department / Function
+                    <input
+                      value={customDepartment}
+                      onChange={(event) => setCustomDepartment(event.target.value)}
+                      placeholder="e.g. Production"
+                    />
+                  </label>
+
+                  <div className={styles.addAttendeeActions}>
+                    <button type="button" onClick={handleAddAttendee}>
+                      Save & Add Attendee
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {addAttendeeMessage ? (
+              <p className={styles.downloadMessage}>{addAttendeeMessage}</p>
+            ) : null}
           </section>
 
           <section className={styles.evaluationDownloadPanel}>

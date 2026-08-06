@@ -2,12 +2,10 @@
   min-height: 100vh;
   overflow-x: clip;
   background:
-    radial-gradient(
-      circle 620px at 100% 100%,
+    radial-gradient(circle 620px at 100% 100%,
       rgba(0, 122, 61, 0.18) 0%,
       rgba(0, 122, 61, 0.08) 35%,
-      rgba(238, 243, 240, 0) 72%
-    ),
+      rgba(238, 243, 240, 0) 72%),
     var(--ui-60-canvas);
   color: var(--ui-30-ink);
 }
@@ -55,17 +53,25 @@
   font-size: 0.68rem;
   font-weight: 900;
   line-height: 1;
-  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  font-size: 0.64rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0 10px;
 }
 
 .heroPanel {
   position: relative;
   overflow: hidden;
-  min-height: 128px;
+  min-height: 120px;
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-xl);
-  background: var(--ui-60-surface);
-  box-shadow: 0 24px 54px rgba(31, 41, 55, 0.22);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: var(--ui-shadow-md);
 }
 
 .heroPanel::before {
@@ -73,17 +79,16 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: var(--ui-card-edge);
-  box-shadow: var(--ui-card-edge-shadow);
+  background: var(--ui-30-primary);
+  box-shadow: 0 0 10px rgba(0, 122, 61, 0.35);
   pointer-events: none;
 }
 
-.heroPanel > div:first-child {
-  padding: 28px 30px 26px 34px;
-  background: var(--ui-60-surface);
+.heroPanel>div:first-child {
+  padding: 24px 28px 22px 30px;
 }
 
-.heroPanel > div:only-child {
+.heroPanel>div:only-child {
   grid-column: 1 / -1;
 }
 
@@ -93,23 +98,24 @@
   font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .heroPanel h1 {
   margin: 0;
   color: var(--ui-30-ink);
-  font-size: clamp(2.15rem, 3.2vw, 2.75rem);
+  font-size: clamp(1.85rem, 2.8vw, 2.35rem);
   font-weight: 900;
-  letter-spacing: 0;
-  line-height: 1.02;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
 }
 
 .heroPanel p {
   max-width: 860px;
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   color: var(--ui-30-text);
-  font-size: 0.82rem;
-  line-height: 1.5;
+  font-size: 0.84rem;
+  line-height: 1.55;
 }
 
 .moduleSection {
@@ -163,38 +169,49 @@
   appearance: none;
   position: relative;
   display: grid;
-  grid-template-columns: 58px minmax(0, 1fr);
+  grid-template-columns: 52px minmax(0, 1fr);
   grid-template-rows: 1fr auto;
   gap: 14px;
   min-height: 168px;
   overflow: hidden;
   border: 1px solid var(--ui-30-border);
-  border-left: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-xl);
-  background: var(--ui-60-surface);
-  box-shadow: var(--ui-card-shadow);
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
   color: var(--ui-30-ink);
   cursor: pointer;
   font: inherit;
   padding: 18px;
   text-align: left;
   transition:
-    background 160ms ease,
-    border-color 160ms ease,
-    box-shadow 160ms ease,
-    transform 160ms ease;
+    background 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    transform 200ms ease;
 }
 
-.moduleCard:nth-child(2n) {
-  border-left-color: var(--ui-30-border);
+.moduleCard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--ui-30-primary);
+  opacity: 0.85;
+  transition: opacity 200ms ease, height 200ms ease;
 }
 
 .moduleCard:hover {
-  border-color: var(--ui-30-border);
-  border-left-color: var(--ui-30-border);
-  background: var(--ui-60-surface-soft);
-  box-shadow: var(--ui-card-shadow-hover);
-  transform: translateY(-2px);
+  border-color: var(--ui-30-primary);
+  background: linear-gradient(180deg, #ffffff 0%, rgba(240, 253, 244, 0.5) 100%);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  transform: translateY(-3px);
+}
+
+.moduleCard:hover::before {
+  height: 4px;
+  opacity: 1;
 }
 
 .moduleCard:focus-visible {
@@ -204,22 +221,27 @@
 
 .moduleIcon {
   display: grid;
-  width: 54px;
-  height: 54px;
+  width: 48px;
+  height: 48px;
   place-items: center;
-  border: 1px solid rgba(0, 122, 61, 0.18);
-  border-radius: 15px;
-  background: linear-gradient(145deg, #ffffff 0%, var(--ui-30-primary-soft) 100%);
-  box-shadow:
-    0 8px 18px rgba(15, 39, 71, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--ui-30-border);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.9);
+  color: var(--ui-30-ink);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+  transition: transform 200ms ease, border-color 200ms ease, background 200ms ease;
 }
 
 .moduleIcon > span {
   font-family: "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
-  font-size: 1.9rem;
+  font-size: 1.65rem;
   line-height: 1;
-  filter: drop-shadow(0 3px 3px rgba(15, 39, 71, 0.16));
+}
+
+.moduleCard:hover .moduleIcon {
+  border-color: var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  transform: scale(1.05);
 }
 
 .cardIndex {
@@ -227,34 +249,43 @@
   top: 16px;
   right: 16px;
   display: grid;
-  min-width: 30px;
-  height: 24px;
+  min-width: 28px;
+  height: 22px;
   place-items: center;
-  border: 1px solid var(--ui-30-primary);
+  border: 1px solid var(--ui-30-border);
   border-radius: 999px;
-  background: var(--ui-30-primary);
-  color: #fff;
-  font-size: 0.64rem;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
+  font-size: 0.65rem;
   font-weight: 900;
   line-height: 1;
-  letter-spacing: 0.08em;
-  padding: 0 7px;
+  letter-spacing: 0.06em;
+  padding: 0 8px;
+}
+
+.cardSubtitle {
+  display: block;
+  color: var(--ui-30-primary);
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .moduleCard h3 {
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   color: var(--ui-30-ink);
-  font-size: 1.18rem;
+  font-size: 1.12rem;
   font-weight: 900;
   letter-spacing: 0;
-  line-height: 1.18;
+  line-height: 1.25;
 }
 
 .moduleCard p {
-  margin: 8px 0 0;
-  color: var(--ui-30-text);
-  font-size: 0.78rem;
-  font-weight: 600;
+  margin: 6px 0 0;
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
+  font-weight: 500;
   line-height: 1.45;
 }
 
@@ -264,12 +295,18 @@
   align-self: end;
   border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
-  background: var(--ui-60-surface-soft);
-  color: #0f2747;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
-  padding: 8px 10px;
+  padding: 7px 12px;
+  transition: all 180ms ease;
+}
+
+.moduleCard:hover > strong {
+  background: var(--ui-30-primary);
+  color: #ffffff;
 }
 
 @media (max-width: 760px) {
@@ -286,7 +323,7 @@
     padding-top: 18px;
   }
 
-  .heroPanel > div:first-child {
+  .heroPanel>div:first-child {
     padding: 20px 20px 22px 24px;
   }
 
@@ -328,7 +365,7 @@
   line-height: 1;
 }
 
-.heroPanel > div:first-child {
+.heroPanel>div:first-child {
   padding: 28px 30px 26px 34px;
 }
 

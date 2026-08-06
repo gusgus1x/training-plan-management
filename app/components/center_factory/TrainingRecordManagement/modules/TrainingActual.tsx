@@ -226,10 +226,17 @@ export default function TrainingActual() {
       const acceptances = readWorkflowCollection<WorkflowAcceptance>(
         TRAINING_WORKFLOW_KEYS.acceptances,
       );
+      const completedCourses = readWorkflowCollection<WorkflowCompletedCourse>(
+        TRAINING_WORKFLOW_KEYS.completedCourses,
+      );
+      const completedRollingIds = new Set(
+        completedCourses.map((course) => course.rollingId).filter(Boolean),
+      );
+
       const nextCourses = readWorkflowCollection<RollingPlan>(
         TRAINING_WORKFLOW_KEYS.rollingPlans,
       )
-        .filter((plan) => plan.status === "Planned")
+        .filter((plan) => plan.status === "Planned" && !completedRollingIds.has(plan.rollingId))
         .map<ActualCourse>((plan) => ({
           id: plan.rollingId,
           groupId:

@@ -107,9 +107,8 @@ export default function ReportManagement({
           <div className={styles.moduleGrid}>
             {centerReportItems.map((item, index) => (
               <button
-                className={`${styles.moduleCard} ${
-                  item.locked ? styles.lockedModuleCard : ""
-                }`}
+                className={`${styles.moduleCard} ${item.locked ? styles.lockedModuleCard : ""
+                  }`}
                 disabled={item.locked}
                 key={item.title}
                 type="button"
