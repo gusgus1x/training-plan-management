@@ -214,6 +214,34 @@
   opacity: 1;
 }
 
+.lockedCard {
+  opacity: 0.75;
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  cursor: not-allowed;
+}
+
+.lockedCard:hover {
+  transform: none;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
+
+.lockedTag {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 1px 8px;
+  vertical-align: middle;
+}
+
 .moduleCard:focus-visible {
   outline: 3px solid var(--ui-focus-ring);
   outline-offset: 3px;

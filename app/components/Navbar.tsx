@@ -128,24 +128,27 @@ export default function Navbar({
             {displayUsername ? (
               <div className={styles.userArea}>
                 <div className={styles.userInfo}>
-                  <div className={styles.avatar} aria-hidden="true">{avatar}</div>
+                  <div className={styles.avatarWrapper}>
+                    <div className={styles.avatar} aria-hidden="true">{avatar}</div>
+                    <span className={styles.onlineBadge} title="Active Session" />
+                  </div>
                   <div className={styles.userDetails}>
                     <div className={styles.userRow}>
-                      <span className={styles.userLabel}>Name :</span>
                       <span className={styles.userValue}>{displayUsername}</span>
+                      <span className={styles.roleBadge}>{displayLevel}</span>
                     </div>
-                    <div className={styles.userRow}>
-                      <span className={styles.userLabel}>Role :</span>
-                      <span className={styles.userValue}>{displayLevel}</span>
-                    </div>
-                    <div className={styles.userRow}>
-                      <span className={styles.userLabel}>Company :</span>
-                      <span className={styles.userValue}>{displayCompany}</span>
+                    <div className={styles.userSubRow}>
+                      <span className={styles.companyValue}>{displayCompany}</span>
                     </div>
                   </div>
                 </div>
                 <button className={styles.logoutButton} type="button" onClick={onLogout}>
-                  Logout
+                  <svg className={styles.logoutIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                  <span>Logout</span>
                 </button>
               </div>
             ) : null}

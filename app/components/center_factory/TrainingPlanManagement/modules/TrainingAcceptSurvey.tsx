@@ -194,34 +194,36 @@ const legacyCourseSurveys: CourseSurvey[] = [
 ];
 
 const employees: Employee[] = [
-  { id: "ATA-1001", name: "Anan S.", company: "ATA", department: "Production", position: "Supervisor", level: "L3", legacyLabel: "SV-A" },
-  { id: "ATA-1002", name: "Mali K.", company: "ATA", department: "Quality", position: "Engineer", level: "L2", legacyLabel: "QE-B" },
-  { id: "ATA-1003", name: "Pattarapon L.", company: "ATA", department: "Assembly", position: "Section Head", level: "L4", legacyLabel: "SH-A" },
-  { id: "ATFB-2101", name: "Somchai P.", company: "ATFB", department: "Production", position: "Section Head", level: "L4", legacyLabel: "SH-A" },
-  { id: "ATFB-2102", name: "Narin T.", company: "ATFB", department: "Maintenance", position: "Technician", level: "L2", legacyLabel: "MT-B" },
-  { id: "ATFB-2103", name: "Orasa J.", company: "ATFB", department: "Casting", position: "Supervisor", level: "L3", legacyLabel: "SV-C" },
-  { id: "NIC-3201", name: "Kanda R.", company: "NIC", department: "Quality", position: "Supervisor", level: "L3", legacyLabel: "SV-Q" },
-  { id: "NIC-3202", name: "Preecha W.", company: "NIC", department: "Production", position: "Operator", level: "L1", legacyLabel: "OP-C" },
-  { id: "NIC-3203", name: "Sirilak D.", company: "NIC", department: "Warehouse", position: "Section Head", level: "L4", legacyLabel: "SH-N" },
-  { id: "SATI-4301", name: "Wipada C.", company: "SATI", department: "Engineering", position: "Engineer", level: "L3", legacyLabel: "EN-A" },
-  { id: "SATI-4302", name: "Chaiwat N.", company: "SATI", department: "Production", position: "Supervisor", level: "L4", legacyLabel: "SV-S" },
-  { id: "SATI-4303", name: "Nattida V.", company: "SATI", department: "QA", position: "Supervisor", level: "L3", legacyLabel: "SV-Q" },
-  { id: "SNF-5401", name: "Suda M.", company: "SNF", department: "Safety", position: "Technician", level: "L2", legacyLabel: "ST-B" },
-  { id: "SNF-5402", name: "Krit A.", company: "SNF", department: "Production", position: "Operator", level: "L1", legacyLabel: "OP-S" },
-  { id: "SNF-5403", name: "Warit H.", company: "SNF", department: "Production", position: "Supervisor", level: "L3", legacyLabel: "SV-S" },
-  { id: "TEP-6501", name: "Benjamas Y.", company: "TEP", department: "Production", position: "Operator", level: "L2", legacyLabel: "OP-T" },
-  { id: "TEP-6502", name: "Thanakorn B.", company: "TEP", department: "Engineering", position: "Supervisor", level: "L3", legacyLabel: "SV-T" },
-  { id: "TEP-6503", name: "Phimchanok E.", company: "TEP", department: "Process", position: "Section Head", level: "L4", legacyLabel: "SH-T" },
-  { id: "ATA-1004", name: "Ratchanon P.", company: "ATA", department: "Maintenance", position: "Technician", level: "L2", legacyLabel: "MT-A" },
-  { id: "ATFB-2104", name: "Pawinee S.", company: "ATFB", department: "Quality", position: "Engineer", level: "L3", legacyLabel: "QE-C" },
-  { id: "NIC-3204", name: "Thitiwat K.", company: "NIC", department: "Production", position: "Operator", level: "L2", legacyLabel: "OP-N" },
-  { id: "SATI-4304", name: "Areewan F.", company: "SATI", department: "Casting", position: "Section Head", level: "L4", legacyLabel: "SH-S" },
-  { id: "SNF-5404", name: "Jirawat O.", company: "SNF", department: "Engineering", position: "Engineer", level: "L2", legacyLabel: "EN-S" },
-  { id: "TEP-6504", name: "Kanokwan U.", company: "TEP", department: "Quality", position: "Supervisor", level: "L4", legacyLabel: "SV-Q" },
-  { id: "ATA-1005", name: "Saran M.", company: "ATA", department: "Production", position: "Operator", level: "L1", legacyLabel: "OP-A" },
-  { id: "ATFB-2105", name: "Duangkamol R.", company: "ATFB", department: "HR", position: "Staff", level: "L1", legacyLabel: "STF-B" },
-  { id: "NIC-3205", name: "Pongsakorn I.", company: "NIC", department: "Safety", position: "Technician", level: "L2", legacyLabel: "ST-N" },
-  { id: "SNF-5405", name: "Nicha L.", company: "SNF", department: "Production", position: "Section Head", level: "L3", legacyLabel: "SH-S" },
+  { id: "ATA-1001", name: "อนันต์ ศรีสุข", prefix: "นาย", firstName: "อนันต์", lastName: "ศรีสุข", company: "ATA", department: "Production", position: "Supervisor", level: "L3", legacyLabel: "SV-A" },
+  { id: "ATA-1002", name: "มาลี เกษมสุข", prefix: "นางสาว", firstName: "มาลี", lastName: "เกษมสุข", company: "ATA", department: "Quality", position: "Engineer", level: "L2", legacyLabel: "QE-B" },
+  { id: "ATA-1003", name: "ภัทรพล เลิศปัญญา", prefix: "นาย", firstName: "ภัทรพล", lastName: "เลิศปัญญา", company: "ATA", department: "Assembly", position: "Section Head", level: "L4", legacyLabel: "SH-A" },
+  { id: "ATFB-2101", name: "สมชาย พร้อมใจ", prefix: "นาย", firstName: "สมชาย", lastName: "พร้อมใจ", company: "ATFB", department: "Production", position: "Section Head", level: "L4", legacyLabel: "SH-A" },
+  { id: "ATFB-2102", name: "นรินทร์ ทองชัย", prefix: "นาย", firstName: "นรินทร์", lastName: "ทองชัย", company: "ATFB", department: "Maintenance", position: "Technician", level: "L2", legacyLabel: "MT-B" },
+  { id: "ATFB-2103", name: "อรสา จันทร์ดี", prefix: "นางสาว", firstName: "อรสา", lastName: "จันทร์ดี", company: "ATFB", department: "Casting", position: "Supervisor", level: "L3", legacyLabel: "SV-C" },
+  { id: "ATFB-2111", name: "ปกรณ์ อินแก้ว", prefix: "นาย", firstName: "ปกรณ์", lastName: "อินแก้ว", company: "ATFB", department: "ฝ่ายผลิต", position: "Operator", level: "L1", legacyLabel: "OP-B" },
+  { id: "ATFB-2123", name: "รัตนา พิพัทธ์ชัย", prefix: "นาย", firstName: "รัตนา", lastName: "พิพัทธ์ชัย", company: "ATFB", department: "คลังสินค้า", position: "Operator", level: "L1", legacyLabel: "OP-B" },
+  { id: "NIC-3201", name: "กานดา รุ่งเรือง", prefix: "นางสาว", firstName: "กานดา", lastName: "รุ่งเรือง", company: "NIC", department: "Quality", position: "Supervisor", level: "L3", legacyLabel: "SV-Q" },
+  { id: "NIC-3202", name: "ปรีชา วงศ์สว่าง", prefix: "นาย", firstName: "ปรีชา", lastName: "วงศ์สว่าง", company: "NIC", department: "Production", position: "Operator", level: "L1", legacyLabel: "OP-C" },
+  { id: "NIC-3203", name: "ศิริลักษณ์ เดชาพงศ์", prefix: "นางสาว", firstName: "ศิริลักษณ์", lastName: "เดชาพงศ์", company: "NIC", department: "Warehouse", position: "Section Head", level: "L4", legacyLabel: "SH-N" },
+  { id: "SATI-4301", name: "วิภาดา ชัยพร", prefix: "นางสาว", firstName: "วิภาดา", lastName: "ชัยพร", company: "SATI", department: "Engineering", position: "Engineer", level: "L3", legacyLabel: "EN-A" },
+  { id: "SATI-4302", name: "ชัยวัฒน์ นิลประภา", prefix: "นาย", firstName: "ชัยวัฒน์", lastName: "นิลประภา", company: "SATI", department: "Production", position: "Supervisor", level: "L4", legacyLabel: "SV-S" },
+  { id: "SATI-4303", name: "ณัฐธิดา วิชัย", prefix: "นางสาว", firstName: "ณัฐธิดา", lastName: "วิชัย", company: "SATI", department: "QA", position: "Supervisor", level: "L3", legacyLabel: "SV-Q" },
+  { id: "SNF-5401", name: "สุดา มั่นคง", prefix: "นางสาว", firstName: "สุดา", lastName: "มั่นคง", company: "SNF", department: "Safety", position: "Technician", level: "L2", legacyLabel: "ST-B" },
+  { id: "SNF-5402", name: "กฤต อรุณรุ่ง", prefix: "นาย", firstName: "กฤต", lastName: "อรุณรุ่ง", company: "SNF", department: "Production", position: "Operator", level: "L1", legacyLabel: "OP-S" },
+  { id: "SNF-5403", name: "วริศ หิรัญศักดิ์", prefix: "นาย", firstName: "วริศ", lastName: "หิรัญศักดิ์", company: "SNF", department: "Production", position: "Supervisor", level: "L3", legacyLabel: "SV-S" },
+  { id: "TEP-6501", name: "เบญจมาศ ยอดมณี", prefix: "นางสาว", firstName: "เบญจมาศ", lastName: "ยอดมณี", company: "TEP", department: "Production", position: "Operator", level: "L2", legacyLabel: "OP-T" },
+  { id: "TEP-6502", name: "ธนกร บุญมี", prefix: "นาย", firstName: "ธนกร", lastName: "บุญมี", company: "TEP", department: "Engineering", position: "Supervisor", level: "L3", legacyLabel: "SV-T" },
+  { id: "TEP-6503", name: "พิมพ์ชนก เอกรัตน์", prefix: "นางสาว", firstName: "พิมพ์ชนก", lastName: "เอกรัตน์", company: "TEP", department: "Process", position: "Section Head", level: "L4", legacyLabel: "SH-T" },
+  { id: "ATA-1004", name: "รัชชานนท์ พรสวัสดิ์", prefix: "นาย", firstName: "รัชชานนท์", lastName: "พรสวัสดิ์", company: "ATA", department: "Maintenance", position: "Technician", level: "L2", legacyLabel: "MT-A" },
+  { id: "ATFB-2104", name: "ภาวิณี ศรีสุวรรณ", prefix: "นางสาว", firstName: "ภาวิณี", lastName: "ศรีสุวรรณ", company: "ATFB", department: "Quality", position: "Engineer", level: "L3", legacyLabel: "QE-C" },
+  { id: "NIC-3204", name: "ฐิติวัฒน์ คงแก้ว", prefix: "นาย", firstName: "ฐิติวัฒน์", lastName: "คงแก้ว", company: "NIC", department: "Production", position: "Operator", level: "L2", legacyLabel: "OP-N" },
+  { id: "SATI-4304", name: "อารีวรรณ เฟื่องฟ้า", prefix: "นางสาว", firstName: "อารีวรรณ", lastName: "เฟื่องฟ้า", company: "SATI", department: "Casting", position: "Section Head", level: "L4", legacyLabel: "SH-S" },
+  { id: "SNF-5404", name: "จิรวัฒน์ องอาจ", prefix: "นาย", firstName: "จิรวัฒน์", lastName: "องอาจ", company: "SNF", department: "Engineering", position: "Engineer", level: "L2", legacyLabel: "EN-S" },
+  { id: "TEP-6504", name: "กนกวรรณ อุดมสิน", prefix: "นางสาว", firstName: "กนกวรรณ", lastName: "อุดมสิน", company: "TEP", department: "Quality", position: "Supervisor", level: "L4", legacyLabel: "SV-Q" },
+  { id: "ATA-1005", name: "ศรัณย์ มีชัย", prefix: "นาย", firstName: "ศรัณย์", lastName: "มีชัย", company: "ATA", department: "Production", position: "Operator", level: "L1", legacyLabel: "OP-A" },
+  { id: "ATFB-2105", name: "ดวงกมล เรืองฤทธิ์", prefix: "นางสาว", firstName: "ดวงกมล", lastName: "เรืองฤทธิ์", company: "ATFB", department: "HR", position: "Staff", level: "L1", legacyLabel: "STF-B" },
+  { id: "NIC-3205", name: "พงศกร อินทรพร", prefix: "นาย", firstName: "พงศกร", lastName: "อินทรพร", company: "NIC", department: "Safety", position: "Technician", level: "L2", legacyLabel: "ST-N" },
+  { id: "SNF-5405", name: "ณิชา ลิ้มสกุล", prefix: "นางสาว", firstName: "ณิชา", lastName: "ลิ้มสกุล", company: "SNF", department: "Production", position: "Section Head", level: "L3", legacyLabel: "SH-S" },
 ];
 
 const initialCandidates: Candidate[] = [
@@ -328,28 +330,41 @@ const mergeRegistrationCandidates = (
   return nextCandidates;
 };
 
-const toSurveyEmployee = (employee: EmployeeMasterRecord): Employee => ({
-  id: employee.empCode,
-  name:
-    [employee.nameEn, employee.surnameEn].filter(Boolean).join(" ") ||
-    [employee.nameTh, employee.surnameTh].filter(Boolean).join(" "),
-  company: employee.company,
-  departmentCode: employee.functionCode,
-  department: employee.functionName || "-",
-  position: employee.positionName || "-",
-  level: normalizeEmployeeLevel(employee.levelKey) || "-",
-  legacyLabel: [employee.positionName, employee.levelKey].filter(Boolean).join(" / "),
-  prefix: employee.titleEn || "-",
-  firstName: employee.nameEn || employee.nameTh,
-  lastName: employee.surnameEn || employee.surnameTh,
-});
+const formatThaiPrefix = (titleEn?: string) => {
+  if (!titleEn) return "นาย";
+  const lower = titleEn.toLowerCase();
+  if (lower.includes("ms") || lower.includes("miss")) return "นางสาว";
+  if (lower.includes("mrs")) return "นาง";
+  return "นาย";
+};
+
+const toSurveyEmployee = (employee: EmployeeMasterRecord): Employee => {
+  const fName = employee.nameTh || employee.nameEn || "-";
+  const lName = employee.surnameTh || employee.surnameEn || "-";
+  const prefixTh = formatThaiPrefix(employee.titleEn);
+  const fullName = `${fName} ${lName}`.trim();
+
+  return {
+    id: employee.empCode,
+    name: fullName,
+    company: employee.company,
+    departmentCode: employee.functionCode,
+    department: employee.functionName || "-",
+    position: employee.positionName || "-",
+    level: normalizeEmployeeLevel(employee.levelKey) || "-",
+    legacyLabel: [employee.positionName, employee.levelKey].filter(Boolean).join(" / "),
+    prefix: prefixTh,
+    firstName: fName,
+    lastName: lName,
+  };
+};
 
 const readSurveyEmployees = () => readEmployeeMasterData().map(toSurveyEmployee);
 
 const getEmployeeNameProfile = (employee: Employee) => {
   if (employee.firstName || employee.lastName) {
     return {
-      prefix: employee.prefix || "-",
+      prefix: employee.prefix || "นาย",
       firstName: employee.firstName || employee.name,
       lastName: employee.lastName || "-",
     };
@@ -357,7 +372,7 @@ const getEmployeeNameProfile = (employee: Employee) => {
 
   const nameParts = employee.name.trim().split(/\s+/);
   return {
-    prefix: "-",
+    prefix: "นาย",
     firstName: nameParts[0] || employee.name,
     lastName: nameParts.slice(1).join(" ") || "-",
   };
@@ -372,7 +387,7 @@ export default function TrainingAcceptSurvey() {
       ? "All Companies"
       : profileValue(user?.companyName ?? userCompanyCode);
   const [selectedCourseOwner, setSelectedCourseOwner] = useState<CourseOwnerFilter>(
-    roleMode,
+    "",
   );
   const [selectedCourseGroupId, setSelectedCourseGroupId] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
@@ -558,14 +573,10 @@ export default function TrainingAcceptSurvey() {
   const selectedCourseGroup =
     availableCourseGroups.find(
       (group) => group.id === selectedCourseGroupId,
-    ) ??
-    availableCourseGroups[0] ??
-    null;
+    ) ?? null;
   const availableSessions = selectedCourseGroup?.sessions ?? [];
   const selectedCourse =
-    availableSessions.find((course) => course.id === selectedCourseId) ??
-    availableSessions[0] ??
-    null;
+    availableSessions.find((course) => course.id === selectedCourseId) ?? null;
   const isFactoryOwnedByUser =
     roleMode === "factory" &&
     selectedCourse?.owner === "factory" &&
@@ -1207,108 +1218,108 @@ export default function TrainingAcceptSurvey() {
         </section>
       </div>
 
-      <section className={styles.additionalPanel}>
-        <details className={styles.additionalDisclosure}>
-          <summary className={styles.additionalSummary}>
-            <div>
-              <p className={styles.kicker}>Additional employees</p>
-              <h3>Add employees outside the target group</h3>
-            </div>
-            <span>{additionalEmployees.length} available</span>
-          </summary>
-          <p className={styles.additionalNote}>
-            Open this section only when you need to add an employee who does not
-            match the Course Standard position and level.
-          </p>
-          <div className={styles.companyGroupGrid}>
-            {additionalEmployeeGroups.map((group) => (
-              <details className={styles.companyGroupCard} key={group.company}>
-                <summary className={styles.companyGroupHeader}>
-                  <div>
-                    <strong>{group.company}</strong>
-                    <span>{group.employees.length} outside target</span>
-                  </div>
-                </summary>
-                <div className={styles.dropdownScroll}>
-                  <div className={styles.relatedPeopleGrid}>
-                    <div
-                      className={`${styles.targetEmployeeHeader} ${styles.targetListHeader}`}
-                    >
-                      <span>Action</span>
-                      <div
-                        className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}
-                      >
-                        <span>Employee ID</span>
-                        <span>Prefix</span>
-                        <span>First Name</span>
-                        <span>Last Name</span>
-                        <span>Company</span>
-                        <span>Department</span>
-                      </div>
-                    </div>
-                    {group.employees.map((employee) => {
-                      const nameProfile = getEmployeeNameProfile(employee);
-
-                      return (
-                        <article
-                          className={`${styles.employeeRow} ${styles.targetListRow}`}
-                          key={employee.id}
-                        >
-                          <button
-                            className={styles.addTargetButton}
-                            type="button"
-                            onClick={() => handleAddEmployee(employee)}
-                          >
-                            {targetActionLabel}
-                          </button>
-                          <div
-                            className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}
-                          >
-                            <span
-                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                            >
-                              {employee.id}
-                            </span>
-                            <span
-                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                            >
-                              {nameProfile.prefix}
-                            </span>
-                            <span
-                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                            >
-                              {nameProfile.firstName}
-                            </span>
-                            <span
-                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                            >
-                              {nameProfile.lastName}
-                            </span>
-                            <span
-                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                            >
-                              {employee.company}
-                            </span>
-                            <span
-                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                            >
-                              {employee.department}
-                            </span>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </div>
-              </details>
-            ))}
-            {additionalEmployees.length === 0 ? (
-              <div className={styles.emptyCompact}>
-                No additional employees are available.
-              </div>
-            ) : null}
+      <section className={styles.targetPanel}>
+        <div className={styles.workspaceHeader}>
+          <div>
+            <p className={styles.kicker}>Out-of-target group</p>
+            <h3>Add employees outside target group</h3>
           </div>
-        </details>
+          <span>{additionalEmployees.length} available</span>
+        </div>
+        <p className={styles.targetRuleNote}>
+          💡 Select a company below to view and add employees who do not match the Course Standard position and level.
+        </p>
+        <div className={styles.companyGroupGrid}>
+          {additionalEmployeeGroups.map((group) => (
+            <details className={styles.companyGroupCard} key={group.company}>
+              <summary className={styles.companyGroupHeader}>
+                <div>
+                  <strong>{group.company}</strong>
+                  <span>{group.employees.length} available</span>
+                </div>
+              </summary>
+              <div className={styles.dropdownScroll}>
+                <div className={styles.relatedPeopleGrid}>
+                  <div
+                    className={`${styles.targetEmployeeHeader} ${styles.targetListHeader}`}
+                  >
+                    <span>Action</span>
+                    <div
+                      className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}
+                    >
+                      <span>Employee ID</span>
+                      <span>Prefix</span>
+                      <span>First Name</span>
+                      <span>Last Name</span>
+                      <span>Company</span>
+                      <span>Department</span>
+                    </div>
+                  </div>
+                  {group.employees.map((employee) => {
+                    const nameProfile = getEmployeeNameProfile(employee);
+
+                    return (
+                      <article
+                        className={`${styles.employeeRow} ${styles.targetListRow}`}
+                        key={employee.id}
+                      >
+                        <button
+                          className={styles.addTargetButton}
+                          type="button"
+                          onClick={() => handleAddEmployee(employee)}
+                        >
+                          {targetActionLabel}
+                        </button>
+                        <div
+                          className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}
+                        >
+                          <span
+                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                          >
+                            {employee.id}
+                          </span>
+                          <span
+                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                          >
+                            {nameProfile.prefix}
+                          </span>
+                          <span
+                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                          >
+                            {nameProfile.firstName}
+                          </span>
+                          <span
+                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                          >
+                            {nameProfile.lastName}
+                          </span>
+                          <span
+                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                          >
+                            {employee.company}
+                          </span>
+                          <span
+                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                          >
+                            {employee.department}
+                          </span>
+                        </div>
+                      </article>
+                    );
+                  })}
+                  {group.employees.length === 0 ? (
+                    <div className={styles.emptyCompact}>No additional employees for this company.</div>
+                  ) : null}
+                </div>
+              </div>
+            </details>
+          ))}
+          {additionalEmployees.length === 0 ? (
+            <div className={styles.emptyCompact}>
+              No additional employees are available.
+            </div>
+          ) : null}
+        </div>
       </section>
 
       {isFactorySubmittingToCenter ? (
@@ -1476,9 +1487,7 @@ export default function TrainingAcceptSurvey() {
         </>
       ) : (
         <section className={styles.selectionPrompt}>
-          <p className={styles.kicker}>Published Rolling Course</p>
-          <h3>No published Rolling course is available for this owner.</h3>
-          <span>Open Training Rolling and click Publish, then the course will appear here automatically.</span>
+          <strong>Select a course first to show training actual details.</strong>
         </section>
       )}
     </section>

@@ -20,37 +20,6 @@
 .historyPanel {
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-xl);
-  background: var(--ui-60-surface);
-  box-shadow: var(--ui-shadow-md);
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.topRow {
-  display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(430px, 1.1fr);
-  gap: 18px;
-  align-items: stretch;
-}
-
-.employeePanel {
-  display: grid;
-  gap: 12px;
-  align-content: start;
-  min-height: 210px;
-  padding: 18px;
-}
-
-.employeeProfile {
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-  min-height: 128px;
-}
-
-.employeeStatus {
-  align-self: start;
-  border-radius: 999px;
   background: #dcfce7;
   color: #15803d;
   font-size: 10px;

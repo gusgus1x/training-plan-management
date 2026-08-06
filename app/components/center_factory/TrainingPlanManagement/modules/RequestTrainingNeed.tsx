@@ -238,6 +238,9 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
 
   return (
     <section className={styles.moduleWorkspace} aria-label="Request Training Need module">
+      <div className={styles.lockedNoticeBanner}>
+        🔒 <strong>หน้านี้ถูกล็อกการใช้งานชั่วคราว</strong> — ฟังก์ชันคำขอฝึกอบรม (Request Training Need) อยู่ระหว่างการปรับปรุงระบบ
+      </div>
       <section className={styles.moduleHero}>
         <div>
           <p className={styles.panelKicker}>{requestTrainingNeedModule.subtitle}</p>

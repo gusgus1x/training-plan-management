@@ -13,6 +13,19 @@
   padding: 8px 0 48px;
 }
 
+.lockedNoticeBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 0.86rem;
+  font-weight: 700;
+  padding: 12px 18px;
+}
+
 .moduleHero,
 .panel,
 .formPanel {
