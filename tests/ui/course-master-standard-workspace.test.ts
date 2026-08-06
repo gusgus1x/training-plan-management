@@ -36,6 +36,11 @@ describe("Course Master and Course Standard workspace", () => {
     expect(workspaceSource).not.toContain("Course Standard Records");
     expect(workspaceSource).toContain("Classification");
     expect(workspaceSource).toContain("Course Standard");
+    expect(workspaceSource).toContain('<h2 translate="no">{courseMasterModule.title}</h2>');
+    expect(workspaceSource).toContain('<option key={type} value={type} translate="no">{type}</option>');
+    expect(workspaceSource).toContain('<option key={option.code} value={option.code} translate="no">');
+    expect(workspaceSource).toContain('<strong translate="no">{course.courseType}</strong>');
+    expect(workspaceSource).toContain('translate={courseStandard ? "no" : undefined}');
     expect(workspaceSource).toContain("courseStandard.positions.length");
     expect(workspaceSource).toContain("courseStandard.levels.length");
     expect(workspaceSource).not.toContain("combinedColumnCount");
@@ -86,5 +91,18 @@ describe("Course Master and Course Standard workspace", () => {
     expect(workspaceSource).toContain('className={styles.standard_checkMark}');
     expect(workspaceSource).toContain('? "✓" : ""');
     expect(stylesSource).toContain("color: #168a47");
+  });
+
+  it("shows Thai function names while preserving the all-function workflow value", () => {
+    const workspaceSource = readSource(
+      "app/components/center_factory/TrainingCourseManagement/modules/CourseMasterWorkspace.tsx",
+    );
+
+    expect(workspaceSource).toContain('const allFunctionOption = "All Function"');
+    expect(workspaceSource).toContain('const allFunctionDisplayName = "ทุกหน่วยงาน"');
+    expect(workspaceSource).toContain("name: row.functionNameTh || row.functionNameEn");
+    expect(workspaceSource).toContain("getFunctionDisplayName");
+    expect(workspaceSource).toContain("matchingFunctionRow?.functionCode");
+    expect(workspaceSource).toContain("standardFunctionCode === allFunctionCode");
   });
 });

@@ -170,6 +170,19 @@ describe("Course Master form linking contract", () => {
     expect(courseMasterSource).toContain("handleEvaluationSelection");
   });
 
+  it("allows manual links as an alternative to published forms", () => {
+    expect(courseMasterSource).toContain("preTestLink");
+    expect(courseMasterSource).toContain("postTestLink");
+    expect(courseMasterSource).toContain("evaluationLink");
+    expect(courseMasterSource).toContain("evaluationAfter30DayLink");
+    expect(courseMasterSource).toContain("handleFormLinkChange");
+    expect(courseMasterSource).toContain('placeholder="Paste pre-test form link"');
+    expect(courseMasterSource).toContain('placeholder="Paste post-test form link"');
+    expect(courseMasterSource).toContain('placeholder="Paste evaluation form link"');
+    expect(courseMasterSource).toContain('placeholder="Paste 30-day evaluation form link"');
+    expect(courseMasterSource).toContain("Manual form link will be used.");
+  });
+
   it("loads only published form options from the shared catalog", () => {
     expect(courseMasterSource).toContain("readPublishedAssessmentOptions");
     expect(courseMasterSource).toContain("readPublishedEvaluationOptions");

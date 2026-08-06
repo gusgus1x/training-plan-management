@@ -26,6 +26,7 @@ import {
   type TrainingEvaluationOption,
 } from "../../../../lib/trainingFormCatalog";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { defaultCourseGroups } from "../../MasterDataManagement/modules/CourseGroup";
 import { defaultCourseTypes } from "../../MasterDataManagement/modules/CourseType";
 import { defaultFunctionRows } from "../../MasterDataManagement/modules/FunctionData";
@@ -67,6 +68,10 @@ type CourseForm = {
   evaluation: string;
   evaluationAfter30DayId: string;
   evaluationAfter30Day: string;
+  preTestLink: string;
+  postTestLink: string;
+  evaluationLink: string;
+  evaluationAfter30DayLink: string;
   lifeCycleMonth: string;
   remark: string;
   status: CourseStatus;
@@ -78,6 +83,7 @@ type CourseRecord = WorkflowCourse;
 type CourseStandardRecord = WorkflowStandard;
 
 const allFunctionOption = "All Function";
+const allFunctionThaiDisplayName = "ทุกหน่วยงาน";
 const allFunctionCode = "__ALL__";
 
 const normalizeTargetPosition = (position: string) => {
@@ -108,6 +114,10 @@ const emptyCourseForm: CourseForm = {
   evaluation: "",
   evaluationAfter30DayId: "",
   evaluationAfter30Day: "",
+  preTestLink: "",
+  postTestLink: "",
+  evaluationLink: "",
+  evaluationAfter30DayLink: "",
   lifeCycleMonth: "0",
   remark: "",
   status: "Active",
@@ -117,6 +127,7 @@ const emptyCourseForm: CourseForm = {
 
 function CourseMaster() {
   const user = useAuthenticatedUser();
+  const { language } = useUiLanguage();
   const [courseTypes] = useState(() =>
     readMasterCollection(TRAINING_MASTER_KEYS.courseTypes, defaultCourseTypes).map(
       (type) => type.name,
@@ -157,13 +168,37 @@ function CourseMaster() {
   const [levelRows, setLevelRows] = useState(() =>
     readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows),
   );
+  const allFunctionDisplayName =
+    language === "th" ? allFunctionThaiDisplayName : allFunctionOption;
+  const getLocalizedFunctionName = (row: (typeof functionRows)[number]) =>
+    language === "th"
+      ? row.functionNameTh || row.functionNameEn
+      : row.functionNameEn || row.functionNameTh;
   const functionOptions = [
-    { code: allFunctionCode, name: allFunctionOption },
+    { code: allFunctionCode, name: allFunctionDisplayName },
     ...functionRows.map((row) => ({
       code: row.functionCode,
-      name: row.functionNameEn || row.functionNameTh,
+      name: getLocalizedFunctionName(row),
     })),
   ];
+  const getFunctionDisplayName = (functionCode?: string, functionName = "") => {
+    if (functionCode === allFunctionCode || functionName === allFunctionOption) {
+      return allFunctionDisplayName;
+    }
+
+    if (!functionCode && !functionName) {
+      return "";
+    }
+
+    const matchingFunction = functionRows.find(
+      (row) =>
+        row.functionCode === functionCode ||
+        row.functionNameTh === functionName ||
+        row.functionNameEn === functionName,
+    );
+
+    return matchingFunction ? getLocalizedFunctionName(matchingFunction) : functionName;
+  };
   const positionChecklist = positionRows
     .map((row) => row.positionNameEn.trim())
     .filter(Boolean);
@@ -262,7 +297,7 @@ function CourseMaster() {
 
   const resetStandardForm = () => {
     setStandardFunctionCode(allFunctionCode);
-    setStandardFunctionName(allFunctionOption);
+    setStandardFunctionName(allFunctionDisplayName);
     setSelectedPositions([]);
     setSelectedLevels([]);
   };
@@ -277,13 +312,26 @@ function CourseMaster() {
       return;
     }
 
-    const matchingFunction = functionOptions.find(
+    const matchingFunctionOption = functionOptions.find(
       (option) =>
         option.code === standard.functionCode ||
         option.name === standard.functionName,
     );
-    setStandardFunctionCode(matchingFunction?.code ?? allFunctionCode);
-    setStandardFunctionName(standard.functionName || allFunctionOption);
+    const matchingFunctionRow = functionRows.find(
+      (row) =>
+        row.functionCode === standard.functionCode ||
+        row.functionNameTh === standard.functionName ||
+        row.functionNameEn === standard.functionName,
+    );
+    setStandardFunctionCode(
+      matchingFunctionOption?.code ??
+        matchingFunctionRow?.functionCode ??
+        allFunctionCode,
+    );
+    setStandardFunctionName(
+      getFunctionDisplayName(standard.functionCode, standard.functionName) ||
+        allFunctionDisplayName,
+    );
     setSelectedPositions(
       positionChecklist.filter((position) =>
         standard.positions.some(
@@ -354,6 +402,10 @@ function CourseMaster() {
       course.evaluationAfter30Day,
       publishedFollowUpEvaluations,
     ),
+    preTestLink: course.preTestLink ?? "",
+    postTestLink: course.postTestLink ?? "",
+    evaluationLink: course.evaluationLink ?? "",
+    evaluationAfter30DayLink: course.evaluationAfter30DayLink ?? "",
   });
 
   const updateForm = (field: keyof CourseForm, value: string) => {
@@ -371,6 +423,7 @@ function CourseMaster() {
       ...current,
       [idField]: assessment?.id ?? "",
       [nameField]: assessment?.name ?? "",
+      [`${nameField}Link`]: "",
     }));
   };
 
@@ -385,6 +438,29 @@ function CourseMaster() {
       ...current,
       [idField]: evaluation?.id ?? "",
       [nameField]: evaluation?.name ?? "",
+      [`${nameField}Link`]: "",
+    }));
+  };
+
+  const handleFormLinkChange = (
+    linkField:
+      | "preTestLink"
+      | "postTestLink"
+      | "evaluationLink"
+      | "evaluationAfter30DayLink",
+    idField: "preTestId" | "postTestId" | "evaluationId" | "evaluationAfter30DayId",
+    nameField: "preTest" | "postTest" | "evaluation" | "evaluationAfter30Day",
+    value: string,
+  ) => {
+    setForm((current) => ({
+      ...current,
+      [linkField]: value,
+      ...(value.trim()
+        ? {
+            [idField]: "",
+            [nameField]: "",
+          }
+        : {}),
     }));
   };
 
@@ -548,6 +624,12 @@ function CourseMaster() {
       ? courses.map((course) => course.id === selectedCourseId ? nextCourse : course)
       : [nextCourse, ...courses];
 
+    const resolvedStandardFunctionName =
+      standardFunctionCode === allFunctionCode
+        ? allFunctionOption
+        : functionOptions.find((option) => option.code === standardFunctionCode)
+            ?.name ?? standardFunctionName.trim();
+
     const nextStandard: CourseStandardRecord = {
       id:
         selectedStandard?.id ||
@@ -556,7 +638,7 @@ function CourseMaster() {
       courseCode: nextCourse.courseCode,
       courseName: getCourseDisplayName(nextCourse),
       functionCode: standardFunctionCode === allFunctionCode ? "" : standardFunctionCode,
-      functionName: standardFunctionName.trim(),
+      functionName: resolvedStandardFunctionName,
       positions: selectedPositions,
       levels: selectedLevels,
       owner: nextCourse.owner,
@@ -673,7 +755,7 @@ function CourseMaster() {
           >
             <option value="">Select Course Type</option>
             {courseTypes.map((type) => (
-              <option key={type} value={type}>{type}</option>
+              <option key={type} value={type} translate="no">{type}</option>
             ))}
           </select>
         </label>
@@ -780,10 +862,26 @@ function CourseMaster() {
               </option>
             ))}
           </select>
+          <input
+            value={form.preTestLink}
+            disabled={!isEditing}
+            placeholder="Paste pre-test form link"
+            type="url"
+            onChange={(event) =>
+              handleFormLinkChange(
+                "preTestLink",
+                "preTestId",
+                "preTest",
+                event.target.value,
+              )
+            }
+          />
           <small className={styles.catalogHint}>
             {selectedPreTest
               ? `${selectedPreTest.questionCount} questions · Linked course: ${selectedPreTest.courseName}`
-              : `${publishedPreTests.length} published Pre Test option${publishedPreTests.length === 1 ? "" : "s"}`}
+              : form.preTestLink
+                ? "Manual form link will be used."
+                : `${publishedPreTests.length} published Pre Test option${publishedPreTests.length === 1 ? "" : "s"}`}
           </small>
         </label>
         <label>
@@ -811,10 +909,26 @@ function CourseMaster() {
               </option>
             ))}
           </select>
+          <input
+            value={form.postTestLink}
+            disabled={!isEditing}
+            placeholder="Paste post-test form link"
+            type="url"
+            onChange={(event) =>
+              handleFormLinkChange(
+                "postTestLink",
+                "postTestId",
+                "postTest",
+                event.target.value,
+              )
+            }
+          />
           <small className={styles.catalogHint}>
             {selectedPostTest
               ? `${selectedPostTest.questionCount} questions · Linked course: ${selectedPostTest.courseName}`
-              : `${publishedPostTests.length} published Post Test option${publishedPostTests.length === 1 ? "" : "s"}`}
+              : form.postTestLink
+                ? "Manual form link will be used."
+                : `${publishedPostTests.length} published Post Test option${publishedPostTests.length === 1 ? "" : "s"}`}
           </small>
         </label>
         <label>
@@ -842,10 +956,26 @@ function CourseMaster() {
               </option>
             ))}
           </select>
+          <input
+            value={form.evaluationLink}
+            disabled={!isEditing}
+            placeholder="Paste evaluation form link"
+            type="url"
+            onChange={(event) =>
+              handleFormLinkChange(
+                "evaluationLink",
+                "evaluationId",
+                "evaluation",
+                event.target.value,
+              )
+            }
+          />
           <small className={styles.catalogHint}>
             {selectedEvaluation
               ? `${selectedEvaluation.questionCount} questions · ${selectedEvaluation.respondent} · ${selectedEvaluation.scope}`
-              : `${publishedCourseEvaluations.length} published After Training option${publishedCourseEvaluations.length === 1 ? "" : "s"}`}
+              : form.evaluationLink
+                ? "Manual form link will be used."
+                : `${publishedCourseEvaluations.length} published After Training option${publishedCourseEvaluations.length === 1 ? "" : "s"}`}
           </small>
         </label>
         <label>
@@ -874,10 +1004,26 @@ function CourseMaster() {
               </option>
             ))}
           </select>
+          <input
+            value={form.evaluationAfter30DayLink}
+            disabled={!isEditing}
+            placeholder="Paste 30-day evaluation form link"
+            type="url"
+            onChange={(event) =>
+              handleFormLinkChange(
+                "evaluationAfter30DayLink",
+                "evaluationAfter30DayId",
+                "evaluationAfter30Day",
+                event.target.value,
+              )
+            }
+          />
           <small className={styles.catalogHint}>
             {selectedFollowUpEvaluation
               ? `${selectedFollowUpEvaluation.questionCount} questions · ${selectedFollowUpEvaluation.respondent} · ${selectedFollowUpEvaluation.scope}`
-              : `${publishedFollowUpEvaluations.length} published 30-Day Follow-up option${publishedFollowUpEvaluations.length === 1 ? "" : "s"}`}
+              : form.evaluationAfter30DayLink
+                ? "Manual form link will be used."
+                : `${publishedFollowUpEvaluations.length} published 30-Day Follow-up option${publishedFollowUpEvaluations.length === 1 ? "" : "s"}`}
           </small>
         </label>
         <label className={styles.fullWidth}>
@@ -918,7 +1064,7 @@ function CourseMaster() {
               }}
             >
               {functionOptions.map((option) => (
-                <option key={option.code} value={option.code}>
+                <option key={option.code} value={option.code} translate="no">
                   {option.name}
                 </option>
               ))}
@@ -1013,7 +1159,7 @@ function CourseMaster() {
       <section className={styles.hero}>
         <div>
           <p className={styles.kicker}>{courseMasterModule.subtitle}</p>
-          <h2>{courseMasterModule.title}</h2>
+          <h2 translate="no">{courseMasterModule.title}</h2>
           <p>{courseMasterModule.description}</p>
         </div>
       </section>
@@ -1084,11 +1230,18 @@ function CourseMaster() {
                         ) : null}
                       </td>
                       <td>
-                        <strong>{course.courseType}</strong>
+                        <strong translate="no">{course.courseType}</strong>
                         <span>{course.courseGroup}</span>
                       </td>
                       <td>
-                        <strong>{courseStandard?.functionName ?? "Not set"}</strong>
+                        <strong translate={courseStandard ? "no" : undefined}>
+                          {courseStandard
+                            ? getFunctionDisplayName(
+                                courseStandard.functionCode,
+                                courseStandard.functionName,
+                              )
+                            : "Not set"}
+                        </strong>
                         <span>
                           {courseStandard
                             ? `${courseStandard.positions.length} positions · ${courseStandard.levels.length} levels`

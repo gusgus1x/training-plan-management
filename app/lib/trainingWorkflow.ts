@@ -23,6 +23,10 @@ export type WorkflowCourse = {
   postTestId?: string;
   evaluationId?: string;
   evaluationAfter30DayId?: string;
+  preTestLink?: string;
+  postTestLink?: string;
+  evaluationLink?: string;
+  evaluationAfter30DayLink?: string;
   owner: WorkflowOwner;
   ownerCompany?: string;
   createdBy?: string;
