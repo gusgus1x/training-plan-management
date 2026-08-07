@@ -144,23 +144,32 @@
 }
 
 .periodControls select {
-  min-width: 118px;
-  min-height: 40px;
+  min-width: 120px;
+  min-height: 38px;
   border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-sm);
-  background: var(--ui-60-surface);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-60-surface-soft);
   color: var(--ui-30-ink);
   cursor: pointer;
-  font-size: 0.78rem;
-  font-weight: 900;
+  font-size: 0.82rem;
+  font-weight: 800;
   outline: none;
-  padding: 7px 30px 7px 10px;
+  padding: 6px 28px 6px 12px;
   text-transform: none;
+  white-space: nowrap;
+  transition: all 0.2s ease;
 }
 
+.periodControls select:hover,
 .periodControls select:focus {
   border-color: var(--ui-30-primary);
-  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.14);
+  background: var(--ui-60-surface);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.periodControls select option {
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
 }
 
 .financeMetricGrid {

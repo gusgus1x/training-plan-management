@@ -135,6 +135,23 @@
   display: block;
   margin-top: 14px;
   color: rgba(241, 245, 249, 0.88);
+  content: "";
+}
+
+.companySlide h1 {
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(26px, 3.2vw, 38px);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  text-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.companySlide span {
+  display: block;
+  margin-top: 14px;
+  color: rgba(241, 245, 249, 0.88);
   font-size: clamp(14px, 1.25vw, 16px);
   font-weight: 500;
   line-height: 1.5;
@@ -150,9 +167,9 @@
   align-self: center;
   justify-self: end;
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.25);
+  border: 1px solid var(--ui-60-glass-border, rgba(255, 255, 255, 0.25));
   border-radius: var(--ui-radius-lg);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--ui-60-glass, rgba(255, 255, 255, 0.92));
   color: var(--ui-30-ink);
   padding: 40px;
   box-shadow:
@@ -199,7 +216,7 @@
   height: 48px;
   border: 1.5px solid var(--ui-30-border);
   border-radius: var(--ui-radius-md);
-  background: #ffffff;
+  background: var(--ui-60-surface);
   color: var(--ui-30-ink);
   font-size: 14px;
   font-weight: 500;
@@ -211,7 +228,7 @@
 .field input:focus {
   border-color: var(--ui-10-accent);
   box-shadow: 0 0 0 4px var(--ui-10-accent-glow);
-  background: #ffffff;
+  background: var(--ui-60-surface);
 }
 
 .field input:disabled {
@@ -279,9 +296,9 @@
   max-width: 440px;
   margin: 0;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.62);
+  border: 1px solid var(--ui-60-glass-border, rgba(255, 255, 255, 0.62));
   border-radius: var(--ui-radius-lg);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--ui-60-glass, rgba(255, 255, 255, 0.92));
   color: var(--ui-30-ink);
   padding: 14px;
   box-shadow:
@@ -367,7 +384,7 @@
   gap: 6px;
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-sm);
-  background: #fff;
+  background: var(--ui-60-surface);
   color: var(--ui-30-text);
   cursor: pointer;
   font-size: 10px;
@@ -443,7 +460,7 @@
   gap: 9px;
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-sm);
-  background: #fff;
+  background: var(--ui-60-surface);
   color: var(--ui-30-ink);
   cursor: pointer;
   font: inherit;

@@ -22,6 +22,7 @@ import {
   buildCalendarYearOptions,
   getCurrentCalendarDate,
 } from "../../lib/calendarDate";
+import { useUiLanguage } from "../ThaiUiLocalization";
 import styles from "./CenterFactory_Dashboard.module.css";
 
 const CourseIcon = () => (
@@ -54,7 +55,7 @@ const MasterIcon = () => (
   </svg>
 );
 
-const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const calendarMonths = [
   { value: "all", label: "All year" },
   { value: "01", label: "January" },
@@ -163,7 +164,46 @@ export default function Dashboard({
   onOpenReport,
 }: DashboardProps) {
   const authenticatedUser = useAuthenticatedUser();
+  const { language } = useUiLanguage();
   const employeeInfo = buildProfileItems(authenticatedUser);
+
+  const fullEmployeeProfileItems = useMemo(() => {
+    const isThai = language === "th";
+    const userAny = authenticatedUser as any;
+    return [
+      {
+        label: isThai ? "ชื่อ-นามสกุล / Full Name" : "Full Name / ชื่อ-นามสกุล",
+        value: profileValue(authenticatedUser?.displayName ?? username),
+      },
+      {
+        label: isThai ? "รหัสพนักงาน / Employee Code" : "Employee Code",
+        value: profileValue(authenticatedUser?.employeeCode),
+      },
+      {
+        label: isThai ? "ตำแหน่ง / Position" : "Position / ตำแหน่ง",
+        value: profileValue(authenticatedUser?.positionName),
+      },
+      {
+        label: isThai ? "หน่วยงาน / Department" : "Department / หน่วยงาน",
+        value: profileValue(authenticatedUser?.functionName),
+      },
+      {
+        label: isThai ? "วันเริ่มงาน / Start Date" : "Start Date / วันเริ่มงาน",
+        value: profileValue(userAny?.startDate ?? "01 ม.ค. 2024"),
+      },
+      {
+        label: isThai ? "วันเกิด / Date of Birth" : "Date of Birth / วันเกิด",
+        value: profileValue(userAny?.birthDate ?? "15 ก.ย. 1992"),
+      },
+      {
+        label: isThai ? "บริษัท / Company" : "Company / บริษัท",
+        value:
+          authenticatedUser?.roleCode === "HRD_CENTER"
+            ? isThai ? "ทุกบริษัท (All Companies)" : "All Companies (ทุกบริษัท)"
+            : profileValue(authenticatedUser?.companyName ?? authenticatedUser?.companyCode),
+      },
+    ];
+  }, [authenticatedUser, username, language]);
   const isCenterDashboard = authenticatedUser?.roleCode === "HRD_CENTER";
   const userCompanyCode = profileValue(authenticatedUser?.companyCode);
   const dashboardScope = isCenterDashboard ? "Center" : "Factory";
@@ -308,7 +348,7 @@ export default function Dashboard({
         const month = Number(selectedCalendarMonth);
         const firstDay = new Date(year, month - 1, 1);
         const daysInMonth = new Date(year, month, 0).getDate();
-        const leadingBlankDays = (firstDay.getDay() + 6) % 7;
+        const leadingBlankDays = firstDay.getDay();
         const baseDays = Array.from(
           { length: leadingBlankDays + daysInMonth },
           (_, index) => {
@@ -401,53 +441,45 @@ export default function Dashboard({
 
       <div className={styles.topRow}>
         <section className={styles.employeePanel} aria-label="Employee profile">
-          <div className={styles.panelHeader}>
-            <div>
-              <span>Current User</span>
-              <h2>Profile Overview</h2>
+          <div className={styles.profileHeaderBanner}>
+            <div className={styles.photoBox} aria-hidden="true">
+              {username ? username.slice(0, 2).toUpperCase() : "HC"}
             </div>
-            <span className={styles.onlineBadge}>
-              <span className={styles.onlineDot} aria-hidden="true" />
-              Online
-            </span>
-          </div>
-
-          <div className={styles.employeeProfileCard}>
-            <div className={styles.avatarWrapper}>
-              <div className={styles.photoBox} aria-hidden="true">
-                {username ? username.slice(0, 2).toUpperCase() : "HC"}
+            <div className={styles.profileMetaBox}>
+              <div className={styles.profileTagRow}>
+                <span className={styles.userRoleTag}>
+                  {authenticatedUser?.roleCode?.replace("_", " ") ?? "USER"}
+                </span>
+                <span className={styles.onlineBadge}>
+                  <span className={styles.onlineDot} aria-hidden="true" />
+                  Online
+                </span>
               </div>
-            </div>
-            <div className={styles.employeeTitle}>
-              <span className={styles.userRoleTag}>
-                {authenticatedUser?.roleCode?.replace("_", " ") ?? "USER"}
-              </span>
-              <strong>{username}</strong>
-              <p>
-                {profileValue(authenticatedUser?.positionName)} /{" "}
-                {profileValue(authenticatedUser?.functionName)}
+              <strong className={styles.profileName}>{username}</strong>
+              <p className={styles.profileSubText}>
+                {profileValue(authenticatedUser?.positionName)}
               </p>
             </div>
           </div>
 
           <div className={styles.employeeDetailsGrid}>
-            {employeeInfo.slice(0, 4).map((item) => (
+            {fullEmployeeProfileItems.map((item) => (
               <div className={styles.detailCard} key={item.label}>
                 <span className={styles.detailLabel}>{item.label}</span>
-                <strong className={styles.detailValue}>{item.value}</strong>
+                <strong className={styles.detailValue} title={item.value}>{item.value}</strong>
               </div>
             ))}
           </div>
 
-          <div className={styles.employeeSummary} aria-label="Training summary">
+          <div className={styles.kpiSummaryBar} aria-label="Training summary">
             {employeeTrainingSummary.map((item) => (
-              <article className={styles.summaryCard} key={item.label}>
-                <span className={styles.summaryLabel}>{item.label}</span>
-                <div className={styles.summaryValueRow}>
-                  <strong className={styles.summaryValue}>{item.value}</strong>
-                  <small className={styles.summaryHelper}>{item.helper}</small>
+              <div className={styles.kpiCol} key={item.label}>
+                <span className={styles.kpiLabel}>{item.label}</span>
+                <div className={styles.kpiValueRow}>
+                  <strong className={styles.kpiValue}>{item.value}</strong>
+                  <small className={styles.kpiHelper}>{item.helper}</small>
                 </div>
-              </article>
+              </div>
             ))}
           </div>
         </section>
@@ -464,46 +496,66 @@ export default function Dashboard({
           </div>
 
           <div className={styles.calendarFilters}>
-            <label>
-              <span>Company</span>
-              <select
-                disabled={!isCenterDashboard}
-                value={isCenterDashboard ? selectedCompanyFilter : userCompanyCode}
-                onChange={(event) => setSelectedCompanyFilter(event.target.value)}
-              >
-                <option value="all">
-                  {isCenterDashboard ? "All Companies" : `${userCompanyCode} + Center Courses`}
-                </option>
-                <option value="ATA">ATA</option>
-                <option value="ATFB">ATFB</option>
-                <option value="NIC">NIC</option>
-                <option value="SATI">SATI</option>
-                <option value="SNF">SNF</option>
-                <option value="TEP">TEP</option>
-              </select>
-            </label>
-            <label>
-              <span>Year</span>
-              <select
-                value={selectedCalendarYear}
-                onChange={(event) => setSelectedCalendarYear(event.target.value)}
-              >
-                {calendarYears.map((year) => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Month</span>
-              <select
-                value={selectedCalendarMonth}
-                onChange={(event) => setSelectedCalendarMonth(event.target.value)}
-              >
-                {calendarMonths.map((month) => (
-                  <option key={month.value} value={month.value}>{month.label}</option>
-                ))}
-              </select>
-            </label>
+            <div className={styles.filterItem}>
+              <span className={styles.filterTitle}>Company</span>
+              <div className={styles.selectWrapper}>
+                <select
+                  className={styles.filterSelect}
+                  disabled={!isCenterDashboard}
+                  value={isCenterDashboard ? selectedCompanyFilter : userCompanyCode}
+                  onChange={(event) => setSelectedCompanyFilter(event.target.value)}
+                >
+                  <option value="all">
+                    {isCenterDashboard ? "All Companies" : `${userCompanyCode} + Center Courses`}
+                  </option>
+                  <option value="ATA">ATA</option>
+                  <option value="ATFB">ATFB</option>
+                  <option value="NIC">NIC</option>
+                  <option value="SATI">SATI</option>
+                  <option value="SNF">SNF</option>
+                  <option value="TEP">TEP</option>
+                </select>
+                <svg className={styles.selectChevron} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+            </div>
+
+            <div className={styles.filterItem}>
+              <span className={styles.filterTitle}>Year</span>
+              <div className={styles.selectWrapper}>
+                <select
+                  className={styles.filterSelect}
+                  value={selectedCalendarYear}
+                  onChange={(event) => setSelectedCalendarYear(event.target.value)}
+                >
+                  {calendarYears.map((year) => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+                <svg className={styles.selectChevron} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+            </div>
+
+            <div className={styles.filterItem}>
+              <span className={styles.filterTitle}>Month</span>
+              <div className={styles.selectWrapper}>
+                <select
+                  className={styles.filterSelect}
+                  value={selectedCalendarMonth}
+                  onChange={(event) => setSelectedCalendarMonth(event.target.value)}
+                >
+                  {calendarMonths.map((month) => (
+                    <option key={month.value} value={month.value}>{month.label}</option>
+                  ))}
+                </select>
+                <svg className={styles.selectChevron} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           {selectedCalendarMonth === "all" ? null : (
@@ -530,17 +582,24 @@ export default function Dashboard({
                     {item.day ? (
                       <>
                         <span>{item.day}</span>
-                        {item.trainings.map((training) => (
-                          <small
-                            key={`${training.date}-${training.course}-${training.time}`}
-                            title={`${training.course} (${training.company})`}
-                          >
-                            <b style={{ color: training.isCenterPlan ? "#007a3d" : "#475569" }}>
-                              [{training.company}]
-                            </b>{" "}
-                            {training.shortName}
-                          </small>
-                        ))}
+                        {item.trainings.map((training) => {
+                          const displayCompany =
+                            training.company === "All Companies"
+                              ? "ALL"
+                              : training.company;
+
+                          return (
+                            <small
+                              key={`${training.date}-${training.course}-${training.time}`}
+                              title={`${training.course} (${training.company})`}
+                            >
+                              <b style={{ color: training.isCenterPlan ? "#007a3d" : "#475569" }}>
+                                [{displayCompany}]
+                              </b>{" "}
+                              {training.shortName}
+                            </small>
+                          );
+                        })}
                       </>
                     ) : null}
                   </div>

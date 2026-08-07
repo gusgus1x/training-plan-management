@@ -921,7 +921,12 @@ export default function TrainingRolling() {
                         </span>
                       </td>
                       <td>{formatRollingPlanCompanies(plan)}</td>
-                      <td><span className={`${styles.statusPill} ${styles[`status${groupStatus}`]}`}>{groupStatus}</span></td>
+                      <td>
+                        <span className={`${styles.statusPill} ${styles[`status${groupStatus}`]}`}>
+                          <span className={styles.statusDot} />
+                          {groupStatus === "Planned" ? "วางแผนแล้ว" : groupStatus === "Planning" ? "รอวางแผน" : groupStatus === "Cancel" ? "ยกเลิก" : groupStatus}
+                        </span>
+                      </td>
                       <td><span className={`${styles.jobPill} ${styles[`job${groupJobStatus}`]}`}>{groupJobStatus}</span></td>
                       <td className={styles.actionCell}>
                         <button className={styles.detailButton} type="button" onClick={() => setOpenDetailId(isOpen ? "" : group.id)}>
@@ -1003,7 +1008,12 @@ export default function TrainingRolling() {
                                   </div>
                                   <div>
                                     <span>Status</span>
-                                    <strong>{session.status}</strong>
+                                    <strong>
+                                      <span className={`${styles.statusPill} ${styles[`status${session.status}`]}`}>
+                                        <span className={styles.statusDot} />
+                                        {session.status === "Planned" ? "วางแผนแล้ว" : session.status === "Planning" ? "รอวางแผน" : session.status === "Cancel" ? "ยกเลิก" : session.status}
+                                      </span>
+                                    </strong>
                                   </div>
                                   <div className={styles.sessionActions}>
                                     <button className={styles.detailButton} type="button" onClick={() => handleEdit(session)}>Edit</button>

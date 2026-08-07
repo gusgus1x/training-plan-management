@@ -745,12 +745,37 @@
 .statusPill,
 .codePill,
 .questionList b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 999px;
-  background: #ecfdf5;
-  color: #047857;
-  font-size: 0.66rem;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #10b981;
+  font-size: 0.7rem;
   font-weight: 900;
-  padding: 3px 8px;
+  padding: 3px 9px;
+}
+
+.statusPlanned {
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #10b981 !important;
+}
+
+.statusPlanning,
+.statusPending,
+.statusDraft {
+  border: 1px solid rgba(245, 158, 11, 0.4) !important;
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #f59e0b !important;
+}
+
+.statusCancel,
+.statusRejected {
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  background: rgba(239, 68, 68, 0.16) !important;
+  color: #ef4444 !important;
 }
 
 @media (max-width: 760px) {

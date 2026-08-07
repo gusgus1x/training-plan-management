@@ -3,7 +3,7 @@
   top: 0;
   z-index: 50;
   border-bottom: 1px solid var(--ui-30-border);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--ui-60-glass, rgba(255, 255, 255, 0.92));
   backdrop-filter: blur(18px) saturate(180%);
   -webkit-backdrop-filter: blur(18px) saturate(180%);
   box-shadow: 0 4px 24px -4px rgba(15, 23, 42, 0.06);
@@ -38,19 +38,20 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 14px;
+  gap: 10px;
   min-width: 0;
 }
 
-/* Sleek Language Switcher */
+/* Sleek Theme & Language Switchers */
+.themeSwitcher,
 .languageSwitcher {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   height: 34px;
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-full);
-  background: rgba(241, 245, 249, 0.85);
+  background: var(--ui-60-surface-soft);
   padding: 3px;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
 }
@@ -61,8 +62,14 @@
   opacity: 0.35;
 }
 
+.themeButton,
+.activeTheme,
 .languageButton,
 .activeLanguage {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   box-sizing: border-box;
   min-width: 32px;
   height: 26px;
@@ -77,19 +84,226 @@
   transition: all 0.2s ease;
 }
 
+.themeButton,
 .languageButton {
   background: transparent;
   color: var(--ui-30-muted);
 }
 
+.activeTheme,
 .activeLanguage {
-  background: #ffffff;
+  background: var(--ui-60-surface);
   color: var(--ui-30-primary-strong);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
+.activeTheme {
+  color: var(--ui-30-ink);
+}
+
+.themeButton:hover,
 .languageButton:hover {
   color: var(--ui-30-ink);
+}
+
+.themeIcon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.themeLabel {
+  font-size: 10.5px;
+}
+
+/* Settings Menu & Dropdown */
+.settingsMenuWrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.settingsButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-full);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 0 12px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  transition: all 0.2s ease;
+}
+
+.settingsButton:hover,
+.activeSettingsButton {
+  border-color: var(--ui-30-primary);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  box-shadow: 0 4px 14px rgba(0, 122, 61, 0.12);
+}
+
+.gearIcon {
+  width: 15px;
+  height: 15px;
+  transition: transform 0.3s ease;
+}
+
+.settingsButton:hover .gearIcon,
+.activeSettingsButton .gearIcon {
+  transform: rotate(45deg);
+}
+
+.chevronIcon {
+  width: 13px;
+  height: 13px;
+  transition: transform 0.2s ease;
+}
+
+.rotatedChevron {
+  transform: rotate(180deg);
+}
+
+.settingsDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 260px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-xl);
+  background: var(--ui-60-glass, rgba(255, 255, 255, 0.96));
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  padding: 16px;
+  box-shadow: 0 16px 40px -6px rgba(15, 23, 42, 0.25), 0 4px 12px -2px rgba(15, 23, 42, 0.1);
+}
+
+.settingsHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ui-30-border);
+}
+
+.settingsHeader strong {
+  color: var(--ui-30-ink);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.settingsHeader span {
+  color: var(--ui-30-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.settingsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settingsGroupHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ui-30-ink);
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.groupSvgIcon {
+  width: 14px;
+  height: 14px;
+  color: var(--ui-30-muted);
+}
+
+.groupIcon {
+  font-size: 13px;
+}
+
+.segmentControl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-60-surface-soft);
+  padding: 3px;
+}
+
+.segmentBtn,
+.activeSegment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  border: 0;
+  border-radius: var(--ui-radius-sm);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  transition: all 0.2s ease;
+}
+
+.optionSvgIcon {
+  width: 13px;
+  height: 13px;
+}
+
+.segmentBtn {
+  background: transparent;
+  color: var(--ui-30-muted);
+}
+
+.segmentBtn:hover {
+  color: var(--ui-30-ink);
+}
+
+.activeSegment {
+  background: var(--ui-60-surface);
+  color: var(--ui-30-primary-strong);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.dropdownDivider {
+  height: 1px;
+  background: var(--ui-30-border);
+  margin: 2px 0;
+}
+
+.dropdownLogoutBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 36px;
+  border: 1px solid var(--ui-10-accent-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  transition: all 0.2s ease;
+}
+
+.dropdownLogoutBtn:hover {
+  background: var(--ui-10-accent);
+  color: #ffffff;
+  box-shadow: 0 6px 18px var(--ui-10-accent-glow);
 }
 
 /* Brand & Logo Section */
@@ -148,16 +362,17 @@
   align-items: center;
   gap: 12px;
   border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-lg);
-  background: #ffffff;
-  padding: 6px 14px;
+  border-radius: var(--ui-radius-full);
+  background: var(--ui-60-surface-soft);
+  padding: 6px 16px 6px 8px;
   box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
   transition: all 0.2s ease;
 }
 
 .userInfo:hover {
-  border-color: var(--ui-30-primary-border);
-  box-shadow: 0 4px 16px rgba(0, 122, 61, 0.08);
+  border-color: var(--ui-30-primary);
+  background: var(--ui-60-surface);
+  box-shadow: 0 4px 16px rgba(0, 122, 61, 0.12);
 }
 
 .avatarWrapper {
@@ -171,30 +386,31 @@
   justify-content: center;
   width: 36px;
   height: 36px;
-  border-radius: var(--ui-radius-md);
-  background: linear-gradient(135deg, var(--ui-30-primary-soft) 0%, #dcfce7 100%);
-  border: 1px solid var(--ui-30-primary-border);
-  color: var(--ui-30-primary-strong);
-  font-size: 12px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ui-30-primary) 0%, var(--ui-30-primary-strong) 100%);
+  border: 2px solid var(--ui-60-surface);
+  color: #ffffff;
+  font-size: 13px;
   font-weight: 900;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 8px rgba(0, 122, 61, 0.28);
 }
 
 .onlineBadge {
   position: absolute;
-  bottom: -1px;
-  right: -1px;
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
   background: #10b981;
-  border: 2px solid #ffffff;
+  border: 2px solid var(--ui-60-surface);
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
 }
 
 .userDetails {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -207,22 +423,26 @@
 
 .userValue {
   color: var(--ui-30-ink);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 800;
+  letter-spacing: -0.01em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .roleBadge {
+  display: inline-flex;
+  align-items: center;
   border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
   background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary-strong);
-  font-size: 10px;
-  font-weight: 900;
+  color: var(--ui-30-primary);
+  font-size: 10.5px;
+  font-weight: 800;
   line-height: 1;
-  padding: 3px 8px;
+  padding: 3px 9px;
+  letter-spacing: 0.02em;
   white-space: nowrap;
 }
 
@@ -233,7 +453,7 @@
 
 .companyValue {
   color: var(--ui-30-muted);
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -274,6 +494,21 @@
   transform: translateX(2px);
 }
 
+:global([data-theme="dark"]) .logoutButton,
+:global([data-theme="dark"]) .dropdownLogoutBtn {
+  border-color: rgba(244, 63, 94, 0.4);
+  background: rgba(244, 63, 94, 0.16);
+  color: #ff768a;
+}
+
+:global([data-theme="dark"]) .logoutButton:hover,
+:global([data-theme="dark"]) .dropdownLogoutBtn:hover {
+  border-color: #f43f5e;
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  color: #ffffff;
+  box-shadow: 0 6px 20px rgba(244, 63, 94, 0.35);
+}
+
 /* Context Workspace Sub-Navbar */
 .contextNav {
   display: grid;
@@ -290,7 +525,7 @@
   min-height: 34px;
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-sm);
-  background: #ffffff;
+  background: var(--ui-60-surface);
   color: var(--ui-30-text);
   cursor: pointer;
   font: inherit;
@@ -382,7 +617,7 @@
 
 .contextItem {
   border: 1px solid var(--ui-30-border);
-  background: #ffffff;
+  background: var(--ui-60-surface);
   color: var(--ui-30-text);
 }
 

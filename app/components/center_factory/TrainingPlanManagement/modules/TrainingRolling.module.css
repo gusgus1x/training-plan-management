@@ -331,54 +331,54 @@
   accent-color: var(--ui-30-primary);
 }
 
+.statusPill,
+.jobPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.statusDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.statusPlanned {
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #10b981 !important;
+}
+
+.statusPlanning {
+  border: 1px solid rgba(245, 158, 11, 0.4) !important;
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #f59e0b !important;
+}
+
+.statusCancel {
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  background: rgba(239, 68, 68, 0.16) !important;
+  color: #ef4444 !important;
+}
+
 .selectionControl span {
   margin: 0;
   color: inherit;
   font: inherit;
-}
-
-.rollingTable td strong {
-  display: block;
-  font-size: 0.82rem;
-}
-
-.rollingTable td span {
-  display: block;
-  margin-top: 4px;
-  color: var(--ui-30-muted);
-  font-size: 0.72rem;
-}
-
-.statusPill,
-.jobPill {
-  display: inline-flex;
-  width: fit-content;
-  border-radius: 999px;
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary);
-  font-size: 0.66rem;
-  font-weight: 900;
-  padding: 5px 9px;
-}
-
-.statusPlanning {
-  background: #fff7ed;
-  color: #b45309;
-}
-
-.statusPlanned {
-  background: #ecfdf5;
-  color: #047857;
-}
-
-.jobRolling {
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary);
-}
-
-.jobCompleted {
-  background: var(--ui-60-surface-muted);
-  color: var(--ui-30-text);
 }
 
 .actionCell {
@@ -433,17 +433,6 @@
   color: var(--ui-30-ink);
   font-size: 0.8rem;
   line-height: 1.4;
-}
-
-.emptyState {
-  display: grid;
-  place-items: center;
-  gap: 6px;
-  min-height: 120px;
-  border-top: 1px solid var(--ui-30-border);
-  background: var(--ui-60-surface);
-  color: var(--ui-30-muted);
-  text-align: center;
 }
 
 .emptyState strong {

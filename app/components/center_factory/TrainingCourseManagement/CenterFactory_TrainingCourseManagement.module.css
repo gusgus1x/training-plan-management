@@ -62,7 +62,7 @@
   min-height: 120px;
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-xl);
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  background: var(--ui-60-surface);
   box-shadow: var(--ui-shadow-md);
 }
 
@@ -168,7 +168,7 @@
   overflow: hidden;
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-xl);
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
   color: var(--ui-30-ink);
   cursor: pointer;
@@ -196,7 +196,7 @@
 
 .moduleCard:hover {
   border-color: var(--ui-30-primary);
-  background: linear-gradient(180deg, #ffffff 0%, rgba(240, 253, 244, 0.5) 100%);
+  background: linear-gradient(180deg, var(--ui-60-surface) 0%, var(--ui-30-primary-soft) 100%);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
   transform: translateY(-3px);
 }

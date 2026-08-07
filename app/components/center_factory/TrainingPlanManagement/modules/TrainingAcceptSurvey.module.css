@@ -413,9 +413,30 @@
 }
 
 .statusPill {
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  color: #475569;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  background: rgba(16, 185, 129, 0.16);
+  color: #10b981;
+}
+
+.statusPlanned,
+.statusApproved {
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #10b981 !important;
+}
+
+.statusPlanning,
+.statusPending {
+  border: 1px solid rgba(245, 158, 11, 0.4) !important;
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #f59e0b !important;
+}
+
+.statusCancel,
+.statusRejected {
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  background: rgba(239, 68, 68, 0.16) !important;
+  color: #ef4444 !important;
 }
 
 .emptyState {

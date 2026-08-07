@@ -54,6 +54,174 @@
   --attg-ink: var(--ui-30-ink);
   --attg-muted: var(--ui-30-muted);
   --attg-line: var(--ui-30-border);
+
+  --background: var(--ui-60-canvas);
+  --foreground: var(--ui-30-ink);
+}
+
+[data-theme="dark"],
+.dark {
+  --background: #0b0f19;
+  --foreground: #f8fafc;
+
+  --ui-60-canvas: #0b0f19;
+  --ui-60-surface: #172033;
+  --ui-60-surface-soft: #0f172a;
+  --ui-60-surface-muted: #243049;
+  --ui-60-glass: rgba(23, 32, 51, 0.94);
+  --ui-60-glass-border: rgba(51, 65, 85, 0.8);
+
+  --ui-30-primary: #10b981;
+  --ui-30-primary-strong: #34d399;
+  --ui-30-primary-soft: rgba(16, 185, 129, 0.16);
+  --ui-30-primary-border: rgba(16, 185, 129, 0.38);
+
+  --ui-10-accent: #f43f5e;
+  --ui-10-accent-strong: #ff768a;
+  --ui-10-accent-soft: rgba(244, 63, 94, 0.16);
+  --ui-10-accent-border: rgba(244, 63, 94, 0.35);
+  --ui-10-accent-glow: rgba(244, 63, 94, 0.25);
+  --ui-10-accent-on-dark: #ff9195;
+
+  --ui-30-ink: #f8fafc;
+  --ui-30-text: #e2e8f0;
+  --ui-30-muted: #94a3b8;
+  --ui-30-border: #2d3748;
+
+  --ui-on-dark: #ffffff;
+  --ui-on-dark-muted: #cbd5e1;
+  --ui-on-dark-subtle: #94a3b8;
+
+  --ui-card-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.4);
+  --ui-card-shadow-hover: 0 12px 28px -4px rgba(0, 0, 0, 0.6);
+
+  --attg-ink: var(--ui-30-ink);
+  --attg-muted: var(--ui-30-muted);
+  --attg-line: var(--ui-30-border);
+}
+
+/* Global Dark Mode Overrides & Contrast Enhancements */
+[data-theme="dark"] body {
+  background-color: var(--ui-60-canvas);
+  color: var(--ui-30-ink);
+}
+
+/* Cards, Panels, Modules, Containers, & Modals in Dark Mode */
+[data-theme="dark"] :where(
+  div[class*="panel"],
+  div[class*="Panel"],
+  div[class*="card"],
+  div[class*="Card"],
+  div[class*="box"],
+  div[class*="Box"],
+  div[class*="container"],
+  div[class*="Container"],
+  div[class*="section"],
+  div[class*="Section"],
+  div[class*="wrapper"],
+  div[class*="Wrapper"],
+  div[class*="modal"],
+  div[class*="Modal"],
+  div[class*="popup"],
+  div[class*="Popup"],
+  div[class*="content"],
+  div[class*="Content"],
+  div[class*="filter"],
+  div[class*="Filter"],
+  div[class*="dialog"],
+  div[class*="Dialog"],
+  main,
+  section,
+  article,
+  aside
+) {
+  border-color: var(--ui-30-border);
+}
+
+/* Overriding hardcoded white card/panel backgrounds in Dark Mode */
+[data-theme="dark"] :where(
+  div[class*="heroPanel"],
+  div[class*="employeePanel"],
+  div[class*="calendarPanel"],
+  div[class*="menuPanel"],
+  div[class*="menuBox"],
+  div[class*="card"],
+  div[class*="Card"],
+  div[class*="panel"],
+  div[class*="Panel"],
+  div[class*="tableContainer"],
+  div[class*="TableContainer"],
+  div[class*="modalBody"],
+  div[class*="modalContent"],
+  div[class*="filterCard"],
+  div[class*="dataCard"],
+  div[class*="metricCard"],
+  div[class*="kpiCard"]
+) {
+  background: var(--ui-60-surface) !important;
+  color: var(--ui-30-ink);
+  border-color: var(--ui-30-border);
+}
+
+/* Text Contrast Fixes in Dark Mode */
+[data-theme="dark"] :where(h1, h2, h3, h4, h5, h6, strong, b, label, legend) {
+  color: var(--ui-30-ink) !important;
+}
+
+[data-theme="dark"] :where(p, span, td, li, div) {
+  color: var(--ui-30-text);
+}
+
+[data-theme="dark"] :where(
+  small,
+  span[class*="muted"],
+  span[class*="sub"],
+  div[class*="sub"],
+  p[class*="desc"],
+  p[class*="sub"]
+) {
+  color: var(--ui-30-muted) !important;
+}
+
+/* Form Controls & Inputs in Dark Mode */
+[data-theme="dark"] :where(input, select, textarea) {
+  background-color: var(--ui-60-surface-soft) !important;
+  color: var(--ui-30-ink) !important;
+  border-color: var(--ui-30-border) !important;
+}
+
+[data-theme="dark"] :where(input::placeholder, textarea::placeholder) {
+  color: var(--ui-30-muted) !important;
+}
+
+[data-theme="dark"] :where(option) {
+  background-color: var(--ui-60-surface) !important;
+  color: var(--ui-30-ink) !important;
+}
+
+/* Table Styling Overrides in Dark Mode */
+[data-theme="dark"] :where(table) {
+  background-color: var(--ui-60-surface) !important;
+  color: var(--ui-30-text) !important;
+}
+
+[data-theme="dark"] :where(th) {
+  background-color: var(--ui-60-surface-soft) !important;
+  color: var(--ui-30-ink) !important;
+  border-color: var(--ui-30-border) !important;
+}
+
+[data-theme="dark"] :where(td) {
+  border-color: var(--ui-30-border) !important;
+  color: var(--ui-30-text) !important;
+}
+
+[data-theme="dark"] :where(tr:nth-child(even)) {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+[data-theme="dark"] :where(tr:hover) {
+  background-color: rgba(255, 255, 255, 0.07) !important;
 }
 
 @theme inline {

@@ -333,12 +333,12 @@
   border-radius: 8px;
   background: var(--ui-60-surface-soft);
   padding: 8px;
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 
 .planTable {
   width: 100%;
-  min-width: 0;
+  min-width: 860px;
   table-layout: fixed;
   border-collapse: collapse;
   background: var(--ui-60-surface);
@@ -406,6 +406,26 @@
 
 .planTable td span {
   display: block;
+  color: var(--ui-30-primary);
+  font-weight: 900;
+}
+
+.planTable th:nth-child(3),
+.planTable th:nth-child(4),
+.planTable th:nth-child(5),
+.planTable td:nth-child(3),
+.planTable td:nth-child(4),
+.planTable td:nth-child(5) {
+  text-align: right;
+}
+
+.planTable td strong {
+  display: block;
+  font-size: 0.82rem;
+}
+
+.planTable td span {
+  display: block;
   margin-top: 4px;
   color: var(--ui-30-muted);
   font-size: 0.72rem;
@@ -413,28 +433,45 @@
 
 .statusPill {
   display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
   width: fit-content;
   border-radius: 999px;
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary);
-  padding: 5px 9px;
-  font-size: 0.66rem;
+  padding: 4px 10px;
+  font-size: 0.72rem;
   font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
 }
 
-.statusPlanning {
-  background: #fff7ed;
-  color: #b45309;
+.statusDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+  opacity: 0.85;
 }
 
 .statusPlanned {
-  background: #ecfdf5;
-  color: #047857;
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #10b981 !important;
+}
+
+.statusPlanning {
+  border: 1px solid rgba(245, 158, 11, 0.4) !important;
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #f59e0b !important;
 }
 
 .statusCancel {
-  background: var(--ui-10-accent-soft);
-  color: #be123c;
+  border: 1px solid rgba(239, 68, 68, 0.4) !important;
+  background: rgba(239, 68, 68, 0.16) !important;
+  color: #ef4444 !important;
 }
 
 .actionCell {

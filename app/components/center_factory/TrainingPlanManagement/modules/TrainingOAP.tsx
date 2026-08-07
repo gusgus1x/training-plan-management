@@ -642,7 +642,12 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                       <td>{plan.trainer}</td>
                       <td>{plan.provider}</td>
                       <td>{plan.createdBy}</td>
-                      <td><span className={`${styles.statusPill} ${styles[`status${plan.status}`]}`}>{plan.status}</span></td>
+                      <td>
+                        <span className={`${styles.statusPill} ${styles[`status${plan.status}`]}`}>
+                          <span className={styles.statusDot} />
+                          {plan.status === "Planned" ? "วางแผนแล้ว" : plan.status === "Planning" ? "รอวางแผน" : plan.status === "Cancel" ? "ยกเลิก" : plan.status}
+                        </span>
+                      </td>
                       <td className={styles.actionCell}>
                         <div className={styles.actionButtons}>
                           <button
