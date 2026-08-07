@@ -6,19 +6,18 @@ import {
   type EmployeeTrainingNeedRequest,
 } from "../../../../lib/trainingRequests";
 import {
-  TRAINING_WORKFLOW_KEYS,
   getCourseDisplayName,
   getCourseSecondaryName,
   isWorkflowOwner,
-  readWorkflowCollection,
-  writeWorkflowCollection,
   type WorkflowCourse,
-  type WorkflowOapPlan,
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
 import { getCourseOutlineFileName } from "../../../../lib/courseOutlineExport";
 import { listInstructors } from "../../../../lib/instructors/client";
 import type { InstructorRecord } from "../../../../lib/instructors/types";
+import { listCourses } from "../../../../lib/courses/client";
+import { listOapPlans, createOapPlan, updateOapPlan, deleteOapPlan } from "../../../../lib/trainingOap/client";
+import type { OapPlanRecord } from "../../../../lib/trainingOap/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import styles from "./TrainingOAP.module.css";
 
@@ -30,7 +29,7 @@ export const trainingOapModule = {
 
 type OapStatus = "Planning" | "Planned" | "Cancel";
 
-type OapPlan = WorkflowOapPlan;
+type OapPlan = OapPlanRecord;
 
 type TrainingOAPProps = {
   username?: string;
@@ -84,15 +83,9 @@ const buildRequestCourse = (request: EmployeeTrainingNeedRequest): WorkflowCours
 
 export default function TrainingOAP({ username = "Current user" }: TrainingOAPProps) {
   const user = useAuthenticatedUser();
-  const [courses, setCourses] = useState<WorkflowCourse[]>(() =>
-    readWorkflowCollection<WorkflowCourse>(TRAINING_WORKFLOW_KEYS.courses),
-  );
-  const [standards, setStandards] = useState<WorkflowStandard[]>(() =>
-    readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards),
-  );
-  const [plans, setPlans] = useState<OapPlan[]>(() =>
-    readWorkflowCollection<OapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans),
-  );
+  const [courses, setCourses] = useState<WorkflowCourse[]>([]);
+  const [standards, setStandards] = useState<WorkflowStandard[]>([]);
+  const [plans, setPlans] = useState<OapPlan[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [approvedRequest, setApprovedRequest] = useState<EmployeeTrainingNeedRequest | null>(null);
   const [isNewOpen, setIsNewOpen] = useState(false);
@@ -148,6 +141,27 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     return () => {
       current = false;
     };
+  }, []);
+
+  const loadWorkspace = async () => {
+    try {
+      const [courseData, oapData] = await Promise.all([
+        listCourses({ search: "", status: null }),
+        listOapPlans({ search: null, status: null }),
+      ]);
+      setCourses(courseData.courses || []);
+      setStandards(courseData.standards || []);
+      setPlans(oapData.oapPlans || []);
+    } catch (error) {
+      console.error("Failed to load Training OAP workspace", error);
+      setCourses([]);
+      setStandards([]);
+      setPlans([]);
+    }
+  };
+
+  useEffect(() => {
+    void loadWorkspace();
   }, []);
 
   const standardCourseIds = useMemo(
@@ -209,63 +223,49 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const selectedPlan =
     visiblePlans.find((plan) => plan.id === selectedPlanId) ?? null;
 
-  const savePlans = (nextPlans: OapPlan[]) => {
-    setPlans(nextPlans);
-    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.oapPlans, nextPlans);
-  };
-
   const updateForm = (field: keyof typeof emptyForm, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const handleSave = () => {
+  const resolveInstructorId = (trainerName: string) => {
+    const trimmed = trainerName.trim();
+    const matched = instructors.find(
+      (instructor) => `${instructor.firstName} ${instructor.lastName}`.trim() === trimmed,
+    );
+    return matched?.instructorId ?? null;
+  };
+
+  const handleSave = async () => {
     if (!selectedCourse) {
       return;
     }
 
-    if (editingId) {
-      savePlans(
-        plans.map((plan) =>
-          plan.id === editingId
-            ? {
-                ...plan,
-                course: selectedCourse,
-                participants: form.participants.trim() || "0",
-                hours: form.hours.trim() || "0",
-                budget: form.budget.trim() || "0",
-                trainer: form.trainer.trim() || "Pending trainer",
-                provider: form.provider.trim() || "Pending provider",
-              }
-            : plan,
-        ),
-      );
+    const input = {
+      courseId: selectedCourse.id,
+      participants: Number(form.participants) || 0,
+      hours: Number(form.hours) || 0,
+      budget: form.budget.trim() || "0",
+      trainerName: form.trainer.trim(),
+      instructorId: resolveInstructorId(form.trainer),
+      providerName: form.provider.trim(),
+    };
+
+    try {
+      if (editingId) {
+        await updateOapPlan(editingId, input);
+      } else {
+        await createOapPlan({ ...input, planYear: new Date().getFullYear(), status: "Planning" });
+      }
       setEditingId("");
       setForm(emptyForm);
       setApprovedRequest(null);
       window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
       setIsNewOpen(false);
-      return;
+      await loadWorkspace();
+    } catch (error) {
+      console.error("Failed to save Training OAP plan", error);
+      alert("Failed to save Training OAP plan");
     }
-
-    const nextPlan: OapPlan = {
-      id: `oap-${crypto.randomUUID()}`,
-      sequence: scopedPlans.length + 1,
-      course: selectedCourse,
-      participants: form.participants.trim() || "0",
-      hours: form.hours.trim() || "0",
-      budget: form.budget.trim() || "0",
-      trainer: form.trainer.trim() || "Pending trainer",
-      provider: form.provider.trim() || "Pending provider",
-      createdBy: username,
-      status: "Planning",
-      owner: selectedCourse.owner,
-      ownerCompany: selectedCourse.ownerCompany,
-    };
-    savePlans([nextPlan, ...plans]);
-    setForm(emptyForm);
-    setApprovedRequest(null);
-    window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
-    setIsNewOpen(false);
   };
 
   const handleEdit = (plan: OapPlan) => {
@@ -282,23 +282,35 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     setOpenDetailId("");
   };
 
-  const handleDelete = (planId: string) => {
-    savePlans(plans.filter((plan) => plan.id !== planId));
-    if (selectedPlanId === planId) {
-      setSelectedPlanId("");
-    }
-    if (openDetailId === planId) {
-      setOpenDetailId("");
-    }
-    if (editingId === planId) {
-      setEditingId("");
-      setForm(emptyForm);
-      setIsNewOpen(false);
+  const handleDelete = async (planId: string) => {
+    try {
+      await deleteOapPlan(planId);
+      if (selectedPlanId === planId) {
+        setSelectedPlanId("");
+      }
+      if (openDetailId === planId) {
+        setOpenDetailId("");
+      }
+      if (editingId === planId) {
+        setEditingId("");
+        setForm(emptyForm);
+        setIsNewOpen(false);
+      }
+      await loadWorkspace();
+    } catch (error) {
+      console.error("Failed to delete Training OAP plan", error);
+      alert("Failed to delete Training OAP plan");
     }
   };
 
-  const updateStatus = (planId: string, status: OapStatus) => {
-    savePlans(plans.map((plan) => plan.id === planId ? { ...plan, status } : plan));
+  const updateStatus = async (planId: string, status: OapStatus) => {
+    try {
+      await updateOapPlan(planId, { status });
+      await loadWorkspace();
+    } catch (error) {
+      console.error("Failed to update Training OAP plan status", error);
+      alert("Failed to update Training OAP plan status");
+    }
   };
 
   const handleExportOutline = async (plan: OapPlan) => {
@@ -343,12 +355,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     }
   };
 
-  const handleRefresh = () => {
-    setCourses(readWorkflowCollection<WorkflowCourse>(TRAINING_WORKFLOW_KEYS.courses));
-    setStandards(
-      readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards),
-    );
-    setPlans(readWorkflowCollection<OapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans));
+  const handleRefresh = async () => {
+    await loadWorkspace();
     setForm(emptyForm);
     setApprovedRequest(null);
     window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
@@ -406,7 +414,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
           <div className={styles.toolbarActions}>
             <button className={styles.primaryButton} disabled={courseOptions.length === 0} type="button" onClick={handleNew}>New</button>
             <button className={styles.secondaryButton} disabled={!selectedPlan} type="button" onClick={() => selectedPlan && handleEdit(selectedPlan)}>Edit</button>
-            <button className={styles.dangerButton} disabled={!selectedPlan} type="button" onClick={() => selectedPlan && handleDelete(selectedPlan.id)}>Delete</button>
+            <button className={styles.dangerButton} disabled={!selectedPlan} type="button" onClick={() => selectedPlan && void handleDelete(selectedPlan.id)}>Delete</button>
             <button
               className={styles.secondaryButton}
               disabled={!selectedPlan || Boolean(exportingPlanId)}
@@ -609,7 +617,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                               type="button"
                               onClick={() => {
                                 setSelectedPlanId(plan.id);
-                                updateStatus(plan.id, "Planned");
+                                void updateStatus(plan.id, "Planned");
                               }}
                             >
                               Confirm
@@ -662,8 +670,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                               <div><span>Created By</span><strong>{plan.createdBy}</strong></div>
                             </div>
                             <div className={styles.formActions}>
-                              <button className={styles.primaryButton} disabled={plan.status !== "Planning"} type="button" onClick={() => updateStatus(plan.id, "Planned")}>Confirm</button>
-                              <button className={styles.dangerButton} disabled={plan.status === "Cancel"} type="button" onClick={() => updateStatus(plan.id, "Cancel")}>Cancel Plan</button>
+                              <button className={styles.primaryButton} disabled={plan.status !== "Planning"} type="button" onClick={() => void updateStatus(plan.id, "Planned")}>Confirm</button>
+                              <button className={styles.dangerButton} disabled={plan.status === "Cancel"} type="button" onClick={() => void updateStatus(plan.id, "Cancel")}>Cancel Plan</button>
                             </div>
                           </section>
                         </td>

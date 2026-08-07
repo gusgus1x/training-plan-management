@@ -166,7 +166,7 @@ describe("Course outline export", () => {
 
     expect(oapSource).toContain("Export Outline");
     expect(oapSource).toContain("selectedPlan && handleEdit(selectedPlan)");
-    expect(oapSource).toContain("selectedPlan && handleDelete(selectedPlan.id)");
+    expect(oapSource).toContain("selectedPlan && void handleDelete(selectedPlan.id)");
     expect(courseMasterSource).not.toContain("Export Outline");
   });
 });
