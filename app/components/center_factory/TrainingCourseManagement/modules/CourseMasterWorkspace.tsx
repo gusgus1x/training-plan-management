@@ -1,7 +1,4 @@
 
-
-
-
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -13,22 +10,20 @@ import {
   isWorkflowOwner,
   readMasterCollection,
   readWorkflowCollection,
-  writeWorkflowCollection,
   type WorkflowCourse,
+  type WorkflowOapPlan,
   type WorkflowOwner,
+  type WorkflowRollingPlan,
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
+import { listCourses, createCourse, updateCourse, deleteCourse } from "../../../../lib/courses/client";
 import { normalizeEmployeeLevel } from "../../../../lib/employeeMasterData";
-import {
-  readPublishedAssessmentOptions,
-  readPublishedEvaluationOptions,
-  type TrainingAssessmentOption,
-  type TrainingEvaluationOption,
-} from "../../../../lib/trainingFormCatalog";
+import { listAssessments } from "../../../../lib/assessments/client";
+import { listEvaluations } from "../../../../lib/evaluations/client";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { listCourseGroups } from "../../../../lib/courseGroups/client";
 import { listCourseTypes } from "../../../../lib/courseTypes/client";
-import { defaultFunctionRows } from "../../MasterDataManagement/modules/FunctionData";
+import { listFunctions } from "../../../../lib/functions/client";
 import { defaultLevelRows } from "../../MasterDataManagement/modules/LevelData";
 import { defaultPositionRows } from "../../MasterDataManagement/modules/PositionData";
 import styles from "./CourseMasterWorkspace.module.css";
@@ -77,6 +72,26 @@ type CourseForm = {
 type CourseRecord = WorkflowCourse;
 type CourseStandardRecord = WorkflowStandard;
 
+type TrainingAssessmentOption = {
+  id: string;
+  code: string;
+  name: string;
+  assessmentType: "Pre Test" | "Post Test";
+  courseName: string;
+  questionCount: number;
+};
+
+type TrainingEvaluationOption = {
+  id: string;
+  code: string;
+  name: string;
+  timing: "After Training" | "30-Day Follow-up";
+  respondent: "Employee" | "Manager";
+  scope: "Central" | "Company";
+  company: string;
+  questionCount: number;
+};
+
 const allFunctionOption = "All Function";
 const allFunctionCode = "__ALL__";
 
@@ -117,26 +132,25 @@ const emptyCourseForm: CourseForm = {
 
 function CourseMaster() {
   const user = useAuthenticatedUser();
-  const [courseTypes, setCourseTypes] = useState<string[]>([]);
+  const [courseTypeOptions, setCourseTypeOptions] = useState<Array<{ name: string; typeId: string }>>([]);
+  const courseTypes = courseTypeOptions.map((type) => type.name);
   const [courseGroupOptions, setCourseGroupOptions] = useState<Array<{ name: string; groupId: string }>>([]);
   const courseGroups = courseGroupOptions.map((group) => group.name);
-  const [assessmentOptions, setAssessmentOptions] = useState<
-    TrainingAssessmentOption[]
-  >(readPublishedAssessmentOptions);
-  const [evaluationOptions, setEvaluationOptions] = useState<
-    TrainingEvaluationOption[]
-  >(readPublishedEvaluationOptions);
-  const [courses, setCourses] = useState<CourseRecord[]>(() =>
-    readWorkflowCollection<CourseRecord>(TRAINING_WORKFLOW_KEYS.courses),
-  );
+  const [assessmentOptions, setAssessmentOptions] = useState<TrainingAssessmentOption[]>([]);
+  const [evaluationOptions, setEvaluationOptions] = useState<TrainingEvaluationOption[]>([]);
+  const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [form, setForm] = useState<CourseForm>(emptyCourseForm);
   const [isEditing, setIsEditing] = useState(false);
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [openDetailCourseId, setOpenDetailCourseId] = useState("");
   const [search, setSearch] = useState("");
-  const [standards, setStandards] = useState<CourseStandardRecord[]>(() =>
-    readWorkflowCollection<CourseStandardRecord>(TRAINING_WORKFLOW_KEYS.standards),
+  const [standards, setStandards] = useState<CourseStandardRecord[]>([]);
+  const [oapPlans, setOapPlans] = useState(() =>
+    readWorkflowCollection<WorkflowOapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans),
+  );
+  const [rollingPlans, setRollingPlans] = useState(() =>
+    readWorkflowCollection<WorkflowRollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
   );
   const [standardFunctionCode, setStandardFunctionCode] = useState(allFunctionCode);
   const [standardFunctionName, setStandardFunctionName] = useState(allFunctionOption);
@@ -146,22 +160,33 @@ function CourseMaster() {
     void Promise.all([
       listCourseTypes({ status: "ACTIVE" }),
       listCourseGroups({ status: "ACTIVE" }),
-    ]).then(([types, groups]) => {
+      listCourses({ search: "", status: null }),
+      listFunctions(),
+    ]).then(([types, groups, courseData, functions]) => {
       if (!active) return;
-      setCourseTypes(types.items.map((item) => item.name));
-      setCourseGroupOptions(groups.items.map((item) => ({ name: item.name, groupId: item.code })));
+      setCourseTypeOptions(types.items.map((item: any) => ({ name: item.name, typeId: item.courseTypeId || item.code })));
+      setCourseGroupOptions(groups.items.map((item: any) => ({ name: item.name, groupId: item.courseGroupId || item.code })));
+      setCourses(courseData.courses || []);
+      setStandards(courseData.standards || []);
+      setFunctionRows(
+        functions.items
+          .filter((item) => item.status === "ACTIVE")
+          .map((item) => ({ id: item.functionId, code: item.functionCode, name: item.functionNameEn || item.functionNameTh })),
+      );
     }).catch(() => {
       if (!active) return;
-      setCourseTypes([]);
+      setCourseTypeOptions([]);
       setCourseGroupOptions([]);
+      setFunctionRows([]);
     });
+    void loadPublishedForms();
     return () => { active = false; };
   }, []);
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
-  const [functionRows, setFunctionRows] = useState(() =>
-    readMasterCollection(TRAINING_MASTER_KEYS.functions, defaultFunctionRows),
-  );
+  const [functionRows, setFunctionRows] = useState<
+    Array<{ id: string; code: string; name: string }>
+  >([]);
   const [positionRows, setPositionRows] = useState(() =>
     readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows),
   );
@@ -169,11 +194,8 @@ function CourseMaster() {
     readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows),
   );
   const functionOptions = [
-    { code: allFunctionCode, name: allFunctionOption },
-    ...functionRows.map((row) => ({
-      code: row.functionCode,
-      name: row.functionNameEn || row.functionNameTh,
-    })),
+    { id: "", code: allFunctionCode, name: allFunctionOption },
+    ...functionRows,
   ];
   const positionChecklist = positionRows
     .map((row) => row.positionNameEn.trim())
@@ -183,7 +205,6 @@ function CourseMaster() {
     .filter(Boolean);
 
   const requiredCourseValues = [
-    form.courseCode,
     form.courseNameTh,
     form.courseNameEn,
     form.courseGroup,
@@ -199,20 +220,13 @@ function CourseMaster() {
   const isCourseFormReady =
     completedRequiredFields === requiredFieldCount;
 
-  const publishedPreTests = useMemo(
-    () =>
-      assessmentOptions.filter(
-        (assessment) => assessment.assessmentType === "Pre Test",
-      ),
-    [assessmentOptions],
-  );
-  const publishedPostTests = useMemo(
-    () =>
-      assessmentOptions.filter(
-        (assessment) => assessment.assessmentType === "Post Test",
-      ),
-    [assessmentOptions],
-  );
+  // Any ACTIVE assessment can fill either Pre or Post Test — assessmentType is shown as a hint
+  // on each option, not enforced as a hard filter, so the same published assessment can be
+  // reused across both slots.
+  const publishedPreTests = assessmentOptions;
+  const publishedPostTests = assessmentOptions;
+  // Evaluation After Training and After 30 Days must stay separate forms (design decision,
+  // confirmed by the frontend designer) — filtered strictly by timing, unlike assessments above.
   const publishedCourseEvaluations = useMemo(
     () =>
       evaluationOptions.filter(
@@ -245,6 +259,15 @@ function CourseMaster() {
         standard.courseId === selectedCourse?.id ||
         standard.courseCode === selectedCourse?.courseCode,
     ) ?? null;
+  const usedCourseIds = useMemo(
+    () =>
+      new Set([
+        ...oapPlans.map((plan) => plan.course.id),
+        ...rollingPlans.map((plan) => plan.course.id),
+      ]),
+    [oapPlans, rollingPlans],
+  );
+  const isSelectedCourseLocked = selectedCourse ? usedCourseIds.has(selectedCourse.id) : false;
   const filteredCourses = useMemo(
     () =>
       scopedCourses.filter((course) =>
@@ -261,15 +284,6 @@ function CourseMaster() {
       ),
     [scopedCourses, search],
   );
-  const saveCourses = (nextCourses: CourseRecord[]) => {
-    setCourses(nextCourses);
-    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.courses, nextCourses);
-  };
-
-  const saveStandards = (nextStandards: CourseStandardRecord[]) => {
-    setStandards(nextStandards);
-    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.standards, nextStandards);
-  };
 
   const resetStandardForm = () => {
     setStandardFunctionCode(allFunctionCode);
@@ -399,62 +413,56 @@ function CourseMaster() {
     }));
   };
 
-  const buildCourseCode = (
-    courseGroup: string,
-    currentCode = "",
-    excludedCourseId = "",
-  ) => {
-    if (!courseGroup) {
-      return "";
-    }
-
-    const groupId =
-      courseGroupOptions.find((group) => group.name === courseGroup)?.groupId ||
-      "CRS";
-    const currentSequence = currentCode.match(/(\d+)$/)?.[1];
-    const preferredCode = currentSequence
-      ? `${groupId}-${currentSequence.padStart(3, "0")}`
-      : "";
-    const codeExists = (courseCode: string) =>
-      courses.some(
-        (course) =>
-          course.id !== excludedCourseId &&
-          course.courseCode.toUpperCase() === courseCode.toUpperCase(),
+  const loadPublishedForms = async () => {
+    try {
+      const [assessments, evaluations] = await Promise.all([
+        listAssessments({ search: null, status: "ACTIVE", purpose: null }),
+        listEvaluations({ search: null, status: "PUBLISHED", timing: null, respondentType: null }),
+      ]);
+      setAssessmentOptions(
+        assessments.items
+          .filter((assessment) => assessment.purpose === "PRE_TEST" || assessment.purpose === "POST_TEST")
+          .map((assessment) => ({
+            id: assessment.assessmentId,
+            code: assessment.seriesCode,
+            name: assessment.seriesName,
+            assessmentType: assessment.purpose === "PRE_TEST" ? "Pre Test" : "Post Test",
+            courseName: "-",
+            questionCount: assessment.questions.length,
+          })),
       );
-
-    if (preferredCode && !codeExists(preferredCode)) {
-      return preferredCode;
-    }
-
-    const highestSequence = courses.reduce((highest, course) => {
-      if (course.id === excludedCourseId) {
-        return highest;
-      }
-
-      const match = course.courseCode.match(
-        new RegExp(`^${groupId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-(\\d+)$`, "i"),
+      setEvaluationOptions(
+        evaluations.items.map((evaluation) => ({
+          id: evaluation.evaluationFormId,
+          code: evaluation.formCode,
+          name: evaluation.formName,
+          timing: evaluation.timing === "AFTER_TRAINING" ? "After Training" : "30-Day Follow-up",
+          respondent: evaluation.respondentType === "EMPLOYEE" ? "Employee" : "Manager",
+          scope: evaluation.scope === "CENTRAL" ? "Central" : "Company",
+          company: evaluation.companyName || "-",
+          questionCount: evaluation.questions.length,
+        })),
       );
-      return match ? Math.max(highest, Number(match[1])) : highest;
-    }, 0);
-
-    return `${groupId}-${String(highestSequence + 1).padStart(3, "0")}`;
+    } catch (error) {
+      console.error("Failed to load published forms", error);
+      setAssessmentOptions([]);
+      setEvaluationOptions([]);
+    }
   };
 
+  // course_code is system-generated server-side from course_group_code + an
+  // atomically incremented per-group running number (Data Dictionary V6.2).
+  // The browser never computes it — it only shows the value the server returns.
   const handleCourseGroupChange = (courseGroup: string) => {
     setForm((current) => ({
       ...current,
       courseGroup,
-      courseCode: buildCourseCode(
-        courseGroup,
-        current.courseCode,
-        selectedCourseId,
-      ),
+      courseCode: "",
     }));
   };
 
   const handleNew = () => {
-    setAssessmentOptions(readPublishedAssessmentOptions());
-    setEvaluationOptions(readPublishedEvaluationOptions());
+    void loadPublishedForms();
     setSelectedCourseId("");
     setOpenDetailCourseId("");
     setForm(emptyCourseForm);
@@ -464,8 +472,7 @@ function CourseMaster() {
   };
 
   const openCourseEditor = (course: CourseRecord) => {
-    setAssessmentOptions(readPublishedAssessmentOptions());
-    setEvaluationOptions(readPublishedEvaluationOptions());
+    void loadPublishedForms();
     setSelectedCourseId(course.id);
     setForm(buildCourseForm(course));
     loadStandardForm(course);
@@ -475,38 +482,47 @@ function CourseMaster() {
   };
 
   const handleEdit = () => {
-    if (!selectedCourse) return;
+    if (!selectedCourse || isSelectedCourseLocked) return;
 
     openCourseEditor(selectedCourse);
   };
 
-  const handleDelete = () => {
-    if (!selectedCourse) return;
+  const handleDelete = async () => {
+    if (!selectedCourse || isSelectedCourseLocked) return;
 
-    saveCourses(courses.filter((course) => course.id !== selectedCourse.id));
-    saveStandards(
-      standards.filter(
-        (standard) =>
-          standard.courseId !== selectedCourse.id &&
-          standard.courseCode !== selectedCourse.courseCode,
-      ),
-    );
-    setSelectedCourseId("");
-    setOpenDetailCourseId("");
-    setIsEditing(false);
-    setIsNewOpen(false);
-    setForm(emptyCourseForm);
-    resetStandardForm();
+    try {
+      await deleteCourse(selectedCourse.id);
+      await handleRefresh();
+    } catch (error) {
+      console.error("Failed to delete course", error);
+      alert("Failed to delete course");
+    }
   };
 
-  const handleRefresh = () => {
-    setCourses(readWorkflowCollection<CourseRecord>(TRAINING_WORKFLOW_KEYS.courses));
-    setStandards(readWorkflowCollection<CourseStandardRecord>(TRAINING_WORKFLOW_KEYS.standards));
-    setFunctionRows(readMasterCollection(TRAINING_MASTER_KEYS.functions, defaultFunctionRows));
+  const handleRefresh = async () => {
+    setOapPlans(readWorkflowCollection<WorkflowOapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans));
+    setRollingPlans(readWorkflowCollection<WorkflowRollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans));
     setPositionRows(readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows));
     setLevelRows(readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows));
-    setAssessmentOptions(readPublishedAssessmentOptions());
-    setEvaluationOptions(readPublishedEvaluationOptions());
+    void loadPublishedForms();
+    listFunctions()
+      .then((functions) =>
+        setFunctionRows(
+          functions.items
+            .filter((item) => item.status === "ACTIVE")
+            .map((item) => ({ id: item.functionId, code: item.functionCode, name: item.functionNameEn || item.functionNameTh })),
+        ),
+      )
+      .catch(() => setFunctionRows([]));
+
+    try {
+      const courseData = await listCourses({ search: "", status: null });
+      setCourses(courseData.courses || []);
+      setStandards(courseData.standards || []);
+    } catch (e) {
+      console.error(e);
+    }
+
     setSelectedCourseId("");
     setOpenDetailCourseId("");
     setSearch("");
@@ -535,58 +551,56 @@ function CourseMaster() {
     resetStandardForm();
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!isCourseFormReady || !standardFunctionName.trim()) return;
 
-    const resolvedCourseCode =
-      form.courseCode.trim() ||
-      buildCourseCode(form.courseGroup, "", selectedCourseId);
-    const nextCourse: CourseRecord = {
-      ...form,
-      id: selectedCourseId || `course-${resolvedCourseCode.toLowerCase()}`,
-      courseCode: resolvedCourseCode,
+    const courseTypeId = courseTypeOptions.find(t => t.name === form.courseType)?.typeId || "";
+    const courseGroupId = courseGroupOptions.find(g => g.name === form.courseGroup)?.groupId || "";
+    const standardYear = new Date().getFullYear();
+
+    const input = {
       courseNameTh: form.courseNameTh.trim(),
       courseNameEn: form.courseNameEn.trim(),
-      status: "Active",
-      updatedAt: new Date().toISOString().slice(0, 10),
-      owner: selectedCourse?.owner ?? owner,
-      ownerCompany: selectedCourse?.ownerCompany ?? ownerCompany,
-      createdBy:
-        selectedCourse?.createdBy ??
-        profileValue(user?.displayName ?? user?.username),
-    };
-    const nextCourses = selectedCourseId
-      ? courses.map((course) => course.id === selectedCourseId ? nextCourse : course)
-      : [nextCourse, ...courses];
+      objective: form.objective,
+      learningContent: form.learningContent,
+      targetGroup: form.targetGroup,
+      methodology: form.methodology,
+      durationHours: 1, // UI does not capture duration; default 1 to satisfy DB CHECK (duration_hours > 0)
+      validityMonths: form.lifeCycleMonth ? Number(form.lifeCycleMonth) : null,
+      preAssessmentId: form.preTestId || null,
+      postAssessmentId: form.postTestId || null,
+      evaluationFormId: form.evaluationId || null,
+      evaluationFormAfter30DayId: form.evaluationAfter30DayId || null,
+      status: "Active" as const,
+      courseTypeId,
+      courseGroupId,
 
-    const nextStandard: CourseStandardRecord = {
-      id:
-        selectedStandard?.id ||
-        `standard-${nextCourse.id}-${standardFunctionCode.toLowerCase()}`,
-      courseId: nextCourse.id,
-      courseCode: nextCourse.courseCode,
-      courseName: getCourseDisplayName(nextCourse),
-      functionCode: standardFunctionCode === allFunctionCode ? "" : standardFunctionCode,
-      functionName: standardFunctionName.trim(),
-      positions: selectedPositions,
-      levels: selectedLevels,
-      owner: nextCourse.owner,
-      ownerCompany: nextCourse.ownerCompany,
+      // course_standard.standard_code has no documented format (Data Dictionary V6.2:
+      // required + unique, no generation rule) — this is only used the first time a
+      // standard is created for a given year; later courses in the same year reuse it.
+      standardCode: `STD-${standardYear}-G${courseGroupId}`,
+      standardName: getCourseDisplayName({ courseNameTh: form.courseNameTh.trim(), courseNameEn: form.courseNameEn.trim() }),
+      functionId:
+        standardFunctionCode === allFunctionCode
+          ? null
+          : functionOptions.find((option) => option.code === standardFunctionCode)?.id || null,
+      targetPositions: selectedPositions,
+      targetLevels: selectedLevels,
+      standardYear,
     };
-    const nextStandards = selectedStandard
-      ? standards.map((standard) =>
-          standard.id === selectedStandard.id ? nextStandard : standard,
-        )
-      : [nextStandard, ...standards];
 
-    saveCourses(nextCourses);
-    saveStandards(nextStandards);
-    setSelectedCourseId("");
-    setOpenDetailCourseId("");
-    setForm(emptyCourseForm);
-    resetStandardForm();
-    setIsEditing(false);
-    setIsNewOpen(false);
+    try {
+      if (selectedCourseId) {
+        await updateCourse(selectedCourseId, input);
+      } else {
+        await createCourse(input);
+      }
+
+      await handleRefresh();
+    } catch (error) {
+      console.error("Failed to save course", error);
+      alert("Failed to save course");
+    }
   };
 
   const renderCoursePanel = (title: string, stateLabel: string) => {
@@ -670,10 +684,10 @@ function CourseMaster() {
           <input
             value={form.courseCode}
             readOnly
-            placeholder="Generated after selecting a course group"
-            title="Generated automatically from the selected Course Group ID"
+            placeholder="Generated by the server when saved"
+            title="Assigned automatically by the server on save, from the selected Course Group's code"
           />
-          <small className={styles.fieldHint}>Generated automatically from the selected course group.</small>
+          <small className={styles.fieldHint}>Assigned by the server on save; not editable.</small>
         </label>
         <label>
           <span className={styles.fieldLabel}>Course Name (TH) <b>*</b></span>
@@ -787,14 +801,14 @@ function CourseMaster() {
             </option>
             {publishedPreTests.map((assessment) => (
               <option key={assessment.id} value={assessment.id}>
-                [{assessment.code}] {assessment.name}
+                [{assessment.code}] {assessment.name} ({assessment.assessmentType})
               </option>
             ))}
           </select>
           <small className={styles.catalogHint}>
             {selectedPreTest
-              ? `${selectedPreTest.questionCount} questions · Linked course: ${selectedPreTest.courseName}`
-              : `${publishedPreTests.length} published Pre Test option${publishedPreTests.length === 1 ? "" : "s"}`}
+              ? `${selectedPreTest.questionCount} questions`
+              : `${publishedPreTests.length} published assessment option${publishedPreTests.length === 1 ? "" : "s"}`}
           </small>
         </label>
         <label>
@@ -818,14 +832,14 @@ function CourseMaster() {
             </option>
             {publishedPostTests.map((assessment) => (
               <option key={assessment.id} value={assessment.id}>
-                [{assessment.code}] {assessment.name}
+                [{assessment.code}] {assessment.name} ({assessment.assessmentType})
               </option>
             ))}
           </select>
           <small className={styles.catalogHint}>
             {selectedPostTest
-              ? `${selectedPostTest.questionCount} questions · Linked course: ${selectedPostTest.courseName}`
-              : `${publishedPostTests.length} published Post Test option${publishedPostTests.length === 1 ? "" : "s"}`}
+              ? `${selectedPostTest.questionCount} questions`
+              : `${publishedPostTests.length} published assessment option${publishedPostTests.length === 1 ? "" : "s"}`}
           </small>
         </label>
         <label>
@@ -1039,10 +1053,10 @@ function CourseMaster() {
         <button className={styles.primaryButton} type="button" onClick={handleNew}>
           New
         </button>
-        <button className={styles.secondaryButton} type="button" onClick={handleEdit} disabled={!selectedCourse}>
+        <button className={styles.secondaryButton} type="button" onClick={handleEdit} disabled={!selectedCourse || isSelectedCourseLocked}>
           Edit
         </button>
-        <button className={styles.dangerButton} type="button" onClick={handleDelete} disabled={!selectedCourse}>
+        <button className={styles.dangerButton} type="button" onClick={handleDelete} disabled={!selectedCourse || isSelectedCourseLocked}>
           Delete
         </button>
         <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>
@@ -1118,6 +1132,7 @@ function CourseMaster() {
                           className={styles.detailButton}
                           type="button"
                           onClick={() => openCourseEditor(course)}
+                          disabled={usedCourseIds.has(course.id)}
                         >
                           Edit
                         </button>

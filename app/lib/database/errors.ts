@@ -80,6 +80,15 @@ export const withDatabaseErrorMapping = async <Result>(
   try {
     return await operation();
   } catch (error: unknown) {
-    throw translateDatabaseError(error) ?? error;
+    const translated = translateDatabaseError(error);
+    if (!translated) {
+      console.error("[DB Error] Unhandled database error:", error);
+    } else {
+      // Log raw error meta for FK/unique violations to identify which field failed
+      const rawMeta = (error as any)?.meta;
+      const rawCode = (error as any)?.code;
+      console.error(`[DB Error] Prisma ${rawCode}:`, rawMeta ?? error);
+    }
+    throw translated ?? error;
   }
 };

@@ -126,7 +126,7 @@ describe("Master Data workflow integration", () => {
     expect(standardSource).toContain("functionRows");
     expect(standardSource).toContain("positionRows");
     expect(standardSource).toContain("levelRows");
-    expect(standardSource).toContain("functionCode:");
+    expect(standardSource).toContain("functionId:");
   });
 
   it("matches survey targets by Function, Position, and Level", () => {

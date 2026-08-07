@@ -236,11 +236,16 @@ model course {
   created_at                                       DateTime
   updated_by                                       BigInt?
   updated_at                                       DateTime?
+  course_name_en                                   String?                  @db.NVarChar(255)
+  target_group                                     String?                  @db.NVarChar(Max)
+  methodology                                      String?                  @db.NVarChar(Max)
+  evaluation_form_after_30day_id                   BigInt?
   company                                          company?                 @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F014_course_company_id")
   course_group                                     course_group             @relation(fields: [course_group_id], references: [course_group_id], onUpdate: NoAction, map: "FK_V6F015_course_course_group_id")
   course_type                                      course_type              @relation(fields: [course_type_id], references: [course_type_id], onUpdate: NoAction, map: "FK_V6F016_course_course_type_id")
   user_account_course_created_byTouser_account     user_account             @relation("course_created_byTouser_account", fields: [created_by], references: [user_id], onUpdate: NoAction, map: "FK_V6F017_course_created_by")
-  evaluation_form                                  evaluation_form?         @relation(fields: [evaluation_form_id], references: [evaluation_form_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F018_course_evaluation_form_id")
+  evaluation_form                                  evaluation_form?         @relation("CourseEvaluationForm", fields: [evaluation_form_id], references: [evaluation_form_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F018_course_evaluation_form_id")
+  evaluation_form_after_30day                      evaluation_form?         @relation("CourseEvaluationFormAfter30Day", fields: [evaluation_form_after_30day_id], references: [evaluation_form_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_course_evaluation_form_after_30day_id")
   assessment_course_post_assessment_idToassessment assessment?              @relation("course_post_assessment_idToassessment", fields: [post_assessment_id], references: [assessment_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F019_course_post_assessment_id")
   assessment_course_pre_assessment_idToassessment  assessment?              @relation("course_pre_assessment_idToassessment", fields: [pre_assessment_id], references: [assessment_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F020_course_pre_assessment_id")
   user_account_course_updated_byTouser_account     user_account?            @relation("course_updated_byTouser_account", fields: [updated_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F021_course_updated_by")
@@ -292,8 +297,10 @@ model course_standard_course {
   standard_id                     BigInt
   course_id                       BigInt
   created_at                      DateTime
+  function_id                     BigInt?
   course                          course                            @relation(fields: [course_id], references: [course_id], onUpdate: NoAction, map: "FK_V6F025_course_standard_course_course_id")
   course_standard                 course_standard                   @relation(fields: [standard_id], references: [standard_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_V6F026_course_standard_course_standard_id")
+  organization_function           organization_function?            @relation(fields: [function_id], references: [function_id], onUpdate: NoAction, map: "FK_course_standard_course_function_id")
   course_standard_target_level    course_standard_target_level[]
   course_standard_target_position course_standard_target_position[]
   training_enrollment             training_enrollment[]
@@ -421,7 +428,8 @@ model evaluation_form {
   timing                String                  @db.NVarChar(30)
   respondent_type       String                  @db.NVarChar(20)
   is_anonymous          Boolean
-  course                course[]
+  course                course[]                @relation("CourseEvaluationForm")
+  course_after_30day    course[]                @relation("CourseEvaluationFormAfter30Day")
   company               company?                @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_evaluation_form_company_company_id")
   user_account          user_account            @relation(fields: [created_by], references: [user_id], onUpdate: NoAction, map: "FK_evaluation_form_user_account_created_by")
   evaluation_question   evaluation_question[]
@@ -509,6 +517,7 @@ model organization_function {
   function_name_en         String?                    @db.NVarChar(255)
   status                   String                     @db.NVarChar(20)
   company_function_mapping company_function_mapping[]
+  course_standard_course   course_standard_course[]
   employee                 employee[]
   training_need_request    training_need_request[]
   training_record_request  training_record_request[]

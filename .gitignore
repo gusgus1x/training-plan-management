@@ -51,7 +51,8 @@ PROJECT_CONTEXT.md
 CODEX_START_AUDIT.md
 INSTALL_TH.md
 README_PACKAGE.md
-
-.agents/
-
-/docs/
+.claude
+.agents
+progress.md
+findings.md
+task_plan.md

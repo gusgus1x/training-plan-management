@@ -29,10 +29,8 @@ describe("Course Master and Course Standard workspace", () => {
     expect(workspaceSource).toContain("standardFunctionCode");
     expect(workspaceSource).toContain("selectedPositions");
     expect(workspaceSource).toContain("selectedLevels");
-    expect(workspaceSource).toContain("const nextCourse:");
-    expect(workspaceSource).toContain("const nextStandard:");
-    expect(workspaceSource).toContain("saveCourses(nextCourses)");
-    expect(workspaceSource).toContain("saveStandards(nextStandards)");
+    expect(workspaceSource).toContain("await updateCourse(selectedCourseId, input)");
+    expect(workspaceSource).toContain("await createCourse(input)");
     expect(workspaceSource).not.toContain("Course Standard Records");
     expect(workspaceSource).toContain("Classification");
     expect(workspaceSource).toContain("Course Standard");
@@ -81,5 +79,18 @@ describe("Course Master and Course Standard workspace", () => {
     expect(workspaceSource).toContain('className={styles.standard_checkMark}');
     expect(workspaceSource).toContain('? "✓" : ""');
     expect(stylesSource).toContain("color: #168a47");
+  });
+
+  it("locks courses already used by OAP or Rolling plans", () => {
+    const workspaceSource = readSource(
+      "app/components/center_factory/TrainingCourseManagement/modules/CourseMasterWorkspace.tsx",
+    );
+
+    expect(workspaceSource).toContain("WorkflowOapPlan");
+    expect(workspaceSource).toContain("WorkflowRollingPlan");
+    expect(workspaceSource).toContain("usedCourseIds");
+    expect(workspaceSource).toContain("isSelectedCourseLocked");
+    expect(workspaceSource).toContain("disabled={!selectedCourse || isSelectedCourseLocked}");
+    expect(workspaceSource).toContain("disabled={usedCourseIds.has(course.id)}");
   });
 });
