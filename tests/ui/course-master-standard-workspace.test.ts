@@ -86,11 +86,11 @@ describe("Course Master and Course Standard workspace", () => {
       "app/components/center_factory/TrainingCourseManagement/modules/CourseMasterWorkspace.tsx",
     );
 
-    expect(workspaceSource).toContain("WorkflowOapPlan");
-    expect(workspaceSource).toContain("WorkflowRollingPlan");
-    expect(workspaceSource).toContain("usedCourseIds");
+    expect(workspaceSource).toContain("listOapPlans");
+    expect(workspaceSource).toContain("loadWorkflowRollingPlans");
+    expect(workspaceSource).toContain("usedCourseCodes");
     expect(workspaceSource).toContain("isSelectedCourseLocked");
     expect(workspaceSource).toContain("disabled={!selectedCourse || isSelectedCourseLocked}");
-    expect(workspaceSource).toContain("disabled={usedCourseIds.has(course.id)}");
+    expect(workspaceSource).toContain("disabled={usedCourseCodes.has(course.courseCode)}");
   });
 });

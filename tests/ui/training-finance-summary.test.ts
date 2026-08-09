@@ -4,10 +4,8 @@ import {
   buildFinanceSummary,
   type FinanceRollingPlan,
 } from "../../app/lib/trainingFinanceSummary";
-import type {
-  WorkflowAcceptance,
-  WorkflowCompletedCourse,
-} from "../../app/lib/trainingWorkflow";
+import type { WorkflowCompletedCourse } from "../../app/lib/trainingWorkflow";
+import type { EnrollmentRecord } from "../../app/lib/trainingEnrollment/types";
 
 const centerPlan: FinanceRollingPlan = {
   rollingId: "rolling-center-1",
@@ -129,23 +127,30 @@ describe("training finance summary", () => {
   });
 
   it("calculates a Factory share of a Center course from approved employees", () => {
-    const acceptances = [
+    const enrollments = [
       ["SNF-1", "SNF"],
       ["SNF-2", "SNF"],
       ["ATA-1", "ATA"],
     ].map(
-      ([id, company]): WorkflowAcceptance => ({
-        id,
-        name: id,
+      ([id, company], index): EnrollmentRecord => ({
+        id: `enrollment-${index}`,
+        planId: centerPlan.rollingId,
+        employeeId: `employee-${index}`,
+        employeeCode: id,
+        employeeName: id,
         company,
         department: "Production",
         position: "Operator",
         level: "L1",
-        legacyLabel: "-",
-        courseId: centerPlan.rollingId,
-        source: "Submitted by Factory",
+        source: "HRD_FACTORY",
         status: "Center Approved",
+        targetMatchStatus: "MATCHED",
+        levelMatchStatus: "NOT_REQUIRED",
         remark: "",
+        enrolledAt: "2026-08-01T00:00:00.000Z",
+        approvedBy: "approver-1",
+        approvedAt: "2026-08-02T00:00:00.000Z",
+        attendance: null,
       }),
     );
     const rows = buildFactoryCenterFunding({
@@ -158,7 +163,7 @@ describe("training finance summary", () => {
           date: "2026-09-02",
         },
       ],
-      acceptances,
+      enrollments,
       companyCode: "SNF",
       year: "2026",
       month: "08",

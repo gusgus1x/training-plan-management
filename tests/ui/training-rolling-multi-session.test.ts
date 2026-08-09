@@ -15,17 +15,18 @@ describe("Training Rolling multi-session workflow", () => {
     expect(rollingSource).toContain("const addSession");
     expect(rollingSource).toContain("const removeSession");
     expect(rollingSource).toContain("form.sessions.map");
-    expect(rollingSource).toContain("nextSessionPlans");
+    expect(rollingSource).toContain("for (const session of form.sessions)");
     expect(rollingSource).toContain("Add session");
   });
 
-  it("stores a multi-company scope selected with checkboxes", () => {
-    expect(rollingSource).toContain("relatedCompanies?: string[]");
-    expect(rollingSource).toContain("const toggleCompany");
-    expect(rollingSource).toContain("const toggleAllCompanies");
-    expect(rollingSource).toContain('type="checkbox"');
+  it("inherits company scope from the selected OAP instead of a company checklist", () => {
+    expect(rollingSource).not.toContain('type="checkbox"');
+    expect(rollingSource).not.toContain("relatedCompanies: [");
     expect(rollingSource).toContain("getRollingPlanCompanies");
     expect(rollingSource).toContain("formatRollingPlanCompanies");
+    expect(rollingSource).toContain(
+      'value={selectedOap ? (selectedOap.owner === "CENTER" ? "All Companies" : selectedOap.ownerCompany) : ""}',
+    );
   });
 
   it("groups repeated course data into one row with nested sessions", () => {
@@ -33,33 +34,29 @@ describe("Training Rolling multi-session workflow", () => {
     expect(rollingSource).toContain("scheduleGroupId");
     expect(rollingSource).toContain("Session schedule");
     expect(rollingSource).toContain("handleConfirmGroup");
-    expect(rollingSource).toContain("handleDeleteGroup");
-    expect(rollingSource).toContain("handleEditGroup");
     expect(rollingSource).toContain("Publish all");
   });
 
-  it("places group edit and delete actions beside New", () => {
+  it("edits, publishes, and deletes each session independently instead of as a group", () => {
     expect(rollingSource).toContain("selectedGroupId");
     expect(rollingSource).toContain("selected-rolling-group");
-    expect(rollingSource).toContain(
-      "selectedGroup && handleEditGroup(selectedGroup.plans)",
-    );
-    expect(rollingSource).toContain(
-      "handleDeleteGroup(selectedGroup.id, selectedGroup.plans)",
-    );
+    expect(rollingSource).toContain("const handleEditSession");
+    expect(rollingSource).toContain("onClick={() => handleEditSession(session)}");
+    expect(rollingSource).toContain("onClick={() => void handleConfirm(session.rollingId)}");
+    expect(rollingSource).toContain("onClick={() => void handleDelete(session.rollingId)}");
+    expect(rollingSource).not.toContain("handleEditGroup");
+    expect(rollingSource).not.toContain("handleDeleteGroup");
     expect(rollingSource).not.toContain("Delete all");
   });
 
-  it("starts with an all-year view and requires a course before monthly entry", () => {
+  it("starts with an all-year view and requires an OAP before monthly entry", () => {
     expect(rollingSource).toContain('useState("all")');
     expect(rollingSource).toContain('<option value="all">All Year</option>');
     expect(rollingSource).toContain('selectedMonth === "all" ||');
     expect(rollingSource).toContain(
       '<option value="">Select course first</option>',
     );
-    expect(rollingSource).toContain(
-      "disabled={!selectedOap || form.relatedCompanies.length === 0}",
-    );
+    expect(rollingSource).toContain('disabled={!selectedOap}');
   });
 
   it("uses related companies in employee and acceptance workflows", () => {
@@ -91,7 +88,7 @@ describe("Training Rolling multi-session workflow", () => {
     expect(surveySource).toContain("Training Session");
     expect(surveySource).toContain("session.id");
     expect(surveySource).toContain(
-      "candidate.courseId === selectedCourse.id",
+      "listEnrollments({ planId: selectedCourse.id, employeeId: null })",
     );
     expect(surveySource).toContain("selectedCourse?.companies");
   });

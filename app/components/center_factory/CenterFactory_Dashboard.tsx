@@ -1,19 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  TRAINING_WORKFLOW_EVENT,
-  TRAINING_WORKFLOW_KEYS,
-  isWorkflowOwner,
-  readWorkflowCollection,
-} from "../../lib/trainingWorkflow";
+import { isWorkflowOwner } from "../../lib/trainingWorkflow";
 import DashboardLayout from "../DashboardLayout";
 import {
   buildProfileItems,
   profileValue,
   useAuthenticatedUser,
 } from "../AuthenticatedUserContext";
-import type { RollingPlan } from "./TrainingPlanManagement/modules/TrainingRolling";
+import { loadWorkflowRollingPlans, type RollingPlan } from "./TrainingPlanManagement/modules/TrainingRolling";
 import {
   buildCalendarYearOptions,
   getCurrentCalendarDate,
@@ -140,27 +135,18 @@ export default function Dashboard({
     calendarToday.month,
   );
   const [isMonthListOpen, setIsMonthListOpen] = useState(false);
-  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>(() =>
-    readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
-  );
+  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
 
   useEffect(() => {
-    const syncRollingPlans = () => {
-      setRollingPlans(
-        readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
-      );
-    };
-
-    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncRollingPlans);
-    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncRollingPlans);
+    void loadWorkflowRollingPlans().then(setRollingPlans);
   }, []);
 
   const scopedRollingPlans = useMemo(
     () =>
       rollingPlans.filter((plan) =>
         isWorkflowOwner(
-          plan.ownerScope ?? (plan.provider === "HRD Center" ? "CENTER" : "FACTORY"),
-          plan.ownerCompany ?? plan.company,
+          plan.ownerScope,
+          plan.ownerCompany,
           authenticatedUser?.roleCode,
           userCompanyCode,
         ),

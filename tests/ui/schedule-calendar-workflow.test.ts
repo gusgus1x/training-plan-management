@@ -12,7 +12,7 @@ const scheduleSource = readFileSync(
 
 describe("Schedule Calendar workflow", () => {
   it("uses real Rolling data without hiding weekend schedules or adding mocks", () => {
-    expect(scheduleSource).toContain("TRAINING_WORKFLOW_KEYS.rollingPlans");
+    expect(scheduleSource).toContain("loadWorkflowRollingPlans");
     expect(scheduleSource).not.toContain("createMockRollingPlans");
     expect(scheduleSource).not.toContain("isWeekendDate");
   });

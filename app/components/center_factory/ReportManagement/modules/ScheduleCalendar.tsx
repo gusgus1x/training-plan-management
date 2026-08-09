@@ -3,16 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   formatRollingPlanCompanies,
+  loadWorkflowRollingPlans,
   monthOptions,
   type RollingPlan,
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
-import {
-  TRAINING_WORKFLOW_EVENT,
-  TRAINING_WORKFLOW_KEYS,
-  isWorkflowOwner,
-  readWorkflowCollection,
-  writeWorkflowCollection,
-} from "../../../../lib/trainingWorkflow";
+import { updateRollingPlan } from "../../../../lib/trainingRolling/client";
+import { isWorkflowOwner } from "../../../../lib/trainingWorkflow";
 import {
   buildCalendarYearOptions,
   getCurrentCalendarDate,
@@ -63,17 +59,15 @@ const buildCalendarCells = (year: string, month: string, plans: RollingPlan[]) =
 
 type ScheduleEditForm = Pick<
   RollingPlan,
-  "batch" | "company" | "endTime" | "location" | "startTime" | "status" | "trainer" | "trainingDate"
+  "batch" | "endTime" | "location" | "startTime" | "status" | "trainingDate"
 >;
 
 const buildEditForm = (plan: RollingPlan): ScheduleEditForm => ({
   batch: plan.batch,
-  company: plan.company,
   endTime: plan.endTime,
   location: plan.location,
   startTime: plan.startTime,
   status: plan.status,
-  trainer: plan.trainer,
   trainingDate: plan.trainingDate,
 });
 
@@ -94,16 +88,12 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const userCompanyCode = profileValue(user?.companyCode);
 
-  useEffect(() => {
-    const syncRollingPlans = () => {
-      setRollingPlans(
-        readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
-      );
-    };
+  const loadWorkspace = async () => {
+    setRollingPlans(await loadWorkflowRollingPlans());
+  };
 
-    syncRollingPlans();
-    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncRollingPlans);
-    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncRollingPlans);
+  useEffect(() => {
+    void loadWorkspace();
   }, []);
 
   const schedulePlans = useMemo(
@@ -111,8 +101,8 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
       rollingPlans
         .filter((plan) =>
           isWorkflowOwner(
-            plan.ownerScope ?? (plan.owner === "admin.hrd" ? "CENTER" : "FACTORY"),
-            plan.ownerCompany ?? plan.company,
+            plan.ownerScope,
+            plan.ownerCompany,
             user?.roleCode,
             userCompanyCode,
           ),
@@ -264,17 +254,26 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
     setEditForm((current) => (current ? { ...current, [field]: value } : current));
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingPlanId || !editForm) return;
 
-    const nextPlans = rollingPlans.map((plan) =>
-      plan.rollingId === editingPlanId ? { ...plan, ...editForm } : plan,
-    );
-    setRollingPlans(nextPlans);
-    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.rollingPlans, nextPlans);
-    setSelectedMonth(editForm.trainingDate.slice(5, 7));
-    setEditingPlanId("");
-    setEditForm(null);
+    try {
+      await updateRollingPlan(editingPlanId, {
+        batchName: editForm.batch,
+        venue: editForm.location,
+        trainingDate: editForm.trainingDate,
+        startTime: editForm.startTime,
+        endTime: editForm.endTime,
+        status: editForm.status,
+      });
+      await loadWorkspace();
+      setSelectedMonth(editForm.trainingDate.slice(5, 7));
+      setEditingPlanId("");
+      setEditForm(null);
+    } catch (error) {
+      console.error("Failed to save training schedule", error);
+      alert("Failed to save training schedule");
+    }
   };
 
   const handleCancelEdit = () => {
@@ -376,20 +375,6 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
                 />
               </label>
               <label>
-                Company
-                <input
-                  value={editForm.company}
-                  onChange={(event) => updateEditForm("company", event.target.value)}
-                />
-              </label>
-              <label>
-                Trainer
-                <input
-                  value={editForm.trainer}
-                  onChange={(event) => updateEditForm("trainer", event.target.value)}
-                />
-              </label>
-              <label>
                 Batch
                 <input
                   value={editForm.batch}
@@ -408,7 +393,7 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
                   <option>Planned</option>
                 </select>
               </label>
-              <button className={styles.saveEditButton} type="button" onClick={handleSaveEdit}>
+              <button className={styles.saveEditButton} type="button" onClick={() => void handleSaveEdit()}>
                 Save changes
               </button>
             </div>

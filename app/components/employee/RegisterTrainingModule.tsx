@@ -1,20 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  TRAINING_WORKFLOW_EVENT,
-  TRAINING_WORKFLOW_KEYS,
-  readWorkflowCollection,
-  writeWorkflowCollection,
-  type WorkflowRegistration,
-} from "../../lib/trainingWorkflow";
 import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext";
 import {
   getRollingPlanCompanies,
+  loadWorkflowRollingPlans,
   type RollingPlan,
 } from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
+import { createEnrollment, listEnrollments, updateEnrollmentStatus } from "../../lib/trainingEnrollment/client";
+import type { EnrollmentRecord } from "../../lib/trainingEnrollment/types";
 import ModuleHeader from "./ModuleHeader";
 import styles from "./UserDashboard.module.css";
+
+const ACTIVE_ENROLLMENT_STATUSES = ["Pending Approval", "Factory Approved", "Center Approved"] as const;
 
 const detailSections = [
   {
@@ -55,6 +53,7 @@ const detailSections = [
 
 type AvailableCourse = {
   rollingId: string;
+  enrollmentId: string | null;
   id: string;
   title: string;
   category: string;
@@ -95,33 +94,34 @@ const courseOwnerGroups = [
 
 export default function RegisterTrainingModule() {
   const user = useAuthenticatedUser();
-  const employeeCode = profileValue(user?.employeeCode);
-  const employeeName = profileValue(user?.displayName ?? user?.username);
   const employeeCompany = profileValue(user?.companyCode);
-  const department = profileValue(user?.functionName);
-  const position = profileValue(user?.positionName);
-  const level = profileValue(user?.levelName);
+  const employeeId = user?.employeeId ?? null;
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
-  const [registrations, setRegistrations] = useState<WorkflowRegistration[]>([]);
+  const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const syncWorkflow = () => {
-      setRollingPlans(
-        readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
-      );
-      setRegistrations(
-        readWorkflowCollection<WorkflowRegistration>(
-          TRAINING_WORKFLOW_KEYS.registrations,
-        ),
-      );
-    };
-
-    syncWorkflow();
-    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflow);
-    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflow);
+    void loadWorkflowRollingPlans().then(setRollingPlans);
   }, []);
+
+  const loadEnrollments = async () => {
+    if (!employeeId) {
+      setEnrollments([]);
+      return;
+    }
+    try {
+      const result = await listEnrollments({ planId: null, employeeId });
+      setEnrollments(result.enrollments || []);
+    } catch (error) {
+      console.error("Failed to load my registrations", error);
+      setEnrollments([]);
+    }
+  };
+
+  useEffect(() => {
+    void loadEnrollments();
+  }, [employeeId]);
 
   const availableCourses = useMemo<AvailableCourse[]>(
     () =>
@@ -134,14 +134,16 @@ export default function RegisterTrainingModule() {
         .sort((a, b) => a.trainingDate.localeCompare(b.trainingDate))
         .map((plan) => {
           const courseOwner = plan.ownerScope === "CENTER" ? "Center" : "Factory";
-          const isRegistered = registrations.some(
-            (registration) =>
-              registration.rollingId === plan.rollingId &&
-              registration.employeeCode === employeeCode,
+          const activeEnrollment = enrollments.find(
+            (enrollment) =>
+              enrollment.planId === plan.rollingId &&
+              (ACTIVE_ENROLLMENT_STATUSES as readonly string[]).includes(enrollment.status),
           );
+          const isRegistered = Boolean(activeEnrollment);
 
           return {
             rollingId: plan.rollingId,
+            enrollmentId: activeEnrollment?.id ?? null,
             id: plan.course.code,
             title: plan.course.name,
             category: plan.course.courseGroup,
@@ -180,42 +182,28 @@ export default function RegisterTrainingModule() {
                 : "Managed by Factory HRD.",
           };
         }),
-    [employeeCode, employeeCompany, registrations, rollingPlans],
+    [employeeCompany, enrollments, rollingPlans],
   );
 
-  const handleRegistration = (course: AvailableCourse) => {
-    const existing = registrations.find(
-      (registration) =>
-        registration.rollingId === course.rollingId &&
-        registration.employeeCode === employeeCode,
-    );
-    const nextRegistrations = existing
-      ? registrations.filter((registration) => registration.id !== existing.id)
-      : [
-          {
-            id: `registration-${course.rollingId}-${employeeCode}`,
-            rollingId: course.rollingId,
-            employeeCode,
-            employeeName,
-            company: employeeCompany,
-            department,
-            position,
-            level,
-            registeredAt: new Date().toISOString(),
-          },
-          ...registrations,
-        ];
+  const handleRegistration = async (course: AvailableCourse) => {
+    if (!employeeId) return;
 
-    setRegistrations(nextRegistrations);
-    writeWorkflowCollection(
-      TRAINING_WORKFLOW_KEYS.registrations,
-      nextRegistrations,
-    );
-    setMessage(
-      existing
-        ? `Registration cancelled for ${course.title}.`
-        : `Registered for ${course.title}.`,
-    );
+    try {
+      if (course.enrollmentId) {
+        await updateEnrollmentStatus(course.enrollmentId, { action: "cancel" });
+      } else {
+        await createEnrollment({ planId: course.rollingId, employeeId, source: "EMPLOYEE" });
+      }
+      await loadEnrollments();
+      setMessage(
+        course.enrollmentId
+          ? `Registration cancelled for ${course.title}.`
+          : `Registered for ${course.title}.`,
+      );
+    } catch (error) {
+      console.error("Failed to update registration", error);
+      setMessage("Failed to update registration. Please try again.");
+    }
   };
 
   return (
@@ -289,7 +277,7 @@ export default function RegisterTrainingModule() {
                         >
                           {isExpanded ? "Hide detail" : "Show detail"}
                         </button>
-                        <button type="button" onClick={() => handleRegistration(course)}>
+                        <button type="button" onClick={() => void handleRegistration(course)}>
                           {isRegistered ? "Cancel registration" : "Register"}
                         </button>
                       </div>

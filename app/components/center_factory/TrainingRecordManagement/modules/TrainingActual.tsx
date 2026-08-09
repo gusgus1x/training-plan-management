@@ -2,19 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  TRAINING_WORKFLOW_EVENT,
   TRAINING_WORKFLOW_KEYS,
   readWorkflowCollection,
   writeWorkflowCollection,
-  type WorkflowAcceptance,
   type WorkflowCompletedCourse,
 } from "../../../../lib/trainingWorkflow";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import {
   formatRollingPlanCompanies,
   getRollingPlanCompanies,
+  loadWorkflowRollingPlans,
   type RollingPlan,
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
+import { listEnrollments, setEnrollmentAttendance } from "../../../../lib/trainingEnrollment/client";
+import type { EnrollmentRecord } from "../../../../lib/trainingEnrollment/types";
 import styles from "./TrainingRecord.module.css";
 
 export const trainingActualModule = {
@@ -44,7 +45,7 @@ type Attendee = {
 
 type ActualCourse = {
   id: string;
-  groupId?: string;
+  groupId: string;
   code: string;
   title: string;
   date: string;
@@ -59,8 +60,6 @@ type ActualCourse = {
   ownerCompany?: string;
   instructor: string;
   hours?: string;
-  attendees: Attendee[];
-  expenses: Record<ExpenseKey, string>;
 };
 
 type ActualCourseGroup = {
@@ -83,127 +82,14 @@ const expenseFields: Array<{ key: ExpenseKey; label: string }> = [
   { key: "foodBeverage", label: "Food & Beverage" },
 ];
 
-const initialCourses: ActualCourse[] = [
-  {
-    id: "course-001",
-    code: "SAFE-2026-08",
-    title: "Safety & Compliance Basics",
-    date: "2026-08-21",
-    time: "10:00 - 12:00",
-    room: "Auditorium",
-    company: "SNF",
-    owner: "FACTORY",
-    instructor: "Safety Team",
-    attendees: [
-      {
-        id: "att-001",
-        employeeCode: "HRD-001",
-        name: "Narin Chaiya",
-        department: "Production",
-        registered: true,
-        attended: true,
-      },
-      {
-        id: "att-002",
-        employeeCode: "HRD-014",
-        name: "Maliwan S.",
-        department: "Quality",
-        registered: true,
-        attended: false,
-      },
-      {
-        id: "att-003",
-        employeeCode: "SNF-5621",
-        name: "Kittipong R.",
-        department: "Maintenance",
-        registered: false,
-        attended: true,
-      },
-    ],
-    expenses: {
-      instructor: "12000",
-      traveling: "1800",
-      seminarRoom: "3500",
-      accommodation: "0",
-      material: "2400",
-      foodBeverage: "4200",
-    },
-  },
-  {
-    id: "course-002",
-    code: "PDPA-2026-07",
-    title: "Data Privacy Awareness",
-    date: "2026-07-15",
-    time: "09:30 - 11:30",
-    room: "Online",
-    company: "All Companies",
-    owner: "CENTER",
-    instructor: "IT Governance",
-    attendees: [
-      {
-        id: "att-004",
-        employeeCode: "HRD-003",
-        name: "Suda K.",
-        department: "Human Resources",
-        registered: true,
-        attended: true,
-      },
-      {
-        id: "att-005",
-        employeeCode: "HRD-019",
-        name: "Anucha P.",
-        department: "IT",
-        registered: true,
-        attended: true,
-      },
-    ],
-    expenses: {
-      instructor: "8500",
-      traveling: "0",
-      seminarRoom: "0",
-      accommodation: "0",
-      material: "1200",
-      foodBeverage: "0",
-    },
-  },
-  {
-    id: "course-003",
-    code: "SERV-2026-09",
-    title: "Service Mind for Frontline",
-    date: "2026-09-08",
-    time: "09:00 - 16:00",
-    room: "Training Room B",
-    company: "ATFB",
-    owner: "FACTORY",
-    instructor: "Maliwan P.",
-    attendees: [
-      {
-        id: "att-006",
-        employeeCode: "HRD-028",
-        name: "Pimchanok T.",
-        department: "Sales",
-        registered: true,
-        attended: false,
-      },
-      {
-        id: "att-007",
-        employeeCode: "HRD-033",
-        name: "Thanawat M.",
-        department: "Customer Service",
-        registered: false,
-        attended: true,
-      },
-    ],
-    expenses: {
-      instructor: "15000",
-      traveling: "2500",
-      seminarRoom: "5000",
-      accommodation: "3800",
-      material: "3100",
-      foodBeverage: "6400",
-    },
-  },
-];
+const emptyExpenses: Record<ExpenseKey, string> = {
+  instructor: "",
+  traveling: "",
+  seminarRoom: "",
+  accommodation: "",
+  material: "",
+  foodBeverage: "",
+};
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("en-US", {
@@ -220,88 +106,41 @@ export default function TrainingActual() {
   const [savedMessage, setSavedMessage] = useState("");
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
   const userCompanyCode = profileValue(user?.companyCode);
+  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
+  const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
+  const [expenses, setExpenses] = useState<Record<ExpenseKey, string>>(emptyExpenses);
 
   useEffect(() => {
-    const syncWorkflow = () => {
-      const acceptances = readWorkflowCollection<WorkflowAcceptance>(
-        TRAINING_WORKFLOW_KEYS.acceptances,
-      );
-      const nextCourses = readWorkflowCollection<RollingPlan>(
-        TRAINING_WORKFLOW_KEYS.rollingPlans,
-      )
-        .filter((plan) => plan.status === "Planned")
-        .map<ActualCourse>((plan) => ({
-          id: plan.rollingId,
-          groupId:
-            plan.scheduleGroupId ??
-            `legacy-${plan.id}-${plan.course.code}-${getRollingPlanCompanies(plan).join("-")}`,
-          code: plan.course.code,
-          title: plan.course.name,
-          date: plan.trainingDate,
-          batch: plan.batch,
-          startTime: plan.startTime,
-          endTime: plan.endTime,
-          time: `${plan.startTime} - ${plan.endTime}`,
-          room: plan.location,
-          company: formatRollingPlanCompanies(plan),
-          relatedCompanies: getRollingPlanCompanies(plan),
-          owner: plan.ownerScope === "CENTER" ? "CENTER" : "FACTORY",
-          ownerCompany:
-            plan.ownerScope === "CENTER"
-              ? "HRD Center"
-              : plan.ownerCompany ?? plan.company,
-          instructor: plan.trainer,
-          hours: plan.hours,
-          attendees: acceptances
-            .filter(
-              (acceptance) =>
-                acceptance.courseId === plan.rollingId &&
-                (plan.ownerScope === "CENTER"
-                  ? acceptance.status === "Center Approved"
-                  : acceptance.status === "Factory Approved"),
-            )
-            .map((acceptance) => ({
-              id: `${plan.rollingId}-${acceptance.id}`,
-              employeeCode: acceptance.id,
-              name: acceptance.name,
-              department: acceptance.department,
-              company: acceptance.company,
-              registered: true,
-              attended: false,
-            })),
-          expenses: {
-            instructor: "",
-            traveling: "",
-            seminarRoom: "",
-            accommodation: "",
-            material: "",
-            foodBeverage: "",
-          },
-        }));
-
-      setCourses((current) =>
-        nextCourses.map((nextCourse) => {
-          const existing = current.find((course) => course.id === nextCourse.id);
-          return existing
-            ? {
-                ...nextCourse,
-                attendees: nextCourse.attendees.map((nextAttendee) => {
-                  const existingAttendee = existing.attendees.find(
-                    (attendee) => attendee.id === nextAttendee.id,
-                  );
-                  return existingAttendee ?? nextAttendee;
-                }),
-                expenses: existing.expenses,
-              }
-            : nextCourse;
-        }),
-      );
-    };
-
-    syncWorkflow();
-    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflow);
-    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflow);
+    void loadWorkflowRollingPlans().then(setRollingPlans);
   }, []);
+
+  useEffect(() => {
+    const nextCourses = rollingPlans
+      .filter((plan) => plan.status === "Planned")
+      .map<ActualCourse>((plan) => ({
+        id: plan.rollingId,
+        groupId: plan.scheduleGroupId,
+        code: plan.course.code,
+        title: plan.course.name,
+        date: plan.trainingDate,
+        batch: plan.batch,
+        startTime: plan.startTime,
+        endTime: plan.endTime,
+        time: `${plan.startTime} - ${plan.endTime}`,
+        room: plan.location,
+        company: formatRollingPlanCompanies(plan),
+        relatedCompanies: getRollingPlanCompanies(plan),
+        owner: plan.ownerScope === "CENTER" ? "CENTER" : "FACTORY",
+        ownerCompany:
+          plan.ownerScope === "CENTER"
+            ? "HRD Center"
+            : plan.ownerCompany ?? plan.company,
+        instructor: plan.trainer,
+        hours: plan.hours,
+      }));
+
+    setCourses(nextCourses);
+  }, [rollingPlans]);
   const availableCourses = useMemo(
     () =>
       isFactoryUser
@@ -325,10 +164,7 @@ export default function TrainingActual() {
     const groups = new Map<string, ActualCourse[]>();
 
     ownerFilteredCourses.forEach((course) => {
-      const groupId =
-        course.groupId ??
-        `legacy-${course.code}-${course.owner}-${course.relatedCompanies?.join("-") ?? course.company}`;
-      groups.set(groupId, [...(groups.get(groupId) ?? []), course]);
+      groups.set(course.groupId, [...(groups.get(course.groupId) ?? []), course]);
     });
 
     return [...groups.entries()].map(([id, sessions]) => {
@@ -355,51 +191,79 @@ export default function TrainingActual() {
   const selectedCourse =
     availableSessions.find((course) => course.id === selectedCourseId) ?? null;
 
-  const actualCount = selectedCourse
-    ? selectedCourse.attendees.filter((attendee) => attendee.attended).length
-    : 0;
-  const walkInCount = selectedCourse
-    ? selectedCourse.attendees.filter((attendee) => attendee.attended && !attendee.registered).length
-    : 0;
-  const registeredCount = selectedCourse
-    ? selectedCourse.attendees.filter((attendee) => attendee.registered).length
-    : 0;
-  const absentCount = selectedCourse ? selectedCourse.attendees.length - actualCount : 0;
-  const expenseTotal = selectedCourse
-    ? expenseFields.reduce(
-        (total, field) =>
-          total + Number(selectedCourse.expenses[field.key] || 0),
-        0,
-      )
-    : 0;
-
-  const updateSelectedCourse = (updater: (course: ActualCourse) => ActualCourse) => {
+  useEffect(() => {
     if (!selectedCourse) {
+      setEnrollments([]);
       return;
     }
+    let active = true;
+    listEnrollments({ planId: selectedCourse.id, employeeId: null })
+      .then((result) => {
+        if (active) setEnrollments(result.enrollments || []);
+      })
+      .catch((error) => {
+        console.error("Failed to load attendees", error);
+        if (active) setEnrollments([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedCourse?.id]);
 
-    setCourses((current) =>
-      current.map((course) => (course.id === selectedCourse.id ? updater(course) : course)),
-    );
+  useEffect(() => {
+    setExpenses(emptyExpenses);
+    setSavedMessage("");
+  }, [selectedCourse?.id]);
+
+  const attendees: Attendee[] = selectedCourse
+    ? enrollments
+        .filter((candidate) =>
+          selectedCourse.owner === "CENTER"
+            ? candidate.status === "Center Approved"
+            : candidate.status === "Factory Approved",
+        )
+        .map((candidate) => ({
+          id: candidate.id,
+          employeeCode: candidate.employeeCode,
+          name: candidate.employeeName,
+          department: candidate.department,
+          company: candidate.company,
+          registered: true,
+          attended: candidate.attendance !== null,
+        }))
+    : [];
+
+  const actualCount = attendees.filter((attendee) => attendee.attended).length;
+  const walkInCount = attendees.filter((attendee) => attendee.attended && !attendee.registered).length;
+  const registeredCount = attendees.filter((attendee) => attendee.registered).length;
+  const absentCount = attendees.length - actualCount;
+  const expenseTotal = expenseFields.reduce(
+    (total, field) => total + Number(expenses[field.key] || 0),
+    0,
+  );
+
+  const reloadEnrollments = async () => {
+    if (!selectedCourse) return;
+    try {
+      const result = await listEnrollments({ planId: selectedCourse.id, employeeId: null });
+      setEnrollments(result.enrollments || []);
+    } catch (error) {
+      console.error("Failed to reload attendees", error);
+    }
   };
 
-  const toggleAttendance = (attendeeId: string) => {
-    updateSelectedCourse((course) => ({
-      ...course,
-      attendees: course.attendees.map((attendee) =>
-        attendee.id === attendeeId ? { ...attendee, attended: !attendee.attended } : attendee,
-      ),
-    }));
+  const toggleAttendance = async (enrollmentId: string, attended: boolean) => {
+    try {
+      await setEnrollmentAttendance(enrollmentId, { attended: !attended });
+      await reloadEnrollments();
+    } catch (error) {
+      console.error("Failed to update attendance", error);
+      setSavedMessage("Failed to update attendance.");
+    }
   };
 
   const updateExpense = (key: ExpenseKey, value: string) => {
-    updateSelectedCourse((course) => ({
-      ...course,
-      expenses: {
-        ...course.expenses,
-        [key]: value,
-      },
-    }));
+    setExpenses((current) => ({ ...current, [key]: value }));
   };
 
   const handleSave = () => {
@@ -435,17 +299,17 @@ export default function TrainingActual() {
       room: selectedCourse.room,
       instructor: selectedCourse.instructor,
       hours: Number(selectedCourse.hours || 0),
-      attendees: selectedCourse.attendees.map((attendee) => ({
+      attendees: attendees.map((attendee) => ({
         ...attendee,
         company: attendee.company ?? selectedCourse.company,
       })),
       expenses: {
-        accommodation: Number(selectedCourse.expenses.accommodation || 0),
-        foodBeverage: Number(selectedCourse.expenses.foodBeverage || 0),
-        instructor: Number(selectedCourse.expenses.instructor || 0),
-        material: Number(selectedCourse.expenses.material || 0),
-        seminarRoom: Number(selectedCourse.expenses.seminarRoom || 0),
-        traveling: Number(selectedCourse.expenses.traveling || 0),
+        accommodation: Number(expenses.accommodation || 0),
+        foodBeverage: Number(expenses.foodBeverage || 0),
+        instructor: Number(expenses.instructor || 0),
+        material: Number(expenses.material || 0),
+        seminarRoom: Number(expenses.seminarRoom || 0),
+        traveling: Number(expenses.traveling || 0),
       },
       savedAt: new Date().toISOString(),
     };
@@ -626,14 +490,14 @@ export default function TrainingActual() {
                 </tr>
               </thead>
               <tbody>
-                {selectedCourse.attendees.map((attendee) => (
+                {attendees.map((attendee) => (
                   <tr key={attendee.id}>
                     <td>
                       <label className={styles.attendanceCheck}>
                         <input
                           type="checkbox"
                           checked={attendee.attended}
-                          onChange={() => toggleAttendance(attendee.id)}
+                          onChange={() => void toggleAttendance(attendee.id, attendee.attended)}
                         />
                         <span>{attendee.attended ? "Attend" : "Absent"}</span>
                       </label>
@@ -670,7 +534,7 @@ export default function TrainingActual() {
                 {field.label}
                 <input
                   inputMode="decimal"
-                  value={selectedCourse.expenses[field.key]}
+                  value={expenses[field.key]}
                   onChange={(event) => updateExpense(field.key, event.target.value)}
                 />
               </label>

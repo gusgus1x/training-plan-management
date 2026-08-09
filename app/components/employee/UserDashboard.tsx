@@ -6,8 +6,9 @@ import {
   TRAINING_WORKFLOW_KEYS,
   readWorkflowCollection,
   type WorkflowCompletedCourse,
-  type WorkflowRegistration,
 } from "../../lib/trainingWorkflow";
+import { listEnrollments } from "../../lib/trainingEnrollment/client";
+import type { EnrollmentRecord } from "../../lib/trainingEnrollment/types";
 import {
   buildProfileItems,
   profileValue,
@@ -20,6 +21,7 @@ import {
 } from "./data";
 import {
   getRollingPlanCompanies,
+  loadWorkflowRollingPlans,
   type RollingPlan,
 } from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
 import RecordModule from "./RecordModule";
@@ -65,6 +67,8 @@ type CalendarTraining = {
   status: string;
 };
 
+const ACTIVE_ENROLLMENT_STATUSES: readonly string[] = ["Pending Approval", "Factory Approved", "Center Approved"];
+
 export default function UserDashboard({ username, onHome, onLogout }: UserDashboardProps) {
   const authenticatedUser = useAuthenticatedUser();
   const employeeProfile = buildProfileItems(authenticatedUser);
@@ -80,21 +84,31 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
   );
   const [isMonthListOpen, setIsMonthListOpen] = useState(false);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
-  const [registrations, setRegistrations] = useState<WorkflowRegistration[]>([]);
+  const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [completedCourses, setCompletedCourses] = useState<WorkflowCompletedCourse[]>([]);
   const employeeCode = profileValue(authenticatedUser?.employeeCode);
   const employeeCompany = profileValue(authenticatedUser?.companyCode);
+  const employeeId = authenticatedUser?.employeeId ?? null;
+
+  useEffect(() => {
+    void loadWorkflowRollingPlans().then(setRollingPlans);
+  }, []);
+
+  useEffect(() => {
+    if (!employeeId) {
+      setEnrollments([]);
+      return;
+    }
+    void listEnrollments({ planId: null, employeeId })
+      .then((result) => setEnrollments(result.enrollments || []))
+      .catch((error) => {
+        console.error("Failed to load my registrations", error);
+        setEnrollments([]);
+      });
+  }, [employeeId]);
 
   useEffect(() => {
     const syncWorkflow = () => {
-      setRollingPlans(
-        readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
-      );
-      setRegistrations(
-        readWorkflowCollection<WorkflowRegistration>(
-          TRAINING_WORKFLOW_KEYS.registrations,
-        ),
-      );
       setCompletedCourses(
         readWorkflowCollection<WorkflowCompletedCourse>(
           TRAINING_WORKFLOW_KEYS.completedCourses,
@@ -138,15 +152,15 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
         shortName: plan.course.code,
         time: `${plan.startTime} - ${plan.endTime}`,
         place: plan.location,
-        status: registrations.some(
-          (registration) =>
-            registration.rollingId === plan.rollingId &&
-            registration.employeeCode === employeeCode,
+        status: enrollments.some(
+          (enrollment) =>
+            enrollment.planId === plan.rollingId &&
+            ACTIVE_ENROLLMENT_STATUSES.includes(enrollment.status),
         )
           ? "Registered"
           : "Open registration",
       })),
-    [availableRollingPlans, employeeCode, registrations],
+    [availableRollingPlans, enrollments],
   );
   const calendarYears = useMemo(
     () =>

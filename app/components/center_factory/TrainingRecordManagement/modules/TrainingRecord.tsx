@@ -10,6 +10,7 @@ import {
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import {
   getRollingPlanCompanies,
+  loadWorkflowRollingPlans,
   type RollingPlan,
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
 import styles from "./TrainingRecord.module.css";
@@ -578,12 +579,14 @@ export default function TrainingRecord() {
   const [savedRecordRows, setSavedRecordRows] = useState<UploadedTrainingRecord[]>([]);
   const [importMessage, setImportMessage] = useState("");
   const [importFileName, setImportFileName] = useState("");
+  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
+
+  useEffect(() => {
+    void loadWorkflowRollingPlans().then(setRollingPlans);
+  }, []);
 
   useEffect(() => {
     const syncCompletedCourses = () => {
-      const rollingPlans = readWorkflowCollection<RollingPlan>(
-        TRAINING_WORKFLOW_KEYS.rollingPlans,
-      );
       const nextCourses = readWorkflowCollection<WorkflowCompletedCourse>(
         TRAINING_WORKFLOW_KEYS.completedCourses,
       ).map<CompletedCourse>((course) => {
@@ -652,7 +655,7 @@ export default function TrainingRecord() {
     window.addEventListener(TRAINING_WORKFLOW_EVENT, syncCompletedCourses);
     return () =>
       window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncCompletedCourses);
-  }, []);
+  }, [rollingPlans]);
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
   const userCompanyCode = profileValue(user?.companyCode);
   const importScopeLabel = isFactoryUser ? `${userCompanyCode} factory scope` : "Center scope";

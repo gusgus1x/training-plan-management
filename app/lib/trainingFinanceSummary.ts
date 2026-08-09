@@ -1,8 +1,8 @@
 import type {
-  WorkflowAcceptance,
   WorkflowCompletedCourse,
   WorkflowOwner,
 } from "./trainingWorkflow";
+import type { EnrollmentRecord } from "./trainingEnrollment/types";
 
 export type FinanceRollingPlan = {
   rollingId: string;
@@ -271,33 +271,29 @@ export const buildFinanceSummary = ({
 export const buildFactoryCenterFunding = ({
   rollingPlans,
   completedCourses,
-  acceptances,
+  enrollments,
   companyCode,
   year,
   month,
 }: {
   rollingPlans: FinanceRollingPlan[];
   completedCourses: WorkflowCompletedCourse[];
-  acceptances: WorkflowAcceptance[];
+  enrollments: EnrollmentRecord[];
   companyCode: string;
   year: string;
   month: string;
 }): FactoryCenterFundingRow[] => {
-  const submittedStatuses = new Set([
-    "Factory Submitted",
-    "Factory Approved",
-    "Center Approved",
-  ]);
+  const submittedStatuses = new Set(["Pending Approval", "Center Approved"]);
   const centerPlans = rollingPlans.filter(
     (plan) =>
       getPlanOwner(plan) === "CENTER" &&
       isInPeriod(plan.trainingDate, "", year, month) &&
       (getPlanCompanies(plan).includes(companyCode) ||
-        acceptances.some(
-          (acceptance) =>
-            acceptance.courseId === plan.rollingId &&
-            acceptance.company === companyCode &&
-            submittedStatuses.has(acceptance.status),
+        enrollments.some(
+          (enrollment) =>
+            enrollment.planId === plan.rollingId &&
+            enrollment.company === companyCode &&
+            submittedStatuses.has(enrollment.status),
         )),
   );
   const groups = new Map<string, FinanceRollingPlan[]>();
@@ -311,10 +307,10 @@ export const buildFactoryCenterFunding = ({
     .map(([groupId, plans]) => {
       const firstPlan = plans[0];
       const rollingIds = new Set(plans.map((plan) => plan.rollingId));
-      const groupAcceptances = acceptances.filter(
-        (acceptance) =>
-          rollingIds.has(acceptance.courseId) &&
-          submittedStatuses.has(acceptance.status),
+      const groupAcceptances = enrollments.filter(
+        (enrollment) =>
+          rollingIds.has(enrollment.planId) &&
+          submittedStatuses.has(enrollment.status),
       );
       const approvedAcceptances = groupAcceptances.filter(
         (acceptance) => acceptance.status === "Center Approved",

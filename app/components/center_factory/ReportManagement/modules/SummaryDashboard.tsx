@@ -5,7 +5,6 @@ import {
   TRAINING_WORKFLOW_EVENT,
   TRAINING_WORKFLOW_KEYS,
   readWorkflowCollection,
-  type WorkflowAcceptance,
   type WorkflowCompletedCourse,
 } from "../../../../lib/trainingWorkflow";
 import {
@@ -18,8 +17,11 @@ import {
 } from "../../../AuthenticatedUserContext";
 import {
   getRollingPlanCompanies,
+  loadWorkflowRollingPlans,
   type RollingPlan,
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
+import { listEnrollments } from "../../../../lib/trainingEnrollment/client";
+import type { EnrollmentRecord } from "../../../../lib/trainingEnrollment/types";
 import styles from "./SummaryDashboard.module.css";
 
 export const summaryDashboardModule = {
@@ -65,8 +67,7 @@ const getYear = (date: string, fallbackDate = "") => {
     : String(parsedDate.getFullYear());
 };
 
-const getRollingOwner = (plan: RollingPlan) =>
-  plan.ownerScope ?? (plan.owner === "admin.hrd" ? "CENTER" : "FACTORY");
+const getRollingOwner = (plan: RollingPlan) => plan.ownerScope;
 
 const statusLabel = {
   Planned: "Planned",
@@ -80,7 +81,7 @@ export default function SummaryDashboard() {
   const [completedCourses, setCompletedCourses] = useState<
     WorkflowCompletedCourse[]
   >([]);
-  const [acceptances, setAcceptances] = useState<WorkflowAcceptance[]>([]);
+  const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("all");
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
@@ -88,20 +89,20 @@ export default function SummaryDashboard() {
   const userCompanyCode = profileValue(user?.companyCode);
 
   useEffect(() => {
+    void loadWorkflowRollingPlans().then(setRollingPlans);
+    void listEnrollments({ planId: null, employeeId: null })
+      .then((result) => setEnrollments(result.enrollments || []))
+      .catch((error) => {
+        console.error("Failed to load enrollments", error);
+        setEnrollments([]);
+      });
+  }, []);
+
+  useEffect(() => {
     const syncDashboard = () => {
-      setRollingPlans(
-        readWorkflowCollection<RollingPlan>(
-          TRAINING_WORKFLOW_KEYS.rollingPlans,
-        ),
-      );
       setCompletedCourses(
         readWorkflowCollection<WorkflowCompletedCourse>(
           TRAINING_WORKFLOW_KEYS.completedCourses,
-        ),
-      );
-      setAcceptances(
-        readWorkflowCollection<WorkflowAcceptance>(
-          TRAINING_WORKFLOW_KEYS.acceptances,
         ),
       );
     };
@@ -124,17 +125,11 @@ export default function SummaryDashboard() {
           owner === "FACTORY" &&
           (plan.ownerCompany ?? plan.company) === userCompanyCode;
         const isRelatedCenterCourse =
-          owner === "CENTER" &&
-          (getRollingPlanCompanies(plan).includes(userCompanyCode) ||
-            acceptances.some(
-              (acceptance) =>
-                acceptance.courseId === plan.rollingId &&
-                acceptance.company === userCompanyCode,
-            ));
+          owner === "CENTER" && getRollingPlanCompanies(plan).includes(userCompanyCode);
 
         return ownsFactoryCourse || isRelatedCenterCourse;
       }),
-    [acceptances, isFactoryUser, rollingPlans, userCompanyCode],
+    [isFactoryUser, rollingPlans, userCompanyCode],
   );
 
   const relevantCompletedCourses = useMemo(
@@ -199,16 +194,16 @@ export default function SummaryDashboard() {
         ? buildFactoryCenterFunding({
             rollingPlans,
             completedCourses,
-            acceptances,
+            enrollments,
             companyCode: userCompanyCode,
             year: activeYear,
             month: selectedMonth,
           })
         : [],
     [
-      acceptances,
       activeYear,
       completedCourses,
+      enrollments,
       isFactoryUser,
       rollingPlans,
       selectedMonth,

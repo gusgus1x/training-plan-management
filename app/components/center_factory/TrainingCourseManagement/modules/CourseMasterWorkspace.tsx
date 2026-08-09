@@ -4,19 +4,18 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   TRAINING_MASTER_KEYS,
-  TRAINING_WORKFLOW_KEYS,
   getCourseDisplayName,
   getCourseSecondaryName,
   isWorkflowOwner,
   readMasterCollection,
-  readWorkflowCollection,
   type WorkflowCourse,
-  type WorkflowOapPlan,
   type WorkflowOwner,
-  type WorkflowRollingPlan,
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
 import { listCourses, createCourse, updateCourse, deleteCourse } from "../../../../lib/courses/client";
+import { listOapPlans } from "../../../../lib/trainingOap/client";
+import type { OapPlanRecord } from "../../../../lib/trainingOap/types";
+import { loadWorkflowRollingPlans, type RollingPlan } from "../../TrainingPlanManagement/modules/TrainingRolling";
 import { normalizeEmployeeLevel } from "../../../../lib/employeeMasterData";
 import { listAssessments } from "../../../../lib/assessments/client";
 import { listEvaluations } from "../../../../lib/evaluations/client";
@@ -146,12 +145,8 @@ function CourseMaster() {
   const [openDetailCourseId, setOpenDetailCourseId] = useState("");
   const [search, setSearch] = useState("");
   const [standards, setStandards] = useState<CourseStandardRecord[]>([]);
-  const [oapPlans, setOapPlans] = useState(() =>
-    readWorkflowCollection<WorkflowOapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans),
-  );
-  const [rollingPlans, setRollingPlans] = useState(() =>
-    readWorkflowCollection<WorkflowRollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
-  );
+  const [oapPlans, setOapPlans] = useState<OapPlanRecord[]>([]);
+  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [standardFunctionCode, setStandardFunctionCode] = useState(allFunctionCode);
   const [standardFunctionName, setStandardFunctionName] = useState(allFunctionOption);
 
@@ -181,6 +176,11 @@ function CourseMaster() {
     });
     void loadPublishedForms();
     return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    void listOapPlans({ search: null, status: null }).then((result) => setOapPlans(result.oapPlans || []));
+    void loadWorkflowRollingPlans().then(setRollingPlans);
   }, []);
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
@@ -259,15 +259,15 @@ function CourseMaster() {
         standard.courseId === selectedCourse?.id ||
         standard.courseCode === selectedCourse?.courseCode,
     ) ?? null;
-  const usedCourseIds = useMemo(
+  const usedCourseCodes = useMemo(
     () =>
       new Set([
-        ...oapPlans.map((plan) => plan.course.id),
-        ...rollingPlans.map((plan) => plan.course.id),
+        ...oapPlans.map((plan) => plan.course.courseCode),
+        ...rollingPlans.map((plan) => plan.course.code),
       ]),
     [oapPlans, rollingPlans],
   );
-  const isSelectedCourseLocked = selectedCourse ? usedCourseIds.has(selectedCourse.id) : false;
+  const isSelectedCourseLocked = selectedCourse ? usedCourseCodes.has(selectedCourse.courseCode) : false;
   const filteredCourses = useMemo(
     () =>
       scopedCourses.filter((course) =>
@@ -500,8 +500,8 @@ function CourseMaster() {
   };
 
   const handleRefresh = async () => {
-    setOapPlans(readWorkflowCollection<WorkflowOapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans));
-    setRollingPlans(readWorkflowCollection<WorkflowRollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans));
+    void listOapPlans({ search: null, status: null }).then((result) => setOapPlans(result.oapPlans || []));
+    void loadWorkflowRollingPlans().then(setRollingPlans);
     setPositionRows(readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows));
     setLevelRows(readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows));
     void loadPublishedForms();
@@ -1132,7 +1132,7 @@ function CourseMaster() {
                           className={styles.detailButton}
                           type="button"
                           onClick={() => openCourseEditor(course)}
-                          disabled={usedCourseIds.has(course.id)}
+                          disabled={usedCourseCodes.has(course.courseCode)}
                         >
                           Edit
                         </button>

@@ -11,7 +11,7 @@ import {
   type WorkflowStandard,
 } from "../../lib/trainingWorkflow";
 import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext";
-import type { RollingPlan } from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
+import { loadWorkflowRollingPlans, type RollingPlan } from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
 import ModuleHeader from "./ModuleHeader";
 import styles from "./UserDashboard.module.css";
 
@@ -73,6 +73,10 @@ export default function RoadmapModule() {
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
 
   useEffect(() => {
+    void loadWorkflowRollingPlans().then(setRollingPlans);
+  }, []);
+
+  useEffect(() => {
     const syncWorkflow = () => {
       setCourses(readWorkflowCollection<WorkflowCourse>(TRAINING_WORKFLOW_KEYS.courses));
       setStandards(
@@ -80,9 +84,6 @@ export default function RoadmapModule() {
       );
       setOapPlans(
         readWorkflowCollection<WorkflowOapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans),
-      );
-      setRollingPlans(
-        readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
       );
     };
 

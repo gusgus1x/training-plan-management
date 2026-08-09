@@ -34,9 +34,7 @@ describe("Report Management summary dashboard", () => {
     expect(dashboardSource).toContain(
       "TRAINING_WORKFLOW_KEYS.completedCourses",
     );
-    expect(dashboardSource).toContain(
-      "TRAINING_WORKFLOW_KEYS.rollingPlans",
-    );
+    expect(dashboardSource).toContain("loadWorkflowRollingPlans");
     expect(dashboardSource).toContain("TRAINING_WORKFLOW_EVENT");
     expect(financeSource).toContain(
       "attendees.filter((attendee) => attendee.attended)",
