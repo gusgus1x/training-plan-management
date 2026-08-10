@@ -349,18 +349,6 @@
   font-weight: 900;
 }
 
-.approvedRequestBanner p {
-  margin: 0;
-  color: var(--ui-30-text);
-  font-size: 0.8rem;
-  font-weight: 800;
-}
-
-.formActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-
 .formGrid label {
   grid-column: span 2;
 }

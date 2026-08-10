@@ -639,6 +639,7 @@
 
 .toolbar {
   border-bottom: 1px solid var(--ui-30-border);
+}
 @media (max-width: 760px) {
   .page,
   .moduleWorkspace {
