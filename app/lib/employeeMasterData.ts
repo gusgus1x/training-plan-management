@@ -38,10 +38,10 @@ const createEmployee = (
   sequence: number,
   values: Omit<EmployeeMasterRecord, "id" | "company" | "empCode" | "idCard">,
 ): EmployeeMasterRecord => ({
-  id: `emp-${company.toLowerCase()}-${String(sequence).padStart(3, "0")}`,
+  id: `emp-${String(sequence).padStart(4, "0")}`,
   company,
-  empCode: `${company}-${String(sequence).padStart(4, "0")}`,
-  idCard: `MOCK-${company}-${String(sequence).padStart(4, "0")}`,
+  empCode: String(sequence).padStart(4, "0"),
+  idCard: `1101700${String(sequence).padStart(6, "0")}`,
   department: values.department ?? "",
   ...values,
 });
@@ -374,7 +374,7 @@ export const getLevelRank = (levelKey: string): number => {
 };
 
 const EMPLOYEE_MASTER_SEED_VERSION_KEY = "tpm_master_employees_seed_version";
-const EMPLOYEE_MASTER_SEED_VERSION = "2026-08-10-full-position-levels-v5";
+const EMPLOYEE_MASTER_SEED_VERSION = "2026-08-10-numeric-employee-id-v6";
 
 export const readEmployeeMasterData = () => {
   if (typeof window === "undefined") {

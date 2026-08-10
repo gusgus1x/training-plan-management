@@ -30,7 +30,7 @@ const defaultRequests: EmployeeTrainingNeedRequest[] = [
   {
     id: "req-001",
     requestNo: "REQ-2026-001",
-    employeeCode: "SATI-5401",
+    employeeCode: "4301",
     employeeName: "Wipada Chaiporn",
     company: "SATI",
     functionName: "IT Promotion",
@@ -50,7 +50,7 @@ const defaultRequests: EmployeeTrainingNeedRequest[] = [
   {
     id: "req-002",
     requestNo: "REQ-2026-002",
-    employeeCode: "ATFB-3202",
+    employeeCode: "2102",
     employeeName: "Orasa Jandee",
     company: "ATFB",
     functionName: "Safety and Environment",
@@ -67,7 +67,7 @@ const defaultRequests: EmployeeTrainingNeedRequest[] = [
   {
     id: "req-003",
     requestNo: "REQ-2026-003",
-    employeeCode: "TEP-2102",
+    employeeCode: "6502",
     employeeName: "Benjamas Yingcharoen",
     company: "TEP",
     functionName: "Production Planing",
@@ -84,7 +84,7 @@ const defaultRequests: EmployeeTrainingNeedRequest[] = [
   {
     id: "req-004",
     requestNo: "REQ-2026-004",
-    employeeCode: "NIC-4301",
+    employeeCode: "3201",
     employeeName: "Kanda Rungrueang",
     company: "NIC",
     functionName: "Purchase",
