@@ -26,31 +26,37 @@ const companyCodes: CompanyCode[] = ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"]
 
 const companyNameByCode: Record<
   CompanyCode,
-  Pick<CompanyRecord, "compNameTh" | "compNameEn">
+  Pick<CompanyRecord, "compNameTh" | "compNameEn" | "remark">
 > = {
   ATA: {
-    compNameTh: "บริษัท ไอซิน ทาคาโอกะ เอเชีย จำกัด",
+    compNameTh: "บริษัท ไอชิน ทากาโอกะ เอเชีย จำกัด (สำนักงานใหญ่)",
     compNameEn: "Aisin Takaoka Asia Co., Ltd.",
+    remark: "700/89 หมู่ 1 ต.บ้านเก่า อ. พานทอง จ. ชลบุรี 20160",
   },
   TEP: {
-    compNameTh: "บริษัท ไทย เอ็นจิเนียริ่ง โปรดักส์ จำกัด",
+    compNameTh: "บริษัทผลิตภัณฑ์วิศวไทย จำกัด",
     compNameEn: "Thai Engineering Products Co., Ltd.",
+    remark: "101/90 ถ. พหลโยธิน หมู่ 20 ต. คลองหนึ่ง อ. คลองหลวง จ. ปทุมธานี 12120",
   },
   ATFB: {
-    compNameTh: "บริษัท ไอซิน ทาคาโอกะ ฟาวน์ดรี บางปะกง จำกัด",
+    compNameTh: "บริษัท ไอซิน ทาคาโอก้า ฟาวน์ดริ บางปะกง จำกัด",
     compNameEn: "Aisin Takaoka Foundry Bangpakong Co., Ltd.",
+    remark: "700/89 หมู่ 1 ต.บ้านเก่า อ.พานทอง จ.ชลบุรี 20160",
   },
   NIC: {
-    compNameTh: "บริษัท เดอะ นวโลหะ อินดัสทรี จำกัด",
+    compNameTh: "บริษัทนวโลหะอุตสาหกรรม จำกัด (สำนักงานใหญ่)",
     compNameEn: "The Nawaloha Industry Co., Ltd.",
+    remark: "19 หมู่ 3 ถ.สุวรรณศร ต. บัวลอย อ. หนองแค จ. สระบุรี 18230",
   },
   SATI: {
-    compNameTh: "บริษัท สยาม เอที อินดัสทรี จำกัด",
+    compNameTh: "บริษัท สยามเอทีอุตสาหกรรม จำกัด",
     compNameEn: "Siam AT Industry Co., Ltd.",
+    remark: "700/463 หมู่ 7 ต.ดอนหัวฬ่อ อ.เมือง จ.ชลบุรี 20000",
   },
   SNF: {
-    compNameTh: "บริษัท เดอะ สยาม นวโลหะ ฟาวน์ดรี จำกัด",
+    compNameTh: "บริษัทนวโลหะไทย จำกัด สำนักงานใหญ่",
     compNameEn: "The Siam Nawaloha Foundry Co., Ltd.",
+    remark: "เลขที่ 1 หมู่ 9 ต.บ้านครัว อ.บ้านหมอ จ. สระบุรี 18270",
   },
 };
 
@@ -58,14 +64,12 @@ const defaultRows: CompanyRecord[] = companyCodes.map((compCode) => ({
   id: compCode,
   compCode,
   ...companyNameByCode[compCode],
-  remark: "",
 }));
 
 const createBlankRecord = (companyCode: CompanyCode = "ATA"): CompanyRecord => ({
   id: `company-${Date.now()}`,
   compCode: companyCode,
   ...companyNameByCode[companyCode],
-  remark: "",
 });
 
 export default function CompanyData() {
