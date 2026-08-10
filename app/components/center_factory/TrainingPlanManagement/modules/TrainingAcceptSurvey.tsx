@@ -15,6 +15,7 @@ import {
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
 import {
+  getLevelRank,
   normalizeEmployeeLevel,
   readEmployeeMasterData,
   type EmployeeMasterRecord,
@@ -723,24 +724,46 @@ export default function TrainingAcceptSurvey() {
 
     if (!matchesFunction) return false;
 
-    // 2. Position Matching
+    // 2. Position & Level Matching (Level Reach / Eligible or Position Match)
+    const hasTargetPositions = selectedCourse.targetPositions.length > 0;
+    const hasTargetLevels = selectedCourse.targetLevels.length > 0;
+
+    if (!hasTargetPositions && !hasTargetLevels) {
+      return true;
+    }
+
     const matchesPosition =
-      selectedCourse.targetPositions.length === 0 ||
+      hasTargetPositions &&
       selectedCourse.targetPositions.some(
         (position) =>
           normalizeTargetPosition(position) ===
           normalizeTargetPosition(employee.position),
       );
 
-    if (!matchesPosition) return false;
-
-    // 3. Level Matching
-    const matchesLevel =
-      selectedCourse.targetLevels.length === 0 ||
+    const isDirectLevelMatch =
+      hasTargetLevels &&
       selectedCourse.targetLevels.some(
         (level) =>
           normalizeEmployeeLevel(level) === normalizeEmployeeLevel(employee.level),
       );
+
+    const targetRanks = hasTargetLevels
+      ? selectedCourse.targetLevels.map(getLevelRank).filter((r) => r > 0)
+      : [];
+    const minTargetRank = targetRanks.length > 0 ? Math.min(...targetRanks) : 0;
+    const empRank = getLevelRank(employee.level);
+    const isLevelEligible = minTargetRank > 0 && empRank >= minTargetRank;
+
+    const matchesLevel = isDirectLevelMatch || isLevelEligible;
+
+    if (hasTargetPositions && hasTargetLevels) {
+      // ถ้าคอร์สมีระบุ Position และ Level: ถ้า Position ตรง หรือ Level เขาถึง -> แสดงในกลุ่มเป้าหมาย
+      return matchesPosition || matchesLevel;
+    }
+
+    if (hasTargetPositions) {
+      return matchesPosition;
+    }
 
     return matchesLevel;
   };
