@@ -379,6 +379,18 @@ const getEmployeeNameProfile = (employee: Employee) => {
   };
 };
 
+const getEmployeeFunctionDisplay = (emp: { departmentCode?: string; department?: string }) => {
+  if (emp.departmentCode && emp.department && emp.department !== "-") {
+    return `${emp.departmentCode} - ${emp.department}`;
+  }
+  return emp.department || emp.departmentCode || "-";
+};
+
+const getEmployeePositionLevelDisplay = (emp: { position?: string; level?: string }) => {
+  const parts = [emp.position, emp.level].filter((p) => p && p !== "-");
+  return parts.length > 0 ? parts.join(" / ") : "-";
+};
+
 export default function TrainingAcceptSurvey() {
   const user = useAuthenticatedUser();
   const roleMode: RoleMode = user?.roleCode === "HRD_CENTER" ? "center" : "factory";
@@ -1226,7 +1238,8 @@ export default function TrainingAcceptSurvey() {
                   <span>First Name</span>
                   <span>Last Name</span>
                   <span>Company</span>
-                  <span>Department</span>
+                  <span>Function</span>
+                  <span>Position / Level</span>
                 </div>
               </div>
             ) : null}
@@ -1248,7 +1261,12 @@ export default function TrainingAcceptSurvey() {
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.firstName}</span>
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.lastName}</span>
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{participant.company}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{participant.department}</span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={getEmployeeFunctionDisplay(participant)}>
+                      {getEmployeeFunctionDisplay(participant)}
+                    </span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
+                      {getEmployeePositionLevelDisplay(participant)}
+                    </span>
                   </div>
                 </article>
               );
@@ -1297,7 +1315,8 @@ export default function TrainingAcceptSurvey() {
                         <span>First Name</span>
                         <span>Last Name</span>
                         <span>Company</span>
-                        <span>Department</span>
+                        <span>Function</span>
+                        <span>Position / Level</span>
                       </div>
                     </div>
                     {group.employees.map((employee) => {
@@ -1318,7 +1337,12 @@ export default function TrainingAcceptSurvey() {
                             <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{nameProfile.firstName}</span>
                             <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{nameProfile.lastName}</span>
                             <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{employee.company}</span>
-                            <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{employee.department}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`} title={getEmployeeFunctionDisplay(employee)}>
+                              {getEmployeeFunctionDisplay(employee)}
+                            </span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>
+                              {getEmployeePositionLevelDisplay(employee)}
+                            </span>
                           </div>
                         </article>
                       );
@@ -1376,7 +1400,8 @@ export default function TrainingAcceptSurvey() {
                       <span>First Name</span>
                       <span>Last Name</span>
                       <span>Company</span>
-                      <span>Department</span>
+                      <span>Function</span>
+                      <span>Position / Level</span>
                     </div>
                   </div>
                   {group.employees.map((employee) => {
@@ -1424,8 +1449,14 @@ export default function TrainingAcceptSurvey() {
                           </span>
                           <span
                             className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                            title={getEmployeeFunctionDisplay(employee)}
                           >
-                            {employee.department}
+                            {getEmployeeFunctionDisplay(employee)}
+                          </span>
+                          <span
+                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                          >
+                            {getEmployeePositionLevelDisplay(employee)}
                           </span>
                         </div>
                       </article>
@@ -1480,7 +1511,8 @@ export default function TrainingAcceptSurvey() {
                   <span>First Name</span>
                   <span>Last Name</span>
                   <span>Company</span>
-                  <span>Department</span>
+                  <span>Function</span>
+                  <span>Position / Level</span>
                 </div>
               </div>
             ) : null}
@@ -1502,7 +1534,12 @@ export default function TrainingAcceptSurvey() {
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.firstName}</span>
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.lastName}</span>
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{candidate.company}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{candidate.department}</span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={getEmployeeFunctionDisplay(candidate)}>
+                      {getEmployeeFunctionDisplay(candidate)}
+                    </span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
+                      {getEmployeePositionLevelDisplay(candidate)}
+                    </span>
                   </div>
                 </article>
               );
