@@ -328,25 +328,48 @@ export const normalizeEmployeeLevel = (levelKey: string) => {
 };
 
 export const getLevelRank = (levelKey: string): number => {
+  if (!levelKey) return 0;
   const raw = levelKey.trim();
-  const thaiMatch = raw.match(/^([จจบป])(\d)$/);
+
+  // Management (จ, M):
+  if (/จ\s*4|M\s*4|management\s*4/i.test(raw)) return 13;
+  if (/จ\s*3|M\s*3|management\s*3/i.test(raw)) return 12;
+  if (/จ\s*2|M\s*2|management\s*2/i.test(raw)) return 11;
+  if (/จ\s*1|M\s*1|management\s*1/i.test(raw)) return 10;
+
+  // Supervisor / Specialist (บ, S):
+  if (/บ\s*4|S\s*4|supervisor\s*4/i.test(raw)) return 9;
+  if (/บ\s*3|S\s*3|supervisor\s*3/i.test(raw)) return 8;
+  if (/บ\s*2|S\s*2|supervisor\s*2/i.test(raw)) return 7;
+  if (/บ\s*1|S\s*1|supervisor\s*1/i.test(raw)) return 6;
+
+  // Operation (ป, O, L):
+  if (/ป\s*5|O\s*5|L\s*5|operation\s*5/i.test(raw)) return 5;
+  if (/ป\s*4|O\s*4|L\s*4|operation\s*4/i.test(raw)) return 4;
+  if (/ป\s*3|O\s*3|L\s*3|operation\s*3/i.test(raw)) return 3;
+  if (/ป\s*2|O\s*2|L\s*2|operation\s*2/i.test(raw)) return 2;
+  if (/ป\s*1|O\s*1|L\s*1|operation\s*1/i.test(raw)) return 1;
+
+  // Fallback regex match
+  const thaiMatch = raw.match(/^([จบป])\s*(\d)$/);
   if (thaiMatch) {
     const code = thaiMatch[1];
     const num = parseInt(thaiMatch[2], 10);
-    if (code === "จ") return 9 + num; // จ1=10, จ2=11, จ3=12, จ4=13
-    if (code === "บ") return 5 + num; // บ1=6, บ2=7, บ3=8, บ4=9
-    if (code === "ป") return num;     // ป1=1, ป2=2, ป3=3, ป4=4, ป5=5
+    if (code === "จ") return 9 + num;
+    if (code === "บ") return 5 + num;
+    if (code === "ป") return num;
   }
 
   const norm = normalizeEmployeeLevel(raw).toUpperCase();
-  const engMatch = norm.match(/^([MSOL])(\d)$/);
+  const engMatch = norm.match(/^([MSOL])\s*(\d)$/);
   if (engMatch) {
     const code = engMatch[1];
     const num = parseInt(engMatch[2], 10);
-    if (code === "M") return 9 + num; // M1=10..M4=13
-    if (code === "S") return 5 + num; // S1=6..S4=9
-    if (code === "O" || code === "L") return num; // O1=1..O5=5
+    if (code === "M") return 9 + num;
+    if (code === "S") return 5 + num;
+    if (code === "O" || code === "L") return num;
   }
+
   return 0;
 };
 

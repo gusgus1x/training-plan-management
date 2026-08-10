@@ -634,32 +634,73 @@ export default function TrainingAcceptSurvey() {
       (p) =>
         p.positionCode.toLowerCase() === raw ||
         p.positionNameEn.toLowerCase() === raw ||
-        p.positionNameTh.toLowerCase() === raw,
+        p.positionNameTh.toLowerCase() === raw ||
+        (p.positionNameEn && raw.includes(p.positionNameEn.toLowerCase())) ||
+        (p.positionNameTh && raw.includes(p.positionNameTh.toLowerCase())),
     );
     if (found) {
       return found.positionCode.toLowerCase();
     }
     const aliases: Record<string, string> = {
+      pres: "pres",
+      president: "pres",
+      "ประธานบริษัท": "pres",
+      evp: "evp",
+      "executive vice president": "evp",
+      "รองประธานบริหาร": "evp",
+      vp: "vp",
+      "vice president": "vp",
+      "รองประธาน": "vp",
+      sadv: "sadv",
+      "senior advisor": "sadv",
+      "ที่ปรึกษาอาวุโส": "sadv",
+      adv: "adv",
+      advisor: "adv",
+      "ที่ปรึกษา": "adv",
+      sec: "sec",
+      "senior executive coordinator": "sec",
+      "ผู้ประสานงานบริหารอาวุโส": "sec",
+      pm: "pm",
+      "plant manager": "pm",
+      "ผู้จัดการโรงงาน": "pm",
+      egm: "egm",
+      "executive general manager": "egm",
+      "ผู้จัดการทั่วไปฝ่ายบริหาร": "egm",
+      sgm: "sgm",
+      "senior general manager": "sgm",
+      "ผู้จัดการทั่วไปอาวุโส": "sgm",
+      gm: "gm",
+      "general manager": "gm",
+      "ผู้จัดการทั่วไป": "gm",
+      mgr: "mgr",
+      manager: "mgr",
+      "ผู้จัดการ": "mgr",
+      "manager up": "mgr",
+      "manager++": "mgr",
       sh: "sh",
       "section head": "sh",
       "ผู้จัดการแผนก": "sh",
-      office: "off",
-      officer: "off",
-      supervisor: "off",
-      "เจ้าหน้าที่": "off",
-      "manager up": "mgr",
-      "manager++": "mgr",
-      manager: "mgr",
-      "ผู้จัดการ": "mgr",
-      "force man": "fm",
-      foreman: "fm",
-      "โฟร์แมน": "fm",
-      leader: "ld",
-      "ลีดเดอร์": "ld",
+      eng: "eng",
       engineer: "eng",
       "วิศวกร": "eng",
+      off: "off",
+      officer: "off",
+      office: "off",
+      supervisor: "off",
+      "เจ้าหน้าที่": "off",
+      sfm: "sfm",
+      "senior foreman": "sfm",
+      "ซีเนียร์โฟร์แมน": "sfm",
+      fm: "fm",
+      foreman: "fm",
+      "โฟร์แมน": "fm",
+      "force man": "fm",
+      ld: "ld",
+      leader: "ld",
+      "ลีดเดอร์": "ld",
       staff: "staff",
       "พนักงาน": "staff",
+      op: "op",
       operator: "op",
       "พนักงานปฏิบัติการ": "op",
     };
@@ -669,18 +710,20 @@ export default function TrainingAcceptSurvey() {
   const matchesCourseTarget = (employee: Employee) => {
     if (!selectedCourse) return false;
 
-    // 1. Function Matching
+    // 1. Function Matching (หน้าที่ต้องสอดคล้องกัน)
     const targetFunctionCode = (selectedCourse.targetFunctionCode || "").trim().toUpperCase();
     const targetFunctionName = (selectedCourse.targetFunctionName || "").trim().toLowerCase();
 
     const isAllFunction =
       !targetFunctionCode ||
       targetFunctionCode === "ALL" ||
+      targetFunctionCode === "__ALL__" ||
       !targetFunctionName ||
       targetFunctionName === "all function" ||
       targetFunctionName === "all" ||
       targetFunctionName.includes("all function") ||
       targetFunctionName.includes("ทุกฝ่าย") ||
+      targetFunctionName.includes("ทุกหน่วยงาน") ||
       targetFunctionName.includes("ทุก function");
 
     let matchesFunction = isAllFunction;
@@ -722,9 +765,10 @@ export default function TrainingAcceptSurvey() {
       }
     }
 
+    // ถ้าหน้าที่/ฝ่าย ไม่สอดคล้องกัน -> ไม่เข้ากลุ่มเป้าหมาย
     if (!matchesFunction) return false;
 
-    // 2. Position & Level Matching (Level Reach / Eligible or Position Match)
+    // 2. Position & Level Matching (ถ้า Level ถึง หรือ Position ตรง -> แสดงในกลุ่มเป้าหมาย)
     const hasTargetPositions = selectedCourse.targetPositions.length > 0;
     const hasTargetLevels = selectedCourse.targetLevels.length > 0;
 
@@ -744,7 +788,8 @@ export default function TrainingAcceptSurvey() {
       hasTargetLevels &&
       selectedCourse.targetLevels.some(
         (level) =>
-          normalizeEmployeeLevel(level) === normalizeEmployeeLevel(employee.level),
+          normalizeEmployeeLevel(level) === normalizeEmployeeLevel(employee.level) ||
+          getLevelRank(level) === getLevelRank(employee.level),
       );
 
     const targetRanks = hasTargetLevels
@@ -752,12 +797,14 @@ export default function TrainingAcceptSurvey() {
       : [];
     const minTargetRank = targetRanks.length > 0 ? Math.min(...targetRanks) : 0;
     const empRank = getLevelRank(employee.level);
+
+    // Level ถึง: ระดับของพนักงานเท่ากับหรือสูงกว่าระดับเป้าหมายที่เลือกไว้
     const isLevelEligible = minTargetRank > 0 && empRank >= minTargetRank;
 
     const matchesLevel = isDirectLevelMatch || isLevelEligible;
 
     if (hasTargetPositions && hasTargetLevels) {
-      // ถ้าคอร์สมีระบุ Position และ Level: ถ้า Position ตรง หรือ Level เขาถึง -> แสดงในกลุ่มเป้าหมาย
+      // ถ้าคอร์สระบุทั้ง Position และ Level: ถ้า Position ตรง หรือ Level ถึง -> แสดงในกลุ่มเป้าหมาย
       return matchesPosition || matchesLevel;
     }
 
