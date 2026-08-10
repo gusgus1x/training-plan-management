@@ -93,6 +93,7 @@ type Employee = {
   name: string;
   company: string;
   departmentCode?: string;
+  functionName?: string;
   department: string;
   position: string;
   level: string;
@@ -102,7 +103,9 @@ type Employee = {
   lastName?: string;
 };
 
-type Candidate = WorkflowAcceptance;
+type Candidate = WorkflowAcceptance & {
+  functionName?: string;
+};
 
 const companies = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
 
@@ -350,7 +353,8 @@ const toSurveyEmployee = (employee: EmployeeMasterRecord): Employee => {
     name: fullName,
     company: employee.company,
     departmentCode: employee.functionCode,
-    department: employee.functionName || "-",
+    functionName: employee.functionName || "-",
+    department: employee.department || employee.functionName || "-",
     position: employee.positionName || "-",
     level: normalizeEmployeeLevel(employee.levelKey) || "-",
     legacyLabel: [employee.positionName, employee.levelKey].filter(Boolean).join(" / "),
@@ -379,11 +383,11 @@ const getEmployeeNameProfile = (employee: Employee) => {
   };
 };
 
-const getEmployeeFunctionDisplay = (emp: { departmentCode?: string; department?: string }) => {
-  if (emp.departmentCode && emp.department && emp.department !== "-") {
-    return `${emp.departmentCode} - ${emp.department}`;
+const getEmployeeFunctionDisplay = (emp: { departmentCode?: string; functionName?: string; department?: string }) => {
+  if (emp.functionName && emp.functionName !== "-") {
+    return emp.functionName;
   }
-  return emp.department || emp.departmentCode || "-";
+  return emp.department || "-";
 };
 
 const getEmployeePositionLevelDisplay = (emp: { position?: string; level?: string }) => {
@@ -682,7 +686,7 @@ export default function TrainingAcceptSurvey() {
 
     if (!matchesFunction) {
       const empFunctionCode = (employee.departmentCode || "").trim().toUpperCase();
-      const empFunctionName = (employee.department || "").trim().toLowerCase();
+      const empFunctionName = (employee.functionName || employee.department || "").trim().toLowerCase();
 
       if (targetFunctionCode && empFunctionCode && targetFunctionCode === empFunctionCode) {
         matchesFunction = true;
@@ -1239,6 +1243,7 @@ export default function TrainingAcceptSurvey() {
                   <span>Last Name</span>
                   <span>Company</span>
                   <span>Function</span>
+                  <span>Department</span>
                   <span>Position / Level</span>
                 </div>
               </div>
@@ -1263,6 +1268,9 @@ export default function TrainingAcceptSurvey() {
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{participant.company}</span>
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={getEmployeeFunctionDisplay(participant)}>
                       {getEmployeeFunctionDisplay(participant)}
+                    </span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={participant.department || "-"}>
+                      {participant.department || "-"}
                     </span>
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
                       {getEmployeePositionLevelDisplay(participant)}
@@ -1316,6 +1324,7 @@ export default function TrainingAcceptSurvey() {
                         <span>Last Name</span>
                         <span>Company</span>
                         <span>Function</span>
+                        <span>Department</span>
                         <span>Position / Level</span>
                       </div>
                     </div>
@@ -1339,6 +1348,9 @@ export default function TrainingAcceptSurvey() {
                             <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{employee.company}</span>
                             <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`} title={getEmployeeFunctionDisplay(employee)}>
                               {getEmployeeFunctionDisplay(employee)}
+                            </span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`} title={employee.department || "-"}>
+                              {employee.department || "-"}
                             </span>
                             <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>
                               {getEmployeePositionLevelDisplay(employee)}
@@ -1401,6 +1413,7 @@ export default function TrainingAcceptSurvey() {
                       <span>Last Name</span>
                       <span>Company</span>
                       <span>Function</span>
+                      <span>Department</span>
                       <span>Position / Level</span>
                     </div>
                   </div>
@@ -1452,6 +1465,12 @@ export default function TrainingAcceptSurvey() {
                             title={getEmployeeFunctionDisplay(employee)}
                           >
                             {getEmployeeFunctionDisplay(employee)}
+                          </span>
+                          <span
+                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                            title={employee.department || "-"}
+                          >
+                            {employee.department || "-"}
                           </span>
                           <span
                             className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
@@ -1512,6 +1531,7 @@ export default function TrainingAcceptSurvey() {
                   <span>Last Name</span>
                   <span>Company</span>
                   <span>Function</span>
+                  <span>Department</span>
                   <span>Position / Level</span>
                 </div>
               </div>
@@ -1536,6 +1556,9 @@ export default function TrainingAcceptSurvey() {
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{candidate.company}</span>
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={getEmployeeFunctionDisplay(candidate)}>
                       {getEmployeeFunctionDisplay(candidate)}
+                    </span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.department || "-"}>
+                      {candidate.department || "-"}
                     </span>
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
                       {getEmployeePositionLevelDisplay(candidate)}
