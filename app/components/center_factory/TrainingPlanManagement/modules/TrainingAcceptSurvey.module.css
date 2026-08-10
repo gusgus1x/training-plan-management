@@ -25,7 +25,7 @@
   overflow: hidden;
   padding: 22px 24px 22px 28px;
   margin-bottom: 16px;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  background: var(--ui-60-surface);
 }
 
 .hero::before,
@@ -90,7 +90,7 @@
   align-items: end;
   padding: 16px 18px;
   margin-bottom: 16px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
 }
 
 .controlPanel label,
@@ -115,7 +115,7 @@
   min-height: 40px;
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-sm);
-  background: #ffffff;
+  background: var(--ui-60-surface-soft);
   color: var(--ui-30-ink);
   font: inherit;
   font-size: 0.84rem;
@@ -127,8 +127,8 @@
 
 .controlPanel select:disabled,
 .controlPanel input:disabled {
-  background: var(--ui-60-surface-soft);
-  color: #94a3b8;
+  background: var(--ui-60-surface-muted);
+  color: var(--ui-30-muted);
   cursor: not-allowed;
 }
 
@@ -209,7 +209,7 @@
   overflow: hidden;
   padding: 20px 20px 20px 28px;
   margin-bottom: 16px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
 }
 
 .standardGrid {
@@ -230,7 +230,7 @@
 
 .standardGrid article:hover {
   border-color: var(--ui-30-primary-border);
-  background: #ffffff;
+  background: var(--ui-60-surface);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
 }
@@ -262,7 +262,7 @@
   border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
   background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary-strong);
+  color: var(--ui-30-primary);
   font-size: 0.74rem;
   font-weight: 800;
   padding: 6px 12px;
@@ -276,9 +276,9 @@
 .tableWrap {
   width: 100%;
   overflow-x: auto;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-30-border);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 
@@ -290,12 +290,12 @@
 }
 
 .dataTable th {
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
   font-size: 0.74rem;
   font-weight: 800;
   padding: 11px 14px;
-  border-bottom: 2px solid #cbd5e1;
+  border-bottom: 2px solid var(--ui-30-border);
   text-transform: uppercase;
   letter-spacing: 0.03em;
   white-space: nowrap;
@@ -303,28 +303,28 @@
 
 .dataTable td {
   padding: 12px 14px;
-  border-bottom: 1px solid #e2e8f0;
-  color: #334155;
+  border-bottom: 1px solid var(--ui-30-border);
+  color: var(--ui-30-text);
   font-weight: 600;
   vertical-align: middle;
 }
 
 .dataTable td strong {
   display: block;
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-size: 0.84rem;
   font-weight: 800;
 }
 
 .dataTable td span {
   display: block;
-  color: #64748b;
+  color: var(--ui-30-muted);
   font-size: 0.76rem;
   font-weight: 600;
 }
 
 .dataTable tbody tr:hover td {
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
 }
 
 .dataTable tbody tr:last-child td {
@@ -351,28 +351,28 @@
 }
 
 .approveButton {
-  border: 1px solid #bce3cb;
-  background: #eef7f2;
-  color: #007a3d;
+  border: 1px solid var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
 }
 
 .approveButton:hover:not(:disabled) {
-  background: #007a3d;
+  background: var(--ui-30-primary);
   color: #ffffff;
-  border-color: #007a3d;
+  border-color: var(--ui-30-primary);
   box-shadow: 0 4px 12px rgba(0, 122, 61, 0.2);
 }
 
 .rejectButton {
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #be123c;
+  border: 1px solid var(--ui-10-accent-border);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
 }
 
 .rejectButton:hover:not(:disabled) {
-  background: #fff1f2;
-  border-color: #fecdd3;
-  color: #e11d48;
+  background: var(--ui-10-accent);
+  border-color: var(--ui-10-accent);
+  color: #ffffff;
 }
 
 .approveButton:disabled,
@@ -626,9 +626,9 @@
 
 /* Out-of-Target Employee Panel */
 .additionalPanel {
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-30-border);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   margin-top: 14px;
   margin-bottom: 16px;
   position: relative;
@@ -660,13 +660,13 @@
   gap: 16px;
   cursor: pointer;
   padding: 12px 18px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--ui-60-surface-soft);
+  border-bottom: 1px solid var(--ui-30-border);
   transition: background 0.2s ease;
 }
 
 .additionalSummary:hover {
-  background: #f1f5f9;
+  background: var(--ui-60-surface-muted);
 }
 
 .additionalSummary::after {
@@ -676,9 +676,9 @@
   flex: 0 0 auto;
   place-items: center;
   border-radius: 50%;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
-  color: #475569;
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
+  color: var(--ui-30-muted);
   content: "+";
   font-size: 0.95rem;
   font-weight: 800;
@@ -687,8 +687,8 @@
 
 .additionalDisclosure[open] .additionalSummary::after {
   content: "−";
-  background: #e2e8f0;
-  color: #0f172a;
+  background: var(--ui-60-surface-muted);
+  color: var(--ui-30-ink);
 }
 
 .additionalSummaryTitle {
@@ -699,7 +699,7 @@
 
 .additionalSummaryTitle h3 {
   margin: 0;
-  color: #1e293b;
+  color: var(--ui-30-ink);
   font-size: 0.92rem;
   font-weight: 800;
   display: flex;
@@ -739,6 +739,13 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
+.additionalList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+
 .companyGroupGrid {
   display: grid;
   gap: 14px;
@@ -753,7 +760,7 @@
   overflow: hidden;
   border: 1px solid var(--ui-30-border);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 14px;
   transition: border-color 0.2s ease;
 }
@@ -767,7 +774,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border-bottom: 1px solid #eef2f7;
+  border-bottom: 1px solid var(--ui-30-border);
   cursor: pointer;
   list-style: none;
   padding-bottom: 10px;
@@ -829,27 +836,11 @@
   box-sizing: border-box;
   overflow-x: auto;
   overflow-y: hidden;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ui-30-border);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 0;
   box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
-  scrollbar-color: #9aa8ba #eef2f7;
-  scrollbar-width: thin;
-}
-
-.dropdownScroll::-webkit-scrollbar {
-  height: 8px;
-}
-
-.dropdownScroll::-webkit-scrollbar-track {
-  border-radius: 999px;
-  background: #eef2f7;
-}
-
-.dropdownScroll::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: #9aa8ba;
 }
 
 .relatedPeopleGrid {
@@ -869,10 +860,10 @@
   width: 100%;
   min-width: 0;
   border: 0;
-  border-bottom: 2px solid #cbd5e1;
+  border-bottom: 2px solid var(--ui-30-border);
   border-radius: 0;
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
   font-size: 0.72rem;
   font-weight: 800;
   padding: 10px 14px;
@@ -888,9 +879,9 @@
   width: 100%;
   min-width: 0;
   border: 0;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--ui-30-border);
   border-radius: 0;
-  background: #ffffff;
+  background: var(--ui-60-surface);
   padding: 10px 14px;
   transition: background 0.15s ease;
 }
@@ -900,7 +891,7 @@
 }
 
 .employeeRow:hover {
-  background: #f8fafc;
+  background: var(--ui-60-surface-soft);
 }
 
 .targetEmployeeLine {
@@ -946,7 +937,7 @@
 
 .targetEmployeeCell {
   overflow: hidden;
-  color: #475569;
+  color: var(--ui-30-text);
   font-size: 0.78rem;
   font-weight: 600;
   text-overflow: ellipsis;
@@ -954,13 +945,13 @@
 }
 
 .targetEmployeeCell:first-child {
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-weight: 800;
 }
 
 .targetEmployeeCell:nth-child(3),
 .targetEmployeeCell:nth-child(4) {
-  color: #0f172a;
+  color: var(--ui-30-ink);
   font-weight: 700;
 }
 
@@ -995,32 +986,33 @@
 }
 
 .withdrawButton {
-  border: 1px solid #cbd5e1;
-  background: #ffffff;
-  color: #be123c;
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-10-accent);
   cursor: pointer;
   justify-self: start;
   transition: all 0.2s ease;
 }
 
 .withdrawButton:hover {
-  border-color: #fecdd3;
+  border-color: var(--ui-10-accent-border);
   background: var(--ui-10-accent-soft);
-  color: #e11d48;
+  color: var(--ui-10-accent-strong);
 }
 
 .removeSubmittedButton {
-  border: 1px solid #fed7aa;
-  background: #fff7ed;
-  color: #c2410c;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
   cursor: pointer;
   justify-self: start;
   transition: all 0.2s ease;
 }
 
 .removeSubmittedButton:hover {
-  border-color: #fdba74;
-  background: #ffedd5;
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.25);
+  color: #ffffff;
 }
 
 .emptyCompact {

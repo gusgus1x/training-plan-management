@@ -42,7 +42,6 @@ export async function POST(request: Request) {
       typeof course.title !== "string" ||
       typeof course.date !== "string" ||
       !Array.isArray(participants) ||
-      participants.length === 0 ||
       participants.some(
         (participant) =>
           !participant ||

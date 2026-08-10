@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   TRAINING_WORKFLOW_EVENT,
   TRAINING_WORKFLOW_KEYS,
@@ -26,32 +26,49 @@ import { useUiLanguage } from "../ThaiUiLocalization";
 import styles from "./CenterFactory_Dashboard.module.css";
 
 const CourseIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM3.82 9L12 4.54 20.18 9 12 13.46 3.82 9zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" />
+  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+    <rect x="7" y="4" width="18" height="24" rx="3" fill="#3B82F6" />
+    <rect x="7" y="24" width="18" height="2" fill="#EC4899" />
+    <line x1="12" y1="4" x2="12" y2="26" stroke="#1D4EDB" strokeWidth="1.5" />
   </svg>
 );
 
 const PlanIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zm-7 5h5v5h-5z" />
+  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+    <rect x="5" y="6" width="22" height="22" rx="3" fill="#0EA5E9" />
+    <path d="M5 12h22" stroke="#ffffff" strokeWidth="2" />
+    <circle cx="11" cy="17" r="1.5" fill="#ffffff" />
+    <circle cx="16" cy="17" r="1.5" fill="#ffffff" />
+    <circle cx="21" cy="17" r="1.5" fill="#ffffff" />
+    <circle cx="11" cy="22" r="1.5" fill="#ffffff" />
+    <circle cx="16" cy="22" r="1.5" fill="#ffffff" />
+    <path d="M10 4v4M22 4v4" stroke="#0284C7" strokeWidth="2" strokeLinecap="round" />
   </svg>
 );
 
 const RecordIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1s-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
+  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+    <rect x="6" y="6" width="20" height="22" rx="3" fill="#F59E0B" />
+    <rect x="11" y="4" width="10" height="4" rx="1.5" fill="#D97706" />
+    <path d="M11 15l3 3 7-7" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
 const ReportIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 14H7v-2h10v2zm0-4H7v-2h10v2zm0-4H7V7h10v2z" />
+  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+    <rect x="5" y="5" width="22" height="22" rx="3" fill="#EF4444" />
+    <rect x="9" y="16" width="3" height="7" rx="1" fill="#ffffff" />
+    <rect x="14.5" y="11" width="3" height="12" rx="1" fill="#ffffff" />
+    <rect x="20" y="8" width="3" height="15" rx="1" fill="#ffffff" />
   </svg>
 );
 
 const MasterIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+    <rect x="5" y="7" width="22" height="18" rx="3" fill="#14B8A6" />
+    <path d="M5 12h22" stroke="#0D9488" strokeWidth="1.5" />
+    <circle cx="10" cy="18" r="2" fill="#ffffff" />
+    <line x1="15" y1="18" x2="22" y2="18" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
   </svg>
 );
 
@@ -70,65 +87,6 @@ const calendarMonths = [
   { value: "10", label: "October" },
   { value: "11", label: "November" },
   { value: "12", label: "December" },
-] as const;
-
-const legacyTrainingSchedule = [
-  {
-    date: "2026-07-02",
-    course: "Leadership Essentials",
-    shortName: "Lead",
-    time: "09:00 - 16:00",
-    room: "Training Room A",
-    status: "Confirmed",
-  },
-  {
-    date: "2026-07-08",
-    course: "Safety & Compliance Basics",
-    shortName: "Safety",
-    time: "10:00 - 12:00",
-    room: "Online",
-    status: "Mandatory",
-  },
-  {
-    date: "2026-07-15",
-    course: "Service Mind for Frontline",
-    shortName: "Service",
-    time: "13:00 - 16:30",
-    room: "Training Room B",
-    status: "Planned",
-  },
-  {
-    date: "2026-07-24",
-    course: "Data Privacy Awareness",
-    shortName: "PDPA",
-    time: "09:30 - 11:30",
-    room: "Meeting Room 2",
-    status: "Open",
-  },
-  {
-    date: "2026-08-21",
-    course: "Quality Control Basics",
-    shortName: "Quality",
-    time: "09:00 - 12:00",
-    room: "Training Room A",
-    status: "Planned",
-  },
-  {
-    date: "2026-09-08",
-    course: "Data Privacy Refresh",
-    shortName: "PDPA",
-    time: "09:30 - 11:30",
-    room: "Online",
-    status: "Planned",
-  },
-  {
-    date: "2027-01-14",
-    course: "Annual Compliance Refresh",
-    shortName: "Annual",
-    time: "09:00 - 12:00",
-    room: "Online",
-    status: "Planned",
-  },
 ] as const;
 
 type DashboardTraining = {
@@ -153,6 +111,20 @@ type DashboardProps = {
   onOpenReport: () => void;
 };
 
+type DashboardMenuItem = {
+  badge: string;
+  step: string;
+  icon: React.ReactNode;
+  title: string;
+  subTitle: string;
+  description: string;
+  accent: string;
+  accentSoft: string;
+  accentBorder: string;
+  accentGlow: string;
+  onClick: () => void;
+};
+
 export default function Dashboard({
   username,
   onHome,
@@ -165,10 +137,9 @@ export default function Dashboard({
 }: DashboardProps) {
   const authenticatedUser = useAuthenticatedUser();
   const { language } = useUiLanguage();
-  const employeeInfo = buildProfileItems(authenticatedUser);
+  const isThai = language === "th";
 
   const fullEmployeeProfileItems = useMemo(() => {
-    const isThai = language === "th";
     const userAny = authenticatedUser as any;
     return [
       {
@@ -203,11 +174,13 @@ export default function Dashboard({
             : profileValue(authenticatedUser?.companyName ?? authenticatedUser?.companyCode),
       },
     ];
-  }, [authenticatedUser, username, language]);
+  }, [authenticatedUser, username, isThai]);
   const isCenterDashboard = authenticatedUser?.roleCode === "HRD_CENTER";
   const userCompanyCode = profileValue(authenticatedUser?.companyCode);
   const dashboardScope = isCenterDashboard ? "Center" : "Factory";
-  const dashboardTitle = `${dashboardScope} Dashboard`;
+  const dashboardTitle = isThai
+    ? `${dashboardScope === "Center" ? "ศูนย์ฝึกอบรม" : "โรงงาน"} แดชบอร์ด`
+    : `${dashboardScope} Dashboard`;
   const [calendarToday] = useState(getCurrentCalendarDate);
   const [selectedCalendarYear, setSelectedCalendarYear] = useState(
     calendarToday.year,
@@ -252,7 +225,6 @@ export default function Dashboard({
           );
         }
 
-        // Factory Scope (e.g. ATA): Sees own courses + Center-created courses
         const isOwnCompany =
           plan.company === userCompanyCode ||
           planCompanies.includes(userCompanyCode || "");
@@ -317,26 +289,26 @@ export default function Dashboard({
   });
   const employeeTrainingSummary = [
     {
-      label: "This Month",
+      label: isThai ? "คอร์สเดือนนี้" : "This Month",
       value: String(filteredTrainingSchedule.length),
-      helper: "courses",
+      helper: isThai ? "หลักสูตร" : "courses",
     },
     {
-      label: "Training Hours",
+      label: isThai ? "ชั่วโมงอบรม" : "Training Hours",
       value: String(
         scopedRollingPlans.reduce(
           (total, plan) => total + Number(plan.hours || 0),
           0,
         ),
       ),
-      helper: "hours",
+      helper: isThai ? "ชม." : "hours",
     },
     {
-      label: "Published",
+      label: isThai ? "เผยแพร่แล้ว" : "Published",
       value: String(
         scopedRollingPlans.filter((plan) => plan.status === "Planned").length,
       ),
-      helper: "courses",
+      helper: isThai ? "หลักสูตร" : "courses",
     },
   ];
 
@@ -374,45 +346,80 @@ export default function Dashboard({
         ];
       })();
 
-  const menuItems = [
+  const menuItems: DashboardMenuItem[] = [
     {
-      badge: "COURSE MANAGEMENT",
+      badge: isThai ? "จัดการหลักสูตร" : "COURSE MANAGEMENT",
       step: "01",
       icon: "📚",
-      title: "Training Course",
-      description: "Manage course master, target standards, course types, and pre/post evaluation forms.",
+      title: isThai ? "หลักสูตรอบรม" : "Training Course",
+      subTitle: "Training Course Management",
+      description: isThai
+        ? "ดูแลฐานข้อมูลหลักสูตร มาตรฐานกลุ่มเป้าหมาย ประเภทหลักสูตร และแบบทดสอบก่อน-หลังอบรม"
+        : "Manage course master, target standards, course types, and pre/post evaluation forms.",
+      accent: "var(--ui-30-primary)",
+      accentSoft: "var(--ui-30-primary-soft)",
+      accentBorder: "var(--ui-30-primary)",
+      accentGlow: "rgba(0, 122, 61, 0.18)",
       onClick: onOpenTrainingCourse,
     },
     {
-      badge: "PLAN MANAGEMENT",
+      badge: isThai ? "จัดการแผนอบรม" : "PLAN MANAGEMENT",
       step: "02",
       icon: "📅",
-      title: "Training Plan",
-      description: "Annual OAP plans, training needs, company acceptance surveys, and monthly rolling schedules.",
+      title: isThai ? "แผนการอบรม" : "Training Plan",
+      subTitle: "Training Plan Management",
+      description: isThai
+        ? "จัดการแผน OAP ประจำปี คำขอฝึกอบรม แบบตอบรับจากบริษัท และแผนอบรมรายเดือน"
+        : "Annual OAP plans, training needs, company acceptance surveys, and monthly rolling schedules.",
+      accent: "var(--ui-30-primary)",
+      accentSoft: "var(--ui-30-primary-soft)",
+      accentBorder: "var(--ui-30-primary)",
+      accentGlow: "rgba(0, 122, 61, 0.18)",
       onClick: onOpenTrainingPlan,
     },
     {
-      badge: "RECORD MANAGEMENT",
+      badge: isThai ? "บันทึกผลอบรม" : "RECORD MANAGEMENT",
       step: "03",
       icon: "📋",
-      title: "Training Record",
-      description: "Record actual attendance, post-training evaluations, expenses, and participant additions.",
+      title: isThai ? "ประวัติการอบรม" : "Training Record",
+      subTitle: "Training Record Management",
+      description: isThai
+        ? "บันทึกผู้เข้าอบรมจริง ผลประเมินหลังอบรม ค่าใช้จ่าย และรายชื่อที่เพิ่มภายหลัง"
+        : "Record actual attendance, post-training evaluations, expenses, and participant additions.",
+      accent: "var(--ui-30-primary)",
+      accentSoft: "var(--ui-30-primary-soft)",
+      accentBorder: "var(--ui-30-primary)",
+      accentGlow: "rgba(0, 122, 61, 0.18)",
       onClick: onOpenTrainingRecord,
     },
     {
-      badge: "REPORT MANAGEMENT",
+      badge: isThai ? "รายงาน" : "REPORT MANAGEMENT",
       step: "04",
       icon: "📊",
-      title: "Reports & Analytics",
-      description: "Training schedule calendars, progress summaries, expense breakdowns, and email drafts.",
+      title: isThai ? "รายงานและวิเคราะห์ผล" : "Reports & Analytics",
+      subTitle: "Reports & Analytics Management",
+      description: isThai
+        ? "ดูปฏิทินอบรม สรุปความคืบหน้า ค่าใช้จ่าย และร่างอีเมลรายงาน"
+        : "Training schedule calendars, progress summaries, expense breakdowns, and email drafts.",
+      accent: "var(--ui-30-primary)",
+      accentSoft: "var(--ui-30-primary-soft)",
+      accentBorder: "var(--ui-30-primary)",
+      accentGlow: "rgba(0, 122, 61, 0.18)",
       onClick: onOpenReport,
     },
     {
-      badge: "MASTER DATA",
+      badge: isThai ? "ข้อมูลหลัก" : "MASTER DATA",
       step: "05",
       icon: "🗃️",
-      title: "Master Data",
-      description: "Companies, employees, instructors, levels, positions, and function master data.",
+      title: isThai ? "ข้อมูลหลัก" : "Master Data",
+      subTitle: "Master Data Management",
+      description: isThai
+        ? "ข้อมูลหลักของบริษัท พนักงาน วิทยากร ระดับ ตำแหน่ง และหน่วยงาน"
+        : "Companies, employees, instructors, levels, positions, and function master data.",
+      accent: "var(--ui-30-primary)",
+      accentSoft: "var(--ui-30-primary-soft)",
+      accentBorder: "var(--ui-30-primary)",
+      accentGlow: "rgba(0, 122, 61, 0.18)",
       onClick: onOpenMasterData,
     },
   ];
@@ -430,11 +437,12 @@ export default function Dashboard({
 
       <section className={styles.heroPanel} aria-label="Dashboard overview">
         <div className={styles.heroCopy}>
-          <span>HRD Training {dashboardScope}</span>
+          <span>{isThai ? "ระบบบริหารจัดการการฝึกอบรม HRD" : `HRD Training ${dashboardScope}`}</span>
           <h1>{dashboardTitle}</h1>
           <p>
-            Manage training plans, course data, records, and reports across the
-            AISIN TAKAOKA Thailand group.
+            {isThai
+              ? "จัดการแผนการอบรม ข้อมูลหลักสูตร ประวัติการฝึกอบรม และรายงานวิเคราะห์ผล ทั้งกลุ่มบริษัท AISIN TAKAOKA Thailand"
+              : "Manage training plans, course data, records, and reports across the AISIN TAKAOKA Thailand group."}
           </p>
         </div>
       </section>
@@ -488,16 +496,16 @@ export default function Dashboard({
           <div className={styles.panelHeader}>
             <div>
               <span>{selectedMonthLabel} {selectedCalendarYear}</span>
-              <h2>Training Calendar</h2>
+              <h2>{isThai ? "ปฏิทินการฝึกอบรม" : "Training Calendar"}</h2>
             </div>
             <div className={styles.calendarHeaderActions}>
-              <b className={styles.courseCountBadge}>{filteredTrainingSchedule.length} courses</b>
+              <b className={styles.courseCountBadge}>{filteredTrainingSchedule.length} {isThai ? "หลักสูตร" : "courses"}</b>
             </div>
           </div>
 
           <div className={styles.calendarFilters}>
             <div className={styles.filterItem}>
-              <span className={styles.filterTitle}>Company</span>
+              <span className={styles.filterTitle}>{isThai ? "บริษัท" : "Company"}</span>
               <div className={styles.selectWrapper}>
                 <select
                   className={styles.filterSelect}
@@ -506,7 +514,7 @@ export default function Dashboard({
                   onChange={(event) => setSelectedCompanyFilter(event.target.value)}
                 >
                   <option value="all">
-                    {isCenterDashboard ? "All Companies" : `${userCompanyCode} + Center Courses`}
+                    {isCenterDashboard ? (isThai ? "ทุกบริษัท (All)" : "All Companies") : `${userCompanyCode} + Center`}
                   </option>
                   <option value="ATA">ATA</option>
                   <option value="ATFB">ATFB</option>
@@ -522,7 +530,7 @@ export default function Dashboard({
             </div>
 
             <div className={styles.filterItem}>
-              <span className={styles.filterTitle}>Year</span>
+              <span className={styles.filterTitle}>{isThai ? "ปี" : "Year"}</span>
               <div className={styles.selectWrapper}>
                 <select
                   className={styles.filterSelect}
@@ -540,7 +548,7 @@ export default function Dashboard({
             </div>
 
             <div className={styles.filterItem}>
-              <span className={styles.filterTitle}>Month</span>
+              <span className={styles.filterTitle}>{isThai ? "เดือน" : "Month"}</span>
               <div className={styles.selectWrapper}>
                 <select
                   className={styles.filterSelect}
@@ -641,37 +649,42 @@ export default function Dashboard({
       <section className={styles.menuPanel} aria-label="Main workspace menu">
         <div className={styles.menuHeader}>
           <div>
-            <span>Workspace Operations</span>
-            <h2>Select a Workspace Module</h2>
+            <span>{isThai ? "เมนูการทำงาน" : "Workspace Operations"}</span>
+            <h2>{isThai ? "เลือกโมดูลที่ต้องการใช้งาน" : "Select a Workspace Module"}</h2>
           </div>
-          <p>{menuItems.length} Core Modules</p>
+          <p className={styles.coreModulesBadge}>5 Core Modules</p>
         </div>
+
         <div className={styles.menuRow}>
           {menuItems.map((item) => (
             <button
               className={styles.menuBox}
               key={item.title}
+              style={{
+                "--card-accent": item.accent,
+                "--card-accent-soft": item.accentSoft,
+                "--card-accent-border": item.accentBorder,
+              } as CSSProperties}
               type="button"
               onClick={item.onClick}
             >
-              <div className={styles.cardHeader}>
-                <div className={styles.cardIcon} aria-hidden="true">
-                  <span className={styles.cardEmoji}>{item.icon}</span>
+              <div className={styles.cardHeaderRow}>
+                <div className={styles.cardIconBox} aria-hidden="true">
+                  <span className={styles.cardEmojiIcon}>{item.icon}</span>
                 </div>
-                <span className={styles.cardIndex} aria-hidden="true">
+                <span className={styles.cardIndexPill} aria-hidden="true">
                   {item.step}
                 </span>
               </div>
-              <div className={styles.cardContent}>
-                <small>{item.badge}</small>
-                <strong>{item.title}</strong>
-                <em>{item.description}</em>
+
+              <div className={styles.cardBodyContent}>
+                <span className={styles.cardKicker}>{item.badge}</span>
+                <strong className={styles.cardMainTitle}>{item.title}</strong>
+                <p className={styles.cardDescText}>{item.description}</p>
               </div>
-              <div className={styles.cardActionRow}>
-                <b>Open Workspace</b>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
+
+              <div className={styles.cardFooterAction}>
+                <span className={styles.openBtn}>{isThai ? "เปิด" : "Open"}</span>
               </div>
             </button>
           ))}
@@ -680,3 +693,5 @@ export default function Dashboard({
     </DashboardLayout>
   );
 }
+
+

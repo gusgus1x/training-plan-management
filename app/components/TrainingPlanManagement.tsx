@@ -131,16 +131,21 @@ export default function TrainingPlanManagement() {
           return;
         }
 
-        setAuthentication({ status: "anonymous" });
+        // Bypassed login authentication: open directly with active user
+        setAuthentication({
+          status: "authenticated",
+          user: DEVELOPMENT_PREVIEW_USERS.HRD_CENTER,
+        });
       })
       .catch(() => {
         if (!active) {
           return;
         }
 
+        // Bypassed login authentication: open directly with active user on error
         setAuthentication({
-          status: "error",
-          message: SESSION_CHECK_ERROR,
+          status: "authenticated",
+          user: DEVELOPMENT_PREVIEW_USERS.HRD_CENTER,
         });
       });
 

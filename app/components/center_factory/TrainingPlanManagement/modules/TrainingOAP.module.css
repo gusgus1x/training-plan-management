@@ -148,6 +148,40 @@
 .detailButton,
 .closeButton {
   min-height: 38px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.toolbar input,
+.toolbar select,
+.formGrid input,
+.formGrid select {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  min-height: 38px;
+  padding: 8px 11px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  outline: none;
+}
+
+.toolbar input:focus,
+.toolbar select:focus,
+.formGrid input:focus,
+.formGrid select:focus {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.16);
+}
+
+.primaryButton,
+.secondaryButton,
+.dangerButton,
+.detailButton,
+.closeButton {
+  min-height: 38px;
   border-radius: 8px;
   padding: 8px 12px;
   font: inherit;
@@ -164,7 +198,7 @@
 .primaryButton {
   border: 0;
   background: var(--ui-10-accent);
-  color: var(--ui-60-surface);
+  color: #ffffff;
 }
 
 .primaryButton:hover {
@@ -178,25 +212,26 @@
 .closeButton {
   border: 1px solid var(--ui-30-border);
   background: var(--ui-60-surface);
-  color: var(--ui-30-text);
+  color: var(--ui-30-ink);
 }
 
 .dangerButton {
-  border: 1px solid #f0b8b8;
-  background: #fff5f5;
-  color: #b42318;
+  border: 1px solid var(--ui-10-accent-border);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
 }
 
 .secondaryButton:hover,
 .detailButton:hover,
 .closeButton:hover {
-  border-color: #9fb0c5;
+  border-color: var(--ui-30-primary);
   background: var(--ui-60-surface-soft);
 }
 
 .dangerButton:hover {
-  border-color: #e29292;
-  background: #fff1f1;
+  border-color: var(--ui-10-accent);
+  background: var(--ui-10-accent);
+  color: #ffffff;
 }
 
 .primaryButton:disabled,
@@ -869,7 +904,7 @@
 .toolbar .newButton {
   border: 0;
   background: var(--ui-30-primary);
-  color: var(--ui-60-surface);
+  color: #ffffff;
   box-shadow: 0 8px 18px rgba(0, 122, 61, 0.16);
 }
 
@@ -879,16 +914,16 @@
 .toolbar .exportButton {
   border: 1px solid var(--ui-30-border);
   background: var(--ui-60-surface);
-  color: #0f2747;
+  color: var(--ui-30-ink);
   box-shadow: none;
 }
 
 .toolbar .dangerButton,
 .toolbar .deleteButton {
   min-width: 78px;
-  border: 1px solid #fecaca;
-  background: #fff5f5;
-  color: #b42318;
+  border: 1px solid var(--ui-10-accent-border);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
   box-shadow: none;
 }
 
@@ -904,16 +939,17 @@
 .toolbar .editButton:hover,
 .toolbar .refreshButton:hover,
 .toolbar .exportButton:hover {
-  border-color: #8aa4cc;
+  border-color: var(--ui-30-primary);
   background: var(--ui-60-surface-soft);
+  color: var(--ui-30-primary);
   transform: translateY(-1px);
 }
 
 .toolbar .dangerButton:hover,
 .toolbar .deleteButton:hover {
   border-color: var(--ui-10-accent);
-  background: var(--ui-10-accent-soft);
-  color: var(--ui-10-accent-strong);
+  background: var(--ui-10-accent);
+  color: #ffffff;
   transform: translateY(-1px);
 }
 
@@ -921,8 +957,8 @@
   border-color: var(--ui-30-border);
   background: var(--ui-60-surface-soft);
   box-shadow: none;
-  color: #a4afbd;
+  color: var(--ui-30-muted);
   cursor: not-allowed;
-  opacity: 1;
+  opacity: 0.6;
   transform: none;
 }

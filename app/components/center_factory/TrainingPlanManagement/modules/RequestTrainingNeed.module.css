@@ -17,10 +17,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid #fed7aa;
+  border: 1px solid rgba(245, 158, 11, 0.35);
   border-radius: 10px;
-  background: #fff7ed;
-  color: #c2410c;
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
   font-size: 0.86rem;
   font-weight: 700;
   padding: 12px 18px;
@@ -323,7 +323,7 @@
   border-radius: 8px;
   background: var(--ui-60-surface);
   padding: 10px 12px;
-  color: #182235;
+  color: var(--ui-30-ink);
   min-height: 40px;
 }
 
@@ -335,7 +335,7 @@
   border: 0;
   border-radius: 8px;
   background: var(--ui-30-primary);
-  color: var(--ui-60-surface);
+  color: #ffffff;
   padding: 10px 14px;
   font-weight: 800;
   cursor: pointer;
@@ -595,7 +595,7 @@
   border: 0;
   border-radius: 8px;
   background: var(--ui-10-accent);
-  color: var(--ui-60-surface);
+  color: #ffffff;
   box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
 }
 
@@ -609,15 +609,15 @@
   border: 1px solid var(--ui-30-border);
   border-radius: 8px;
   background: var(--ui-60-surface);
-  color: var(--ui-30-text);
+  color: var(--ui-30-ink);
 }
 
 .dangerButton,
 .deleteButton {
-  border: 1px solid #f0b8b8;
+  border: 1px solid var(--ui-10-accent-border);
   border-radius: 8px;
-  background: #fff5f5;
-  color: #b42318;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
 }
 
 .primaryButton,

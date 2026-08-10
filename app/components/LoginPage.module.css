@@ -3,7 +3,7 @@
   overflow: hidden;
   min-height: 100vh;
   background: var(--ui-30-ink);
-  color: var(--ui-60-surface);
+  color: #ffffff;
 }
 
 .loginSection {

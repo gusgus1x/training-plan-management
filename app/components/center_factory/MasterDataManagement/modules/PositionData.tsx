@@ -26,62 +26,121 @@ export const positionDataModule = {
 
 export const defaultPositionRows: PositionRecord[] = [
   {
-    id: "position-mgr",
-    positionCode: "mgr",
-    positionNameTh: "ผู้จัดการ++",
-    positionNameEn: "Manager++",
-    remark: "",
+    id: "position-op",
+    positionCode: "op",
+    positionNameTh: "พนักงานปฏิบัติการ",
+    positionNameEn: "Operator",
+    remark: "Operator / พนักงานปฏิบัติการ",
   },
   {
-    id: "position-sh",
-    positionCode: "sh",
-    positionNameTh: "ผู้จัดการแผนก",
-    positionNameEn: "Section Head",
-    remark: "",
-  },
-  {
-    id: "position-eng",
-    positionCode: "eng",
-    positionNameTh: "วิศวกร",
-    positionNameEn: "Engineer",
-    remark: "",
-  },
-  {
-    id: "position-fm",
-    positionCode: "fm",
-    positionNameTh: "โฟร์แมน",
-    positionNameEn: "Foreman",
-    remark: "",
+    id: "position-staff",
+    positionCode: "staff",
+    positionNameTh: "พนักงาน",
+    positionNameEn: "Staff",
+    remark: "Staff / พนักงาน",
   },
   {
     id: "position-ld",
     positionCode: "ld",
     positionNameTh: "ลีดเดอร์",
     positionNameEn: "Leader",
-    remark: "",
+    remark: "Leader / ลีดเดอร์",
   },
   {
-    id: "position-op",
-    positionCode: "op",
-    positionNameTh: "พนักงานปฏิบัติการ",
-    positionNameEn: "Operator",
-    remark: "",
+    id: "position-fm",
+    positionCode: "fm",
+    positionNameTh: "โฟร์แมน",
+    positionNameEn: "Foreman",
+    remark: "Foreman / โฟร์แมน",
   },
   {
-    id: "position-office",
-    positionCode: "office",
+    id: "position-sfm",
+    positionCode: "sfm",
+    positionNameTh: "ซีเนียร์โฟร์แมน",
+    positionNameEn: "Senior Foreman",
+    remark: "Senior Foreman / ซีเนียร์โฟร์แมน",
+  },
+  {
+    id: "position-off",
+    positionCode: "off",
     positionNameTh: "เจ้าหน้าที่",
-    positionNameEn: "Supervisor",
-    remark: "",
+    positionNameEn: "Officer",
+    remark: "Officer / เจ้าหน้าที่",
   },
   {
-    id: "position-staff",
-    positionCode: "staff",
-    positionNameTh: "พนักงานปฏิบัติการ",
-    positionNameEn: "Staff",
-    remark: "",
+    id: "position-eng",
+    positionCode: "eng",
+    positionNameTh: "วิศวกร",
+    positionNameEn: "Engineer",
+    remark: "Engineer / วิศวกร",
+  },
+  {
+    id: "position-sh",
+    positionCode: "sh",
+    positionNameTh: "ผู้จัดการแผนก",
+    positionNameEn: "Section Head",
+    remark: "Section Head / ผู้จัดการแผนก",
+  },
+  {
+    id: "position-mgr",
+    positionCode: "mgr",
+    positionNameTh: "ผู้จัดการ",
+    positionNameEn: "Manager",
+    remark: "Manager / ผู้จัดการ",
+  },
+  {
+    id: "position-gm",
+    positionCode: "gm",
+    positionNameTh: "ผู้จัดการทั่วไป",
+    positionNameEn: "General Manager",
+    remark: "General Manager / ผู้จัดการทั่วไป",
+  },
+  {
+    id: "position-sgm",
+    positionCode: "sgm",
+    positionNameTh: "ผู้จัดการทั่วไปอาวุโส",
+    positionNameEn: "Senior General Manager",
+    remark: "Senior General Manager / ผู้จัดการทั่วไปอาวุโส",
+  },
+  {
+    id: "position-egm",
+    positionCode: "egm",
+    positionNameTh: "ผู้จัดการทั่วไปฝ่ายบริหาร",
+    positionNameEn: "Executive General Manager",
+    remark: "Executive General Manager / ผู้จัดการทั่วไปฝ่ายบริหาร",
+  },
+  {
+    id: "position-pm",
+    positionCode: "pm",
+    positionNameTh: "ผู้จัดการโรงงาน",
+    positionNameEn: "Plant Manager",
+    remark: "Plant Manager / ผู้จัดการโรงงาน",
+  },
+  {
+    id: "position-vp",
+    positionCode: "vp",
+    positionNameTh: "รองประธาน",
+    positionNameEn: "Vice President",
+    remark: "Vice President / รองประธาน",
+  },
+  {
+    id: "position-evp",
+    positionCode: "evp",
+    positionNameTh: "รองประธานบริหาร",
+    positionNameEn: "Executive Vice President",
+    remark: "Executive Vice President / รองประธานบริหาร",
   },
 ];
+
+const mergeDefaultPositions = (storedRows: PositionRecord[]): PositionRecord[] => {
+  const existingCodes = new Set(
+    storedRows.map((r) => r.positionCode.trim().toLowerCase()),
+  );
+  const missingDefaults = defaultPositionRows.filter(
+    (defaultRow) => !existingCodes.has(defaultRow.positionCode.toLowerCase()),
+  );
+  return [...storedRows, ...missingDefaults];
+};
 
 const emptyRecord = (): PositionRecord => ({
   id: `position-${Date.now()}`,
@@ -92,9 +151,15 @@ const emptyRecord = (): PositionRecord => ({
 });
 
 export default function PositionData() {
-  const [rows, setRows] = useState<PositionRecord[]>(() =>
-    readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows),
-  );
+  const [rows, setRows] = useState<PositionRecord[]>(() => {
+    const loaded = readMasterCollection(
+      TRAINING_MASTER_KEYS.positions,
+      defaultPositionRows,
+    );
+    const merged = mergeDefaultPositions(loaded);
+    writeMasterCollection(TRAINING_MASTER_KEYS.positions, merged);
+    return merged;
+  });
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(defaultPositionRows[0]?.id ?? "");
   const [formMode, setFormMode] = useState<FormMode>(null);
@@ -155,13 +220,14 @@ export default function PositionData() {
   };
 
   const handleRefresh = () => {
-    const nextRows = readMasterCollection(
+    const loaded = readMasterCollection(
       TRAINING_MASTER_KEYS.positions,
       defaultPositionRows,
     );
-    setRows(nextRows);
+    const merged = mergeDefaultPositions(loaded);
+    saveRows(merged);
     setSearch("");
-    setSelectedId(nextRows[0]?.id ?? "");
+    setSelectedId(merged[0]?.id ?? "");
     setFormMode(null);
   };
 

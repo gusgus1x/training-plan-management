@@ -145,7 +145,7 @@ const defaultRows: EmployeeRecord[] = [
     workday: "2017-08-21",
     functionCode: "FNC0014",
     functionName: "Safety and Environment",
-    positionName: "Supervisor",
+    positionName: "Officer",
     levelKey: "บ2",
   },
   {
@@ -213,7 +213,7 @@ const defaultRows: EmployeeRecord[] = [
     workday: "2014-12-01",
     functionCode: "FNC0015",
     functionName: "Project Engineering",
-    positionName: "Manager++",
+    positionName: "Manager",
     levelKey: "จ2",
   },
   {

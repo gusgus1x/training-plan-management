@@ -831,12 +831,24 @@ export default function TrainingAcceptSurvey() {
     }
   };
 
+  const exportParticipants = useMemo(() => {
+    if (acceptedParticipants.length > 0) {
+      return acceptedParticipants;
+    }
+    return targetEmployees.map((employee) => ({
+      id: employee.id,
+      name: employee.name,
+      company: employee.company,
+      department: employee.department,
+      position: employee.position,
+      prefix: employee.prefix ?? undefined,
+      firstName: employee.firstName ?? undefined,
+      lastName: employee.lastName ?? undefined,
+    }));
+  }, [acceptedParticipants, targetEmployees]);
+
   const handleExportAttendanceSheet = async () => {
-    if (
-      !selectedCourse ||
-      hasUnsavedParticipants ||
-      acceptedParticipants.length === 0
-    ) {
+    if (!selectedCourse || hasUnsavedParticipants) {
       return;
     }
 
@@ -852,7 +864,7 @@ export default function TrainingAcceptSurvey() {
           body: JSON.stringify({
             course: selectedCourse,
             participants: localizeAndSortAttendanceParticipants(
-              acceptedParticipants,
+              exportParticipants,
               readEmployeeMasterData(),
               readMasterCollection(
                 TRAINING_MASTER_KEYS.positions,
@@ -880,7 +892,7 @@ export default function TrainingAcceptSurvey() {
       downloadLink.click();
       downloadLink.remove();
       window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
-      setParticipantSaveMessage("Attendance sheet exported from the v2 template.");
+      setParticipantSaveMessage("Attendance sheet exported from the ATA-F-HD004 v2 template.");
     } catch (error) {
       setParticipantSaveMessage(
         error instanceof Error
@@ -1071,16 +1083,16 @@ export default function TrainingAcceptSurvey() {
                 className={styles.exportAttendanceButton}
                 type="button"
                 disabled={
+                  !selectedCourse ||
                   hasUnsavedParticipants ||
-                  acceptedParticipants.length === 0 ||
                   isExportingAttendance
                 }
                 title={
-                  hasUnsavedParticipants
-                    ? "Save participant list before exporting."
-                    : acceptedParticipants.length === 0
-                      ? "Add and save at least one participant before exporting."
-                      : "Export participant list to Excel"
+                  !selectedCourse
+                    ? "Select a course first to export."
+                    : hasUnsavedParticipants
+                      ? "Save participant list before exporting."
+                      : "Export participant list to Excel (ATA-F-HD004)"
                 }
                 onClick={() => void handleExportAttendanceSheet()}
               >
@@ -1222,7 +1234,7 @@ export default function TrainingAcceptSurvey() {
         <div className={styles.workspaceHeader}>
           <div>
             <p className={styles.kicker}>Out-of-target group</p>
-            <h3>Add employees outside target group</h3>
+            <h3>Add employees outside the target group</h3>
           </div>
           <span>{additionalEmployees.length} available</span>
         </div>
@@ -1231,7 +1243,10 @@ export default function TrainingAcceptSurvey() {
         </p>
         <div className={styles.companyGroupGrid}>
           {additionalEmployeeGroups.map((group) => (
-            <details className={styles.companyGroupCard} key={group.company}>
+            <details
+              className={`${styles.companyGroupCard} ${styles.additionalDisclosure}`}
+              key={group.company}
+            >
               <summary className={styles.companyGroupHeader}>
                 <div>
                   <strong>{group.company}</strong>

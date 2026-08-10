@@ -184,7 +184,7 @@
 .primaryButton {
   border: 0;
   background: var(--ui-10-accent);
-  color: var(--ui-60-surface);
+  color: #ffffff;
   box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
 }
 
@@ -193,13 +193,13 @@
 .closeButton {
   border: 1px solid var(--ui-30-border);
   background: var(--ui-60-surface);
-  color: var(--ui-30-text);
+  color: var(--ui-30-ink);
 }
 
 .dangerButton {
-  border: 1px solid #f0b8b8;
-  background: #fff5f5;
-  color: #b42318;
+  border: 1px solid var(--ui-10-accent-border);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
 }
 
 .primaryButton:hover,
@@ -893,7 +893,7 @@
   border: 0;
   border-radius: 8px;
   background: var(--ui-10-accent);
-  color: var(--ui-60-surface);
+  color: #ffffff;
   cursor: pointer;
   font: inherit;
   font-size: 0.82rem;
@@ -913,8 +913,8 @@
   margin: 12px 0 0;
   border: 1px solid rgba(0, 122, 61, 0.16);
   border-radius: 8px;
-  background: #f0fdf4;
-  color: #047857;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 0.76rem;
   font-weight: 800;
   line-height: 1.45;
@@ -969,7 +969,6 @@
   .selectAllAttendance {
     justify-content: center;
   }
-
 }
 
 .recordOverviewGrid,
@@ -998,7 +997,9 @@
 .completedCourseHero::before,
 .companyBreakdownPanel::before,
 .chartPanel::before,
-.evaluationDownloadPanel::before {
+.evaluationDownloadPanel::before,
+.costBreakdownPanel::before,
+.courseExcelRecordPanel::before {
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
@@ -1062,6 +1063,68 @@
   padding: 14px 18px;
 }
 
+.courseSelectPanel::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--ui-card-edge);
+  box-shadow: var(--ui-card-edge-shadow);
+  pointer-events: none;
+}
+
+.courseSelectPanel h3 {
+  margin: 0;
+  color: var(--ui-30-ink);
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.courseSelectPanel label {
+  display: grid;
+  gap: 6px;
+  color: var(--ui-30-text);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.courseSelectorControls {
+  display: grid;
+  grid-template-columns:
+    minmax(140px, 0.28fr)
+    minmax(230px, 0.72fr)
+    minmax(280px, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.courseSelectPanel select {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 900;
+  outline: none;
+  padding: 8px 10px;
+}
+
+.courseSelectPanel select:disabled {
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.courseSelectPanel select:focus {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
+}
+
 .importPanel {
   position: relative;
   overflow: hidden;
@@ -1090,8 +1153,8 @@
   margin: -2px 0 12px;
   border: 1px solid rgba(0, 122, 61, 0.16);
   border-radius: 8px;
-  background: #f0fdf4;
-  color: #047857;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
   font-size: 0.78rem;
   font-weight: 800;
   line-height: 1.45;
@@ -1104,7 +1167,7 @@
   gap: 6px;
   min-height: 110px;
   align-content: center;
-  border: 1px dashed #b8c6d8;
+  border: 1px dashed var(--ui-30-border);
   border-radius: 8px;
   background: var(--ui-60-surface-soft);
   color: var(--ui-30-text);
@@ -1159,7 +1222,7 @@
   border: 0;
   border-radius: 8px;
   background: var(--ui-10-accent);
-  color: var(--ui-60-surface);
+  color: #ffffff;
   cursor: pointer;
   font: inherit;
   font-size: 0.76rem;
@@ -1200,68 +1263,6 @@
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.courseSelectPanel::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: var(--ui-card-edge);
-  box-shadow: var(--ui-card-edge-shadow);
-  pointer-events: none;
-}
-
-.courseSelectPanel h3 {
-  margin: 0;
-  color: var(--ui-30-ink);
-  font-size: 1.05rem;
-  line-height: 1.2;
-}
-
-.courseSelectPanel label {
-  display: grid;
-  gap: 6px;
-  color: var(--ui-30-text);
-  font-size: 0.72rem;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.courseSelectorControls {
-  display: grid;
-  grid-template-columns:
-    minmax(140px, 0.28fr)
-    minmax(230px, 0.72fr)
-    minmax(280px, 1fr);
-  gap: 10px;
-  align-items: end;
-}
-
-.courseSelectPanel select {
-  width: 100%;
-  min-height: 40px;
-  border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
-  color: var(--ui-30-ink);
-  font: inherit;
-  font-size: 0.84rem;
-  font-weight: 900;
-  outline: none;
-  padding: 8px 10px;
-}
-
-.courseSelectPanel select:disabled {
-  background: var(--ui-60-surface-soft);
-  color: #43526a;
-  cursor: not-allowed;
-  opacity: 1;
-}
-
-.courseSelectPanel select:focus {
-  border-color: var(--ui-30-primary);
-  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
 }
 
 .emptyState {
@@ -1336,17 +1337,6 @@
   position: relative;
   overflow: hidden;
   padding: 14px;
-}
-
-.costBreakdownPanel::before,
-.courseExcelRecordPanel::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: var(--ui-card-edge);
-  box-shadow: var(--ui-card-edge-shadow);
-  pointer-events: none;
 }
 
 .courseExcelRecordPanel {
