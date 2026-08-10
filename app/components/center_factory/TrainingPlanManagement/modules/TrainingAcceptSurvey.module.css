@@ -825,14 +825,14 @@
 }
 
 /* Data Table Container */
-.dropdownScroll {
+.dropdownScroll,
+.employeeRows {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 0;
   width: 100%;
   max-width: 100%;
-  min-width: 0;
   box-sizing: border-box;
   overflow-x: auto;
   overflow-y: hidden;
@@ -841,6 +841,29 @@
   background: var(--ui-60-surface);
   padding: 0;
   box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+  scrollbar-width: thin;
+}
+
+.dropdownScroll::-webkit-scrollbar,
+.employeeRows::-webkit-scrollbar {
+  height: 8px;
+}
+
+.dropdownScroll::-webkit-scrollbar-track,
+.employeeRows::-webkit-scrollbar-track {
+  background: var(--ui-60-surface-soft);
+  border-radius: 4px;
+}
+
+.dropdownScroll::-webkit-scrollbar-thumb,
+.employeeRows::-webkit-scrollbar-thumb {
+  background: var(--ui-30-border);
+  border-radius: 4px;
+}
+
+.dropdownScroll::-webkit-scrollbar-thumb:hover,
+.employeeRows::-webkit-scrollbar-thumb:hover {
+  background: var(--ui-30-primary);
 }
 
 .relatedPeopleGrid {
@@ -849,40 +872,36 @@
   flex-direction: column;
   gap: 0;
   width: 100%;
-  min-width: 0;
+  min-width: 1120px;
 }
 
-.targetEmployeeHeader {
-  display: grid;
-  flex: 1 1 auto;
-  align-items: center;
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  border: 0;
-  border-bottom: 2px solid var(--ui-30-border);
-  border-radius: 0;
-  background: var(--ui-60-surface-soft);
-  color: var(--ui-30-ink);
-  font-size: 0.72rem;
-  font-weight: 800;
-  padding: 10px 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
+.targetEmployeeHeader,
 .employeeRow {
   display: grid;
   flex: 1 1 auto;
   align-items: center;
   box-sizing: border-box;
   width: 100%;
-  min-width: 0;
+  min-width: 1120px;
   border: 0;
+  padding: 10px 14px;
+}
+
+.targetEmployeeHeader {
+  border-bottom: 2px solid var(--ui-30-border);
+  border-radius: 0;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.employeeRow {
   border-bottom: 1px solid var(--ui-30-border);
   border-radius: 0;
   background: var(--ui-60-surface);
-  padding: 10px 14px;
   transition: background 0.15s ease;
 }
 
@@ -896,7 +915,7 @@
 
 .targetEmployeeLine {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   box-sizing: border-box;
   min-width: 0;
 }
@@ -916,14 +935,14 @@
 .participantEmployeeLine,
 .targetListLine {
   grid-template-columns:
-    minmax(85px, 0.85fr)
-    minmax(45px, 0.45fr)
-    minmax(100px, 1fr)
-    minmax(110px, 1.05fr)
-    minmax(68px, 0.65fr)
-    minmax(140px, 1.25fr)
-    minmax(120px, 1.1fr)
-    minmax(120px, 1.05fr);
+    minmax(95px, 110px)
+    minmax(50px, 60px)
+    minmax(120px, 140px)
+    minmax(130px, 150px)
+    minmax(70px, 80px)
+    minmax(160px, 190px)
+    minmax(150px, 180px)
+    minmax(220px, 1fr);
 }
 
 .targetEmployeeLine span {
