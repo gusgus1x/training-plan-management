@@ -202,11 +202,20 @@ export const TRAINING_MASTER_KEYS = {
 export const TRAINING_MASTER_EVENT = "training-master-changed";
 
 const WORKFLOW_VERSION_KEY = "tpm_mock_workflow_version";
-const WORKFLOW_VERSION = "2026-07-24-clean-2";
+const WORKFLOW_VERSION = "2026-08-10-full-clean-reset-v2";
 const LEGACY_TRANSACTION_KEYS = [
   "training-plan.employee-training-requests",
   "training-plan.approved-training-need",
   "training_accept_survey_candidates",
+  "training_records_uploaded_history",
+  "tpm_training_actual_drafts",
+  "tpm_workflow_courses",
+  "tpm_workflow_standards",
+  "tpm_workflow_oap_plans",
+  "tpm_workflow_rolling_plans",
+  "tpm_workflow_registrations",
+  "tpm_workflow_acceptances",
+  "tpm_workflow_completed_courses",
 ];
 
 const initializeWorkflow = () => {
@@ -234,6 +243,8 @@ export const readWorkflowCollection = <T,>(key: string): T[] => {
   if (typeof window === "undefined") {
     return [];
   }
+
+  initializeWorkflow();
 
   try {
     const raw = window.localStorage.getItem(key);
