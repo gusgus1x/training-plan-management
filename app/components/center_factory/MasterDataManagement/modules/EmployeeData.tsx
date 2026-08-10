@@ -32,6 +32,7 @@ type EmployeeRecord = {
   workday: string;
   functionCode: string;
   functionName: string;
+  department?: string;
   positionName: string;
   levelKey: string;
 };
@@ -266,6 +267,7 @@ const emptyRecord = (): EmployeeRecord => ({
   workday: "",
   functionCode: "",
   functionName: "",
+  department: "",
   positionName: "",
   levelKey: "",
 });
@@ -348,9 +350,11 @@ export default function EmployeeData() {
           row.surnameEn,
           row.functionCode,
           row.functionName,
+          row.department,
           row.positionName,
           row.levelKey,
         ]
+          .filter(Boolean)
           .join(" ")
           .toLowerCase()
           .includes(query);
@@ -458,6 +462,7 @@ export default function EmployeeData() {
       surnameEn: formValues.surnameEn.trim(),
       functionCode: formValues.functionCode.trim().toUpperCase(),
       functionName: formValues.functionName.trim(),
+      department: formValues.department?.trim() || "",
       positionName: formValues.positionName.trim(),
       levelKey: formValues.levelKey.trim(),
     };
@@ -659,6 +664,14 @@ export default function EmployeeData() {
                 />
               </label>
               <label>
+                Department
+                <input
+                  value={formValues.department || ""}
+                  placeholder="e.g. Assembly, QC, Maintenance"
+                  onChange={(event) => updateForm("department", event.target.value)}
+                />
+              </label>
+              <label>
                 Position Name
                 <select
                   value={formValues.positionName}
@@ -752,6 +765,7 @@ export default function EmployeeData() {
                             <th>Workday</th>
                             <th>Function Code</th>
                             <th>Function Name</th>
+                            <th>Department</th>
                             <th>Position Name</th>
                             <th>Level Key</th>
                           </tr>
@@ -778,6 +792,7 @@ export default function EmployeeData() {
                               <td>{row.workday}</td>
                               <td>{row.functionCode}</td>
                               <td>{row.functionName}</td>
+                              <td>{row.department || "-"}</td>
                               <td>{row.positionName}</td>
                               <td>
                                 <span className={styles.levelPill}>{row.levelKey}</span>
@@ -786,7 +801,7 @@ export default function EmployeeData() {
                           ))}
                           {companyGroup.rows.length === 0 ? (
                             <tr>
-                              <td colSpan={15}>No employee data found for this company.</td>
+                              <td colSpan={16}>No employee data found for this company.</td>
                             </tr>
                           ) : null}
                         </tbody>
