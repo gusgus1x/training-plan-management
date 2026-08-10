@@ -28,6 +28,7 @@ import {
   getRollingPlanCompanies,
   type RollingPlan,
 } from "./TrainingRolling";
+import { defaultFunctionRows } from "../../MasterDataManagement/modules/FunctionData";
 import { defaultPositionRows } from "../../MasterDataManagement/modules/PositionData";
 import styles from "./TrainingAcceptSurvey.module.css";
 
@@ -411,6 +412,12 @@ export default function TrainingAcceptSurvey() {
       ),
     ),
   );
+  const [functionRows, setFunctionRows] = useState(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.functions, defaultFunctionRows),
+  );
+  const [positionRows, setPositionRows] = useState(() =>
+    readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows),
+  );
   const [hasUnsavedParticipants, setHasUnsavedParticipants] = useState(false);
   const [participantSaveMessage, setParticipantSaveMessage] = useState<string | null>(null);
   const [isExportingAttendance, setIsExportingAttendance] = useState(false);
@@ -454,7 +461,15 @@ export default function TrainingAcceptSurvey() {
   }, []);
 
   useEffect(() => {
-    const syncEmployeeMaster = () => setMasterEmployees(readSurveyEmployees());
+    const syncEmployeeMaster = () => {
+      setMasterEmployees(readSurveyEmployees());
+      setFunctionRows(
+        readMasterCollection(TRAINING_MASTER_KEYS.functions, defaultFunctionRows),
+      );
+      setPositionRows(
+        readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows),
+      );
+    };
 
     window.addEventListener(TRAINING_MASTER_EVENT, syncEmployeeMaster);
     window.addEventListener("storage", syncEmployeeMaster);
@@ -475,7 +490,10 @@ export default function TrainingAcceptSurvey() {
         .filter((plan) => plan.status === "Planned" && !completedRollingIds.has(plan.rollingId))
         .map((plan) => {
           const standard = standards.find(
-            (item) => item.courseCode === plan.course.code,
+            (item) =>
+              item.courseCode?.trim().toLowerCase() === plan.course.code?.trim().toLowerCase() ||
+              item.courseId?.trim().toLowerCase() === plan.course.code?.trim().toLowerCase() ||
+              (plan.id && item.courseId === plan.id),
           );
           const isCenterPlan =
             plan.ownerScope === "CENTER" ||
@@ -594,31 +612,122 @@ export default function TrainingAcceptSurvey() {
         : [];
 
   const normalizeTargetPosition = (position: string) => {
-    const normalized = position.trim().toLowerCase();
-    const aliases: Record<string, string> = {
-      sh: "section head",
-      office: "supervisor",
-      "manager up": "manager",
-      "manager++": "manager",
-      "force man": "foreman",
-    };
-    return aliases[normalized] ?? normalized;
-  };
-  const matchesCourseTarget = (employee: Employee) =>
-    selectedCourse !== null &&
-    (selectedCourse.targetFunctionName === "All Function" ||
-      (selectedCourse.targetFunctionCode && employee.departmentCode
-        ? employee.departmentCode === selectedCourse.targetFunctionCode
-        : employee.department.trim().toLowerCase() ===
-          selectedCourse.targetFunctionName.trim().toLowerCase())) &&
-    selectedCourse.targetPositions.some(
-      (position) =>
-        normalizeTargetPosition(position) ===
-        normalizeTargetPosition(employee.position),
-    ) &&
-    selectedCourse.targetLevels.some(
-      (level) => normalizeEmployeeLevel(level) === employee.level,
+    const raw = position.trim().toLowerCase();
+    const found = positionRows.find(
+      (p) =>
+        p.positionCode.toLowerCase() === raw ||
+        p.positionNameEn.toLowerCase() === raw ||
+        p.positionNameTh.toLowerCase() === raw,
     );
+    if (found) {
+      return found.positionCode.toLowerCase();
+    }
+    const aliases: Record<string, string> = {
+      sh: "sh",
+      "section head": "sh",
+      "ผู้จัดการแผนก": "sh",
+      office: "off",
+      officer: "off",
+      supervisor: "off",
+      "เจ้าหน้าที่": "off",
+      "manager up": "mgr",
+      "manager++": "mgr",
+      manager: "mgr",
+      "ผู้จัดการ": "mgr",
+      "force man": "fm",
+      foreman: "fm",
+      "โฟร์แมน": "fm",
+      leader: "ld",
+      "ลีดเดอร์": "ld",
+      engineer: "eng",
+      "วิศวกร": "eng",
+      staff: "staff",
+      "พนักงาน": "staff",
+      operator: "op",
+      "พนักงานปฏิบัติการ": "op",
+    };
+    return aliases[raw] ?? raw;
+  };
+
+  const matchesCourseTarget = (employee: Employee) => {
+    if (!selectedCourse) return false;
+
+    // 1. Function Matching
+    const targetFunctionCode = (selectedCourse.targetFunctionCode || "").trim().toUpperCase();
+    const targetFunctionName = (selectedCourse.targetFunctionName || "").trim().toLowerCase();
+
+    const isAllFunction =
+      !targetFunctionCode ||
+      targetFunctionCode === "ALL" ||
+      !targetFunctionName ||
+      targetFunctionName === "all function" ||
+      targetFunctionName === "all" ||
+      targetFunctionName.includes("all function") ||
+      targetFunctionName.includes("ทุกฝ่าย") ||
+      targetFunctionName.includes("ทุก function");
+
+    let matchesFunction = isAllFunction;
+
+    if (!matchesFunction) {
+      const empFunctionCode = (employee.departmentCode || "").trim().toUpperCase();
+      const empFunctionName = (employee.department || "").trim().toLowerCase();
+
+      if (targetFunctionCode && empFunctionCode && targetFunctionCode === empFunctionCode) {
+        matchesFunction = true;
+      } else if (targetFunctionName && empFunctionName && targetFunctionName === empFunctionName) {
+        matchesFunction = true;
+      } else {
+        // Cross-match via functionRows master data
+        const matchedFunction = functionRows.find(
+          (f) =>
+            (targetFunctionCode && f.functionCode.toUpperCase() === targetFunctionCode) ||
+            (targetFunctionName &&
+              (f.functionNameEn.toLowerCase() === targetFunctionName ||
+                f.functionNameTh.toLowerCase() === targetFunctionName ||
+                f.functionCode.toLowerCase() === targetFunctionName)),
+        );
+
+        if (matchedFunction) {
+          const mCode = matchedFunction.functionCode.toUpperCase();
+          const mNameEn = matchedFunction.functionNameEn.toLowerCase();
+          const mNameTh = matchedFunction.functionNameTh.toLowerCase();
+
+          matchesFunction =
+            (Boolean(empFunctionCode) && empFunctionCode === mCode) ||
+            (Boolean(empFunctionName) &&
+              (empFunctionName === mNameEn ||
+                empFunctionName === mNameTh ||
+                (Boolean(mNameEn) && empFunctionName.includes(mNameEn)) ||
+                (Boolean(mNameTh) && empFunctionName.includes(mNameTh)) ||
+                (Boolean(mNameEn) && mNameEn.includes(empFunctionName)) ||
+                (Boolean(mNameTh) && mNameTh.includes(empFunctionName))));
+        }
+      }
+    }
+
+    if (!matchesFunction) return false;
+
+    // 2. Position Matching
+    const matchesPosition =
+      selectedCourse.targetPositions.length === 0 ||
+      selectedCourse.targetPositions.some(
+        (position) =>
+          normalizeTargetPosition(position) ===
+          normalizeTargetPosition(employee.position),
+      );
+
+    if (!matchesPosition) return false;
+
+    // 3. Level Matching
+    const matchesLevel =
+      selectedCourse.targetLevels.length === 0 ||
+      selectedCourse.targetLevels.some(
+        (level) =>
+          normalizeEmployeeLevel(level) === normalizeEmployeeLevel(employee.level),
+      );
+
+    return matchesLevel;
+  };
   const targetEmployees = masterEmployees.filter(
     (employee) =>
       accessibleCompanies.includes(employee.company) &&

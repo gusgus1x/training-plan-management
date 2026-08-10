@@ -650,11 +650,15 @@ function CourseMaster() {
       owner: nextCourse.owner,
       ownerCompany: nextCourse.ownerCompany ?? "HRD Center",
     };
-    const nextStandards = selectedStandard
-      ? standards.map((standard) =>
-          standard.id === selectedStandard.id ? nextStandard : standard,
-        )
-      : [nextStandard, ...standards];
+    const nextStandards = [
+      nextStandard,
+      ...standards.filter(
+        (standard) =>
+          standard.id !== nextStandard.id &&
+          standard.courseId !== nextCourse.id &&
+          standard.courseCode !== nextCourse.courseCode,
+      ),
+    ];
 
     saveCourses(nextCourses);
     saveStandards(nextStandards);
