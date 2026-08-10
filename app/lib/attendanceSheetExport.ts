@@ -125,12 +125,22 @@ export const getParticipantName = (
 };
 
 export const getAttendanceSheetFileName = (
-  course: Pick<AttendanceSheetCourse, "code" | "date" | "batch">,
+  course: Pick<AttendanceSheetCourse, "code" | "date" | "startTime" | "endTime" | "batch">,
 ) => {
-  const fileIdentity = [course.code, course.date, course.batch || "session"]
-    .join("_")
-    .replace(/[^a-zA-Z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+  const safeCode = (course.code || "COURSE").trim().replace(/[/\\:*?"<>|]+/g, "-");
+  const safeDate = (course.date || "").trim().replace(/[/\\:*?"<>|]+/g, "-");
 
-  return `attendance_${fileIdentity || "training-session"}.xlsx`;
+  let timeStr = "";
+  if (course.startTime && course.endTime) {
+    const start = course.startTime.trim().replace(/:/g, ".");
+    const end = course.endTime.trim().replace(/:/g, ".");
+    timeStr = `${start}-${end}`;
+  } else if (course.startTime) {
+    timeStr = course.startTime.trim().replace(/:/g, ".");
+  } else if (course.endTime) {
+    timeStr = course.endTime.trim().replace(/:/g, ".");
+  }
+
+  const parts = ["ใบลงทะเบียน", safeCode, safeDate, timeStr].filter(Boolean);
+  return `${parts.join(" ")}.xlsx`;
 };

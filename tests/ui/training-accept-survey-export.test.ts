@@ -283,13 +283,15 @@ describe("Training Accept Survey attendance sheet export", () => {
     ]);
   });
 
-  it("creates a filesystem-safe real Excel filename", () => {
+  it("creates a filesystem-safe real Excel filename with course code, date, and time", () => {
     expect(
       getAttendanceSheetFileName({
         code: "CRS/001",
         date: "2026-08-15",
+        startTime: "09:00",
+        endTime: "16:00",
         batch: "Batch 1",
       }),
-    ).toBe("attendance_CRS-001_2026-08-15_Batch-1.xlsx");
+    ).toBe("ใบลงทะเบียน CRS-001 2026-08-15 09.00-16.00.xlsx");
   });
 });

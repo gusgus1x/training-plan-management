@@ -61,12 +61,15 @@ export async function POST(request: Request) {
     const template = await readFile(await findTemplatePath());
     const workbook = buildAttendanceWorkbook(template, course, participants);
 
+    const fileName = getAttendanceSheetFileName(course);
+    const encodedFileName = encodeURIComponent(fileName);
+
     return new Response(new Uint8Array(workbook), {
       status: 200,
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="${getAttendanceSheetFileName(course)}"`,
+        "Content-Disposition": `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`,
         "Cache-Control": "no-store",
       },
     });
