@@ -166,6 +166,12 @@ const positionLevelProfiles = [
   { positionName: "Senior General Manager", levelKey: "จ3" },
   { positionName: "Executive General Manager", levelKey: "จ3" },
   { positionName: "Plant Manager", levelKey: "จ3" },
+  { positionName: "Senior Executive Coordinator", levelKey: "จ3" },
+  { positionName: "Advisor", levelKey: "จ3" },
+  { positionName: "Senior Advisor", levelKey: "จ4" },
+  { positionName: "Vice President", levelKey: "จ4" },
+  { positionName: "Executive Vice President", levelKey: "จ4" },
+  { positionName: "President", levelKey: "จ4" },
 ] as const;
 
 const companyGenerationProfiles: Array<{
@@ -230,7 +236,7 @@ export const normalizeEmployeeLevel = (levelKey: string) => {
 };
 
 const EMPLOYEE_MASTER_SEED_VERSION_KEY = "tpm_master_employees_seed_version";
-const EMPLOYEE_MASTER_SEED_VERSION = "2026-08-10-position-v2";
+const EMPLOYEE_MASTER_SEED_VERSION = "2026-08-10-position-v3";
 
 export const readEmployeeMasterData = () => {
   const storedRows = readMasterCollection<EmployeeMasterRecord>(

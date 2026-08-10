@@ -34,7 +34,7 @@ const companyNameByCode: Record<
     remark: "700/89 หมู่ 1 ต.บ้านเก่า อ. พานทอง จ. ชลบุรี 20160",
   },
   TEP: {
-    compNameTh: "บริษัทผลิตภัณฑ์วิศวไทย จำกัด",
+    compNameTh: "บริษัท ผลิตภัณฑ์วิศวไทย จำกัด",
     compNameEn: "Thai Engineering Products Co., Ltd.",
     remark: "101/90 ถ. พหลโยธิน หมู่ 20 ต. คลองหนึ่ง อ. คลองหลวง จ. ปทุมธานี 12120",
   },
@@ -44,7 +44,7 @@ const companyNameByCode: Record<
     remark: "700/89 หมู่ 1 ต.บ้านเก่า อ.พานทอง จ.ชลบุรี 20160",
   },
   NIC: {
-    compNameTh: "บริษัทนวโลหะอุตสาหกรรม จำกัด",
+    compNameTh: "บริษัท นวโลหะอุตสาหกรรม จำกัด",
     compNameEn: "The Nawaloha Industry Co., Ltd.",
     remark: "19 หมู่ 3 ถ.สุวรรณศร ต. บัวลอย อ. หนองแค จ. สระบุรี 18230",
   },
@@ -54,7 +54,7 @@ const companyNameByCode: Record<
     remark: "700/463 หมู่ 7 ต.ดอนหัวฬ่อ อ.เมือง จ.ชลบุรี 20000",
   },
   SNF: {
-    compNameTh: "บริษัทนวโลหะไทย จำกัด สำนักงานใหญ่",
+    compNameTh: "บริษัท นวโลหะไทย จำกัด",
     compNameEn: "The Siam Nawaloha Foundry Co., Ltd.",
     remark: "เลขที่ 1 หมู่ 9 ต.บ้านครัว อ.บ้านหมอ จ. สระบุรี 18270",
   },
