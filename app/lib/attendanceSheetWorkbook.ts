@@ -110,8 +110,9 @@ const fillAttendanceWorksheet = (
   sheetNumber: number,
 ) => {
   let worksheetXml = templateXml;
+  const courseNamePart = [course.code, course.title].filter(Boolean).join(" ");
   const courseTitle = [
-    `หลักสูตร ${course.title} (${course.code})`,
+    `หลักสูตร ${courseNamePart}`.trim(),
     course.batch ? `รุ่น ${course.batch}` : "",
   ]
     .filter(Boolean)
