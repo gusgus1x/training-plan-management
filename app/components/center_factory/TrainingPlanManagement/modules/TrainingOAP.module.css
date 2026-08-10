@@ -366,6 +366,8 @@
 .tableWrap {
   border: 1px solid var(--ui-30-border);
   border-radius: 8px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
   background: var(--ui-60-surface-soft);
   padding: 8px;
   overflow-x: auto;
@@ -373,7 +375,7 @@
 
 .planTable {
   width: 100%;
-  min-width: 860px;
+  min-width: 980px;
   table-layout: fixed;
   border-collapse: collapse;
   background: var(--ui-60-surface);
@@ -381,16 +383,16 @@
   overflow: hidden;
 }
 
-.planTable th:nth-child(1) { width: 54px; }
-.planTable th:nth-child(2) { width: 18%; }
-.planTable th:nth-child(3) { width: 7%; }
-.planTable th:nth-child(4) { width: 6%; }
-.planTable th:nth-child(5) { width: 8%; }
-.planTable th:nth-child(6) { width: 12%; }
-.planTable th:nth-child(7) { width: 12%; }
-.planTable th:nth-child(8) { width: 9%; }
-.planTable th:nth-child(9) { width: 8%; }
-.planTable th:nth-child(10) { width: 155px; }
+.planTable th:nth-child(1) { width: 52px; text-align: center; }
+.planTable th:nth-child(2) { width: 25%; }
+.planTable th:nth-child(3) { width: 9%; text-align: right; }
+.planTable th:nth-child(4) { width: 7%; text-align: right; }
+.planTable th:nth-child(5) { width: 10%; text-align: right; }
+.planTable th:nth-child(6) { width: 13%; }
+.planTable th:nth-child(7) { width: 11%; }
+.planTable th:nth-child(8) { width: 11%; }
+.planTable th:nth-child(9) { width: 11%; text-align: center; }
+.planTable th:nth-child(10) { width: 150px; text-align: right; }
 
 .planTable th {
   position: sticky;
@@ -398,19 +400,20 @@
   z-index: 1;
   border-bottom: 1px solid var(--ui-30-primary-border);
   background: var(--ui-60-surface-soft);
-  padding: 10px 12px;
+  padding: 11px 12px;
   color: var(--ui-30-muted);
-  font-size: 0.66rem;
+  font-size: 0.68rem;
   font-weight: 900;
   text-align: left;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .planTable td {
   border-bottom: 1px solid var(--ui-30-border);
   background: var(--ui-60-surface);
-  padding: 11px 12px;
-  font-size: 0.8rem;
+  padding: 12px;
+  font-size: 0.82rem;
   vertical-align: middle;
   overflow-wrap: anywhere;
 }
@@ -423,6 +426,7 @@
 .planTable th:first-child {
   color: var(--ui-30-primary);
   font-weight: 900;
+  text-align: center;
 }
 
 .planTable th:nth-child(3),
@@ -432,53 +436,61 @@
 .planTable td:nth-child(4),
 .planTable td:nth-child(5) {
   text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.planTable td:nth-child(9) {
+  text-align: center;
 }
 
 .planTable td strong {
   display: block;
-  font-size: 0.82rem;
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: var(--ui-30-ink);
+  line-height: 1.35;
 }
 
 .planTable td span {
   display: block;
-  color: var(--ui-30-primary);
-  font-weight: 900;
-}
-
-.planTable th:nth-child(3),
-.planTable th:nth-child(4),
-.planTable th:nth-child(5),
-.planTable td:nth-child(3),
-.planTable td:nth-child(4),
-.planTable td:nth-child(5) {
-  text-align: right;
-}
-
-.planTable td strong {
-  display: block;
-  font-size: 0.82rem;
-}
-
-.planTable td span {
-  display: block;
-  margin-top: 4px;
+  margin-top: 3px;
   color: var(--ui-30-muted);
-  font-size: 0.72rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+@keyframes liveDotPulse {
+  0% {
+    transform: scale(0.88);
+    opacity: 0.45;
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+    box-shadow: 0 0 7px 1.5px currentColor;
+  }
+  100% {
+    transform: scale(0.88);
+    opacity: 0.45;
+    box-shadow: 0 0 0 0 currentColor;
+  }
 }
 
 .statusPill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   justify-content: center;
   width: fit-content;
   border-radius: 999px;
-  padding: 4px 10px;
+  padding: 4px 11px;
   font-size: 0.72rem;
-  font-weight: 900;
-  line-height: 1.2;
+  font-weight: 800;
+  line-height: 1;
   white-space: nowrap;
   letter-spacing: 0.02em;
+  vertical-align: middle;
 }
 
 .statusDot {
@@ -488,7 +500,7 @@
   border-radius: 50%;
   background: currentColor;
   flex-shrink: 0;
-  opacity: 0.85;
+  animation: liveDotPulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .statusPlanned {

@@ -283,6 +283,17 @@
   background: var(--ui-60-surface);
 }
 
+.rollingTable tbody tr:hover td {
+  background: var(--ui-60-surface-soft);
+}
+.rollingTable th:nth-child(1) { width: 56px; text-align: center; }
+.rollingTable th:nth-child(2) { width: 28%; }
+.rollingTable th:nth-child(3) { width: 22%; }
+.rollingTable th:nth-child(4) { width: 15%; }
+.rollingTable th:nth-child(5) { width: 12%; text-align: center; }
+.rollingTable th:nth-child(6) { width: 10%; text-align: center; }
+.rollingTable th:nth-child(7) { width: 160px; text-align: right; }
+
 .rollingTable th {
   position: sticky;
   top: 0;
@@ -290,18 +301,19 @@
   border-bottom: 1px solid var(--ui-30-primary-border);
   background: var(--ui-60-surface-soft);
   color: var(--ui-30-muted);
-  font-size: 0.66rem;
+  font-size: 0.68rem;
   font-weight: 900;
-  padding: 10px 12px;
+  padding: 11px 12px;
   text-align: left;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .rollingTable td {
   border-bottom: 1px solid var(--ui-30-border);
   background: var(--ui-60-surface);
-  font-size: 0.8rem;
-  padding: 11px 12px;
+  font-size: 0.82rem;
+  padding: 12px;
   vertical-align: middle;
 }
 
@@ -313,6 +325,12 @@
 .rollingTable th:first-child {
   color: var(--ui-30-primary);
   font-weight: 900;
+  text-align: center;
+}
+
+.rollingTable td:nth-child(5),
+.rollingTable td:nth-child(6) {
+  text-align: center;
 }
 
 .selectionControl {
@@ -326,20 +344,39 @@
   accent-color: var(--ui-30-primary);
 }
 
+@keyframes liveDotPulse {
+  0% {
+    transform: scale(0.88);
+    opacity: 0.45;
+    box-shadow: 0 0 0 0 currentColor;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+    box-shadow: 0 0 7px 1.5px currentColor;
+  }
+  100% {
+    transform: scale(0.88);
+    opacity: 0.45;
+    box-shadow: 0 0 0 0 currentColor;
+  }
+}
+
 .statusPill,
 .jobPill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   justify-content: center;
   width: fit-content;
   border-radius: 999px;
-  padding: 4px 10px;
+  padding: 4px 11px;
   font-size: 0.72rem;
-  font-weight: 900;
-  line-height: 1.2;
+  font-weight: 800;
+  line-height: 1;
   white-space: nowrap;
   letter-spacing: 0.02em;
+  vertical-align: middle;
 }
 
 .statusDot {
@@ -349,7 +386,7 @@
   border-radius: 50%;
   background: currentColor;
   flex-shrink: 0;
-  opacity: 0.85;
+  animation: liveDotPulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .statusPlanned {
