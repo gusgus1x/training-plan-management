@@ -29,7 +29,7 @@ const companyNameByCode: Record<
   Pick<CompanyRecord, "compNameTh" | "compNameEn" | "remark">
 > = {
   ATA: {
-    compNameTh: "บริษัท ไอชิน ทากาโอกะ เอเชีย จำกัด (สำนักงานใหญ่)",
+    compNameTh: "บริษัท ไอชิน ทากาโอกะ เอเชีย จำกัด",
     compNameEn: "Aisin Takaoka Asia Co., Ltd.",
     remark: "700/89 หมู่ 1 ต.บ้านเก่า อ. พานทอง จ. ชลบุรี 20160",
   },
@@ -44,7 +44,7 @@ const companyNameByCode: Record<
     remark: "700/89 หมู่ 1 ต.บ้านเก่า อ.พานทอง จ.ชลบุรี 20160",
   },
   NIC: {
-    compNameTh: "บริษัทนวโลหะอุตสาหกรรม จำกัด (สำนักงานใหญ่)",
+    compNameTh: "บริษัทนวโลหะอุตสาหกรรม จำกัด",
     compNameEn: "The Nawaloha Industry Co., Ltd.",
     remark: "19 หมู่ 3 ถ.สุวรรณศร ต. บัวลอย อ. หนองแค จ. สระบุรี 18230",
   },
