@@ -128,11 +128,16 @@ const emptyCourseForm: CourseForm = {
 function CourseMaster() {
   const user = useAuthenticatedUser();
   const { language } = useUiLanguage();
-  const [courseTypes] = useState(() =>
-    readMasterCollection(TRAINING_MASTER_KEYS.courseTypes, defaultCourseTypes).map(
+  const isFactoryUser = user?.roleCode === "HRD_FACTORY";
+  const factoryCourseTypeAllowlist = ["IN-HOUSE", "PUBLIC", "OJT"];
+  const [courseTypes] = useState(() => {
+    const allTypes = readMasterCollection(TRAINING_MASTER_KEYS.courseTypes, defaultCourseTypes).map(
       (type) => type.name,
-    ),
-  );
+    );
+    return isFactoryUser
+      ? allTypes.filter((name) => factoryCourseTypeAllowlist.includes(name))
+      : allTypes;
+  });
   const [courseGroupOptions] = useState(() =>
     readMasterCollection(TRAINING_MASTER_KEYS.courseGroups, defaultCourseGroups),
   );

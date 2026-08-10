@@ -286,11 +286,11 @@ export const isWorkflowOwner = (
 
   if (userRoleCode === "HRD_FACTORY") {
     if (!ownerCompany || ownerCompany === "All Companies") {
-      return true;
+      return ownerCompany === userCompanyCode || owner === "FACTORY";
     }
 
     if (owner === "CENTER") {
-      return true;
+      return false;
     }
 
     return ownerCompany === userCompanyCode;
