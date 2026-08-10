@@ -270,29 +270,46 @@
   overflow-x: auto;
   border: 1px solid var(--ui-30-border);
   border-radius: 8px;
+  background: var(--ui-60-surface);
+  padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ui-30-primary) var(--ui-60-surface-soft);
+}
+
+.tableWrap::-webkit-scrollbar {
+  height: 8px;
+}
+
+.tableWrap::-webkit-scrollbar-track {
   background: var(--ui-60-surface-soft);
-  padding: 8px;
+  border-radius: 4px;
+}
+
+.tableWrap::-webkit-scrollbar-thumb {
+  background: var(--ui-30-border);
+  border-radius: 4px;
+}
+
+.tableWrap::-webkit-scrollbar-thumb:hover {
+  background: var(--ui-30-primary);
 }
 
 .rollingTable {
   width: 100%;
-  min-width: 1060px;
-  overflow: hidden;
+  min-width: 1280px;
+  table-layout: fixed;
   border-collapse: collapse;
   border-radius: 8px;
   background: var(--ui-60-surface);
 }
 
-.rollingTable tbody tr:hover td {
-  background: var(--ui-60-surface-soft);
-}
-.rollingTable th:nth-child(1) { width: 56px; text-align: center; }
-.rollingTable th:nth-child(2) { width: 28%; }
-.rollingTable th:nth-child(3) { width: 22%; }
-.rollingTable th:nth-child(4) { width: 15%; }
-.rollingTable th:nth-child(5) { width: 12%; text-align: center; }
-.rollingTable th:nth-child(6) { width: 10%; text-align: center; }
-.rollingTable th:nth-child(7) { width: 160px; text-align: right; }
+.rollingTable th:nth-child(1) { width: 60px; text-align: center; }
+.rollingTable th:nth-child(2) { width: 300px; }
+.rollingTable th:nth-child(3) { width: 280px; }
+.rollingTable th:nth-child(4) { width: 180px; }
+.rollingTable th:nth-child(5) { width: 135px; text-align: center; }
+.rollingTable th:nth-child(6) { width: 125px; text-align: center; }
+.rollingTable th:nth-child(7) { width: 180px; text-align: right; }
 
 .rollingTable th {
   position: sticky;
@@ -303,17 +320,18 @@
   color: var(--ui-30-muted);
   font-size: 0.68rem;
   font-weight: 900;
-  padding: 11px 12px;
+  padding: 12px 14px;
   text-align: left;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
 .rollingTable td {
   border-bottom: 1px solid var(--ui-30-border);
   background: var(--ui-60-surface);
   font-size: 0.82rem;
-  padding: 12px;
+  padding: 12px 14px;
   vertical-align: middle;
 }
 
@@ -346,47 +364,53 @@
 
 @keyframes liveDotPulse {
   0% {
-    transform: scale(0.88);
-    opacity: 0.45;
+    transform: scale(0.85);
+    opacity: 0.4;
     box-shadow: 0 0 0 0 currentColor;
   }
   50% {
-    transform: scale(1.2);
+    transform: scale(1.25);
     opacity: 1;
-    box-shadow: 0 0 7px 1.5px currentColor;
+    box-shadow: 0 0 8px 2px currentColor;
   }
   100% {
-    transform: scale(0.88);
-    opacity: 0.45;
+    transform: scale(0.85);
+    opacity: 0.4;
     box-shadow: 0 0 0 0 currentColor;
   }
 }
 
 .statusPill,
 .jobPill {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  justify-content: center;
-  width: fit-content;
-  border-radius: 999px;
-  padding: 4px 11px;
-  font-size: 0.72rem;
-  font-weight: 800;
-  line-height: 1;
-  white-space: nowrap;
-  letter-spacing: 0.02em;
-  vertical-align: middle;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-direction: row !important;
+  gap: 7px !important;
+  width: auto !important;
+  min-width: 96px !important;
+  height: 28px !important;
+  padding: 0 12px !important;
+  border-radius: 999px !important;
+  font-size: 0.72rem !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  letter-spacing: 0.02em !important;
+  vertical-align: middle !important;
+  box-sizing: border-box !important;
 }
 
 .statusDot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-  flex-shrink: 0;
-  animation: liveDotPulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  display: inline-block !important;
+  width: 7px !important;
+  height: 7px !important;
+  min-width: 7px !important;
+  min-height: 7px !important;
+  border-radius: 50% !important;
+  background: currentColor !important;
+  flex-shrink: 0 !important;
+  animation: liveDotPulse 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
 }
 
 .statusPlanned {
@@ -615,53 +639,6 @@
 
 .toolbar {
   border-bottom: 1px solid var(--ui-30-border);
-  gap: 8px;
-  margin-bottom: 12px;
-  padding-bottom: 12px;
-}
-
-.tableWrap {
-  border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
-  padding: 0;
-  overflow-x: auto;
-}
-
-.dataTable th,
-.planTable th,
-.rollingTable th {
-  border-bottom: 1px solid var(--ui-30-border);
-  background: var(--ui-60-surface-soft);
-  color: var(--ui-30-muted);
-  font-size: 0.66rem;
-  font-weight: 900;
-  padding: 12px;
-  text-transform: uppercase;
-}
-
-.dataTable td,
-.planTable td,
-.rollingTable td {
-  border-bottom: 1px solid var(--ui-30-border);
-  background: var(--ui-60-surface);
-  box-shadow: none;
-  color: var(--ui-30-text);
-  font-size: 0.8rem;
-  padding: 10px 12px;
-}
-
-.dataTable tbody tr:hover td,
-.planTable tbody tr:hover td,
-.rollingTable tbody tr:hover td,
-.selectedRow td {
-  background: var(--ui-60-surface-soft);
-}
-
-.selectedRow td:first-child {
-  box-shadow: inset 3px 0 0 var(--ui-10-accent);
-}
-
 @media (max-width: 760px) {
   .page,
   .moduleWorkspace {
