@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   TRAINING_WORKFLOW_EVENT,
   TRAINING_WORKFLOW_KEYS,
@@ -358,6 +358,11 @@ const buildTableRows = (rows: Array<Array<string | number>>) =>
     .join("");
 
 const exportCourseSummaryExcel = (course: CompletedCourse, actualCostTotal: number) => {
+  const costPerPerson =
+    course.actualAttendees > 0
+      ? Math.round(actualCostTotal / course.actualAttendees)
+      : 0;
+
   const summaryRows = [
     ["Course Code", course.code],
     ["Course Title", course.title],
@@ -368,7 +373,8 @@ const exportCourseSummaryExcel = (course: CompletedCourse, actualCostTotal: numb
     ["Room", course.room],
     ["Instructor", course.instructor],
     ["Actual / Registered", `${course.actualAttendees}/${course.registeredAttendees}`],
-    ["Actual Cost", `THB ${formatNumber(actualCostTotal)}`],
+    ["Actual Cost (Total)", `THB ${formatNumber(actualCostTotal)}`],
+    ["Actual Cost per Person", `THB ${formatNumber(costPerPerson)}`],
     ["Pre Test Pass", `${course.preTestPassPercent}%`],
     ["Post Test Pass", `${course.postTestPassPercent}%`],
     ["Average Score", `${course.averageScore}%`],
@@ -382,7 +388,15 @@ const exportCourseSummaryExcel = (course: CompletedCourse, actualCostTotal: numb
     ]),
   ];
   const attendeeRows = [
-    ["Company", "Employee Code", "Name", "Department", "Pre/Post", "Evaluation"],
+    [
+      "Company",
+      "Employee Code",
+      "Name",
+      "Department",
+      "Pre/Post",
+      "Evaluation",
+      "Expense / Person (THB)",
+    ],
     ...course.attendees.map((attendee) => [
       attendee.company,
       attendee.employeeCode,
@@ -390,6 +404,7 @@ const exportCourseSummaryExcel = (course: CompletedCourse, actualCostTotal: numb
       attendee.department,
       attendee.prePost,
       attendee.evaluation,
+      `THB ${formatNumber(costPerPerson)}`,
     ]),
   ];
   const workbook = `<!doctype html><html><head><meta charset="utf-8" /><style>body{font-family:Arial,sans-serif}table{border-collapse:collapse;margin-bottom:18px}td{border:1px solid #cbd5e1;padding:6px 8px;white-space:nowrap}tr:first-child td{background:#f1f5f9;font-weight:700}</style></head><body><table>${buildTableRows(summaryRows)}</table><table>${buildTableRows(costRows)}</table><table>${buildTableRows(attendeeRows)}</table></body></html>`;
@@ -559,6 +574,7 @@ const expenseItems = [
 export default function TrainingRecord() {
   const user = useAuthenticatedUser();
   const [courses, setCourses] = useState<CompletedCourse[]>([]);
+  const [selectedCourseGroupId, setSelectedCourseGroupId] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [downloadMessage, setDownloadMessage] = useState("");
   const [importedCourses, setImportedCourses] = useState<ImportedCourseDraft[]>([]);
@@ -649,19 +665,46 @@ export default function TrainingRecord() {
     return () =>
       window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncCompletedCourses);
   }, []);
+
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
   const userCompanyCode = profileValue(user?.companyCode);
   const importScopeLabel = isFactoryUser ? `${userCompanyCode} factory scope` : "Center scope";
   const importScopeNote = isFactoryUser
     ? `Factory import saves only completed courses for ${userCompanyCode}. Center records and other companies are ignored.`
     : "Center import can save completed courses for center and factory scopes.";
-  const availableCourses = isFactoryUser
-    ? courses.filter(
-        (course) =>
-          course.owner === "FACTORY" &&
-          (course.ownerCompany ?? course.company) === userCompanyCode,
-      )
-    : courses;
+  const availableCourses = useMemo(
+    () =>
+      isFactoryUser
+        ? courses.filter(
+            (course) =>
+              course.owner === "FACTORY" &&
+              (course.ownerCompany ?? course.company) === userCompanyCode,
+          )
+        : courses,
+    [courses, isFactoryUser, userCompanyCode],
+  );
+
+  const availableCourseGroups = useMemo(() => {
+    const groups = new Map<string, CompletedCourse[]>();
+    availableCourses.forEach((course) => {
+      const groupId =
+        course.groupId ??
+        `group-${course.code}-${course.owner}-${course.ownerCompany ?? course.company}`;
+      groups.set(groupId, [...(groups.get(groupId) ?? []), course]);
+    });
+    return [...groups.entries()].map(([id, sessions]) => ({
+      id,
+      code: sessions[0]?.code ?? "",
+      title: sessions[0]?.title ?? "",
+      owner: sessions[0]?.owner ?? "CENTER",
+      sessions,
+    }));
+  }, [availableCourses]);
+
+  const availableSessions = useMemo(() => {
+    const group = availableCourseGroups.find((g) => g.id === selectedCourseGroupId);
+    return group?.sessions ?? availableCourses;
+  }, [availableCourseGroups, selectedCourseGroupId, availableCourses]);
 
   const centerCourses = availableCourses.filter((course) => course.owner === "CENTER");
   const factoryCourses = availableCourses.filter((course) => course.owner === "FACTORY");
@@ -669,30 +712,65 @@ export default function TrainingRecord() {
     availableCourses.find((course) => course.id === selectedCourseId) ??
     availableCourses[0] ??
     null;
+
   const getActualCostTotal = (course: CompletedCourse) =>
     expenseItems.reduce((total, item) => total + course.actualCost[item.key], 0);
+
+  const getCostPerPerson = (course: CompletedCourse) => {
+    const total = getActualCostTotal(course);
+    const count = course.actualAttendees > 0 ? course.actualAttendees : course.attendees.length;
+    return count > 0 ? Math.round(total / count) : 0;
+  };
+
   const getVisibleAttendees = (course: CompletedCourse) =>
     course.attendees.filter(
       (attendee) => !isFactoryUser || attendee.company === userCompanyCode,
     );
 
-  const evaluationPercent = selectedCourse && selectedCourse.evaluationTotal > 0
-    ? Math.round((selectedCourse.evaluationCompleted / selectedCourse.evaluationTotal) * 100)
-    : 0;
-  const selectedActualCost = selectedCourse
-    ? getActualCostTotal(selectedCourse)
-    : 0;
-  const visibleCourseAttendees = selectedCourse
-    ? getVisibleAttendees(selectedCourse)
-    : [];
+  const evaluationPercent =
+    selectedCourse && selectedCourse.evaluationTotal > 0
+      ? Math.round((selectedCourse.evaluationCompleted / selectedCourse.evaluationTotal) * 100)
+      : 0;
+
+  const selectedActualCost = selectedCourse ? getActualCostTotal(selectedCourse) : 0;
+  const selectedCostPerPerson = selectedCourse ? getCostPerPerson(selectedCourse) : 0;
+
+  const visibleCourseAttendees = selectedCourse ? getVisibleAttendees(selectedCourse) : [];
+
+  const selectedCompanyCostBreakdown = useMemo(() => {
+    if (!selectedCourse) {
+      return [];
+    }
+    const map = new Map<string, { count: number }>();
+    visibleCourseAttendees.forEach((attendee) => {
+      const comp = attendee.company || selectedCourse.company || "Other";
+      const cur = map.get(comp) ?? { count: 0 };
+      cur.count += 1;
+      map.set(comp, cur);
+    });
+    return Array.from(map.entries()).map(([company, data]) => ({
+      company,
+      count: data.count,
+      totalCost: data.count * selectedCostPerPerson,
+      percentage:
+        visibleCourseAttendees.length > 0
+          ? Math.round((data.count / visibleCourseAttendees.length) * 100)
+          : 0,
+    }));
+  }, [selectedCourse, visibleCourseAttendees, selectedCostPerPerson]);
+
   const attendeesByCompany = selectedCourse
     ? Object.entries(
-        visibleCourseAttendees.reduce<Record<string, typeof visibleCourseAttendees>>((result, attendee) => {
-          result[attendee.company] = [...(result[attendee.company] ?? []), attendee];
-          return result;
-        }, {}),
+        visibleCourseAttendees.reduce<Record<string, typeof visibleCourseAttendees>>(
+          (result, attendee) => {
+            result[attendee.company] = [...(result[attendee.company] ?? []), attendee];
+            return result;
+          },
+          {},
+        ),
       )
     : [];
+
   const selectedUploadedRows = selectedCourse
     ? savedRecordRows.filter(
         (record) =>
@@ -886,7 +964,7 @@ export default function TrainingRecord() {
               <p className={styles.kicker}>Course Record</p>
               <h3>{selectedCourse.title}</h3>
               <span>
-                {selectedCourse.code} / Batch {selectedCourse.batch ?? "-"} /{" "}
+                {selectedCourse.code} / Batch {selectedCourse.batch ?? "-"} / Training Session /{" "}
                 {selectedCourse.date} / {selectedCourse.time ?? "-"} /{" "}
                 {selectedCourse.room} / {selectedCourse.instructor}
               </span>
@@ -908,10 +986,32 @@ export default function TrainingRecord() {
           <section className={styles.costBreakdownPanel} aria-label="Actual cost breakdown">
             <div className={styles.panelHeader}>
               <div>
-                <p className={styles.kicker}>Actual Cost</p>
-                <h3>Cost Breakdown</h3>
+                <p className={styles.kicker}>Actual Cost Summary</p>
+                <h3>Cost Breakdown & Per-Person Calculation</h3>
               </div>
-              <span>THB {formatNumber(selectedActualCost)}</span>
+              <span>Total: THB {formatNumber(selectedActualCost)}</span>
+            </div>
+
+            <div className={styles.costHighlightGrid}>
+              <article className={styles.costHighlightCard}>
+                <span>Total Actual Cost</span>
+                <strong>THB {formatNumber(selectedActualCost)}</strong>
+              </article>
+              <article className={styles.costHighlightCard}>
+                <span>Actual Attendees</span>
+                <strong>{selectedCourse.actualAttendees} persons</strong>
+              </article>
+              <article className={`${styles.costHighlightCard} ${styles.costHighlightPrimary}`}>
+                <span>Cost / Person (Actual)</span>
+                <strong>THB {formatNumber(selectedCostPerPerson)}</strong>
+              </article>
+            </div>
+
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.kicker}>Expense Items</p>
+                <h3>Training Cost Breakdown</h3>
+              </div>
             </div>
 
             <div className={styles.costBreakdownGrid}>
@@ -922,6 +1022,42 @@ export default function TrainingRecord() {
                 </article>
               ))}
             </div>
+
+            {selectedCompanyCostBreakdown.length > 0 ? (
+              <div className={styles.companyCostAllocationBox}>
+                <div className={styles.panelHeader}>
+                  <div>
+                    <p className={styles.kicker}>Company Cost Allocation</p>
+                    <h3>Actual Cost Shared by Company</h3>
+                  </div>
+                </div>
+
+                <div className={styles.companyCostTableWrap}>
+                  <table className={styles.companyCostTable}>
+                    <thead>
+                      <tr>
+                        <th>Company</th>
+                        <th>Actual Attendees</th>
+                        <th>Share %</th>
+                        <th>Allocated Actual Cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedCompanyCostBreakdown.map((item) => (
+                        <tr key={item.company}>
+                          <td><strong>{item.company}</strong></td>
+                          <td>{item.count} persons</td>
+                          <td>{item.percentage}%</td>
+                          <td>
+                            <strong>THB {formatNumber(item.totalCost)}</strong>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
           </section>
 
           <section
@@ -981,7 +1117,11 @@ export default function TrainingRecord() {
                         <td>{record.trainingHour || "-"}</td>
                         <td>{record.startDate || "-"}</td>
                         <td>{record.endDate || "-"}</td>
-                        <td>{record.expensePerPerson || "-"}</td>
+                        <td>
+                          <strong>
+                            THB {record.expensePerPerson || formatNumber(selectedCostPerPerson)}
+                          </strong>
+                        </td>
                         <td>{record.functionTh || "-"}</td>
                         <td>{record.functionEn || "-"}</td>
                         <td>{record.logDate || "-"}</td>
@@ -1150,7 +1290,7 @@ export default function TrainingRecord() {
             <div className={styles.panelHeader}>
               <div>
                 <p className={styles.kicker}>Actual Attendees</p>
-                <h3>Evaluation Download by Company / Person</h3>
+                <h3>Evaluation Download & Per-Person Cost</h3>
               </div>
               <button type="button" onClick={() => handleDownload("All evaluation forms")}>
                 Download All Forms
@@ -1164,6 +1304,9 @@ export default function TrainingRecord() {
                     <div>
                       <span>{company}</span>
                       <strong>{attendees.length} actual attendees</strong>
+                      <span className={styles.companyAllocatedCostLabel}>
+                        Total Allocated: THB {formatNumber(attendees.length * selectedCostPerPerson)}
+                      </span>
                     </div>
                     <button
                       type="button"
@@ -1183,6 +1326,9 @@ export default function TrainingRecord() {
                           <strong>{attendee.name}</strong>
                           <span>{attendee.employeeCode} / {attendee.department}</span>
                         </div>
+                        <span className={styles.attendeeCostBadge}>
+                          THB {formatNumber(selectedCostPerPerson)}
+                        </span>
                         <span className={styles.statusPill}>{attendee.prePost}</span>
                         <span className={styles.statusPill}>{attendee.evaluation}</span>
                         <button
@@ -1243,6 +1389,7 @@ export default function TrainingRecord() {
             {records.length > 0 ? (
               records.map((course) => {
                 const actualCostTotal = getActualCostTotal(course);
+                const courseCostPerPerson = getCostPerPerson(course);
                 const evaluationRate =
                   course.evaluationTotal > 0
                     ? Math.round(
@@ -1255,69 +1402,72 @@ export default function TrainingRecord() {
 
                 return (
                   <Fragment key={course.id}>
-                  <tr
-                    className={isExpanded ? styles.activeRecordRow : undefined}
-                  >
-                    <td>
-                      <strong>{course.title}</strong>
-                      <span>{course.code}</span>
-                    </td>
-                    <td>
-                      <strong>{course.date}</strong>
-                      <span>Batch {course.batch ?? "-"} / {course.time ?? "-"}</span>
-                    </td>
-                    <td>{course.company}</td>
-                    <td>
-                      {course.actualAttendees} / {course.registeredAttendees}
-                    </td>
-                    <td>THB {formatNumber(actualCostTotal)}</td>
-                    <td>
-                      {course.evaluationCompleted} / {course.evaluationTotal}
-                      <span>{evaluationRate}% done</span>
-                    </td>
-                    <td>
-                      <span
-                        className={
-                          course.source === "UPLOAD"
-                            ? styles.uploadSourceBadge
-                            : styles.systemSourceBadge
-                        }
-                      >
-                        {course.source === "UPLOAD" ? "Upload" : "System"}
-                      </span>
-                    </td>
-                    <td>
-                      <div className={styles.recordTableActions}>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setSelectedCourseId(course.id);
-                            setIsCourseDetailOpen((current) =>
-                              selectedCourse?.id === course.id ? !current : true,
-                            );
-                            setDownloadMessage("");
-                          }}
+                    <tr className={isExpanded ? styles.activeRecordRow : undefined}>
+                      <td>
+                        <strong>{course.title}</strong>
+                        <span>{course.code}</span>
+                      </td>
+                      <td>
+                        <strong>{course.date}</strong>
+                        <span>Batch {course.batch ?? "-"} / {course.time ?? "-"}</span>
+                      </td>
+                      <td>{course.company}</td>
+                      <td>
+                        {course.actualAttendees} / {course.registeredAttendees}
+                      </td>
+                      <td>
+                        <strong>THB {formatNumber(actualCostTotal)}</strong>
+                        <span className={styles.perPersonCostText}>
+                          THB {formatNumber(courseCostPerPerson)} / person
+                        </span>
+                      </td>
+                      <td>
+                        {course.evaluationCompleted} / {course.evaluationTotal}
+                        <span>{evaluationRate}% done</span>
+                      </td>
+                      <td>
+                        <span
+                          className={
+                            course.source === "UPLOAD"
+                              ? styles.uploadSourceBadge
+                              : styles.systemSourceBadge
+                          }
                         >
-                          {isExpanded ? "Hide" : "Details"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            handleExportCourseSummary(course);
-                          }}
-                        >
-                          Export
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  {isExpanded ? (
-                    <tr className={styles.inlineDetailRow}>
-                      <td colSpan={8}>{renderSelectedCourseDetail()}</td>
+                          {course.source === "UPLOAD" ? "Upload" : "System"}
+                        </span>
+                      </td>
+                      <td>
+                        <div className={styles.recordTableActions}>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedCourseId(course.id);
+                              setIsCourseDetailOpen((current) =>
+                                selectedCourse?.id === course.id ? !current : true,
+                              );
+                              setDownloadMessage("");
+                            }}
+                          >
+                            {isExpanded ? "Hide" : "Details"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleExportCourseSummary(course);
+                            }}
+                          >
+                            Export
+                          </button>
+                        </div>
+                      </td>
                     </tr>
-                  ) : null}
+                    {isExpanded ? (
+                      <tr className={styles.inlineDetailRow}>
+                        <td colSpan={8}>{renderSelectedCourseDetail()}</td>
+                      </tr>
+                    ) : null}
                   </Fragment>
                 );
               })
@@ -1423,322 +1573,6 @@ export default function TrainingRecord() {
           )}
         </div>
       </section>
-
-      {false ? (
-      <details
-        className={styles.courseDetailDisclosure}
-        open={isCourseDetailOpen}
-        onToggle={(event) => setIsCourseDetailOpen(event.currentTarget.open)}
-      >
-        <summary className={styles.courseDetailSummary}>
-          <div>
-            <span>Course Detail</span>
-            <strong>{selectedCourse.title}</strong>
-          </div>
-          <b>{isCourseDetailOpen ? "Hide detail" : "Show detail"}</b>
-        </summary>
-
-      <section className={styles.completedRecordWorkspace}>
-        <div className={styles.completedCourseDetail}>
-          <section className={styles.completedCourseHero}>
-            <div>
-              <p className={styles.kicker}>Course Record</p>
-              <h3>{selectedCourse.title}</h3>
-              <span>
-                {selectedCourse.code} / Batch {selectedCourse.batch ?? "-"} / {selectedCourse.date} / {selectedCourse.time ?? "-"} / {selectedCourse.room} / {selectedCourse.instructor}
-              </span>
-            </div>
-            <b className={selectedCourse.source === "UPLOAD" ? styles.uploadSourceBadge : styles.systemSourceBadge}>
-              {selectedCourse.source === "UPLOAD" ? "From Upload" : "From System"}
-            </b>
-            <button type="button" onClick={() => handleExportCourseSummary()}>
-              Export Excel
-            </button>
-          </section>
-
-          <section className={styles.costBreakdownPanel} aria-label="Actual cost breakdown">
-            <div className={styles.panelHeader}>
-              <div>
-                <p className={styles.kicker}>Actual Cost</p>
-                <h3>Cost Breakdown</h3>
-              </div>
-              <span>THB {formatNumber(selectedActualCost)}</span>
-            </div>
-
-            <div className={styles.costBreakdownGrid}>
-              {expenseItems.map((item) => (
-                <article key={item.key}>
-                  <span>{item.label}</span>
-                  <strong>THB {formatNumber(selectedCourse.actualCost[item.key])}</strong>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          <section className={styles.courseExcelRecordPanel} aria-label="Course uploaded record details">
-            <div className={styles.panelHeader}>
-              <div>
-                <p className={styles.kicker}>Training Record Details</p>
-                <h3>Employee records from {selectedCourse.source === "UPLOAD" ? "upload" : "system"}</h3>
-              </div>
-              <span>{selectedUploadedRows.length} rows</span>
-            </div>
-
-            {selectedUploadedRows.length > 0 ? (
-              <div className={styles.courseExcelTableWrap}>
-                <table className={styles.courseExcelTable}>
-                  <thead>
-                    <tr>
-                      <th>Emp Code</th>
-                      <th>ID Card</th>
-                      <th>Title(TH)</th>
-                      <th>Name(TH)</th>
-                      <th>SurName(TH)</th>
-                      <th>Course Code</th>
-                      <th>Course Name</th>
-                      <th>Group No.</th>
-                      <th>Instructor</th>
-                      <th>Institute</th>
-                      <th>Training Place</th>
-                      <th>Training Hour</th>
-                      <th>Start Date</th>
-                      <th>End Date</th>
-                      <th>Expense/Person</th>
-                      <th>Function(TH)</th>
-                      <th>Function(EN)</th>
-                      <th>Log Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedUploadedRows.map((record) => (
-                      <tr key={record.id}>
-                        <td>{record.empCode || "-"}</td>
-                        <td>{record.idCard || "-"}</td>
-                        <td>{record.titleTh || "-"}</td>
-                        <td>{record.nameTh || "-"}</td>
-                        <td>{record.surnameTh || "-"}</td>
-                        <td>{record.courseCode || "-"}</td>
-                        <td>{record.courseName || "-"}</td>
-                        <td>{record.groupNo || "-"}</td>
-                        <td>{record.instructor || "-"}</td>
-                        <td>{record.institute || "-"}</td>
-                        <td>{record.trainingPlace || "-"}</td>
-                        <td>{record.trainingHour || "-"}</td>
-                        <td>{record.startDate || "-"}</td>
-                        <td>{record.endDate || "-"}</td>
-                        <td>{record.expensePerPerson || "-"}</td>
-                        <td>{record.functionTh || "-"}</td>
-                        <td>{record.functionEn || "-"}</td>
-                        <td>{record.logDate || "-"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className={styles.emptyState}>
-                No uploaded Excel record rows are linked with this course yet.
-              </p>
-            )}
-          </section>
-
-          <section className={styles.recordChartGrid}>
-            <article className={styles.chartPanel}>
-              <div
-                className={styles.donutChart}
-                style={{ "--value": `${selectedCourse.preTestPassPercent}%` } as CSSProperties}
-                aria-label={`Pre test pass rate ${selectedCourse.preTestPassPercent}%`}
-              >
-                <strong>{selectedCourse.preTestPassPercent}%</strong>
-                <span>Pass</span>
-              </div>
-              <div>
-                <p className={styles.kicker}>Pre Test</p>
-                <h3>Before Training</h3>
-                <span>Most attendees did not pass before training.</span>
-              </div>
-            </article>
-
-            <article className={styles.chartPanel}>
-              <div
-                className={styles.donutChart}
-                style={{ "--value": `${selectedCourse.postTestPassPercent}%` } as CSSProperties}
-                aria-label={`Post test pass rate ${selectedCourse.postTestPassPercent}%`}
-              >
-                <strong>{selectedCourse.postTestPassPercent}%</strong>
-                <span>Pass</span>
-              </div>
-              <div>
-                <p className={styles.kicker}>Post Test</p>
-                <h3>After Training</h3>
-                <span>Pass rate after course completion.</span>
-              </div>
-            </article>
-
-            <article className={styles.chartPanel}>
-              <div
-                className={styles.donutChart}
-                style={{ "--value": `${evaluationPercent}%` } as CSSProperties}
-                aria-label={`Evaluation completion ${evaluationPercent}%`}
-              >
-                <strong>{evaluationPercent}%</strong>
-                <span>Done</span>
-              </div>
-              <div>
-                <p className={styles.kicker}>Evaluation Form</p>
-                <h3>{selectedCourse.evaluationCompleted}/{selectedCourse.evaluationTotal} completed</h3>
-                <span>Download by person or export all evaluation forms.</span>
-              </div>
-            </article>
-          </section>
-
-          <section className={styles.addAttendeePanel} aria-label="Add attendee to recorded course">
-            <div className={styles.panelHeader}>
-              <div>
-                <p className={styles.kicker}>Post-Record Registration</p>
-                <h3>Add Attendee / เพิ่มผู้เข้าร่วม (ส่งคนเพิ่ม)</h3>
-              </div>
-              <button type="button" onClick={() => setIsAddingAttendee(!isAddingAttendee)}>
-                {isAddingAttendee ? "Cancel" : "+ Add Attendee"}
-              </button>
-            </div>
-
-            {isAddingAttendee ? (
-              <div className={styles.addAttendeeWorkspace}>
-                <div className={styles.addAttendeeControls}>
-                  <label>
-                    Select Employee from Master Data
-                    <select
-                      value={selectedEmpCode}
-                      onChange={(event) => {
-                        setSelectedEmpCode(event.target.value);
-                        const master = readEmployeeMasterData().find((e) => e.empCode === event.target.value);
-                        if (master) {
-                          setCustomEmpCode(master.empCode);
-                          setCustomEmpName(`${master.titleEn || ""} ${master.nameEn || master.nameTh} ${master.surnameEn || master.surnameTh}`.trim());
-                          setCustomCompany(master.company);
-                          setCustomDepartment(master.functionName);
-                        }
-                      }}
-                    >
-                      <option value="">Select Employee (Optional)</option>
-                      {readEmployeeMasterData().map((emp) => (
-                        <option key={emp.id} value={emp.empCode}>
-                          {emp.empCode} / {emp.nameEn || emp.nameTh} {emp.surnameEn || emp.surnameTh} / {emp.company} / {emp.functionName}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label>
-                    Employee Code
-                    <input
-                      value={customEmpCode}
-                      onChange={(event) => setCustomEmpCode(event.target.value)}
-                      placeholder="e.g. ATA-1001"
-                    />
-                  </label>
-
-                  <label>
-                    Full Name
-                    <input
-                      value={customEmpName}
-                      onChange={(event) => setCustomEmpName(event.target.value)}
-                      placeholder="e.g. Mr. Somchai Promjai"
-                    />
-                  </label>
-
-                  <label>
-                    Company
-                    <input
-                      value={customCompany}
-                      onChange={(event) => setCustomCompany(event.target.value)}
-                      placeholder="e.g. ATA / SNF"
-                    />
-                  </label>
-
-                  <label>
-                    Department / Function
-                    <input
-                      value={customDepartment}
-                      onChange={(event) => setCustomDepartment(event.target.value)}
-                      placeholder="e.g. Production"
-                    />
-                  </label>
-
-                  <div className={styles.addAttendeeActions}>
-                    <button type="button" onClick={handleAddAttendee}>
-                      Save & Add Attendee
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            {addAttendeeMessage ? (
-              <p className={styles.downloadMessage}>{addAttendeeMessage}</p>
-            ) : null}
-          </section>
-
-          <section className={styles.evaluationDownloadPanel}>
-            <div className={styles.panelHeader}>
-              <div>
-                <p className={styles.kicker}>Actual Attendees</p>
-                <h3>Evaluation Download by Company / Person</h3>
-              </div>
-              <button type="button" onClick={() => handleDownload("All evaluation forms")}>
-                Download All Forms
-              </button>
-            </div>
-
-            <div className={styles.companyAccordionList} aria-label="Actual attendees by company">
-              {attendeesByCompany.map(([company, attendees], index) => (
-                <details className={styles.companyAccordion} key={company} open={index === 0}>
-                  <summary>
-                    <div>
-                      <span>{company}</span>
-                      <strong>{attendees.length} actual attendees</strong>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        handleDownload(`${company} evaluation forms`);
-                      }}
-                    >
-                      Download Company Forms
-                    </button>
-                  </summary>
-
-                  <div className={styles.companyAttendeeList}>
-                    {attendees.map((attendee) => (
-                      <article key={attendee.id}>
-                        <div>
-                          <strong>{attendee.name}</strong>
-                          <span>{attendee.employeeCode} / {attendee.department}</span>
-                        </div>
-                        <span className={styles.statusPill}>{attendee.prePost}</span>
-                        <span className={styles.statusPill}>{attendee.evaluation}</span>
-                        <button
-                          className={styles.detailButton}
-                          type="button"
-                          onClick={() => handleDownload(`${attendee.name} evaluation form`)}
-                        >
-                          Download Form
-                        </button>
-                      </article>
-                    ))}
-                  </div>
-                </details>
-              ))}
-            </div>
-
-            {downloadMessage ? <p className={styles.downloadMessage}>{downloadMessage}</p> : null}
-          </section>
-        </div>
-      </section>
-      </details>
-      ) : null}
     </section>
   );
 }

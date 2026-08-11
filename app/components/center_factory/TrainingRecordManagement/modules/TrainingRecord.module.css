@@ -2201,4 +2201,209 @@
   .companyAttendeeList article {
     grid-template-columns: 1fr;
   }
+
+  .costHighlightGrid {
+    grid-template-columns: 1fr;
+  }
 }
+
+/* Per-Person Cost & Company Allocation Styles */
+
+.costPerPersonHeroBadge {
+  border: 1px solid var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+  font-weight: 800;
+}
+
+.actualCostPerPersonSummary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--ui-radius-sm);
+  background: linear-gradient(135deg, rgba(0, 122, 61, 0.08), rgba(0, 122, 61, 0.02));
+  border: 1px solid var(--ui-30-primary-border);
+}
+
+.actualCostPerPersonSummary span {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--ui-30-primary-strong);
+}
+
+.actualCostPerPersonSummary strong {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: var(--ui-30-primary-strong);
+}
+
+.actualCompanyBreakdownBox {
+  margin-top: 14px;
+  border-top: 1px solid var(--ui-60-surface-muted);
+  padding-top: 12px;
+}
+
+.actualCompanyBreakdownBox h4 {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  color: var(--ui-30-ink);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.actualCompanyList {
+  display: grid;
+  gap: 6px;
+}
+
+.actualCompanyRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-60-surface-soft);
+  font-size: 0.76rem;
+  border: 1px solid var(--ui-30-border);
+}
+
+.actualCompanyRow strong {
+  color: var(--ui-30-ink);
+  font-weight: 800;
+}
+
+.actualCompanyRow small {
+  color: var(--ui-30-muted);
+  font-weight: 600;
+}
+
+.actualCompanyRow b {
+  color: var(--ui-30-primary-strong);
+  font-weight: 800;
+}
+
+.attendeeCostBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(0, 122, 61, 0.25);
+  border-radius: 999px;
+  background: #f0fdf4;
+  color: #047857;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.attendeeCostBadgeAbsent {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.perPersonCostText {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--ui-30-muted);
+  font-weight: 700;
+  margin-top: 3px;
+}
+
+.costHighlightGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0 16px;
+}
+
+.costHighlightCard {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.costHighlightCard span {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--ui-30-muted);
+  text-transform: uppercase;
+}
+
+.costHighlightCard strong {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: var(--ui-30-ink);
+}
+
+.costHighlightPrimary {
+  border-color: var(--ui-30-primary-border);
+  background: linear-gradient(135deg, rgba(0, 122, 61, 0.08), rgba(0, 122, 61, 0.02));
+}
+
+.costHighlightPrimary span {
+  color: var(--ui-30-primary-strong);
+}
+
+.costHighlightPrimary strong {
+  color: var(--ui-30-primary-strong);
+}
+
+.companyCostAllocationBox {
+  margin-top: 16px;
+  border-top: 1px solid var(--ui-60-surface-muted);
+  padding-top: 14px;
+}
+
+.companyCostTableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  margin-top: 8px;
+}
+
+.companyCostTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.companyCostTable th,
+.companyCostTable td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--ui-30-border);
+  text-align: left;
+}
+
+.companyCostTable th {
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.companyAllocatedCostLabel {
+  display: inline-block;
+  margin-left: 10px;
+  font-size: 0.74rem;
+  color: var(--ui-30-primary-strong);
+  font-weight: 800;
+}
+

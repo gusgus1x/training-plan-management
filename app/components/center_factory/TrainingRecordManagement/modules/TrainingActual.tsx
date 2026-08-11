@@ -266,6 +266,32 @@ export default function TrainingActual() {
         0,
       )
     : 0;
+  const actualCostPerPerson = actualCount > 0 ? Math.round(expenseTotal / actualCount) : 0;
+
+  const companyCostBreakdown = useMemo(() => {
+    if (!selectedCourse) {
+      return [];
+    }
+
+    const companyMap = new Map<string, { total: number; attended: number }>();
+    selectedCourse.attendees.forEach((attendee) => {
+      const companyKey = attendee.company || selectedCourse.company || "Other";
+      const current = companyMap.get(companyKey) ?? { total: 0, attended: 0 };
+      current.total += 1;
+      if (attendee.attended) {
+        current.attended += 1;
+      }
+      companyMap.set(companyKey, current);
+    });
+
+    return Array.from(companyMap.entries()).map(([company, data]) => ({
+      company,
+      total: data.total,
+      attended: data.attended,
+      allocatedCost: data.attended * actualCostPerPerson,
+    }));
+  }, [selectedCourse, actualCostPerPerson]);
+
   const plannedBudget = selectedCourse ? parseMoney(selectedCourse.budget) : 0;
   const remainingBudget = plannedBudget - expenseTotal;
   const budgetStatus =
@@ -367,7 +393,7 @@ export default function TrainingActual() {
     );
 
     setSavedMessage(
-      `Saved ${selectedCourse.code} with ${actualCount} actual attendees and THB ${formatCurrency(expenseTotal)} at ${now}.`,
+      `Saved ${selectedCourse.code} with ${actualCount} actual attendees, total THB ${formatCurrency(expenseTotal)} (THB ${formatCurrency(actualCostPerPerson)}/person) at ${now}.`,
     );
   };
 
@@ -380,16 +406,21 @@ export default function TrainingActual() {
           <p>{trainingActualModule.description}</p>
         </div>
         <div className={styles.heroMeta}>
-            <span>{actualCount} Actual</span>
-            <span>
-              {selectedCourseOwner
-                ? selectedCourseOwner === "CENTER"
-                  ? "Center owner"
-                  : "Factory owner"
-                : "Select owner"}
+          <span>{actualCount} Actual</span>
+          <span>
+            {selectedCourseOwner
+              ? selectedCourseOwner === "CENTER"
+                ? "Center owner"
+                : "Factory owner"
+              : "Select owner"}
+          </span>
+          <span>THB {formatCurrency(expenseTotal)}</span>
+          {selectedCourse && actualCount > 0 ? (
+            <span className={styles.costPerPersonHeroBadge}>
+              THB {formatCurrency(actualCostPerPerson)} / person
             </span>
-            <span>THB {formatCurrency(expenseTotal)}</span>
-          </div>
+          ) : null}
+        </div>
       </section>
 
       <section
@@ -471,160 +502,208 @@ export default function TrainingActual() {
       </section>
 
       {selectedCourse ? (
-      <section className={styles.actualWorkspace}>
-        <div className={styles.actualMainPanel}>
-          <div className={styles.actualCompactHeader}>
-            <div>
-              <p className={styles.kicker}>Course Selection</p>
-              <h3>{selectedCourse.title}</h3>
-              <span>
-                {selectedCourse.code} / Batch {selectedCourse.batch ?? "-"} / {selectedCourse.company} / {selectedCourse.date} / {selectedCourse.time}
-              </span>
+        <section className={styles.actualWorkspace}>
+          <div className={styles.actualMainPanel}>
+            <div className={styles.actualCompactHeader}>
+              <div>
+                <p className={styles.kicker}>Course Selection</p>
+                <h3>{selectedCourse.title}</h3>
+                <span>
+                  {selectedCourse.code} / Batch {selectedCourse.batch ?? "-"} / {selectedCourse.company} / {selectedCourse.date} / {selectedCourse.time}
+                </span>
+              </div>
+
+              <div className={styles.actualMiniStats}>
+                <article>
+                  <span>Room</span>
+                  <strong>{selectedCourse.room}</strong>
+                </article>
+                <article>
+                  <span>Instructor</span>
+                  <strong>{selectedCourse.instructor}</strong>
+                </article>
+                <article className={styles.actualBudgetStat}>
+                  <span>Planned Budget</span>
+                  <strong>THB {formatCurrency(plannedBudget)}</strong>
+                </article>
+                <article>
+                  <span>Registered</span>
+                  <strong>{registeredCount}</strong>
+                </article>
+                <article>
+                  <span>Actual</span>
+                  <strong>{actualCount}</strong>
+                </article>
+                <article>
+                  <span>Absent</span>
+                  <strong>{absentCount}</strong>
+                </article>
+                <article className={styles.actualBudgetStat}>
+                  <span>Cost / Person (Actual)</span>
+                  <strong>THB {formatCurrency(actualCostPerPerson)}</strong>
+                </article>
+              </div>
             </div>
 
-            <div className={styles.actualMiniStats}>
-              <article>
-                <span>Room</span>
-                <strong>{selectedCourse.room}</strong>
-              </article>
-              <article>
-                <span>Instructor</span>
-                <strong>{selectedCourse.instructor}</strong>
-              </article>
-              <article className={styles.actualBudgetStat}>
+            {isFactoryUser ? (
+              <div className={styles.actualPermissionNote}>
+                Factory permission: only courses owned by {userCompanyCode} are available.
+              </div>
+            ) : null}
+
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.kicker}>Attendance Check</p>
+                <h3>Actual Attendees</h3>
+              </div>
+              <div className={styles.attendanceHeaderActions}>
+                <span>{actualCount} / {selectedCourse.attendees.length} attended</span>
+                <label className={styles.selectAllAttendance}>
+                  <input
+                    checked={allAttended}
+                    disabled={selectedCourse.attendees.length === 0}
+                    type="checkbox"
+                    onChange={() => setAllAttendance(!allAttended)}
+                  />
+                  <span>{allAttended ? "Clear all" : "Select all"}</span>
+                </label>
+              </div>
+            </div>
+
+            <div className={`${styles.tableWrap} ${styles.attendanceTableWrap}`}>
+              <table className={styles.recordTable}>
+                <thead>
+                  <tr>
+                    <th>Attend</th>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th>Actual Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedCourse.attendees.map((attendee) => (
+                    <tr key={attendee.id}>
+                      <td>
+                        <label className={styles.attendanceCheck}>
+                          <input
+                            type="checkbox"
+                            checked={attendee.attended}
+                            onChange={() => toggleAttendance(attendee.id)}
+                          />
+                          <span>{attendee.attended ? "Attend" : "Absent"}</span>
+                        </label>
+                      </td>
+                      <td>
+                        <strong>{attendee.name}</strong>
+                        <span>
+                          {attendee.employeeCode}
+                          {attendee.company ? ` (${attendee.company})` : ""}
+                        </span>
+                      </td>
+                      <td>{attendee.department}</td>
+                      <td>
+                        {attendee.attended ? (
+                          <span className={styles.attendeeCostBadge}>
+                            THB {formatCurrency(actualCostPerPerson)}
+                          </span>
+                        ) : (
+                          <span className={styles.attendeeCostBadgeAbsent}>
+                            THB 0 (Absent)
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <aside className={styles.actualCostPanel} aria-label="Actual training expenses">
+            <div className={styles.actualCostHeader}>
+              <div>
+                <p className={styles.kicker}>Actual Cost</p>
+                <h3>Training Expenses</h3>
+                <span>Record the real cost used for this course.</span>
+              </div>
+            </div>
+
+            <div className={styles.actualCostGrid}>
+              {expenseFields.map((field) => (
+                <label key={field.key}>
+                  {field.label}
+                  <input
+                    inputMode="decimal"
+                    value={selectedCourse.expenses[field.key]}
+                    onChange={(event) => updateExpense(field.key, event.target.value)}
+                  />
+                </label>
+              ))}
+            </div>
+
+            <div className={styles.actualTotalBox}>
+              <span>Total Actual Cost</span>
+              <strong>THB {formatCurrency(expenseTotal)}</strong>
+            </div>
+
+            <div className={styles.actualCostPerPersonSummary}>
+              <div>
+                <span>Cost / Person (Actual)</span>
+                <strong>THB {formatCurrency(actualCostPerPerson)}</strong>
+              </div>
+              <small>
+                Calculated from THB {formatCurrency(expenseTotal)} ÷ {actualCount} actual attendee{actualCount === 1 ? "" : "s"}
+              </small>
+            </div>
+
+            {companyCostBreakdown.length > 0 ? (
+              <div className={styles.actualCompanyBreakdownBox}>
+                <p className={styles.kicker}>Company Cost Allocation</p>
+                <div className={styles.actualCompanyList}>
+                  {companyCostBreakdown.map((item) => (
+                    <div key={item.company} className={styles.actualCompanyRow}>
+                      <div>
+                        <strong>{item.company}</strong>
+                        <span>
+                          {item.attended} / {item.total} attended
+                        </span>
+                      </div>
+                      <strong>THB {formatCurrency(item.allocatedCost)}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className={styles.actualBudgetSummary}>
+              <div>
                 <span>Planned Budget</span>
                 <strong>THB {formatCurrency(plannedBudget)}</strong>
-              </article>
-              <article>
-                <span>Registered</span>
-                <strong>{registeredCount}</strong>
-              </article>
-              <article>
-                <span>Actual</span>
-                <strong>{actualCount}</strong>
-              </article>
-              <article>
-                <span>Absent</span>
-                <strong>{absentCount}</strong>
-              </article>
+              </div>
+              <div
+                className={
+                  remainingBudget < 0 ? styles.actualBudgetOverrun : undefined
+                }
+              >
+                <span>Remaining Budget</span>
+                <strong>THB {formatCurrency(remainingBudget)}</strong>
+              </div>
+              <p
+                className={
+                  remainingBudget < 0 ? styles.actualBudgetOverrun : undefined
+                }
+              >
+                {budgetStatus}
+              </p>
             </div>
-          </div>
 
-          {isFactoryUser ? (
-            <div className={styles.actualPermissionNote}>
-              Factory permission: only courses owned by {userCompanyCode} are available.
-            </div>
-          ) : null}
+            <button className={styles.actualSaveButton} type="button" onClick={handleSave}>
+              Save Training Actual
+            </button>
 
-          <div className={styles.panelHeader}>
-            <div>
-              <p className={styles.kicker}>Attendance Check</p>
-              <h3>Actual Attendees</h3>
-            </div>
-            <div className={styles.attendanceHeaderActions}>
-              <span>{actualCount} / {selectedCourse.attendees.length} attended</span>
-              <label className={styles.selectAllAttendance}>
-                <input
-                  checked={allAttended}
-                  disabled={selectedCourse.attendees.length === 0}
-                  type="checkbox"
-                  onChange={() => setAllAttendance(!allAttended)}
-                />
-                <span>{allAttended ? "Clear all" : "Select all"}</span>
-              </label>
-            </div>
-          </div>
-
-          <div className={`${styles.tableWrap} ${styles.attendanceTableWrap}`}>
-            <table className={styles.recordTable}>
-              <thead>
-                <tr>
-                  <th>Attend</th>
-                  <th>Employee</th>
-                  <th>Department</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedCourse.attendees.map((attendee) => (
-                  <tr key={attendee.id}>
-                    <td>
-                      <label className={styles.attendanceCheck}>
-                        <input
-                          type="checkbox"
-                          checked={attendee.attended}
-                          onChange={() => toggleAttendance(attendee.id)}
-                        />
-                        <span>{attendee.attended ? "Attend" : "Absent"}</span>
-                      </label>
-                    </td>
-                    <td>
-                      <strong>{attendee.name}</strong>
-                      <span>{attendee.employeeCode}</span>
-                    </td>
-                    <td>{attendee.department}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <aside className={styles.actualCostPanel} aria-label="Actual training expenses">
-          <div className={styles.actualCostHeader}>
-            <div>
-              <p className={styles.kicker}>Actual Cost</p>
-              <h3>Training Expenses</h3>
-              <span>Record the real cost used for this course.</span>
-            </div>
-          </div>
-
-          <div className={styles.actualCostGrid}>
-            {expenseFields.map((field) => (
-              <label key={field.key}>
-                {field.label}
-                <input
-                  inputMode="decimal"
-                  value={selectedCourse.expenses[field.key]}
-                  onChange={(event) => updateExpense(field.key, event.target.value)}
-                />
-              </label>
-            ))}
-          </div>
-
-          <div className={styles.actualTotalBox}>
-            <span>Total Actual Cost</span>
-            <strong>THB {formatCurrency(expenseTotal)}</strong>
-          </div>
-
-          <div className={styles.actualBudgetSummary}>
-            <div>
-              <span>Planned Budget</span>
-              <strong>THB {formatCurrency(plannedBudget)}</strong>
-            </div>
-            <div
-              className={
-                remainingBudget < 0 ? styles.actualBudgetOverrun : undefined
-              }
-            >
-              <span>Remaining Budget</span>
-              <strong>THB {formatCurrency(remainingBudget)}</strong>
-            </div>
-            <p
-              className={
-                remainingBudget < 0 ? styles.actualBudgetOverrun : undefined
-              }
-            >
-              {budgetStatus}
-            </p>
-          </div>
-
-          <button className={styles.actualSaveButton} type="button" onClick={handleSave}>
-            Save Training Actual
-          </button>
-
-          {savedMessage ? <p className={styles.actualSavedMessage}>{savedMessage}</p> : null}
-        </aside>
-      </section>
+            {savedMessage ? <p className={styles.actualSavedMessage}>{savedMessage}</p> : null}
+          </aside>
+        </section>
       ) : (
         <section className={styles.emptyState} aria-label="No selected actual course">
           Select a course first to show training actual details.
