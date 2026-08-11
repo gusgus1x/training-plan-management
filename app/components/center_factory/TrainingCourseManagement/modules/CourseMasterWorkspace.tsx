@@ -23,6 +23,7 @@ import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserCo
 import { listCourseGroups } from "../../../../lib/courseGroups/client";
 import { listCourseTypes } from "../../../../lib/courseTypes/client";
 import { listFunctions } from "../../../../lib/functions/client";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { defaultLevelRows } from "../../MasterDataManagement/modules/LevelData";
 import { defaultPositionRows } from "../../MasterDataManagement/modules/PositionData";
 import styles from "./CourseMasterWorkspace.module.css";
@@ -61,6 +62,10 @@ type CourseForm = {
   evaluation: string;
   evaluationAfter30DayId: string;
   evaluationAfter30Day: string;
+  preTestLink: string;
+  postTestLink: string;
+  evaluationLink: string;
+  evaluationAfter30DayLink: string;
   lifeCycleMonth: string;
   remark: string;
   status: CourseStatus;
@@ -92,6 +97,7 @@ type TrainingEvaluationOption = {
 };
 
 const allFunctionOption = "All Function";
+const allFunctionThaiDisplayName = "ทุกหน่วยงาน";
 const allFunctionCode = "__ALL__";
 
 const normalizeTargetPosition = (position: string) => {
@@ -122,7 +128,11 @@ const emptyCourseForm: CourseForm = {
   evaluation: "",
   evaluationAfter30DayId: "",
   evaluationAfter30Day: "",
-  lifeCycleMonth: "12",
+  preTestLink: "",
+  postTestLink: "",
+  evaluationLink: "",
+  evaluationAfter30DayLink: "",
+  lifeCycleMonth: "",
   remark: "",
   status: "Active",
   courseType: "",
@@ -131,8 +141,13 @@ const emptyCourseForm: CourseForm = {
 
 function CourseMaster() {
   const user = useAuthenticatedUser();
+  const { language } = useUiLanguage();
+  const isFactoryUser = user?.roleCode === "HRD_FACTORY";
+  const factoryCourseTypeAllowlist = ["IN-HOUSE", "PUBLIC", "OJT"];
   const [courseTypeOptions, setCourseTypeOptions] = useState<Array<{ name: string; typeId: string }>>([]);
-  const courseTypes = courseTypeOptions.map((type) => type.name);
+  const courseTypes = isFactoryUser
+    ? courseTypeOptions.map((type) => type.name).filter((name) => factoryCourseTypeAllowlist.includes(name))
+    : courseTypeOptions.map((type) => type.name);
   const [courseGroupOptions, setCourseGroupOptions] = useState<Array<{ name: string; groupId: string }>>([]);
   const courseGroups = courseGroupOptions.map((group) => group.name);
   const [assessmentOptions, setAssessmentOptions] = useState<TrainingAssessmentOption[]>([]);
@@ -193,10 +208,27 @@ function CourseMaster() {
   const [levelRows, setLevelRows] = useState(() =>
     readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows),
   );
+  const allFunctionDisplayName =
+    language === "th" ? allFunctionThaiDisplayName : allFunctionOption;
   const functionOptions = [
-    { id: "", code: allFunctionCode, name: allFunctionOption },
+    { id: "", code: allFunctionCode, name: allFunctionDisplayName },
     ...functionRows,
   ];
+  const getFunctionDisplayName = (functionCode?: string, functionName = "") => {
+    if (functionCode === allFunctionCode || functionName === allFunctionOption) {
+      return allFunctionDisplayName;
+    }
+
+    if (!functionCode && !functionName) {
+      return "";
+    }
+
+    const matchingFunction = functionRows.find(
+      (row) => row.code === functionCode || row.name === functionName,
+    );
+
+    return matchingFunction ? matchingFunction.name : functionName;
+  };
   const positionChecklist = positionRows
     .map((row) => row.positionNameEn.trim())
     .filter(Boolean);
@@ -287,7 +319,7 @@ function CourseMaster() {
 
   const resetStandardForm = () => {
     setStandardFunctionCode(allFunctionCode);
-    setStandardFunctionName(allFunctionOption);
+    setStandardFunctionName(allFunctionDisplayName);
     setSelectedPositions([]);
     setSelectedLevels([]);
   };
@@ -302,13 +334,16 @@ function CourseMaster() {
       return;
     }
 
-    const matchingFunction = functionOptions.find(
+    const matchingFunctionOption = functionOptions.find(
       (option) =>
         option.code === standard.functionCode ||
         option.name === standard.functionName,
     );
-    setStandardFunctionCode(matchingFunction?.code ?? allFunctionCode);
-    setStandardFunctionName(standard.functionName || allFunctionOption);
+    setStandardFunctionCode(matchingFunctionOption?.code ?? allFunctionCode);
+    setStandardFunctionName(
+      getFunctionDisplayName(standard.functionCode, standard.functionName) ||
+        allFunctionDisplayName,
+    );
     setSelectedPositions(
       positionChecklist.filter((position) =>
         standard.positions.some(
@@ -379,6 +414,10 @@ function CourseMaster() {
       course.evaluationAfter30Day,
       publishedFollowUpEvaluations,
     ),
+    preTestLink: course.preTestLink ?? "",
+    postTestLink: course.postTestLink ?? "",
+    evaluationLink: course.evaluationLink ?? "",
+    evaluationAfter30DayLink: course.evaluationAfter30DayLink ?? "",
   });
 
   const updateForm = (field: keyof CourseForm, value: string) => {
@@ -396,6 +435,7 @@ function CourseMaster() {
       ...current,
       [idField]: assessment?.id ?? "",
       [nameField]: assessment?.name ?? "",
+      [`${nameField}Link`]: "",
     }));
   };
 
@@ -410,6 +450,29 @@ function CourseMaster() {
       ...current,
       [idField]: evaluation?.id ?? "",
       [nameField]: evaluation?.name ?? "",
+      [`${nameField}Link`]: "",
+    }));
+  };
+
+  const handleFormLinkChange = (
+    linkField:
+      | "preTestLink"
+      | "postTestLink"
+      | "evaluationLink"
+      | "evaluationAfter30DayLink",
+    idField: "preTestId" | "postTestId" | "evaluationId" | "evaluationAfter30DayId",
+    nameField: "preTest" | "postTest" | "evaluation" | "evaluationAfter30Day",
+    value: string,
+  ) => {
+    setForm((current) => ({
+      ...current,
+      [linkField]: value,
+      ...(value.trim()
+        ? {
+            [idField]: "",
+            [nameField]: "",
+          }
+        : {}),
     }));
   };
 
@@ -579,7 +642,7 @@ function CourseMaster() {
       // required + unique, no generation rule) — this is only used the first time a
       // standard is created for a given year; later courses in the same year reuse it.
       standardCode: `STD-${standardYear}-G${courseGroupId}`,
-      standardName: getCourseDisplayName({ courseNameTh: form.courseNameTh.trim(), courseNameEn: form.courseNameEn.trim() }),
+      standardName: form.courseNameTh.trim() || form.courseNameEn.trim(),
       functionId:
         standardFunctionCode === allFunctionCode
           ? null
@@ -690,6 +753,31 @@ function CourseMaster() {
           <small className={styles.fieldHint}>Assigned by the server on save; not editable.</small>
         </label>
         <label>
+          <span className={styles.fieldLabel}>Course Type <b>*</b></span>
+          <select
+            value={form.courseType}
+            disabled={!isEditing}
+            onChange={(event) => updateForm("courseType", event.target.value)}
+          >
+            <option value="">Select Course Type</option>
+            {courseTypes.map((type) => (
+              <option key={type} value={type} translate="no">{type}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span className={styles.fieldLabel}>Life Cycle (Month)</span>
+          <input
+            value={form.lifeCycleMonth}
+            disabled={!isEditing}
+            inputMode="numeric"
+            min="0"
+            placeholder="Enter 0 for no course expiration"
+            type="number"
+            onChange={(event) => updateForm("lifeCycleMonth", event.target.value)}
+          />
+        </label>
+        <label>
           <span className={styles.fieldLabel}>Course Name (TH) <b>*</b></span>
           <input
             value={form.courseNameTh}
@@ -707,32 +795,6 @@ function CourseMaster() {
             placeholder="Example: Safety Basics"
             onChange={(event) => updateForm("courseNameEn", event.target.value)}
           />
-        </label>
-        <label>
-          <span className={styles.fieldLabel}>Course Type <b>*</b></span>
-          <select
-            value={form.courseType}
-            disabled={!isEditing}
-            onChange={(event) => updateForm("courseType", event.target.value)}
-          >
-            <option value="">Select Course Type</option>
-            {courseTypes.map((type) => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className={styles.fieldLabel}>Life Cycle (Month)</span>
-          <input
-            value={form.lifeCycleMonth}
-            disabled={!isEditing}
-            inputMode="numeric"
-            min="1"
-            placeholder="Example: 12"
-            type="number"
-            onChange={(event) => updateForm("lifeCycleMonth", event.target.value)}
-          />
-          <small className={styles.fieldHint}>Number of months before the course should be reviewed.</small>
         </label>
         <label className={styles.fullWidth}>
           <span className={styles.fieldLabel}>Objective <b>*</b></span>
@@ -805,10 +867,26 @@ function CourseMaster() {
               </option>
             ))}
           </select>
+          <input
+            value={form.preTestLink}
+            disabled={!isEditing}
+            placeholder="Paste pre-test form link"
+            type="url"
+            onChange={(event) =>
+              handleFormLinkChange(
+                "preTestLink",
+                "preTestId",
+                "preTest",
+                event.target.value,
+              )
+            }
+          />
           <small className={styles.catalogHint}>
             {selectedPreTest
-              ? `${selectedPreTest.questionCount} questions`
-              : `${publishedPreTests.length} published assessment option${publishedPreTests.length === 1 ? "" : "s"}`}
+              ? `${selectedPreTest.questionCount} questions · Linked course: ${selectedPreTest.courseName}`
+              : form.preTestLink
+                ? "Manual form link will be used."
+                : `${publishedPreTests.length} published Pre Test option${publishedPreTests.length === 1 ? "" : "s"}`}
           </small>
         </label>
         <label>
@@ -836,10 +914,26 @@ function CourseMaster() {
               </option>
             ))}
           </select>
+          <input
+            value={form.postTestLink}
+            disabled={!isEditing}
+            placeholder="Paste post-test form link"
+            type="url"
+            onChange={(event) =>
+              handleFormLinkChange(
+                "postTestLink",
+                "postTestId",
+                "postTest",
+                event.target.value,
+              )
+            }
+          />
           <small className={styles.catalogHint}>
             {selectedPostTest
-              ? `${selectedPostTest.questionCount} questions`
-              : `${publishedPostTests.length} published assessment option${publishedPostTests.length === 1 ? "" : "s"}`}
+              ? `${selectedPostTest.questionCount} questions · Linked course: ${selectedPostTest.courseName}`
+              : form.postTestLink
+                ? "Manual form link will be used."
+                : `${publishedPostTests.length} published Post Test option${publishedPostTests.length === 1 ? "" : "s"}`}
           </small>
         </label>
         <label>
@@ -867,10 +961,26 @@ function CourseMaster() {
               </option>
             ))}
           </select>
+          <input
+            value={form.evaluationLink}
+            disabled={!isEditing}
+            placeholder="Paste evaluation form link"
+            type="url"
+            onChange={(event) =>
+              handleFormLinkChange(
+                "evaluationLink",
+                "evaluationId",
+                "evaluation",
+                event.target.value,
+              )
+            }
+          />
           <small className={styles.catalogHint}>
             {selectedEvaluation
               ? `${selectedEvaluation.questionCount} questions · ${selectedEvaluation.respondent} · ${selectedEvaluation.scope}`
-              : `${publishedCourseEvaluations.length} published After Training option${publishedCourseEvaluations.length === 1 ? "" : "s"}`}
+              : form.evaluationLink
+                ? "Manual form link will be used."
+                : `${publishedCourseEvaluations.length} published After Training option${publishedCourseEvaluations.length === 1 ? "" : "s"}`}
           </small>
         </label>
         <label>
@@ -899,10 +1009,26 @@ function CourseMaster() {
               </option>
             ))}
           </select>
+          <input
+            value={form.evaluationAfter30DayLink}
+            disabled={!isEditing}
+            placeholder="Paste 30-day evaluation form link"
+            type="url"
+            onChange={(event) =>
+              handleFormLinkChange(
+                "evaluationAfter30DayLink",
+                "evaluationAfter30DayId",
+                "evaluationAfter30Day",
+                event.target.value,
+              )
+            }
+          />
           <small className={styles.catalogHint}>
             {selectedFollowUpEvaluation
               ? `${selectedFollowUpEvaluation.questionCount} questions · ${selectedFollowUpEvaluation.respondent} · ${selectedFollowUpEvaluation.scope}`
-              : `${publishedFollowUpEvaluations.length} published 30-Day Follow-up option${publishedFollowUpEvaluations.length === 1 ? "" : "s"}`}
+              : form.evaluationAfter30DayLink
+                ? "Manual form link will be used."
+                : `${publishedFollowUpEvaluations.length} published 30-Day Follow-up option${publishedFollowUpEvaluations.length === 1 ? "" : "s"}`}
           </small>
         </label>
         <label className={styles.fullWidth}>
@@ -943,7 +1069,7 @@ function CourseMaster() {
               }}
             >
               {functionOptions.map((option) => (
-                <option key={option.code} value={option.code}>
+                <option key={option.code} value={option.code} translate="no">
                   {option.name}
                 </option>
               ))}
@@ -1038,7 +1164,7 @@ function CourseMaster() {
       <section className={styles.hero}>
         <div>
           <p className={styles.kicker}>{courseMasterModule.subtitle}</p>
-          <h2>{courseMasterModule.title}</h2>
+          <h2 translate="no">{courseMasterModule.title}</h2>
           <p>{courseMasterModule.description}</p>
         </div>
       </section>
@@ -1109,11 +1235,18 @@ function CourseMaster() {
                         ) : null}
                       </td>
                       <td>
-                        <strong>{course.courseType}</strong>
+                        <strong translate="no">{course.courseType}</strong>
                         <span>{course.courseGroup}</span>
                       </td>
                       <td>
-                        <strong>{courseStandard?.functionName ?? "Not set"}</strong>
+                        <strong translate={courseStandard ? "no" : undefined}>
+                          {courseStandard
+                            ? getFunctionDisplayName(
+                                courseStandard.functionCode,
+                                courseStandard.functionName,
+                              )
+                            : "Not set"}
+                        </strong>
                         <span>
                           {courseStandard
                             ? `${courseStandard.positions.length} positions · ${courseStandard.levels.length} levels`

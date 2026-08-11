@@ -20,8 +20,17 @@ export type EmployeeMasterRecord = {
   workday: string;
   functionCode: string;
   functionName: string;
+  department?: string;
   positionName: string;
   levelKey: string;
+};
+
+export type PositionLevelSlot = {
+  positionName: string;
+  levelKey: string;
+  functionCode: string;
+  functionName: string;
+  department: string;
 };
 
 const createEmployee = (
@@ -29,78 +38,215 @@ const createEmployee = (
   sequence: number,
   values: Omit<EmployeeMasterRecord, "id" | "company" | "empCode" | "idCard">,
 ): EmployeeMasterRecord => ({
-  id: `emp-${company.toLowerCase()}-${String(sequence).padStart(3, "0")}`,
+  id: `emp-${String(sequence).padStart(4, "0")}`,
   company,
-  empCode: `${company}-${String(sequence).padStart(4, "0")}`,
-  idCard: `MOCK-${company}-${String(sequence).padStart(4, "0")}`,
+  empCode: String(sequence).padStart(4, "0"),
+  idCard: `1101700${String(sequence).padStart(6, "0")}`,
+  department: values.department ?? "",
   ...values,
 });
 
-const baseEmployeeRows: EmployeeMasterRecord[] = [
-  createEmployee("ATA", 1001, { nameTh: "อนันต์", surnameTh: "ศรีสุข", titleEn: "Mr.", nameEn: "Anan", surnameEn: "Srisuk", birthday: "1991-04-12", workday: "2018-06-01", functionCode: "FNC0010", functionName: "Production", positionName: "Operator", levelKey: "ป3" }),
-  createEmployee("ATA", 1002, { nameTh: "มาลี", surnameTh: "เกษมสุข", titleEn: "Ms.", nameEn: "Mali", surnameEn: "Kasemsuk", birthday: "1989-09-18", workday: "2016-03-14", functionCode: "FNC0013", functionName: "Quality", positionName: "Engineer", levelKey: "บ2" }),
-  createEmployee("ATA", 1003, { nameTh: "ภัทรพล", surnameTh: "เลิศปัญญา", titleEn: "Mr.", nameEn: "Pattarapon", surnameEn: "Lertpanya", birthday: "1988-02-21", workday: "2014-05-12", functionCode: "FNC0010", functionName: "Production", positionName: "Section Head", levelKey: "บ4" }),
-  createEmployee("ATA", 1004, { nameTh: "รัชชานนท์", surnameTh: "พรสวัสดิ์", titleEn: "Mr.", nameEn: "Ratchanon", surnameEn: "Pornsawat", birthday: "1994-06-08", workday: "2020-07-01", functionCode: "FNC0012", functionName: "Engineering and Maintenance", positionName: "Foreman", levelKey: "บ1" }),
-  createEmployee("ATA", 1005, { nameTh: "ศรัณย์", surnameTh: "มีชัย", titleEn: "Mr.", nameEn: "Saran", surnameEn: "Meechai", birthday: "1998-01-17", workday: "2023-04-03", functionCode: "FNC0010", functionName: "Production", positionName: "Operator", levelKey: "ป1" }),
-
-  createEmployee("ATFB", 2101, { nameTh: "สมชาย", surnameTh: "พร้อมใจ", titleEn: "Mr.", nameEn: "Somchai", surnameEn: "Promjai", birthday: "1987-07-03", workday: "2013-05-16", functionCode: "FNC0010", functionName: "Production", positionName: "Manager++", levelKey: "จ1" }),
-  createEmployee("ATFB", 2102, { nameTh: "นรินทร์", surnameTh: "ทองชัย", titleEn: "Mr.", nameEn: "Narin", surnameEn: "Thongchai", birthday: "1992-11-14", workday: "2019-01-07", functionCode: "FNC0012", functionName: "Engineering and Maintenance", positionName: "Foreman", levelKey: "บ2" }),
-  createEmployee("ATFB", 2103, { nameTh: "อรสา", surnameTh: "จันทร์ดี", titleEn: "Ms.", nameEn: "Orasa", surnameEn: "Jandee", birthday: "1990-10-27", workday: "2017-08-21", functionCode: "FNC0010", functionName: "Production", positionName: "Supervisor", levelKey: "บ3" }),
-  createEmployee("ATFB", 2104, { nameTh: "ภาวิณี", surnameTh: "ศรีสุวรรณ", titleEn: "Ms.", nameEn: "Pawinee", surnameEn: "Srisuwan", birthday: "1993-03-09", workday: "2020-02-10", functionCode: "FNC0013", functionName: "Quality", positionName: "Engineer", levelKey: "บ1" }),
-  createEmployee("ATFB", 2105, { nameTh: "ดวงกมล", surnameTh: "เรืองฤทธิ์", titleEn: "Ms.", nameEn: "Duangkamol", surnameEn: "Ruangrit", birthday: "1997-12-05", workday: "2022-09-01", functionCode: "FNC0004", functionName: "Human Resource", positionName: "Staff", levelKey: "ป2" }),
-
-  createEmployee("NIC", 3201, { nameTh: "กานดา", surnameTh: "รุ่งเรือง", titleEn: "Ms.", nameEn: "Kanda", surnameEn: "Rungrueang", birthday: "1992-05-30", workday: "2020-04-01", functionCode: "FNC0013", functionName: "Quality", positionName: "Supervisor", levelKey: "บ3" }),
-  createEmployee("NIC", 3202, { nameTh: "ปรีชา", surnameTh: "วงศ์สว่าง", titleEn: "Mr.", nameEn: "Preecha", surnameEn: "Wongsawang", birthday: "1988-01-14", workday: "2015-09-07", functionCode: "FNC0010", functionName: "Production", positionName: "Operator", levelKey: "ป1" }),
-  createEmployee("NIC", 3203, { nameTh: "ศิริลักษณ์", surnameTh: "เดชาพงศ์", titleEn: "Ms.", nameEn: "Sirilak", surnameEn: "Dechapong", birthday: "1986-09-23", workday: "2012-11-05", functionCode: "FNC0009", functionName: "Warehouse", positionName: "Manager++", levelKey: "จ3" }),
-  createEmployee("NIC", 3204, { nameTh: "ฐิติวัฒน์", surnameTh: "คงแก้ว", titleEn: "Mr.", nameEn: "Thitiwat", surnameEn: "Kongkaew", birthday: "1996-04-19", workday: "2021-06-14", functionCode: "FNC0010", functionName: "Production", positionName: "Operator", levelKey: "ป2" }),
-  createEmployee("NIC", 3205, { nameTh: "พงศกร", surnameTh: "อินทรพร", titleEn: "Mr.", nameEn: "Pongsakorn", surnameEn: "Intaraporn", birthday: "1991-08-12", workday: "2018-10-01", functionCode: "FNC0014", functionName: "Safety and Environment", positionName: "Staff", levelKey: "ป4" }),
-
-  createEmployee("SATI", 4301, { nameTh: "วิภาดา", surnameTh: "ชัยพร", titleEn: "Ms.", nameEn: "Wipada", surnameEn: "Chaiporn", birthday: "1994-08-11", workday: "2022-02-15", functionCode: "FNC0012", functionName: "Engineering and Maintenance", positionName: "Engineer", levelKey: "บ1" }),
-  createEmployee("SATI", 4302, { nameTh: "ชัยวัฒน์", surnameTh: "นิลประภา", titleEn: "Mr.", nameEn: "Chaiwat", surnameEn: "Nilprapa", birthday: "1986-11-04", workday: "2014-12-01", functionCode: "FNC0010", functionName: "Production", positionName: "Manager++", levelKey: "จ2" }),
-  createEmployee("SATI", 4303, { nameTh: "ณัฐธิดา", surnameTh: "วิชัย", titleEn: "Ms.", nameEn: "Nattida", surnameEn: "Vichai", birthday: "1990-02-26", workday: "2017-01-09", functionCode: "FNC0013", functionName: "Quality", positionName: "Supervisor", levelKey: "บ3" }),
-  createEmployee("SATI", 4304, { nameTh: "อารีวรรณ", surnameTh: "เฟื่องฟ้า", titleEn: "Ms.", nameEn: "Areewan", surnameEn: "Fuangfa", birthday: "1989-06-15", workday: "2015-07-20", functionCode: "FNC0010", functionName: "Production", positionName: "Section Head", levelKey: "บ4" }),
-  createEmployee("SATI", 4305, { nameTh: "ธีรภัทร", surnameTh: "พูนผล", titleEn: "Mr.", nameEn: "Teerapat", surnameEn: "Poonpol", birthday: "1997-10-02", workday: "2023-03-01", functionCode: "FNC0008", functionName: "IT Promotion", positionName: "Staff", levelKey: "ป3" }),
-
-  createEmployee("SNF", 5401, { nameTh: "สุดา", surnameTh: "มั่นคง", titleEn: "Ms.", nameEn: "Suda", surnameEn: "Mankong", birthday: "1996-03-19", workday: "2023-06-05", functionCode: "FNC0014", functionName: "Safety and Environment", positionName: "Staff", levelKey: "ป3" }),
-  createEmployee("SNF", 5402, { nameTh: "กฤต", surnameTh: "อรุณรุ่ง", titleEn: "Mr.", nameEn: "Krit", surnameEn: "Aroonrung", birthday: "1991-06-25", workday: "2018-10-10", functionCode: "FNC0010", functionName: "Production", positionName: "Operator", levelKey: "ป2" }),
-  createEmployee("SNF", 5403, { nameTh: "วริศ", surnameTh: "หิรัญศักดิ์", titleEn: "Mr.", nameEn: "Warit", surnameEn: "Hiranyasak", birthday: "1988-12-18", workday: "2015-03-02", functionCode: "FNC0010", functionName: "Production", positionName: "Supervisor", levelKey: "บ3" }),
-  createEmployee("SNF", 5404, { nameTh: "จิรวัฒน์", surnameTh: "องอาจ", titleEn: "Mr.", nameEn: "Jirawat", surnameEn: "Ongart", birthday: "1993-09-07", workday: "2019-08-05", functionCode: "FNC0012", functionName: "Engineering and Maintenance", positionName: "Engineer", levelKey: "บ2" }),
-  createEmployee("SNF", 5405, { nameTh: "ณิชา", surnameTh: "ลิ้มสกุล", titleEn: "Ms.", nameEn: "Nicha", surnameEn: "Limsakul", birthday: "1995-05-28", workday: "2021-11-15", functionCode: "FNC0010", functionName: "Production", positionName: "Leader", levelKey: "ป5" }),
-
-  createEmployee("TEP", 6501, { nameTh: "เบญจมาศ", surnameTh: "ยอดมณี", titleEn: "Ms.", nameEn: "Benjamas", surnameEn: "Yodmanee", birthday: "1995-12-22", workday: "2021-01-08", functionCode: "FNC0010", functionName: "Production", positionName: "Operator", levelKey: "ป2" }),
-  createEmployee("TEP", 6502, { nameTh: "ธนกร", surnameTh: "บุญมี", titleEn: "Mr.", nameEn: "Thanakorn", surnameEn: "Boonmee", birthday: "1993-02-07", workday: "2019-11-20", functionCode: "FNC0012", functionName: "Engineering and Maintenance", positionName: "Foreman", levelKey: "บ3" }),
-  createEmployee("TEP", 6503, { nameTh: "พิมพ์ชนก", surnameTh: "เอกรัตน์", titleEn: "Ms.", nameEn: "Phimchanok", surnameEn: "Ekkarat", birthday: "1987-04-30", workday: "2013-08-19", functionCode: "FNC0010", functionName: "Production", positionName: "Section Head", levelKey: "บ4" }),
-  createEmployee("TEP", 6504, { nameTh: "กนกวรรณ", surnameTh: "อุดมสิน", titleEn: "Ms.", nameEn: "Kanokwan", surnameEn: "Udomsin", birthday: "1992-07-16", workday: "2018-09-03", functionCode: "FNC0013", functionName: "Quality", positionName: "Supervisor", levelKey: "บ2" }),
-  createEmployee("TEP", 6505, { nameTh: "ณัฐพล", surnameTh: "วงศ์ดี", titleEn: "Mr.", nameEn: "Nattapol", surnameEn: "Wongdee", birthday: "1998-11-09", workday: "2024-01-08", functionCode: "FNC0009", functionName: "Warehouse", positionName: "Staff", levelKey: "ป1" }),
+const companySlots: PositionLevelSlot[] = [
+  // 1. President / จ4 / FNC0016 President Office
+  { positionName: "President", levelKey: "จ4", functionCode: "FNC0016", functionName: "President Office", department: "Executive Office" },
+  // 2. Executive Vice President / จ4 / FNC0010 Production
+  { positionName: "Executive Vice President", levelKey: "จ4", functionCode: "FNC0010", functionName: "Production", department: "Executive Office" },
+  // 3. Vice President / จ4 / FNC0012 Engineering and Maintenance
+  { positionName: "Vice President", levelKey: "จ4", functionCode: "FNC0012", functionName: "Engineering and Maintenance", department: "Operations" },
+  // 4. Senior Advisor / จ4 / FNC0004 Human Resource
+  { positionName: "Senior Advisor", levelKey: "จ4", functionCode: "FNC0004", functionName: "Human Resource", department: "Advisory" },
+  // 5. Advisor / จ3 / FNC0013 Quality
+  { positionName: "Advisor", levelKey: "จ3", functionCode: "FNC0013", functionName: "Quality", department: "Quality Advisory" },
+  // 6. Executive General Manager / จ3 / FNC0004 Human Resource
+  { positionName: "Executive General Manager", levelKey: "จ3", functionCode: "FNC0004", functionName: "Human Resource", department: "HR & Admin" },
+  // 7. Senior General Manager / จ3 / FNC0009 Warehouse
+  { positionName: "Senior General Manager", levelKey: "จ3", functionCode: "FNC0009", functionName: "คลังสินค้า", department: "Logistics" },
+  // 8. Plant Manager / จ3 / FNC0010 Production
+  { positionName: "Plant Manager", levelKey: "จ3", functionCode: "FNC0010", functionName: "Production", department: "Plant Operations" },
+  // 9. Senior Executive Coordinator / จ2 / FNC0008 IT Promotion
+  { positionName: "Senior Executive Coordinator", levelKey: "จ2", functionCode: "FNC0008", functionName: "IT Promotion", department: "Executive Coordination" },
+  // 10. General Manager / จ2 / FNC0010 Production
+  { positionName: "General Manager", levelKey: "จ2", functionCode: "FNC0010", functionName: "Production", department: "Manufacturing" },
+  // 11. General Manager / จ2 / FNC0001 Sales
+  { positionName: "General Manager", levelKey: "จ2", functionCode: "FNC0001", functionName: "การขาย", department: "Sales & Marketing" },
+  // 12. Manager / จ1 / FNC0010 Production
+  { positionName: "Manager", levelKey: "จ1", functionCode: "FNC0010", functionName: "Production", department: "Production" },
+  // 13. Manager / จ1 / FNC0013 Quality
+  { positionName: "Manager", levelKey: "จ1", functionCode: "FNC0013", functionName: "Quality", department: "Quality Assurance" },
+  // 14. Manager / จ1 / FNC0003 Account and Financial
+  { positionName: "Manager", levelKey: "จ1", functionCode: "FNC0003", functionName: "Account and Financial", department: "Finance & Accounting" },
+  // 15. Manager / จ1 / FNC0007 Purchase
+  { positionName: "Manager", levelKey: "จ1", functionCode: "FNC0007", functionName: "Purchase", department: "Procurement" },
+  // 16. Section Head / บ4 / FNC0010 Production
+  { positionName: "Section Head", levelKey: "บ4", functionCode: "FNC0010", functionName: "Production", department: "Assembly" },
+  // 17. Section Head / บ4 / FNC0012 Engineering and Maintenance
+  { positionName: "Section Head", levelKey: "บ4", functionCode: "FNC0012", functionName: "Engineering and Maintenance", department: "Maintenance" },
+  // 18. Section Head / บ4 / FNC0002 Sale Planing
+  { positionName: "Section Head", levelKey: "บ4", functionCode: "FNC0002", functionName: "Sale Planing", department: "Sales Planning" },
+  // 19. Section Head / บ4 / FNC0011 Production Planing
+  { positionName: "Section Head", levelKey: "บ4", functionCode: "FNC0011", functionName: "Production Planing", department: "Planning" },
+  // 20. Senior Foreman / บ3 / FNC0010 Production
+  { positionName: "Senior Foreman", levelKey: "บ3", functionCode: "FNC0010", functionName: "Production", department: "Machining" },
+  // 21. Officer / บ3 / FNC0013 Quality
+  { positionName: "Officer", levelKey: "บ3", functionCode: "FNC0013", functionName: "Quality", department: "Quality Control" },
+  // 22. Officer / บ3 / FNC0014 Safety and Environment
+  { positionName: "Officer", levelKey: "บ3", functionCode: "FNC0014", functionName: "Safety and Environment", department: "Safety" },
+  // 23. Officer / บ2 / FNC0004 Human Resource
+  { positionName: "Officer", levelKey: "บ2", functionCode: "FNC0004", functionName: "Human Resource", department: "Training" },
+  // 24. Foreman / บ2 / FNC0010 Production
+  { positionName: "Foreman", levelKey: "บ2", functionCode: "FNC0010", functionName: "Production", department: "Casting" },
+  // 25. Foreman / บ2 / FNC0012 Engineering and Maintenance
+  { positionName: "Foreman", levelKey: "บ2", functionCode: "FNC0012", functionName: "Engineering and Maintenance", department: "Tooling" },
+  // 26. Engineer / บ1 / FNC0012 Engineering and Maintenance
+  { positionName: "Engineer", levelKey: "บ1", functionCode: "FNC0012", functionName: "Engineering and Maintenance", department: "Engineering" },
+  // 27. Engineer / บ1 / FNC0013 Quality
+  { positionName: "Engineer", levelKey: "บ1", functionCode: "FNC0013", functionName: "Quality", department: "QA/QC" },
+  // 28. Engineer / บ1 / FNC0015 Project Engineering
+  { positionName: "Engineer", levelKey: "บ1", functionCode: "FNC0015", functionName: "Project Engineering", department: "Project Engineering" },
+  // 29. Engineer / บ1 / FNC0008 IT Promotion
+  { positionName: "Engineer", levelKey: "บ1", functionCode: "FNC0008", functionName: "IT Promotion", department: "System Development" },
+  // 30. Leader / ป5 / FNC0010 Production
+  { positionName: "Leader", levelKey: "ป5", functionCode: "FNC0010", functionName: "Production", department: "Assembly Line 1" },
+  // 31. Leader / ป5 / FNC0014 Safety and Environment
+  { positionName: "Leader", levelKey: "ป5", functionCode: "FNC0014", functionName: "Safety and Environment", department: "Safety Operations" },
+  // 32. Leader / ป4 / FNC0010 Production
+  { positionName: "Leader", levelKey: "ป4", functionCode: "FNC0010", functionName: "Production", department: "Machining Line" },
+  // 33. Leader / ป4 / FNC0009 Warehouse
+  { positionName: "Leader", levelKey: "ป4", functionCode: "FNC0009", functionName: "คลังสินค้า", department: "Warehouse Store" },
+  // 34. Staff / ป3 / FNC0008 IT Promotion
+  { positionName: "Staff", levelKey: "ป3", functionCode: "FNC0008", functionName: "IT Promotion", department: "IT Support" },
+  // 35. Staff / ป3 / FNC0011 Production Planing
+  { positionName: "Staff", levelKey: "ป3", functionCode: "FNC0011", functionName: "Production Planing", department: "Production Control" },
+  // 36. Staff / ป3 / FNC0004 Human Resource
+  { positionName: "Staff", levelKey: "ป3", functionCode: "FNC0004", functionName: "Human Resource", department: "HR & Welfare" },
+  // 37. Staff / ป3 / FNC0005 General Affairs
+  { positionName: "Staff", levelKey: "ป3", functionCode: "FNC0005", functionName: "ธุรการ", department: "General Affairs" },
+  // 38. Staff / ป2 / FNC0006 Interpreter & Secretary
+  { positionName: "Staff", levelKey: "ป2", functionCode: "FNC0006", functionName: "ล่ามและเลขานุการ", department: "Translation & Secretary" },
+  // 39. Staff / ป2 / FNC0007 Purchase
+  { positionName: "Staff", levelKey: "ป2", functionCode: "FNC0007", functionName: "Purchase", department: "Purchasing" },
+  // 40. Operator / ป2 / FNC0010 Production
+  { positionName: "Operator", levelKey: "ป2", functionCode: "FNC0010", functionName: "Production", department: "Casting Section" },
+  // 41. Operator / ป1 / FNC0010 Production
+  { positionName: "Operator", levelKey: "ป1", functionCode: "FNC0010", functionName: "Production", department: "Assembly Line A" },
+  // 42. Operator / ป1 / FNC0010 Production
+  { positionName: "Operator", levelKey: "ป1", functionCode: "FNC0010", functionName: "Production", department: "Assembly Line B" },
+  // 43. Operator / ป1 / FNC0012 Engineering and Maintenance
+  { positionName: "Operator", levelKey: "ป1", functionCode: "FNC0012", functionName: "Engineering and Maintenance", department: "Maintenance Support" },
 ];
 
-const additionalGivenNames = [
-  { nameTh: "กิตติ", nameEn: "Kitti" },
-  { nameTh: "ชนาธิป", nameEn: "Chanathip" },
-  { nameTh: "ณรงค์", nameEn: "Narong" },
-  { nameTh: "ธนภัทร", nameEn: "Thanapat" },
-  { nameTh: "นพดล", nameEn: "Noppadon" },
-  { nameTh: "ปกรณ์", nameEn: "Pakorn" },
-  { nameTh: "พีรพัฒน์", nameEn: "Peerapat" },
-  { nameTh: "ภูริณัฐ", nameEn: "Purinat" },
-  { nameTh: "วรชัย", nameEn: "Worachai" },
-  { nameTh: "สิทธิชัย", nameEn: "Sittichai" },
-  { nameTh: "อัครพล", nameEn: "Akarapol" },
-  { nameTh: "กัญญารัตน์", nameEn: "Kanyarat" },
-  { nameTh: "จิราภา", nameEn: "Jirapa" },
-  { nameTh: "ชลธิชา", nameEn: "Chonthicha" },
-  { nameTh: "ณัฐชา", nameEn: "Natcha" },
-  { nameTh: "ปวีณา", nameEn: "Paweena" },
-  { nameTh: "พัชรินทร์", nameEn: "Patcharin" },
-  { nameTh: "รัตนา", nameEn: "Rattana" },
-  { nameTh: "วรรณวิสา", nameEn: "Wanvisa" },
-  { nameTh: "ศศิธร", nameEn: "Sasithorn" },
-  { nameTh: "สุภาวดี", nameEn: "Supawadee" },
-  { nameTh: "อรทัย", nameEn: "Orathai" },
-  { nameTh: "อัญชลี", nameEn: "Anchalee" },
-] as const;
+const thaiGivenNames = [
+  { nameTh: "อนันต์", nameEn: "Anan", title: "Mr." },
+  { nameTh: "มาลี", nameEn: "Mali", title: "Ms." },
+  { nameTh: "ภัทรพล", nameEn: "Pattarapon", title: "Mr." },
+  { nameTh: "รัชชานนท์", nameEn: "Ratchanon", title: "Mr." },
+  { nameTh: "ศรัณย์", nameEn: "Saran", title: "Mr." },
+  { nameTh: "วิชชุดา", nameEn: "Witchuda", title: "Ms." },
+  { nameTh: "ธนพัฒน์", nameEn: "Thanapat", title: "Mr." },
+  { nameTh: "พิมพ์วดี", nameEn: "Pimwadee", title: "Ms." },
+  { nameTh: "สมชาย", nameEn: "Somchai", title: "Mr." },
+  { nameTh: "นรินทร์", nameEn: "Narin", title: "Mr." },
+  { nameTh: "อรสา", nameEn: "Orasa", title: "Ms." },
+  { nameTh: "ภาวิณี", nameEn: "Pawinee", title: "Ms." },
+  { nameTh: "ดวงกมล", nameEn: "Duangkamol", title: "Ms." },
+  { nameTh: "ปิยะวัฒน์", nameEn: "Piyawat", title: "Mr." },
+  { nameTh: "ชลธิชา", nameEn: "Chonthicha", title: "Ms." },
+  { nameTh: "กานดา", nameEn: "Kanda", title: "Ms." },
+  { nameTh: "ปรีชา", nameEn: "Preecha", title: "Mr." },
+  { nameTh: "ศิริลักษณ์", nameEn: "Sirilak", title: "Ms." },
+  { nameTh: "ฐิติวัฒน์", nameEn: "Thitiwat", title: "Mr." },
+  { nameTh: "พงศกร", nameEn: "Pongsakorn", title: "Mr." },
+  { nameTh: "รัตนาภรณ์", nameEn: "Rattanaporn", title: "Ms." },
+  { nameTh: "วรากร", nameEn: "Warakorn", title: "Mr." },
+  { nameTh: "วิภาดา", nameEn: "Wipada", title: "Ms." },
+  { nameTh: "ชัยวัฒน์", nameEn: "Chaiwat", title: "Mr." },
+  { nameTh: "ณัฐธิดา", nameEn: "Nattida", title: "Ms." },
+  { nameTh: "อารีวรรณ", nameEn: "Areewan", title: "Ms." },
+  { nameTh: "ธีรภัทร", nameEn: "Teerapat", title: "Mr." },
+  { nameTh: "ธนาพร", nameEn: "Thanaporn", title: "Ms." },
+  { nameTh: "สรวิชญ์", nameEn: "Sorawich", title: "Mr." },
+  { nameTh: "สุดา", nameEn: "Suda", title: "Ms." },
+  { nameTh: "กฤต", nameEn: "Krit", title: "Mr." },
+  { nameTh: "วริศ", nameEn: "Warit", title: "Mr." },
+  { nameTh: "จิรวัฒน์", nameEn: "Jirawat", title: "Mr." },
+  { nameTh: "ณิชา", nameEn: "Nicha", title: "Ms." },
+  { nameTh: "ประภาพร", nameEn: "Prapaporn", title: "Ms." },
+  { nameTh: "วุฒิพงศ์", nameEn: "Wuttipong", title: "Mr." },
+  { nameTh: "เบญจมาศ", nameEn: "Benjamas", title: "Ms." },
+  { nameTh: "ธนกร", nameEn: "Thanakorn", title: "Mr." },
+  { nameTh: "พิมพ์ชนก", nameEn: "Phimchanok", title: "Ms." },
+  { nameTh: "กนกวรรณ", nameEn: "Kanokwan", title: "Ms." },
+  { nameTh: "ณัฐพล", nameEn: "Nattapol", title: "Mr." },
+  { nameTh: "อรรถพร", nameEn: "Arthaporn", title: "Mr." },
+  { nameTh: "ศุภลักษณ์", nameEn: "Supalak", title: "Ms." },
+  { nameTh: "กิตติ", nameEn: "Kitti", title: "Mr." },
+  { nameTh: "ชนาธิป", nameEn: "Chanathip", title: "Mr." },
+  { nameTh: "ณรงค์", nameEn: "Narong", title: "Mr." },
+  { nameTh: "ธนภัทร", nameEn: "Thanapat", title: "Mr." },
+  { nameTh: "นพดล", nameEn: "Noppadon", title: "Mr." },
+  { nameTh: "ปกรณ์", nameEn: "Pakorn", title: "Mr." },
+  { nameTh: "พีรพัฒน์", nameEn: "Peerapat", title: "Mr." },
+  { nameTh: "ภูริณัฐ", nameEn: "Purinat", title: "Mr." },
+  { nameTh: "วรชัย", nameEn: "Worachai", title: "Mr." },
+  { nameTh: "สิทธิชัย", nameEn: "Sittichai", title: "Mr." },
+  { nameTh: "อัครพล", nameEn: "Akarapol", title: "Mr." },
+  { nameTh: "กัญญารัตน์", nameEn: "Kanyarat", title: "Ms." },
+  { nameTh: "จิราภา", nameEn: "Jirapa", title: "Ms." },
+  { nameTh: "ณัฐชา", nameEn: "Natcha", title: "Ms." },
+  { nameTh: "ปวีณา", nameEn: "Paweena", title: "Ms." },
+  { nameTh: "พัชรินทร์", nameEn: "Patcharin", title: "Ms." },
+  { nameTh: "รัตนา", nameEn: "Rattana", title: "Ms." },
+  { nameTh: "วรรณวิสา", nameEn: "Wanvisa", title: "Ms." },
+  { nameTh: "ศศิธร", nameEn: "Sasithorn", title: "Ms." },
+  { nameTh: "สุภาวดี", nameEn: "Supawadee", title: "Ms." },
+  { nameTh: "อรทัย", nameEn: "Orathai", title: "Ms." },
+  { nameTh: "อัญชลี", nameEn: "Anchalee", title: "Ms." },
+];
 
-const additionalSurnames = [
+const thaiSurnames = [
+  { surnameTh: "ศรีสุข", surnameEn: "Srisuk" },
+  { surnameTh: "เกษมสุข", surnameEn: "Kasemsuk" },
+  { surnameTh: "เลิศปัญญา", surnameEn: "Lertpanya" },
+  { surnameTh: "พรสวัสดิ์", surnameEn: "Pornsawat" },
+  { surnameTh: "มีชัย", surnameEn: "Meechai" },
+  { surnameTh: "ทองสว่าง", surnameEn: "Thongsawang" },
+  { surnameTh: "วิริยะกุล", surnameEn: "Wiriyakul" },
+  { surnameTh: "สุขประเสริฐ", surnameEn: "Sukprasert" },
+  { surnameTh: "พร้อมใจ", surnameEn: "Promjai" },
+  { surnameTh: "ทองชัย", surnameEn: "Thongchai" },
+  { surnameTh: "จันทร์ดี", surnameEn: "Jandee" },
+  { surnameTh: "ศรีสุวรรณ", surnameEn: "Srisuwan" },
+  { surnameTh: "เรืองฤทธิ์", surnameEn: "Ruangrit" },
+  { surnameTh: "เดชาวุธ", surnameEn: "Dechawut" },
+  { surnameTh: "บุณยนิตย์", surnameEn: "Boonyanit" },
+  { surnameTh: "รุ่งเรือง", surnameEn: "Rungrueang" },
+  { surnameTh: "วงศ์สว่าง", surnameEn: "Wongsawang" },
+  { surnameTh: "เดชาพงศ์", surnameEn: "Dechapong" },
+  { surnameTh: "คงแก้ว", surnameEn: "Kongkaew" },
+  { surnameTh: "อินทรพร", surnameEn: "Intaraporn" },
+  { surnameTh: "พรมมินทร์", surnameEn: "Phrommint" },
+  { surnameTh: "สมบัติ", surnameEn: "Sombat" },
+  { surnameTh: "ชัยพร", surnameEn: "Chaiporn" },
+  { surnameTh: "นิลประภา", surnameEn: "Nilprapa" },
+  { surnameTh: "วิชัย", surnameEn: "Vichai" },
+  { surnameTh: "เฟื่องฟ้า", surnameEn: "Fuangfa" },
+  { surnameTh: "พูนผล", surnameEn: "Poonpol" },
+  { surnameTh: "สายสมุทร", surnameEn: "Saisamut" },
+  { surnameTh: "พรมบุตร", surnameEn: "Prombut" },
+  { surnameTh: "มั่นคง", surnameEn: "Mankong" },
+  { surnameTh: "อรุณรุ่ง", surnameEn: "Aroonrung" },
+  { surnameTh: "หิรัญศักดิ์", surnameEn: "Hiranyasak" },
+  { surnameTh: "องอาจ", surnameEn: "Ongart" },
+  { surnameTh: "ลิ้มสกุล", surnameEn: "Limsakul" },
+  { surnameTh: "หาญสมุทร", surnameEn: "Hansamut" },
+  { surnameTh: "เทพรักษ์", surnameEn: "Thepprak" },
+  { surnameTh: "ยอดมณี", surnameEn: "Yodmanee" },
+  { surnameTh: "บุญมี", surnameEn: "Boonmee" },
+  { surnameTh: "เอกรัตน์", surnameEn: "Ekkarat" },
+  { surnameTh: "อุดมสิน", surnameEn: "Udomsin" },
+  { surnameTh: "วงศ์ดี", surnameEn: "Wongdee" },
+  { surnameTh: "เชิดชูไทย", surnameEn: "Cherdchoonthai" },
+  { surnameTh: "ไชยมงคล", surnameEn: "Chaimongkol" },
   { surnameTh: "แสงทอง", surnameEn: "Saengthong" },
   { surnameTh: "บุญส่ง", surnameEn: "Boonsong" },
   { surnameTh: "ตั้งมั่น", surnameEn: "Tangman" },
@@ -116,7 +262,6 @@ const additionalSurnames = [
   { surnameTh: "พงษ์ไพบูลย์", surnameEn: "Pongpaiboon" },
   { surnameTh: "มณีวงศ์", surnameEn: "Maneewong" },
   { surnameTh: "รุ่งวิไล", surnameEn: "Rungwilai" },
-  { surnameTh: "ชัยมงคล", surnameEn: "Chaimongkol" },
   { surnameTh: "ศรีสวัสดิ์", surnameEn: "Srisawat" },
   { surnameTh: "วงศ์เจริญ", surnameEn: "Wongcharoen" },
   { surnameTh: "เลิศวิทยา", surnameEn: "Lertwitthaya" },
@@ -124,85 +269,54 @@ const additionalSurnames = [
   { surnameTh: "เกียรติคุณ", surnameEn: "Kiatkhun" },
   { surnameTh: "พิพัฒน์ชัย", surnameEn: "Pipatchai" },
   { surnameTh: "อุดมทรัพย์", surnameEn: "Udomsap" },
-] as const;
+];
 
-const functionProfiles = [
-  { functionCode: "FNC0010", functionName: "Production" },
-  { functionCode: "FNC0013", functionName: "Quality" },
-  { functionCode: "FNC0012", functionName: "Engineering and Maintenance" },
-  { functionCode: "FNC0014", functionName: "Safety and Environment" },
-  { functionCode: "FNC0009", functionName: "คลังสินค้า" },
-  { functionCode: "FNC0004", functionName: "Human Resource" },
-  { functionCode: "FNC0008", functionName: "IT Promotion" },
-  { functionCode: "FNC0011", functionName: "Production Planing" },
-] as const;
-
-const positionLevelProfiles = [
-  { positionName: "Operator", levelKey: "ป1" },
-  { positionName: "Operator", levelKey: "ป2" },
-  { positionName: "Staff", levelKey: "ป3" },
-  { positionName: "Leader", levelKey: "ป4" },
-  { positionName: "Leader", levelKey: "ป5" },
-  { positionName: "Engineer", levelKey: "บ1" },
-  { positionName: "Foreman", levelKey: "บ2" },
-  { positionName: "Supervisor", levelKey: "บ3" },
-  { positionName: "Section Head", levelKey: "บ4" },
-  { positionName: "Manager++", levelKey: "จ1" },
-  { positionName: "Manager++", levelKey: "จ2" },
-  { positionName: "Manager++", levelKey: "จ3" },
-] as const;
-
-const companyGenerationProfiles: Array<{
+const companyConfigs: Array<{
   company: EmployeeCompanyCode;
-  firstSequence: number;
+  baseCode: number;
 }> = [
-  { company: "ATA", firstSequence: 1006 },
-  { company: "ATFB", firstSequence: 2106 },
-  { company: "NIC", firstSequence: 3206 },
-  { company: "SATI", firstSequence: 4306 },
-  { company: "SNF", firstSequence: 5406 },
-  { company: "TEP", firstSequence: 6506 },
+  { company: "ATA", baseCode: 1001 },
+  { company: "ATFB", baseCode: 2101 },
+  { company: "NIC", baseCode: 3201 },
+  { company: "SATI", baseCode: 4301 },
+  { company: "SNF", baseCode: 5401 },
+  { company: "TEP", baseCode: 6501 },
 ];
 
 const padDatePart = (value: number) => String(value).padStart(2, "0");
 
-const generatedEmployeeRows = companyGenerationProfiles.flatMap(
-  ({ company, firstSequence }, companyIndex) =>
-    additionalGivenNames.map((givenName, employeeIndex) => {
-      const surname =
-        additionalSurnames[
-          (employeeIndex + companyIndex * 4) % additionalSurnames.length
-        ];
-      const employeeOffset = employeeIndex + companyIndex * 3;
-      const functionProfile =
-        functionProfiles[employeeOffset % functionProfiles.length];
-      const positionLevel =
-        positionLevelProfiles[employeeOffset % positionLevelProfiles.length];
-      const birthdayYear = 1985 + (employeeOffset % 15);
-      const birthdayMonth = (employeeOffset % 12) + 1;
-      const birthdayDay = (employeeOffset % 27) + 1;
-      const workdayYear = 2012 + (employeeOffset % 13);
-      const workdayMonth = ((employeeOffset + 4) % 12) + 1;
-      const workdayDay = ((employeeOffset + 8) % 27) + 1;
+export const defaultEmployeeRows: EmployeeMasterRecord[] = companyConfigs.flatMap(
+  ({ company, baseCode }, companyIndex) =>
+    companySlots.map((slot, slotIndex) => {
+      const nameIndex = (companyIndex * 7 + slotIndex) % thaiGivenNames.length;
+      const surnameIndex = (companyIndex * 11 + slotIndex) % thaiSurnames.length;
+      const given = thaiGivenNames[nameIndex];
+      const surname = thaiSurnames[surnameIndex];
 
-      return createEmployee(company, firstSequence + employeeIndex, {
-        nameTh: givenName.nameTh,
+      const birthdayYear = 1978 + (slotIndex % 20);
+      const birthdayMonth = (slotIndex % 12) + 1;
+      const birthdayDay = (slotIndex % 27) + 1;
+
+      const workdayYear = 2008 + (slotIndex % 16);
+      const workdayMonth = ((slotIndex + 3) % 12) + 1;
+      const workdayDay = ((slotIndex + 7) % 27) + 1;
+
+      return createEmployee(company, baseCode + slotIndex, {
+        nameTh: given.nameTh,
         surnameTh: surname.surnameTh,
-        titleEn: (employeeIndex + companyIndex) % 2 === 0 ? "Mr." : "Ms.",
-        nameEn: givenName.nameEn,
+        titleEn: given.title,
+        nameEn: given.nameEn,
         surnameEn: surname.surnameEn,
         birthday: `${birthdayYear}-${padDatePart(birthdayMonth)}-${padDatePart(birthdayDay)}`,
         workday: `${workdayYear}-${padDatePart(workdayMonth)}-${padDatePart(workdayDay)}`,
-        ...functionProfile,
-        ...positionLevel,
+        functionCode: slot.functionCode,
+        functionName: slot.functionName,
+        department: slot.department,
+        positionName: slot.positionName,
+        levelKey: slot.levelKey,
       });
     }),
 );
-
-export const defaultEmployeeRows: EmployeeMasterRecord[] = [
-  ...baseEmployeeRows,
-  ...generatedEmployeeRows,
-];
 
 export const normalizeEmployeeLevel = (levelKey: string) => {
   const normalized = levelKey.trim().toUpperCase();
@@ -213,39 +327,77 @@ export const normalizeEmployeeLevel = (levelKey: string) => {
     .replace(/^L(?=\d)/, "O");
 };
 
+export const getLevelRank = (levelKey: string): number => {
+  if (!levelKey) return 0;
+  const raw = levelKey.trim();
+
+  // Management (จ, M):
+  if (/จ\s*4|M\s*4|management\s*4/i.test(raw)) return 13;
+  if (/จ\s*3|M\s*3|management\s*3/i.test(raw)) return 12;
+  if (/จ\s*2|M\s*2|management\s*2/i.test(raw)) return 11;
+  if (/จ\s*1|M\s*1|management\s*1/i.test(raw)) return 10;
+
+  // Supervisor / Specialist (บ, S):
+  if (/บ\s*4|S\s*4|supervisor\s*4/i.test(raw)) return 9;
+  if (/บ\s*3|S\s*3|supervisor\s*3/i.test(raw)) return 8;
+  if (/บ\s*2|S\s*2|supervisor\s*2/i.test(raw)) return 7;
+  if (/บ\s*1|S\s*1|supervisor\s*1/i.test(raw)) return 6;
+
+  // Operation (ป, O, L):
+  if (/ป\s*5|O\s*5|L\s*5|operation\s*5/i.test(raw)) return 5;
+  if (/ป\s*4|O\s*4|L\s*4|operation\s*4/i.test(raw)) return 4;
+  if (/ป\s*3|O\s*3|L\s*3|operation\s*3/i.test(raw)) return 3;
+  if (/ป\s*2|O\s*2|L\s*2|operation\s*2/i.test(raw)) return 2;
+  if (/ป\s*1|O\s*1|L\s*1|operation\s*1/i.test(raw)) return 1;
+
+  // Fallback regex match
+  const thaiMatch = raw.match(/^([จบป])\s*(\d)$/);
+  if (thaiMatch) {
+    const code = thaiMatch[1];
+    const num = parseInt(thaiMatch[2], 10);
+    if (code === "จ") return 9 + num;
+    if (code === "บ") return 5 + num;
+    if (code === "ป") return num;
+  }
+
+  const norm = normalizeEmployeeLevel(raw).toUpperCase();
+  const engMatch = norm.match(/^([MSOL])\s*(\d)$/);
+  if (engMatch) {
+    const code = engMatch[1];
+    const num = parseInt(engMatch[2], 10);
+    if (code === "M") return 9 + num;
+    if (code === "S") return 5 + num;
+    if (code === "O" || code === "L") return num;
+  }
+
+  return 0;
+};
+
 const EMPLOYEE_MASTER_SEED_VERSION_KEY = "tpm_master_employees_seed_version";
-const EMPLOYEE_MASTER_SEED_VERSION = "2026-07-30-168";
+const EMPLOYEE_MASTER_SEED_VERSION = "2026-08-10-numeric-employee-id-v6";
 
 export const readEmployeeMasterData = () => {
-  const storedRows = readMasterCollection<EmployeeMasterRecord>(
+  if (typeof window === "undefined") {
+    return defaultEmployeeRows;
+  }
+
+  const currentSeed = window.localStorage.getItem(EMPLOYEE_MASTER_SEED_VERSION_KEY);
+  if (currentSeed !== EMPLOYEE_MASTER_SEED_VERSION) {
+    window.localStorage.setItem(
+      TRAINING_MASTER_KEYS.employees,
+      JSON.stringify(defaultEmployeeRows),
+    );
+    window.localStorage.setItem(
+      EMPLOYEE_MASTER_SEED_VERSION_KEY,
+      EMPLOYEE_MASTER_SEED_VERSION,
+    );
+    return defaultEmployeeRows;
+  }
+
+  return readMasterCollection<EmployeeMasterRecord>(
     TRAINING_MASTER_KEYS.employees,
     defaultEmployeeRows,
   );
-
-  if (
-    typeof window === "undefined" ||
-    window.localStorage.getItem(EMPLOYEE_MASTER_SEED_VERSION_KEY) ===
-      EMPLOYEE_MASTER_SEED_VERSION
-  ) {
-    return storedRows;
-  }
-
-  const storedEmployeeCodes = new Set(storedRows.map((row) => row.empCode));
-  const migratedRows = [
-    ...storedRows,
-    ...defaultEmployeeRows.filter(
-      (defaultRow) => !storedEmployeeCodes.has(defaultRow.empCode),
-    ),
-  ];
-  window.localStorage.setItem(
-    TRAINING_MASTER_KEYS.employees,
-    JSON.stringify(migratedRows),
-  );
-  window.localStorage.setItem(
-    EMPLOYEE_MASTER_SEED_VERSION_KEY,
-    EMPLOYEE_MASTER_SEED_VERSION,
-  );
-  return migratedRows;
 };
 
 export const writeEmployeeMasterData = (records: EmployeeMasterRecord[]) => {

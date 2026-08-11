@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   TRAINING_WORKFLOW_EVENT,
   TRAINING_WORKFLOW_KEYS,
   readWorkflowCollection,
+  writeWorkflowCollection,
   type WorkflowCompletedCourse,
 } from "../../../../lib/trainingWorkflow";
+import { readEmployeeMasterData } from "../../../../lib/employeeMasterData";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import {
   getRollingPlanCompanies,
@@ -64,18 +66,6 @@ type CompletedCourse = {
     evaluation: "Done" | "Pending";
   }>;
 };
-
-type CompletedCourseGroup = {
-  id: string;
-  source: CompletedCourse["source"];
-  code: string;
-  title: string;
-  owner: CompletedCourse["owner"];
-  sessions: CompletedCourse[];
-};
-
-type CourseOwner = CompletedCourse["owner"];
-type CourseOwnerFilter = CourseOwner | "";
 
 type ImportedCourseDraft = Omit<CompletedCourse, "id">;
 
@@ -369,6 +359,11 @@ const buildTableRows = (rows: Array<Array<string | number>>) =>
     .join("");
 
 const exportCourseSummaryExcel = (course: CompletedCourse, actualCostTotal: number) => {
+  const costPerPerson =
+    course.actualAttendees > 0
+      ? Math.round(actualCostTotal / course.actualAttendees)
+      : 0;
+
   const summaryRows = [
     ["Course Code", course.code],
     ["Course Title", course.title],
@@ -379,7 +374,8 @@ const exportCourseSummaryExcel = (course: CompletedCourse, actualCostTotal: numb
     ["Room", course.room],
     ["Instructor", course.instructor],
     ["Actual / Registered", `${course.actualAttendees}/${course.registeredAttendees}`],
-    ["Actual Cost", `THB ${formatNumber(actualCostTotal)}`],
+    ["Actual Cost (Total)", `THB ${formatNumber(actualCostTotal)}`],
+    ["Actual Cost per Person", `THB ${formatNumber(costPerPerson)}`],
     ["Pre Test Pass", `${course.preTestPassPercent}%`],
     ["Post Test Pass", `${course.postTestPassPercent}%`],
     ["Average Score", `${course.averageScore}%`],
@@ -393,7 +389,15 @@ const exportCourseSummaryExcel = (course: CompletedCourse, actualCostTotal: numb
     ]),
   ];
   const attendeeRows = [
-    ["Company", "Employee Code", "Name", "Department", "Pre/Post", "Evaluation"],
+    [
+      "Company",
+      "Employee Code",
+      "Name",
+      "Department",
+      "Pre/Post",
+      "Evaluation",
+      "Expense / Person (THB)",
+    ],
     ...course.attendees.map((attendee) => [
       attendee.company,
       attendee.employeeCode,
@@ -401,6 +405,7 @@ const exportCourseSummaryExcel = (course: CompletedCourse, actualCostTotal: numb
       attendee.department,
       attendee.prePost,
       attendee.evaluation,
+      `THB ${formatNumber(costPerPerson)}`,
     ]),
   ];
   const workbook = `<!doctype html><html><head><meta charset="utf-8" /><style>body{font-family:Arial,sans-serif}table{border-collapse:collapse;margin-bottom:18px}td{border:1px solid #cbd5e1;padding:6px 8px;white-space:nowrap}tr:first-child td{background:#f1f5f9;font-weight:700}</style></head><body><table>${buildTableRows(summaryRows)}</table><table>${buildTableRows(costRows)}</table><table>${buildTableRows(attendeeRows)}</table></body></html>`;
@@ -570,7 +575,6 @@ const expenseItems = [
 export default function TrainingRecord() {
   const user = useAuthenticatedUser();
   const [courses, setCourses] = useState<CompletedCourse[]>([]);
-  const [courseOwnerFilter, setCourseOwnerFilter] = useState<CourseOwnerFilter>("");
   const [selectedCourseGroupId, setSelectedCourseGroupId] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [downloadMessage, setDownloadMessage] = useState("");
@@ -580,6 +584,14 @@ export default function TrainingRecord() {
   const [importMessage, setImportMessage] = useState("");
   const [importFileName, setImportFileName] = useState("");
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
+  const [isCourseDetailOpen, setIsCourseDetailOpen] = useState(false);
+  const [isAddingAttendee, setIsAddingAttendee] = useState(false);
+  const [selectedEmpCode, setSelectedEmpCode] = useState("");
+  const [customEmpCode, setCustomEmpCode] = useState("");
+  const [customEmpName, setCustomEmpName] = useState("");
+  const [customCompany, setCustomCompany] = useState("");
+  const [customDepartment, setCustomDepartment] = useState("");
+  const [addAttendeeMessage, setAddAttendeeMessage] = useState("");
 
   useEffect(() => {
     void loadWorkflowRollingPlans().then(setRollingPlans);
@@ -656,96 +668,112 @@ export default function TrainingRecord() {
     return () =>
       window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncCompletedCourses);
   }, [rollingPlans]);
+
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
   const userCompanyCode = profileValue(user?.companyCode);
   const importScopeLabel = isFactoryUser ? `${userCompanyCode} factory scope` : "Center scope";
   const importScopeNote = isFactoryUser
     ? `Factory import saves only completed courses for ${userCompanyCode}. Center records and other companies are ignored.`
     : "Center import can save completed courses for center and factory scopes.";
-  const availableCourses = isFactoryUser
-    ? courses.filter(
-        (course) =>
-          course.owner === "FACTORY" &&
-          (course.ownerCompany ?? course.company) === userCompanyCode,
-      )
-    : courses;
-  const selectedCourseOwner: CourseOwnerFilter = isFactoryUser ? "FACTORY" : courseOwnerFilter;
-  const ownerFilteredCourses = selectedCourseOwner
-    ? availableCourses.filter((course) => course.owner === selectedCourseOwner)
-    : [];
-  const courseGroups = new Map<string, CompletedCourse[]>();
-  ownerFilteredCourses.forEach((course) => {
-    const groupId = course.groupId ?? course.rollingId ?? course.id;
-    courseGroups.set(groupId, [...(courseGroups.get(groupId) ?? []), course]);
-  });
-  const availableCourseGroups: CompletedCourseGroup[] = [...courseGroups.entries()].map(
-    ([id, sessions]) => {
-      const sortedSessions = [...sessions].sort((a, b) => a.date.localeCompare(b.date));
-      const firstSession = sortedSessions[0];
-
-      return {
-        id,
-        source: firstSession.source,
-        code: firstSession.code,
-        title: firstSession.title,
-        owner: firstSession.owner,
-        sessions: sortedSessions,
-      };
-    },
+  const availableCourses = useMemo(
+    () =>
+      isFactoryUser
+        ? courses.filter(
+            (course) =>
+              course.owner === "FACTORY" &&
+              (course.ownerCompany ?? course.company) === userCompanyCode,
+          )
+        : courses,
+    [courses, isFactoryUser, userCompanyCode],
   );
-  const selectedCourseGroup =
-    availableCourseGroups.find((group) => group.id === selectedCourseGroupId) ??
-    null;
-  const availableSessions = selectedCourseGroup?.sessions ?? [];
+
+  const availableCourseGroups = useMemo(() => {
+    const groups = new Map<string, CompletedCourse[]>();
+    availableCourses.forEach((course) => {
+      const groupId =
+        course.groupId ??
+        `group-${course.code}-${course.owner}-${course.ownerCompany ?? course.company}`;
+      groups.set(groupId, [...(groups.get(groupId) ?? []), course]);
+    });
+    return [...groups.entries()].map(([id, sessions]) => ({
+      id,
+      code: sessions[0]?.code ?? "",
+      title: sessions[0]?.title ?? "",
+      owner: sessions[0]?.owner ?? "CENTER",
+      sessions,
+    }));
+  }, [availableCourses]);
+
+  const availableSessions = useMemo(() => {
+    const group = availableCourseGroups.find((g) => g.id === selectedCourseGroupId);
+    return group?.sessions ?? availableCourses;
+  }, [availableCourseGroups, selectedCourseGroupId, availableCourses]);
+
+  const centerCourses = availableCourses.filter((course) => course.owner === "CENTER");
+  const factoryCourses = availableCourses.filter((course) => course.owner === "FACTORY");
   const selectedCourse =
-    availableSessions.find((course) => course.id === selectedCourseId) ?? null;
+    availableCourses.find((course) => course.id === selectedCourseId) ??
+    availableCourses[0] ??
+    null;
 
-  if (availableCourses.length === 0) {
-    return (
-      <section className={styles.page} aria-label="Training Record module">
-        <section className={styles.hero}>
-          <div>
-            <p className={styles.kicker}>{trainingRecordModule.subtitle}</p>
-            <h2>{trainingRecordModule.title}</h2>
-            <p>{trainingRecordModule.description}</p>
-          </div>
-          <div className={styles.heroMeta}>
-            <span>0 completed courses</span>
-            <span>{isFactoryUser ? "Factory permission" : "Center scope"}</span>
-          </div>
-        </section>
+  const getActualCostTotal = (course: CompletedCourse) =>
+    expenseItems.reduce((total, item) => total + course.actualCost[item.key], 0);
 
-        <section className={styles.courseSelectPanel} aria-label="Completed course selector">
-          <div>
-            <p className={styles.kicker}>Course Owner</p>
-            <h3>No completed course available</h3>
-          </div>
-          <p className={styles.emptyState}>
-            {isFactoryUser
-              ? `Factory permission can view only completed courses owned by ${userCompanyCode || "your company"}.`
-              : "No completed courses are available yet. Import completed training records from Excel to save courses."}
-          </p>
-        </section>
-      </section>
+  const getCostPerPerson = (course: CompletedCourse) => {
+    const total = getActualCostTotal(course);
+    const count = course.actualAttendees > 0 ? course.actualAttendees : course.attendees.length;
+    return count > 0 ? Math.round(total / count) : 0;
+  };
+
+  const getVisibleAttendees = (course: CompletedCourse) =>
+    course.attendees.filter(
+      (attendee) => !isFactoryUser || attendee.company === userCompanyCode,
     );
-  }
-  const evaluationPercent = selectedCourse
-    ? Math.round((selectedCourse.evaluationCompleted / selectedCourse.evaluationTotal) * 100)
-    : 0;
-  const selectedActualCost = selectedCourse
-    ? expenseItems.reduce((total, item) => total + selectedCourse.actualCost[item.key], 0)
-    : 0;
-  const visibleCourseAttendees = selectedCourse
-    ? selectedCourse.attendees.filter((attendee) => !isFactoryUser || attendee.company === userCompanyCode)
-    : [];
+
+  const evaluationPercent =
+    selectedCourse && selectedCourse.evaluationTotal > 0
+      ? Math.round((selectedCourse.evaluationCompleted / selectedCourse.evaluationTotal) * 100)
+      : 0;
+
+  const selectedActualCost = selectedCourse ? getActualCostTotal(selectedCourse) : 0;
+  const selectedCostPerPerson = selectedCourse ? getCostPerPerson(selectedCourse) : 0;
+
+  const visibleCourseAttendees = selectedCourse ? getVisibleAttendees(selectedCourse) : [];
+
+  const selectedCompanyCostBreakdown = useMemo(() => {
+    if (!selectedCourse) {
+      return [];
+    }
+    const map = new Map<string, { count: number }>();
+    visibleCourseAttendees.forEach((attendee) => {
+      const comp = attendee.company || selectedCourse.company || "Other";
+      const cur = map.get(comp) ?? { count: 0 };
+      cur.count += 1;
+      map.set(comp, cur);
+    });
+    return Array.from(map.entries()).map(([company, data]) => ({
+      company,
+      count: data.count,
+      totalCost: data.count * selectedCostPerPerson,
+      percentage:
+        visibleCourseAttendees.length > 0
+          ? Math.round((data.count / visibleCourseAttendees.length) * 100)
+          : 0,
+    }));
+  }, [selectedCourse, visibleCourseAttendees, selectedCostPerPerson]);
+
   const attendeesByCompany = selectedCourse
     ? Object.entries(
-        visibleCourseAttendees.reduce<Record<string, typeof visibleCourseAttendees>>((result, attendee) => {
-          result[attendee.company] = [...(result[attendee.company] ?? []), attendee];
-          return result;
-        }, {}),
+        visibleCourseAttendees.reduce<Record<string, typeof visibleCourseAttendees>>(
+          (result, attendee) => {
+            result[attendee.company] = [...(result[attendee.company] ?? []), attendee];
+            return result;
+          },
+          {},
+        ),
       )
     : [];
+
   const selectedUploadedRows = selectedCourse
     ? savedRecordRows.filter(
         (record) =>
@@ -762,20 +790,23 @@ export default function TrainingRecord() {
     setDownloadMessage(`${label} downloaded for ${selectedCourse.code}.`);
   };
 
-  const handleExportCourseSummary = () => {
-    if (!selectedCourse) {
+  const handleExportCourseSummary = (course = selectedCourse) => {
+    if (!course) {
       return;
     }
 
+    const visibleAttendees = getVisibleAttendees(course);
+    const actualCostTotal = getActualCostTotal(course);
+
     exportCourseSummaryExcel(
       {
-        ...selectedCourse,
-        actualAttendees: visibleCourseAttendees.length,
-        attendees: visibleCourseAttendees,
+        ...course,
+        actualAttendees: visibleAttendees.length,
+        attendees: visibleAttendees,
       },
-      selectedActualCost,
+      actualCostTotal,
     );
-    setDownloadMessage(`Exported course record summary for ${selectedCourse.code}.`);
+    setDownloadMessage(`Exported course record summary for ${course.code}.`);
   };
 
   const handleImportFile = async (file: File | null) => {
@@ -835,8 +866,8 @@ export default function TrainingRecord() {
     }));
 
     setCourses((current) => [...savedCourses, ...current]);
-    setSelectedCourseGroupId("");
-    setSelectedCourseId("");
+    setSelectedCourseId(savedCourses[0]?.id ?? "");
+    setIsCourseDetailOpen(false);
     setSavedRecordRows((current) => [...importedRecordRows, ...current]);
     setImportedCourses([]);
     setImportedRecordRows([]);
@@ -845,148 +876,90 @@ export default function TrainingRecord() {
     );
   };
 
-  return (
-    <section className={styles.page} aria-label="Training Record module">
-      <section className={styles.hero}>
-        <div>
-          <p className={styles.kicker}>{trainingRecordModule.subtitle}</p>
-          <h2>{trainingRecordModule.title}</h2>
-          <p>{trainingRecordModule.description}</p>
-        </div>
-        <div className={styles.heroMeta}>
-          <span>{availableCourses.length} completed courses</span>
-          <span>
-            {selectedCourseOwner
-              ? selectedCourseOwner === "CENTER"
-                ? "Center owner"
-                : "Factory owner"
-              : "Select owner"}
-          </span>
-        </div>
-      </section>
+  const handleAddAttendee = () => {
+    if (!selectedCourse) {
+      return;
+    }
 
-      <section className={styles.courseSelectPanel} aria-label="Completed course selector">
-        <div>
-          <p className={styles.kicker}>Course Owner</p>
-          <h3>Select owner first</h3>
-        </div>
-        <div className={styles.courseSelectorControls}>
-          <label>
-            Course Owner
-            <select
-              disabled={isFactoryUser}
-              value={selectedCourseOwner}
-              onChange={(event) => {
-                setCourseOwnerFilter(event.target.value as CourseOwnerFilter);
-                setSelectedCourseGroupId("");
-                setSelectedCourseId("");
-                setDownloadMessage("");
-              }}
-            >
-              <option value="">Select Course Owner</option>
-              <option value="CENTER">Center</option>
-              <option value="FACTORY">Factory</option>
-            </select>
-          </label>
-          <label>
-            Course
-            <select
-              disabled={!selectedCourseOwner}
-              value={selectedCourseGroupId}
-              onChange={(event) => {
-                setSelectedCourseGroupId(event.target.value);
-                setSelectedCourseId("");
-                setDownloadMessage("");
-              }}
-            >
-              <option value="">
-                {!selectedCourseOwner
-                  ? "Select course owner first"
-                  : availableCourseGroups.length > 0
-                    ? "Select completed course"
-                    : `No ${selectedCourseOwner.toLowerCase()} course available`}
-              </option>
-              {availableCourseGroups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.source === "UPLOAD" ? "Upload" : "System"} / {group.code} / {group.title} / {group.sessions.length} sessions
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Training Session
-            <select
-              disabled={!selectedCourseGroup}
-              value={selectedCourseId}
-              onChange={(event) => {
-                setSelectedCourseId(event.target.value);
-                setDownloadMessage("");
-              }}
-            >
-              <option value="">
-                {selectedCourseGroup ? "Select training session" : "Select course first"}
-              </option>
-              {availableSessions.map((session) => (
-                <option key={session.id} value={session.id}>
-                  {session.batch ?? "-"} / {session.date} / {session.time ?? "-"} / {session.room}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </section>
+    const masterEmployees = readEmployeeMasterData();
+    const selectedMaster = masterEmployees.find((emp) => emp.empCode === selectedEmpCode);
+    const addSequence = selectedCourse.attendees.length + 1;
 
-      <section className={styles.importPanel} aria-label="Import completed courses from Excel">
-        <div className={styles.panelHeader}>
-          <div>
-            <p className={styles.kicker}>Excel Import</p>
-            <h3>Import completed training records</h3>
-          </div>
-          <span>{importScopeLabel}</span>
-        </div>
-        <p className={styles.importScopeNote}>{importScopeNote}</p>
+    const empCode =
+      selectedMaster?.empCode ||
+      customEmpCode.trim() ||
+      `EMP-${String(addSequence).padStart(4, "0")}`;
+    const empName = selectedMaster
+      ? `${selectedMaster.titleEn || ""} ${selectedMaster.nameEn || selectedMaster.nameTh} ${selectedMaster.surnameEn || selectedMaster.surnameTh}`.trim()
+      : customEmpName.trim() || "New Participant";
+    const company = selectedMaster?.company || customCompany.trim() || selectedCourse.company || "SNF";
+    const department = selectedMaster?.functionName || customDepartment.trim() || "General";
 
-        <div className={styles.importWorkspace}>
-          <label className={styles.importDropBox}>
-            <span>Excel export file</span>
-            <strong>{importFileName || "Choose CSV / TSV / XLS file"}</strong>
-            <small>
-              Required columns: Course Code, Course Title. Optional: Date, Company, Room,
-              Instructor, Actual Attendees, Registered Attendees, scores, and costs.
-            </small>
-            <input
-              accept=".csv,.tsv,.xls,.xlsx"
-              onChange={(event) => void handleImportFile(event.target.files?.[0] ?? null)}
-              type="file"
-            />
-          </label>
+    const completedCourses = readWorkflowCollection<WorkflowCompletedCourse>(
+      TRAINING_WORKFLOW_KEYS.completedCourses,
+    );
 
-          <div className={styles.importPreview}>
-            <div>
-              <span>Preview</span>
-              <strong>{importedCourses.length} courses / {importedRecordRows.length} records</strong>
-            </div>
-            <button type="button" onClick={handleSaveImportedCourses}>
-              Save Imported Courses
-            </button>
-          </div>
-        </div>
+    const targetCourse = completedCourses.find(
+      (c) => c.id === selectedCourse.id || c.rollingId === selectedCourse.rollingId,
+    );
 
-        {importedCourses.length > 0 ? (
-          <div className={styles.importCourseList}>
-            {importedCourses.slice(0, 4).map((course) => (
-              <article key={`${course.code}-${course.title}`}>
-                <strong>{course.title}</strong>
-                <span>{course.code} / {course.company} / {course.date}</span>
-              </article>
-            ))}
-          </div>
-        ) : null}
+    const newAttendeeObj = {
+      id: `att-add-${selectedCourse.id}-${empCode}-${addSequence}`,
+      company,
+      employeeCode: empCode,
+      name: empName,
+      department,
+      registered: true,
+      attended: true,
+    };
 
-        {importMessage ? <p className={styles.downloadMessage}>{importMessage}</p> : null}
-      </section>
+    let nextCompletedCourses: WorkflowCompletedCourse[];
 
-      {selectedCourse ? (
+    if (targetCourse) {
+      nextCompletedCourses = completedCourses.map((c) =>
+        c.id === targetCourse.id
+          ? {
+              ...c,
+              attendees: [...c.attendees, newAttendeeObj],
+            }
+          : c,
+      );
+    } else {
+      const newCompletedCourse: WorkflowCompletedCourse = {
+        id: selectedCourse.id,
+        rollingId: selectedCourse.rollingId ?? selectedCourse.id,
+        code: selectedCourse.code,
+        title: selectedCourse.title,
+        date: selectedCourse.date,
+        batch: selectedCourse.batch,
+        company: selectedCourse.company,
+        owner: selectedCourse.owner,
+        room: selectedCourse.room,
+        instructor: selectedCourse.instructor,
+        hours: 8,
+        attendees: [newAttendeeObj],
+        expenses: selectedCourse.actualCost,
+        savedAt: new Date().toISOString(),
+      };
+      nextCompletedCourses = [newCompletedCourse, ...completedCourses];
+    }
+
+    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.completedCourses, nextCompletedCourses);
+    setAddAttendeeMessage(`Successfully added ${empName} (${empCode}) to ${selectedCourse.code}`);
+    setSelectedEmpCode("");
+    setCustomEmpCode("");
+    setCustomEmpName("");
+    setCustomDepartment("");
+    setCustomCompany("");
+    setIsAddingAttendee(false);
+  };
+
+  const renderSelectedCourseDetail = () => {
+    if (!selectedCourse) {
+      return null;
+    }
+
+    return (
       <section className={styles.completedRecordWorkspace}>
         <div className={styles.completedCourseDetail}>
           <section className={styles.completedCourseHero}>
@@ -994,13 +967,21 @@ export default function TrainingRecord() {
               <p className={styles.kicker}>Course Record</p>
               <h3>{selectedCourse.title}</h3>
               <span>
-                {selectedCourse.code} / Batch {selectedCourse.batch ?? "-"} / {selectedCourse.date} / {selectedCourse.time ?? "-"} / {selectedCourse.room} / {selectedCourse.instructor}
+                {selectedCourse.code} / Batch {selectedCourse.batch ?? "-"} / Training Session /{" "}
+                {selectedCourse.date} / {selectedCourse.time ?? "-"} /{" "}
+                {selectedCourse.room} / {selectedCourse.instructor}
               </span>
             </div>
-            <b className={selectedCourse.source === "UPLOAD" ? styles.uploadSourceBadge : styles.systemSourceBadge}>
+            <b
+              className={
+                selectedCourse.source === "UPLOAD"
+                  ? styles.uploadSourceBadge
+                  : styles.systemSourceBadge
+              }
+            >
               {selectedCourse.source === "UPLOAD" ? "From Upload" : "From System"}
             </b>
-            <button type="button" onClick={handleExportCourseSummary}>
+            <button type="button" onClick={() => handleExportCourseSummary()}>
               Export Excel
             </button>
           </section>
@@ -1008,10 +989,32 @@ export default function TrainingRecord() {
           <section className={styles.costBreakdownPanel} aria-label="Actual cost breakdown">
             <div className={styles.panelHeader}>
               <div>
-                <p className={styles.kicker}>Actual Cost</p>
-                <h3>Cost Breakdown</h3>
+                <p className={styles.kicker}>Actual Cost Summary</p>
+                <h3>Cost Breakdown & Per-Person Calculation</h3>
               </div>
-              <span>THB {formatNumber(selectedActualCost)}</span>
+              <span>Total: THB {formatNumber(selectedActualCost)}</span>
+            </div>
+
+            <div className={styles.costHighlightGrid}>
+              <article className={styles.costHighlightCard}>
+                <span>Total Actual Cost</span>
+                <strong>THB {formatNumber(selectedActualCost)}</strong>
+              </article>
+              <article className={styles.costHighlightCard}>
+                <span>Actual Attendees</span>
+                <strong>{selectedCourse.actualAttendees} persons</strong>
+              </article>
+              <article className={`${styles.costHighlightCard} ${styles.costHighlightPrimary}`}>
+                <span>Cost / Person (Actual)</span>
+                <strong>THB {formatNumber(selectedCostPerPerson)}</strong>
+              </article>
+            </div>
+
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.kicker}>Expense Items</p>
+                <h3>Training Cost Breakdown</h3>
+              </div>
             </div>
 
             <div className={styles.costBreakdownGrid}>
@@ -1022,13 +1025,55 @@ export default function TrainingRecord() {
                 </article>
               ))}
             </div>
+
+            {selectedCompanyCostBreakdown.length > 0 ? (
+              <div className={styles.companyCostAllocationBox}>
+                <div className={styles.panelHeader}>
+                  <div>
+                    <p className={styles.kicker}>Company Cost Allocation</p>
+                    <h3>Actual Cost Shared by Company</h3>
+                  </div>
+                </div>
+
+                <div className={styles.companyCostTableWrap}>
+                  <table className={styles.companyCostTable}>
+                    <thead>
+                      <tr>
+                        <th>Company</th>
+                        <th>Actual Attendees</th>
+                        <th>Share %</th>
+                        <th>Allocated Actual Cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedCompanyCostBreakdown.map((item) => (
+                        <tr key={item.company}>
+                          <td><strong>{item.company}</strong></td>
+                          <td>{item.count} persons</td>
+                          <td>{item.percentage}%</td>
+                          <td>
+                            <strong>THB {formatNumber(item.totalCost)}</strong>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
           </section>
 
-          <section className={styles.courseExcelRecordPanel} aria-label="Course uploaded record details">
+          <section
+            className={styles.courseExcelRecordPanel}
+            aria-label="Course uploaded record details"
+          >
             <div className={styles.panelHeader}>
               <div>
                 <p className={styles.kicker}>Training Record Details</p>
-                <h3>Employee records from {selectedCourse.source === "UPLOAD" ? "upload" : "system"}</h3>
+                <h3>
+                  Employee records from{" "}
+                  {selectedCourse.source === "UPLOAD" ? "upload" : "system"}
+                </h3>
               </div>
               <span>{selectedUploadedRows.length} rows</span>
             </div>
@@ -1075,7 +1120,11 @@ export default function TrainingRecord() {
                         <td>{record.trainingHour || "-"}</td>
                         <td>{record.startDate || "-"}</td>
                         <td>{record.endDate || "-"}</td>
-                        <td>{record.expensePerPerson || "-"}</td>
+                        <td>
+                          <strong>
+                            THB {record.expensePerPerson || formatNumber(selectedCostPerPerson)}
+                          </strong>
+                        </td>
                         <td>{record.functionTh || "-"}</td>
                         <td>{record.functionEn || "-"}</td>
                         <td>{record.logDate || "-"}</td>
@@ -1135,17 +1184,116 @@ export default function TrainingRecord() {
               </div>
               <div>
                 <p className={styles.kicker}>Evaluation Form</p>
-                <h3>{selectedCourse.evaluationCompleted}/{selectedCourse.evaluationTotal} completed</h3>
+                <h3>
+                  {selectedCourse.evaluationCompleted}/{selectedCourse.evaluationTotal} completed
+                </h3>
                 <span>Download by person or export all evaluation forms.</span>
               </div>
             </article>
+          </section>
+
+          <section className={styles.addAttendeePanel} aria-label="Add attendee to recorded course">
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.kicker}>Post-Record Registration</p>
+                <h3>Add Attendee / เพิ่มผู้เข้าร่วม (ส่งคนเพิ่ม)</h3>
+              </div>
+              <button type="button" onClick={() => setIsAddingAttendee(!isAddingAttendee)}>
+                {isAddingAttendee ? "Cancel" : "+ Add Attendee"}
+              </button>
+            </div>
+
+            {isAddingAttendee ? (
+              <div className={styles.addAttendeeWorkspace}>
+                <div className={styles.addAttendeeControls}>
+                  <label>
+                    Select Employee from Master Data
+                    <select
+                      value={selectedEmpCode}
+                      onChange={(event) => {
+                        setSelectedEmpCode(event.target.value);
+                        const master = readEmployeeMasterData().find(
+                          (employee) => employee.empCode === event.target.value,
+                        );
+
+                        if (master) {
+                          setCustomEmpCode(master.empCode);
+                          setCustomEmpName(
+                            `${master.titleEn || ""} ${
+                              master.nameEn || master.nameTh
+                            } ${master.surnameEn || master.surnameTh}`.trim(),
+                          );
+                          setCustomCompany(master.company);
+                          setCustomDepartment(master.functionName);
+                        }
+                      }}
+                    >
+                      <option value="">Select Employee (Optional)</option>
+                      {readEmployeeMasterData().map((employee) => (
+                        <option key={employee.id} value={employee.empCode}>
+                          {employee.empCode} / {employee.nameEn || employee.nameTh}{" "}
+                          {employee.surnameEn || employee.surnameTh} / {employee.company} /{" "}
+                          {employee.functionName}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    Employee Code
+                    <input
+                      value={customEmpCode}
+                      onChange={(event) => setCustomEmpCode(event.target.value)}
+                      placeholder="e.g. ATA-1001"
+                    />
+                  </label>
+
+                  <label>
+                    Full Name
+                    <input
+                      value={customEmpName}
+                      onChange={(event) => setCustomEmpName(event.target.value)}
+                      placeholder="e.g. Mr. Somchai Promjai"
+                    />
+                  </label>
+
+                  <label>
+                    Company
+                    <input
+                      value={customCompany}
+                      onChange={(event) => setCustomCompany(event.target.value)}
+                      placeholder="e.g. ATA / SNF"
+                    />
+                  </label>
+
+                  <label>
+                    Department / Function
+                    <input
+                      value={customDepartment}
+                      onChange={(event) => setCustomDepartment(event.target.value)}
+                      placeholder="e.g. Production"
+                    />
+                  </label>
+
+                  <div className={styles.addAttendeeActions}>
+                    <button type="button" onClick={handleAddAttendee}>
+                      Save & Add Attendee
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {addAttendeeMessage ? (
+              <p className={styles.downloadMessage}>{addAttendeeMessage}</p>
+            ) : null}
           </section>
 
           <section className={styles.evaluationDownloadPanel}>
             <div className={styles.panelHeader}>
               <div>
                 <p className={styles.kicker}>Actual Attendees</p>
-                <h3>Evaluation Download by Company / Person</h3>
+                <h3>Evaluation Download & Per-Person Cost</h3>
               </div>
               <button type="button" onClick={() => handleDownload("All evaluation forms")}>
                 Download All Forms
@@ -1159,6 +1307,9 @@ export default function TrainingRecord() {
                     <div>
                       <span>{company}</span>
                       <strong>{attendees.length} actual attendees</strong>
+                      <span className={styles.companyAllocatedCostLabel}>
+                        Total Allocated: THB {formatNumber(attendees.length * selectedCostPerPerson)}
+                      </span>
                     </div>
                     <button
                       type="button"
@@ -1178,6 +1329,9 @@ export default function TrainingRecord() {
                           <strong>{attendee.name}</strong>
                           <span>{attendee.employeeCode} / {attendee.department}</span>
                         </div>
+                        <span className={styles.attendeeCostBadge}>
+                          THB {formatNumber(selectedCostPerPerson)}
+                        </span>
                         <span className={styles.statusPill}>{attendee.prePost}</span>
                         <span className={styles.statusPill}>{attendee.evaluation}</span>
                         <button
@@ -1198,11 +1352,230 @@ export default function TrainingRecord() {
           </section>
         </div>
       </section>
-      ) : (
-        <section className={styles.emptyState} aria-label="No selected course">
-          Select a completed course first to view training record details.
-        </section>
-      )}
+    );
+  };
+
+  const renderRecordTable = (
+    title: string,
+    records: CompletedCourse[],
+    emptyMessage: string,
+  ) => (
+    <section className={styles.recordOwnerPanel} aria-label={`${title} training records`}>
+      <div className={styles.recordOwnerHeader}>
+        <div>
+          <h3>{title}</h3>
+          <span>{records.length} records</span>
+        </div>
+        <strong>
+          THB{" "}
+          {formatNumber(
+            records.reduce((total, course) => total + getActualCostTotal(course), 0),
+          )}
+        </strong>
+      </div>
+
+      <div className={styles.recordListTableWrap}>
+        <table className={styles.recordListTable}>
+          <thead>
+            <tr>
+              <th>Course</th>
+              <th>Date / Batch</th>
+              <th>Company</th>
+              <th>Actual</th>
+              <th>Actual Cost</th>
+              <th>Evaluation</th>
+              <th>Source</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.length > 0 ? (
+              records.map((course) => {
+                const actualCostTotal = getActualCostTotal(course);
+                const courseCostPerPerson = getCostPerPerson(course);
+                const evaluationRate =
+                  course.evaluationTotal > 0
+                    ? Math.round(
+                        (course.evaluationCompleted / course.evaluationTotal) * 100,
+                      )
+                    : 0;
+
+                const isExpanded =
+                  selectedCourse?.id === course.id && isCourseDetailOpen;
+
+                return (
+                  <Fragment key={course.id}>
+                    <tr className={isExpanded ? styles.activeRecordRow : undefined}>
+                      <td>
+                        <strong>{course.title}</strong>
+                        <span>{course.code}</span>
+                      </td>
+                      <td>
+                        <strong>{course.date}</strong>
+                        <span>Batch {course.batch ?? "-"} / {course.time ?? "-"}</span>
+                      </td>
+                      <td>{course.company}</td>
+                      <td>
+                        {course.actualAttendees} / {course.registeredAttendees}
+                      </td>
+                      <td>
+                        <strong>THB {formatNumber(actualCostTotal)}</strong>
+                        <span className={styles.perPersonCostText}>
+                          THB {formatNumber(courseCostPerPerson)} / person
+                        </span>
+                      </td>
+                      <td>
+                        {course.evaluationCompleted} / {course.evaluationTotal}
+                        <span>{evaluationRate}% done</span>
+                      </td>
+                      <td>
+                        <span
+                          className={
+                            course.source === "UPLOAD"
+                              ? styles.uploadSourceBadge
+                              : styles.systemSourceBadge
+                          }
+                        >
+                          {course.source === "UPLOAD" ? "Upload" : "System"}
+                        </span>
+                      </td>
+                      <td>
+                        <div className={styles.recordTableActions}>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedCourseId(course.id);
+                              setIsCourseDetailOpen((current) =>
+                                selectedCourse?.id === course.id ? !current : true,
+                              );
+                              setDownloadMessage("");
+                            }}
+                          >
+                            {isExpanded ? "Hide" : "Details"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleExportCourseSummary(course);
+                            }}
+                          >
+                            Export
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {isExpanded ? (
+                      <tr className={styles.inlineDetailRow}>
+                        <td colSpan={8}>{renderSelectedCourseDetail()}</td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
+                );
+              })
+            ) : (
+              <tr>
+                <td colSpan={8}>{emptyMessage}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+
+  return (
+    <section className={styles.page} aria-label="Training Record module">
+      <section className={styles.hero}>
+        <div>
+          <p className={styles.kicker}>{trainingRecordModule.subtitle}</p>
+          <h2>{trainingRecordModule.title}</h2>
+          <p>{trainingRecordModule.description}</p>
+        </div>
+        <div className={styles.heroMeta}>
+          <span>{availableCourses.length} completed courses</span>
+          <span>{centerCourses.length} Center</span>
+          <span>{factoryCourses.length} Factory</span>
+        </div>
+      </section>
+
+      <section className={styles.importPanel} aria-label="Import completed courses from Excel">
+        <div className={styles.panelHeader}>
+          <div>
+            <p className={styles.kicker}>Excel Import</p>
+            <h3>Import completed training records</h3>
+          </div>
+          <span>{importScopeLabel}</span>
+        </div>
+        <p className={styles.importScopeNote}>{importScopeNote}</p>
+
+        <div className={styles.importWorkspace}>
+          <label className={styles.importDropBox}>
+            <span>Excel export file</span>
+            <strong>{importFileName || "Choose CSV / TSV / XLS file"}</strong>
+            <small>
+              Required columns: Course Code, Course Title. Optional: Date, Company, Room,
+              Instructor, Actual Attendees, Registered Attendees, scores, and costs.
+            </small>
+            <input
+              accept=".csv,.tsv,.xls,.xlsx"
+              onChange={(event) => void handleImportFile(event.target.files?.[0] ?? null)}
+              type="file"
+            />
+          </label>
+
+          <div className={styles.importPreview}>
+            <div>
+              <span>Preview</span>
+              <strong>{importedCourses.length} courses / {importedRecordRows.length} records</strong>
+            </div>
+            <button type="button" onClick={handleSaveImportedCourses}>
+              Save Imported Courses
+            </button>
+          </div>
+        </div>
+
+        {importedCourses.length > 0 ? (
+          <div className={styles.importCourseList}>
+            {importedCourses.slice(0, 4).map((course) => (
+              <article key={`${course.code}-${course.title}`}>
+                <strong>{course.title}</strong>
+                <span>{course.code} / {course.company} / {course.date}</span>
+              </article>
+            ))}
+          </div>
+        ) : null}
+
+        {importMessage ? <p className={styles.downloadMessage}>{importMessage}</p> : null}
+      </section>
+
+      <section className={styles.recordOwnerOverview} aria-label="Completed course records by owner">
+        <div className={styles.panelHeader}>
+          <div>
+            <p className={styles.kicker}>Training Record Details</p>
+            <h3>Completed records by owner</h3>
+          </div>
+          <span>{isFactoryUser ? `${userCompanyCode} Factory` : "Center / Factory"}</span>
+        </div>
+
+        <div className={styles.recordOwnerGrid}>
+          {!isFactoryUser
+            ? renderRecordTable(
+                "Center",
+                centerCourses,
+                "No center completed records yet.",
+              )
+            : null}
+          {renderRecordTable(
+            "Factory",
+            factoryCourses,
+            isFactoryUser
+              ? `No completed records owned by ${userCompanyCode || "your company"} yet.`
+              : "No factory completed records yet.",
+          )}
+        </div>
+      </section>
     </section>
   );
 }

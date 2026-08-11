@@ -153,7 +153,7 @@
 .newButton {
   border: 0;
   background: var(--ui-30-primary);
-  color: var(--ui-60-surface);
+  color: #ffffff;
   box-shadow: 0 8px 18px rgba(0, 122, 61, 0.16);
 }
 
@@ -162,20 +162,20 @@
 .cancelButton {
   border: 1px solid var(--ui-30-border);
   background: var(--ui-60-surface);
-  color: #0f2747;
+  color: var(--ui-30-ink);
 }
 
 .deleteButton {
   min-width: 78px;
-  border: 1px solid #fecaca;
-  background: #fff5f5;
-  color: #b42318;
+  border: 1px solid var(--ui-10-accent-border);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
 }
 
 .saveButton {
   border: 0;
   background: var(--ui-10-accent);
-  color: var(--ui-60-surface);
+  color: #ffffff;
   box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
 }
 
@@ -337,7 +337,7 @@
 
 .companyHeader small {
   justify-self: end;
-  border: 1px solid #dbe9f2;
+  border: 1px solid var(--ui-30-border);
   border-radius: 999px;
   background: var(--ui-60-surface);
   color: var(--ui-30-muted);
@@ -421,13 +421,13 @@
 .companyPill {
   min-width: 52px;
   background: var(--ui-30-primary-soft);
-  color: #0f2747;
+  color: var(--ui-30-ink);
 }
 
 .levelPill {
   min-width: 42px;
-  background: #ecfdf5;
-  color: #047857;
+  background: rgba(16, 185, 129, 0.14);
+  color: #10b981;
 }
 
 @media (max-width: 980px) {

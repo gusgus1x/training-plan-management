@@ -87,10 +87,16 @@ export default function TrainingPlanManagement({
           <div className={styles.moduleGrid}>
             {planItems.map((item, index) => (
               <button
-                className={styles.moduleCard}
+                className={`${styles.moduleCard} ${item.locked ? styles.lockedCard : ""}`}
                 key={item.title}
                 type="button"
-                onClick={() => setSelectedItem(item)}
+                onClick={() => {
+                  if (item.locked) {
+                    alert("🔒 ฟังก์ชันคำขอฝึกอบรม (Request Training Need) ถูกล็อกการใช้งานไว้ชั่วคราว");
+                    return;
+                  }
+                  setSelectedItem(item);
+                }}
               >
                 <span className={styles.moduleIcon} aria-hidden="true">
                   <span>{item.icon}</span>
@@ -100,10 +106,13 @@ export default function TrainingPlanManagement({
                 </span>
                 <div>
                   <span className={styles.cardSubtitle}>{item.subtitle}</span>
-                  <h3>{item.title}</h3>
+                  <h3>
+                    {item.title}
+                    {item.locked ? <span className={styles.lockedTag}>🔒 ล็อกการใช้งาน</span> : null}
+                  </h3>
                   <p>{item.description}</p>
                 </div>
-                <strong>Open</strong>
+                <strong>{item.locked ? "🔒 Locked" : "Open"}</strong>
               </button>
             ))}
           </div>

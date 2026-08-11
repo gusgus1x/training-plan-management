@@ -22,7 +22,7 @@ export const trainingActualModule = {
   title: "Training Actual",
   subtitle: "Actual Attendance",
   description:
-    "Check actual attendance, add unregistered attendees, record real training expenses, and save the completed actual record.",
+    "Check actual attendance, record real training expenses, and save the completed actual record.",
 } as const;
 
 type ExpenseKey =
@@ -60,6 +60,7 @@ type ActualCourse = {
   ownerCompany?: string;
   instructor: string;
   hours?: string;
+  budget?: string;
 };
 
 type ActualCourseGroup = {
@@ -96,6 +97,13 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 0,
     minimumFractionDigits: 0,
   }).format(value);
+
+const parseMoney = (value?: string) => {
+  const normalizedValue = value?.replace(/[^\d.-]/g, "") ?? "";
+  const parsedValue = Number(normalizedValue);
+
+  return Number.isFinite(parsedValue) ? parsedValue : 0;
+};
 
 export default function TrainingActual() {
   const user = useAuthenticatedUser();
@@ -137,6 +145,7 @@ export default function TrainingActual() {
             : plan.ownerCompany ?? plan.company,
         instructor: plan.trainer,
         hours: plan.hours,
+        budget: plan.budget,
       }));
 
     setCourses(nextCourses);
@@ -241,6 +250,34 @@ export default function TrainingActual() {
     (total, field) => total + Number(expenses[field.key] || 0),
     0,
   );
+  const actualCostPerPerson = actualCount > 0 ? Math.round(expenseTotal / actualCount) : 0;
+  const plannedBudget = selectedCourse ? parseMoney(selectedCourse.budget) : 0;
+  const remainingBudget = plannedBudget - expenseTotal;
+  const budgetStatus =
+    plannedBudget > 0 && remainingBudget < 0 ? "Over budget" : "Within budget";
+  const allAttended = Boolean(
+    attendees.length && attendees.every((attendee) => attendee.attended),
+  );
+
+  const companyCostBreakdown = useMemo(() => {
+    const companyMap = new Map<string, { total: number; attended: number }>();
+    attendees.forEach((attendee) => {
+      const companyKey = attendee.company || selectedCourse?.company || "Other";
+      const current = companyMap.get(companyKey) ?? { total: 0, attended: 0 };
+      current.total += 1;
+      if (attendee.attended) {
+        current.attended += 1;
+      }
+      companyMap.set(companyKey, current);
+    });
+
+    return Array.from(companyMap.entries()).map(([company, data]) => ({
+      company,
+      total: data.total,
+      attended: data.attended,
+      allocatedCost: data.attended * actualCostPerPerson,
+    }));
+  }, [attendees, selectedCourse, actualCostPerPerson]);
 
   const reloadEnrollments = async () => {
     if (!selectedCourse) return;
@@ -255,6 +292,20 @@ export default function TrainingActual() {
   const toggleAttendance = async (enrollmentId: string, attended: boolean) => {
     try {
       await setEnrollmentAttendance(enrollmentId, { attended: !attended });
+      await reloadEnrollments();
+    } catch (error) {
+      console.error("Failed to update attendance", error);
+      setSavedMessage("Failed to update attendance.");
+    }
+  };
+
+  const setAllAttendance = async (attended: boolean) => {
+    try {
+      await Promise.all(
+        attendees
+          .filter((attendee) => attendee.attended !== attended)
+          .map((attendee) => setEnrollmentAttendance(attendee.id, { attended })),
+      );
       await reloadEnrollments();
     } catch (error) {
       console.error("Failed to update attendance", error);
@@ -323,7 +374,7 @@ export default function TrainingActual() {
     );
 
     setSavedMessage(
-      `Saved ${selectedCourse.code} with ${actualCount} actual attendees and THB ${formatCurrency(expenseTotal)} at ${now}.`,
+      `Saved ${selectedCourse.code} with ${actualCount} actual attendees, total THB ${formatCurrency(expenseTotal)} (THB ${formatCurrency(actualCostPerPerson)}/person) at ${now}.`,
     );
   };
 
@@ -336,17 +387,21 @@ export default function TrainingActual() {
           <p>{trainingActualModule.description}</p>
         </div>
         <div className={styles.heroMeta}>
-            <span>{actualCount} Actual</span>
-            <span>{walkInCount} Walk-in</span>
-            <span>
-              {selectedCourseOwner
-                ? selectedCourseOwner === "CENTER"
-                  ? "Center owner"
-                  : "Factory owner"
-                : "Select owner"}
+          <span>{actualCount} Actual</span>
+          <span>
+            {selectedCourseOwner
+              ? selectedCourseOwner === "CENTER"
+                ? "Center owner"
+                : "Factory owner"
+              : "Select owner"}
+          </span>
+          <span>THB {formatCurrency(expenseTotal)}</span>
+          {selectedCourse && actualCount > 0 ? (
+            <span className={styles.costPerPersonHeroBadge}>
+              THB {formatCurrency(actualCostPerPerson)} / person
             </span>
-            <span>THB {formatCurrency(expenseTotal)}</span>
-          </div>
+          ) : null}
+        </div>
       </section>
 
       <section
@@ -391,7 +446,9 @@ export default function TrainingActual() {
               </option>
               {availableCourseGroups.map((group) => (
                 <option key={group.id} value={group.id}>
-                  {group.code} / {group.title} / {group.sessions.length} sessions
+                  {group.code} / {group.title} / THB{" "}
+                  {formatCurrency(parseMoney(group.sessions[0]?.budget))} /{" "}
+                  {group.sessions.length} sessions
                 </option>
               ))}
             </select>
@@ -426,60 +483,75 @@ export default function TrainingActual() {
       </section>
 
       {selectedCourse ? (
-      <section className={styles.actualWorkspace}>
-        <div className={styles.actualMainPanel}>
-          <div className={styles.actualCompactHeader}>
-            <div>
-              <p className={styles.kicker}>Course Selection</p>
-              <h3>{selectedCourse.title}</h3>
-              <span>
-                {selectedCourse.code} / Batch {selectedCourse.batch ?? "-"} / {selectedCourse.company} / {selectedCourse.date} / {selectedCourse.time}
-              </span>
+        <section className={styles.actualWorkspace}>
+          <div className={styles.actualMainPanel}>
+            <div className={styles.actualCompactHeader}>
+              <div>
+                <p className={styles.kicker}>Course Selection</p>
+                <h3>{selectedCourse.title}</h3>
+                <span>
+                  {selectedCourse.code} / Batch {selectedCourse.batch ?? "-"} / {selectedCourse.company} / {selectedCourse.date} / {selectedCourse.time}
+                </span>
+              </div>
+
+              <div className={styles.actualMiniStats}>
+                <article>
+                  <span>Room</span>
+                  <strong>{selectedCourse.room}</strong>
+                </article>
+                <article>
+                  <span>Instructor</span>
+                  <strong>{selectedCourse.instructor}</strong>
+                </article>
+                <article className={styles.actualBudgetStat}>
+                  <span>Planned Budget</span>
+                  <strong>THB {formatCurrency(plannedBudget)}</strong>
+                </article>
+                <article>
+                  <span>Registered</span>
+                  <strong>{registeredCount}</strong>
+                </article>
+                <article>
+                  <span>Actual</span>
+                  <strong>{actualCount}</strong>
+                </article>
+                <article>
+                  <span>Absent</span>
+                  <strong>{absentCount}</strong>
+                </article>
+                <article className={styles.actualBudgetStat}>
+                  <span>Cost / Person (Actual)</span>
+                  <strong>THB {formatCurrency(actualCostPerPerson)}</strong>
+                </article>
+              </div>
             </div>
 
-            <div className={styles.actualMiniStats}>
-              <article>
-                <span>Room</span>
-                <strong>{selectedCourse.room}</strong>
-              </article>
-              <article>
-                <span>Instructor</span>
-                <strong>{selectedCourse.instructor}</strong>
-              </article>
-              <article>
-                <span>Registered</span>
-                <strong>{registeredCount}</strong>
-              </article>
-              <article>
-                <span>Actual</span>
-                <strong>{actualCount}</strong>
-              </article>
-              <article>
-                <span>Absent</span>
-                <strong>{absentCount}</strong>
-              </article>
-              <article>
-                <span>Walk-in</span>
-                <strong>{walkInCount}</strong>
-              </article>
-            </div>
-          </div>
+            {isFactoryUser ? (
+              <div className={styles.actualPermissionNote}>
+                Factory permission: only courses owned by {userCompanyCode} are available.
+              </div>
+            ) : null}
 
-          {isFactoryUser ? (
-            <div className={styles.actualPermissionNote}>
-              Factory permission: only courses owned by {userCompanyCode} are available.
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.kicker}>Attendance Check</p>
+                <h3>Actual Attendees</h3>
+              </div>
+              <div className={styles.attendanceHeaderActions}>
+                <span>{actualCount} / {attendees.length} attended</span>
+                <label className={styles.selectAllAttendance}>
+                  <input
+                    checked={allAttended}
+                    disabled={attendees.length === 0}
+                    type="checkbox"
+                    onChange={() => void setAllAttendance(!allAttended)}
+                  />
+                  <span>{allAttended ? "Clear all" : "Select all"}</span>
+                </label>
+              </div>
             </div>
-          ) : null}
 
-          <div className={styles.panelHeader}>
-            <div>
-              <p className={styles.kicker}>Attendance Check</p>
-              <h3>Actual Attendees</h3>
-            </div>
-            <span>{actualCount} attended</span>
-          </div>
-
-          <div className={styles.tableWrap}>
+            <div className={`${styles.tableWrap} ${styles.attendanceTableWrap}`}>
             <table className={styles.recordTable}>
               <thead>
                 <tr>
@@ -487,6 +559,7 @@ export default function TrainingActual() {
                   <th>Employee</th>
                   <th>Department</th>
                   <th>Source</th>
+                  <th>Actual Cost</th>
                 </tr>
               </thead>
               <tbody>
@@ -504,7 +577,10 @@ export default function TrainingActual() {
                     </td>
                     <td>
                       <strong>{attendee.name}</strong>
-                      <span>{attendee.employeeCode}</span>
+                      <span>
+                        {attendee.employeeCode}
+                        {attendee.company ? ` (${attendee.company})` : ""}
+                      </span>
                     </td>
                     <td>{attendee.department}</td>
                     <td>
@@ -512,47 +588,109 @@ export default function TrainingActual() {
                         {attendee.registered ? "Registered" : "Walk-in"}
                       </span>
                     </td>
+                    <td>
+                      {attendee.attended ? (
+                        <span className={styles.attendeeCostBadge}>
+                          THB {formatCurrency(actualCostPerPerson)}
+                        </span>
+                      ) : (
+                        <span className={styles.attendeeCostBadgeAbsent}>
+                          THB 0 (Absent)
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+          </div>
 
-        <aside className={styles.actualCostPanel} aria-label="Actual training expenses">
-          <div className={styles.actualCostHeader}>
-            <div>
-              <p className={styles.kicker}>Actual Cost</p>
-              <h3>Training Expenses</h3>
-              <span>Record the real cost used for this course.</span>
+          <aside className={styles.actualCostPanel} aria-label="Actual training expenses">
+            <div className={styles.actualCostHeader}>
+              <div>
+                <p className={styles.kicker}>Actual Cost</p>
+                <h3>Training Expenses</h3>
+                <span>Record the real cost used for this course.</span>
+              </div>
             </div>
-          </div>
 
-          <div className={styles.actualCostGrid}>
-            {expenseFields.map((field) => (
-              <label key={field.key}>
-                {field.label}
-                <input
-                  inputMode="decimal"
-                  value={expenses[field.key]}
-                  onChange={(event) => updateExpense(field.key, event.target.value)}
-                />
-              </label>
-            ))}
-          </div>
+            <div className={styles.actualCostGrid}>
+              {expenseFields.map((field) => (
+                <label key={field.key}>
+                  {field.label}
+                  <input
+                    inputMode="decimal"
+                    value={expenses[field.key]}
+                    onChange={(event) => updateExpense(field.key, event.target.value)}
+                  />
+                </label>
+              ))}
+            </div>
 
-          <div className={styles.actualTotalBox}>
-            <span>Total Actual Cost</span>
-            <strong>THB {formatCurrency(expenseTotal)}</strong>
-          </div>
+            <div className={styles.actualTotalBox}>
+              <span>Total Actual Cost</span>
+              <strong>THB {formatCurrency(expenseTotal)}</strong>
+            </div>
 
-          <button className={styles.actualSaveButton} type="button" onClick={handleSave}>
-            Save Training Actual
-          </button>
+            <div className={styles.actualCostPerPersonSummary}>
+              <div>
+                <span>Cost / Person (Actual)</span>
+                <strong>THB {formatCurrency(actualCostPerPerson)}</strong>
+              </div>
+              <small>
+                Calculated from THB {formatCurrency(expenseTotal)} ÷ {actualCount} actual attendee{actualCount === 1 ? "" : "s"}
+              </small>
+            </div>
 
-          {savedMessage ? <p className={styles.actualSavedMessage}>{savedMessage}</p> : null}
-        </aside>
-      </section>
+            {companyCostBreakdown.length > 0 ? (
+              <div className={styles.actualCompanyBreakdownBox}>
+                <p className={styles.kicker}>Company Cost Allocation</p>
+                <div className={styles.actualCompanyList}>
+                  {companyCostBreakdown.map((item) => (
+                    <div key={item.company} className={styles.actualCompanyRow}>
+                      <div>
+                        <strong>{item.company}</strong>
+                        <span>
+                          {item.attended} / {item.total} attended
+                        </span>
+                      </div>
+                      <strong>THB {formatCurrency(item.allocatedCost)}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className={styles.actualBudgetSummary}>
+              <div>
+                <span>Planned Budget</span>
+                <strong>THB {formatCurrency(plannedBudget)}</strong>
+              </div>
+              <div
+                className={
+                  remainingBudget < 0 ? styles.actualBudgetOverrun : undefined
+                }
+              >
+                <span>Remaining Budget</span>
+                <strong>THB {formatCurrency(remainingBudget)}</strong>
+              </div>
+              <p
+                className={
+                  remainingBudget < 0 ? styles.actualBudgetOverrun : undefined
+                }
+              >
+                {budgetStatus}
+              </p>
+            </div>
+
+            <button className={styles.actualSaveButton} type="button" onClick={handleSave}>
+              Save Training Actual
+            </button>
+
+            {savedMessage ? <p className={styles.actualSavedMessage}>{savedMessage}</p> : null}
+          </aside>
+        </section>
       ) : (
         <section className={styles.emptyState} aria-label="No selected actual course">
           Select a course first to show training actual details.

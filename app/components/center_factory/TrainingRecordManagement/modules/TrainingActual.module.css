@@ -63,7 +63,7 @@
   border-radius: 8px;
   background: var(--ui-60-surface);
   padding: 10px 12px;
-  color: #182235;
+  color: var(--ui-30-ink);
   min-height: 40px;
 }
 
@@ -75,7 +75,7 @@
   border: 0;
   border-radius: 8px;
   background: var(--ui-30-primary);
-  color: var(--ui-60-surface);
+  color: #ffffff;
   padding: 10px 14px;
   font-weight: 800;
   cursor: pointer;
@@ -85,7 +85,7 @@
   border: 1px solid var(--ui-30-border);
   border-radius: 8px;
   background: var(--ui-60-surface);
-  color: var(--ui-30-text);
+  color: var(--ui-30-ink);
   padding: 10px 14px;
   font-weight: 800;
   cursor: pointer;

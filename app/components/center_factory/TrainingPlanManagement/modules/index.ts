@@ -13,12 +13,13 @@ export type PlanModuleTopic = {
   title: string;
   subtitle: string;
   description: string;
+  locked?: boolean;
   Component: ComponentType<{ onOpenTrainingOap?: () => void; username?: string }>;
 };
 
 export const planItems: readonly PlanModuleTopic[] = [
   { ...trainingOapModule, icon: "🗓️", Component: TrainingOAP },
   { ...trainingRollingModule, icon: "📆", Component: TrainingRolling },
-  { ...requestTrainingNeedModule, icon: "🙋", Component: RequestTrainingNeed },
+  { ...requestTrainingNeedModule, icon: "🔒", locked: true, Component: RequestTrainingNeed },
   { ...trainingAcceptSurveyModule, icon: "☑️", Component: TrainingAcceptSurvey },
 ];

@@ -28,7 +28,10 @@ describe("Thai UI localization", () => {
       translateUiText(
         "Describe what learners should achieve after completing the course.",
       ),
-    ).toBe("อธิบายสิ่งที่ผู้เรียนควรทำได้หลังจบหลักสูตร");
+    ).toBe("ระบุสิ่งที่ผู้เรียนต้องทำได้หลังจบหลักสูตร");
+    expect(translateUiText("Enter 0 for no course expiration")).toBe(
+      "ถ้าไม่มีวันหมดอายุให้ใส่ 0",
+    );
     expect(translateUiText("No Pre Test")).toBe(
       "ไม่ใช้แบบทดสอบก่อนเรียน",
     );

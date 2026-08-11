@@ -1,15 +1,15 @@
 .workspaceNav {
   display: flex;
-  max-width: 1280px;
-  margin: 18px auto 0;
-  padding: 14px 18px;
+  max-width: 1240px;
+  margin: 20px auto 0;
+  padding: 14px 20px;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
   border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-xl);
   background: var(--ui-60-surface);
-  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.07);
+  box-shadow: var(--ui-shadow-md);
 }
 
 .workspaceNav > div:first-child {
@@ -18,8 +18,8 @@
 }
 
 .workspaceNav span {
-  color: var(--ui-30-primary);
-  font-size: 0.7rem;
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -27,32 +27,34 @@
 
 .workspaceNav strong {
   color: var(--ui-30-ink);
-  font-size: 0.86rem;
+  font-size: 0.95rem;
+  font-weight: 800;
 }
 
 .tabs {
   display: flex;
   gap: 8px;
   padding: 4px;
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--ui-60-surface-soft);
+  border: 1px solid var(--ui-30-border);
 }
 
 .tabs button {
   display: inline-flex;
-  min-height: 40px;
-  padding: 0 14px;
+  min-height: 38px;
+  padding: 0 16px;
   align-items: center;
   gap: 8px;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: 9px;
   background: transparent;
   color: var(--ui-30-muted);
   cursor: pointer;
   font: inherit;
-  font-size: 0.78rem;
-  font-weight: 900;
-  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+  font-size: 0.8rem;
+  font-weight: 800;
+  transition: all 160ms ease;
 }
 
 .tabs button b {
@@ -62,25 +64,27 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #dce6f3;
-  color: #3f5573;
-  font-size: 0.68rem;
+  background: var(--ui-60-surface-muted);
+  color: var(--ui-30-muted);
+  font-size: 0.7rem;
+  font-weight: 900;
 }
 
 .tabs button:hover {
-  color: var(--ui-30-primary);
+  color: var(--ui-30-ink);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .tabs .activeTab {
   border-color: var(--ui-30-primary-border);
-  background: var(--ui-60-surface);
-  color: var(--ui-30-primary-strong);
-  box-shadow: 0 6px 16px rgba(24, 36, 56, 0.08);
+  background: var(--ui-30-primary);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
 }
 
 .tabs .activeTab b {
-  background: var(--ui-30-primary);
-  color: var(--ui-60-surface);
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
 }
 
 @media (max-width: 760px) {
@@ -104,7 +108,7 @@
 .page {
   max-width: 1240px;
   margin: 0 auto;
-  padding: 18px 24px 48px;
+  padding: 20px 24px 48px;
   color: var(--ui-30-ink);
 }
 
@@ -114,23 +118,37 @@
 .formPanel {
   background: var(--ui-60-surface);
   border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
-  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.07);
+  border-radius: var(--ui-radius-xl);
+  box-shadow: var(--ui-shadow-md);
 }
 
 .hero {
+  position: relative;
+  overflow: hidden;
   display: flex;
   justify-content: space-between;
   gap: 18px;
-  padding: 20px;
-  margin-bottom: 14px;
+  padding: 24px 28px 24px 30px;
+  margin-bottom: 16px;
+}
+
+.hero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 4px;
+  background: var(--ui-30-primary);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
 }
 
 .kicker {
   margin: 0 0 6px;
-  color: var(--ui-30-primary);
-  font-size: 0.76rem;
-  font-weight: 800;
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
@@ -140,16 +158,24 @@
   letter-spacing: 0;
 }
 
-.hero p {
-  margin: 8px 0 0;
-  color: var(--ui-30-muted);
-  line-height: 1.5;
+.hero h2 {
+  font-size: clamp(1.4rem, 2vw, 1.75rem);
+  font-weight: 900;
+  color: var(--ui-30-ink);
 }
+
+.hero p {
+  margin: 6px 0 0;
+  color: var(--ui-30-text);
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
 .panelHeader span {
   display: block;
   color: var(--ui-30-muted);
   font-size: 0.76rem;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .toolbar {
@@ -157,12 +183,12 @@
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
-  padding: 14px;
-  margin-bottom: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
 }
 
 .topDropPanel {
-  margin-bottom: 14px;
+  margin-bottom: 16px;
 }
 
 .toolbar input {
@@ -174,12 +200,14 @@
 .formGrid select,
 .formGrid textarea {
   border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
+  border-radius: 10px;
+  background: var(--ui-60-surface-soft);
   color: var(--ui-30-ink);
   min-height: 40px;
-  padding: 10px 12px;
+  padding: 10px 14px;
   outline: none;
+  font-size: 0.86rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .toolbar input:focus,
@@ -187,42 +215,60 @@
 .formGrid select:focus,
 .formGrid textarea:focus {
   border-color: var(--ui-30-primary);
-  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.16);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 }
 
 .formGrid input:disabled,
 .formGrid select:disabled,
 .formGrid textarea:disabled {
-  background: var(--ui-60-surface-soft);
-  color: #43526a;
+  background: var(--ui-60-surface-muted);
+  color: var(--ui-30-muted);
 }
 
 .primaryButton,
 .secondaryButton,
 .dangerButton {
   min-height: 40px;
-  border-radius: 8px;
-  padding: 10px 14px;
+  border-radius: 999px;
+  padding: 10px 20px;
   font-weight: 800;
+  font-size: 0.84rem;
   cursor: pointer;
+  transition: all 160ms ease;
 }
 
 .primaryButton {
   border: 0;
   background: var(--ui-30-primary);
-  color: var(--ui-60-surface);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+}
+
+.primaryButton:hover:not(:disabled) {
+  background: var(--ui-30-primary-strong);
+  transform: translateY(-1px);
 }
 
 .secondaryButton {
   border: 1px solid var(--ui-30-border);
-  background: var(--ui-60-surface);
-  color: var(--ui-30-text);
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
+}
+
+.secondaryButton:hover:not(:disabled) {
+  border-color: var(--ui-30-primary);
+  color: var(--ui-30-ink);
 }
 
 .dangerButton {
-  border: 1px solid #f0b8b8;
-  background: #fff5f5;
-  color: #b42318;
+  border: 1px solid var(--ui-10-accent-border);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
+}
+
+.dangerButton:hover:not(:disabled) {
+  background: rgba(244, 63, 94, 0.25);
+  color: #ffffff;
 }
 
 .primaryButton:disabled,
@@ -748,7 +794,7 @@
   place-items: center;
   border-radius: 50%;
   background: var(--ui-30-primary);
-  color: var(--ui-60-surface);
+  color: #ffffff;
   font-size: 0.66rem;
 }
 
@@ -949,7 +995,7 @@
   border: 0;
   border-radius: 8px;
   background: var(--ui-10-accent);
-  color: var(--ui-60-surface);
+  color: #ffffff;
   box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
 }
 
@@ -963,15 +1009,15 @@
   border: 1px solid var(--ui-30-border);
   border-radius: 8px;
   background: var(--ui-60-surface);
-  color: var(--ui-30-text);
+  color: var(--ui-30-ink);
 }
 
 .dangerButton,
 .deleteButton {
-  border: 1px solid #f0b8b8;
+  border: 1px solid var(--ui-10-accent-border);
   border-radius: 8px;
-  background: #fff5f5;
-  color: #b42318;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
 }
 
 .primaryButton,
@@ -1154,7 +1200,7 @@
 .toolbar .newButton {
   border: 0;
   background: var(--ui-30-primary);
-  color: var(--ui-60-surface);
+  color: #ffffff;
   box-shadow: 0 8px 18px rgba(0, 122, 61, 0.16);
 }
 
@@ -1164,16 +1210,16 @@
 .toolbar .exportButton {
   border: 1px solid var(--ui-30-border);
   background: var(--ui-60-surface);
-  color: #0f2747;
+  color: var(--ui-30-ink);
   box-shadow: none;
 }
 
 .toolbar .dangerButton,
 .toolbar .deleteButton {
   min-width: 78px;
-  border: 1px solid #fecaca;
-  background: #fff5f5;
-  color: #b42318;
+  border: 1px solid var(--ui-10-accent-border);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
   box-shadow: none;
 }
 
@@ -1416,14 +1462,14 @@
 .standard_primaryButton {
   border: 0;
   background: var(--ui-30-primary);
-  color: var(--ui-60-surface);
+  color: #ffffff;
 }
 
 .standard_secondaryButton,
 .standard_closeButton {
   border: 1px solid var(--ui-30-border);
   background: var(--ui-60-surface);
-  color: var(--ui-30-text);
+  color: var(--ui-30-ink);
 }
 
 .standard_formPanel {
@@ -2084,7 +2130,7 @@
   border: 0;
   border-radius: 8px;
   background: var(--ui-10-accent);
-  color: var(--ui-60-surface);
+  color: #ffffff;
   box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
 }
 
@@ -2098,15 +2144,15 @@
   border: 1px solid var(--ui-30-border);
   border-radius: 8px;
   background: var(--ui-60-surface);
-  color: var(--ui-30-text);
+  color: var(--ui-30-ink);
 }
 
 .standard_dangerButton,
 .standard_deleteButton {
-  border: 1px solid #f0b8b8;
+  border: 1px solid var(--ui-10-accent-border);
   border-radius: 8px;
-  background: #fff5f5;
-  color: #b42318;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
 }
 
 .standard_primaryButton,
@@ -2289,7 +2335,7 @@
 .standard_toolbar .standard_newButton {
   border: 0;
   background: var(--ui-30-primary);
-  color: var(--ui-60-surface);
+  color: #ffffff;
   box-shadow: 0 8px 18px rgba(0, 122, 61, 0.16);
 }
 
@@ -2299,16 +2345,16 @@
 .standard_toolbar .standard_exportButton {
   border: 1px solid var(--ui-30-border);
   background: var(--ui-60-surface);
-  color: #0f2747;
+  color: var(--ui-30-ink);
   box-shadow: none;
 }
 
 .standard_toolbar .standard_dangerButton,
 .standard_toolbar .standard_deleteButton {
   min-width: 78px;
-  border: 1px solid #fecaca;
-  background: #fff5f5;
-  color: #b42318;
+  border: 1px solid var(--ui-10-accent-border);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
   box-shadow: none;
 }
 

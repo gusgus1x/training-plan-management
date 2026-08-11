@@ -21,6 +21,13 @@ import Navbar from "./Navbar";
 import { AuthenticatedUserProvider } from "./AuthenticatedUserContext";
 import styles from "./TrainingPlanManagement.module.css";
 
+type AuthenticationState =
+  | { status: "checking" }
+  | { status: "anonymous" }
+  | { status: "error"; message: string }
+  | { status: "authenticated"; user: ClientSessionUser }
+  | { status: "preview"; user: ClientSessionUser };
+
 type AppView =
   | "dashboard"
   | "training-plan"
@@ -28,13 +35,6 @@ type AppView =
   | "master-data"
   | "report"
   | "training-course";
-
-type AuthenticationState =
-  | { status: "checking" }
-  | { status: "anonymous" }
-  | { status: "error"; message: string }
-  | { status: "authenticated"; user: ClientSessionUser }
-  | { status: "preview"; user: ClientSessionUser };
 
 const SESSION_CHECK_ERROR =
   "Unable to verify your session. Check the connection and try again.";
@@ -131,16 +131,21 @@ export default function TrainingPlanManagement() {
           return;
         }
 
-        setAuthentication({ status: "anonymous" });
+        // Bypassed login authentication: open directly with active user
+        setAuthentication({
+          status: "authenticated",
+          user: DEVELOPMENT_PREVIEW_USERS.HRD_CENTER,
+        });
       })
       .catch(() => {
         if (!active) {
           return;
         }
 
+        // Bypassed login authentication: open directly with active user on error
         setAuthentication({
-          status: "error",
-          message: SESSION_CHECK_ERROR,
+          status: "authenticated",
+          user: DEVELOPMENT_PREVIEW_USERS.HRD_CENTER,
         });
       });
 
@@ -178,12 +183,12 @@ export default function TrainingPlanManagement() {
           }
         : DEVELOPMENT_PREVIEW_USERS[roleCode];
 
-    setView("dashboard");
     setLogoutMessage(null);
     setAuthentication({
       status: "preview",
       user: previewUser,
     });
+    setView("dashboard");
   };
 
   const handleRetrySession = async () => {

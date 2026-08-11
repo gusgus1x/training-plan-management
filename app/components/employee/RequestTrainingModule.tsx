@@ -126,6 +126,9 @@ export default function RequestTrainingModule({
 
   return (
     <section className={styles.modulePage}>
+      <div className={styles.lockedNoticeBanner}>
+        🔒 <strong>หน้านี้ถูกล็อกการใช้งานชั่วคราว</strong> — ฟังก์ชันคำขอฝึกอบรม (Request Training Need) อยู่ระหว่างการปรับปรุงระบบ
+      </div>
       <ModuleHeader
         eyebrow="Request Training Need"
         title="Request Training Need"

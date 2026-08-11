@@ -100,7 +100,7 @@
 }
 
 .heroStats strong {
-  color: #0f2747;
+  color: var(--ui-30-ink);
   font-size: 1.32rem;
   font-weight: 900;
   line-height: 1;
@@ -281,10 +281,10 @@
 
 .attachmentList button {
   min-height: 32px;
-  border: 1px solid #fecaca;
+  border: 1px solid var(--ui-10-accent-border);
   border-radius: 8px;
-  background: #fff5f5;
-  color: #b42318;
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
   cursor: pointer;
   font: inherit;
   font-size: 0.72rem;
@@ -340,20 +340,20 @@
 .secondaryButton {
   border: 1px solid var(--ui-30-border);
   background: var(--ui-60-surface);
-  color: #0f2747;
+  color: var(--ui-30-ink);
 }
 
 .prepareButton {
   border: 0;
   background: var(--ui-30-primary);
-  color: var(--ui-60-surface);
+  color: #ffffff;
   box-shadow: 0 8px 18px rgba(0, 122, 61, 0.16);
 }
 
 .sendButton {
   border: 0;
   background: var(--ui-10-accent);
-  color: var(--ui-60-surface);
+  color: #ffffff;
   box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
 }
 

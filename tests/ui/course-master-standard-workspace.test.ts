@@ -34,6 +34,16 @@ describe("Course Master and Course Standard workspace", () => {
     expect(workspaceSource).not.toContain("Course Standard Records");
     expect(workspaceSource).toContain("Classification");
     expect(workspaceSource).toContain("Course Standard");
+    expect(workspaceSource).toContain('lifeCycleMonth: ""');
+    expect(workspaceSource).toContain('lifeCycleMonth: form.lifeCycleMonth.trim() || "0"');
+    expect(workspaceSource).toContain('min="0"');
+    expect(workspaceSource).toContain('placeholder="Enter 0 for no course expiration"');
+    expect(workspaceSource).not.toContain("Number of months before the course should be reviewed.");
+    expect(workspaceSource).toContain('<h2 translate="no">{courseMasterModule.title}</h2>');
+    expect(workspaceSource).toContain('<option key={type} value={type} translate="no">{type}</option>');
+    expect(workspaceSource).toContain('<option key={option.code} value={option.code} translate="no">');
+    expect(workspaceSource).toContain('<strong translate="no">{course.courseType}</strong>');
+    expect(workspaceSource).toContain('translate={courseStandard ? "no" : undefined}');
     expect(workspaceSource).toContain("courseStandard.positions.length");
     expect(workspaceSource).toContain("courseStandard.levels.length");
     expect(workspaceSource).not.toContain("combinedColumnCount");
@@ -45,12 +55,17 @@ describe("Course Master and Course Standard workspace", () => {
     );
     const groupIndex = workspaceSource.indexOf("Course Group <b>");
     const codeIndex = workspaceSource.indexOf("Course Code <b>");
+    const courseTypeIndex = workspaceSource.indexOf("Course Type <b>");
+    const lifeCycleIndex = workspaceSource.indexOf("Life Cycle (Month)");
     const thaiNameIndex = workspaceSource.indexOf("Course Name (TH) <b>");
     const englishNameIndex = workspaceSource.indexOf("Course Name (EN) <b>");
 
     expect(groupIndex).toBeGreaterThan(-1);
     expect(groupIndex).toBeLessThan(codeIndex);
     expect(codeIndex).toBeLessThan(thaiNameIndex);
+    expect(codeIndex).toBeLessThan(courseTypeIndex);
+    expect(courseTypeIndex).toBeLessThan(lifeCycleIndex);
+    expect(lifeCycleIndex).toBeLessThan(thaiNameIndex);
     expect(thaiNameIndex).toBeLessThan(englishNameIndex);
   });
 

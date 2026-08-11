@@ -22,8 +22,8 @@ export default function ReportManagement({
   onHome,
   onLogout,
 }: ReportManagementProps) {
-  const [selectedItem, setSelectedItem] = useState<(typeof centerReportItems)[number] | null>(null);
   const [preparedDraft, setPreparedDraft] = useState<InternalReportDraft | null>(null);
+  const [selectedItem, setSelectedItem] = useState<(typeof centerReportItems)[number] | null>(null);
   const SelectedModule = selectedItem?.Component;
   const internalReportItem =
     centerReportItems.find((item) => item.title === internalReportTitle) ?? null;
@@ -107,9 +107,8 @@ export default function ReportManagement({
           <div className={styles.moduleGrid}>
             {centerReportItems.map((item, index) => (
               <button
-                className={`${styles.moduleCard} ${
-                  item.locked ? styles.lockedModuleCard : ""
-                }`}
+                className={`${styles.moduleCard} ${item.locked ? styles.lockedModuleCard : ""
+                  }`}
                 disabled={item.locked}
                 key={item.title}
                 type="button"

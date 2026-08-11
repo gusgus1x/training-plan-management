@@ -66,19 +66,54 @@ const cloneEntry = (source: ZipEntry, name: string, data = source.data): ZipEntr
   data: Buffer.from(data),
 });
 
+const centerCourseTitleStyle = (
+  entries: ZipEntry[],
+  worksheetXml: string,
+) => {
+  const titleStyleId = Number(
+    worksheetXml.match(/<c\b[^>]*\br=["']B5["'][^>]*\bs=["'](\d+)["']/)?.[1],
+  );
+  if (!Number.isInteger(titleStyleId)) {
+    throw new Error("Invalid Excel template: course title style was not found.");
+  }
+
+  const styles = getRequiredEntry(entries, "xl/styles.xml");
+  let stylesXml = styles.data.toString("utf8");
+  const cellXfs = stylesXml.match(/<cellXfs\b[^>]*>([\s\S]*?)<\/cellXfs>/);
+  const cellStyleXml = cellXfs?.[1] ?? "";
+  const styleEntries = [...cellStyleXml.matchAll(/<xf\b/g)].map((match) => {
+    const start = match.index;
+    const openingEnd = cellStyleXml.indexOf(">", start);
+    const isSelfClosing = cellStyleXml[openingEnd - 1] === "/";
+    const end = isSelfClosing
+      ? openingEnd + 1
+      : cellStyleXml.indexOf("</xf>", openingEnd) + "</xf>".length;
+    return cellStyleXml.slice(start, end);
+  });
+  const titleStyle = styleEntries?.[titleStyleId];
+  if (!cellXfs || !styleEntries || !titleStyle) {
+    throw new Error("Invalid Excel template: course title cell style was not found.");
+  }
+
+  const centeredTitleStyle = /horizontal=["'][^"']*["']/.test(titleStyle)
+    ? titleStyle.replace(/horizontal=["'][^"']*["']/, 'horizontal="center"')
+    : titleStyle.replace(/<alignment\b/, '<alignment horizontal="center"');
+  stylesXml = stylesXml.replace(titleStyle, centeredTitleStyle);
+  styles.data = Buffer.from(stylesXml, "utf8");
+};
+
 const fillAttendanceWorksheet = (
   templateXml: string,
   course: AttendanceSheetCourse,
   participants: AttendanceSheetParticipant[],
   participantOffset: number,
   sheetNumber: number,
-  sheetCount: number,
 ) => {
   let worksheetXml = templateXml;
+  const courseNamePart = [course.code, course.title].filter(Boolean).join(" ");
   const courseTitle = [
-    `หลักสูตร ${course.title} (${course.code})`,
+    `หลักสูตร ${courseNamePart}`.trim(),
     course.batch ? `รุ่น ${course.batch}` : "",
-    sheetCount > 1 ? `หน้า ${sheetNumber}/${sheetCount}` : "",
   ]
     .filter(Boolean)
     .join("   ");
@@ -198,6 +233,7 @@ export const buildAttendanceWorkbook = (
   const drawingRels = getRequiredEntry(entries, DRAWING_RELS_PATH);
   const printerSettings = getRequiredEntry(entries, PRINTER_SETTINGS_PATH);
   const templateWorksheetXml = worksheet.data.toString("utf8");
+  centerCourseTitleStyle(entries, templateWorksheetXml);
   const chunks = Array.from(
     { length: Math.max(1, Math.ceil(participants.length / TEMPLATE_PARTICIPANT_ROWS)) },
     (_, index) =>
@@ -231,7 +267,6 @@ export const buildAttendanceWorkbook = (
       chunk,
       participantOffset,
       sheetNumber,
-      chunks.length,
     );
 
     if (sheetNumber === 1) {

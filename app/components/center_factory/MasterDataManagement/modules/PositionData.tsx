@@ -30,27 +30,142 @@ export const positionDataModule = {
     "Maintain the shared position catalog used by every company.",
 } as const;
 
-const mockPositions = [
-  ["mgr", "ผู้จัดการ++", "Manager++"],
-  ["sh", "ผู้จัดการแผนก", "Section Head"],
-  ["eng", "วิศวกร", "Engineer"],
-  ["fm", "โฟร์แมน", "Foreman"],
-  ["ld", "ลีดเดอร์", "Leader"],
-  ["op", "พนักงานปฏิบัติการ", "Operator"],
-  ["office", "เจ้าหน้าที่", "Supervisor"],
-  ["staff", "พนักงานปฏิบัติการ", "Staff"],
-] as const;
-
 // Temporary compatibility export for mock consumers awaiting API migration.
-export const defaultPositionRows: PositionRecord[] = mockPositions.map(
-  ([positionCode, positionNameTh, positionNameEn]) => ({
-    id: `position-${positionCode}`,
-    positionCode,
-    positionNameTh,
-    positionNameEn,
-    remark: "",
-  }),
-);
+export const defaultPositionRows: PositionRecord[] = [
+  {
+    id: "position-pres",
+    positionCode: "pres",
+    positionNameTh: "ประธานบริษัท",
+    positionNameEn: "President",
+    remark: "ประธานบริษัท / President",
+  },
+  {
+    id: "position-evp",
+    positionCode: "evp",
+    positionNameTh: "รองประธานบริหาร",
+    positionNameEn: "Executive Vice President",
+    remark: "รองประธานบริหาร / Executive Vice President",
+  },
+  {
+    id: "position-vp",
+    positionCode: "vp",
+    positionNameTh: "รองประธาน",
+    positionNameEn: "Vice President",
+    remark: "รองประธาน / Vice President",
+  },
+  {
+    id: "position-sadv",
+    positionCode: "sadv",
+    positionNameTh: "ที่ปรึกษาอาวุโส",
+    positionNameEn: "Senior Advisor",
+    remark: "ที่ปรึกษาอาวุโส / Senior Advisor",
+  },
+  {
+    id: "position-adv",
+    positionCode: "adv",
+    positionNameTh: "ที่ปรึกษา",
+    positionNameEn: "Advisor",
+    remark: "ที่ปรึกษา / Advisor",
+  },
+  {
+    id: "position-sec",
+    positionCode: "sec",
+    positionNameTh: "ผู้ประสานงานบริหารอาวุโส",
+    positionNameEn: "Senior Executive Coordinator",
+    remark: "ผู้ประสานงานบริหารอาวุโส / Senior Executive Coordinator",
+  },
+  {
+    id: "position-pm",
+    positionCode: "pm",
+    positionNameTh: "ผู้จัดการโรงงาน",
+    positionNameEn: "Plant Manager",
+    remark: "ผู้จัดการโรงงาน / Plant Manager",
+  },
+  {
+    id: "position-egm",
+    positionCode: "egm",
+    positionNameTh: "ผู้จัดการทั่วไปฝ่ายบริหาร",
+    positionNameEn: "Executive General Manager",
+    remark: "ผู้จัดการทั่วไปฝ่ายบริหาร / Executive General Manager",
+  },
+  {
+    id: "position-sgm",
+    positionCode: "sgm",
+    positionNameTh: "ผู้จัดการทั่วไปอาวุโส",
+    positionNameEn: "Senior General Manager",
+    remark: "ผู้จัดการทั่วไปอาวุโส / Senior General Manager",
+  },
+  {
+    id: "position-gm",
+    positionCode: "gm",
+    positionNameTh: "ผู้จัดการทั่วไป",
+    positionNameEn: "General Manager",
+    remark: "ผู้จัดการทั่วไป / General Manager",
+  },
+  {
+    id: "position-mgr",
+    positionCode: "mgr",
+    positionNameTh: "ผู้จัดการ",
+    positionNameEn: "Manager",
+    remark: "Manager / ผู้จัดการ",
+  },
+  {
+    id: "position-sh",
+    positionCode: "sh",
+    positionNameTh: "ผู้จัดการแผนก",
+    positionNameEn: "Section Head",
+    remark: "Section Head / ผู้จัดการแผนก",
+  },
+  {
+    id: "position-eng",
+    positionCode: "eng",
+    positionNameTh: "วิศวกร",
+    positionNameEn: "Engineer",
+    remark: "Engineer / วิศวกร",
+  },
+  {
+    id: "position-off",
+    positionCode: "off",
+    positionNameTh: "เจ้าหน้าที่",
+    positionNameEn: "Officer",
+    remark: "Officer / เจ้าหน้าที่",
+  },
+  {
+    id: "position-sfm",
+    positionCode: "sfm",
+    positionNameTh: "ซีเนียร์โฟร์แมน",
+    positionNameEn: "Senior Foreman",
+    remark: "Senior Foreman / ซีเนียร์โฟร์แมน",
+  },
+  {
+    id: "position-fm",
+    positionCode: "fm",
+    positionNameTh: "โฟร์แมน",
+    positionNameEn: "Foreman",
+    remark: "Foreman / โฟร์แมน",
+  },
+  {
+    id: "position-ld",
+    positionCode: "ld",
+    positionNameTh: "ลีดเดอร์",
+    positionNameEn: "Leader",
+    remark: "Leader / ลีดเดอร์",
+  },
+  {
+    id: "position-staff",
+    positionCode: "staff",
+    positionNameTh: "พนักงาน",
+    positionNameEn: "Staff",
+    remark: "Staff / พนักงาน",
+  },
+  {
+    id: "position-op",
+    positionCode: "op",
+    positionNameTh: "พนักงานปฏิบัติการ",
+    positionNameEn: "Operator",
+    remark: "Operator / พนักงานปฏิบัติการ",
+  },
+];
 
 type PositionForm = {
   positionCode: string;

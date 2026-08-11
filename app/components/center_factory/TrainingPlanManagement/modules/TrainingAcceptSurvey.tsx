@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { type WorkflowStandard } from "../../../../lib/trainingWorkflow";
 import {
+  TRAINING_MASTER_EVENT,
+  TRAINING_MASTER_KEYS,
+  readMasterCollection,
+  type WorkflowStandard,
+} from "../../../../lib/trainingWorkflow";
+import {
+  getLevelRank,
   normalizeEmployeeLevel,
   readEmployeeMasterData,
 } from "../../../../lib/employeeMasterData";
@@ -21,7 +27,7 @@ import { listEmployees } from "../../../../lib/employees/client";
 import type { EmployeeRecord } from "../../../../lib/employees/types";
 import { createEnrollment, listEnrollments, updateEnrollmentStatus } from "../../../../lib/trainingEnrollment/client";
 import type { EnrollmentRecord, EnrollmentSource, EnrollmentStatus } from "../../../../lib/trainingEnrollment/types";
-import { readMasterCollection, TRAINING_MASTER_KEYS } from "../../../../lib/trainingWorkflow";
+import { defaultFunctionRows } from "../../MasterDataManagement/modules/FunctionData";
 import { defaultPositionRows } from "../../MasterDataManagement/modules/PositionData";
 import styles from "./TrainingAcceptSurvey.module.css";
 
@@ -75,6 +81,7 @@ type SurveyEmployee = {
   name: string;
   company: string;
   departmentCode: string | null;
+  functionName?: string;
   department: string;
   position: string;
   level: string;
@@ -124,7 +131,7 @@ const toSurveyEmployee = (employee: EmployeeRecord): SurveyEmployee => ({
 const getEmployeeNameProfile = (employee: { name: string; prefix?: string; firstName?: string; lastName?: string }) => {
   if (employee.firstName || employee.lastName) {
     return {
-      prefix: employee.prefix || "-",
+      prefix: employee.prefix || "นาย",
       firstName: employee.firstName || employee.name,
       lastName: employee.lastName || "-",
     };
@@ -132,10 +139,22 @@ const getEmployeeNameProfile = (employee: { name: string; prefix?: string; first
 
   const nameParts = employee.name.trim().split(/\s+/);
   return {
-    prefix: "-",
+    prefix: "นาย",
     firstName: nameParts[0] || employee.name,
     lastName: nameParts.slice(1).join(" ") || "-",
   };
+};
+
+const getEmployeeFunctionDisplay = (emp: { departmentCode?: string | null; functionName?: string; department?: string }) => {
+  if (emp.functionName && emp.functionName !== "-") {
+    return emp.functionName;
+  }
+  return emp.department || "-";
+};
+
+const getEmployeePositionLevelDisplay = (emp: { position?: string; level?: string }) => {
+  const parts = [emp.position, emp.level].filter((p) => p && p !== "-");
+  return parts.length > 0 ? parts.join(" / ") : "-";
 };
 
 export default function TrainingAcceptSurvey() {
@@ -147,7 +166,7 @@ export default function TrainingAcceptSurvey() {
       ? "All Companies"
       : profileValue(user?.companyName ?? userCompanyCode);
   const [selectedCourseOwner, setSelectedCourseOwner] = useState<CourseOwnerFilter>(
-    roleMode,
+    "",
   );
   const [selectedCourseGroupId, setSelectedCourseGroupId] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
@@ -304,7 +323,6 @@ export default function TrainingAcceptSurvey() {
       console.error("Failed to reload candidates", error);
     }
   };
-
   const isFactoryOwnedByUser =
     roleMode === "factory" &&
     selectedCourse?.owner === "factory" &&
@@ -727,7 +745,7 @@ export default function TrainingAcceptSurvey() {
               >
                 {isExportingAttendance
                   ? "Preparing Excel..."
-                  : "Export attendance sheet"}
+                  : "Export Excel"}
               </button>
             </div>
           </div>
@@ -746,7 +764,9 @@ export default function TrainingAcceptSurvey() {
                   <span>First Name</span>
                   <span>Last Name</span>
                   <span>Company</span>
+                  <span>Function</span>
                   <span>Department</span>
+                  <span>Position / Level</span>
                 </div>
               </div>
             ) : null}
@@ -768,7 +788,15 @@ export default function TrainingAcceptSurvey() {
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.firstName}</span>
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.lastName}</span>
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{participant.company}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{participant.department}</span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={getEmployeeFunctionDisplay(participant)}>
+                      {getEmployeeFunctionDisplay(participant)}
+                    </span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={participant.department || "-"}>
+                      {participant.department || "-"}
+                    </span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
+                      {getEmployeePositionLevelDisplay(participant)}
+                    </span>
                   </div>
                 </article>
               );
@@ -817,7 +845,9 @@ export default function TrainingAcceptSurvey() {
                         <span>First Name</span>
                         <span>Last Name</span>
                         <span>Company</span>
+                        <span>Function</span>
                         <span>Department</span>
+                        <span>Position / Level</span>
                       </div>
                     </div>
                     {group.employees.map((employee) => {
@@ -838,7 +868,15 @@ export default function TrainingAcceptSurvey() {
                             <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{nameProfile.firstName}</span>
                             <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{nameProfile.lastName}</span>
                             <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{employee.company}</span>
-                            <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{employee.department}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`} title={getEmployeeFunctionDisplay(employee)}>
+                              {getEmployeeFunctionDisplay(employee)}
+                            </span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`} title={employee.department || "-"}>
+                              {employee.department || "-"}
+                            </span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>
+                              {getEmployeePositionLevelDisplay(employee)}
+                            </span>
                           </div>
                         </article>
                       );
@@ -859,108 +897,125 @@ export default function TrainingAcceptSurvey() {
         </section>
       </div>
 
-      <section className={styles.additionalPanel}>
-        <details className={styles.additionalDisclosure}>
-          <summary className={styles.additionalSummary}>
-            <div>
-              <p className={styles.kicker}>Additional employees</p>
-              <h3>Add employees outside the target group</h3>
-            </div>
-            <span>{additionalEmployees.length} available</span>
-          </summary>
-          <p className={styles.additionalNote}>
-            Open this section only when you need to add an employee who does not
-            match the Course Standard position and level.
-          </p>
-          <div className={styles.companyGroupGrid}>
-            {additionalEmployeeGroups.map((group) => (
-              <details className={styles.companyGroupCard} key={group.company}>
-                <summary className={styles.companyGroupHeader}>
-                  <div>
-                    <strong>{group.company}</strong>
-                    <span>{group.employees.length} outside target</span>
-                  </div>
-                </summary>
-                <div className={styles.dropdownScroll}>
-                  <div className={styles.relatedPeopleGrid}>
-                    <div
-                      className={`${styles.targetEmployeeHeader} ${styles.targetListHeader}`}
-                    >
-                      <span>Action</span>
-                      <div
-                        className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}
-                      >
-                        <span>Employee ID</span>
-                        <span>Prefix</span>
-                        <span>First Name</span>
-                        <span>Last Name</span>
-                        <span>Company</span>
-                        <span>Department</span>
-                      </div>
-                    </div>
-                    {group.employees.map((employee) => {
-                      const nameProfile = getEmployeeNameProfile(employee);
-
-                      return (
-                        <article
-                          className={`${styles.employeeRow} ${styles.targetListRow}`}
-                          key={employee.id}
-                        >
-                          <button
-                            className={styles.addTargetButton}
-                            type="button"
-                            onClick={() => void handleAddEmployee(employee)}
-                          >
-                            {targetActionLabel}
-                          </button>
-                          <div
-                            className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}
-                          >
-                            <span
-                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                            >
-                              {employee.employeeCode}
-                            </span>
-                            <span
-                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                            >
-                              {nameProfile.prefix}
-                            </span>
-                            <span
-                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                            >
-                              {nameProfile.firstName}
-                            </span>
-                            <span
-                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                            >
-                              {nameProfile.lastName}
-                            </span>
-                            <span
-                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                            >
-                              {employee.company}
-                            </span>
-                            <span
-                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                            >
-                              {employee.department}
-                            </span>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
-                </div>
-              </details>
-            ))}
-            {additionalEmployees.length === 0 ? (
-              <div className={styles.emptyCompact}>
-                No additional employees are available.
-              </div>
-            ) : null}
+      <section className={styles.targetPanel}>
+        <div className={styles.workspaceHeader}>
+          <div>
+            <p className={styles.kicker}>Out-of-target group</p>
+            <h3>Add employees outside the target group</h3>
           </div>
-        </details>
+          <span>{additionalEmployees.length} available</span>
+        </div>
+        <p className={styles.targetRuleNote}>
+          💡 Select a company below to view and add employees who do not match the Course Standard position and level.
+        </p>
+        <div className={styles.companyGroupGrid}>
+          {additionalEmployeeGroups.map((group) => (
+            <details
+              className={`${styles.companyGroupCard} ${styles.additionalDisclosure}`}
+              key={group.company}
+            >
+              <summary className={styles.companyGroupHeader}>
+                <div>
+                  <strong>{group.company}</strong>
+                  <span>{group.employees.length} available</span>
+                </div>
+              </summary>
+              <div className={styles.dropdownScroll}>
+                <div className={styles.relatedPeopleGrid}>
+                  <div
+                    className={`${styles.targetEmployeeHeader} ${styles.targetListHeader}`}
+                  >
+                    <span>Action</span>
+                    <div
+                      className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}
+                    >
+                      <span>Employee ID</span>
+                      <span>Prefix</span>
+                      <span>First Name</span>
+                      <span>Last Name</span>
+                      <span>Company</span>
+                      <span>Function</span>
+                      <span>Department</span>
+                      <span>Position / Level</span>
+                    </div>
+                  </div>
+                  {group.employees.map((employee) => {
+                    const nameProfile = getEmployeeNameProfile(employee);
+
+                    return (
+                      <article
+                        className={`${styles.employeeRow} ${styles.targetListRow}`}
+                        key={employee.id}
+                      >
+                        <button
+                          className={styles.addTargetButton}
+                          type="button"
+                          onClick={() => void handleAddEmployee(employee)}
+                        >
+                          {targetActionLabel}
+                        </button>
+                        <div
+                          className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}
+                        >
+                          <span
+                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                          >
+                            {employee.employeeCode}
+                          </span>
+                          <span
+                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                          >
+                            {nameProfile.prefix}
+                          </span>
+                          <span
+                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                          >
+                            {nameProfile.firstName}
+                          </span>
+                          <span
+                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                          >
+                            {nameProfile.lastName}
+                          </span>
+                          <span
+                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                          >
+                            {employee.company}
+                          </span>
+                          <span
+                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                            title={getEmployeeFunctionDisplay(employee)}
+                          >
+                            {getEmployeeFunctionDisplay(employee)}
+                          </span>
+                          <span
+                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                            title={employee.department || "-"}
+                          >
+                            {employee.department || "-"}
+                          </span>
+                          <span
+                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                          >
+                            {getEmployeePositionLevelDisplay(employee)}
+                          </span>
+                        </div>
+                      </article>
+                    );
+                  })}
+                  {group.employees.length === 0 ? (
+                    <div className={styles.emptyCompact}>No additional employees for this company.</div>
+                  ) : null}
+                </div>
+              </div>
+            </details>
+          ))}
+          {additionalEmployees.length === 0 ? (
+            <div className={styles.emptyCompact}>
+              No additional employees are available.
+            </div>
+          ) : null}
+        </div>
       </section>
 
       {isFactorySubmittingToCenter ? (
@@ -989,7 +1044,9 @@ export default function TrainingAcceptSurvey() {
                   <span>First Name</span>
                   <span>Last Name</span>
                   <span>Company</span>
+                  <span>Function</span>
                   <span>Department</span>
+                  <span>Position / Level</span>
                 </div>
               </div>
             ) : null}
@@ -1011,7 +1068,15 @@ export default function TrainingAcceptSurvey() {
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.firstName}</span>
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.lastName}</span>
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{candidate.company}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{candidate.department}</span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={getEmployeeFunctionDisplay(candidate)}>
+                      {getEmployeeFunctionDisplay(candidate)}
+                    </span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.department || "-"}>
+                      {candidate.department || "-"}
+                    </span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
+                      {getEmployeePositionLevelDisplay(candidate)}
+                    </span>
                   </div>
                 </article>
               );
@@ -1108,9 +1173,7 @@ export default function TrainingAcceptSurvey() {
         </>
       ) : (
         <section className={styles.selectionPrompt}>
-          <p className={styles.kicker}>Published Rolling Course</p>
-          <h3>No published Rolling course is available for this owner.</h3>
-          <span>Open Training Rolling and click Publish, then the course will appear here automatically.</span>
+          <strong>Select a course first to show training actual details.</strong>
         </section>
       )}
     </section>

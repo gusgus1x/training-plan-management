@@ -44,6 +44,19 @@ describe("Course Master form linking contract", () => {
     );
   });
 
+  it("allows manual links as an alternative to published forms", () => {
+    expect(courseMasterSource).toContain("preTestLink");
+    expect(courseMasterSource).toContain("postTestLink");
+    expect(courseMasterSource).toContain("evaluationLink");
+    expect(courseMasterSource).toContain("evaluationAfter30DayLink");
+    expect(courseMasterSource).toContain("handleFormLinkChange");
+    expect(courseMasterSource).toContain('placeholder="Paste pre-test form link"');
+    expect(courseMasterSource).toContain('placeholder="Paste post-test form link"');
+    expect(courseMasterSource).toContain('placeholder="Paste evaluation form link"');
+    expect(courseMasterSource).toContain('placeholder="Paste 30-day evaluation form link"');
+    expect(courseMasterSource).toContain("Manual form link will be used.");
+  });
+
   it("keeps After Training and After 30 Days evaluations as separate, non-interchangeable forms", () => {
     expect(courseMasterSource).toContain(
       'evaluation.timing === "After Training"',

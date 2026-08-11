@@ -530,10 +530,18 @@ export default function TrainingRolling() {
             </div>
             <div className={styles.formGrid}>
               <label className={styles.fullField}>
-                Course Name
+                <span>Course Name <span className={styles.required}>*</span></span>
                 <select value={form.oapId} onChange={(event) => updateOap(event.target.value)}>
                   <option value="">Select course first</option>
-                  {oapSources.map((source) => <option key={source.id} value={source.id}>{getCourseDisplayName(source.course)}</option>)}
+                  {oapSources.map((source) => {
+                    const tag = source.course.courseGroup || source.course.courseType;
+                    return (
+                      <option key={source.id} value={source.id}>
+                        [{source.course.courseCode}] {getCourseDisplayName(source.course)}
+                        {tag ? ` • ${tag}` : ""} (Plan: {source.participants} pax, {source.hours} hrs)
+                      </option>
+                    );
+                  })}
                 </select>
               </label>
               <label>Participants<input disabled value={selectedOap?.participants ?? ""} /></label>
@@ -570,7 +578,7 @@ export default function TrainingRolling() {
                       </div>
                       <div className={styles.sessionGrid}>
                         <label>
-                          Batch Name
+                          <span>Batch <span className={styles.required}>*</span></span>
                           <input
                             disabled={!selectedOap}
                             placeholder="Optional label, e.g. Supervisor batch"
@@ -581,7 +589,7 @@ export default function TrainingRolling() {
                           />
                         </label>
                         <label>
-                          Location
+                          <span>Location <span className={styles.required}>*</span></span>
                           <input
                             disabled={!selectedOap}
                             value={session.location}
@@ -590,8 +598,9 @@ export default function TrainingRolling() {
                             }
                           />
                         </label>
+
                         <label>
-                          Training Date
+                          <span>Training Date <span className={styles.required}>*</span></span>
                           <input
                             disabled={!selectedOap}
                             type="date"
@@ -602,7 +611,7 @@ export default function TrainingRolling() {
                           />
                         </label>
                         <label>
-                          Start Time
+                          <span>Start Time <span className={styles.required}>*</span></span>
                           <input
                             disabled={!selectedOap}
                             type="time"
@@ -613,7 +622,7 @@ export default function TrainingRolling() {
                           />
                         </label>
                         <label>
-                          End Time
+                          <span>End Time <span className={styles.required}>*</span></span>
                           <input
                             disabled={!selectedOap}
                             type="time"
@@ -631,9 +640,100 @@ export default function TrainingRolling() {
             </div>
             {selectedOap ? (
               <div className={styles.coursePreview}>
-                <strong>{selectedOap.course.courseCode} / {getCourseDisplayName(selectedOap.course)}</strong>
-                <span>{selectedOap.course.objective}</span>
-                <span>{selectedOap.course.courseType} / {selectedOap.course.courseGroup}</span>
+                <div className={styles.previewHeader}>
+                  <div className={styles.previewTitleWrap}>
+                    <div className={styles.previewTitleMain}>
+                      <span className={styles.previewCodeBadge}>{selectedOap.course.courseCode}</span>
+                      <strong>{getCourseDisplayName(selectedOap.course)}</strong>
+                    </div>
+                  </div>
+                  <div className={styles.previewBadges}>
+                    {selectedOap.course.courseType ? (
+                      <span className={`${styles.previewBadge} ${styles.previewBadgeHighlight}`}>
+                        🏷️ {selectedOap.course.courseType}
+                      </span>
+                    ) : null}
+                    {selectedOap.course.courseGroup ? (
+                      <span className={styles.previewBadge}>
+                        📂 {selectedOap.course.courseGroup}
+                      </span>
+                    ) : null}
+                    <span className={styles.previewBadge}>
+                      ⏱️ {selectedOap.course.lifeCycleMonth || "12"} Months
+                    </span>
+                    <span className={styles.previewBadge}>
+                      🏢 {selectedOap.ownerCompany || selectedOap.owner}
+                    </span>
+                  </div>
+                </div>
+
+                <div className={styles.previewSections}>
+                  <div className={styles.previewCard}>
+                    <div className={styles.previewCardHeader}>
+                      <span>🎯 Objectives & Content</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>Objective</span>
+                      <span className={styles.previewFieldValue}>{selectedOap.course.objective || "-"}</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>Learning Content</span>
+                      <span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>
+                        {selectedOap.course.learningContent || "-"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>Methodology</span>
+                      <span className={styles.previewFieldValue}>{selectedOap.course.methodology || "-"}</span>
+                    </div>
+                  </div>
+
+                  <div className={styles.previewCard}>
+                    <div className={styles.previewCardHeader}>
+                      <span>👥 Target & Planning Basis</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>Target Group</span>
+                      <span className={styles.previewFieldValue}>{selectedOap.course.targetGroup || "-"}</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>OAP Target</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedOap.participants} participants / {selectedOap.hours} hours
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>OAP Budget</span>
+                      <span className={styles.previewFieldValue}>
+                        ฿{Number(selectedOap.budget).toLocaleString("en-US")}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className={`${styles.previewCard} ${styles.previewCardFull}`}>
+                    <div className={styles.previewCardHeader}>
+                      <span>📋 Assessments & Evaluation</span>
+                    </div>
+                    <div className={styles.assessmentGrid}>
+                      <div className={styles.assessmentItem}>
+                        <span className={styles.previewFieldLabel}>Pre-Test</span>
+                        <strong className={styles.previewFieldValue}>{selectedOap.course.preTest || "None"}</strong>
+                      </div>
+                      <div className={styles.assessmentItem}>
+                        <span className={styles.previewFieldLabel}>Post-Test</span>
+                        <strong className={styles.previewFieldValue}>{selectedOap.course.postTest || "None"}</strong>
+                      </div>
+                      <div className={styles.assessmentItem}>
+                        <span className={styles.previewFieldLabel}>Course Evaluation</span>
+                        <strong className={styles.previewFieldValue}>{selectedOap.course.evaluation || "Standard"}</strong>
+                      </div>
+                      <div className={styles.assessmentItem}>
+                        <span className={styles.previewFieldLabel}>30-Day Follow-Up</span>
+                        <strong className={styles.previewFieldValue}>{selectedOap.course.evaluationAfter30Day || "Standard"}</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : null}
             <div className={styles.formActions}>
@@ -656,10 +756,11 @@ export default function TrainingRolling() {
               <tr>
                 <th>Seq.</th>
                 <th>Course Name</th>
-                <th>Training Sessions</th>
                 <th>Status</th>
                 <th>Job Status</th>
                 <th>Actions</th>
+                <th>Training Sessions</th>
+                <th>Company</th>
               </tr>
             </thead>
             <tbody>
@@ -698,6 +799,28 @@ export default function TrainingRolling() {
                       </td>
                       <td><strong>{plan.course.name}</strong><span>{plan.course.code}</span></td>
                       <td>
+                        <span className={`${styles.statusPill} ${styles[`status${groupStatus}`]}`}>
+                          <span className={styles.statusDot} />
+                          {groupStatus === "Planned" ? "วางแผนแล้ว" : groupStatus === "Planning" ? "รอวางแผน" : groupStatus === "Cancel" ? "ยกเลิก" : groupStatus}
+                        </span>
+                      </td>
+                      <td><span className={`${styles.jobPill} ${styles[`job${groupJobStatus}`]}`}>{groupJobStatus}</span></td>
+                      <td className={styles.actionCell}>
+                        <div className={styles.actionButtons}>
+                          <button className={styles.detailButton} type="button" onClick={() => setOpenDetailId(isOpen ? "" : group.id)}>
+                            {isOpen ? "Hide" : "Details"}
+                          </button>
+                          <button
+                            className={styles.primaryButton}
+                            disabled={allPublished}
+                            type="button"
+                            onClick={() => handleConfirmGroup(group.plans)}
+                          >
+                            {allPublished ? "All published" : "Publish all"}
+                          </button>
+                        </div>
+                      </td>
+                      <td>
                         <strong>{group.plans.length} sessions</strong>
                         <span>
                           {dates.length === 1
@@ -705,25 +828,11 @@ export default function TrainingRolling() {
                             : `${dates.length} dates`}
                         </span>
                       </td>
-                      <td><span className={`${styles.statusPill} ${styles[`status${groupStatus}`]}`}>{groupStatus}</span></td>
-                      <td><span className={`${styles.jobPill} ${styles[`job${groupJobStatus}`]}`}>{groupJobStatus}</span></td>
-                      <td className={styles.actionCell}>
-                        <button className={styles.detailButton} type="button" onClick={() => setOpenDetailId(isOpen ? "" : group.id)}>
-                          {isOpen ? "Hide" : "Details"}
-                        </button>
-                        <button
-                          className={styles.primaryButton}
-                          disabled={allPublished}
-                          type="button"
-                          onClick={() => void handleConfirmGroup(group.plans)}
-                        >
-                          {allPublished ? "All published" : "Publish all"}
-                        </button>
-                      </td>
+                      <td>{formatRollingPlanCompanies(plan)}</td>
                     </tr>
                     {isOpen ? (
                       <tr className={styles.detailRow}>
-                        <td colSpan={6}>
+                        <td colSpan={7}>
                           <section className={styles.detailPanel}>
                             <div className={styles.panelHeader}>
                               <div>
@@ -787,7 +896,12 @@ export default function TrainingRolling() {
                                   </div>
                                   <div>
                                     <span>Status</span>
-                                    <strong>{session.status}</strong>
+                                    <strong>
+                                      <span className={`${styles.statusPill} ${styles[`status${session.status}`]}`}>
+                                        <span className={styles.statusDot} />
+                                        {session.status === "Planned" ? "วางแผนแล้ว" : session.status === "Planning" ? "รอวางแผน" : session.status === "Cancel" ? "ยกเลิก" : session.status}
+                                      </span>
+                                    </strong>
                                   </div>
                                   <div className={styles.sessionActions}>
                                     <button className={styles.detailButton} type="button" onClick={() => handleEditSession(session)}>Edit</button>

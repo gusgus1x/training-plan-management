@@ -1,6 +1,6 @@
  "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import logoImage from "../photo/logo.png";
 import { profileValue, useAuthenticatedUser } from "./AuthenticatedUserContext";
@@ -34,10 +34,21 @@ export default function Navbar({
   onLogout,
 }: NavbarProps) {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
   const { language, setLanguage } = useUiLanguage();
   const user = useAuthenticatedUser();
   const displayUsername = user?.username ?? username;
-  const displayLevel = user?.roleCode ?? userLevel;
+  const displayLevelRaw = user?.roleCode ?? userLevel;
+  const displayLevel =
+    displayLevelRaw === "HRD_CENTER"
+      ? "HRD Center"
+      : displayLevelRaw === "HRD_FACTORY"
+        ? "HRD Factory"
+        : displayLevelRaw === "EMPLOYEE"
+          ? "Employee"
+          : displayLevelRaw.replace(/_/g, " ");
   const displayCompany =
     user?.roleCode === "HRD_CENTER"
       ? "All Companies"
@@ -70,6 +81,36 @@ export default function Navbar({
     return () => window.removeEventListener("scroll", updateNavbarState);
   }, []);
 
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
+    if (savedTheme === "light" || savedTheme === "dark") {
+      setTheme(savedTheme);
+      document.documentElement.setAttribute("data-theme", savedTheme);
+      document.documentElement.classList.toggle("dark", savedTheme === "dark");
+    } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      setTheme("dark");
+      document.documentElement.setAttribute("data-theme", "dark");
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setIsSettingsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleThemeChange = (newTheme: "light" | "dark") => {
+    setTheme(newTheme);
+    document.documentElement.setAttribute("data-theme", newTheme);
+    document.documentElement.classList.toggle("dark", newTheme === "dark");
+    localStorage.setItem("theme", newTheme);
+  };
+
   return (
     <header className={`${styles.navbar} ${isScrolled ? styles.scrolledNavbar : ""}`}>
       <div className={styles.inner}>
@@ -88,67 +129,152 @@ export default function Navbar({
           )}
 
           <div className={styles.topActions}>
-            <div
-              className={styles.languageSwitcher}
-              aria-label="Language selector"
-              data-language={language}
-              role="group"
-            >
-              <button
-                className={
-                  language === "en"
-                    ? styles.activeLanguage
-                    : styles.languageButton
-                }
-                type="button"
-                aria-label="Switch to English"
-                aria-pressed={language === "en"}
-                lang="en"
-                onClick={() => setLanguage("en")}
-              >
-                EN
-              </button>
-              <span className={styles.languageDivider} aria-hidden="true">|</span>
-              <button
-                className={
-                  language === "th"
-                    ? styles.activeLanguage
-                    : styles.languageButton
-                }
-                type="button"
-                aria-label="Switch to Thai"
-                aria-pressed={language === "th"}
-                lang="th"
-                onClick={() => setLanguage("th")}
-              >
-                TH
-              </button>
-            </div>
-
             {displayUsername ? (
               <div className={styles.userArea}>
                 <div className={styles.userInfo}>
-                  <div className={styles.avatar} aria-hidden="true">{avatar}</div>
+                  <div className={styles.avatarWrapper}>
+                    <div className={styles.avatar} aria-hidden="true">{avatar}</div>
+                    <span className={styles.onlineBadge} title="Active Session" />
+                  </div>
                   <div className={styles.userDetails}>
                     <div className={styles.userRow}>
-                      <span className={styles.userLabel}>Name :</span>
                       <span className={styles.userValue}>{displayUsername}</span>
+                      <span className={styles.roleBadge}>{displayLevel}</span>
                     </div>
-                    <div className={styles.userRow}>
-                      <span className={styles.userLabel}>Role :</span>
-                      <span className={styles.userValue}>{displayLevel}</span>
-                    </div>
-                    <div className={styles.userRow}>
-                      <span className={styles.userLabel}>Company :</span>
-                      <span className={styles.userValue}>{displayCompany}</span>
+                    <div className={styles.userSubRow}>
+                      <span className={styles.companyValue}>{displayCompany}</span>
                     </div>
                   </div>
                 </div>
-                <button className={styles.logoutButton} type="button" onClick={onLogout}>
-                  Logout
-                </button>
               </div>
             ) : null}
+
+            {/* Central Unified Settings Dropdown Menu */}
+            <div className={styles.settingsMenuWrapper} ref={settingsRef}>
+              <button
+                className={`${styles.settingsButton} ${isSettingsOpen ? styles.activeSettingsButton : ""}`}
+                type="button"
+                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                aria-label="Settings"
+                aria-expanded={isSettingsOpen}
+              >
+                <svg className={styles.gearIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <span className={styles.settingsBtnText}>Settings</span>
+                <svg className={`${styles.chevronIcon} ${isSettingsOpen ? styles.rotatedChevron : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {isSettingsOpen && (
+                <div className={`${styles.settingsDropdown} animate-fade-in`}>
+                  <div className={styles.settingsHeader}>
+                    <strong>Settings</strong>
+                    <span>Preferences</span>
+                  </div>
+
+                  {/* 1. Language Option */}
+                  <div className={styles.settingsGroup}>
+                    <div className={styles.settingsGroupHeader}>
+                      <svg className={styles.groupSvgIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="2" y1="12" x2="22" y2="12" />
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                      </svg>
+                      <span>Language</span>
+                    </div>
+                    <div className={styles.segmentControl}>
+                      <button
+                        className={language === "en" ? styles.activeSegment : styles.segmentBtn}
+                        onClick={() => setLanguage("en")}
+                        type="button"
+                      >
+                        English
+                      </button>
+                      <button
+                        className={language === "th" ? styles.activeSegment : styles.segmentBtn}
+                        onClick={() => setLanguage("th")}
+                        type="button"
+                      >
+                        ไทย
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 2. Theme Option */}
+                  <div className={styles.settingsGroup}>
+                    <div className={styles.settingsGroupHeader}>
+                      <svg className={styles.groupSvgIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="4" />
+                        <path d="M12 2v2" />
+                        <path d="M12 20v2" />
+                        <path d="m4.93 4.93 1.41 1.41" />
+                        <path d="m17.66 17.66 1.41 1.41" />
+                        <path d="M2 12h2" />
+                        <path d="M20 12h2" />
+                        <path d="m6.34 17.66-1.41 1.41" />
+                        <path d="m19.07 4.93-1.41 1.41" />
+                      </svg>
+                      <span>Appearance</span>
+                    </div>
+                    <div className={styles.segmentControl}>
+                      <button
+                        className={theme === "light" ? styles.activeSegment : styles.segmentBtn}
+                        onClick={() => handleThemeChange("light")}
+                        type="button"
+                      >
+                        <svg className={styles.optionSvgIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="4" />
+                          <path d="M12 2v2" />
+                          <path d="M12 20v2" />
+                          <path d="m4.93 4.93 1.41 1.41" />
+                          <path d="m17.66 17.66 1.41 1.41" />
+                          <path d="M2 12h2" />
+                          <path d="M20 12h2" />
+                          <path d="m6.34 17.66-1.41 1.41" />
+                          <path d="m19.07 4.93-1.41 1.41" />
+                        </svg>
+                        <span>Light</span>
+                      </button>
+                      <button
+                        className={theme === "dark" ? styles.activeSegment : styles.segmentBtn}
+                        onClick={() => handleThemeChange("dark")}
+                        type="button"
+                      >
+                        <svg className={styles.optionSvgIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+                        </svg>
+                        <span>Dark</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 3. Logout Option */}
+                  {onLogout && (
+                    <>
+                      <div className={styles.dropdownDivider} />
+                      <button
+                        className={styles.dropdownLogoutBtn}
+                        onClick={() => {
+                          setIsSettingsOpen(false);
+                          onLogout();
+                        }}
+                        type="button"
+                      >
+                        <svg className={styles.logoutIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                          <polyline points="16 17 21 12 16 7" />
+                          <line x1="21" y1="12" x2="9" y2="12" />
+                        </svg>
+                        <span>Sign out</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

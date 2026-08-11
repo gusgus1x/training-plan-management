@@ -1,21 +1,73 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { isWorkflowOwner } from "../../lib/trainingWorkflow";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import DashboardLayout from "../DashboardLayout";
 import {
   buildProfileItems,
   profileValue,
   useAuthenticatedUser,
 } from "../AuthenticatedUserContext";
-import { loadWorkflowRollingPlans, type RollingPlan } from "./TrainingPlanManagement/modules/TrainingRolling";
+import {
+  formatRollingPlanCompanies,
+  getRollingPlanCompanies,
+  loadWorkflowRollingPlans,
+  type RollingPlan,
+} from "./TrainingPlanManagement/modules/TrainingRolling";
 import {
   buildCalendarYearOptions,
   getCurrentCalendarDate,
 } from "../../lib/calendarDate";
+import { useUiLanguage } from "../ThaiUiLocalization";
 import styles from "./CenterFactory_Dashboard.module.css";
 
-const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const CourseIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+    <rect x="7" y="4" width="18" height="24" rx="3" fill="#3B82F6" />
+    <rect x="7" y="24" width="18" height="2" fill="#EC4899" />
+    <line x1="12" y1="4" x2="12" y2="26" stroke="#1D4EDB" strokeWidth="1.5" />
+  </svg>
+);
+
+const PlanIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+    <rect x="5" y="6" width="22" height="22" rx="3" fill="#0EA5E9" />
+    <path d="M5 12h22" stroke="#ffffff" strokeWidth="2" />
+    <circle cx="11" cy="17" r="1.5" fill="#ffffff" />
+    <circle cx="16" cy="17" r="1.5" fill="#ffffff" />
+    <circle cx="21" cy="17" r="1.5" fill="#ffffff" />
+    <circle cx="11" cy="22" r="1.5" fill="#ffffff" />
+    <circle cx="16" cy="22" r="1.5" fill="#ffffff" />
+    <path d="M10 4v4M22 4v4" stroke="#0284C7" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
+const RecordIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+    <rect x="6" y="6" width="20" height="22" rx="3" fill="#F59E0B" />
+    <rect x="11" y="4" width="10" height="4" rx="1.5" fill="#D97706" />
+    <path d="M11 15l3 3 7-7" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const ReportIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+    <rect x="5" y="5" width="22" height="22" rx="3" fill="#EF4444" />
+    <rect x="9" y="16" width="3" height="7" rx="1" fill="#ffffff" />
+    <rect x="14.5" y="11" width="3" height="12" rx="1" fill="#ffffff" />
+    <rect x="20" y="8" width="3" height="15" rx="1" fill="#ffffff" />
+  </svg>
+);
+
+const MasterIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+    <rect x="5" y="7" width="22" height="18" rx="3" fill="#14B8A6" />
+    <path d="M5 12h22" stroke="#0D9488" strokeWidth="1.5" />
+    <circle cx="10" cy="18" r="2" fill="#ffffff" />
+    <line x1="15" y1="18" x2="22" y2="18" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
+const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const calendarMonths = [
   { value: "all", label: "All year" },
   { value: "01", label: "January" },
@@ -32,65 +84,6 @@ const calendarMonths = [
   { value: "12", label: "December" },
 ] as const;
 
-const legacyTrainingSchedule = [
-  {
-    date: "2026-07-02",
-    course: "Leadership Essentials",
-    shortName: "Lead",
-    time: "09:00 - 16:00",
-    room: "Training Room A",
-    status: "Confirmed",
-  },
-  {
-    date: "2026-07-08",
-    course: "Safety & Compliance Basics",
-    shortName: "Safety",
-    time: "10:00 - 12:00",
-    room: "Online",
-    status: "Mandatory",
-  },
-  {
-    date: "2026-07-15",
-    course: "Service Mind for Frontline",
-    shortName: "Service",
-    time: "13:00 - 16:30",
-    room: "Training Room B",
-    status: "Planned",
-  },
-  {
-    date: "2026-07-24",
-    course: "Data Privacy Awareness",
-    shortName: "PDPA",
-    time: "09:30 - 11:30",
-    room: "Meeting Room 2",
-    status: "Open",
-  },
-  {
-    date: "2026-08-21",
-    course: "Quality Control Basics",
-    shortName: "Quality",
-    time: "09:00 - 12:00",
-    room: "Training Room A",
-    status: "Planned",
-  },
-  {
-    date: "2026-09-08",
-    course: "Data Privacy Refresh",
-    shortName: "PDPA",
-    time: "09:30 - 11:30",
-    room: "Online",
-    status: "Planned",
-  },
-  {
-    date: "2027-01-14",
-    course: "Annual Compliance Refresh",
-    shortName: "Annual",
-    time: "09:00 - 12:00",
-    room: "Online",
-    status: "Planned",
-  },
-] as const;
-
 type DashboardTraining = {
   date: string;
   course: string;
@@ -98,6 +91,8 @@ type DashboardTraining = {
   time: string;
   room: string;
   status: string;
+  company: string;
+  isCenterPlan: boolean;
 };
 
 type DashboardProps = {
@@ -111,6 +106,20 @@ type DashboardProps = {
   onOpenReport: () => void;
 };
 
+type DashboardMenuItem = {
+  badge: string;
+  step: string;
+  icon: React.ReactNode;
+  title: string;
+  subTitle: string;
+  description: string;
+  accent: string;
+  accentSoft: string;
+  accentBorder: string;
+  accentGlow: string;
+  onClick: () => void;
+};
+
 export default function Dashboard({
   username,
   onHome,
@@ -122,11 +131,51 @@ export default function Dashboard({
   onOpenReport,
 }: DashboardProps) {
   const authenticatedUser = useAuthenticatedUser();
-  const employeeInfo = buildProfileItems(authenticatedUser);
+  const { language } = useUiLanguage();
+  const isThai = language === "th";
+
+  const fullEmployeeProfileItems = useMemo(() => {
+    const userAny = authenticatedUser as any;
+    return [
+      {
+        label: isThai ? "ชื่อ-นามสกุล / Full Name" : "Full Name / ชื่อ-นามสกุล",
+        value: profileValue(authenticatedUser?.displayName ?? username),
+      },
+      {
+        label: isThai ? "รหัสพนักงาน / Employee Code" : "Employee Code",
+        value: profileValue(authenticatedUser?.employeeCode),
+      },
+      {
+        label: isThai ? "ตำแหน่ง / Position" : "Position / ตำแหน่ง",
+        value: profileValue(authenticatedUser?.positionName),
+      },
+      {
+        label: isThai ? "หน่วยงาน / Department" : "Department / หน่วยงาน",
+        value: profileValue(authenticatedUser?.functionName),
+      },
+      {
+        label: isThai ? "วันเริ่มงาน / Start Date" : "Start Date / วันเริ่มงาน",
+        value: profileValue(userAny?.startDate ?? "01 ม.ค. 2024"),
+      },
+      {
+        label: isThai ? "วันเกิด / Date of Birth" : "Date of Birth / วันเกิด",
+        value: profileValue(userAny?.birthDate ?? "15 ก.ย. 1992"),
+      },
+      {
+        label: isThai ? "บริษัท / Company" : "Company / บริษัท",
+        value:
+          authenticatedUser?.roleCode === "HRD_CENTER"
+            ? isThai ? "ทุกบริษัท (All Companies)" : "All Companies (ทุกบริษัท)"
+            : profileValue(authenticatedUser?.companyName ?? authenticatedUser?.companyCode),
+      },
+    ];
+  }, [authenticatedUser, username, isThai]);
   const isCenterDashboard = authenticatedUser?.roleCode === "HRD_CENTER";
   const userCompanyCode = profileValue(authenticatedUser?.companyCode);
   const dashboardScope = isCenterDashboard ? "Center" : "Factory";
-  const dashboardTitle = `${dashboardScope} Dashboard`;
+  const dashboardTitle = isThai
+    ? `${dashboardScope === "Center" ? "ศูนย์ฝึกอบรม" : "โรงงาน"} แดชบอร์ด`
+    : `${dashboardScope} Dashboard`;
   const [calendarToday] = useState(getCurrentCalendarDate);
   const [selectedCalendarYear, setSelectedCalendarYear] = useState(
     calendarToday.year,
@@ -134,7 +183,7 @@ export default function Dashboard({
   const [selectedCalendarMonth, setSelectedCalendarMonth] = useState(
     calendarToday.month,
   );
-  const [isMonthListOpen, setIsMonthListOpen] = useState(false);
+  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("all");
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
 
   useEffect(() => {
@@ -143,26 +192,60 @@ export default function Dashboard({
 
   const scopedRollingPlans = useMemo(
     () =>
-      rollingPlans.filter((plan) =>
-        isWorkflowOwner(
-          plan.ownerScope,
-          plan.ownerCompany,
-          authenticatedUser?.roleCode,
-          userCompanyCode,
-        ),
-      ),
-    [authenticatedUser?.roleCode, rollingPlans, userCompanyCode],
+      rollingPlans.filter((plan) => {
+        const planCompanies = getRollingPlanCompanies(plan);
+        const isCenterPlan =
+          plan.ownerScope === "CENTER" ||
+          plan.ownerCompany === "HRD Center" ||
+          plan.provider === "HRD Center";
+
+        if (isCenterDashboard) {
+          if (selectedCompanyFilter === "all" || selectedCompanyFilter === "All Companies") {
+            return true;
+          }
+          return (
+            plan.company === selectedCompanyFilter ||
+            planCompanies.includes(selectedCompanyFilter) ||
+            plan.company === "All Companies"
+          );
+        }
+
+        const isOwnCompany =
+          plan.company === userCompanyCode ||
+          planCompanies.includes(userCompanyCode || "");
+
+        if (isCenterPlan) {
+          return (
+            plan.company === "All Companies" ||
+            isOwnCompany ||
+            planCompanies.length === 0 ||
+            planCompanies.includes(userCompanyCode || "")
+          );
+        }
+
+        return isOwnCompany;
+      }),
+    [isCenterDashboard, rollingPlans, selectedCompanyFilter, userCompanyCode],
   );
   const trainingSchedule = useMemo<DashboardTraining[]>(
     () =>
-      scopedRollingPlans.map((plan) => ({
-        date: plan.trainingDate,
-        course: plan.course.name,
-        shortName: plan.course.code,
-        time: `${plan.startTime} - ${plan.endTime}`,
-        room: plan.location,
-        status: plan.status === "Planned" ? "Published" : "Draft",
-      })),
+      scopedRollingPlans.map((plan) => {
+        const isCenterPlan =
+          plan.ownerScope === "CENTER" ||
+          plan.ownerCompany === "HRD Center" ||
+          plan.provider === "HRD Center";
+
+        return {
+          date: plan.trainingDate,
+          course: plan.course.name,
+          shortName: plan.course.code,
+          time: `${plan.startTime} - ${plan.endTime}`,
+          room: plan.location,
+          status: plan.status === "Planned" ? "Published" : "Draft",
+          company: formatRollingPlanCompanies(plan),
+          isCenterPlan,
+        };
+      }),
     [scopedRollingPlans],
   );
   const calendarYears = useMemo(
@@ -190,26 +273,26 @@ export default function Dashboard({
   });
   const employeeTrainingSummary = [
     {
-      label: "This Month",
+      label: isThai ? "คอร์สเดือนนี้" : "This Month",
       value: String(filteredTrainingSchedule.length),
-      helper: "courses",
+      helper: isThai ? "หลักสูตร" : "courses",
     },
     {
-      label: "Training Hours",
+      label: isThai ? "ชั่วโมงอบรม" : "Training Hours",
       value: String(
         scopedRollingPlans.reduce(
           (total, plan) => total + Number(plan.hours || 0),
           0,
         ),
       ),
-      helper: "hours",
+      helper: isThai ? "ชม." : "hours",
     },
     {
-      label: "Published",
+      label: isThai ? "เผยแพร่แล้ว" : "Published",
       value: String(
         scopedRollingPlans.filter((plan) => plan.status === "Planned").length,
       ),
-      helper: "courses",
+      helper: isThai ? "หลักสูตร" : "courses",
     },
   ];
 
@@ -217,70 +300,110 @@ export default function Dashboard({
     selectedCalendarMonth === "all"
       ? []
       : (() => {
-          const year = Number(selectedCalendarYear);
-          const month = Number(selectedCalendarMonth);
-          const firstDay = new Date(year, month - 1, 1);
-          const daysInMonth = new Date(year, month, 0).getDate();
-          const leadingBlankDays = (firstDay.getDay() + 6) % 7;
-          const baseDays = Array.from(
-            { length: leadingBlankDays + daysInMonth },
-            (_, index) => {
-              if (index < leadingBlankDays) {
-                return { day: null, trainings: [] as DashboardTraining[] };
-              }
+        const year = Number(selectedCalendarYear);
+        const month = Number(selectedCalendarMonth);
+        const firstDay = new Date(year, month - 1, 1);
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const leadingBlankDays = firstDay.getDay();
+        const baseDays = Array.from(
+          { length: leadingBlankDays + daysInMonth },
+          (_, index) => {
+            if (index < leadingBlankDays) {
+              return { day: null, trainings: [] as DashboardTraining[] };
+            }
 
-              const day = index - leadingBlankDays + 1;
-              const trainings = filteredTrainingSchedule.filter(
-                (item) => Number(item.date.slice(8, 10)) === day,
-              );
+            const day = index - leadingBlankDays + 1;
+            const trainings = filteredTrainingSchedule.filter(
+              (item) => Number(item.date.slice(8, 10)) === day,
+            );
 
-              return { day, trainings };
-            },
-          );
+            return { day, trainings };
+          },
+        );
 
-          return [
-            ...baseDays,
-            ...Array.from({ length: (7 - (baseDays.length % 7)) % 7 }, () => ({
-              day: null,
-              trainings: [] as DashboardTraining[],
-            })),
-          ];
-        })();
+        return [
+          ...baseDays,
+          ...Array.from({ length: (7 - (baseDays.length % 7)) % 7 }, () => ({
+            day: null,
+            trainings: [] as DashboardTraining[],
+          })),
+        ];
+      })();
 
-  const menuItems = [
+  const menuItems: DashboardMenuItem[] = [
     {
-      badge: "COURSE",
+      badge: isThai ? "จัดการหลักสูตร" : "COURSE MANAGEMENT",
+      step: "01",
       icon: "📚",
-      title: "Training Course",
-      description: "Course type, course group, master courses, standards, and assessments.",
+      title: isThai ? "หลักสูตรอบรม" : "Training Course",
+      subTitle: "Training Course Management",
+      description: isThai
+        ? "ดูแลฐานข้อมูลหลักสูตร มาตรฐานกลุ่มเป้าหมาย ประเภทหลักสูตร และแบบทดสอบก่อน-หลังอบรม"
+        : "Manage course master, target standards, course types, and pre/post evaluation forms.",
+      accent: "var(--ui-30-primary)",
+      accentSoft: "var(--ui-30-primary-soft)",
+      accentBorder: "var(--ui-30-primary)",
+      accentGlow: "rgba(0, 122, 61, 0.18)",
       onClick: onOpenTrainingCourse,
     },
     {
-      badge: "PLAN",
+      badge: isThai ? "จัดการแผนอบรม" : "PLAN MANAGEMENT",
+      step: "02",
       icon: "📅",
-      title: "Training Plan",
-      description: "Annual plans, training needs, acceptance surveys, OAP, and rolling plans.",
+      title: isThai ? "แผนการอบรม" : "Training Plan",
+      subTitle: "Training Plan Management",
+      description: isThai
+        ? "จัดการแผน OAP ประจำปี คำขอฝึกอบรม แบบตอบรับจากบริษัท และแผนอบรมรายเดือน"
+        : "Annual OAP plans, training needs, company acceptance surveys, and monthly rolling schedules.",
+      accent: "var(--ui-30-primary)",
+      accentSoft: "var(--ui-30-primary-soft)",
+      accentBorder: "var(--ui-30-primary)",
+      accentGlow: "rgba(0, 122, 61, 0.18)",
       onClick: onOpenTrainingPlan,
     },
     {
-      badge: "RECORD",
+      badge: isThai ? "บันทึกผลอบรม" : "RECORD MANAGEMENT",
+      step: "03",
       icon: "📋",
-      title: "Training Record",
-      description: "Actual training results, attendance records, and employee history.",
+      title: isThai ? "ประวัติการอบรม" : "Training Record",
+      subTitle: "Training Record Management",
+      description: isThai
+        ? "บันทึกผู้เข้าอบรมจริง ผลประเมินหลังอบรม ค่าใช้จ่าย และรายชื่อที่เพิ่มภายหลัง"
+        : "Record actual attendance, post-training evaluations, expenses, and participant additions.",
+      accent: "var(--ui-30-primary)",
+      accentSoft: "var(--ui-30-primary-soft)",
+      accentBorder: "var(--ui-30-primary)",
+      accentGlow: "rgba(0, 122, 61, 0.18)",
       onClick: onOpenTrainingRecord,
     },
     {
-      badge: "REPORT",
+      badge: isThai ? "รายงาน" : "REPORT MANAGEMENT",
+      step: "04",
       icon: "📊",
-      title: "Reports",
-      description: "Training schedules, result reports, expenses, and internal reports.",
+      title: isThai ? "รายงานและวิเคราะห์ผล" : "Reports & Analytics",
+      subTitle: "Reports & Analytics Management",
+      description: isThai
+        ? "ดูปฏิทินอบรม สรุปความคืบหน้า ค่าใช้จ่าย และร่างอีเมลรายงาน"
+        : "Training schedule calendars, progress summaries, expense breakdowns, and email drafts.",
+      accent: "var(--ui-30-primary)",
+      accentSoft: "var(--ui-30-primary-soft)",
+      accentBorder: "var(--ui-30-primary)",
+      accentGlow: "rgba(0, 122, 61, 0.18)",
       onClick: onOpenReport,
     },
     {
-      badge: "MASTER",
+      badge: isThai ? "ข้อมูลหลัก" : "MASTER DATA",
+      step: "05",
       icon: "🗃️",
-      title: "Master Data",
-      description: "Companies, employees, instructors, levels, positions, and functions.",
+      title: isThai ? "ข้อมูลหลัก" : "Master Data",
+      subTitle: "Master Data Management",
+      description: isThai
+        ? "ข้อมูลหลักของบริษัท พนักงาน วิทยากร ระดับ ตำแหน่ง และหน่วยงาน"
+        : "Companies, employees, instructors, levels, positions, and function master data.",
+      accent: "var(--ui-30-primary)",
+      accentSoft: "var(--ui-30-primary-soft)",
+      accentBorder: "var(--ui-30-primary)",
+      accentGlow: "rgba(0, 122, 61, 0.18)",
       onClick: onOpenMasterData,
     },
   ];
@@ -298,52 +421,57 @@ export default function Dashboard({
 
       <section className={styles.heroPanel} aria-label="Dashboard overview">
         <div className={styles.heroCopy}>
-          <span>HRD Training {dashboardScope}</span>
+          <span>{isThai ? "ระบบบริหารจัดการการฝึกอบรม HRD" : `HRD Training ${dashboardScope}`}</span>
           <h1>{dashboardTitle}</h1>
           <p>
-            Manage training plans, course data, records, and reports across the
-            AISIN TAKAOKA Thailand group.
+            {isThai
+              ? "จัดการแผนการอบรม ข้อมูลหลักสูตร ประวัติการฝึกอบรม และรายงานวิเคราะห์ผล ทั้งกลุ่มบริษัท AISIN TAKAOKA Thailand"
+              : "Manage training plans, course data, records, and reports across the AISIN TAKAOKA Thailand group."}
           </p>
         </div>
       </section>
 
       <div className={styles.topRow}>
         <section className={styles.employeePanel} aria-label="Employee profile">
-          <div className={styles.panelHeader}>
-            <div>
-              <span>Current User</span>
-              <h2>Profile</h2>
+          <div className={styles.profileHeaderBanner}>
+            <div className={styles.photoBox} aria-hidden="true">
+              {username ? username.slice(0, 2).toUpperCase() : "HC"}
             </div>
-            <b>Online</b>
-          </div>
-
-          <div className={styles.employeeProfile}>
-            <div className={styles.photoBox} aria-hidden="true">HC</div>
-            <div className={styles.employeeTitle}>
-              <strong>{username}</strong>
-              <p>
-                {profileValue(authenticatedUser?.positionName)} /{" "}
-                {profileValue(authenticatedUser?.functionName)}
+            <div className={styles.profileMetaBox}>
+              <div className={styles.profileTagRow}>
+                <span className={styles.userRoleTag}>
+                  {authenticatedUser?.roleCode?.replace("_", " ") ?? "USER"}
+                </span>
+                <span className={styles.onlineBadge}>
+                  <span className={styles.onlineDot} aria-hidden="true" />
+                  Online
+                </span>
+              </div>
+              <strong className={styles.profileName}>{username}</strong>
+              <p className={styles.profileSubText}>
+                {profileValue(authenticatedUser?.positionName)}
               </p>
             </div>
           </div>
 
-          <div className={styles.employeeDetails}>
-            {employeeInfo.slice(0, 4).map((item) => (
-              <p key={item.label}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-              </p>
+          <div className={styles.employeeDetailsGrid}>
+            {fullEmployeeProfileItems.map((item) => (
+              <div className={styles.detailCard} key={item.label}>
+                <span className={styles.detailLabel}>{item.label}</span>
+                <strong className={styles.detailValue} title={item.value}>{item.value}</strong>
+              </div>
             ))}
           </div>
 
-          <div className={styles.employeeSummary} aria-label="Training summary">
+          <div className={styles.kpiSummaryBar} aria-label="Training summary">
             {employeeTrainingSummary.map((item) => (
-              <article key={item.label}>
-                <span>{item.label}</span>
-                <strong>{item.value}</strong>
-                <small>{item.helper}</small>
-              </article>
+              <div className={styles.kpiCol} key={item.label}>
+                <span className={styles.kpiLabel}>{item.label}</span>
+                <div className={styles.kpiValueRow}>
+                  <strong className={styles.kpiValue}>{item.value}</strong>
+                  <small className={styles.kpiHelper}>{item.helper}</small>
+                </div>
+              </div>
             ))}
           </div>
         </section>
@@ -352,42 +480,74 @@ export default function Dashboard({
           <div className={styles.panelHeader}>
             <div>
               <span>{selectedMonthLabel} {selectedCalendarYear}</span>
-              <h2>Training Calendar</h2>
+              <h2>{isThai ? "ปฏิทินการฝึกอบรม" : "Training Calendar"}</h2>
             </div>
             <div className={styles.calendarHeaderActions}>
-              <b>{filteredTrainingSchedule.length} courses</b>
-              <button
-                type="button"
-                onClick={() => setIsMonthListOpen((current) => !current)}
-              >
-                {isMonthListOpen ? "Hide month list" : "Show month list"}
-              </button>
+              <b className={styles.courseCountBadge}>{filteredTrainingSchedule.length} {isThai ? "หลักสูตร" : "courses"}</b>
             </div>
           </div>
 
           <div className={styles.calendarFilters}>
-            <label>
-              <span>Year</span>
-              <select
-                value={selectedCalendarYear}
-                onChange={(event) => setSelectedCalendarYear(event.target.value)}
-              >
-                {calendarYears.map((year) => (
-                  <option key={year} value={year}>{year}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Month</span>
-              <select
-                value={selectedCalendarMonth}
-                onChange={(event) => setSelectedCalendarMonth(event.target.value)}
-              >
-                {calendarMonths.map((month) => (
-                  <option key={month.value} value={month.value}>{month.label}</option>
-                ))}
-              </select>
-            </label>
+            <div className={styles.filterItem}>
+              <span className={styles.filterTitle}>{isThai ? "บริษัท" : "Company"}</span>
+              <div className={styles.selectWrapper}>
+                <select
+                  className={styles.filterSelect}
+                  disabled={!isCenterDashboard}
+                  value={isCenterDashboard ? selectedCompanyFilter : userCompanyCode}
+                  onChange={(event) => setSelectedCompanyFilter(event.target.value)}
+                >
+                  <option value="all">
+                    {isCenterDashboard ? (isThai ? "ทุกบริษัท (All)" : "All Companies") : `${userCompanyCode} + Center`}
+                  </option>
+                  <option value="ATA">ATA</option>
+                  <option value="ATFB">ATFB</option>
+                  <option value="NIC">NIC</option>
+                  <option value="SATI">SATI</option>
+                  <option value="SNF">SNF</option>
+                  <option value="TEP">TEP</option>
+                </select>
+                <svg className={styles.selectChevron} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+            </div>
+
+            <div className={styles.filterItem}>
+              <span className={styles.filterTitle}>{isThai ? "ปี" : "Year"}</span>
+              <div className={styles.selectWrapper}>
+                <select
+                  className={styles.filterSelect}
+                  value={selectedCalendarYear}
+                  onChange={(event) => setSelectedCalendarYear(event.target.value)}
+                >
+                  {calendarYears.map((year) => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </select>
+                <svg className={styles.selectChevron} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+            </div>
+
+            <div className={styles.filterItem}>
+              <span className={styles.filterTitle}>{isThai ? "เดือน" : "Month"}</span>
+              <div className={styles.selectWrapper}>
+                <select
+                  className={styles.filterSelect}
+                  value={selectedCalendarMonth}
+                  onChange={(event) => setSelectedCalendarMonth(event.target.value)}
+                >
+                  {calendarMonths.map((month) => (
+                    <option key={month.value} value={month.value}>{month.label}</option>
+                  ))}
+                </select>
+                <svg className={styles.selectChevron} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           {selectedCalendarMonth === "all" ? null : (
@@ -414,9 +574,24 @@ export default function Dashboard({
                     {item.day ? (
                       <>
                         <span>{item.day}</span>
-                        {item.trainings.map((training) => (
-                          <small key={`${training.date}-${training.course}-${training.time}`}>{training.shortName}</small>
-                        ))}
+                        {item.trainings.map((training) => {
+                          const displayCompany =
+                            training.company === "All Companies"
+                              ? "ALL"
+                              : training.company;
+
+                          return (
+                            <small
+                              key={`${training.date}-${training.course}-${training.time}`}
+                              title={`${training.course} (${training.company})`}
+                            >
+                              <b style={{ color: training.isCenterPlan ? "#007a3d" : "#475569" }}>
+                                [{displayCompany}]
+                              </b>{" "}
+                              {training.shortName}
+                            </small>
+                          );
+                        })}
                       </>
                     ) : null}
                   </div>
@@ -425,7 +600,7 @@ export default function Dashboard({
             </div>
           )}
 
-          {isMonthListOpen ? (
+          {filteredTrainingSchedule.length > 0 ? (
             <div className={styles.trainingList} aria-label="Upcoming training courses">
               {filteredTrainingSchedule.map((item) => {
                 const date = new Date(`${item.date}T00:00:00`);
@@ -439,7 +614,12 @@ export default function Dashboard({
                     <time dateTime={item.date}>{dateLabel}</time>
                     <div>
                       <strong>{item.course}</strong>
-                      <span>{item.time} / {item.room}</span>
+                      <span>
+                        <b style={{ color: item.isCenterPlan ? "#007a3d" : "#0f172a", fontWeight: 700 }}>
+                          {item.isCenterPlan ? "HRD Center" : item.company}
+                        </b>{" "}
+                        ({item.company}) • {item.time} / {item.room}
+                      </span>
                     </div>
                     <b>{item.status}</b>
                   </article>
@@ -450,34 +630,46 @@ export default function Dashboard({
         </section>
       </div>
 
-      <section className={styles.menuPanel} aria-label="Main menu">
+      <section className={styles.menuPanel} aria-label="Main workspace menu">
         <div className={styles.menuHeader}>
           <div>
-            <span>Workspace Operation</span>
-            <h2>Select a workspace</h2>
+            <span>{isThai ? "เมนูการทำงาน" : "Workspace Operations"}</span>
+            <h2>{isThai ? "เลือกโมดูลที่ต้องการใช้งาน" : "Select a Workspace Module"}</h2>
           </div>
-          <p>{menuItems.length} modules</p>
+          <p className={styles.coreModulesBadge}>5 Core Modules</p>
         </div>
+
         <div className={styles.menuRow}>
-          {menuItems.map((item, index) => (
+          {menuItems.map((item) => (
             <button
               className={styles.menuBox}
               key={item.title}
+              style={{
+                "--card-accent": item.accent,
+                "--card-accent-soft": item.accentSoft,
+                "--card-accent-border": item.accentBorder,
+              } as CSSProperties}
               type="button"
               onClick={item.onClick}
             >
-              <span className={styles.cardIcon} aria-hidden="true">
-                <span className={styles.cardEmoji}>{item.icon}</span>
-              </span>
-              <span className={styles.cardIndex} aria-hidden="true">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <div>
-                <small>{item.badge}</small>
-                <strong>{item.title}</strong>
-                <em>{item.description}</em>
+              <div className={styles.cardHeaderRow}>
+                <div className={styles.cardIconBox} aria-hidden="true">
+                  <span className={styles.cardEmojiIcon}>{item.icon}</span>
+                </div>
+                <span className={styles.cardIndexPill} aria-hidden="true">
+                  {item.step}
+                </span>
               </div>
-              <b>Open</b>
+
+              <div className={styles.cardBodyContent}>
+                <span className={styles.cardKicker}>{item.badge}</span>
+                <strong className={styles.cardMainTitle}>{item.title}</strong>
+                <p className={styles.cardDescText}>{item.description}</p>
+              </div>
+
+              <div className={styles.cardFooterAction}>
+                <span className={styles.openBtn}>{isThai ? "เปิด" : "Open"}</span>
+              </div>
             </button>
           ))}
         </div>
@@ -485,3 +677,5 @@ export default function Dashboard({
     </DashboardLayout>
   );
 }
+
+

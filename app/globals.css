@@ -7,21 +7,21 @@
    * 30% Secondary Structure: Deep Slate Ink (#0f172a / #1e293b) & ATTG Corporate Forest Green (#007a3d)
    * 10% Accent Action: ATTG Vibrant Red (#d71920) for CTAs, active highlights & focus rings
    */
-  --ui-60-canvas: #f1f5f9;
+  --ui-60-canvas: #f8fafc;
   --ui-60-surface: #ffffff;
-  --ui-60-surface-soft: #f8fafc;
+  --ui-60-surface-soft: #f1f5f9;
   --ui-60-surface-muted: #e2e8f0;
   --ui-60-glass: rgba(255, 255, 255, 0.94);
-  --ui-60-glass-border: rgba(203, 213, 225, 0.9);
+  --ui-60-glass-border: rgba(226, 232, 240, 0.9);
 
   --ui-30-primary: #007a3d;
   --ui-30-primary-strong: #005c2e;
   --ui-30-primary-soft: #eef7f2;
   --ui-30-primary-border: #bce3cb;
   --ui-30-ink: #0f172a;
-  --ui-30-text: #1e293b;
-  --ui-30-muted: #475569;
-  --ui-30-border: #aeb8c4;
+  --ui-30-text: #334155;
+  --ui-30-muted: #64748b;
+  --ui-30-border: #cbd5e1;
   --ui-on-dark: #ffffff;
   --ui-on-dark-muted: #d7e0eb;
   --ui-on-dark-subtle: #b8c5d6;
@@ -33,30 +33,310 @@
   --ui-10-accent-glow: rgba(215, 25, 32, 0.18);
   --ui-10-accent-on-dark: #ff9195;
 
-  --ui-focus-ring: rgba(215, 25, 32, 0.25);
-  --ui-shadow-sm: 2px 3px 8px -4px rgba(15, 23, 42, 0.2);
-  --ui-shadow-md: 4px 6px 18px -7px rgba(15, 23, 42, 0.24), 0 1px 3px rgba(15, 23, 42, 0.05);
-  --ui-shadow-lg: 7px 11px 30px -10px rgba(15, 23, 42, 0.28), 0 3px 8px -4px rgba(15, 23, 42, 0.12);
+  --ui-focus-ring: rgba(0, 122, 61, 0.25);
+  --ui-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.03);
+  --ui-shadow-md: 0 4px 16px -2px rgba(15, 23, 42, 0.06), 0 2px 4px -1px rgba(15, 23, 42, 0.03);
+  --ui-shadow-lg: 0 12px 32px -4px rgba(15, 23, 42, 0.08), 0 4px 8px -2px rgba(15, 23, 42, 0.03);
   --ui-card-edge: transparent;
   --ui-card-edge-shadow: none;
-  --ui-card-shadow: 6px 8px 20px -8px rgba(15, 23, 42, 0.28), 0 2px 5px -2px rgba(15, 23, 42, 0.08);
-  --ui-card-shadow-hover: 8px 12px 30px -10px rgba(15, 23, 42, 0.32), 0 4px 9px -4px rgba(15, 23, 42, 0.14);
+  --ui-card-shadow: 0 4px 18px -2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.03);
+  --ui-card-shadow-hover: 0 12px 28px -4px rgba(15, 23, 42, 0.1), 0 4px 8px -2px rgba(15, 23, 42, 0.04);
   --ui-radius-sm: 10px;
   --ui-radius-md: 14px;
-  --ui-radius-lg: 20px;
-  --ui-radius-xl: 24px;
+  --ui-radius-lg: 18px;
+  --ui-radius-xl: 22px;
   --ui-radius-full: 9999px;
   --ui-font-en: var(--font-geist-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --ui-font-th: var(--font-noto-sans-thai), "Leelawadee UI", Tahoma, sans-serif;
-
-  --background: var(--ui-60-canvas);
-  --foreground: var(--ui-30-ink);
   --attg-red: var(--ui-10-accent);
   --attg-red-dark: var(--ui-10-accent-strong);
   --attg-green: var(--ui-30-primary);
   --attg-ink: var(--ui-30-ink);
   --attg-muted: var(--ui-30-muted);
   --attg-line: var(--ui-30-border);
+
+  --background: var(--ui-60-canvas);
+  --foreground: var(--ui-30-ink);
+}
+
+[data-theme="dark"],
+.dark {
+  --background: #0b0f19;
+  --foreground: #f8fafc;
+
+  --ui-60-canvas: #0b0f19;
+  --ui-60-surface: #131b2e;
+  --ui-60-surface-soft: #1a253c;
+  --ui-60-surface-muted: #243450;
+  --ui-60-glass: rgba(19, 27, 46, 0.94);
+  --ui-60-glass-border: rgba(46, 61, 88, 0.8);
+
+  --ui-30-primary: #10b981;
+  --ui-30-primary-strong: #34d399;
+  --ui-30-primary-soft: rgba(16, 185, 129, 0.16);
+  --ui-30-primary-border: rgba(16, 185, 129, 0.38);
+
+  --ui-10-accent: #f43f5e;
+  --ui-10-accent-strong: #fb7185;
+  --ui-10-accent-soft: rgba(244, 63, 94, 0.16);
+  --ui-10-accent-border: rgba(244, 63, 94, 0.35);
+  --ui-10-accent-glow: rgba(244, 63, 94, 0.25);
+  --ui-10-accent-on-dark: #ff9195;
+
+  --ui-30-ink: #f8fafc;
+  --ui-30-text: #cbd5e1;
+  --ui-30-muted: #94a3b8;
+  --ui-30-border: #2e3d58;
+
+  --ui-on-dark: #ffffff;
+  --ui-on-dark-muted: #cbd5e1;
+  --ui-on-dark-subtle: #94a3b8;
+
+  --ui-card-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.5);
+  --ui-card-shadow-hover: 0 12px 28px -4px rgba(0, 0, 0, 0.7);
+
+  --attg-ink: var(--ui-30-ink);
+  --attg-muted: var(--ui-30-muted);
+  --attg-line: var(--ui-30-border);
+}
+
+/* Global Dark Mode Overrides & Contrast Enhancements */
+[data-theme="dark"] body {
+  background-color: var(--ui-60-canvas);
+  color: var(--ui-30-ink);
+}
+
+/* Cards, Panels, Modules, Containers, & Modals in Dark Mode */
+[data-theme="dark"] div[class*="heroPanel"],
+[data-theme="dark"] div[class*="HeroPanel"],
+[data-theme="dark"] div[class*="employeePanel"],
+[data-theme="dark"] div[class*="calendarPanel"],
+[data-theme="dark"] div[class*="menuPanel"],
+[data-theme="dark"] div[class*="menuBox"],
+[data-theme="dark"] div[class*="card"],
+[data-theme="dark"] div[class*="Card"],
+[data-theme="dark"] div[class*="panel"],
+[data-theme="dark"] div[class*="Panel"],
+[data-theme="dark"] div[class*="tableContainer"],
+[data-theme="dark"] div[class*="TableContainer"],
+[data-theme="dark"] div[class*="tableWrap"],
+[data-theme="dark"] div[class*="TableWrap"],
+[data-theme="dark"] div[class*="modalBody"],
+[data-theme="dark"] div[class*="modalContent"],
+[data-theme="dark"] div[class*="modal"],
+[data-theme="dark"] div[class*="Modal"],
+[data-theme="dark"] div[class*="filterCard"],
+[data-theme="dark"] div[class*="dataCard"],
+[data-theme="dark"] div[class*="metricCard"],
+[data-theme="dark"] div[class*="kpiCard"],
+[data-theme="dark"] div[class*="controlPanel"],
+[data-theme="dark"] div[class*="toolbar"],
+[data-theme="dark"] div[class*="addPanel"],
+[data-theme="dark"] div[class*="coursePanel"],
+[data-theme="dark"] div[class*="workspace"],
+[data-theme="dark"] div[class*="Workspace"],
+[data-theme="dark"] div[class*="container"],
+[data-theme="dark"] div[class*="Container"],
+[data-theme="dark"] div[class*="editor"],
+[data-theme="dark"] div[class*="Editor"],
+[data-theme="dark"] div[class*="formPanel"],
+[data-theme="dark"] div[class*="detailPanel"],
+[data-theme="dark"] div[class*="box"],
+[data-theme="dark"] div[class*="Box"] {
+  border-color: var(--ui-30-border);
+}
+
+/* Background overrides for cards/panels that had hardcoded white backgrounds */
+[data-theme="dark"] div[class*="heroPanel"],
+[data-theme="dark"] div[class*="employeePanel"],
+[data-theme="dark"] div[class*="calendarPanel"],
+[data-theme="dark"] div[class*="menuPanel"],
+[data-theme="dark"] div[class*="menuBox"],
+[data-theme="dark"] div[class*="card"],
+[data-theme="dark"] div[class*="Card"],
+[data-theme="dark"] div[class*="panel"],
+[data-theme="dark"] div[class*="Panel"],
+[data-theme="dark"] div[class*="tableContainer"],
+[data-theme="dark"] div[class*="TableContainer"],
+[data-theme="dark"] div[class*="tableWrap"],
+[data-theme="dark"] div[class*="TableWrap"],
+[data-theme="dark"] div[class*="modalBody"],
+[data-theme="dark"] div[class*="modalContent"],
+[data-theme="dark"] div[class*="filterCard"],
+[data-theme="dark"] div[class*="dataCard"],
+[data-theme="dark"] div[class*="metricCard"],
+[data-theme="dark"] div[class*="kpiCard"],
+[data-theme="dark"] div[class*="controlPanel"],
+[data-theme="dark"] div[class*="coursePanel"],
+[data-theme="dark"] div[class*="scheduleEditPanel"],
+[data-theme="dark"] div[class*="monthCard"] {
+  background: var(--ui-60-surface) !important;
+  color: var(--ui-30-ink);
+  border-color: var(--ui-30-border);
+}
+
+/* Warning and Notice Banners in Dark Mode */
+[data-theme="dark"] div[class*="noticeBanner"],
+[data-theme="dark"] div[class*="warningBanner"],
+[data-theme="dark"] div[class*="alertBanner"],
+[data-theme="dark"] div[class*="lockNotice"],
+[data-theme="dark"] div[class*="notice"] {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  color: #fcd34d !important;
+}
+
+[data-theme="dark"] div[class*="noticeBanner"] strong,
+[data-theme="dark"] div[class*="noticeBanner"] span,
+[data-theme="dark"] div[class*="warningBanner"] strong,
+[data-theme="dark"] div[class*="lockNotice"] strong,
+[data-theme="dark"] div[class*="lockNotice"] span {
+  color: #fcd34d !important;
+}
+
+/* Text Contrast Fixes in Dark Mode */
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] h5,
+[data-theme="dark"] h6,
+[data-theme="dark"] strong,
+[data-theme="dark"] b,
+[data-theme="dark"] label,
+[data-theme="dark"] legend {
+  color: var(--ui-30-ink);
+}
+
+[data-theme="dark"] p,
+[data-theme="dark"] span,
+[data-theme="dark"] td,
+[data-theme="dark"] li {
+  color: var(--ui-30-text);
+}
+
+[data-theme="dark"] small,
+[data-theme="dark"] span[class*="muted"],
+[data-theme="dark"] span[class*="sub"],
+[data-theme="dark"] div[class*="sub"],
+[data-theme="dark"] p[class*="desc"],
+[data-theme="dark"] p[class*="sub"],
+[data-theme="dark"] span[class*="label"],
+[data-theme="dark"] span[class*="title"] {
+  color: var(--ui-30-muted);
+}
+
+/* Form Controls & Inputs in Dark Mode */
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: var(--ui-60-surface-soft) !important;
+  color: var(--ui-30-ink) !important;
+  border-color: var(--ui-30-border) !important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: var(--ui-30-muted) !important;
+}
+
+[data-theme="dark"] option {
+  background-color: var(--ui-60-surface) !important;
+  color: var(--ui-30-ink) !important;
+}
+
+/* Table Styling Overrides in Dark Mode */
+[data-theme="dark"] table {
+  background-color: var(--ui-60-surface) !important;
+  color: var(--ui-30-text) !important;
+  border-color: var(--ui-30-border) !important;
+}
+
+[data-theme="dark"] th {
+  background-color: var(--ui-60-surface-soft) !important;
+  color: var(--ui-30-ink) !important;
+  border-color: var(--ui-30-border) !important;
+}
+
+[data-theme="dark"] td {
+  border-color: var(--ui-30-border) !important;
+  color: var(--ui-30-text) !important;
+}
+
+[data-theme="dark"] td strong {
+  color: var(--ui-30-ink) !important;
+}
+
+[data-theme="dark"] td span {
+  color: var(--ui-30-muted) !important;
+}
+
+[data-theme="dark"] tr:nth-child(even) td {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+[data-theme="dark"] tr:hover td {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Secondary & Action Buttons in Dark Mode */
+[data-theme="dark"] button[class*="secondary"],
+[data-theme="dark"] button[class*="Secondary"],
+[data-theme="dark"] button[class*="cancel"],
+[data-theme="dark"] button[class*="Cancel"],
+[data-theme="dark"] button[class*="close"],
+[data-theme="dark"] button[class*="Close"],
+[data-theme="dark"] button[class*="detail"],
+[data-theme="dark"] button[class*="Detail"],
+[data-theme="dark"] button[class*="today"],
+[data-theme="dark"] button[class*="export"],
+[data-theme="dark"] button[class*="refresh"],
+[data-theme="dark"] button[class*="action"],
+[data-theme="dark"] button[class*="filter"] {
+  background-color: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
+  border-color: var(--ui-30-border);
+}
+
+[data-theme="dark"] button[class*="secondary"]:hover:not(:disabled),
+[data-theme="dark"] button[class*="Secondary"]:hover:not(:disabled),
+[data-theme="dark"] button[class*="cancel"]:hover:not(:disabled),
+[data-theme="dark"] button[class*="close"]:hover:not(:disabled),
+[data-theme="dark"] button[class*="today"]:hover:not(:disabled),
+[data-theme="dark"] button[class*="export"]:hover:not(:disabled),
+[data-theme="dark"] button[class*="refresh"]:hover:not(:disabled) {
+  background-color: var(--ui-60-surface-muted);
+  border-color: var(--ui-30-primary);
+  color: var(--ui-30-ink);
+}
+
+/* Danger Buttons in Dark Mode */
+[data-theme="dark"] button[class*="danger"],
+[data-theme="dark"] button[class*="Danger"],
+[data-theme="dark"] button[class*="reject"],
+[data-theme="dark"] button[class*="Reject"],
+[data-theme="dark"] button[class*="delete"],
+[data-theme="dark"] button[class*="Delete"] {
+  background-color: rgba(244, 63, 94, 0.15);
+  border-color: rgba(244, 63, 94, 0.35);
+  color: #fb7185;
+}
+
+[data-theme="dark"] button[class*="danger"]:hover:not(:disabled),
+[data-theme="dark"] button[class*="reject"]:hover:not(:disabled),
+[data-theme="dark"] button[class*="delete"]:hover:not(:disabled) {
+  background-color: rgba(244, 63, 94, 0.28);
+  border-color: #f43f5e;
+  color: #ffffff;
+}
+
+/* Disabled buttons in Dark Mode */
+[data-theme="dark"] button:disabled {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+  border-color: var(--ui-30-border) !important;
+  color: #64748b !important;
+  cursor: not-allowed !important;
+  opacity: 0.6;
 }
 
 @theme inline {
@@ -153,6 +433,53 @@ textarea {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Impeccable Utility Animations & Effects */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(0, 122, 61, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(0, 122, 61, 0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
 }
 
 @media (prefers-reduced-motion: reduce) {

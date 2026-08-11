@@ -41,7 +41,7 @@ type UserDashboardProps = {
   onLogout: () => void;
 };
 
-const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const calendarMonths = [
   { value: "all", label: "All year" },
   { value: "01", label: "January" },
@@ -190,7 +190,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
           const month = Number(selectedCalendarMonth);
           const firstDay = new Date(year, month - 1, 1);
           const daysInMonth = new Date(year, month, 0).getDate();
-          const leadingBlankDays = (firstDay.getDay() + 6) % 7;
+          const leadingBlankDays = firstDay.getDay();
           const baseDays = Array.from({ length: leadingBlankDays + daysInMonth }, (_, index) => {
             if (index < leadingBlankDays) {
               return { day: null, trainings: [] as CalendarTraining[] };
