@@ -1377,6 +1377,14 @@ const thaiAttributeDictionary: Record<string, string> = {
   "Upcoming training courses": "หลักสูตรที่กำลังจะมาถึง",
   "Write email message": "เขียนข้อความอีเมล",
   "Write message": "เขียนข้อความ",
+  "No active Course Master": "ยังไม่มีข้อมูลหลักสูตรที่เปิดใช้งาน",
+  "Please create and publish a Course Master before creating an annual plan.": "กรุณาสร้างและเปิดใช้งานข้อมูลหลักสูตรในระบบก่อนจัดทำแผนฝึกอบรมประจำปี",
+  "No training plans found": "ไม่พบข้อมูลแผนการฝึกอบรม",
+  "Try changing the year, status, or search text.": "ลองเปลี่ยนปี สถานะ หรือพิมพ์คำค้นหาใหม่",
+  "No rolling plans found": "ไม่พบข้อมูลแผนการฝึกอบรมรายเดือน",
+  "Try changing the month, year, status, or search text.": "ลองเปลี่ยนเดือน ปี สถานะ หรือพิมพ์คำค้นหาใหม่",
+  "No confirmed Training OAP": "ไม่พบแผนการฝึกอบรมประจำปี (OAP) ที่ยืนยันแล้ว",
+  "Open Training OAP and click Confirm on an annual plan before creating a monthly rolling plan.": "กรุณาไปที่หน้า Training OAP และกดยืนยันแผนประจำปีอย่างน้อย 1 รายการก่อนสร้างแผนรายเดือน",
 };
 
 const preserveWhitespace = (source: string, translated: string) => {

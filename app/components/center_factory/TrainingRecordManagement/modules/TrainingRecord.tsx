@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useState, type CSSProperties } from "react";
 import {
   TRAINING_WORKFLOW_EVENT,
   TRAINING_WORKFLOW_KEYS,
@@ -65,18 +65,6 @@ type CompletedCourse = {
     evaluation: "Done" | "Pending";
   }>;
 };
-
-type CompletedCourseGroup = {
-  id: string;
-  source: CompletedCourse["source"];
-  code: string;
-  title: string;
-  owner: CompletedCourse["owner"];
-  sessions: CompletedCourse[];
-};
-
-type CourseOwner = CompletedCourse["owner"];
-type CourseOwnerFilter = CourseOwner | "";
 
 type ImportedCourseDraft = Omit<CompletedCourse, "id">;
 
@@ -571,8 +559,6 @@ const expenseItems = [
 export default function TrainingRecord() {
   const user = useAuthenticatedUser();
   const [courses, setCourses] = useState<CompletedCourse[]>([]);
-  const [courseOwnerFilter, setCourseOwnerFilter] = useState<CourseOwnerFilter>("");
-  const [selectedCourseGroupId, setSelectedCourseGroupId] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [downloadMessage, setDownloadMessage] = useState("");
   const [importedCourses, setImportedCourses] = useState<ImportedCourseDraft[]>([]);
@@ -580,6 +566,7 @@ export default function TrainingRecord() {
   const [savedRecordRows, setSavedRecordRows] = useState<UploadedTrainingRecord[]>([]);
   const [importMessage, setImportMessage] = useState("");
   const [importFileName, setImportFileName] = useState("");
+  const [isCourseDetailOpen, setIsCourseDetailOpen] = useState(false);
   const [isAddingAttendee, setIsAddingAttendee] = useState(false);
   const [selectedEmpCode, setSelectedEmpCode] = useState("");
   const [customEmpCode, setCustomEmpCode] = useState("");
@@ -675,74 +662,28 @@ export default function TrainingRecord() {
           (course.ownerCompany ?? course.company) === userCompanyCode,
       )
     : courses;
-  const selectedCourseOwner: CourseOwnerFilter = isFactoryUser ? "FACTORY" : courseOwnerFilter;
-  const ownerFilteredCourses = selectedCourseOwner
-    ? availableCourses.filter((course) => course.owner === selectedCourseOwner)
-    : [];
-  const courseGroups = new Map<string, CompletedCourse[]>();
-  ownerFilteredCourses.forEach((course) => {
-    const groupId = course.groupId ?? course.rollingId ?? course.id;
-    courseGroups.set(groupId, [...(courseGroups.get(groupId) ?? []), course]);
-  });
-  const availableCourseGroups: CompletedCourseGroup[] = [...courseGroups.entries()].map(
-    ([id, sessions]) => {
-      const sortedSessions = [...sessions].sort((a, b) => a.date.localeCompare(b.date));
-      const firstSession = sortedSessions[0];
 
-      return {
-        id,
-        source: firstSession.source,
-        code: firstSession.code,
-        title: firstSession.title,
-        owner: firstSession.owner,
-        sessions: sortedSessions,
-      };
-    },
-  );
-  const selectedCourseGroup =
-    availableCourseGroups.find((group) => group.id === selectedCourseGroupId) ??
-    null;
-  const availableSessions = selectedCourseGroup?.sessions ?? [];
+  const centerCourses = availableCourses.filter((course) => course.owner === "CENTER");
+  const factoryCourses = availableCourses.filter((course) => course.owner === "FACTORY");
   const selectedCourse =
-    availableSessions.find((course) => course.id === selectedCourseId) ?? null;
-
-  if (availableCourses.length === 0) {
-    return (
-      <section className={styles.page} aria-label="Training Record module">
-        <section className={styles.hero}>
-          <div>
-            <p className={styles.kicker}>{trainingRecordModule.subtitle}</p>
-            <h2>{trainingRecordModule.title}</h2>
-            <p>{trainingRecordModule.description}</p>
-          </div>
-          <div className={styles.heroMeta}>
-            <span>0 completed courses</span>
-            <span>{isFactoryUser ? "Factory permission" : "Center scope"}</span>
-          </div>
-        </section>
-
-        <section className={styles.courseSelectPanel} aria-label="Completed course selector">
-          <div>
-            <p className={styles.kicker}>Course Owner</p>
-            <h3>No completed course available</h3>
-          </div>
-          <p className={styles.emptyState}>
-            {isFactoryUser
-              ? `Factory permission can view only completed courses owned by ${userCompanyCode || "your company"}.`
-              : "No completed courses are available yet. Import completed training records from Excel to save courses."}
-          </p>
-        </section>
-      </section>
+    availableCourses.find((course) => course.id === selectedCourseId) ??
+    availableCourses[0] ??
+    null;
+  const getActualCostTotal = (course: CompletedCourse) =>
+    expenseItems.reduce((total, item) => total + course.actualCost[item.key], 0);
+  const getVisibleAttendees = (course: CompletedCourse) =>
+    course.attendees.filter(
+      (attendee) => !isFactoryUser || attendee.company === userCompanyCode,
     );
-  }
-  const evaluationPercent = selectedCourse
+
+  const evaluationPercent = selectedCourse && selectedCourse.evaluationTotal > 0
     ? Math.round((selectedCourse.evaluationCompleted / selectedCourse.evaluationTotal) * 100)
     : 0;
   const selectedActualCost = selectedCourse
-    ? expenseItems.reduce((total, item) => total + selectedCourse.actualCost[item.key], 0)
+    ? getActualCostTotal(selectedCourse)
     : 0;
   const visibleCourseAttendees = selectedCourse
-    ? selectedCourse.attendees.filter((attendee) => !isFactoryUser || attendee.company === userCompanyCode)
+    ? getVisibleAttendees(selectedCourse)
     : [];
   const attendeesByCompany = selectedCourse
     ? Object.entries(
@@ -768,20 +709,23 @@ export default function TrainingRecord() {
     setDownloadMessage(`${label} downloaded for ${selectedCourse.code}.`);
   };
 
-  const handleExportCourseSummary = () => {
-    if (!selectedCourse) {
+  const handleExportCourseSummary = (course = selectedCourse) => {
+    if (!course) {
       return;
     }
 
+    const visibleAttendees = getVisibleAttendees(course);
+    const actualCostTotal = getActualCostTotal(course);
+
     exportCourseSummaryExcel(
       {
-        ...selectedCourse,
-        actualAttendees: visibleCourseAttendees.length,
-        attendees: visibleCourseAttendees,
+        ...course,
+        actualAttendees: visibleAttendees.length,
+        attendees: visibleAttendees,
       },
-      selectedActualCost,
+      actualCostTotal,
     );
-    setDownloadMessage(`Exported course record summary for ${selectedCourse.code}.`);
+    setDownloadMessage(`Exported course record summary for ${course.code}.`);
   };
 
   const handleImportFile = async (file: File | null) => {
@@ -841,8 +785,8 @@ export default function TrainingRecord() {
     }));
 
     setCourses((current) => [...savedCourses, ...current]);
-    setSelectedCourseGroupId("");
-    setSelectedCourseId("");
+    setSelectedCourseId(savedCourses[0]?.id ?? "");
+    setIsCourseDetailOpen(false);
     setSavedRecordRows((current) => [...importedRecordRows, ...current]);
     setImportedCourses([]);
     setImportedRecordRows([]);
@@ -858,9 +802,12 @@ export default function TrainingRecord() {
 
     const masterEmployees = readEmployeeMasterData();
     const selectedMaster = masterEmployees.find((emp) => emp.empCode === selectedEmpCode);
+    const addSequence = selectedCourse.attendees.length + 1;
 
     const empCode =
-      selectedMaster?.empCode || customEmpCode.trim() || `EMP-${Date.now().toString().slice(-4)}`;
+      selectedMaster?.empCode ||
+      customEmpCode.trim() ||
+      `EMP-${String(addSequence).padStart(4, "0")}`;
     const empName = selectedMaster
       ? `${selectedMaster.titleEn || ""} ${selectedMaster.nameEn || selectedMaster.nameTh} ${selectedMaster.surnameEn || selectedMaster.surnameTh}`.trim()
       : customEmpName.trim() || "New Participant";
@@ -876,7 +823,7 @@ export default function TrainingRecord() {
     );
 
     const newAttendeeObj = {
-      id: `att-add-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      id: `att-add-${selectedCourse.id}-${empCode}-${addSequence}`,
       company,
       employeeCode: empCode,
       name: empName,
@@ -926,6 +873,465 @@ export default function TrainingRecord() {
     setIsAddingAttendee(false);
   };
 
+  const renderSelectedCourseDetail = () => {
+    if (!selectedCourse) {
+      return null;
+    }
+
+    return (
+      <section className={styles.completedRecordWorkspace}>
+        <div className={styles.completedCourseDetail}>
+          <section className={styles.completedCourseHero}>
+            <div>
+              <p className={styles.kicker}>Course Record</p>
+              <h3>{selectedCourse.title}</h3>
+              <span>
+                {selectedCourse.code} / Batch {selectedCourse.batch ?? "-"} /{" "}
+                {selectedCourse.date} / {selectedCourse.time ?? "-"} /{" "}
+                {selectedCourse.room} / {selectedCourse.instructor}
+              </span>
+            </div>
+            <b
+              className={
+                selectedCourse.source === "UPLOAD"
+                  ? styles.uploadSourceBadge
+                  : styles.systemSourceBadge
+              }
+            >
+              {selectedCourse.source === "UPLOAD" ? "From Upload" : "From System"}
+            </b>
+            <button type="button" onClick={() => handleExportCourseSummary()}>
+              Export Excel
+            </button>
+          </section>
+
+          <section className={styles.costBreakdownPanel} aria-label="Actual cost breakdown">
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.kicker}>Actual Cost</p>
+                <h3>Cost Breakdown</h3>
+              </div>
+              <span>THB {formatNumber(selectedActualCost)}</span>
+            </div>
+
+            <div className={styles.costBreakdownGrid}>
+              {expenseItems.map((item) => (
+                <article key={item.key}>
+                  <span>{item.label}</span>
+                  <strong>THB {formatNumber(selectedCourse.actualCost[item.key])}</strong>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section
+            className={styles.courseExcelRecordPanel}
+            aria-label="Course uploaded record details"
+          >
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.kicker}>Training Record Details</p>
+                <h3>
+                  Employee records from{" "}
+                  {selectedCourse.source === "UPLOAD" ? "upload" : "system"}
+                </h3>
+              </div>
+              <span>{selectedUploadedRows.length} rows</span>
+            </div>
+
+            {selectedUploadedRows.length > 0 ? (
+              <div className={styles.courseExcelTableWrap}>
+                <table className={styles.courseExcelTable}>
+                  <thead>
+                    <tr>
+                      <th>Emp Code</th>
+                      <th>ID Card</th>
+                      <th>Title(TH)</th>
+                      <th>Name(TH)</th>
+                      <th>SurName(TH)</th>
+                      <th>Course Code</th>
+                      <th>Course Name</th>
+                      <th>Group No.</th>
+                      <th>Instructor</th>
+                      <th>Institute</th>
+                      <th>Training Place</th>
+                      <th>Training Hour</th>
+                      <th>Start Date</th>
+                      <th>End Date</th>
+                      <th>Expense/Person</th>
+                      <th>Function(TH)</th>
+                      <th>Function(EN)</th>
+                      <th>Log Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedUploadedRows.map((record) => (
+                      <tr key={record.id}>
+                        <td>{record.empCode || "-"}</td>
+                        <td>{record.idCard || "-"}</td>
+                        <td>{record.titleTh || "-"}</td>
+                        <td>{record.nameTh || "-"}</td>
+                        <td>{record.surnameTh || "-"}</td>
+                        <td>{record.courseCode || "-"}</td>
+                        <td>{record.courseName || "-"}</td>
+                        <td>{record.groupNo || "-"}</td>
+                        <td>{record.instructor || "-"}</td>
+                        <td>{record.institute || "-"}</td>
+                        <td>{record.trainingPlace || "-"}</td>
+                        <td>{record.trainingHour || "-"}</td>
+                        <td>{record.startDate || "-"}</td>
+                        <td>{record.endDate || "-"}</td>
+                        <td>{record.expensePerPerson || "-"}</td>
+                        <td>{record.functionTh || "-"}</td>
+                        <td>{record.functionEn || "-"}</td>
+                        <td>{record.logDate || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className={styles.emptyState}>
+                No uploaded Excel record rows are linked with this course yet.
+              </p>
+            )}
+          </section>
+
+          <section className={styles.recordChartGrid}>
+            <article className={styles.chartPanel}>
+              <div
+                className={styles.donutChart}
+                style={{ "--value": `${selectedCourse.preTestPassPercent}%` } as CSSProperties}
+                aria-label={`Pre test pass rate ${selectedCourse.preTestPassPercent}%`}
+              >
+                <strong>{selectedCourse.preTestPassPercent}%</strong>
+                <span>Pass</span>
+              </div>
+              <div>
+                <p className={styles.kicker}>Pre Test</p>
+                <h3>Before Training</h3>
+                <span>Most attendees did not pass before training.</span>
+              </div>
+            </article>
+
+            <article className={styles.chartPanel}>
+              <div
+                className={styles.donutChart}
+                style={{ "--value": `${selectedCourse.postTestPassPercent}%` } as CSSProperties}
+                aria-label={`Post test pass rate ${selectedCourse.postTestPassPercent}%`}
+              >
+                <strong>{selectedCourse.postTestPassPercent}%</strong>
+                <span>Pass</span>
+              </div>
+              <div>
+                <p className={styles.kicker}>Post Test</p>
+                <h3>After Training</h3>
+                <span>Pass rate after course completion.</span>
+              </div>
+            </article>
+
+            <article className={styles.chartPanel}>
+              <div
+                className={styles.donutChart}
+                style={{ "--value": `${evaluationPercent}%` } as CSSProperties}
+                aria-label={`Evaluation completion ${evaluationPercent}%`}
+              >
+                <strong>{evaluationPercent}%</strong>
+                <span>Done</span>
+              </div>
+              <div>
+                <p className={styles.kicker}>Evaluation Form</p>
+                <h3>
+                  {selectedCourse.evaluationCompleted}/{selectedCourse.evaluationTotal} completed
+                </h3>
+                <span>Download by person or export all evaluation forms.</span>
+              </div>
+            </article>
+          </section>
+
+          <section className={styles.addAttendeePanel} aria-label="Add attendee to recorded course">
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.kicker}>Post-Record Registration</p>
+                <h3>Add Attendee / เพิ่มผู้เข้าร่วม (ส่งคนเพิ่ม)</h3>
+              </div>
+              <button type="button" onClick={() => setIsAddingAttendee(!isAddingAttendee)}>
+                {isAddingAttendee ? "Cancel" : "+ Add Attendee"}
+              </button>
+            </div>
+
+            {isAddingAttendee ? (
+              <div className={styles.addAttendeeWorkspace}>
+                <div className={styles.addAttendeeControls}>
+                  <label>
+                    Select Employee from Master Data
+                    <select
+                      value={selectedEmpCode}
+                      onChange={(event) => {
+                        setSelectedEmpCode(event.target.value);
+                        const master = readEmployeeMasterData().find(
+                          (employee) => employee.empCode === event.target.value,
+                        );
+
+                        if (master) {
+                          setCustomEmpCode(master.empCode);
+                          setCustomEmpName(
+                            `${master.titleEn || ""} ${
+                              master.nameEn || master.nameTh
+                            } ${master.surnameEn || master.surnameTh}`.trim(),
+                          );
+                          setCustomCompany(master.company);
+                          setCustomDepartment(master.functionName);
+                        }
+                      }}
+                    >
+                      <option value="">Select Employee (Optional)</option>
+                      {readEmployeeMasterData().map((employee) => (
+                        <option key={employee.id} value={employee.empCode}>
+                          {employee.empCode} / {employee.nameEn || employee.nameTh}{" "}
+                          {employee.surnameEn || employee.surnameTh} / {employee.company} /{" "}
+                          {employee.functionName}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    Employee Code
+                    <input
+                      value={customEmpCode}
+                      onChange={(event) => setCustomEmpCode(event.target.value)}
+                      placeholder="e.g. ATA-1001"
+                    />
+                  </label>
+
+                  <label>
+                    Full Name
+                    <input
+                      value={customEmpName}
+                      onChange={(event) => setCustomEmpName(event.target.value)}
+                      placeholder="e.g. Mr. Somchai Promjai"
+                    />
+                  </label>
+
+                  <label>
+                    Company
+                    <input
+                      value={customCompany}
+                      onChange={(event) => setCustomCompany(event.target.value)}
+                      placeholder="e.g. ATA / SNF"
+                    />
+                  </label>
+
+                  <label>
+                    Department / Function
+                    <input
+                      value={customDepartment}
+                      onChange={(event) => setCustomDepartment(event.target.value)}
+                      placeholder="e.g. Production"
+                    />
+                  </label>
+
+                  <div className={styles.addAttendeeActions}>
+                    <button type="button" onClick={handleAddAttendee}>
+                      Save & Add Attendee
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
+            {addAttendeeMessage ? (
+              <p className={styles.downloadMessage}>{addAttendeeMessage}</p>
+            ) : null}
+          </section>
+
+          <section className={styles.evaluationDownloadPanel}>
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.kicker}>Actual Attendees</p>
+                <h3>Evaluation Download by Company / Person</h3>
+              </div>
+              <button type="button" onClick={() => handleDownload("All evaluation forms")}>
+                Download All Forms
+              </button>
+            </div>
+
+            <div className={styles.companyAccordionList} aria-label="Actual attendees by company">
+              {attendeesByCompany.map(([company, attendees], index) => (
+                <details className={styles.companyAccordion} key={company} open={index === 0}>
+                  <summary>
+                    <div>
+                      <span>{company}</span>
+                      <strong>{attendees.length} actual attendees</strong>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        handleDownload(`${company} evaluation forms`);
+                      }}
+                    >
+                      Download Company Forms
+                    </button>
+                  </summary>
+
+                  <div className={styles.companyAttendeeList}>
+                    {attendees.map((attendee) => (
+                      <article key={attendee.id}>
+                        <div>
+                          <strong>{attendee.name}</strong>
+                          <span>{attendee.employeeCode} / {attendee.department}</span>
+                        </div>
+                        <span className={styles.statusPill}>{attendee.prePost}</span>
+                        <span className={styles.statusPill}>{attendee.evaluation}</span>
+                        <button
+                          className={styles.detailButton}
+                          type="button"
+                          onClick={() => handleDownload(`${attendee.name} evaluation form`)}
+                        >
+                          Download Form
+                        </button>
+                      </article>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+
+            {downloadMessage ? <p className={styles.downloadMessage}>{downloadMessage}</p> : null}
+          </section>
+        </div>
+      </section>
+    );
+  };
+
+  const renderRecordTable = (
+    title: string,
+    records: CompletedCourse[],
+    emptyMessage: string,
+  ) => (
+    <section className={styles.recordOwnerPanel} aria-label={`${title} training records`}>
+      <div className={styles.recordOwnerHeader}>
+        <div>
+          <h3>{title}</h3>
+          <span>{records.length} records</span>
+        </div>
+        <strong>
+          THB{" "}
+          {formatNumber(
+            records.reduce((total, course) => total + getActualCostTotal(course), 0),
+          )}
+        </strong>
+      </div>
+
+      <div className={styles.recordListTableWrap}>
+        <table className={styles.recordListTable}>
+          <thead>
+            <tr>
+              <th>Course</th>
+              <th>Date / Batch</th>
+              <th>Company</th>
+              <th>Actual</th>
+              <th>Actual Cost</th>
+              <th>Evaluation</th>
+              <th>Source</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {records.length > 0 ? (
+              records.map((course) => {
+                const actualCostTotal = getActualCostTotal(course);
+                const evaluationRate =
+                  course.evaluationTotal > 0
+                    ? Math.round(
+                        (course.evaluationCompleted / course.evaluationTotal) * 100,
+                      )
+                    : 0;
+
+                const isExpanded =
+                  selectedCourse?.id === course.id && isCourseDetailOpen;
+
+                return (
+                  <Fragment key={course.id}>
+                  <tr
+                    className={isExpanded ? styles.activeRecordRow : undefined}
+                  >
+                    <td>
+                      <strong>{course.title}</strong>
+                      <span>{course.code}</span>
+                    </td>
+                    <td>
+                      <strong>{course.date}</strong>
+                      <span>Batch {course.batch ?? "-"} / {course.time ?? "-"}</span>
+                    </td>
+                    <td>{course.company}</td>
+                    <td>
+                      {course.actualAttendees} / {course.registeredAttendees}
+                    </td>
+                    <td>THB {formatNumber(actualCostTotal)}</td>
+                    <td>
+                      {course.evaluationCompleted} / {course.evaluationTotal}
+                      <span>{evaluationRate}% done</span>
+                    </td>
+                    <td>
+                      <span
+                        className={
+                          course.source === "UPLOAD"
+                            ? styles.uploadSourceBadge
+                            : styles.systemSourceBadge
+                        }
+                      >
+                        {course.source === "UPLOAD" ? "Upload" : "System"}
+                      </span>
+                    </td>
+                    <td>
+                      <div className={styles.recordTableActions}>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSelectedCourseId(course.id);
+                            setIsCourseDetailOpen((current) =>
+                              selectedCourse?.id === course.id ? !current : true,
+                            );
+                            setDownloadMessage("");
+                          }}
+                        >
+                          {isExpanded ? "Hide" : "Details"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleExportCourseSummary(course);
+                          }}
+                        >
+                          Export
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {isExpanded ? (
+                    <tr className={styles.inlineDetailRow}>
+                      <td colSpan={8}>{renderSelectedCourseDetail()}</td>
+                    </tr>
+                  ) : null}
+                  </Fragment>
+                );
+              })
+            ) : (
+              <tr>
+                <td colSpan={8}>{emptyMessage}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+
   return (
     <section className={styles.page} aria-label="Training Record module">
       <section className={styles.hero}>
@@ -936,84 +1342,8 @@ export default function TrainingRecord() {
         </div>
         <div className={styles.heroMeta}>
           <span>{availableCourses.length} completed courses</span>
-          <span>
-            {selectedCourseOwner
-              ? selectedCourseOwner === "CENTER"
-                ? "Center owner"
-                : "Factory owner"
-              : "Select owner"}
-          </span>
-        </div>
-      </section>
-
-      <section className={styles.courseSelectPanel} aria-label="Completed course selector">
-        <div>
-          <p className={styles.kicker}>Course Owner</p>
-          <h3>Select owner first</h3>
-        </div>
-        <div className={styles.courseSelectorControls}>
-          <label>
-            Course Owner
-            <select
-              disabled={isFactoryUser}
-              value={selectedCourseOwner}
-              onChange={(event) => {
-                setCourseOwnerFilter(event.target.value as CourseOwnerFilter);
-                setSelectedCourseGroupId("");
-                setSelectedCourseId("");
-                setDownloadMessage("");
-              }}
-            >
-              <option value="">Select Course Owner</option>
-              <option value="CENTER">Center</option>
-              <option value="FACTORY">Factory</option>
-            </select>
-          </label>
-          <label>
-            Course
-            <select
-              disabled={!selectedCourseOwner}
-              value={selectedCourseGroupId}
-              onChange={(event) => {
-                setSelectedCourseGroupId(event.target.value);
-                setSelectedCourseId("");
-                setDownloadMessage("");
-              }}
-            >
-              <option value="">
-                {!selectedCourseOwner
-                  ? "Select course owner first"
-                  : availableCourseGroups.length > 0
-                    ? "Select completed course"
-                    : `No ${selectedCourseOwner.toLowerCase()} course available`}
-              </option>
-              {availableCourseGroups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.source === "UPLOAD" ? "Upload" : "System"} / {group.code} / {group.title} / {group.sessions.length} sessions
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Training Session
-            <select
-              disabled={!selectedCourseGroup}
-              value={selectedCourseId}
-              onChange={(event) => {
-                setSelectedCourseId(event.target.value);
-                setDownloadMessage("");
-              }}
-            >
-              <option value="">
-                {selectedCourseGroup ? "Select training session" : "Select course first"}
-              </option>
-              {availableSessions.map((session) => (
-                <option key={session.id} value={session.id}>
-                  {session.batch ?? "-"} / {session.date} / {session.time ?? "-"} / {session.room}
-                </option>
-              ))}
-            </select>
-          </label>
+          <span>{centerCourses.length} Center</span>
+          <span>{factoryCourses.length} Factory</span>
         </div>
       </section>
 
@@ -1067,7 +1397,47 @@ export default function TrainingRecord() {
         {importMessage ? <p className={styles.downloadMessage}>{importMessage}</p> : null}
       </section>
 
-      {selectedCourse ? (
+      <section className={styles.recordOwnerOverview} aria-label="Completed course records by owner">
+        <div className={styles.panelHeader}>
+          <div>
+            <p className={styles.kicker}>Training Record Details</p>
+            <h3>Completed records by owner</h3>
+          </div>
+          <span>{isFactoryUser ? `${userCompanyCode} Factory` : "Center / Factory"}</span>
+        </div>
+
+        <div className={styles.recordOwnerGrid}>
+          {!isFactoryUser
+            ? renderRecordTable(
+                "Center",
+                centerCourses,
+                "No center completed records yet.",
+              )
+            : null}
+          {renderRecordTable(
+            "Factory",
+            factoryCourses,
+            isFactoryUser
+              ? `No completed records owned by ${userCompanyCode || "your company"} yet.`
+              : "No factory completed records yet.",
+          )}
+        </div>
+      </section>
+
+      {false ? (
+      <details
+        className={styles.courseDetailDisclosure}
+        open={isCourseDetailOpen}
+        onToggle={(event) => setIsCourseDetailOpen(event.currentTarget.open)}
+      >
+        <summary className={styles.courseDetailSummary}>
+          <div>
+            <span>Course Detail</span>
+            <strong>{selectedCourse.title}</strong>
+          </div>
+          <b>{isCourseDetailOpen ? "Hide detail" : "Show detail"}</b>
+        </summary>
+
       <section className={styles.completedRecordWorkspace}>
         <div className={styles.completedCourseDetail}>
           <section className={styles.completedCourseHero}>
@@ -1081,7 +1451,7 @@ export default function TrainingRecord() {
             <b className={selectedCourse.source === "UPLOAD" ? styles.uploadSourceBadge : styles.systemSourceBadge}>
               {selectedCourse.source === "UPLOAD" ? "From Upload" : "From System"}
             </b>
-            <button type="button" onClick={handleExportCourseSummary}>
+            <button type="button" onClick={() => handleExportCourseSummary()}>
               Export Excel
             </button>
           </section>
@@ -1367,11 +1737,8 @@ export default function TrainingRecord() {
           </section>
         </div>
       </section>
-      ) : (
-        <section className={styles.emptyState} aria-label="No selected course">
-          Select a completed course first to view training record details.
-        </section>
-      )}
+      </details>
+      ) : null}
     </section>
   );
 }

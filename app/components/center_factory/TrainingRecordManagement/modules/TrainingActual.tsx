@@ -59,6 +59,7 @@ type ActualCourse = {
   ownerCompany?: string;
   instructor: string;
   hours?: string;
+  budget?: string;
   attendees: Attendee[];
   expenses: Record<ExpenseKey, string>;
 };
@@ -88,6 +89,13 @@ const formatCurrency = (value: number) =>
     maximumFractionDigits: 0,
     minimumFractionDigits: 0,
   }).format(value);
+
+const parseMoney = (value?: string) => {
+  const normalizedValue = value?.replace(/[^\d.-]/g, "") ?? "";
+  const parsedValue = Number(normalizedValue);
+
+  return Number.isFinite(parsedValue) ? parsedValue : 0;
+};
 
 export default function TrainingActual() {
   const user = useAuthenticatedUser();
@@ -137,6 +145,7 @@ export default function TrainingActual() {
               : plan.ownerCompany ?? plan.company,
           instructor: plan.trainer,
           hours: plan.hours,
+          budget: plan.budget,
           attendees: acceptances
             .filter(
               (acceptance) =>
@@ -253,11 +262,14 @@ export default function TrainingActual() {
   );
   const expenseTotal = selectedCourse
     ? expenseFields.reduce(
-        (total, field) =>
-          total + Number(selectedCourse.expenses[field.key] || 0),
+        (total, field) => total + parseMoney(selectedCourse.expenses[field.key]),
         0,
       )
     : 0;
+  const plannedBudget = selectedCourse ? parseMoney(selectedCourse.budget) : 0;
+  const remainingBudget = plannedBudget - expenseTotal;
+  const budgetStatus =
+    plannedBudget > 0 && remainingBudget < 0 ? "Over budget" : "Within budget";
 
   const updateSelectedCourse = (updater: (course: ActualCourse) => ActualCourse) => {
     if (!selectedCourse) {
@@ -336,12 +348,12 @@ export default function TrainingActual() {
         company: attendee.company ?? selectedCourse.company,
       })),
       expenses: {
-        accommodation: Number(selectedCourse.expenses.accommodation || 0),
-        foodBeverage: Number(selectedCourse.expenses.foodBeverage || 0),
-        instructor: Number(selectedCourse.expenses.instructor || 0),
-        material: Number(selectedCourse.expenses.material || 0),
-        seminarRoom: Number(selectedCourse.expenses.seminarRoom || 0),
-        traveling: Number(selectedCourse.expenses.traveling || 0),
+        accommodation: parseMoney(selectedCourse.expenses.accommodation),
+        foodBeverage: parseMoney(selectedCourse.expenses.foodBeverage),
+        instructor: parseMoney(selectedCourse.expenses.instructor),
+        material: parseMoney(selectedCourse.expenses.material),
+        seminarRoom: parseMoney(selectedCourse.expenses.seminarRoom),
+        traveling: parseMoney(selectedCourse.expenses.traveling),
       },
       savedAt: new Date().toISOString(),
     };
@@ -422,7 +434,9 @@ export default function TrainingActual() {
               </option>
               {availableCourseGroups.map((group) => (
                 <option key={group.id} value={group.id}>
-                  {group.code} / {group.title} / {group.sessions.length} sessions
+                  {group.code} / {group.title} / THB{" "}
+                  {formatCurrency(parseMoney(group.sessions[0]?.budget))} /{" "}
+                  {group.sessions.length} sessions
                 </option>
               ))}
             </select>
@@ -476,6 +490,10 @@ export default function TrainingActual() {
               <article>
                 <span>Instructor</span>
                 <strong>{selectedCourse.instructor}</strong>
+              </article>
+              <article className={styles.actualBudgetStat}>
+                <span>Planned Budget</span>
+                <strong>THB {formatCurrency(plannedBudget)}</strong>
               </article>
               <article>
                 <span>Registered</span>
@@ -576,6 +594,28 @@ export default function TrainingActual() {
           <div className={styles.actualTotalBox}>
             <span>Total Actual Cost</span>
             <strong>THB {formatCurrency(expenseTotal)}</strong>
+          </div>
+
+          <div className={styles.actualBudgetSummary}>
+            <div>
+              <span>Planned Budget</span>
+              <strong>THB {formatCurrency(plannedBudget)}</strong>
+            </div>
+            <div
+              className={
+                remainingBudget < 0 ? styles.actualBudgetOverrun : undefined
+              }
+            >
+              <span>Remaining Budget</span>
+              <strong>THB {formatCurrency(remainingBudget)}</strong>
+            </div>
+            <p
+              className={
+                remainingBudget < 0 ? styles.actualBudgetOverrun : undefined
+              }
+            >
+              {budgetStatus}
+            </p>
           </div>
 
           <button className={styles.actualSaveButton} type="button" onClick={handleSave}>

@@ -622,6 +622,16 @@
   overflow-wrap: anywhere;
 }
 
+.actualMiniStats .actualBudgetStat {
+  border-color: var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+}
+
+.actualMiniStats .actualBudgetStat span,
+.actualMiniStats .actualBudgetStat strong {
+  color: var(--ui-30-primary);
+}
+
 .actualCourseBand h3 {
   margin: 0;
   color: var(--ui-30-ink);
@@ -831,9 +841,8 @@
 .actualCostHeader {
   margin-bottom: 14px;
   border-radius: 8px;
-  background:
-    linear-gradient(135deg, rgba(255, 241, 242, 0.96), rgba(255, 255, 255, 0.96)),
-    var(--ui-60-surface);
+  background: var(--ui-60-surface-soft);
+  border: 1px solid var(--ui-30-border);
   padding: 14px;
 }
 
@@ -855,7 +864,7 @@
   gap: 6px;
   align-items: center;
   min-height: 52px;
-  border-bottom: 1px solid #eef2f7;
+  border-bottom: 1px solid var(--ui-30-border);
   color: var(--ui-30-text);
   font-size: 0.76rem;
   font-weight: 900;
@@ -873,17 +882,79 @@
   display: grid;
   gap: 6px;
   margin-top: 14px;
-  border: 1px solid rgba(215, 25, 32, 0.16);
+  border: 1px solid var(--ui-10-accent-border);
   border-radius: 8px;
-  background: #fff7f8;
+  background: var(--ui-10-accent-soft);
   padding: 14px;
 }
 
 .actualTotalBox strong {
-  color: var(--ui-10-accent);
+  color: var(--ui-10-accent-strong);
   font-size: 1.4rem;
   font-weight: 900;
   line-height: 1;
+}
+
+.actualBudgetSummary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.actualBudgetSummary div {
+  min-width: 0;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  padding: 11px 12px;
+}
+
+.actualBudgetSummary span {
+  display: block;
+  color: var(--ui-30-muted);
+  font-size: 0.64rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.actualBudgetSummary strong {
+  display: block;
+  margin-top: 6px;
+  color: var(--ui-30-ink);
+  font-size: 0.94rem;
+  font-weight: 900;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+}
+
+.actualBudgetSummary p {
+  grid-column: 1 / -1;
+  margin: 0;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 8px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  font-size: 0.74rem;
+  font-weight: 900;
+  line-height: 1.25;
+  padding: 9px 10px;
+  text-align: center;
+}
+
+.actualBudgetOverrun {
+  border-color: var(--ui-10-accent-border) !important;
+  background: var(--ui-10-accent-soft) !important;
+}
+
+.actualBudgetOverrun span,
+.actualBudgetOverrun strong {
+  color: var(--ui-10-accent-strong);
+}
+
+.actualBudgetSummary p.actualBudgetOverrun {
+  color: var(--ui-10-accent-strong);
 }
 
 .actualSaveButton {
@@ -960,6 +1031,10 @@
     text-align: left;
   }
 
+  .actualBudgetSummary {
+    grid-template-columns: 1fr;
+  }
+
   .attendanceHeaderActions {
     width: 100%;
     align-items: stretch;
@@ -993,6 +1068,7 @@
 
 .recordOverviewGrid article::before,
 .recordMetricGrid article::before,
+.recordOwnerPanel::before,
 .completedCourseList::before,
 .completedCourseHero::before,
 .companyBreakdownPanel::before,
@@ -1035,8 +1111,75 @@
   align-items: start;
 }
 
+.courseDetailDisclosure {
+  display: none;
+}
+
+.courseDetailDisclosure:not([open]) {
+  margin-bottom: 14px;
+}
+
+.courseDetailDisclosure > summary {
+  list-style: none;
+}
+
+.courseDetailDisclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.courseDetailSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
+  cursor: pointer;
+  padding: 12px 14px;
+}
+
+.courseDetailSummary span {
+  display: block;
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.courseDetailSummary strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--ui-30-ink);
+  font-size: 0.94rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.courseDetailSummary b {
+  flex: 0 0 auto;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 999px;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-primary);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
+.courseDetailSummary:hover,
+.courseDetailSummary:focus-visible {
+  border-color: var(--ui-30-primary);
+  outline: none;
+}
+
 .courseSelectPanel,
 .importPanel,
+.recordOwnerPanel,
 .completedCourseList,
 .completedCourseHero,
 .companyBreakdownPanel,
@@ -1123,6 +1266,162 @@
 .courseSelectPanel select:focus {
   border-color: var(--ui-30-primary);
   box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
+}
+
+.recordOwnerOverview {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.recordOwnerGrid {
+  display: grid;
+  gap: 14px;
+}
+
+.recordOwnerPanel {
+  padding: 14px;
+}
+
+.recordOwnerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--ui-30-border);
+  padding-bottom: 12px;
+}
+
+.recordOwnerHeader h3 {
+  margin: 0;
+  color: var(--ui-30-ink);
+  font-size: 1.04rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.recordOwnerHeader span,
+.recordOwnerHeader strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.recordOwnerHeader strong {
+  margin-top: 0;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 999px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  padding: 8px 10px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.recordListTableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+}
+
+.recordListTable {
+  width: 100%;
+  min-width: 1040px;
+  border-collapse: collapse;
+}
+
+.recordListTable th,
+.recordListTable td {
+  border-bottom: 1px solid var(--ui-30-border);
+  padding: 11px 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.recordListTable th {
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.recordListTable td {
+  color: var(--ui-30-ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.recordListTable tbody tr {
+  cursor: default;
+}
+
+.recordListTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.recordListTable tbody tr:hover td,
+.activeRecordRow td {
+  background: var(--ui-60-surface-soft);
+}
+
+.recordListTable td strong {
+  display: block;
+  color: var(--ui-30-ink);
+  font-size: 0.84rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.recordListTable td span:not(.systemSourceBadge):not(.uploadSourceBadge) {
+  display: block;
+  margin-top: 4px;
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.recordTableActions {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.recordTableActions button {
+  min-height: 32px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 999px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 0 10px;
+}
+
+.recordTableActions button:hover {
+  border-color: var(--ui-30-primary);
+  color: var(--ui-30-primary);
+}
+
+.inlineDetailRow td {
+  background: var(--ui-60-surface-soft);
+  padding: 14px;
+}
+
+.inlineDetailRow .completedRecordWorkspace {
+  margin: 0;
 }
 
 .importPanel {
@@ -1785,6 +2084,15 @@
 
   .completedCourseHero {
     display: grid;
+  }
+
+  .recordOwnerHeader {
+    display: grid;
+  }
+
+  .recordOwnerHeader strong {
+    justify-self: start;
+    text-align: left;
   }
 }
 

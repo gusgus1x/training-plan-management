@@ -201,6 +201,18 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   );
   const selectedCourse =
     courseOptions.find((course) => course.courseCode === form.courseCode) ?? null;
+  const selectedCourseStandard = useMemo(() => {
+    if (!selectedCourse) {
+      return null;
+    }
+    return (
+      standards.find(
+        (item) =>
+          item.courseId === selectedCourse.id ||
+          item.courseCode === selectedCourse.courseCode,
+      ) ?? null
+    );
+  }, [selectedCourse, standards]);
   const scopedPlans = useMemo(
     () =>
       plans.filter((plan) =>
@@ -505,22 +517,25 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             ) : null}
             <div className={styles.formGrid}>
               <label className={styles.fullField}>
-                Course Name
+                <span>Course Name <span className={styles.required}>*</span></span>
                 <select value={form.courseCode} onChange={(event) => updateForm("courseCode", event.target.value)}>
                   <option value="">Select course first</option>
                   {courseOptions.map((course) => {
                     const secondaryName = getCourseSecondaryName(course);
+                    const displayName = getCourseDisplayName(course);
+                    const groupOrType = course.courseGroup || course.courseType;
                     return (
                       <option key={course.courseCode} value={course.courseCode}>
-                        {getCourseDisplayName(course)}
-                        {secondaryName ? ` / ${secondaryName}` : ""}
+                        [{course.courseCode}] {displayName}
+                        {secondaryName ? ` (${secondaryName})` : ""}
+                        {groupOrType ? ` • ${groupOrType}` : ""}
                       </option>
                     );
                   })}
                 </select>
               </label>
               <label>
-                Participants / Group
+                <span>Participants / Group <span className={styles.required}>*</span></span>
                 <input
                   disabled={!selectedCourse}
                   inputMode="numeric"
@@ -530,7 +545,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                 />
               </label>
               <label>
-                Training Hours
+                <span>Training Hours <span className={styles.required}>*</span></span>
                 <input
                   disabled={!selectedCourse}
                   inputMode="numeric"
@@ -540,7 +555,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                 />
               </label>
               <label>
-                Budget
+                <span>Budget <span className={styles.required}>*</span></span>
                 <input
                   disabled={!selectedCourse}
                   inputMode="numeric"
@@ -564,7 +579,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                     return <option key={instructor.id} value={fullName}>{instructor.education}</option>;
                   })}
                 </datalist>
-                <small>Select an existing instructor or type an external instructor name.</small>
               </label>
               <label>
                 Institute / Provider
@@ -578,12 +592,115 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             </div>
             {selectedCourse ? (
               <div className={styles.coursePreview}>
-                <strong>{selectedCourse.courseCode} / {getCourseDisplayName(selectedCourse)}</strong>
-                {getCourseSecondaryName(selectedCourse) ? (
-                  <span>{getCourseSecondaryName(selectedCourse)}</span>
-                ) : null}
-                <span>{selectedCourse.objective}</span>
-                <span>{selectedCourse.courseType} / {selectedCourse.courseGroup}</span>
+                <div className={styles.previewHeader}>
+                  <div className={styles.previewTitleWrap}>
+                    <div className={styles.previewTitleMain}>
+                      <span className={styles.previewCodeBadge}>{selectedCourse.courseCode}</span>
+                      <strong>{getCourseDisplayName(selectedCourse)}</strong>
+                    </div>
+                    {getCourseSecondaryName(selectedCourse) ? (
+                      <span className={styles.previewTitleSecondary}>{getCourseSecondaryName(selectedCourse)}</span>
+                    ) : null}
+                  </div>
+                  <div className={styles.previewBadges}>
+                    {selectedCourse.courseType ? (
+                      <span className={`${styles.previewBadge} ${styles.previewBadgeHighlight}`}>
+                        🏷️ {selectedCourse.courseType}
+                      </span>
+                    ) : null}
+                    {selectedCourse.courseGroup ? (
+                      <span className={styles.previewBadge}>
+                        📂 {selectedCourse.courseGroup}
+                      </span>
+                    ) : null}
+                    <span className={styles.previewBadge}>
+                      ⏱️ {selectedCourse.lifeCycleMonth || "12"} Months
+                    </span>
+                    <span className={styles.previewBadge}>
+                      🏢 {selectedCourse.ownerCompany || selectedCourse.owner}
+                    </span>
+                  </div>
+                </div>
+
+                <div className={styles.previewSections}>
+                  <div className={styles.previewCard}>
+                    <div className={styles.previewCardHeader}>
+                      <span>🎯 Objectives & Content</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>Objective</span>
+                      <span className={styles.previewFieldValue}>{selectedCourse.objective || "-"}</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>Learning Content</span>
+                      <span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>
+                        {selectedCourse.learningContent || "-"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>Methodology</span>
+                      <span className={styles.previewFieldValue}>{selectedCourse.methodology || "-"}</span>
+                    </div>
+                  </div>
+
+                  <div className={styles.previewCard}>
+                    <div className={styles.previewCardHeader}>
+                      <span>👥 Target & Standard Mapping</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>Target Group</span>
+                      <span className={styles.previewFieldValue}>{selectedCourse.targetGroup || "-"}</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>Function</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedCourseStandard?.functionName
+                          ? `${selectedCourseStandard.functionName} (${selectedCourseStandard.functionCode || "N/A"})`
+                          : "General / All Functions"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>Positions</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedCourseStandard?.positions?.length
+                          ? selectedCourseStandard.positions.join(", ")
+                          : "All positions in function"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>Levels</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedCourseStandard?.levels?.length
+                          ? selectedCourseStandard.levels.join(", ")
+                          : "All levels"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className={`${styles.previewCard} ${styles.previewCardFull}`}>
+                    <div className={styles.previewCardHeader}>
+                      <span>📋 Assessments & Evaluation</span>
+                    </div>
+                    <div className={styles.assessmentGrid}>
+                      <div className={styles.assessmentItem}>
+                        <span className={styles.previewFieldLabel}>Pre-Test</span>
+                        <strong className={styles.previewFieldValue}>{selectedCourse.preTest || "None"}</strong>
+                      </div>
+                      <div className={styles.assessmentItem}>
+                        <span className={styles.previewFieldLabel}>Post-Test</span>
+                        <strong className={styles.previewFieldValue}>{selectedCourse.postTest || "None"}</strong>
+                      </div>
+                      <div className={styles.assessmentItem}>
+                        <span className={styles.previewFieldLabel}>Course Evaluation</span>
+                        <strong className={styles.previewFieldValue}>{selectedCourse.evaluation || "Standard"}</strong>
+                      </div>
+                      <div className={styles.assessmentItem}>
+                        <span className={styles.previewFieldLabel}>30-Day Follow-Up</span>
+                        <strong className={styles.previewFieldValue}>{selectedCourse.evaluationAfter30Day || "Standard"}</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : null}
             <div className={styles.formActions}>
@@ -599,14 +716,14 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               <tr>
                 <th>Seq.</th>
                 <th>Course Name</th>
+                <th>Status</th>
+                <th>Actions</th>
                 <th>Participants</th>
                 <th>Hours</th>
                 <th>Budget</th>
                 <th>Trainer</th>
                 <th>Provider</th>
                 <th>Created By</th>
-                <th>Status</th>
-                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -636,12 +753,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                             : ""}
                         </span>
                       </td>
-                      <td>{plan.participants}</td>
-                      <td>{plan.hours}</td>
-                      <td>{Number(plan.budget).toLocaleString("en-US")}</td>
-                      <td>{plan.trainer}</td>
-                      <td>{plan.provider}</td>
-                      <td>{plan.createdBy}</td>
                       <td>
                         <span className={`${styles.statusPill} ${styles[`status${plan.status}`]}`}>
                           <span className={styles.statusDot} />
@@ -685,6 +796,12 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                           )}
                         </div>
                       </td>
+                      <td>{plan.participants}</td>
+                      <td>{plan.hours}</td>
+                      <td>{Number(plan.budget).toLocaleString("en-US")}</td>
+                      <td>{plan.trainer}</td>
+                      <td>{plan.provider}</td>
+                      <td>{plan.createdBy}</td>
                     </tr>
                     {isOpen ? (
                       <tr className={styles.detailRow}>
