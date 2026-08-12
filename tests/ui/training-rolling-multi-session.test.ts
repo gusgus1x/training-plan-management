@@ -123,8 +123,7 @@ describe("Training Rolling multi-session workflow", () => {
     expect(actualSource).toContain("availableCourseGroups");
     expect(actualSource).toContain("availableSessions");
     expect(actualSource).toContain("Training Session");
-    expect(actualSource).toContain("rollingId: selectedCourse.id");
-    expect(actualSource).toContain("scheduleGroupId: selectedCourse.groupId");
+    expect(actualSource).toContain("saveTrainingRecordExpenses(selectedCourse.id");
     expect(actualSource).toContain("course.ownerCompany ?? course.company");
     expect(actualSource).toContain("const setAllAttendance");
     expect(actualSource).toContain("setAllAttendance(!allAttended)");
@@ -145,7 +144,7 @@ describe("Training Rolling multi-session workflow", () => {
     expect(recordSource).toContain("selectedCourseGroupId");
     expect(recordSource).toContain("availableCourseGroups");
     expect(recordSource).toContain("availableSessions");
-    expect(recordSource).toContain("course.rollingId");
+    expect(recordSource).toContain("rollingId: record.planId");
     expect(recordSource).toContain("course.ownerCompany ?? course.company");
     expect(recordSource).toContain("Training Session");
     expect(workflowSource).toContain("scheduleGroupId?: string");

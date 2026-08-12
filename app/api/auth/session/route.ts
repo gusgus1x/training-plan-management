@@ -5,6 +5,7 @@ import { revalidateAuthenticatedUser } from "../../../lib/auth/authentication";
 import {
   clearSessionCookie,
   createSessionToken,
+  isSecureRequest,
   SESSION_COOKIE_NAME,
   SESSION_REVALIDATE_SECONDS,
   setSessionCookie,
@@ -74,7 +75,7 @@ export const createSessionHandler = (
 
       response.headers.set("Cache-Control", "no-store");
       response.headers.set("Vary", "Cookie");
-      setSessionCookie(response, rolledToken, dependencies.production);
+      setSessionCookie(response, rolledToken, dependencies.production ?? isSecureRequest(request));
 
       return response;
     } catch (error: unknown) {
@@ -83,7 +84,7 @@ export const createSessionHandler = (
       response.headers.set("Vary", "Cookie");
 
       if (error instanceof ApiError && error.status === 401) {
-        clearSessionCookie(response, dependencies.production);
+        clearSessionCookie(response, dependencies.production ?? isSecureRequest(request));
       }
 
       return response;

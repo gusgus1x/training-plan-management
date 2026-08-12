@@ -151,7 +151,7 @@ describe("Master Data workflow integration", () => {
     expect(oapSource).toContain('listInstructors({ status: "ACTIVE" })');
     expect(oapSource).toContain('list="instructor-master-options"');
     expect(oapSource).toContain('<datalist id="instructor-master-options">');
-    expect(oapSource).toContain("type an external instructor name");
+    expect(oapSource).toContain("Select from Instructor Master or enter another name");
   });
 
   it("guides OAP entry inside each field and requires a course first", () => {

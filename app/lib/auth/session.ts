@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { NextResponse } from "next/server";
+import type { NextRequest, NextResponse } from "next/server";
 import {
   ROLE_CODES,
   type AuthenticatedPrincipal,
@@ -7,7 +7,7 @@ import {
 } from "./types";
 
 export const SESSION_COOKIE_NAME = "tpm_session";
-export const SESSION_IDLE_SECONDS = 30 * 60;
+export const SESSION_IDLE_SECONDS = 2 * 60 * 60;
 export const SESSION_ABSOLUTE_SECONDS = 8 * 60 * 60;
 export const SESSION_REVALIDATE_SECONDS = 5 * 60;
 
@@ -200,6 +200,15 @@ export const verifySessionToken = (
     return null;
   }
 };
+
+// Secure must reflect the connection the request actually arrived on, not
+// just NODE_ENV — a `production` build served over plain http (e.g. local
+// `next start` on localhost, or a trial deploy without TLS yet) would
+// otherwise get a Secure-flagged cookie that the browser silently refuses to
+// store/send, breaking login in a way that looks like a random 401.
+export const isSecureRequest = (request: Pick<NextRequest | Request, "headers" | "url">) =>
+  request.headers.get("x-forwarded-proto") === "https" ||
+  new URL(request.url).protocol === "https:";
 
 export const setSessionCookie = (
   response: NextResponse,

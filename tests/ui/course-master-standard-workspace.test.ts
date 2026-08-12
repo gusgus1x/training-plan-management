@@ -35,7 +35,7 @@ describe("Course Master and Course Standard workspace", () => {
     expect(workspaceSource).toContain("Classification");
     expect(workspaceSource).toContain("Course Standard");
     expect(workspaceSource).toContain('lifeCycleMonth: ""');
-    expect(workspaceSource).toContain('lifeCycleMonth: form.lifeCycleMonth.trim() || "0"');
+    expect(workspaceSource).toContain("validityMonths: form.lifeCycleMonth ? Number(form.lifeCycleMonth) : null");
     expect(workspaceSource).toContain('min="0"');
     expect(workspaceSource).toContain('placeholder="Enter 0 for no course expiration"');
     expect(workspaceSource).not.toContain("Number of months before the course should be reviewed.");

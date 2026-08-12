@@ -758,7 +758,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                       <td>{Number(plan.budget).toLocaleString("en-US")}</td>
                       <td>{plan.trainer}</td>
                       <td>{plan.provider}</td>
-                      <td>{plan.createdBy}</td>
+                      <td>{plan.owner === "CENTER" ? "Center" : plan.ownerCompany}</td>
                     </tr>
                     {isOpen ? (
                       <tr className={styles.detailRow}>
@@ -791,7 +791,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                               <div><span>Budget</span><strong>{Number(plan.budget).toLocaleString("en-US")}</strong></div>
                               <div><span>Trainer</span><strong>{plan.trainer}</strong></div>
                               <div><span>Provider</span><strong>{plan.provider}</strong></div>
-                              <div><span>Created By</span><strong>{plan.createdBy}</strong></div>
+                              <div><span>Created By</span><strong>{plan.owner === "CENTER" ? "Center" : plan.ownerCompany}</strong></div>
                             </div>
                             <div className={styles.formActions}>
                               <button className={styles.primaryButton} disabled={plan.status !== "Planning"} type="button" onClick={() => void updateStatus(plan.id, "Planned")}>Confirm</button>

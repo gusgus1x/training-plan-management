@@ -263,7 +263,9 @@ describe("session tokens and auth cookies", () => {
   });
 
   it("clears the cookie on logout", async () => {
-    const response = await createLogoutHandler({ production: true })();
+    const response = await createLogoutHandler({ production: true })(
+      new Request("http://localhost/api/auth/logout", { method: "POST" }),
+    );
 
     expect(response.status).toBe(200);
     expect(response.headers.get("set-cookie")).toContain("Max-Age=0");

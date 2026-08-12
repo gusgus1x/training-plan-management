@@ -1,14 +1,9 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
-import {
-  TRAINING_WORKFLOW_EVENT,
-  TRAINING_WORKFLOW_KEYS,
-  readWorkflowCollection,
-  writeWorkflowCollection,
-  type WorkflowCompletedCourse,
-} from "../../../../lib/trainingWorkflow";
 import { readEmployeeMasterData } from "../../../../lib/employeeMasterData";
+import { listTrainingRecords } from "../../../../lib/trainingRecord/client";
+import type { TrainingRecordSummary } from "../../../../lib/trainingRecord/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import {
   getRollingPlanCompanies,
@@ -598,75 +593,54 @@ export default function TrainingRecord() {
   }, []);
 
   useEffect(() => {
-    const syncCompletedCourses = () => {
-      const nextCourses = readWorkflowCollection<WorkflowCompletedCourse>(
-        TRAINING_WORKFLOW_KEYS.completedCourses,
-      ).map<CompletedCourse>((course) => {
-        const rollingPlan = rollingPlans.find(
-          (plan) => plan.rollingId === course.rollingId,
-        );
-        const attendedEmployees = course.attendees.filter((attendee) => attendee.attended);
-        const registeredEmployees = course.attendees.filter(
-          (attendee) => attendee.registered,
-        );
+    const percent = (count: number, total: number) => (total > 0 ? Math.round((count / total) * 100) : 0);
+
+    void listTrainingRecords().then((result) => {
+      const nextCourses = (result.trainingRecords || []).map<CompletedCourse>((record: TrainingRecordSummary) => {
+        const rollingPlan = rollingPlans.find((plan) => plan.rollingId === record.planId);
+        const postTestPassPercent = percent(record.postTestPassCount, record.attendedCount);
 
         return {
-          id: course.id,
-          rollingId: course.rollingId,
-          groupId:
-            course.scheduleGroupId ??
-            rollingPlan?.scheduleGroupId ??
-            `legacy-completed-${course.rollingId}`,
+          id: record.planId,
+          rollingId: record.planId,
+          groupId: rollingPlan?.scheduleGroupId ?? `legacy-completed-${record.planId}`,
           source: "SYSTEM",
-          code: course.code,
-          title: course.title,
-          date: course.date,
-          batch: course.batch ?? rollingPlan?.batch,
-          time:
-            course.startTime || course.endTime
-              ? `${course.startTime ?? "-"} - ${course.endTime ?? "-"}`
-              : rollingPlan
-                ? `${rollingPlan.startTime} - ${rollingPlan.endTime}`
-                : undefined,
-          company: course.company,
-          relatedCompanies:
-            course.relatedCompanies ??
-            (rollingPlan ? getRollingPlanCompanies(rollingPlan) : [course.company]),
-          owner: course.owner,
-          ownerCompany:
-            course.ownerCompany ??
-            rollingPlan?.ownerCompany ??
-            (course.owner === "CENTER" ? "HRD Center" : course.company),
-          room: course.room,
-          instructor: course.instructor,
-          actualAttendees: attendedEmployees.length,
-          registeredAttendees: registeredEmployees.length,
-          actualCost: course.expenses,
-          prePostPassPercent: 0,
-          postTestPassPercent: 0,
-          preTestPassPercent: 0,
-          evaluationCompleted: 0,
-          evaluationTotal: attendedEmployees.length,
+          code: rollingPlan?.course.code ?? "",
+          title: rollingPlan?.course.name ?? "",
+          date: rollingPlan?.trainingDate ?? "",
+          batch: rollingPlan?.batch,
+          time: rollingPlan ? `${rollingPlan.startTime} - ${rollingPlan.endTime}` : undefined,
+          company: rollingPlan?.company ?? "",
+          relatedCompanies: rollingPlan ? getRollingPlanCompanies(rollingPlan) : [],
+          owner: rollingPlan?.ownerScope ?? "FACTORY",
+          ownerCompany: rollingPlan?.ownerCompany,
+          room: rollingPlan?.location ?? "",
+          instructor: rollingPlan?.trainer ?? "",
+          actualAttendees: record.attendedCount,
+          registeredAttendees: record.registeredCount,
+          actualCost: record.expenses,
+          prePostPassPercent: postTestPassPercent,
+          postTestPassPercent,
+          preTestPassPercent: percent(record.preTestPassCount, record.attendedCount),
+          evaluationCompleted: record.evaluationCompletedCount,
+          evaluationTotal: record.attendedCount,
           averageScore: 0,
-          attendees: attendedEmployees.map((attendee) => ({
-            id: attendee.id,
-            company: attendee.company,
-            name: attendee.name,
-            employeeCode: attendee.employeeCode,
-            department: attendee.department,
-            prePost: "Passed",
-            evaluation: "Pending",
-          })),
+          attendees: record.attendees
+            .filter((attendee) => attendee.attended)
+            .map((attendee) => ({
+              id: attendee.enrollmentId,
+              company: attendee.company,
+              name: attendee.name,
+              employeeCode: attendee.employeeCode,
+              department: attendee.department,
+              prePost: attendee.postTestPassed ? "Passed" : "Failed",
+              evaluation: attendee.evaluationCompleted ? "Done" : "Pending",
+            })),
         };
       });
 
       setCourses(nextCourses);
-    };
-
-    syncCompletedCourses();
-    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncCompletedCourses);
-    return () =>
-      window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncCompletedCourses);
+    });
   }, [rollingPlans]);
 
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
@@ -895,57 +869,31 @@ export default function TrainingRecord() {
     const company = selectedMaster?.company || customCompany.trim() || selectedCourse.company || "SNF";
     const department = selectedMaster?.functionName || customDepartment.trim() || "General";
 
-    const completedCourses = readWorkflowCollection<WorkflowCompletedCourse>(
-      TRAINING_WORKFLOW_KEYS.completedCourses,
-    );
-
-    const targetCourse = completedCourses.find(
-      (c) => c.id === selectedCourse.id || c.rollingId === selectedCourse.rollingId,
-    );
-
-    const newAttendeeObj = {
+    const newAttendeeObj: CompletedCourse["attendees"][number] = {
       id: `att-add-${selectedCourse.id}-${empCode}-${addSequence}`,
       company,
       employeeCode: empCode,
       name: empName,
       department,
-      registered: true,
-      attended: true,
+      prePost: "Failed",
+      evaluation: "Pending",
     };
 
-    let nextCompletedCourses: WorkflowCompletedCourse[];
-
-    if (targetCourse) {
-      nextCompletedCourses = completedCourses.map((c) =>
-        c.id === targetCourse.id
+    setCourses((current) =>
+      current.map((course) =>
+        course.id === selectedCourse.id
           ? {
-              ...c,
-              attendees: [...c.attendees, newAttendeeObj],
+              ...course,
+              actualAttendees: course.actualAttendees + 1,
+              registeredAttendees: course.registeredAttendees + 1,
+              attendees: [...course.attendees, newAttendeeObj],
             }
-          : c,
-      );
-    } else {
-      const newCompletedCourse: WorkflowCompletedCourse = {
-        id: selectedCourse.id,
-        rollingId: selectedCourse.rollingId ?? selectedCourse.id,
-        code: selectedCourse.code,
-        title: selectedCourse.title,
-        date: selectedCourse.date,
-        batch: selectedCourse.batch,
-        company: selectedCourse.company,
-        owner: selectedCourse.owner,
-        room: selectedCourse.room,
-        instructor: selectedCourse.instructor,
-        hours: 8,
-        attendees: [newAttendeeObj],
-        expenses: selectedCourse.actualCost,
-        savedAt: new Date().toISOString(),
-      };
-      nextCompletedCourses = [newCompletedCourse, ...completedCourses];
-    }
-
-    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.completedCourses, nextCompletedCourses);
-    setAddAttendeeMessage(`Successfully added ${empName} (${empCode}) to ${selectedCourse.code}`);
+          : course,
+      ),
+    );
+    setAddAttendeeMessage(
+      `Added ${empName} (${empCode}) to ${selectedCourse.code} for this view — this manual addition is not saved to the server yet.`,
+    );
     setSelectedEmpCode("");
     setCustomEmpCode("");
     setCustomEmpName("");

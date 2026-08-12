@@ -56,3 +56,12 @@ README_PACKAGE.md
 progress.md
 findings.md
 task_plan.md
+
+# info files
+TrainingPlanManagement — Project & Database Handover Context.md
+
+# real employee data samples — never commit
+real data employee.rpt
+*.rpt
+Position_Review.xlsx
+Function_Review.xlsx

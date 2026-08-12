@@ -185,8 +185,9 @@ export default function Navbar({
                       </svg>
                       <span>Language</span>
                     </div>
-                    <div className={styles.segmentControl}>
+                    <div className={styles.segmentControl} role="group" aria-label="Language">
                       <button
+                        aria-pressed={language === "en"}
                         className={language === "en" ? styles.activeSegment : styles.segmentBtn}
                         onClick={() => setLanguage("en")}
                         type="button"
@@ -194,6 +195,7 @@ export default function Navbar({
                         English
                       </button>
                       <button
+                        aria-pressed={language === "th"}
                         className={language === "th" ? styles.activeSegment : styles.segmentBtn}
                         onClick={() => setLanguage("th")}
                         type="button"

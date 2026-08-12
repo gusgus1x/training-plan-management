@@ -6,6 +6,7 @@ import { requireRole } from "./authorization";
 import {
   clearSessionCookie,
   createSessionToken,
+  isSecureRequest,
   SESSION_COOKIE_NAME,
   setSessionCookie,
   verifySessionToken,
@@ -91,7 +92,7 @@ export const createProtectedRoute = <RouteContext = unknown>(
       );
 
       applyPrivateResponseHeaders(response);
-      setSessionCookie(response, rolledToken, options.production);
+      setSessionCookie(response, rolledToken, options.production ?? isSecureRequest(request));
       return response;
     } catch (error: unknown) {
       const response = apiFailure(error);
@@ -99,7 +100,7 @@ export const createProtectedRoute = <RouteContext = unknown>(
       applyPrivateResponseHeaders(response);
 
       if (error instanceof ApiError && error.status === 401) {
-        clearSessionCookie(response, options.production);
+        clearSessionCookie(response, options.production ?? isSecureRequest(request));
       }
 
       return response;

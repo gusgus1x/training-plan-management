@@ -6,7 +6,7 @@ import {
 
 describe("Employee Master training flow", () => {
   it("provides a varied mock employee catalog for all companies", () => {
-    expect(defaultEmployeeRows).toHaveLength(168);
+    expect(defaultEmployeeRows).toHaveLength(258);
     expect(new Set(defaultEmployeeRows.map((employee) => employee.company))).toEqual(
       new Set(["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"]),
     );
@@ -18,8 +18,7 @@ describe("Employee Master training flow", () => {
       const companyEmployeeCount = defaultEmployeeRows.filter(
         (employee) => employee.company === company,
       ).length;
-      expect(companyEmployeeCount).toBeGreaterThanOrEqual(27);
-      expect(companyEmployeeCount).toBeLessThanOrEqual(29);
+      expect(companyEmployeeCount).toBe(43);
     });
     expect(new Set(defaultEmployeeRows.map((employee) => employee.positionName)).size)
       .toBeGreaterThanOrEqual(8);
@@ -34,6 +33,7 @@ describe("Employee Master training flow", () => {
         "M1",
         "M2",
         "M3",
+        "M4",
         "S1",
         "S2",
         "S3",

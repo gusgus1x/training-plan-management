@@ -1,12 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  TRAINING_WORKFLOW_KEYS,
-  readWorkflowCollection,
-  writeWorkflowCollection,
-  type WorkflowCompletedCourse,
-} from "../../../../lib/trainingWorkflow";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import {
   formatRollingPlanCompanies,
@@ -16,6 +10,7 @@ import {
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
 import { listEnrollments, setEnrollmentAttendance } from "../../../../lib/trainingEnrollment/client";
 import type { EnrollmentRecord } from "../../../../lib/trainingEnrollment/types";
+import { saveTrainingRecordExpenses } from "../../../../lib/trainingRecord/client";
 import styles from "./TrainingRecord.module.css";
 
 export const trainingActualModule = {
@@ -317,7 +312,7 @@ export default function TrainingActual() {
     setExpenses((current) => ({ ...current, [key]: value }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedCourse) {
       return;
     }
@@ -330,52 +325,23 @@ export default function TrainingActual() {
       year: "numeric",
     }).format(new Date());
 
-    const completedCourses = readWorkflowCollection<WorkflowCompletedCourse>(
-      TRAINING_WORKFLOW_KEYS.completedCourses,
-    );
-    const completedCourse: WorkflowCompletedCourse = {
-      id: `completed-${selectedCourse.id}`,
-      rollingId: selectedCourse.id,
-      scheduleGroupId: selectedCourse.groupId,
-      code: selectedCourse.code,
-      title: selectedCourse.title,
-      date: selectedCourse.date,
-      batch: selectedCourse.batch,
-      startTime: selectedCourse.startTime,
-      endTime: selectedCourse.endTime,
-      company: selectedCourse.company,
-      relatedCompanies: selectedCourse.relatedCompanies,
-      owner: selectedCourse.owner,
-      ownerCompany: selectedCourse.ownerCompany,
-      room: selectedCourse.room,
-      instructor: selectedCourse.instructor,
-      hours: Number(selectedCourse.hours || 0),
-      attendees: attendees.map((attendee) => ({
-        ...attendee,
-        company: attendee.company ?? selectedCourse.company,
-      })),
-      expenses: {
+    try {
+      await saveTrainingRecordExpenses(selectedCourse.id, {
         accommodation: Number(expenses.accommodation || 0),
         foodBeverage: Number(expenses.foodBeverage || 0),
         instructor: Number(expenses.instructor || 0),
         material: Number(expenses.material || 0),
         seminarRoom: Number(expenses.seminarRoom || 0),
         traveling: Number(expenses.traveling || 0),
-      },
-      savedAt: new Date().toISOString(),
-    };
-    const nextCompletedCourses = [
-      completedCourse,
-      ...completedCourses.filter((course) => course.rollingId !== selectedCourse.id),
-    ];
-    writeWorkflowCollection(
-      TRAINING_WORKFLOW_KEYS.completedCourses,
-      nextCompletedCourses,
-    );
+      });
 
-    setSavedMessage(
-      `Saved ${selectedCourse.code} with ${actualCount} actual attendees, total THB ${formatCurrency(expenseTotal)} (THB ${formatCurrency(actualCostPerPerson)}/person) at ${now}.`,
-    );
+      setSavedMessage(
+        `Saved ${selectedCourse.code} with ${actualCount} actual attendees, total THB ${formatCurrency(expenseTotal)} (THB ${formatCurrency(actualCostPerPerson)}/person) at ${now}.`,
+      );
+    } catch (error) {
+      console.error("Failed to save training expenses", error);
+      setSavedMessage("Failed to save training expenses.");
+    }
   };
 
   return (
@@ -684,7 +650,7 @@ export default function TrainingActual() {
               </p>
             </div>
 
-            <button className={styles.actualSaveButton} type="button" onClick={handleSave}>
+            <button className={styles.actualSaveButton} type="button" onClick={() => void handleSave()}>
               Save Training Actual
             </button>
 

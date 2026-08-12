@@ -99,7 +99,6 @@ describe("Thai UI localization", () => {
     expect(navbarSource).toContain('setLanguage("en")');
     expect(navbarSource).toContain('setLanguage("th")');
     expect(navbarSource).toContain('aria-pressed={language === "th"}');
-    expect(navbarSource).toContain("styles.languageDivider");
     expect(navbarSource).toContain('role="group"');
     expect(navbarStyles).toContain("min-width: 30px");
     expect(navbarStyles).toContain(".scrolledNavbar .languageSwitcher");

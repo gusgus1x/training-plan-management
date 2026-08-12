@@ -3,6 +3,7 @@ import { apiFailure, apiSuccess } from "../../../lib/api/response";
 import { authenticateCredentials } from "../../../lib/auth/authentication";
 import {
   createSessionToken,
+  isSecureRequest,
   setSessionCookie,
 } from "../../../lib/auth/session";
 import type { AuthenticatedPrincipal } from "../../../lib/auth/types";
@@ -71,7 +72,7 @@ export const createLoginHandler = (
       const response = apiSuccess({ user: principal });
 
       response.headers.set("Cache-Control", "no-store");
-      setSessionCookie(response, token, dependencies.production);
+      setSessionCookie(response, token, dependencies.production ?? isSecureRequest(request));
 
       return response;
     } catch (error: unknown) {
