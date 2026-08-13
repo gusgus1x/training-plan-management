@@ -351,6 +351,9 @@ model employee {
   function_id               BigInt?
   position_id               BigInt?
   level_id                  BigInt?
+  division_id               BigInt?
+  department_id             BigInt?
+  section_id                BigInt?
   employee_code             String                      @db.NVarChar(50)
   national_id_hash          String?                     @unique(map: "UX_employee_national_id_hash") @db.Char(64)
   birth_date                DateTime?                   @db.Date
@@ -371,6 +374,9 @@ model employee {
   employee_level            employee_level?             @relation(fields: [level_id], references: [level_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_employee_employee_level_level_id")
   organization_function     organization_function?      @relation(fields: [function_id], references: [function_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_employee_organization_function_function_id")
   position                  position?                   @relation(fields: [position_id], references: [position_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_employee_position_position_id")
+  division                  division?                   @relation(fields: [division_id], references: [division_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_employee_division_division_id")
+  department                department?                 @relation(fields: [department_id], references: [department_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_employee_department_department_id")
+  section                   section?                    @relation(fields: [section_id], references: [section_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_employee_section_section_id")
   training_certificate_file training_certificate_file[]
   training_enrollment       training_enrollment[]
   training_need_request     training_need_request[]
@@ -381,6 +387,36 @@ model employee {
   @@index([function_id], map: "IX_employee_function_id")
   @@index([level_id], map: "IX_employee_level_id")
   @@index([position_id], map: "IX_employee_position_id")
+  @@index([division_id], map: "IX_employee_division_id")
+  @@index([department_id], map: "IX_employee_department_id")
+  @@index([section_id], map: "IX_employee_section_id")
+}
+
+model division {
+  division_id      BigInt     @id(map: "PK_division") @default(autoincrement())
+  division_code    String     @unique(map: "UQ_division_division_code") @db.NVarChar(30)
+  division_name_th String     @db.NVarChar(255)
+  division_name_en String?    @db.NVarChar(255)
+  status           String     @db.NVarChar(20)
+  employee         employee[]
+}
+
+model department {
+  department_id      BigInt     @id(map: "PK_department") @default(autoincrement())
+  department_code    String     @unique(map: "UQ_department_department_code") @db.NVarChar(30)
+  department_name_th String     @db.NVarChar(255)
+  department_name_en String?    @db.NVarChar(255)
+  status             String     @db.NVarChar(20)
+  employee           employee[]
+}
+
+model section {
+  section_id      BigInt     @id(map: "PK_section") @default(autoincrement())
+  section_code    String     @unique(map: "UQ_section_section_code") @db.NVarChar(30)
+  section_name_th String     @db.NVarChar(255)
+  section_name_en String?    @db.NVarChar(255)
+  status          String     @db.NVarChar(20)
+  employee        employee[]
 }
 
 model employee_level {
