@@ -13,6 +13,7 @@ export type MasterDataModuleTopic = {
   title: string;
   subtitle: string;
   description: string;
+  locked?: boolean;
   Component: ComponentType;
 };
 

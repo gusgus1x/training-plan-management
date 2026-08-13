@@ -43,7 +43,11 @@ export default function TrainingPlanManagement({
         contextItems={planItems.map((item) => ({
           title: item.title,
           active: item.title === selectedItem?.title,
-          onClick: () => setSelectedItem(item),
+          locked: item.locked,
+          onClick: () => {
+            if (item.locked) return;
+            setSelectedItem(item);
+          },
         }))}
         onBack={handleBack}
         onHome={onHome}
