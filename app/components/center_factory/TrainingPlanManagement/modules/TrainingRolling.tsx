@@ -499,24 +499,16 @@ export default function TrainingRolling() {
   const [oapPlans, setOapPlans] = useState<WorkflowOapPlan[]>(() =>
     readWorkflowCollection<WorkflowOapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans),
   );
-  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>(() => {
-    const loaded = readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans);
-    if (loaded && loaded.length > 0) {
-      return loaded;
-    }
-    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.rollingPlans, initialRollingPlans);
-    return initialRollingPlans;
-  });
+  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>(() =>
+    readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
+  );
 
   useEffect(() => {
     const syncData = () => {
       setCourses(readWorkflowCollection<WorkflowCourse>(TRAINING_WORKFLOW_KEYS.courses));
       setStandards(readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards));
       setOapPlans(readWorkflowCollection<WorkflowOapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans));
-      const loaded = readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans);
-      if (loaded && loaded.length > 0) {
-        setRollingPlans(loaded);
-      }
+      setRollingPlans(readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans));
     };
     window.addEventListener(TRAINING_WORKFLOW_EVENT, syncData);
     return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncData);

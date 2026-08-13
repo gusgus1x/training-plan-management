@@ -207,7 +207,7 @@ export const TRAINING_MASTER_KEYS = {
 export const TRAINING_MASTER_EVENT = "training-master-changed";
 
 const WORKFLOW_VERSION_KEY = "tpm_mock_workflow_version";
-const WORKFLOW_VERSION = "2026-08-10-full-clean-reset-v2";
+const WORKFLOW_VERSION = "2026-08-13-wipe-all-transactions-v1";
 const LEGACY_TRANSACTION_KEYS = [
   "training-plan.employee-training-requests",
   "training-plan.approved-training-need",
