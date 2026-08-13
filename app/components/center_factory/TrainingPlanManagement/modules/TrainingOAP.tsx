@@ -51,6 +51,13 @@ const emptyForm = {
   provider: "",
 };
 
+const generateUUID = () => {
+  if (typeof window !== "undefined" && window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+};
+
 const readApprovedTrainingNeed = () => {
   if (typeof window === "undefined") {
     return null;
@@ -387,7 +394,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     }
 
     const nextPlan: OapPlan = {
-      id: `oap-${crypto.randomUUID()}`,
+      id: `oap-${generateUUID()}`,
       sequence: scopedPlans.length + 1,
       course: selectedCourse,
       participants: form.participants.trim() || "0",
