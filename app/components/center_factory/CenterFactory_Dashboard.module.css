@@ -369,26 +369,34 @@
   align-items: start;
 }
 
-.employeePanel,
 .calendarPanel {
   position: relative;
   overflow: hidden;
   padding: 16px;
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-xl);
+  box-shadow: var(--ui-shadow-md);
+  color: var(--ui-30-ink);
 }
 
 .calendarPanel::before {
   content: "";
   position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: var(--ui-card-edge);
-  box-shadow: var(--ui-card-edge-shadow);
+  inset: 0 0 auto 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--ui-30-primary) 0%, var(--ui-30-primary-strong) 50%, var(--ui-10-accent) 100%);
   pointer-events: none;
 }
 
 .calendarPanel .panelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin: -2px 0 14px;
-  border-bottom: 1px solid var(--ui-60-canvas);
+  border-bottom: 1px solid var(--ui-60-surface-soft);
   padding: 0 0 12px 8px;
 }
 
@@ -613,31 +621,110 @@
   font-weight: 700;
 }
 
+.panelTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.calendarHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fullCalendarBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: var(--ui-radius-md);
+  border: 1px solid var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+  font-size: 0.74rem;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.fullCalendarBtn:hover {
+  background: var(--ui-30-primary);
+  color: #ffffff;
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 3px 10px rgba(0, 122, 61, 0.25);
+  transform: translateY(-1px);
+}
+
+.monthNavGroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--ui-radius-lg);
+  padding: 2px;
+}
+
+.monthNavBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--ui-radius-md);
+  background: transparent;
+  color: #e2e8f0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.monthNavBtn:hover {
+  background: rgba(16, 185, 129, 0.25);
+  color: #34d399;
+}
+
+.badgeDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ui-30-primary);
+  box-shadow: 0 0 8px var(--ui-30-primary);
+  margin-right: 6px;
+}
+
 .calendarFilters {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .calendarFilters label {
   display: grid;
-  gap: 5px;
+  gap: 4px;
   border: 1px solid var(--ui-30-border);
   border-radius: 8px;
   background: var(--ui-60-surface-soft);
-  padding: 8px;
+  padding: 6px;
 }
 
 .filterItem {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .filterTitle {
   color: var(--ui-30-muted);
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   font-weight: 800;
   white-space: nowrap;
 }
@@ -646,19 +733,21 @@
   position: relative;
   display: inline-flex;
   align-items: center;
+  width: 100%;
 }
 
 .filterSelect {
-  height: 36px;
-  min-width: 120px;
+  height: 32px;
+  width: 100%;
+  min-width: 100px;
   border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-lg);
+  border-radius: var(--ui-radius-md);
   background: var(--ui-60-surface-soft);
   color: var(--ui-30-ink);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 800;
-  padding: 0 28px 0 12px;
+  padding: 0 24px 0 10px;
   cursor: pointer;
   outline: none;
   white-space: nowrap;
@@ -671,6 +760,7 @@
 .filterSelect:focus {
   border-color: var(--ui-30-primary);
   background: var(--ui-60-surface);
+  box-shadow: 0 2px 8px rgba(0, 122, 61, 0.12);
 }
 
 .filterSelect option {
@@ -680,7 +770,7 @@
 
 .selectChevron {
   position: absolute;
-  right: 10px;
+  right: 8px;
   pointer-events: none;
   color: var(--ui-30-muted);
 }
@@ -688,35 +778,59 @@
 .calendarGrid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
+  gap: 5px;
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-xl);
   background: var(--ui-60-surface);
-  padding: 10px;
+  padding: 8px;
   box-shadow: var(--ui-shadow-sm);
 }
 
 .calendarGrid b {
   display: grid;
-  min-height: 28px;
+  min-height: 24px;
   place-items: center;
   color: var(--ui-30-muted);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  border-radius: 4px;
+}
+
+.sunHeader,
+.satHeader {
+  color: #e11d48 !important;
+  background: rgba(225, 29, 72, 0.06);
 }
 
 .calendarDay {
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-md);
   background: var(--ui-60-surface-soft);
-  padding: 6px 8px;
-  transition: all 0.2s ease;
+  padding: 4px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.calendarDay:hover {
+  transform: scale(1.05);
+  background: var(--ui-60-surface);
+  border-color: var(--ui-30-primary-border);
+  box-shadow: 0 4px 14px rgba(0, 122, 61, 0.15);
+  z-index: 2;
+}
+
+.weekendDay {
+  background: rgba(248, 250, 252, 0.7);
+}
+
+.weekendDay .dayNumberBadge {
+  color: #e11d48 !important;
 }
 
 .trainingDay {
@@ -726,174 +840,389 @@
 
 .today {
   border-color: var(--ui-30-primary) !important;
-  box-shadow: 0 0 12px rgba(0, 122, 61, 0.25);
+  box-shadow: 0 0 0 2px rgba(0, 122, 61, 0.25) !important;
   background: var(--ui-60-surface) !important;
 }
 
-.calendarDay span {
+.dayCellTop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.dayNumberBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 50%;
   color: var(--ui-30-ink);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 900;
   line-height: 1;
 }
 
-.calendarDay small {
-  overflow: hidden;
-  border-radius: var(--ui-radius-sm);
-  background: var(--ui-30-primary-soft);
-  border: 1px solid var(--ui-30-primary-border);
-  color: var(--ui-30-primary-strong);
-  font-size: 0.64rem;
-  font-weight: 800;
-  line-height: 1.2;
+.today .dayNumberBadge {
+  background: linear-gradient(135deg, var(--ui-30-primary) 0%, var(--ui-30-primary-strong) 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 122, 61, 0.3);
+}
+
+.todayDotIndicator {
+  position: absolute;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ui-30-primary);
+  box-shadow: 0 0 6px var(--ui-30-primary);
+}
+
+.topRightBadge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--ui-30-primary) 0%, #059669 100%);
+  color: #ffffff;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0 4px;
+  box-shadow: 0 2px 6px rgba(0, 122, 61, 0.35);
+  border: 1.5px solid var(--ui-60-surface);
+  z-index: 3;
+}
+
+/* Selected day highlight */
+.selectedDay {
+  border-color: var(--ui-10-accent) !important;
+  background: rgba(215, 25, 32, 0.05) !important;
+  box-shadow: 0 0 0 2px rgba(215, 25, 32, 0.25) !important;
+}
+
+/* Training count badge inside calendar cell */
+.dayCountBadge {
+  display: block;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #059669 0%, #06b6d4 100%);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  padding: 3px 8px;
+  text-align: center;
+  width: fit-content;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
+}
+
+/* Details button inside calendar cell */
+.dayDetailBtn {
+  display: block;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  border-radius: 6px;
+  background: rgba(6, 182, 212, 0.15);
+  color: #38bdf8;
+  cursor: pointer;
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
   padding: 3px 6px;
-  text-overflow: ellipsis;
+  text-transform: uppercase;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+.dayDetailBtn:hover {
+  background: #06b6d4;
+  color: #fff;
+}
+
+/* ─── Day Detail Panel ─────────────────────────── */
+.dayDetailPanel {
+  margin-top: 12px;
+  border: 1.5px solid var(--ui-30-primary-border);
+  border-radius: var(--ui-radius-xl);
+  background: var(--ui-60-surface);
+  box-shadow: var(--ui-shadow-md);
+  overflow: hidden;
+  animation: slideDown 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.dayDetailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--ui-30-border);
+  background: linear-gradient(90deg, var(--ui-30-primary-soft) 0%, var(--ui-60-surface) 100%);
+}
+
+.dayDetailHeader strong {
+  display: block;
+  color: var(--ui-30-ink);
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.dayDetailHeader span {
+  color: var(--ui-30-primary-strong);
+  font-size: 0.74rem;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+.dayDetailClose {
+  flex-shrink: 0;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s ease;
+}
+
+.dayDetailClose:hover {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #fff;
+}
+
+.dayDetailList {
+  display: grid;
+  gap: 0;
+}
+
+.dayDetailItem {
+  display: grid;
+  gap: 6px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--ui-30-border);
+  transition: background 0.15s ease;
+}
+
+.dayDetailItem:last-child {
+  border-bottom: none;
+}
+
+.dayDetailItem:hover {
+  background: var(--ui-60-surface-soft);
+}
+
+.dayDetailItemMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.dayDetailOwnerBadge,
+.dayDetailStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 3px 10px;
   white-space: nowrap;
-  margin-top: 4px;
+}
+
+.pulseDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.dayDetailCourseName {
+  display: block;
+  color: var(--ui-30-ink);
+  font-size: 0.92rem;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.dayDetailInfo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.dayDetailInfo span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .trainingList {
   display: grid;
-  gap: 8px;
-  margin-top: 12px;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.trainingListHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 2px;
+}
+
+.trainingListHeading span {
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .trainingItem {
   position: relative;
   overflow: hidden;
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr) auto;
-  gap: 10px;
+  display: flex;
   align-items: center;
-  min-height: 50px;
+  gap: 14px;
   border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
+  border-radius: var(--ui-radius-lg);
   background: var(--ui-60-surface);
-  padding: 9px 10px 9px 14px;
+  padding: 12px 16px;
+  box-shadow: var(--ui-shadow-sm);
+  transition: all 0.2s ease;
 }
 
-.trainingItem::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--ui-card-edge);
-  box-shadow: var(--ui-card-edge-shadow);
-  pointer-events: none;
+.trainingItem:hover {
+  border-color: var(--ui-30-primary-border);
+  transform: translateX(3px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
 }
 
-.trainingItem time {
-  color: var(--ui-10-accent);
-  font-size: 0.72rem;
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-.trainingItem div {
-  min-width: 0;
-}
-
-.trainingItem strong {
-  display: block;
-  overflow: hidden;
-  color: var(--ui-30-ink);
-  font-size: 0.82rem;
-  font-weight: 900;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.trainingItem span {
-  display: block;
-  overflow: hidden;
-  margin-top: 3px;
-  color: var(--ui-30-muted);
-  font-size: 0.72rem;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.trainingItem b {
-  width: fit-content;
-  border: 1px solid var(--ui-30-border);
-  border-radius: 999px;
-  background: var(--ui-60-surface-soft);
-  color: var(--ui-30-text);
-  font-size: 0.66rem;
-  font-weight: 900;
-  line-height: 1;
-  padding: 6px 8px;
-  white-space: nowrap;
-}
-
-.trainingDay {
-  border-color: rgba(0, 122, 61, 0.28);
+.dateTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  height: 48px;
+  border-radius: var(--ui-radius-md);
   background: var(--ui-30-primary-soft);
+  border: 1px solid var(--ui-30-primary-border);
+  color: var(--ui-30-primary-strong);
+  flex-shrink: 0;
 }
 
-.today {
-  border-color: rgba(215, 25, 32, 0.36);
-  box-shadow: inset 0 0 0 1px rgba(215, 25, 32, 0.18);
-}
-
-.trainingList {
-  display: grid;
-  gap: 7px;
-  margin-top: 12px;
-}
-
-.trainingItem {
-  display: grid;
-  grid-template-columns: 58px minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
-  border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
-  padding: 8px;
-}
-
-.trainingItem time {
-  color: var(--ui-10-accent);
-  font-size: 0.72rem;
+.dateTileDay {
+  font-size: 1.15rem;
   font-weight: 900;
-  white-space: nowrap;
+  line-height: 1;
 }
 
-.trainingItem div {
-  display: grid;
-  gap: 3px;
+.dateTileMonth {
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+
+.trainingContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-grow: 1;
   min-width: 0;
 }
 
-.trainingItem strong {
-  overflow: hidden;
+.trainingCourseTitle {
   color: var(--ui-30-ink);
-  font-size: 0.78rem;
+  font-size: 0.88rem;
   font-weight: 900;
-  text-overflow: ellipsis;
+  line-height: 1.25;
   white-space: nowrap;
-}
-
-.trainingItem span {
   overflow: hidden;
-  color: var(--ui-30-muted);
-  font-size: 0.72rem;
-  font-weight: 700;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.trainingItem b {
+.trainingMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.companyTag {
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+}
+
+.metaDivider {
+  opacity: 0.4;
+}
+
+.statusPillBadge {
   border-radius: 999px;
-  background: var(--ui-60-surface-muted);
-  color: var(--ui-30-text);
-  font-size: 0.66rem;
+  font-size: 0.68rem;
   font-weight: 900;
-  line-height: 1;
-  padding: 6px 7px;
+  padding: 4px 12px;
   white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.emptyCalendarState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 20px;
+  border: 1px dashed var(--ui-30-border);
+  border-radius: var(--ui-radius-xl);
+  background: var(--ui-60-surface-soft);
+  text-align: center;
+  margin-top: 14px;
+}
+
+.emptyCalendarIcon {
+  font-size: 2.2rem;
+  margin-bottom: 8px;
+}
+
+.emptyCalendarState strong {
+  color: var(--ui-30-ink);
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.emptyCalendarState p {
+  color: var(--ui-30-muted);
+  font-size: 0.8rem;
+  margin: 4px 0 0;
 }
 
 @media (max-width: 1060px) {

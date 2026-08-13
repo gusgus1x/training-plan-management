@@ -503,6 +503,11 @@
   letter-spacing: 0.05em;
 }
 
+.weekendHeader {
+  color: #e11d48 !important;
+  background: rgba(225, 29, 72, 0.06) !important;
+}
+
 .calendarDayCell {
   min-height: 120px;
   background: var(--ui-60-surface);
@@ -532,6 +537,10 @@
   color: var(--ui-30-ink);
   font-size: 0.82rem;
   font-weight: 900;
+}
+
+.weekendDayCell .dayNumber {
+  color: #e11d48 !important;
 }
 
 .todayDayCell .dayNumber {

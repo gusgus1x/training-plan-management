@@ -1,6 +1,6 @@
 .page {
   display: grid;
-  width: min(1240px, calc(100% - 32px));
+  width: min(1280px, calc(100% - 32px));
   margin: 0 auto;
   padding: 8px 0 48px;
   gap: 14px;
@@ -88,64 +88,155 @@
   line-height: 1.45;
 }
 
+.heroStatsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 .heroMetric {
   display: grid;
-  min-width: 122px;
+  min-width: 96px;
   align-content: center;
   justify-items: start;
   border: 1px solid var(--ui-30-primary-border);
   border-radius: 8px;
   background: var(--ui-60-surface-soft);
-  padding: 12px;
+  padding: 10px 14px;
 }
 
 .heroMetric strong {
   color: var(--ui-30-ink);
-  font-size: 1.45rem;
+  font-size: 1.25rem;
   font-weight: 900;
   line-height: 1;
 }
 
 .heroMetric span {
-  margin-top: 5px;
+  margin-top: 4px;
   color: var(--ui-30-text);
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 900;
   text-transform: uppercase;
 }
 
-.toolbar {
+.companyTabsBar {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
   align-items: center;
   border-bottom: 1px solid var(--ui-30-border);
   padding-bottom: 12px;
 }
 
-.toolbar input {
-  flex: 1 1 320px;
+.companyTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 140ms ease;
 }
 
-.toolbar input,
-.formGrid input {
-  min-height: 36px;
+.companyTab strong {
+  color: var(--ui-30-ink);
+}
+
+.companyTab span {
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.companyTab:hover {
+  border-color: #8aa4cc;
+  background: var(--ui-60-surface-soft);
+  transform: translateY(-1px);
+}
+
+.companyTab.activeTab {
+  border-color: var(--ui-30-primary);
+  background: var(--ui-30-primary-soft);
+  box-shadow: 0 4px 12px rgba(0, 122, 61, 0.12);
+}
+
+.companyTab.activeTab strong {
+  color: var(--ui-30-primary);
+}
+
+.companyTab.activeTab span {
+  color: var(--ui-30-primary);
+  font-weight: 900;
+}
+
+.filterToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--ui-30-border);
+  padding-bottom: 14px;
+}
+
+.filterControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 540px;
+}
+
+.filterControls input {
+  flex: 2 1 240px;
+  min-width: 200px;
+}
+
+.filterControls select {
+  flex: 1 1 160px;
+  min-width: 140px;
+}
+
+.buttonActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filterControls input,
+.filterControls select,
+.formGrid input,
+.formGrid select {
+  min-height: 38px;
   border: 1px solid var(--ui-30-border);
   border-radius: 8px;
   background: var(--ui-60-surface);
   color: var(--ui-30-ink);
   font: inherit;
-  font-size: 0.8rem;
-  padding: 8px 10px;
+  font-size: 0.82rem;
+  padding: 8px 12px;
   outline: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
 }
 
-.toolbar input:focus,
-.formGrid input:focus {
+.filterControls input:focus,
+.filterControls select:focus,
+.formGrid input:focus,
+.formGrid select:focus {
   border-color: var(--ui-30-primary);
   box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
 }
 
-.toolbar button,
+.buttonActions button,
 .saveButton,
 .cancelButton {
   display: inline-flex;
@@ -230,7 +321,7 @@
   box-shadow: 0 12px 24px rgba(215, 25, 32, 0.24);
 }
 
-.toolbar button:disabled {
+.buttonActions button:disabled {
   border-color: var(--ui-30-border);
   background: var(--ui-60-surface-soft);
   box-shadow: none;
@@ -242,7 +333,7 @@
 
 .editorPanel,
 .tablePanel {
-  padding: 14px 16px 16px 18px;
+  padding: 16px 18px;
 }
 
 .panelHeader {
@@ -250,10 +341,10 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
-.panelHeader p {
+.tableHeaderMeta p {
   margin: 0;
   border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
@@ -262,21 +353,21 @@
   font-size: 0.72rem;
   font-weight: 900;
   line-height: 1;
-  padding: 7px 10px;
+  padding: 7px 11px;
   white-space: nowrap;
 }
 
 .formGrid {
   display: grid;
-  grid-template-columns: 180px repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
 }
 
 .formGrid label {
   display: grid;
   gap: 5px;
   color: var(--ui-30-text);
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   font-weight: 900;
 }
 
@@ -284,9 +375,9 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 14px;
   border-top: 1px solid var(--ui-30-border);
-  padding-top: 12px;
+  padding-top: 14px;
 }
 
 .tableWrap {
@@ -298,14 +389,14 @@
 
 .functionTable {
   width: 100%;
-  min-width: 860px;
+  min-width: 980px;
   border-collapse: collapse;
 }
 
 .functionTable th,
 .functionTable td {
   border-bottom: 1px solid var(--ui-30-border);
-  padding: 11px 12px;
+  padding: 10px 14px;
   text-align: left;
   vertical-align: middle;
 }
@@ -313,19 +404,20 @@
 .functionTable th {
   background: var(--ui-60-surface-soft);
   color: var(--ui-30-muted);
-  font-size: 0.66rem;
+  font-size: 0.68rem;
   font-weight: 900;
   text-transform: uppercase;
 }
 
 .functionTable th:first-child,
 .functionTable td:first-child {
-  width: 72px;
+  width: 60px;
   text-align: center;
 }
 
 .functionTable tbody tr {
   cursor: pointer;
+  transition: background 120ms ease;
 }
 
 .functionTable tbody tr:hover td,
@@ -337,38 +429,73 @@
   box-shadow: inset 3px 0 0 var(--ui-10-accent);
 }
 
-.codePill {
+.companyBadge {
   display: inline-flex;
-  min-width: 86px;
+  align-items: center;
   justify-content: center;
-  border-radius: 999px;
+  border-radius: 6px;
   background: var(--ui-30-primary-soft);
-  color: var(--ui-30-ink);
-  font-size: 0.7rem;
-  font-weight: 900;
-  line-height: 1;
-  padding: 5px 9px;
+  border: 1px solid var(--ui-30-primary-border);
+  color: var(--ui-30-primary);
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
 }
 
-@media (max-width: 760px) {
+.companyBadge strong {
+  font-weight: 900;
+  color: var(--ui-30-primary);
+}
+
+.bilingualCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bilingualCell strong {
+  color: var(--ui-30-ink);
+  font-size: 0.84rem;
+}
+
+.bilingualCell span {
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+}
+
+.emptyCell {
+  text-align: center;
+  padding: 24px !important;
+  color: var(--ui-30-muted);
+}
+
+@media (max-width: 860px) {
   .page {
-    width: min(100% - 28px, 560px);
+    width: min(100% - 24px, 700px);
   }
 
   .hero,
-  .toolbar,
+  .filterToolbar,
   .panelHeader,
   .formGrid {
     grid-template-columns: 1fr;
     display: grid;
   }
 
-  .toolbar input,
-  .toolbar button {
+  .filterControls,
+  .filterControls input,
+  .filterControls select,
+  .buttonActions {
     width: 100%;
+  }
+
+  .buttonActions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .formActions {
     display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

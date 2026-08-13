@@ -826,11 +826,13 @@ export default function TrainingAcceptSurvey() {
   const acceptedParticipants = courseCandidates.filter(
     (candidate) =>
       selectedCourse !== null &&
-      (roleMode === "factory" ? candidate.company === userCompanyCode : true) &&
       (selectedCourse.owner === "factory"
         ? candidate.status === "Factory Approved"
         : candidate.status === "Center Approved"),
   );
+  const remainingSeats = selectedCourse
+    ? Math.max(0, selectedCourse.capacity - acceptedParticipants.length)
+    : 0;
   const activeCourseCandidateIds = new Set(
     courseCandidates
       .filter((candidate) =>
@@ -894,6 +896,34 @@ export default function TrainingAcceptSurvey() {
           candidate.status === "Target" ||
           candidate.status === "Factory Submitted"),
   );
+
+  const handleApproveAll = () => {
+    if (!selectedCourse || approvalQueue.length === 0) {
+      return;
+    }
+
+    markParticipantsChanged();
+    const targetStatus: CandidateStatus =
+      roleMode === "center" ? "Center Approved" : "Factory Approved";
+
+    const approvableCandidateIds = new Set(approvalQueue.map((c) => c.id));
+
+    setCandidates((current) =>
+      current.map((candidate) =>
+        candidate.courseId === selectedCourse.id && approvableCandidateIds.has(candidate.id)
+          ? {
+              ...candidate,
+              status: targetStatus,
+              remark:
+                roleMode === "center"
+                  ? "Approved all candidates by Center."
+                  : "Accepted all candidates by Factory.",
+            }
+          : candidate,
+      ),
+    );
+  };
+
   const submittedToCenterCandidates = isFactorySubmittingToCenter
     ? courseCandidates.filter(
         (candidate) =>
@@ -1233,6 +1263,10 @@ export default function TrainingAcceptSurvey() {
             <strong>{acceptedParticipants.length}</strong>
           </article>
           <article>
+            <span>Remaining Seats</span>
+            <strong>{remainingSeats}</strong>
+          </article>
+          <article>
             <span>Course Type</span>
             <strong>{selectedCourse.courseType}</strong>
           </article>
@@ -1257,72 +1291,74 @@ export default function TrainingAcceptSurvey() {
         </div>
       </section>
 
-      <div className={styles.surveySplit}>
-        <section className={styles.participantPanel}>
-          <div className={styles.workspaceHeader}>
-            <div>
-              <p className={styles.kicker}>Training participants</p>
-              <h3>Course participant list</h3>
-            </div>
-            <div className={styles.participantActions}>
-              <span>{acceptedParticipants.length} / {selectedCourse.capacity} seats</span>
-              <button
-                className={styles.saveParticipantsButton}
-                type="button"
-                disabled={!hasUnsavedParticipants}
-                onClick={handleSaveParticipants}
-              >
-                Save
-              </button>
-              <button
-                className={styles.exportAttendanceButton}
-                type="button"
-                disabled={
-                  !selectedCourse ||
-                  hasUnsavedParticipants ||
-                  isExportingAttendance
-                }
-                title={
-                  !selectedCourse
-                    ? "Select a course first to export."
-                    : hasUnsavedParticipants
-                      ? "Save participant list before exporting."
-                      : "Export participant list to Excel (ATA-F-HD004)"
-                }
-                onClick={() => void handleExportAttendanceSheet()}
-              >
-                {isExportingAttendance
-                  ? "Preparing Excel..."
-                  : "Export Excel"}
-              </button>
-            </div>
+      <section className={styles.participantPanel} style={{ marginBottom: "24px" }}>
+        <div className={styles.workspaceHeader}>
+          <div>
+            <p className={styles.kicker}>Training participants</p>
+            <h3>Course participant list</h3>
           </div>
-          {participantSaveMessage || hasUnsavedParticipants ? (
-            <p className={hasUnsavedParticipants ? styles.unsavedState : styles.savedState} role="status">
-              {hasUnsavedParticipants ? "Unsaved changes" : participantSaveMessage}
-            </p>
-          ) : null}
-          <div className={styles.employeeRows}>
-            {acceptedParticipants.length > 0 ? (
-              <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
-                <span>Action</span>
-                <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
-                  <span>Employee ID</span>
-                  <span>Prefix</span>
-                  <span>First Name</span>
-                  <span>Last Name</span>
-                  <span>Company</span>
-                  <span>Function</span>
-                  <span>Department</span>
-                  <span>Position / Level</span>
-                </div>
+          <div className={styles.participantActions}>
+            <span>{acceptedParticipants.length} / {selectedCourse.capacity} seats ({remainingSeats} remaining)</span>
+            <button
+              className={styles.saveParticipantsButton}
+              type="button"
+              disabled={!hasUnsavedParticipants}
+              onClick={handleSaveParticipants}
+            >
+              Save
+            </button>
+            <button
+              className={styles.exportAttendanceButton}
+              type="button"
+              disabled={
+                !selectedCourse ||
+                hasUnsavedParticipants ||
+                isExportingAttendance
+              }
+              title={
+                !selectedCourse
+                  ? "Select a course first to export."
+                  : hasUnsavedParticipants
+                    ? "Save participant list before exporting."
+                    : "Export participant list to Excel (ATA-F-HD004)"
+              }
+              onClick={() => void handleExportAttendanceSheet()}
+            >
+              {isExportingAttendance
+                ? "Preparing Excel..."
+                : "Export Excel"}
+            </button>
+          </div>
+        </div>
+        {participantSaveMessage || hasUnsavedParticipants ? (
+          <p className={hasUnsavedParticipants ? styles.unsavedState : styles.savedState} role="status">
+            {hasUnsavedParticipants ? "Unsaved changes" : participantSaveMessage}
+          </p>
+        ) : null}
+        <div className={styles.employeeRows}>
+          {acceptedParticipants.length > 0 ? (
+            <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
+              <span>Action</span>
+              <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                <span>Employee ID</span>
+                <span>Prefix</span>
+                <span>First Name</span>
+                <span>Last Name</span>
+                <span>Company</span>
+                <span>Function</span>
+                <span>Department</span>
+                <span>Position / Level</span>
               </div>
-            ) : null}
-            {acceptedParticipants.map((participant) => {
-              const nameProfile = getEmployeeNameProfile(participant);
+            </div>
+          ) : null}
+          {acceptedParticipants.map((participant) => {
+            const nameProfile = getEmployeeNameProfile(participant);
+            const isOwnCompanyParticipant =
+              roleMode === "center" || participant.company === userCompanyCode;
 
-              return (
-                <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={participant.id}>
+            return (
+              <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={participant.id}>
+                {isOwnCompanyParticipant ? (
                   <button
                     className={styles.withdrawButton}
                     type="button"
@@ -1330,31 +1366,143 @@ export default function TrainingAcceptSurvey() {
                   >
                     Withdraw
                   </button>
-                  <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{participant.id}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.prefix}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.firstName}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.lastName}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{participant.company}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={getEmployeeFunctionDisplay(participant)}>
-                      {getEmployeeFunctionDisplay(participant)}
-                    </span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={participant.department || "-"}>
-                      {participant.department || "-"}
-                    </span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
-                      {getEmployeePositionLevelDisplay(participant)}
-                    </span>
-                  </div>
-                </article>
-              );
-            })}
-            {acceptedParticipants.length === 0 ? (
-              <div className={styles.emptyCompact}>No approved participants yet.</div>
-            ) : null}
-          </div>
-        </section>
+                ) : (
+                  <span style={{ fontSize: "0.72rem", color: "#047857", fontWeight: 700, padding: "4px 6px" }}>
+                    Approved ({participant.company})
+                  </span>
+                )}
+                <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{participant.id}</span>
+                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.prefix}</span>
+                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.firstName}</span>
+                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.lastName}</span>
+                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{participant.company}</span>
+                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={getEmployeeFunctionDisplay(participant)}>
+                    {getEmployeeFunctionDisplay(participant)}
+                  </span>
+                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={participant.department || "-"}>
+                    {participant.department || "-"}
+                  </span>
+                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
+                    {getEmployeePositionLevelDisplay(participant)}
+                  </span>
+                </div>
+              </article>
+            );
+          })}
+          {acceptedParticipants.length === 0 ? (
+            <div className={styles.emptyCompact}>No approved participants yet.</div>
+          ) : null}
+        </div>
+      </section>
 
+      {canShowAcceptanceList ? (
+      <section className={styles.workspace} style={{ marginBottom: "24px" }}>
+        <div className={styles.workspaceHeader}>
+          <div>
+            <p className={styles.kicker}>{roleMode === "center" ? "Candidate approval" : "Factory course applicants"}</p>
+            <h3>{roleMode === "center" ? "Employee acceptance list" : "Factory acceptance list"}</h3>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <span>{visibleCandidates.length} shown / {approvalQueue.length} waiting</span>
+            <button
+              className={styles.primaryButton}
+              style={{ background: "#059669", color: "#ffffff", padding: "6px 14px", borderRadius: "6px", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer", border: "none" }}
+              disabled={approvalQueue.length === 0}
+              type="button"
+              onClick={handleApproveAll}
+            >
+              ✓ Approve All ({approvalQueue.length})
+            </button>
+          </div>
+        </div>
+
+        <div className={styles.tableWrap}>
+          <table className={styles.dataTable}>
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Company</th>
+                <th>Position / Level</th>
+                <th>Match</th>
+                <th>Source</th>
+                <th>Status</th>
+                <th>Remark</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleCandidates.map((candidate) => {
+                const isMatched = matchesCourseTarget(candidate);
+                const canApprove =
+                  (canCenterApprove &&
+                    (candidate.status === "Pending Approval" ||
+                      candidate.status === "Factory Approved" ||
+                      candidate.status === "Factory Submitted")) ||
+                  (canFactoryApprove &&
+                    (candidate.status === "Pending Approval" ||
+                      candidate.status === "Target" ||
+                      candidate.status === "Factory Submitted"));
+
+                return (
+                  <tr key={`${candidate.courseId}-${candidate.id}`}>
+                    <td>
+                      <strong>{candidate.name}</strong>
+                      <span>{candidate.id} / {candidate.department}</span>
+                    </td>
+                    <td>{candidate.company}</td>
+                    <td>{candidate.position} / {candidate.level}</td>
+                    <td>
+                      <span className={isMatched ? styles.matchPill : styles.manualPill}>
+                        {isMatched ? "Position + Level" : "Manual add"}
+                      </span>
+                    </td>
+                    <td><span className={`${styles.sourcePill} ${sourceClass[candidate.source]}`}>{candidate.source}</span></td>
+                    <td><span className={`${styles.statusPill} ${statusClass[candidate.status]}`}>{candidate.status}</span></td>
+                    <td>{candidate.remark}</td>
+                    <td className={styles.actionCell}>
+                      <button
+                        className={styles.approveButton}
+                        disabled={!canApprove}
+                        type="button"
+                        onClick={() =>
+                          updateCandidateStatus(
+                            candidate.id,
+                            roleMode === "center" ? "Center Approved" : "Factory Approved",
+                          )
+                        }
+                      >
+                        {roleMode === "center" ? "Approve" : "Accept"}
+                      </button>
+                      <button
+                        className={styles.rejectButton}
+                        disabled={candidate.status === "Rejected"}
+                        type="button"
+                        onClick={() => updateCandidateStatus(candidate.id, "Rejected")}
+                      >
+                        Reject
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {visibleCandidates.length === 0 ? (
+            <div className={styles.emptyState}>
+              <strong>{roleMode === "center" ? "No factory submissions" : "No applicants"}</strong>
+              <span>
+                {roleMode === "center"
+                  ? "Factory submitted employees will appear here before they become training participants."
+                  : "Submitted employees for this factory-owned course will appear here before acceptance."}
+              </span>
+            </div>
+          ) : null}
+        </div>
+      </section>
+      ) : null}
+
+      <div className={styles.surveySplit}>
         <section className={styles.targetPanel}>
           <div className={styles.workspaceHeader}>
             <div>
@@ -1642,101 +1790,6 @@ export default function TrainingAcceptSurvey() {
             ) : null}
           </div>
         </section>
-      ) : null}
-
-      {canShowAcceptanceList ? (
-      <section className={styles.workspace}>
-        <div className={styles.workspaceHeader}>
-          <div>
-            <p className={styles.kicker}>{roleMode === "center" ? "Candidate approval" : "Factory course applicants"}</p>
-            <h3>{roleMode === "center" ? "Employee acceptance list" : "Factory acceptance list"}</h3>
-          </div>
-          <span>{visibleCandidates.length} shown / {approvalQueue.length} waiting</span>
-        </div>
-
-        <div className={styles.tableWrap}>
-          <table className={styles.dataTable}>
-            <thead>
-              <tr>
-                <th>Employee</th>
-                <th>Company</th>
-                <th>Position / Level</th>
-                <th>Match</th>
-                <th>Source</th>
-                <th>Status</th>
-                <th>Remark</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleCandidates.map((candidate) => {
-                const isMatched = matchesCourseTarget(candidate);
-                const canApprove =
-                  (canCenterApprove &&
-                    (candidate.status === "Pending Approval" ||
-                      candidate.status === "Factory Approved" ||
-                      candidate.status === "Factory Submitted")) ||
-                  (canFactoryApprove &&
-                    (candidate.status === "Pending Approval" ||
-                      candidate.status === "Target" ||
-                      candidate.status === "Factory Submitted"));
-
-                return (
-                  <tr key={`${candidate.courseId}-${candidate.id}`}>
-                    <td>
-                      <strong>{candidate.name}</strong>
-                      <span>{candidate.id} / {candidate.department}</span>
-                    </td>
-                    <td>{candidate.company}</td>
-                    <td>{candidate.position} / {candidate.level}</td>
-                    <td>
-                      <span className={isMatched ? styles.matchPill : styles.manualPill}>
-                        {isMatched ? "Position + Level" : "Manual add"}
-                      </span>
-                    </td>
-                    <td><span className={`${styles.sourcePill} ${sourceClass[candidate.source]}`}>{candidate.source}</span></td>
-                    <td><span className={`${styles.statusPill} ${statusClass[candidate.status]}`}>{candidate.status}</span></td>
-                    <td>{candidate.remark}</td>
-                    <td className={styles.actionCell}>
-                      <button
-                        className={styles.approveButton}
-                        disabled={!canApprove}
-                        type="button"
-                        onClick={() =>
-                          updateCandidateStatus(
-                            candidate.id,
-                            roleMode === "center" ? "Center Approved" : "Factory Approved",
-                          )
-                        }
-                      >
-                        {roleMode === "center" ? "Approve" : "Accept"}
-                      </button>
-                      <button
-                        className={styles.rejectButton}
-                        disabled={candidate.status === "Rejected"}
-                        type="button"
-                        onClick={() => updateCandidateStatus(candidate.id, "Rejected")}
-                      >
-                        Reject
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {visibleCandidates.length === 0 ? (
-            <div className={styles.emptyState}>
-              <strong>{roleMode === "center" ? "No factory submissions" : "No applicants"}</strong>
-              <span>
-                {roleMode === "center"
-                  ? "Factory submitted employees will appear here before they become training participants."
-                  : "Submitted employees for this factory-owned course will appear here before acceptance."}
-              </span>
-            </div>
-          ) : null}
-        </div>
-      </section>
       ) : null}
         </>
       ) : (

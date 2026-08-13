@@ -15,6 +15,8 @@ export type { InternalReportDraft };
 export type ReportModuleProps = {
   onPrepareEmail?: (draft: InternalReportDraft) => void;
   preparedDraft?: InternalReportDraft | null;
+  initialYear?: string;
+  initialMonth?: string;
 };
 
 export type ReportModuleTopic = {

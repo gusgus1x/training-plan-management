@@ -83,14 +83,20 @@ const buildEditForm = (plan: RollingPlan): ScheduleEditForm => ({
 
 type ScheduleCalendarProps = {
   onPrepareEmail?: (draft: InternalReportDraft) => void;
+  initialYear?: string;
+  initialMonth?: string;
 };
 
-export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarProps = {}) {
+export default function ScheduleCalendar({
+  onPrepareEmail,
+  initialYear,
+  initialMonth,
+}: ScheduleCalendarProps = {}) {
   const user = useAuthenticatedUser();
   const { language: uiLang } = useUiLanguage();
   const [calendarToday] = useState(getCurrentCalendarDate);
-  const [selectedYear, setSelectedYear] = useState(calendarToday.year);
-  const [selectedMonth, setSelectedMonth] = useState<"all" | string>("all");
+  const [selectedYear, setSelectedYear] = useState(() => initialYear || calendarToday.year);
+  const [selectedMonth, setSelectedMonth] = useState<"all" | string>(() => initialMonth || "all");
   const [expandedTrainingMonth, setExpandedTrainingMonth] = useState("");
   const [expandedOverviewMonth, setExpandedOverviewMonth] = useState("");
   const [expandedOverviewCourse, setExpandedOverviewCourse] = useState("");
@@ -504,16 +510,23 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
           </div>
 
           <div className={styles.calendarGrid}>
-            {weekDays.map((day) => (
-              <div className={styles.calendarWeekHeader} key={day}>{day}</div>
-            ))}
-            {calendarCells.map((cell, index) => (
+            {weekDays.map((day, idx) => (
               <div
-                className={`${styles.calendarDayCell} ${cell.day ? "" : styles.blankDayCell} ${
-                  cell.date === todayDate ? styles.todayDayCell : ""
-                }`}
-                key={`${cell.date || "blank"}-${index}`}
+                className={`${styles.calendarWeekHeader} ${idx === 0 || idx === 6 ? styles.weekendHeader : ""}`}
+                key={day}
               >
+                {day}
+              </div>
+            ))}
+            {calendarCells.map((cell, index) => {
+              const isWeekend = index % 7 === 0 || index % 7 === 6;
+              return (
+                <div
+                  className={`${styles.calendarDayCell} ${cell.day ? "" : styles.blankDayCell} ${
+                    isWeekend ? styles.weekendDayCell : ""
+                  } ${cell.date === todayDate ? styles.todayDayCell : ""}`}
+                  key={`${cell.date || "blank"}-${index}`}
+                >
                 {cell.day ? (
                   <>
                     <span className={styles.dayNumber}>{cell.day}</span>
@@ -531,7 +544,8 @@ export default function ScheduleCalendar({ onPrepareEmail }: ScheduleCalendarPro
                   </>
                 ) : null}
               </div>
-            ))}
+            );
+          })}
           </div>
         </section>
       )}

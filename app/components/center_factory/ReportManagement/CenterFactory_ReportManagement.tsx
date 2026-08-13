@@ -14,6 +14,9 @@ type ReportManagementProps = {
   onBack: () => void;
   onHome: () => void;
   onLogout: () => void;
+  initialModuleTitle?: string;
+  initialYear?: string;
+  initialMonth?: string;
 };
 
 export default function ReportManagement({
@@ -21,9 +24,23 @@ export default function ReportManagement({
   onBack,
   onHome,
   onLogout,
+  initialModuleTitle,
+  initialYear,
+  initialMonth,
 }: ReportManagementProps) {
   const [preparedDraft, setPreparedDraft] = useState<InternalReportDraft | null>(null);
-  const [selectedItem, setSelectedItem] = useState<(typeof centerReportItems)[number] | null>(null);
+  const [selectedItem, setSelectedItem] = useState<(typeof centerReportItems)[number] | null>(
+    () => {
+      if (typeof initialModuleTitle !== "string") {
+        return null;
+      }
+      return (
+        centerReportItems.find(
+          (item) => item.title.toLowerCase() === initialModuleTitle.toLowerCase()
+        ) ?? null
+      );
+    }
+  );
   const SelectedModule = selectedItem?.Component;
   const internalReportItem =
     centerReportItems.find((item) => item.title === internalReportTitle) ?? null;
@@ -93,6 +110,8 @@ export default function ReportManagement({
             isInternalReportLocked ? undefined : handlePrepareEmail
           }
           preparedDraft={selectedItem?.title === internalReportTitle ? preparedDraft : null}
+          initialYear={initialYear}
+          initialMonth={initialMonth}
         />
       ) : (
         <section className={styles.moduleSection} aria-label="Report Management modules">

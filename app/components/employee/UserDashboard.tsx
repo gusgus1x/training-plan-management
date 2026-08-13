@@ -79,6 +79,36 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
     calendarToday.month,
   );
   const [isMonthListOpen, setIsMonthListOpen] = useState(false);
+
+  const handlePrevCalendarMonth = () => {
+    if (selectedCalendarMonth === "all") {
+      setSelectedCalendarMonth("12");
+    } else {
+      const current = Number(selectedCalendarMonth);
+      if (current === 1) {
+        setSelectedCalendarMonth("12");
+        const yearNum = Number(selectedCalendarYear);
+        setSelectedCalendarYear(String(yearNum - 1));
+      } else {
+        setSelectedCalendarMonth(String(current - 1).padStart(2, "0"));
+      }
+    }
+  };
+
+  const handleNextCalendarMonth = () => {
+    if (selectedCalendarMonth === "all") {
+      setSelectedCalendarMonth("01");
+    } else {
+      const current = Number(selectedCalendarMonth);
+      if (current === 12) {
+        setSelectedCalendarMonth("01");
+        const yearNum = Number(selectedCalendarYear);
+        setSelectedCalendarYear(String(yearNum + 1));
+      } else {
+        setSelectedCalendarMonth(String(current + 1).padStart(2, "0"));
+      }
+    }
+  };
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [registrations, setRegistrations] = useState<WorkflowRegistration[]>([]);
   const [completedCourses, setCompletedCourses] = useState<WorkflowCompletedCourse[]>([]);
@@ -314,14 +344,16 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                 <div>
                   <p>Training Schedule</p>
                   <h2>Training Calendar</h2>
-                  <span>{selectedMonthLabel} {selectedCalendarYear} / {filteredCalendarTrainings.length} courses</span>
+                  <span className={styles.monthMetaBadge}>
+                    {selectedMonthLabel} {selectedCalendarYear} • {filteredCalendarTrainings.length} courses
+                  </span>
                 </div>
                 <button
                   className={styles.calendarToggleButton}
                   type="button"
                   onClick={() => setIsMonthListOpen((current) => !current)}
                 >
-                  {isMonthListOpen ? "Hide month list" : "Show month list"}
+                  {isMonthListOpen ? "Hide list" : "Show list"}
                 </button>
               </div>
 
@@ -352,24 +384,37 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
 
               {selectedCalendarMonth === "all" ? null : (
                 <div className={styles.calendarGrid} aria-label={`Training calendar in ${selectedMonthLabel} ${selectedCalendarYear}`}>
-                  {weekDays.map((day) => (
-                    <b key={day}>{day}</b>
+                  {weekDays.map((day, idx) => (
+                    <b key={day} className={idx === 0 ? styles.sunHeader : idx === 6 ? styles.satHeader : undefined}>
+                      {day}
+                    </b>
                   ))}
-                  {calendarDays.map((item, index) => (
-                    <div
-                      className={`${styles.calendarDay} ${item.trainings.length > 0 ? styles.trainingDay : ""} ${isViewingCurrentMonth && item.day === calendarToday.day ? styles.today : ""}`}
-                      key={`${item.day ?? "empty"}-${index}`}
-                    >
-                      {item.day ? (
-                        <>
-                          <span>{item.day}</span>
-                          {item.trainings.map((training) => (
-                            <small key={training.title}>{training.shortName}</small>
-                          ))}
-                        </>
-                      ) : null}
-                    </div>
-                  ))}
+                  {calendarDays.map((item, index) => {
+                    const isWeekend = index % 7 === 0 || index % 7 === 6;
+                    const isToday = isViewingCurrentMonth && item.day === calendarToday.day;
+                    const hasTrainings = item.trainings.length > 0;
+
+                    return (
+                      <div
+                        className={`${styles.calendarDay} ${hasTrainings ? styles.trainingDay : ""} ${isToday ? styles.today : ""} ${isWeekend ? styles.weekendDay : ""}`}
+                        key={`${item.day ?? "empty"}-${index}`}
+                      >
+                        {item.day ? (
+                          <>
+                            <div className={styles.dayCellHeader}>
+                              <span className={styles.dayNum}>{item.day}</span>
+                              {isToday && <small className={styles.todayPill}>TODAY</small>}
+                            </div>
+                            {item.trainings.map((training) => (
+                              <small key={training.title} className={styles.trainingPill} title={training.title}>
+                                {training.shortName}
+                              </small>
+                            ))}
+                          </>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
@@ -377,19 +422,20 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                 <div className={styles.calendarTrainingList}>
                   {filteredCalendarTrainings.map((training) => {
                     const date = new Date(`${training.date}T00:00:00`);
-                    const dateLabel = date.toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "short",
-                    });
+                    const dayNum = date.getDate();
+                    const monthName = date.toLocaleDateString("en-US", { month: "short" });
 
                     return (
-                      <article key={training.title}>
-                        <time dateTime={training.date}>{dateLabel}</time>
-                        <div>
-                          <strong>{training.title}</strong>
-                          <span>{training.time} / {training.place}</span>
+                      <article key={training.title} className={styles.calendarListCard}>
+                        <div className={styles.listDateBox}>
+                          <strong>{dayNum}</strong>
+                          <span>{monthName}</span>
                         </div>
-                        <b>{training.status}</b>
+                        <div className={styles.listCardContent}>
+                          <strong>{training.title}</strong>
+                          <span>🕐 {training.time} • 📍 {training.place}</span>
+                        </div>
+                        <span className={styles.listStatusBadge}>{training.status}</span>
                       </article>
                     );
                   })}

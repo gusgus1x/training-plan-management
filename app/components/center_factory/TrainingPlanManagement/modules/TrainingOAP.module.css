@@ -91,9 +91,96 @@
   white-space: nowrap;
 }
 
+.companyFilterBar {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: var(--ui-60-surface-soft, #f8fafc);
+  border: 1px solid var(--ui-30-border, #e2e8f0);
+  border-radius: 8px;
+}
+
+.companyFilterHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: var(--ui-30-muted, #64748b);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.companyFilterBtnGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.companyFilterBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--ui-30-border, #cbd5e1);
+  border-radius: 999px;
+  background: var(--ui-60-surface, #ffffff);
+  color: var(--ui-30-ink, #1e293b);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.companyFilterBtn:hover {
+  border-color: var(--ui-30-primary, #007a3d);
+  background: var(--ui-30-primary-soft, #ecfdf5);
+  color: var(--ui-30-primary, #007a3d);
+}
+
+.companyFilterBtnActive {
+  border-color: #007a3d !important;
+  background: #007a3d !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(0, 122, 61, 0.25);
+}
+
+.companyCountBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.companyFilterBtnActive .companyCountBadge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.companyBadgeInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border: 1px solid #bfdbfe;
+  margin-left: 4px;
+}
+
 .toolbar {
-  display: grid;
-  grid-template-columns: minmax(280px, 1fr) minmax(180px, 220px) auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   align-items: end;
   margin-bottom: 12px;

@@ -1533,13 +1533,16 @@
   display: flex;
   gap: 8px;
   align-items: center;
-  border: 1px solid var(--ui-30-primary-border);
+  border: 1px solid var(--ui-30-primary-border, #cbd5e1);
   border-radius: 8px;
-  background: var(--ui-60-surface);
-  padding: 10px;
-  color: var(--ui-30-text);
+  background: var(--ui-60-surface, #ffffff);
+  padding: 8px 12px;
+  color: var(--ui-30-text, #1e293b);
   font-size: 0.84rem;
   font-weight: 800;
+  box-shadow: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .standard_checkItem input {
@@ -1554,15 +1557,43 @@
 
 .standard_checkItem.standard_checkItemSelected,
 .standard_checkItem.standard_checkItemSelected:hover {
-  border-color: #22a35a;
-  background: #eaf8ef;
-  box-shadow: inset 0 0 0 1px rgba(34, 163, 90, 0.16);
-  color: #17683b;
+  border: 1px solid #16a34a;
+  background: #ecfdf5;
+  box-shadow: none;
+  color: #064e3b;
+  font-weight: 800;
+}
+
+.standard_checkItem > span:not(.standard_checkMark) {
+  border: none;
+  background: transparent;
+  box-shadow: none;
 }
 
 .standard_checkItemSelected input,
 .standard_checkItemSelected input[type="checkbox"] {
-  accent-color: #168a47;
+  accent-color: #16a34a;
+}
+
+.companyHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.companySummaryBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1px solid #bfdbfe;
 }
 
 .standard_formActions {
@@ -1868,8 +1899,8 @@
 }
 
 .standard_checkItem:hover {
-  border-color: rgba(0, 122, 61, 0.3);
-  background: var(--ui-30-primary-soft);
+  border-color: #94a3b8;
+  background: var(--ui-30-primary-soft, #f8fafc);
 }
 
 .standard_checkItem input {
@@ -1921,29 +1952,32 @@
 
 .standard_checkItem .standard_checkMark {
   display: inline-flex;
-  width: 18px;
-  min-width: 18px;
-  height: 18px;
-  min-height: 18px;
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  min-height: 20px;
   align-items: center;
   justify-content: center;
-  border: 1.5px solid #9aa9ba;
-  border-radius: 4px;
+  border: 2px solid #94a3b8;
+  border-radius: 5px;
   background: #fff;
   color: transparent;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 900;
   line-height: 1;
+  transition: all 0.15s ease-in-out;
 }
 
+.standard_checkItem.standard_checkItemSelected .standard_checkMark,
 .standard_checkItem .standard_nativeCheckbox:checked + .standard_checkMark {
-  border-color: #168a47;
-  background: #fff;
-  color: #168a47;
+  border-color: #16a34a;
+  background: #16a34a;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(22, 163, 74, 0.35);
 }
 
 .standard_checkItem .standard_nativeCheckbox:focus-visible + .standard_checkMark {
-  outline: 2px solid rgba(22, 138, 71, 0.34);
+  outline: 2px solid rgba(22, 163, 74, 0.5);
   outline-offset: 2px;
 }
 
@@ -2383,12 +2417,207 @@
   transform: translateY(-1px);
 }
 
-.standard_toolbar button:disabled {
-  border-color: var(--ui-30-border);
+.standard_companySection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.standard_companyCheckGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* SearchableSelect Combobox with autocomplete guide */
+.searchableSelectContainer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+}
+
+.searchableInputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.searchableInput {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 8px 56px 8px 12px;
+  outline: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.searchableInput:focus {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
+}
+
+.searchableInput:disabled {
   background: var(--ui-60-surface-soft);
-  box-shadow: none;
-  color: #a4afbd;
+  color: var(--ui-30-muted);
   cursor: not-allowed;
-  opacity: 1;
-  transform: none;
+}
+
+.clearSelectBtn {
+  position: absolute;
+  right: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0;
+  transition: all 120ms ease;
+}
+
+.clearSelectBtn:hover {
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
+}
+
+.toggleDropdownBtn {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: var(--ui-30-muted);
+  cursor: pointer;
+  font-size: 0.65rem;
+  padding: 0;
+  transition: color 120ms ease;
+}
+
+.toggleDropdownBtn:hover {
+  color: var(--ui-30-ink);
+}
+
+.toggleDropdownBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  z-index: 1000;
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--ui-30-ink);
+  transition: background 120ms ease;
+}
+
+.dropdownItem:hover {
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-primary);
+}
+
+.dropdownItemSelected {
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  font-weight: 700;
+}
+
+.itemContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.itemContent strong {
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+.itemContent span {
+  font-size: 0.72rem;
+  color: var(--ui-30-muted);
+}
+
+.itemCheck {
+  font-weight: 900;
+  color: var(--ui-30-primary);
+  font-size: 0.82rem;
+}
+
+.noResultsItem {
+  padding: 12px 10px;
+  text-align: center;
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
+}
+
+.classificationWrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+
+.ownerBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+
+.centerOwnerBadge {
+  border: 1px solid var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+}
+
+.factoryOwnerBadge {
+  border: 1px solid rgba(2, 132, 199, 0.3);
+  background: rgba(2, 132, 199, 0.1);
+  color: #0284c7;
 }

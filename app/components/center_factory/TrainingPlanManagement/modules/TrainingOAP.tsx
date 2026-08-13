@@ -108,6 +108,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const [exportingPlanId, setExportingPlanId] = useState("");
   const [exportMessage, setExportMessage] = useState("");
   const [search, setSearch] = useState("");
+  const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | OapStatus>("all");
   const [yearFilter, setYearFilter] = useState<string>("all");
   const [instructors, setInstructors] = useState<InstructorRecord[]>(() =>
@@ -170,34 +171,51 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       window.removeEventListener(TRAINING_MASTER_EVENT, syncInstructorMaster);
   }, []);
 
+  const isFactoryUser = user?.roleCode === "HRD_FACTORY";
+
   const standardCourseIds = useMemo(
     () =>
       new Set(
         standards
-          .filter((standard) =>
-            isWorkflowOwner(
+          .filter((standard) => {
+            if (isFactoryUser && userCompanyCode) {
+              // Factory user: only see standards owned by their own company
+              return (
+                standard.ownerCompany === userCompanyCode ||
+                standard.ownerCompany === "All Companies"
+              );
+            }
+            return isWorkflowOwner(
               standard.owner,
               standard.ownerCompany,
               user?.roleCode,
               userCompanyCode,
-            ),
-          )
+            );
+          })
           .map((standard) => standard.courseId),
       ),
-    [standards, user?.roleCode, userCompanyCode],
+    [standards, user?.roleCode, userCompanyCode, isFactoryUser],
   );
   const courseOptions = useMemo(
     () => {
-      const standardizedCourses = courses.filter(
-        (course) =>
+      const standardizedCourses = courses.filter((course) => {
+        if (isFactoryUser && userCompanyCode) {
+          // Factory user: only show their own company's courses in New OAP dropdown
+          return (
+            standardCourseIds.has(course.id) &&
+            course.ownerCompany === userCompanyCode
+          );
+        }
+        return (
           standardCourseIds.has(course.id) &&
-          isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode),
-      );
+          isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode)
+        );
+      });
       return approvedRequest
         ? [buildRequestCourse(approvedRequest), ...standardizedCourses]
         : standardizedCourses;
     },
-    [approvedRequest, courses, standardCourseIds, user?.roleCode, userCompanyCode],
+    [approvedRequest, courses, standardCourseIds, user?.roleCode, userCompanyCode, isFactoryUser],
   );
   const selectedCourse =
     courseOptions.find((course) => course.courseCode === form.courseCode) ?? null;
@@ -215,11 +233,51 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   }, [selectedCourse, standards]);
   const scopedPlans = useMemo(
     () =>
-      plans.filter((plan) =>
-        isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode),
-      ),
-    [plans, user?.roleCode, userCompanyCode],
+      plans.filter((plan) => {
+        if (isFactoryUser && userCompanyCode) {
+          // Factory users: ONLY see their own company's OAP plans
+          return plan.ownerCompany === userCompanyCode;
+        }
+        return true;
+      }),
+    [plans, userCompanyCode, isFactoryUser],
   );
+
+  const availableCompanies = useMemo(() => {
+    const baseList = ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"];
+    const planCompanies = scopedPlans
+      .map((p) => p.ownerCompany || p.course.ownerCompany)
+      .filter((c): c is string => Boolean(c) && c !== "HRD Center" && c !== "All Companies");
+    const unique = Array.from(new Set([...baseList, ...planCompanies])).sort();
+    return unique;
+  }, [scopedPlans]);
+
+  const centerPlanCount = useMemo(
+    () =>
+      scopedPlans.filter(
+        (p) =>
+          p.owner === "CENTER" ||
+          p.ownerCompany === "HRD Center" ||
+          p.course.owner === "CENTER" ||
+          p.course.ownerCompany === "HRD Center",
+      ).length,
+    [scopedPlans],
+  );
+
+  const getCompanyPlanCount = (comp: string) => {
+    return scopedPlans.filter((plan) => {
+      const planStd = standards.find(
+        (s) => s.courseId === plan.course.id || s.courseCode === plan.course.courseCode,
+      );
+      const stdCompanies = planStd?.companies ?? [];
+      return (
+        plan.ownerCompany === comp ||
+        plan.course.ownerCompany === comp ||
+        plan.provider === comp ||
+        stdCompanies.includes(comp)
+      );
+    }).length;
+  };
 
   const availableYears = useMemo(() => {
     const currentYear = new Date().getFullYear().toString();
@@ -243,6 +301,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             plan.status,
             plan.trainer,
             plan.provider,
+            plan.ownerCompany,
+            plan.course.ownerCompany,
             plan.year ?? (plan.course.updatedAt ? plan.course.updatedAt.slice(0, 4) : "2026"),
           ]
             .join(" ")
@@ -256,8 +316,34 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
           }
           const planYear = plan.year ?? (plan.course.updatedAt ? plan.course.updatedAt.slice(0, 4) : "2026");
           return planYear === yearFilter;
+        })
+        .filter((plan) => {
+          if (isFactoryUser) {
+            return true;
+          }
+          if (companyFilter === "all") {
+            return true;
+          }
+          if (companyFilter === "center" || companyFilter === "HRD Center") {
+            return (
+              plan.owner === "CENTER" ||
+              plan.ownerCompany === "HRD Center" ||
+              plan.course.owner === "CENTER" ||
+              plan.course.ownerCompany === "HRD Center"
+            );
+          }
+          const planStd = standards.find(
+            (s) => s.courseId === plan.course.id || s.courseCode === plan.course.courseCode,
+          );
+          const stdCompanies = planStd?.companies ?? [];
+          return (
+            plan.ownerCompany === companyFilter ||
+            plan.course.ownerCompany === companyFilter ||
+            plan.provider === companyFilter ||
+            stdCompanies.includes(companyFilter)
+          );
         }),
-    [scopedPlans, search, statusFilter, yearFilter],
+    [scopedPlans, search, statusFilter, yearFilter, companyFilter, standards, isFactoryUser],
   );
   const selectedPlan =
     visiblePlans.find((plan) => plan.id === selectedPlanId) ?? null;
@@ -312,8 +398,10 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       createdBy: username,
       status: "Planning",
       year: yearFilter === "all" ? new Date().getFullYear().toString() : yearFilter,
-      owner: selectedCourse.owner,
-      ownerCompany: selectedCourse.ownerCompany ?? "HRD Center",
+      owner: isFactoryUser ? "FACTORY" : selectedCourse.owner,
+      ownerCompany: isFactoryUser
+        ? userCompanyCode || "Factory"
+        : selectedCourse.ownerCompany ?? "HRD Center",
     };
     savePlans([nextPlan, ...plans]);
     setForm(emptyForm);
@@ -412,6 +500,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     setSelectedPlanId("");
     setExportMessage("");
     setSearch("");
+    setCompanyFilter("all");
     setStatusFilter("all");
   };
 
@@ -443,10 +532,96 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
           <span>{visiblePlans.length} shown</span>
         </div>
 
+        {isFactoryUser ? (
+          <div className={styles.companyFilterBar}>
+            <div className={styles.companyFilterHeader}>
+              <span>🏢 ขอบเขตสิทธิ์โรงงาน (Factory Scope)</span>
+            </div>
+            <div className={styles.companyFilterBtnGroup}>
+              <span className={`${styles.companyFilterBtn} ${styles.companyFilterBtnActive}`}>
+                🏢 โรงงานของคุณ ({userCompanyCode || "Factory Scope"})
+                <span className={styles.companyCountBadge}>{scopedPlans.length}</span>
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className={styles.companyFilterBar}>
+            <div className={styles.companyFilterHeader}>
+              <span>🏢 เลือกดูตามบริษัท (Company Filter)</span>
+            </div>
+            <div className={styles.companyFilterBtnGroup}>
+              <button
+                type="button"
+                className={`${styles.companyFilterBtn} ${
+                  companyFilter === "all" ? styles.companyFilterBtnActive : ""
+                }`}
+                onClick={() => setCompanyFilter("all")}
+              >
+                🌐 ทุกบริษัท (All)
+                <span className={styles.companyCountBadge}>{scopedPlans.length}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`${styles.companyFilterBtn} ${
+                  companyFilter === "center" ? styles.companyFilterBtnActive : ""
+                }`}
+                onClick={() => setCompanyFilter("center")}
+              >
+                🏢 ของตัวเอง ({userCompanyCode && userCompanyCode !== "HRD Center" ? userCompanyCode : "Center"})
+                <span className={styles.companyCountBadge}>{centerPlanCount}</span>
+              </button>
+
+              {availableCompanies.map((comp) => {
+                const count = getCompanyPlanCount(comp);
+                return (
+                  <button
+                    key={comp}
+                    type="button"
+                    className={`${styles.companyFilterBtn} ${
+                      companyFilter === comp ? styles.companyFilterBtnActive : ""
+                    }`}
+                    onClick={() => setCompanyFilter(comp)}
+                  >
+                    {comp}
+                    <span className={styles.companyCountBadge}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className={styles.toolbar}>
           <label className={styles.searchBox}>
             <span>Search</span>
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Course, trainer, provider, status" />
+          </label>
+          <label className={styles.filterBox}>
+            <span>Company</span>
+            <select
+              disabled={isFactoryUser}
+              value={isFactoryUser ? (userCompanyCode || "factory") : companyFilter}
+              onChange={(event) => setCompanyFilter(event.target.value)}
+            >
+              {isFactoryUser ? (
+                <option value={userCompanyCode || "factory"}>
+                  {userCompanyCode || "Factory Scope"} (โรงงานของคุณ)
+                </option>
+              ) : (
+                <>
+                  <option value="all">ทุกบริษัท (All Companies)</option>
+                  <option value="center">
+                    ของตัวเอง ({userCompanyCode && userCompanyCode !== "HRD Center" ? userCompanyCode : "Center"})
+                  </option>
+                  {availableCompanies.map((comp) => (
+                    <option key={comp} value={comp}>
+                      {comp}
+                    </option>
+                  ))}
+                </>
+              )}
+            </select>
           </label>
           <label className={styles.filterBox}>
             <span>Year</span>
@@ -659,6 +834,24 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                           : "General / All Functions"}
                       </span>
                     </div>
+                    {selectedCourseStandard?.section ? (
+                      <div className={styles.previewFieldRow}>
+                        <span className={styles.previewFieldLabel}>Section (แผนก)</span>
+                        <span className={styles.previewFieldValue}>{selectedCourseStandard.section}</span>
+                      </div>
+                    ) : null}
+                    {selectedCourseStandard?.department ? (
+                      <div className={styles.previewFieldRow}>
+                        <span className={styles.previewFieldLabel}>Department (ส่วน)</span>
+                        <span className={styles.previewFieldValue}>{selectedCourseStandard.department}</span>
+                      </div>
+                    ) : null}
+                    {selectedCourseStandard?.division ? (
+                      <div className={styles.previewFieldRow}>
+                        <span className={styles.previewFieldLabel}>Division (ฝ่าย)</span>
+                        <span className={styles.previewFieldValue}>{selectedCourseStandard.division}</span>
+                      </div>
+                    ) : null}
                     <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>Positions</span>
                       <span className={styles.previewFieldValue}>
@@ -751,6 +944,10 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                           {getCourseSecondaryName(plan.course)
                             ? ` / ${getCourseSecondaryName(plan.course)}`
                             : ""}
+                          {" · "}
+                          <span className={styles.companyBadgeInline}>
+                            🏢 {plan.ownerCompany || plan.course.ownerCompany || "HRD Center"}
+                          </span>
                         </span>
                       </td>
                       <td>

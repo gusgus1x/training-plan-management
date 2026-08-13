@@ -1,14 +1,17 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
+  TRAINING_WORKFLOW_EVENT,
   TRAINING_WORKFLOW_KEYS,
   getCourseDisplayName,
   isWorkflowOwner,
   readWorkflowCollection,
   writeWorkflowCollection,
+  type WorkflowCourse,
   type WorkflowOapPlan,
   type WorkflowOwner,
+  type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import styles from "./TrainingRolling.module.css";
@@ -24,6 +27,8 @@ export type RollingStatus = "Planning" | "Planned";
 type CourseMasterDetail = {
   code: string;
   name: string;
+  nameTh?: string;
+  nameEn?: string;
   objective: string;
   learningContent: string;
   targetGroup: string;
@@ -65,6 +70,150 @@ export type RollingPlan = OapSource & {
   updatedAt: string;
 };
 
+type SearchableOption = {
+  value: string;
+  label: string;
+  subLabel?: string;
+  searchKey?: string;
+};
+
+function SearchableSelectField({
+  value,
+  placeholder,
+  options,
+  disabled,
+  onChange,
+}: {
+  value: string;
+  placeholder?: string;
+  options: SearchableOption[];
+  disabled?: boolean;
+  onChange: (val: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find((opt) => opt.value === value);
+  const displayValue = selectedOption?.label || value || "";
+
+  const filteredOptions = useMemo(() => {
+    if (!query.trim()) return options;
+    const q = query.trim().toLowerCase();
+    return options.filter((opt) => {
+      const matchLabel = opt.label.toLowerCase().includes(q);
+      const matchSub = opt.subLabel ? opt.subLabel.toLowerCase().includes(q) : false;
+      const matchKey = opt.searchKey ? opt.searchKey.toLowerCase().includes(q) : false;
+      return matchLabel || matchSub || matchKey;
+    });
+  }, [options, query]);
+
+  return (
+    <div className={styles.searchableSelectContainer} ref={containerRef}>
+      <div className={styles.searchableInputWrap}>
+        <input
+          className={styles.searchableInput}
+          type="text"
+          disabled={disabled}
+          placeholder={placeholder || "พิมพ์ค้นหาหลักสูตร (ไทย / English / Code)..."}
+          value={isOpen ? query : displayValue}
+          onFocus={() => {
+            if (!disabled) {
+              setQuery("");
+              setIsOpen(true);
+            }
+          }}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            if (!isOpen) setIsOpen(true);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && filteredOptions.length > 0) {
+              e.preventDefault();
+              const first = filteredOptions[0];
+              onChange(first.value);
+              setIsOpen(false);
+              setQuery("");
+            } else if (e.key === "Escape") {
+              setIsOpen(false);
+            }
+          }}
+        />
+        {value && !disabled ? (
+          <button
+            type="button"
+            className={styles.clearSelectBtn}
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange("");
+              setQuery("");
+              setIsOpen(false);
+            }}
+            title="ล้างค่า"
+          >
+            ✕
+          </button>
+        ) : null}
+        <button
+          type="button"
+          tabIndex={-1}
+          disabled={disabled}
+          className={styles.toggleDropdownBtn}
+          onClick={() => {
+            if (!disabled) {
+              setIsOpen(!isOpen);
+              if (!isOpen) setQuery("");
+            }
+          }}
+        >
+          <span className={styles.arrowIcon}>{isOpen ? "▲" : "▼"}</span>
+        </button>
+      </div>
+
+      {isOpen && !disabled ? (
+        <ul className={styles.dropdownMenu} role="listbox">
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((opt) => {
+              const isSelected = opt.value === value;
+              return (
+                <li
+                  key={opt.value}
+                  className={`${styles.dropdownItem} ${isSelected ? styles.dropdownItemSelected : ""}`}
+                  onClick={() => {
+                    onChange(opt.value);
+                    setIsOpen(false);
+                    setQuery("");
+                  }}
+                >
+                  <div className={styles.itemContent}>
+                    <strong>{opt.label}</strong>
+                    {opt.subLabel ? <span>{opt.subLabel}</span> : null}
+                  </div>
+                  {isSelected ? <span className={styles.itemCheck}>✓</span> : null}
+                </li>
+              );
+            })
+          ) : (
+            <li className={styles.noResultsItem}>
+              ไม่พบหลักสูตรที่ตรงกับ "{query}"
+            </li>
+          )}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 export const rollingCompanyOptions = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
 
 export const getRollingPlanCompanies = (plan: RollingPlan): string[] => {
@@ -84,6 +233,7 @@ export const formatRollingPlanCompanies = (plan: RollingPlan): string => {
     ? "All Companies"
     : selectedCompanies.join(", ");
 };
+
 export const monthOptions = [
   { value: "01", label: "January" },
   { value: "02", label: "February" },
@@ -175,36 +325,128 @@ const mockOapSources: OapSource[] = [
   },
 ];
 
-const legacyInitialRollingPlans: RollingPlan[] = [
+export const initialRollingPlans: RollingPlan[] = [
   {
-    ...mockOapSources[1],
-    rollingId: "rolling-001",
+    rollingId: "rolling-sample-001",
+    scheduleGroupId: "rolling-group-sample-001",
+    id: "oap-sample-001",
     sequence: 1,
-    batch: "1/2026",
-    location: "Training Room A",
-    trainingDate: "2026-07-08",
-    startTime: "09:00",
-    endTime: "12:00",
-    company: "SNF",
-    status: "Planned",
-    updatedAt: "2026-07-01",
-  },
-  {
-    ...mockOapSources[0],
-    rollingId: "rolling-002",
-    sequence: 2,
-    batch: "2/2026",
-    location: "HRD Center",
-    trainingDate: "2026-08-15",
+    course: {
+      code: "QT-001",
+      name: "Quality Control & Standard Inspection (QT-001)",
+      nameTh: "การควบคุมคุณภาพและตรวจสอบมาตรฐาน (QT-001)",
+      nameEn: "Quality Control & Standard Inspection",
+      objective: "Understand quality control principles and inspection standards.",
+      learningContent: "QC tools, inspection procedure, non-conformance reporting.",
+      targetGroup: "Quality / Production / All Factories",
+      methodology: "Classroom & Workshop",
+      preTest: "Pre-test QC",
+      postTest: "Post-test QC",
+      evaluation: "Satisfaction evaluation",
+      evaluationAfter30Day: "30-day follow up",
+      lifeCycleMonth: "12",
+      courseType: "ALL-FACTORIES",
+      courseGroup: "Quality",
+    },
+    participants: "30",
+    hours: "6",
+    budget: "25000",
+    trainer: "Quality Center Master",
+    provider: "HRD Center",
+    owner: "Center HRD",
+    ownerScope: "CENTER",
+    ownerCompany: "HRD Center",
+    batch: "1",
+    location: "Main Auditorium / Hybrid",
+    trainingDate: "2026-08-20",
     startTime: "09:00",
     endTime: "16:00",
-    company: "ATFB",
-    status: "Planning",
-    updatedAt: "2026-07-12",
+    company: "All Companies",
+    relatedCompanies: ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"],
+    status: "Planned",
+    updatedAt: "2026-08-13",
+  },
+  {
+    rollingId: "rolling-sample-002",
+    scheduleGroupId: "rolling-group-sample-002",
+    id: "oap-sample-002",
+    sequence: 2,
+    course: {
+      code: "CRS-001",
+      name: "Leadership Essentials",
+      nameTh: "ทักษะภาวะผู้นำสำหรับหัวหน้างาน",
+      nameEn: "Leadership Essentials",
+      objective: "Develop leadership capability for supervisors and team leaders.",
+      learningContent: "Leader role, delegation, coaching, feedback, team follow-up.",
+      targetGroup: "Supervisor / Section Head / Leader",
+      methodology: "Classroom + Workshop",
+      preTest: "Leadership pre-test",
+      postTest: "Leadership post-test",
+      evaluation: "Course satisfaction survey",
+      evaluationAfter30Day: "Manager follow-up after 30 days",
+      lifeCycleMonth: "24",
+      courseType: "IN-HOUSE",
+      courseGroup: "Management",
+    },
+    participants: "24",
+    hours: "6",
+    budget: "45000",
+    trainer: "Somchai P.",
+    provider: "HRD Center",
+    owner: "Center HRD",
+    ownerScope: "CENTER",
+    ownerCompany: "HRD Center",
+    batch: "1",
+    location: "Training Room A",
+    trainingDate: "2026-08-25",
+    startTime: "09:00",
+    endTime: "16:00",
+    company: "All Companies",
+    relatedCompanies: ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"],
+    status: "Planned",
+    updatedAt: "2026-08-13",
+  },
+  {
+    rollingId: "rolling-sample-003",
+    scheduleGroupId: "rolling-group-sample-003",
+    id: "oap-sample-003",
+    sequence: 3,
+    course: {
+      code: "CRS-022",
+      name: "Safety Basics",
+      nameTh: "ความปลอดภัยในการทำงานพื้นฐาน",
+      nameEn: "Safety Basics",
+      objective: "Ensure employees understand workplace safety rules.",
+      learningContent: "Safety rules, PPE, emergency response, incident reporting.",
+      targetGroup: "All employees",
+      methodology: "Classroom",
+      preTest: "Safety awareness pre-test",
+      postTest: "Safety awareness post-test",
+      evaluation: "Safety course evaluation",
+      evaluationAfter30Day: "Supervisor confirms behavior after 30 days",
+      lifeCycleMonth: "12",
+      courseType: "ATA-TC",
+      courseGroup: "Safety",
+    },
+    participants: "40",
+    hours: "4",
+    budget: "18000",
+    trainer: "Safety Specialist",
+    provider: "ATA Safety Dept",
+    owner: "ATA HRD",
+    ownerScope: "FACTORY",
+    ownerCompany: "ATA",
+    batch: "1",
+    location: "ATA Factory Training Room",
+    trainingDate: "2026-08-28",
+    startTime: "08:30",
+    endTime: "12:30",
+    company: "ATA",
+    relatedCompanies: ["ATA"],
+    status: "Planned",
+    updatedAt: "2026-08-13",
   },
 ];
-
-export const initialRollingPlans: RollingPlan[] = [];
 
 type RollingSessionForm = {
   id: string;
@@ -246,18 +488,59 @@ export const getJobStatus = (trainingDate: string) => {
 export default function TrainingRolling() {
   const user = useAuthenticatedUser();
   const userCompanyCode = profileValue(user?.companyCode);
-  const [oapSources] = useState<OapSource[]>(() =>
-    readWorkflowCollection<WorkflowOapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans)
-      .filter(
-        (plan) =>
-          plan.status === "Planned" &&
-          isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode),
-      )
-      .map<OapSource>((plan) => ({
+  const isFactoryUser = user?.roleCode === "HRD_FACTORY";
+
+  const [courses, setCourses] = useState<WorkflowCourse[]>(() =>
+    readWorkflowCollection<WorkflowCourse>(TRAINING_WORKFLOW_KEYS.courses),
+  );
+  const [standards, setStandards] = useState<WorkflowStandard[]>(() =>
+    readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards),
+  );
+  const [oapPlans, setOapPlans] = useState<WorkflowOapPlan[]>(() =>
+    readWorkflowCollection<WorkflowOapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans),
+  );
+  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>(() => {
+    const loaded = readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans);
+    if (loaded && loaded.length > 0) {
+      return loaded;
+    }
+    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.rollingPlans, initialRollingPlans);
+    return initialRollingPlans;
+  });
+
+  useEffect(() => {
+    const syncData = () => {
+      setCourses(readWorkflowCollection<WorkflowCourse>(TRAINING_WORKFLOW_KEYS.courses));
+      setStandards(readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards));
+      setOapPlans(readWorkflowCollection<WorkflowOapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans));
+      const loaded = readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans);
+      if (loaded && loaded.length > 0) {
+        setRollingPlans(loaded);
+      }
+    };
+    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncData);
+    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncData);
+  }, []);
+
+  const oapSources = useMemo<OapSource[]>(() => {
+    const sourcesMap = new Map<string, OapSource>();
+
+    // 1. OAP plans
+    oapPlans.forEach((plan) => {
+      const isOwner = isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode);
+      if (!isOwner) return;
+      if (isFactoryUser && userCompanyCode) {
+        if (plan.ownerCompany !== userCompanyCode && plan.course.ownerCompany !== userCompanyCode) {
+          return;
+        }
+      }
+      const source: OapSource = {
         id: plan.id,
         course: {
           code: plan.course.courseCode,
           name: getCourseDisplayName(plan.course),
+          nameTh: plan.course.courseNameTh,
+          nameEn: plan.course.courseNameEn,
           objective: plan.course.objective,
           learningContent: plan.course.learningContent,
           targetGroup: plan.course.targetGroup,
@@ -270,19 +553,65 @@ export default function TrainingRolling() {
           courseType: plan.course.courseType,
           courseGroup: plan.course.courseGroup,
         },
-        participants: plan.participants,
-        hours: plan.hours,
-        budget: plan.budget,
-        trainer: plan.trainer,
-        provider: plan.provider,
+        participants: plan.participants || "20",
+        hours: plan.hours || "6",
+        budget: plan.budget || "15000",
+        trainer: plan.trainer || "Pending trainer",
+        provider: plan.provider || "HRD Center",
         owner: plan.createdBy,
         ownerScope: plan.owner,
         ownerCompany: plan.ownerCompany,
-      })),
-  );
-  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>(() =>
-    readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
-  );
+      };
+      sourcesMap.set(plan.course.courseCode, source);
+    });
+
+    // 2. Course Master courses (including QT-001)
+    courses.forEach((course) => {
+      if (sourcesMap.has(course.courseCode)) return;
+      const isOwner = isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode);
+      if (!isOwner) return;
+      if (isFactoryUser && userCompanyCode) {
+        if (course.ownerCompany !== userCompanyCode) return;
+      }
+      const source: OapSource = {
+        id: `course-src-${course.id}`,
+        course: {
+          code: course.courseCode,
+          name: getCourseDisplayName(course),
+          nameTh: course.courseNameTh,
+          nameEn: course.courseNameEn,
+          objective: course.objective,
+          learningContent: course.learningContent,
+          targetGroup: course.targetGroup,
+          methodology: course.methodology,
+          preTest: course.preTest,
+          postTest: course.postTest,
+          evaluation: course.evaluation,
+          evaluationAfter30Day: course.evaluationAfter30Day,
+          lifeCycleMonth: course.lifeCycleMonth,
+          courseType: course.courseType,
+          courseGroup: course.courseGroup,
+        },
+        participants: "20",
+        hours: "6",
+        budget: "15000",
+        trainer: "HRD Trainer",
+        provider: course.ownerCompany || "HRD Center",
+        owner: course.createdBy || "System",
+        ownerScope: course.owner,
+        ownerCompany: course.ownerCompany || "HRD Center",
+      };
+      sourcesMap.set(course.courseCode, source);
+    });
+
+    // 3. Fallback mock sources
+    if (sourcesMap.size === 0) {
+      mockOapSources.forEach((source) => sourcesMap.set(source.course.code, source));
+    }
+
+    return Array.from(sourcesMap.values());
+  }, [oapPlans, courses, user?.roleCode, userCompanyCode, isFactoryUser]);
+
   const [form, setForm] = useState<RollingForm>(createEmptyForm);
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [editingId, setEditingId] = useState("");
@@ -290,28 +619,118 @@ export default function TrainingRolling() {
   const [openDetailId, setOpenDetailId] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [search, setSearch] = useState("");
+  const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [selectedYear, setSelectedYear] = useState("2026");
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | RollingStatus>("all");
   const selectedOap =
     oapSources.find((source) => source.id === form.oapId) ?? null;
+
+  const selectedCourseStandard = useMemo(() => {
+    if (!selectedOap) return null;
+    return (
+      standards.find(
+        (s) =>
+          s.courseId === selectedOap.id ||
+          s.courseCode === selectedOap.course.code ||
+          s.courseName === selectedOap.course.name,
+      ) ?? null
+    );
+  }, [selectedOap, standards]);
+
+  const courseOptions: SearchableOption[] = useMemo(() => {
+    return oapSources.map((source) => {
+      const code = source.course.code;
+      const name = source.course.name;
+      const nameTh = source.course.nameTh || "";
+      const nameEn = source.course.nameEn || "";
+      const group = source.course.courseGroup;
+      const type = source.course.courseType;
+      const target = source.course.targetGroup;
+
+      let subLabel = "";
+      if (nameEn && nameEn !== name) {
+        subLabel = nameEn;
+      } else if (nameTh && nameTh !== name) {
+        subLabel = nameTh;
+      }
+      if (group || type) {
+        subLabel = subLabel ? `${subLabel} • ${group || type}` : `${group || type}`;
+      }
+
+      return {
+        value: source.id,
+        label: `[${code}] ${name}`,
+        subLabel: subLabel || undefined,
+        searchKey: `${code} ${name} ${nameTh} ${nameEn} ${group} ${type} ${target}`.toLowerCase(),
+      };
+    });
+  }, [oapSources]);
+
   const scopedRollingPlans = useMemo(
     () =>
-      rollingPlans.filter((plan) =>
-        isWorkflowOwner(
+      rollingPlans.filter((plan) => {
+        const isOwner = isWorkflowOwner(
           plan.ownerScope ?? (plan.owner === "admin.hrd" ? "CENTER" : "FACTORY"),
           plan.ownerCompany ?? plan.company,
           user?.roleCode,
           userCompanyCode,
-        ),
-      ),
-    [rollingPlans, user?.roleCode, userCompanyCode],
+        );
+        if (!isOwner) return false;
+        if (isFactoryUser && userCompanyCode) {
+          const targetCompanies = getRollingPlanCompanies(plan);
+          return (
+            plan.company === userCompanyCode ||
+            plan.ownerCompany === userCompanyCode ||
+            targetCompanies.includes(userCompanyCode)
+          );
+        }
+        return true;
+      }),
+    [rollingPlans, user?.roleCode, userCompanyCode, isFactoryUser],
   );
+
+  const availableCompanies = useMemo(() => {
+    const baseList = ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"];
+    const planCompanies = scopedRollingPlans
+      .flatMap((p) => [p.company, p.ownerCompany, ...getRollingPlanCompanies(p)])
+      .filter((c): c is string => Boolean(c) && c !== "HRD Center" && c !== "All Companies");
+    const unique = Array.from(new Set([...baseList, ...planCompanies])).sort();
+    return unique;
+  }, [scopedRollingPlans]);
+
+  const centerPlanCount = useMemo(
+    () =>
+      scopedRollingPlans.filter((plan) => {
+        const targetCompanies = getRollingPlanCompanies(plan);
+        return (
+          plan.company === "HRD Center" ||
+          plan.ownerCompany === "HRD Center" ||
+          targetCompanies.includes("HRD Center") ||
+          (plan.ownerScope === "CENTER" &&
+            !targetCompanies.some((c) => rollingCompanyOptions.includes(c as any)))
+        );
+      }).length,
+    [scopedRollingPlans],
+  );
+
+  const getCompanyPlanCount = (comp: string) => {
+    return scopedRollingPlans.filter((plan) => {
+      const targetCompanies = getRollingPlanCompanies(plan);
+      return (
+        plan.company === comp ||
+        plan.ownerCompany === comp ||
+        targetCompanies.includes(comp)
+      );
+    }).length;
+  };
+
   const selectedMonthLabel =
     selectedMonth === "all"
       ? "All Year"
       : monthOptions.find((month) => month.value === selectedMonth)?.label ??
         "Selected month";
+
   const visiblePlans = useMemo(
     () =>
       [...scopedRollingPlans]
@@ -334,9 +753,30 @@ export default function TrainingRolling() {
             .join(" ")
             .toLowerCase()
             .includes(search.toLowerCase()),
-        ),
-    [scopedRollingPlans, search, selectedMonth, selectedYear, statusFilter],
+        )
+        .filter((plan) => {
+          if (companyFilter === "all") {
+            return true;
+          }
+          const targetCompanies = getRollingPlanCompanies(plan);
+          if (companyFilter === "center" || companyFilter === "HRD Center") {
+            return (
+              plan.company === "HRD Center" ||
+              plan.ownerCompany === "HRD Center" ||
+              targetCompanies.includes("HRD Center") ||
+              (plan.ownerScope === "CENTER" &&
+                !targetCompanies.some((c) => rollingCompanyOptions.includes(c as any)))
+            );
+          }
+          return (
+            plan.company === companyFilter ||
+            plan.ownerCompany === companyFilter ||
+            targetCompanies.includes(companyFilter)
+          );
+        }),
+    [scopedRollingPlans, search, selectedMonth, selectedYear, statusFilter, companyFilter],
   );
+
   const visiblePlanGroups = useMemo(() => {
     const groups = new Map<string, RollingPlan[]>();
 
@@ -357,6 +797,7 @@ export default function TrainingRolling() {
       ),
     }));
   }, [visiblePlans]);
+
   const selectedGroup =
     visiblePlanGroups.find((group) => group.id === selectedGroupId) ?? null;
 
@@ -366,7 +807,28 @@ export default function TrainingRolling() {
   };
 
   const updateOap = (value: string) => {
-    setForm((current) => ({ ...current, oapId: value }));
+    const matchedSource = oapSources.find((s) => s.id === value);
+    const standard = standards.find(
+      (s) =>
+        s.courseId === value ||
+        s.courseCode === matchedSource?.course.code ||
+        s.courseName === matchedSource?.course.name,
+    );
+
+    let nextCompanies: string[] = form.relatedCompanies;
+    if (user?.roleCode !== "HRD_FACTORY") {
+      if (standard?.companies?.length) {
+        nextCompanies = standard.companies;
+      } else if (!form.relatedCompanies.length) {
+        nextCompanies = [...rollingCompanyOptions];
+      }
+    }
+
+    setForm((current) => ({
+      ...current,
+      oapId: value,
+      relatedCompanies: nextCompanies,
+    }));
   };
 
   const updateSession = (
@@ -383,13 +845,21 @@ export default function TrainingRolling() {
   };
 
   const addSession = () => {
-    setForm((current) => ({
-      ...current,
-      sessions: [
-        ...current.sessions,
-        createEmptySession(current.sessions.length),
-      ],
-    }));
+    setForm((current) => {
+      const lastSession = current.sessions[current.sessions.length - 1];
+      const nextSession: RollingSessionForm = {
+        id: `session-${Date.now()}-${current.sessions.length}`,
+        batch: lastSession?.batch || "1",
+        location: lastSession?.location || "",
+        trainingDate: "",
+        startTime: lastSession?.startTime || "09:00",
+        endTime: lastSession?.endTime || "16:00",
+      };
+      return {
+        ...current,
+        sessions: [...current.sessions, nextSession],
+      };
+    });
   };
 
   const removeSession = (sessionId: string) => {
@@ -496,6 +966,7 @@ export default function TrainingRolling() {
   };
 
   const handleEdit = (plan: RollingPlan) => {
+    if (!canModifyPlan(plan)) return;
     const matchedOap = oapSources.find((source) => source.course.code === plan.course.code);
     setEditingId(plan.rollingId);
     setEditingPlanIds([plan.rollingId]);
@@ -522,6 +993,7 @@ export default function TrainingRolling() {
     if (!firstPlan) {
       return;
     }
+    if (!canModifyGroup(groupPlans)) return;
 
     const matchedOap = oapSources.find(
       (source) => source.course.code === firstPlan.course.code,
@@ -545,6 +1017,8 @@ export default function TrainingRolling() {
   };
 
   const handleDelete = (rollingId: string) => {
+    const target = rollingPlans.find((p) => p.rollingId === rollingId);
+    if (target && !canModifyPlan(target)) return;
     saveRollingPlans(rollingPlans.filter((plan) => plan.rollingId !== rollingId));
     if (openDetailId === rollingId) {
       setOpenDetailId("");
@@ -561,6 +1035,9 @@ export default function TrainingRolling() {
     setRollingPlans(
       readWorkflowCollection<RollingPlan>(TRAINING_WORKFLOW_KEYS.rollingPlans),
     );
+    setStandards(
+      readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards),
+    );
     setForm(createEmptyForm());
     setIsNewOpen(false);
     setEditingId("");
@@ -568,6 +1045,7 @@ export default function TrainingRolling() {
     setOpenDetailId("");
     setSelectedGroupId("");
     setSearch("");
+    setCompanyFilter("all");
     setSelectedYear("2026");
     setSelectedMonth("all");
     setStatusFilter("all");
@@ -588,7 +1066,24 @@ export default function TrainingRolling() {
     setIsNewOpen(true);
   };
 
+  /** Returns false when a Center user tries to act on a factory-owned plan */
+  const canModifyPlan = (plan: RollingPlan): boolean => {
+    if (user?.roleCode !== "HRD_CENTER") return true;
+    const isFactoryPlan =
+      plan.ownerScope === "FACTORY" ||
+      (plan.ownerCompany !== undefined &&
+        plan.ownerCompany !== "HRD Center" &&
+        plan.ownerCompany !== "All Companies" &&
+        plan.ownerScope !== "CENTER");
+    return !isFactoryPlan;
+  };
+
+  const canModifyGroup = (groupPlans: RollingPlan[]): boolean =>
+    groupPlans.every((plan) => canModifyPlan(plan));
+
   const handleConfirm = (rollingId: string) => {
+    const target = rollingPlans.find((p) => p.rollingId === rollingId);
+    if (target && !canModifyPlan(target)) return;
     saveRollingPlans(
       rollingPlans.map((plan) =>
         plan.rollingId === rollingId ? { ...plan, status: "Planned" } : plan,
@@ -597,6 +1092,7 @@ export default function TrainingRolling() {
   };
 
   const handleConfirmGroup = (groupPlans: RollingPlan[]) => {
+    if (!canModifyGroup(groupPlans)) return;
     const planIds = new Set(groupPlans.map((plan) => plan.rollingId));
     saveRollingPlans(
       rollingPlans.map((plan) =>
@@ -640,7 +1136,93 @@ export default function TrainingRolling() {
           <span>{visiblePlans.length} shown</span>
         </div>
 
+        {isFactoryUser ? (
+          <div className={styles.companyFilterBar}>
+            <div className={styles.companyFilterHeader}>
+              <span>🏢 ขอบเขตสิทธิ์โรงงาน (Factory Scope)</span>
+            </div>
+            <div className={styles.companyFilterBtnGroup}>
+              <span className={`${styles.companyFilterBtn} ${styles.companyFilterBtnActive}`}>
+                🏢 โรงงานของคุณ ({userCompanyCode || "Factory Scope"})
+                <span className={styles.companyCountBadge}>{scopedRollingPlans.length}</span>
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className={styles.companyFilterBar}>
+            <div className={styles.companyFilterHeader}>
+              <span>🏢 เลือกดูตามบริษัท (Company Filter)</span>
+            </div>
+            <div className={styles.companyFilterBtnGroup}>
+              <button
+                type="button"
+                className={`${styles.companyFilterBtn} ${
+                  companyFilter === "all" ? styles.companyFilterBtnActive : ""
+                }`}
+                onClick={() => setCompanyFilter("all")}
+              >
+                🌐 ทุกบริษัท (All)
+                <span className={styles.companyCountBadge}>{scopedRollingPlans.length}</span>
+              </button>
+
+              <button
+                type="button"
+                className={`${styles.companyFilterBtn} ${
+                  companyFilter === "center" ? styles.companyFilterBtnActive : ""
+                }`}
+                onClick={() => setCompanyFilter("center")}
+              >
+                🏢 ของตัวเอง ({userCompanyCode && userCompanyCode !== "HRD Center" ? userCompanyCode : "Center"})
+                <span className={styles.companyCountBadge}>{centerPlanCount}</span>
+              </button>
+
+              {availableCompanies.map((comp) => {
+                const count = getCompanyPlanCount(comp);
+                return (
+                  <button
+                    key={comp}
+                    type="button"
+                    className={`${styles.companyFilterBtn} ${
+                      companyFilter === comp ? styles.companyFilterBtnActive : ""
+                    }`}
+                    onClick={() => setCompanyFilter(comp)}
+                  >
+                    {comp}
+                    <span className={styles.companyCountBadge}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className={styles.toolbar}>
+          <label className={styles.filterBox}>
+            <span>Company</span>
+            <select
+              disabled={isFactoryUser}
+              value={isFactoryUser ? (userCompanyCode || "factory") : companyFilter}
+              onChange={(event) => setCompanyFilter(event.target.value)}
+            >
+              {isFactoryUser ? (
+                <option value={userCompanyCode || "factory"}>
+                  {userCompanyCode || "Factory Scope"} (โรงงานของคุณ)
+                </option>
+              ) : (
+                <>
+                  <option value="all">ทุกบริษัท (All Companies)</option>
+                  <option value="center">
+                    ของตัวเอง ({userCompanyCode && userCompanyCode !== "HRD Center" ? userCompanyCode : "Center"})
+                  </option>
+                  {availableCompanies.map((comp) => (
+                    <option key={comp} value={comp}>
+                      {comp}
+                    </option>
+                  ))}
+                </>
+              )}
+            </select>
+          </label>
           <label className={styles.filterBox}>
             <span>Year</span>
             <select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
@@ -709,21 +1291,17 @@ export default function TrainingRolling() {
               <button className={styles.closeButton} type="button" onClick={() => { setEditingPlanIds([]); setIsNewOpen(false); }}>Close</button>
             </div>
             <div className={styles.formGrid}>
-              <label className={styles.fullField}>
-                <span>Course Name <span className={styles.required}>*</span></span>
-                <select value={form.oapId} onChange={(event) => updateOap(event.target.value)}>
-                  <option value="">Select course first</option>
-                  {oapSources.map((source) => {
-                    const tag = source.course.courseGroup || source.course.courseType;
-                    return (
-                      <option key={source.id} value={source.id}>
-                        [{source.course.code}] {source.course.name}
-                        {tag ? ` • ${tag}` : ""} (Plan: {source.participants} pax, {source.hours} hrs)
-                      </option>
-                    );
-                  })}
-                </select>
-              </label>
+              <div className={styles.fullField}>
+                <span className={styles.fieldLabel}>
+                  Course Name (หลักสูตร) <span className={styles.required}>*</span>
+                </span>
+                <SearchableSelectField
+                  value={form.oapId}
+                  placeholder="พิมพ์ค้นหาหลักสูตร (ไทย / English / Code)..."
+                  options={courseOptions}
+                  onChange={updateOap}
+                />
+              </div>
               <label>Participants<input disabled value={selectedOap?.participants ?? ""} /></label>
               <label>Training Hours<input disabled value={selectedOap?.hours ?? ""} /></label>
               <label>Budget<input disabled value={selectedOap ? Number(selectedOap.budget).toLocaleString("en-US") : ""} /></label>
@@ -903,22 +1481,64 @@ export default function TrainingRolling() {
 
                   <div className={styles.previewCard}>
                     <div className={styles.previewCardHeader}>
-                      <span>👥 Target & Planning Basis</span>
+                      <span>👥 Target & Course Standard</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>Target Group</span>
+                      <span className={styles.previewFieldLabel}>Target Group (Course)</span>
                       <span className={styles.previewFieldValue}>{selectedOap.course.targetGroup || "-"}</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>OAP Target</span>
+                      <span className={styles.previewFieldLabel}>Target Companies</span>
                       <span className={styles.previewFieldValue}>
-                        {selectedOap.participants} participants / {selectedOap.hours} hours
+                        {selectedCourseStandard?.companies?.length
+                          ? selectedCourseStandard.companies.join(", ")
+                          : "All Companies (ทุกบริษัท)"}
                       </span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>OAP Budget</span>
+                      <span className={styles.previewFieldLabel}>Target Function (หน่วยงาน)</span>
                       <span className={styles.previewFieldValue}>
-                        ฿{Number(selectedOap.budget).toLocaleString("en-US")}
+                        {selectedCourseStandard?.functionName || "All Function (ทุกหน่วยงาน)"}
+                      </span>
+                    </div>
+                    {selectedCourseStandard?.section ? (
+                      <div className={styles.previewFieldRow}>
+                        <span className={styles.previewFieldLabel}>Target Section (แผนก)</span>
+                        <span className={styles.previewFieldValue}>{selectedCourseStandard.section}</span>
+                      </div>
+                    ) : null}
+                    {selectedCourseStandard?.department ? (
+                      <div className={styles.previewFieldRow}>
+                        <span className={styles.previewFieldLabel}>Target Department (ส่วน)</span>
+                        <span className={styles.previewFieldValue}>{selectedCourseStandard.department}</span>
+                      </div>
+                    ) : null}
+                    {selectedCourseStandard?.division ? (
+                      <div className={styles.previewFieldRow}>
+                        <span className={styles.previewFieldLabel}>Target Division (ฝ่าย)</span>
+                        <span className={styles.previewFieldValue}>{selectedCourseStandard.division}</span>
+                      </div>
+                    ) : null}
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>Target Positions</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedCourseStandard?.positions?.length
+                          ? selectedCourseStandard.positions.join(", ")
+                          : "All positions in function"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>Target Levels</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedCourseStandard?.levels?.length
+                          ? selectedCourseStandard.levels.join(", ")
+                          : "All levels"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>OAP Target & Budget</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedOap.participants} pax / {selectedOap.hours} hrs · ฿{Number(selectedOap.budget).toLocaleString("en-US")}
                       </span>
                     </div>
                   </div>
@@ -972,7 +1592,7 @@ export default function TrainingRolling() {
                 <th>Status</th>
                 <th>Job Status</th>
                 <th>Actions</th>
-                <th>Training Sessions</th>
+                <th>Batch / Training Dates</th>
                 <th>Company</th>
               </tr>
             </thead>
@@ -1010,7 +1630,23 @@ export default function TrainingRolling() {
                           <span>{group.sequence}</span>
                         </label>
                       </td>
-                      <td><strong>{plan.course.name}</strong><span>{plan.course.code}</span></td>
+                      <td>
+                        <strong>{plan.course.name}</strong>
+                        <span>{plan.course.code}</span>
+                        {plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.owner === "Center HRD" || plan.provider === "HRD Center" ? (
+                          <div>
+                            <span className={styles.creatorBadgeCenter}>
+                              🏢 จัดหลักสูตรโดย HRD Center
+                            </span>
+                          </div>
+                        ) : (
+                          <div>
+                            <span className={styles.creatorBadgeFactory}>
+                              🏬 จัดหลักสูตรโดย {plan.ownerCompany || plan.company}
+                            </span>
+                          </div>
+                        )}
+                      </td>
                       <td>
                         <span className={`${styles.statusPill} ${styles[`status${groupStatus}`]}`}>
                           <span className={styles.statusDot} />
@@ -1025,11 +1661,12 @@ export default function TrainingRolling() {
                           </button>
                           <button
                             className={styles.primaryButton}
-                            disabled={allPublished}
+                            disabled={allPublished || !canModifyGroup(group.plans)}
+                            title={!canModifyGroup(group.plans) ? "ไม่สามารถ Publish แผนของโรงงานได้" : undefined}
                             type="button"
                             onClick={() => handleConfirmGroup(group.plans)}
                           >
-                            {allPublished ? "All published" : "Publish all"}
+                            {allPublished ? "All published" : !canModifyGroup(group.plans) ? "Factory plan" : "Publish all"}
                           </button>
                         </div>
                       </td>
@@ -1073,12 +1710,19 @@ export default function TrainingRolling() {
                               <div><span>Evaluation After 30 Day</span><strong>{plan.course.evaluationAfter30Day}</strong></div>
                               <div><span>Life Cycle (Month)</span><strong>{plan.course.lifeCycleMonth}</strong></div>
                               <div><span>Budget</span><strong>{Number(plan.budget).toLocaleString("en-US")}</strong></div>
-                              <div><span>Related Companies</span><strong>{formatRollingPlanCompanies(plan)}</strong></div>
+                              <div><span>Target Companies</span><strong>{formatRollingPlanCompanies(plan)}</strong></div>
                               <div><span>Participants</span><strong>{plan.participants}</strong></div>
                               <div><span>Training Hours</span><strong>{plan.hours}</strong></div>
                               <div><span>Trainer</span><strong>{plan.trainer}</strong></div>
                               <div><span>Provider</span><strong>{plan.provider}</strong></div>
-                              <div><span>Owner</span><strong>{plan.owner}</strong></div>
+                              <div>
+                                <span>Created By (ผู้จัดอบรม)</span>
+                                <strong>
+                                  {plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.owner === "Center HRD"
+                                    ? `🏢 HRD Center (ส่วนกลางจัดอบรมให้บริษัท ${formatRollingPlanCompanies(plan)})`
+                                    : `🏬 ${plan.ownerCompany || plan.company} (โรงงานจัดอบรมเอง)`}
+                                </strong>
+                              </div>
                               <div><span>Last Updated</span><strong>{plan.updatedAt}</strong></div>
                             </div>
 
@@ -1118,16 +1762,33 @@ export default function TrainingRolling() {
                                     </strong>
                                   </div>
                                   <div className={styles.sessionActions}>
-                                    <button className={styles.detailButton} type="button" onClick={() => handleEdit(session)}>Edit</button>
+                                    <button
+                                      className={styles.detailButton}
+                                      disabled={!canModifyPlan(session)}
+                                      title={!canModifyPlan(session) ? "ไม่สามารถแก้ไขแผนของโรงงานได้" : undefined}
+                                      type="button"
+                                      onClick={() => handleEdit(session)}
+                                    >
+                                      Edit
+                                    </button>
                                     <button
                                       className={styles.primaryButton}
-                                      disabled={session.status === "Planned"}
+                                      disabled={session.status === "Planned" || !canModifyPlan(session)}
+                                      title={!canModifyPlan(session) ? "ไม่สามารถ Publish แผนของโรงงานได้" : undefined}
                                       type="button"
                                       onClick={() => handleConfirm(session.rollingId)}
                                     >
-                                      {session.status === "Planned" ? "Published" : "Publish"}
+                                      {session.status === "Planned" ? "Published" : !canModifyPlan(session) ? "Factory plan" : "Publish"}
                                     </button>
-                                    <button className={styles.dangerButton} type="button" onClick={() => handleDelete(session.rollingId)}>Delete</button>
+                                    <button
+                                      className={styles.dangerButton}
+                                      disabled={!canModifyPlan(session)}
+                                      title={!canModifyPlan(session) ? "ไม่สามารถลบแผนของโรงงานได้" : undefined}
+                                      type="button"
+                                      onClick={() => handleDelete(session.rollingId)}
+                                    >
+                                      Delete
+                                    </button>
                                   </div>
                                 </article>
                               ))}

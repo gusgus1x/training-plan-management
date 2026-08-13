@@ -1,12 +1,9 @@
-
-
-
-
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
   TRAINING_MASTER_KEYS,
+  TRAINING_WORKFLOW_EVENT,
   TRAINING_WORKFLOW_KEYS,
   getCourseDisplayName,
   getCourseSecondaryName,
@@ -27,6 +24,7 @@ import {
 } from "../../../../lib/trainingFormCatalog";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
+import { companyCodes, type CompanyCode } from "../../MasterDataManagement/modules/CompanyData";
 import { defaultCourseGroups } from "../../MasterDataManagement/modules/CourseGroup";
 import { defaultCourseTypes } from "../../MasterDataManagement/modules/CourseType";
 import { defaultFunctionRows } from "../../MasterDataManagement/modules/FunctionData";
@@ -125,6 +123,160 @@ const emptyCourseForm: CourseForm = {
   courseGroup: "",
 };
 
+type SearchableSelectOption = {
+  value: string;
+  label: string;
+  subLabel?: string;
+};
+
+function SearchableSelect({
+  label,
+  value,
+  placeholder,
+  options,
+  disabled,
+  onChange,
+  allOptionLabel = "All",
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  options: SearchableSelectOption[];
+  disabled?: boolean;
+  onChange: (val: string, option?: SearchableSelectOption) => void;
+  allOptionLabel?: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find((opt) => opt.value === value);
+  const displayValue =
+    value === "all" || value === "__ALL__"
+      ? allOptionLabel
+      : selectedOption?.label || value || allOptionLabel;
+
+  const filteredOptions = useMemo(() => {
+    if (!query.trim()) return options;
+    const q = query.trim().toLowerCase();
+    return options.filter(
+      (opt) =>
+        opt.label.toLowerCase().includes(q) ||
+        (opt.subLabel && opt.subLabel.toLowerCase().includes(q)) ||
+        opt.value.toLowerCase().includes(q),
+    );
+  }, [options, query]);
+
+  return (
+    <div className={styles.searchableSelectContainer} ref={containerRef}>
+      <span className={styles.fieldLabel}>{label}</span>
+      <div className={styles.searchableInputWrap}>
+        <input
+          className={styles.searchableInput}
+          type="text"
+          disabled={disabled}
+          placeholder={placeholder || `พิมพ์เพื่อค้นหา ${label}...`}
+          value={isOpen ? query : displayValue}
+          onFocus={() => {
+            if (!disabled) {
+              setQuery("");
+              setIsOpen(true);
+            }
+          }}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            if (!isOpen) setIsOpen(true);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && filteredOptions.length > 0) {
+              e.preventDefault();
+              const first = filteredOptions[0];
+              onChange(first.value, first);
+              setIsOpen(false);
+              setQuery("");
+            } else if (e.key === "Escape") {
+              setIsOpen(false);
+            }
+          }}
+        />
+        {value && value !== "all" && value !== "__ALL__" && !disabled ? (
+          <button
+            type="button"
+            className={styles.clearSelectBtn}
+            onClick={(e) => {
+              e.stopPropagation();
+              const defaultVal = options[0]?.value === "__ALL__" ? "__ALL__" : "all";
+              onChange(defaultVal, options[0]);
+              setQuery("");
+              setIsOpen(false);
+            }}
+            title="ล้างตัวเลือก / Reset"
+          >
+            ✕
+          </button>
+        ) : null}
+        <button
+          type="button"
+          tabIndex={-1}
+          disabled={disabled}
+          className={styles.toggleDropdownBtn}
+          onClick={() => {
+            if (!disabled) {
+              setIsOpen(!isOpen);
+              if (!isOpen) setQuery("");
+            }
+          }}
+        >
+          <span className={styles.arrowIcon}>{isOpen ? "▲" : "▼"}</span>
+        </button>
+      </div>
+
+      {isOpen && !disabled ? (
+        <ul className={styles.dropdownMenu} role="listbox">
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((opt) => {
+              const isSelected = opt.value === value;
+              return (
+                <li
+                  key={opt.value}
+                  className={`${styles.dropdownItem} ${isSelected ? styles.dropdownItemSelected : ""}`}
+                  onClick={() => {
+                    onChange(opt.value, opt);
+                    setIsOpen(false);
+                    setQuery("");
+                  }}
+                >
+                  <div className={styles.itemContent}>
+                    <strong>{opt.label}</strong>
+                    {opt.subLabel && opt.subLabel !== opt.label ? (
+                      <span>{opt.subLabel}</span>
+                    ) : null}
+                  </div>
+                  {isSelected ? <span className={styles.itemCheck}>✓</span> : null}
+                </li>
+              );
+            })
+          ) : (
+            <li className={styles.noResultsItem}>
+              ไม่พบข้อมูลที่ตรงกับ "{query}"
+            </li>
+          )}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 function CourseMaster() {
   const user = useAuthenticatedUser();
   const { language } = useUiLanguage();
@@ -160,8 +312,22 @@ function CourseMaster() {
   const [standards, setStandards] = useState<CourseStandardRecord[]>(() =>
     readWorkflowCollection<CourseStandardRecord>(TRAINING_WORKFLOW_KEYS.standards),
   );
+
+  useEffect(() => {
+    const syncWorkflowData = () => {
+      setCourses(readWorkflowCollection<CourseRecord>(TRAINING_WORKFLOW_KEYS.courses));
+      setStandards(readWorkflowCollection<CourseStandardRecord>(TRAINING_WORKFLOW_KEYS.standards));
+    };
+
+    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflowData);
+    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflowData);
+  }, []);
+  const [standardCompanies, setStandardCompanies] = useState<string[]>(() => [...companyCodes]);
   const [standardFunctionCode, setStandardFunctionCode] = useState(allFunctionCode);
   const [standardFunctionName, setStandardFunctionName] = useState(allFunctionOption);
+  const [standardSection, setStandardSection] = useState("all");
+  const [standardDepartment, setStandardDepartment] = useState("all");
+  const [standardDivision, setStandardDivision] = useState("all");
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   const [functionRows, setFunctionRows] = useState(() =>
@@ -179,13 +345,161 @@ function CourseMaster() {
     language === "th"
       ? row.functionNameTh || row.functionNameEn
       : row.functionNameEn || row.functionNameTh;
-  const functionOptions = [
-    { code: allFunctionCode, name: allFunctionDisplayName },
-    ...functionRows.map((row) => ({
-      code: row.functionCode,
-      name: getLocalizedFunctionName(row),
-    })),
-  ];
+
+  const isAllCompaniesSelected = standardCompanies.length === companyCodes.length;
+
+  const toggleStandardCompany = (comp: string) => {
+    setStandardCompanies((current) => {
+      if (current.includes(comp)) {
+        return current.filter((c) => c !== comp);
+      }
+      return [...current, comp];
+    });
+    setStandardFunctionCode(allFunctionCode);
+    setStandardFunctionName(allFunctionDisplayName);
+    setStandardSection("all");
+    setStandardDepartment("all");
+    setStandardDivision("all");
+  };
+
+  const toggleAllStandardCompanies = () => {
+    setStandardCompanies((current) =>
+      current.length === companyCodes.length ? [] : [...companyCodes],
+    );
+    setStandardFunctionCode(allFunctionCode);
+    setStandardFunctionName(allFunctionDisplayName);
+    setStandardSection("all");
+    setStandardDepartment("all");
+    setStandardDivision("all");
+  };
+
+  const companyFilteredRows = useMemo(() => {
+    if (standardCompanies.length === 0) {
+      return [];
+    }
+    if (standardCompanies.length === companyCodes.length) {
+      return functionRows;
+    }
+    return functionRows.filter((r) => standardCompanies.includes(r.compCode));
+  }, [functionRows, standardCompanies]);
+
+  const distinctFunctions = useMemo(() => {
+    const map = new Map<
+      string,
+      { code: string; nameTh: string; nameEn: string; displayName: string }
+    >();
+    companyFilteredRows.forEach((r) => {
+      const code = r.functionCode || "";
+      const nameTh = r.functionNameTh || "";
+      const nameEn = r.functionNameEn || "";
+      const displayName = language === "th" ? nameTh || nameEn : nameEn || nameTh;
+      if (displayName && !map.has(displayName)) {
+        map.set(displayName, { code, nameTh, nameEn, displayName });
+      }
+    });
+    return Array.from(map.values()).sort((a, b) =>
+      a.displayName.localeCompare(b.displayName, "th"),
+    );
+  }, [companyFilteredRows, language]);
+
+  const functionOptions = useMemo(
+    () => [
+      { code: allFunctionCode, name: allFunctionDisplayName },
+      ...distinctFunctions.map((f) => ({
+        code: f.code,
+        name: f.displayName,
+      })),
+    ],
+    [allFunctionDisplayName, distinctFunctions],
+  );
+
+  const matchingFunctionRows = useMemo(() => {
+    if (standardFunctionCode === allFunctionCode) {
+      return companyFilteredRows;
+    }
+    return companyFilteredRows.filter(
+      (r) =>
+        r.functionCode === standardFunctionCode ||
+        r.functionNameTh === standardFunctionName ||
+        r.functionNameEn === standardFunctionName ||
+        (language === "th"
+          ? r.functionNameTh || r.functionNameEn
+          : r.functionNameEn || r.functionNameTh) === standardFunctionName,
+    );
+  }, [companyFilteredRows, standardFunctionCode, standardFunctionName, language]);
+
+  const availableStandardSections = useMemo(() => {
+    const set = new Set<string>();
+    matchingFunctionRows.forEach((r) => {
+      const val = r.sectionTh || r.sectionEn;
+      if (val) set.add(val);
+    });
+    return Array.from(set).sort();
+  }, [matchingFunctionRows]);
+
+  const availableStandardDepartments = useMemo(() => {
+    const set = new Set<string>();
+    matchingFunctionRows.forEach((r) => {
+      const val = r.departmentTh || r.departmentEn;
+      if (val) set.add(val);
+    });
+    return Array.from(set).sort();
+  }, [matchingFunctionRows]);
+
+  const availableStandardDivisions = useMemo(() => {
+    const set = new Set<string>();
+    matchingFunctionRows.forEach((r) => {
+      const val = r.divisionTh || r.divisionEn;
+      if (val) set.add(val);
+    });
+    return Array.from(set).sort();
+  }, [matchingFunctionRows]);
+
+  const functionSelectOptions: SearchableSelectOption[] = useMemo(
+    () => [
+      { value: allFunctionCode, label: allFunctionDisplayName },
+      ...distinctFunctions.map((f) => ({
+        value: f.code,
+        label: f.displayName,
+        subLabel: f.code && f.code !== f.displayName ? f.code : undefined,
+      })),
+    ],
+    [allFunctionDisplayName, distinctFunctions],
+  );
+
+  const sectionSelectOptions: SearchableSelectOption[] = useMemo(
+    () => [
+      { value: "all", label: "All Sections (ทุกแผนก)" },
+      ...availableStandardSections.map((sec) => ({
+        value: sec,
+        label: sec,
+      })),
+    ],
+    [availableStandardSections],
+  );
+
+  const departmentSelectOptions: SearchableSelectOption[] = useMemo(
+    () => [
+      { value: "all", label: "All Departments (ทุกส่วน)" },
+      ...availableStandardDepartments.map((dept) => ({
+        value: dept,
+        label: dept,
+      })),
+    ],
+    [availableStandardDepartments],
+  );
+
+  const divisionSelectOptions: SearchableSelectOption[] = useMemo(
+    () => [
+      { value: "all", label: "All Divisions (ทุกฝ่าย)" },
+      ...availableStandardDivisions.map((div) => ({
+        value: div,
+        label: div,
+      })),
+    ],
+    [availableStandardDivisions],
+  );
+
   const getFunctionDisplayName = (functionCode?: string, functionName = "") => {
     if (functionCode === allFunctionCode || functionName === allFunctionOption) {
       return allFunctionDisplayName;
@@ -262,9 +576,17 @@ function CourseMaster() {
   const ownerCompany = owner === "CENTER" ? "HRD Center" : userCompanyCode;
   const scopedCourses = useMemo(
     () =>
-      courses.filter((course) =>
-        isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode),
-      ),
+      courses.filter((course) => {
+        if (user?.roleCode === "HRD_FACTORY") {
+          return course.ownerCompany === userCompanyCode;
+        }
+        return (
+          course.owner === "CENTER" ||
+          course.ownerCompany === "HRD Center" ||
+          course.ownerCompany === "All Companies" ||
+          !course.ownerCompany
+        );
+      }),
     [courses, user?.roleCode, userCompanyCode],
   );
   const selectedCourse = scopedCourses.find((course) => course.id === selectedCourseId) ?? null;
@@ -301,8 +623,12 @@ function CourseMaster() {
   };
 
   const resetStandardForm = () => {
+    setStandardCompanies([...companyCodes]);
     setStandardFunctionCode(allFunctionCode);
     setStandardFunctionName(allFunctionDisplayName);
+    setStandardSection("all");
+    setStandardDepartment("all");
+    setStandardDivision("all");
     setSelectedPositions([]);
     setSelectedLevels([]);
   };
@@ -317,6 +643,11 @@ function CourseMaster() {
       return;
     }
 
+    setStandardCompanies(
+      !standard.companies || standard.companies.length === 0 || standard.companies.length === companyCodes.length
+        ? [...companyCodes]
+        : standard.companies,
+    );
     const matchingFunctionOption = functionOptions.find(
       (option) =>
         option.code === standard.functionCode ||
@@ -337,6 +668,9 @@ function CourseMaster() {
       getFunctionDisplayName(standard.functionCode, standard.functionName) ||
         allFunctionDisplayName,
     );
+    setStandardSection(standard.section || "all");
+    setStandardDepartment(standard.department || "all");
+    setStandardDivision(standard.division || "all");
     setSelectedPositions(
       positionChecklist.filter((position) =>
         standard.positions.some(
@@ -481,9 +815,10 @@ function CourseMaster() {
     const groupId =
       courseGroupOptions.find((group) => group.name === courseGroup)?.groupId ||
       "CRS";
+    const prefix = isFactoryUser && userCompanyCode ? `${userCompanyCode}-${groupId}` : groupId;
     const currentSequence = currentCode.match(/(\d+)$/)?.[1];
     const preferredCode = currentSequence
-      ? `${groupId}-${currentSequence.padStart(3, "0")}`
+      ? `${prefix}-${currentSequence.padStart(3, "0")}`
       : "";
     const codeExists = (courseCode: string) =>
       courses.some(
@@ -502,12 +837,12 @@ function CourseMaster() {
       }
 
       const match = course.courseCode.match(
-        new RegExp(`^${groupId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-(\\d+)$`, "i"),
+        new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-(\\d+)$`, "i"),
       );
       return match ? Math.max(highest, Number(match[1])) : highest;
     }, 0);
 
-    return `${groupId}-${String(highestSequence + 1).padStart(3, "0")}`;
+    return `${prefix}-${String(highestSequence + 1).padStart(3, "0")}`;
   };
 
   const handleCourseGroupChange = (courseGroup: string) => {
@@ -643,8 +978,15 @@ function CourseMaster() {
       courseId: nextCourse.id,
       courseCode: nextCourse.courseCode,
       courseName: getCourseDisplayName(nextCourse),
+      companies:
+        standardCompanies.length === 0 || standardCompanies.length === companyCodes.length
+          ? []
+          : standardCompanies,
       functionCode: standardFunctionCode === allFunctionCode ? "" : standardFunctionCode,
       functionName: resolvedStandardFunctionName,
+      section: standardSection === "all" ? "" : standardSection,
+      department: standardDepartment === "all" ? "" : standardDepartment,
+      division: standardDivision === "all" ? "" : standardDivision,
       positions: selectedPositions,
       levels: selectedLevels,
       owner: nextCourse.owner,
@@ -1052,33 +1394,118 @@ function CourseMaster() {
         <div className={styles.standard_panelHeader}>
           <div>
             <p className={styles.standard_kicker}>Course Standard</p>
-            <h3>Function, Position and Level</h3>
+            <h3>Company, Function, Position and Level</h3>
             <p>Define the training target before saving the course.</p>
           </div>
         </div>
 
-        <div className={styles.standard_formGrid}>
-          <label>
-            Function Name
-            <select
-              value={standardFunctionCode}
-              disabled={!isEditing}
-              onChange={(event) => {
-                const nextCode = event.target.value;
-                setStandardFunctionCode(nextCode);
-                setStandardFunctionName(
-                  functionOptions.find((option) => option.code === nextCode)
-                    ?.name ?? allFunctionOption,
-                );
-              }}
+        <div className={styles.standard_companySection}>
+          <div className={styles.companyHeaderRow}>
+            <span className={styles.fieldLabel}>Company (บริษัทกลุ่มเป้าหมาย)</span>
+            <span className={styles.companySummaryBadge}>
+              {standardCompanies.length === 0
+                ? "กรุณาเลือกอย่างน้อย 1 บริษัท"
+                : isAllCompaniesSelected
+                  ? `ทุกบริษัท (${companyCodes.length} บริษัท - ${distinctFunctions.length} หน่วยงาน)`
+                  : `เลือก ${standardCompanies.length} จาก ${companyCodes.length} บริษัท (${distinctFunctions.length} หน่วยงาน)`}
+            </span>
+          </div>
+          <div className={styles.standard_companyCheckGrid}>
+            <label
+              className={`${styles.standard_checkItem} ${
+                isAllCompaniesSelected ? styles.standard_checkItemSelected : ""
+              }`}
             >
-              {functionOptions.map((option) => (
-                <option key={option.code} value={option.code} translate="no">
-                  {option.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              <input
+                className={styles.standard_nativeCheckbox}
+                checked={isAllCompaniesSelected}
+                disabled={!isEditing}
+                type="checkbox"
+                onChange={toggleAllStandardCompanies}
+              />
+              <span className={styles.standard_checkMark} aria-hidden="true">
+                {isAllCompaniesSelected ? "✓" : ""}
+              </span>
+              <span>All Companies (ทุกบริษัท)</span>
+            </label>
+            {companyCodes.map((comp) => {
+              const isChecked = standardCompanies.includes(comp);
+              return (
+                <label
+                  key={comp}
+                  className={`${styles.standard_checkItem} ${
+                    isChecked ? styles.standard_checkItemSelected : ""
+                  }`}
+                >
+                  <input
+                    className={styles.standard_nativeCheckbox}
+                    checked={isChecked}
+                    disabled={!isEditing}
+                    type="checkbox"
+                    onChange={() => toggleStandardCompany(comp)}
+                  />
+                  <span className={styles.standard_checkMark} aria-hidden="true">
+                    {isChecked ? "✓" : ""}
+                  </span>
+                  <span>{comp}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className={styles.standard_formGrid}>
+          <SearchableSelect
+            label="Function Name (หน่วยงาน)"
+            placeholder="พิมพ์ค้นหาหน่วยงาน เช่น PM, Production..."
+            value={standardFunctionCode}
+            disabled={!isEditing}
+            options={functionSelectOptions}
+            allOptionLabel={allFunctionDisplayName}
+            onChange={(nextCode) => {
+              setStandardFunctionCode(nextCode);
+              const matched = distinctFunctions.find((f) => f.code === nextCode);
+              const nextName =
+                nextCode === allFunctionCode
+                  ? allFunctionOption
+                  : matched?.displayName ?? allFunctionOption;
+              setStandardFunctionName(nextName);
+              // Reset sub-levels to all when switching function
+              setStandardSection("all");
+              setStandardDepartment("all");
+              setStandardDivision("all");
+            }}
+          />
+
+          <SearchableSelect
+            label="Section (แผนก)"
+            placeholder="พิมพ์ค้นหาแผนก เช่น ซ่อม, บัญชี, ผลิต..."
+            value={standardSection}
+            disabled={!isEditing}
+            options={sectionSelectOptions}
+            allOptionLabel="All Sections (ทุกแผนก)"
+            onChange={(nextSec) => setStandardSection(nextSec)}
+          />
+
+          <SearchableSelect
+            label="Department (ส่วน)"
+            placeholder="พิมพ์ค้นหาส่วน เช่น คุณภาพ, จัดซื้อ..."
+            value={standardDepartment}
+            disabled={!isEditing}
+            options={departmentSelectOptions}
+            allOptionLabel="All Departments (ทุกส่วน)"
+            onChange={(nextDept) => setStandardDepartment(nextDept)}
+          />
+
+          <SearchableSelect
+            label="Division (ฝ่าย)"
+            placeholder="พิมพ์ค้นหาฝ่าย เช่น บริหาร, ผลิต..."
+            value={standardDivision}
+            disabled={!isEditing}
+            options={divisionSelectOptions}
+            allOptionLabel="All Divisions (ทุกฝ่าย)"
+            onChange={(nextDiv) => setStandardDivision(nextDiv)}
+          />
         </div>
 
         <div className={styles.standard_checkSection}>
@@ -1240,7 +1667,20 @@ function CourseMaster() {
                       </td>
                       <td>
                         <strong translate="no">{course.courseType}</strong>
-                        <span>{course.courseGroup}</span>
+                        <span className={styles.classificationWrap}>
+                          {course.courseGroup}
+                          {course.ownerCompany ? (
+                            <span
+                              className={`${styles.ownerBadge} ${
+                                course.owner === "CENTER" || course.ownerCompany === "HRD Center"
+                                  ? styles.centerOwnerBadge
+                                  : styles.factoryOwnerBadge
+                              }`}
+                            >
+                              {course.ownerCompany === "HRD Center" ? "🏢 Center" : `🏭 ${course.ownerCompany}`}
+                            </span>
+                          ) : null}
+                        </span>
                       </td>
                       <td>
                         <strong translate={courseStandard ? "no" : undefined}>
@@ -1253,7 +1693,24 @@ function CourseMaster() {
                         </strong>
                         <span>
                           {courseStandard
-                            ? `${courseStandard.positions.length} positions · ${courseStandard.levels.length} levels`
+                            ? [
+                                courseStandard.companies?.length &&
+                                courseStandard.companies.length < companyCodes.length
+                                  ? `บริษัท: ${courseStandard.companies.join(", ")}`
+                                  : "",
+                                courseStandard.section && courseStandard.section !== "all"
+                                  ? `แผนก: ${courseStandard.section}`
+                                  : "",
+                                courseStandard.department && courseStandard.department !== "all"
+                                  ? `ส่วน: ${courseStandard.department}`
+                                  : "",
+                                courseStandard.division && courseStandard.division !== "all"
+                                  ? `ฝ่าย: ${courseStandard.division}`
+                                  : "",
+                                `${courseStandard.positions.length} positions · ${courseStandard.levels.length} levels`,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ")
                             : "No standard"}
                         </span>
                       </td>

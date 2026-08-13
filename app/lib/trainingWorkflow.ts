@@ -57,8 +57,12 @@ export type WorkflowStandard = {
   courseId: string;
   courseCode: string;
   courseName: string;
+  companies?: string[];
   functionCode?: string;
   functionName: string;
+  section?: string;
+  department?: string;
+  division?: string;
   positions: string[];
   levels: string[];
   owner: WorkflowOwner;
@@ -191,6 +195,7 @@ export const TRAINING_WORKFLOW_KEYS = {
 
 export const TRAINING_WORKFLOW_EVENT = "training-workflow-changed";
 export const TRAINING_MASTER_KEYS = {
+  companies: "tpm_master_companies",
   courseTypes: "tpm_master_course_types",
   courseGroups: "tpm_master_course_groups",
   employees: "tpm_master_employees",
@@ -296,15 +301,16 @@ export const isWorkflowOwner = (
   }
 
   if (userRoleCode === "HRD_FACTORY") {
-    if (!ownerCompany || ownerCompany === "All Companies") {
-      return ownerCompany === userCompanyCode || owner === "FACTORY";
+    if (!userCompanyCode) {
+      return true;
     }
-
-    if (owner === "CENTER") {
-      return false;
+    if (ownerCompany === "All Companies") {
+      return true;
     }
-
-    return ownerCompany === userCompanyCode;
+    if (owner === "CENTER" || ownerCompany === "HRD Center") {
+      return true;
+    }
+    return !ownerCompany || ownerCompany === userCompanyCode;
   }
 
   return true;
