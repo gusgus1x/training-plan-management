@@ -1502,6 +1502,84 @@ export default function TrainingAcceptSurvey() {
       </section>
       ) : null}
 
+      {isFactorySubmittingToCenter ? (
+        <section className={styles.submittedPanel}>
+          <div className={styles.workspaceHeader}>
+            <div>
+              <p className={styles.kicker}>Submitted to Center</p>
+              <h3>Factory submitted target employees</h3>
+            </div>
+            <div className={styles.participantActions}>
+              <span>{submittedToCenterCandidates.length} submitted</span>
+              <button
+                className={styles.saveParticipantsButton}
+                type="button"
+                disabled={!hasUnsavedParticipants}
+                onClick={handleSaveParticipants}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+          {participantSaveMessage || hasUnsavedParticipants ? (
+            <p className={hasUnsavedParticipants ? styles.unsavedState : styles.savedState} role="status">
+              {hasUnsavedParticipants ? "Unsaved submitted employees" : participantSaveMessage}
+            </p>
+          ) : null}
+          <div className={styles.employeeRows}>
+            {submittedToCenterCandidates.length > 0 ? (
+              <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
+                <span>Action</span>
+                <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                  <span>Employee ID</span>
+                  <span>Prefix</span>
+                  <span>First Name</span>
+                  <span>Last Name</span>
+                  <span>Company</span>
+                  <span>Function</span>
+                  <span>Department</span>
+                  <span>Position / Level</span>
+                </div>
+              </div>
+            ) : null}
+            {submittedToCenterCandidates.map((candidate) => {
+              const nameProfile = getEmployeeNameProfile(candidate);
+
+              return (
+                <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={candidate.id}>
+                  <button
+                    className={styles.removeSubmittedButton}
+                    type="button"
+                    onClick={() => handleRemoveSubmittedEmployee(candidate.id)}
+                  >
+                    Remove
+                  </button>
+                  <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{candidate.id}</span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.prefix}</span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.firstName}</span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.lastName}</span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{candidate.company}</span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={getEmployeeFunctionDisplay(candidate)}>
+                      {getEmployeeFunctionDisplay(candidate)}
+                    </span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.department || "-"}>
+                      {candidate.department || "-"}
+                    </span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
+                      {getEmployeePositionLevelDisplay(candidate)}
+                    </span>
+                  </div>
+                </article>
+              );
+            })}
+            {submittedToCenterCandidates.length === 0 ? (
+              <div className={styles.emptyCompact}>No employees submitted to Center yet.</div>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
       <div className={styles.surveySplit}>
         <section className={styles.targetPanel}>
           <div className={styles.workspaceHeader}>
@@ -1714,83 +1792,7 @@ export default function TrainingAcceptSurvey() {
         </div>
       </section>
 
-      {isFactorySubmittingToCenter ? (
-        <section className={styles.submittedPanel}>
-          <div className={styles.workspaceHeader}>
-            <div>
-              <p className={styles.kicker}>Submitted to Center</p>
-              <h3>Factory submitted target employees</h3>
-            </div>
-            <div className={styles.participantActions}>
-              <span>{submittedToCenterCandidates.length} submitted</span>
-              <button
-                className={styles.saveParticipantsButton}
-                type="button"
-                disabled={!hasUnsavedParticipants}
-                onClick={handleSaveParticipants}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-          {participantSaveMessage || hasUnsavedParticipants ? (
-            <p className={hasUnsavedParticipants ? styles.unsavedState : styles.savedState} role="status">
-              {hasUnsavedParticipants ? "Unsaved submitted employees" : participantSaveMessage}
-            </p>
-          ) : null}
-          <div className={styles.employeeRows}>
-            {submittedToCenterCandidates.length > 0 ? (
-              <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
-                <span>Action</span>
-                <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
-                  <span>Employee ID</span>
-                  <span>Prefix</span>
-                  <span>First Name</span>
-                  <span>Last Name</span>
-                  <span>Company</span>
-                  <span>Function</span>
-                  <span>Department</span>
-                  <span>Position / Level</span>
-                </div>
-              </div>
-            ) : null}
-            {submittedToCenterCandidates.map((candidate) => {
-              const nameProfile = getEmployeeNameProfile(candidate);
 
-              return (
-                <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={candidate.id}>
-                  <button
-                    className={styles.removeSubmittedButton}
-                    type="button"
-                    onClick={() => handleRemoveSubmittedEmployee(candidate.id)}
-                  >
-                    Remove
-                  </button>
-                  <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{candidate.id}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.prefix}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.firstName}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{nameProfile.lastName}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>{candidate.company}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={getEmployeeFunctionDisplay(candidate)}>
-                      {getEmployeeFunctionDisplay(candidate)}
-                    </span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.department || "-"}>
-                      {candidate.department || "-"}
-                    </span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
-                      {getEmployeePositionLevelDisplay(candidate)}
-                    </span>
-                  </div>
-                </article>
-              );
-            })}
-            {submittedToCenterCandidates.length === 0 ? (
-              <div className={styles.emptyCompact}>No employees submitted to Center yet.</div>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
         </>
       ) : (
         <section className={styles.selectionPrompt}>
