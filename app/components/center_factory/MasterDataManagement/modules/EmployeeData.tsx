@@ -53,6 +53,7 @@ const blank = (companyId = ""): EmployeeInput => ({
 });
 
 const display = (value: string | null) => value || "-";
+const EMPLOYEE_PAGE_SIZE = 100;
 
 export default function EmployeeData() {
   const user = useAuthenticatedUser();
@@ -64,6 +65,7 @@ export default function EmployeeData() {
   const [levels, setLevels] = useState<LevelRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [openCompanies, setOpenCompanies] = useState<string[]>([]);
+  const [companyPage, setCompanyPage] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
   const [companyFilter, setCompanyFilter] = useState("all");
   const [mode, setMode] = useState<"new" | "edit" | null>(null);
@@ -682,6 +684,18 @@ export default function EmployeeData() {
             <div className={styles.companyDirectory}>
               {visibleCompanyGroups.map((companyGroup) => {
                 const isOpen = openCompanies.includes(companyGroup.companyId);
+                const totalPages = Math.max(
+                  1,
+                  Math.ceil(companyGroup.rows.length / EMPLOYEE_PAGE_SIZE),
+                );
+                const page = Math.min(
+                  companyPage[companyGroup.companyId] ?? 1,
+                  totalPages,
+                );
+                const pageRows = companyGroup.rows.slice(
+                  (page - 1) * EMPLOYEE_PAGE_SIZE,
+                  page * EMPLOYEE_PAGE_SIZE,
+                );
                 return (
                   <section
                     className={`${styles.companyGroup} ${isOpen ? styles.openGroup : ""}`}
@@ -725,7 +739,7 @@ export default function EmployeeData() {
                             </tr>
                           </thead>
                           <tbody>
-                            {companyGroup.rows.map((employee, index) => (
+                            {pageRows.map((employee, index) => (
                               <tr
                                 key={employee.employeeId}
                                 className={
@@ -737,7 +751,7 @@ export default function EmployeeData() {
                                   setSelectedId(employee.employeeId);
                                 }}
                               >
-                                <td>{index + 1}</td>
+                                <td>{(page - 1) * EMPLOYEE_PAGE_SIZE + index + 1}</td>
                                 <td>
                                   <span className={styles.companyPill}>
                                     {employee.companyCode}
@@ -768,6 +782,31 @@ export default function EmployeeData() {
                             ))}
                           </tbody>
                         </table>
+                        {totalPages > 1 ? (
+                          <div className={styles.pagination}>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                              (pageNumber) => (
+                                <button
+                                  key={pageNumber}
+                                  type="button"
+                                  className={
+                                    pageNumber === page
+                                      ? styles.paginationButtonActive
+                                      : styles.paginationButton
+                                  }
+                                  onClick={() =>
+                                    setCompanyPage((current) => ({
+                                      ...current,
+                                      [companyGroup.companyId]: pageNumber,
+                                    }))
+                                  }
+                                >
+                                  {pageNumber}
+                                </button>
+                              ),
+                            )}
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                   </section>

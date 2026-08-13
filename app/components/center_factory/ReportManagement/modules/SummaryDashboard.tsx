@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import {
-  TRAINING_WORKFLOW_EVENT,
-  TRAINING_WORKFLOW_KEYS,
-  readWorkflowCollection,
-  type WorkflowCompletedCourse,
-} from "../../../../lib/trainingWorkflow";
+import type { WorkflowCompletedCourse } from "../../../../lib/trainingWorkflow";
 import {
   buildFactoryCenterFunding,
   buildFinanceSummary,
@@ -22,6 +17,8 @@ import {
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
 import { listEnrollments } from "../../../../lib/trainingEnrollment/client";
 import type { EnrollmentRecord } from "../../../../lib/trainingEnrollment/types";
+import { listTrainingRecords } from "../../../../lib/trainingRecord/client";
+import type { TrainingRecordSummary } from "../../../../lib/trainingRecord/types";
 import styles from "./SummaryDashboard.module.css";
 
 export const summaryDashboardModule = {
@@ -78,8 +75,8 @@ const statusLabel = {
 export default function SummaryDashboard() {
   const user = useAuthenticatedUser();
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
-  const [completedCourses, setCompletedCourses] = useState<
-    WorkflowCompletedCourse[]
+  const [trainingRecords, setTrainingRecords] = useState<
+    TrainingRecordSummary[]
   >([]);
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [selectedYear, setSelectedYear] = useState("");
@@ -96,22 +93,51 @@ export default function SummaryDashboard() {
         console.error("Failed to load enrollments", error);
         setEnrollments([]);
       });
+    void listTrainingRecords()
+      .then((result) => setTrainingRecords(result.trainingRecords || []))
+      .catch((error) => {
+        console.error("Failed to load training records", error);
+        setTrainingRecords([]);
+      });
   }, []);
 
-  useEffect(() => {
-    const syncDashboard = () => {
-      setCompletedCourses(
-        readWorkflowCollection<WorkflowCompletedCourse>(
-          TRAINING_WORKFLOW_KEYS.completedCourses,
-        ),
-      );
-    };
+  const completedCourses = useMemo<WorkflowCompletedCourse[]>(
+    () =>
+      trainingRecords.map((record) => {
+        const plan = rollingPlans.find(
+          (candidate) => candidate.rollingId === record.planId,
+        );
 
-    syncDashboard();
-    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncDashboard);
-    return () =>
-      window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncDashboard);
-  }, []);
+        return {
+          id: record.planId,
+          rollingId: record.planId,
+          scheduleGroupId: plan?.scheduleGroupId,
+          code: plan?.course.code ?? "",
+          title: plan?.course.name ?? "",
+          date: plan?.trainingDate ?? "",
+          batch: plan?.batch,
+          company: plan?.company ?? "",
+          relatedCompanies: plan ? getRollingPlanCompanies(plan) : [],
+          owner: plan?.ownerScope ?? "FACTORY",
+          ownerCompany: plan?.ownerCompany,
+          room: plan?.location ?? "",
+          instructor: plan?.trainer ?? "",
+          hours: Number(plan?.hours ?? 0),
+          attendees: record.attendees.map((attendee) => ({
+            id: attendee.enrollmentId,
+            company: attendee.company,
+            employeeCode: attendee.employeeCode,
+            name: attendee.name,
+            department: attendee.department,
+            registered: true,
+            attended: attendee.attended,
+          })),
+          expenses: record.expenses,
+          savedAt: record.savedAt,
+        };
+      }),
+    [rollingPlans, trainingRecords],
+  );
 
   const relevantRollingPlans = useMemo(
     () =>

@@ -31,11 +31,8 @@ describe("Report Management summary dashboard", () => {
       "app/lib/trainingFinanceSummary.ts",
     );
 
-    expect(dashboardSource).toContain(
-      "TRAINING_WORKFLOW_KEYS.completedCourses",
-    );
+    expect(dashboardSource).toContain("listTrainingRecords");
     expect(dashboardSource).toContain("loadWorkflowRollingPlans");
-    expect(dashboardSource).toContain("TRAINING_WORKFLOW_EVENT");
     expect(financeSource).toContain(
       "attendees.filter((attendee) => attendee.attended)",
     );

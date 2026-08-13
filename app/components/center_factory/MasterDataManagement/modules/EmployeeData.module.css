@@ -430,6 +430,32 @@
   color: #10b981;
 }
 
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 14px 14px;
+}
+
+.paginationButton,
+.paginationButtonActive {
+  min-width: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 6px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.paginationButtonActive {
+  background: var(--ui-10-accent);
+  border-color: var(--ui-10-accent);
+  color: #fff;
+}
+
 @media (max-width: 980px) {
   .formGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

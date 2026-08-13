@@ -12,10 +12,13 @@ afterEach(() => {
 describe("employee client", () => {
   it("requests a page size accepted by the shared API pagination", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
-      new Response(JSON.stringify({ ok: true, data: { items: [] } }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      }),
+      new Response(
+        JSON.stringify({
+          ok: true,
+          data: { items: [], pagination: { page: 1, pageSize: 100, totalItems: 0, totalPages: 1 } },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      ),
     );
     vi.stubGlobal("fetch", fetcher);
 
@@ -25,6 +28,25 @@ describe("employee client", () => {
       "/api/master-data/employees?page=1&pageSize=100",
       { credentials: "include", cache: "no-store" },
     );
+  });
+
+  it("fetches every page and concatenates all items", async () => {
+    const pageOf = (page: number, totalPages: number, items: unknown[]) =>
+      new Response(
+        JSON.stringify({ ok: true, data: { items, pagination: { page, pageSize: 100, totalItems: 250, totalPages } } }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(pageOf(1, 3, [{ employeeId: "1" }]))
+      .mockResolvedValueOnce(pageOf(2, 3, [{ employeeId: "2" }]))
+      .mockResolvedValueOnce(pageOf(3, 3, [{ employeeId: "3" }]));
+    vi.stubGlobal("fetch", fetcher);
+
+    const result = await listEmployees();
+
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(result.items.map((item) => item.employeeId)).toEqual(["1", "2", "3"]);
   });
 
   it("uses the dedicated top-level route to reveal a National ID", async () => {

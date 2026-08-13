@@ -1,7 +1,8 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
-import { readEmployeeMasterData } from "../../../../lib/employeeMasterData";
+import { listEmployees } from "../../../../lib/employees/client";
+import type { EmployeeRecord } from "../../../../lib/employees/types";
 import { listTrainingRecords } from "../../../../lib/trainingRecord/client";
 import type { TrainingRecordSummary } from "../../../../lib/trainingRecord/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
@@ -587,9 +588,16 @@ export default function TrainingRecord() {
   const [customCompany, setCustomCompany] = useState("");
   const [customDepartment, setCustomDepartment] = useState("");
   const [addAttendeeMessage, setAddAttendeeMessage] = useState("");
+  const [masterEmployees, setMasterEmployees] = useState<EmployeeRecord[]>([]);
 
   useEffect(() => {
     void loadWorkflowRollingPlans().then(setRollingPlans);
+    void listEmployees()
+      .then((result) => setMasterEmployees(result.items || []))
+      .catch((error) => {
+        console.error("Failed to load employee master", error);
+        setMasterEmployees([]);
+      });
   }, []);
 
   useEffect(() => {
@@ -855,18 +863,17 @@ export default function TrainingRecord() {
       return;
     }
 
-    const masterEmployees = readEmployeeMasterData();
-    const selectedMaster = masterEmployees.find((emp) => emp.empCode === selectedEmpCode);
+    const selectedMaster = masterEmployees.find((emp) => emp.employeeCode === selectedEmpCode);
     const addSequence = selectedCourse.attendees.length + 1;
 
     const empCode =
-      selectedMaster?.empCode ||
+      selectedMaster?.employeeCode ||
       customEmpCode.trim() ||
       `EMP-${String(addSequence).padStart(4, "0")}`;
     const empName = selectedMaster
-      ? `${selectedMaster.titleEn || ""} ${selectedMaster.nameEn || selectedMaster.nameTh} ${selectedMaster.surnameEn || selectedMaster.surnameTh}`.trim()
+      ? `${selectedMaster.titleEn || ""} ${selectedMaster.firstNameEn || selectedMaster.firstNameTh} ${selectedMaster.lastNameEn || selectedMaster.lastNameTh}`.trim()
       : customEmpName.trim() || "New Participant";
-    const company = selectedMaster?.company || customCompany.trim() || selectedCourse.company || "SNF";
+    const company = selectedMaster?.companyCode || customCompany.trim() || selectedCourse.company || "SNF";
     const department = selectedMaster?.functionName || customDepartment.trim() || "General";
 
     const newAttendeeObj: CompletedCourse["attendees"][number] = {
@@ -1160,27 +1167,27 @@ export default function TrainingRecord() {
                       value={selectedEmpCode}
                       onChange={(event) => {
                         setSelectedEmpCode(event.target.value);
-                        const master = readEmployeeMasterData().find(
-                          (employee) => employee.empCode === event.target.value,
+                        const master = masterEmployees.find(
+                          (employee) => employee.employeeCode === event.target.value,
                         );
 
                         if (master) {
-                          setCustomEmpCode(master.empCode);
+                          setCustomEmpCode(master.employeeCode);
                           setCustomEmpName(
                             `${master.titleEn || ""} ${
-                              master.nameEn || master.nameTh
-                            } ${master.surnameEn || master.surnameTh}`.trim(),
+                              master.firstNameEn || master.firstNameTh
+                            } ${master.lastNameEn || master.lastNameTh}`.trim(),
                           );
-                          setCustomCompany(master.company);
-                          setCustomDepartment(master.functionName);
+                          setCustomCompany(master.companyCode);
+                          setCustomDepartment(master.functionName || "");
                         }
                       }}
                     >
                       <option value="">Select Employee (Optional)</option>
-                      {readEmployeeMasterData().map((employee) => (
-                        <option key={employee.id} value={employee.empCode}>
-                          {employee.empCode} / {employee.nameEn || employee.nameTh}{" "}
-                          {employee.surnameEn || employee.surnameTh} / {employee.company} /{" "}
+                      {masterEmployees.map((employee) => (
+                        <option key={employee.employeeId} value={employee.employeeCode}>
+                          {employee.employeeCode} / {employee.firstNameEn || employee.firstNameTh}{" "}
+                          {employee.lastNameEn || employee.lastNameTh} / {employee.companyCode} /{" "}
                           {employee.functionName}
                         </option>
                       ))}
