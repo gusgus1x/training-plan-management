@@ -1151,7 +1151,7 @@ export default function TrainingRecord() {
             <div className={styles.panelHeader}>
               <div>
                 <p className={styles.kicker}>Post-Record Registration</p>
-                <h3>Add Attendee / เพิ่มผู้เข้าร่วม (ส่งคนเพิ่ม)</h3>
+                <h3>Add Attendee</h3>
               </div>
               <button type="button" onClick={() => setIsAddingAttendee(!isAddingAttendee)}>
                 {isAddingAttendee ? "Cancel" : "+ Add Attendee"}

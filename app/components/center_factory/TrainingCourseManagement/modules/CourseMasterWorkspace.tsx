@@ -788,7 +788,7 @@ function CourseMaster() {
           <input
             value={form.courseNameTh}
             disabled={!isEditing}
-            placeholder="Example: หลักสูตรความปลอดภัยพื้นฐาน"
+            placeholder="Example: Basic Safety Course"
             onChange={(event) => updateForm("courseNameTh", event.target.value)}
 
           />
@@ -1154,7 +1154,7 @@ function CourseMaster() {
             type="button"
             onClick={handleSave}
           >
-            บันทึกหลักสูตรและมาตรฐาน / Save Course & Standard
+            Save Course & Standard
           </button>
           <button className={styles.secondaryButton} type="button" onClick={handleClosePanel}>
             Cancel

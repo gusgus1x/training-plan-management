@@ -289,7 +289,7 @@ export default function Navbar({
             ) : null}
             <div className={styles.contextTitle}>
               <span>Current workspace</span>
-              <strong>{contextTitle}</strong>
+              <strong translate="no">{contextTitle}</strong>
             </div>
             {contextItems.length > 0 ? (
               <div className={styles.contextItems}>
@@ -315,7 +315,7 @@ export default function Navbar({
                         🔒
                       </span>
                     ) : null}
-                    {item.title}
+                    <span translate="no">{item.title}</span>
                   </button>
                 ))}
               </div>

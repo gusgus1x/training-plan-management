@@ -306,7 +306,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
           <section className={styles.heroPanel} aria-label="Employee dashboard overview">
             <div className={styles.heroCopy}>
               <span>Employee Training</span>
-              <h1>My Training Dashboard</h1>
+              <h1 translate="no">My Training Dashboard</h1>
               <p>
                 Review your training calendar, register courses, request training needs,
                 and follow your training records.
@@ -357,7 +357,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
               <div className={styles.panelHeader}>
                 <div>
                   <p>Training Schedule</p>
-                  <h2>Training Calendar</h2>
+                  <h2 translate="no">Training Calendar</h2>
                   <span className={styles.monthMetaBadge}>
                     {selectedMonthLabel} {selectedCalendarYear} • {filteredCalendarTrainings.length} courses
                   </span>
@@ -462,7 +462,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
             <div className={styles.panelHeader}>
               <div>
                 <p>User Operation</p>
-                <h2>Select a workspace</h2>
+                <h2 translate="no">Select a workspace</h2>
               </div>
               <span>{moduleCards.length} modules</span>
             </div>
@@ -478,7 +478,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                   <small>{String(index + 1).padStart(2, "0")}</small>
                   <div>
                     <em>{module.eyebrow}</em>
-                    <strong>{module.title}</strong>
+                    <strong translate="no">{module.title}</strong>
                     <span>{module.detail}</span>
                   </div>
                   <b>Open</b>

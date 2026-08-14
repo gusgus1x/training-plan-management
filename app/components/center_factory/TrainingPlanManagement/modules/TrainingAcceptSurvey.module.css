@@ -381,6 +381,113 @@
   cursor: not-allowed;
 }
 
+.employeeSearchBox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: var(--ui-60-surface, #ffffff);
+  border: 1px solid var(--ui-30-border, #e2e8f0);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+}
+
+.companySearchBox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: var(--ui-60-surface-soft, #f8fafc);
+  border: 1px solid var(--ui-30-border, #e2e8f0);
+  border-radius: 8px;
+}
+
+.employeeSearchLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ui-30-ink, #1e293b);
+  font-size: 0.8rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.employeeSearchInput {
+  flex: 1;
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid var(--ui-30-border, #cbd5e1);
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  outline: none;
+  background: var(--ui-60-surface, #ffffff);
+  color: var(--ui-30-ink, #1e293b);
+}
+
+.employeeSearchInput:focus {
+  border-color: var(--ui-30-primary, #007a3d);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.16);
+}
+
+.paginationBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-top: 14px;
+  background: var(--ui-60-surface-soft, #f8fafc);
+  border: 1px solid var(--ui-30-border, #e2e8f0);
+  border-radius: 8px;
+}
+
+.paginationInfo {
+  color: var(--ui-30-muted, #64748b);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.paginationButtons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.paginationBtn {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--ui-30-border, #cbd5e1);
+  border-radius: 6px;
+  background: var(--ui-60-surface, #ffffff);
+  color: var(--ui-30-ink, #1e293b);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.paginationBtn:hover:not(:disabled) {
+  border-color: var(--ui-30-primary, #007a3d);
+  color: var(--ui-30-primary, #007a3d);
+  background: var(--ui-30-primary-soft, #ecfdf5);
+}
+
+.paginationBtnActive {
+  border-color: #007a3d !important;
+  background: #007a3d !important;
+  color: #ffffff !important;
+  font-weight: 800;
+}
+
+.paginationBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .matchPill,
 .manualPill,
 .sourcePill,
@@ -437,6 +544,28 @@
   border: 1px solid rgba(239, 68, 68, 0.4) !important;
   background: rgba(239, 68, 68, 0.16) !important;
   color: #ef4444 !important;
+}
+
+.targetPanelRedBorder {
+  border: 2px solid #ef4444 !important;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.12);
+}
+
+.targetCompanyCardRed {
+  border: 1px solid #fca5a5 !important;
+  border-left: 4px solid #ef4444 !important;
+}
+
+.outTargetPanelAmberBorder {
+  border: 2px solid #f59e0b !important;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.12);
+}
+
+.outTargetCompanyCardAmber {
+  border: 1px solid #fde68a !important;
+  border-left: 4px solid #f59e0b !important;
 }
 
 .emptyState {

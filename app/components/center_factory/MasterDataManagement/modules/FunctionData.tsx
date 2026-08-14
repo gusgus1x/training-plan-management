@@ -410,7 +410,7 @@ export default function FunctionData() {
                   <th>Status</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody translate="no">
                 {visibleRows.map((row, index) => (
                   <tr
                     key={row.functionId}

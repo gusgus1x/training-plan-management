@@ -302,6 +302,7 @@
   width: 100%;
   min-width: 860px;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .functionTable th,
@@ -310,6 +311,8 @@
   padding: 11px 12px;
   text-align: left;
   vertical-align: middle;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .functionTable th {
@@ -317,6 +320,7 @@
   color: var(--ui-30-muted);
   font-size: 0.66rem;
   font-weight: 900;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
@@ -324,6 +328,31 @@
 .functionTable td:first-child {
   width: 72px;
   text-align: center;
+}
+
+.functionTable th:nth-child(2),
+.functionTable td:nth-child(2) {
+  width: 110px;
+}
+
+.functionTable th:nth-child(3),
+.functionTable td:nth-child(3) {
+  width: 230px;
+}
+
+.functionTable th:nth-child(4),
+.functionTable td:nth-child(4) {
+  width: 240px;
+}
+
+.functionTable th:nth-child(5),
+.functionTable td:nth-child(5) {
+  width: 240px;
+}
+
+.functionTable th:nth-child(6),
+.functionTable td:nth-child(6) {
+  width: 240px;
 }
 
 .functionTable tbody tr {

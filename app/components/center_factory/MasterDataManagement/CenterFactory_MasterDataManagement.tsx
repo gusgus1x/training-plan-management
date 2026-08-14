@@ -60,10 +60,10 @@ export default function MasterDataManagement({
         </div>
         <div className={styles.heroPanel}>
           <div>
-            <p className={styles.kicker}>Master Data</p>
-            <h1>{selectedItem ? selectedItem.title : "Master Data Management"}</h1>
+            <p className={styles.kicker} translate="no">Master Data</p>
+            <h1 translate="no">{selectedItem ? selectedItem.title : "Master Data Management"}</h1>
             <p>
-              Maintain course classifications, company, function, position, employee, instructor, level, and mapping data for every training workflow.
+              Maintain course classifications, company, function, position, employee, instructor, institute/provider, level, and mapping data for every training workflow.
             </p>
           </div>
         </div>
@@ -76,7 +76,7 @@ export default function MasterDataManagement({
           <div className={styles.moduleHeader}>
             <div>
               <span>Data Setup</span>
-              <h2>Select a workspace</h2>
+              <h2 translate="no">Select a workspace</h2>
             </div>
             <p>{masterDataItems.length} modules</p>
           </div>
@@ -96,8 +96,8 @@ export default function MasterDataManagement({
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div>
-                  <span className={styles.cardSubtitle}>{item.subtitle}</span>
-                  <h3>{item.title}</h3>
+                  <span className={styles.cardSubtitle} translate="no">{item.subtitle}</span>
+                  <h3 translate="no">{item.title}</h3>
                   <p>{item.description}</p>
                 </div>
                 <strong>Open</strong>

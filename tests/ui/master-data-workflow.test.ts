@@ -29,6 +29,7 @@ describe("Master Data workflow integration", () => {
     expect(workflowSource).toContain('positions: "tpm_master_positions"');
     expect(workflowSource).toContain('levels: "tpm_master_levels"');
     expect(workflowSource).toContain('instructors: "tpm_master_instructors"');
+    expect(workflowSource).toContain('instituteProviders: "tpm_master_institute_providers"');
     expect(workflowSource).toContain("TRAINING_MASTER_EVENT");
 
     const functionSource = readSource(
@@ -143,7 +144,7 @@ describe("Master Data workflow integration", () => {
     expect(surveySource).toContain("normalizeEmployeeLevel(level)");
   });
 
-  it("lets OAP select a master instructor or enter an external name", () => {
+  it("lets OAP select a master instructor or provider or enter a custom name", () => {
     const oapSource = readSource(
       "app/components/center_factory/TrainingPlanManagement/modules/TrainingOAP.tsx",
     );
