@@ -7,6 +7,9 @@ import LevelData, { levelDataModule } from "./LevelData";
 import PositionData, { positionDataModule } from "./PositionData";
 import CourseGroup, { courseGroupModule } from "./CourseGroup";
 import CourseType, { courseTypeModule } from "./CourseType";
+import InstituteProviderData, {
+  instituteProviderDataModule,
+} from "./InstituteProviderData";
 
 export type MasterDataModuleTopic = {
   icon: string;
@@ -26,4 +29,5 @@ export const masterDataItems: readonly MasterDataModuleTopic[] = [
   { ...levelDataModule, icon: "📶", Component: LevelData },
   { ...employeeDataModule, icon: "👥", Component: EmployeeData },
   { ...instructorDataModule, icon: "🧑‍🏫", Component: InstructorData },
+  { ...instituteProviderDataModule, icon: "🏛️", Component: InstituteProviderData },
 ];

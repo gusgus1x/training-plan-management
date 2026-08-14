@@ -203,6 +203,7 @@ export const TRAINING_MASTER_KEYS = {
   positions: "tpm_master_positions",
   levels: "tpm_master_levels",
   instructors: "tpm_master_instructors",
+  instituteProviders: "tpm_master_institute_providers",
 } as const;
 export const TRAINING_MASTER_EVENT = "training-master-changed";
 

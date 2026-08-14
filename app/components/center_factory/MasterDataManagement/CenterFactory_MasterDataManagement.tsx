@@ -62,7 +62,7 @@ export default function MasterDataManagement({
             <p className={styles.kicker} translate="no">Master Data</p>
             <h1 translate="no">{selectedItem ? selectedItem.title : "Master Data Management"}</h1>
             <p>
-              Maintain course classifications, company, function, position, employee, instructor, level, and mapping data for every training workflow.
+              Maintain course classifications, company, function, position, employee, instructor, institute/provider, level, and mapping data for every training workflow.
             </p>
           </div>
         </div>

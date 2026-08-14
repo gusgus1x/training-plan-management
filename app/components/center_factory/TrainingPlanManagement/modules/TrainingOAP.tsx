@@ -25,6 +25,10 @@ import {
   defaultInstructorRows,
   type InstructorRecord,
 } from "../../MasterDataManagement/modules/InstructorData";
+import {
+  defaultInstituteProviderRows,
+  type InstituteProviderRecord,
+} from "../../MasterDataManagement/modules/InstituteProviderData";
 import styles from "./TrainingOAP.module.css";
 
 export const trainingOapModule = {
@@ -119,6 +123,12 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const [instructors, setInstructors] = useState<InstructorRecord[]>(() =>
     readMasterCollection(TRAINING_MASTER_KEYS.instructors, defaultInstructorRows),
   );
+  const [instituteProviders, setInstituteProviders] = useState<InstituteProviderRecord[]>(() =>
+    readMasterCollection(
+      TRAINING_MASTER_KEYS.instituteProviders,
+      defaultInstituteProviderRows,
+    ),
+  );
   const userCompanyCode = profileValue(user?.companyCode);
 
   useEffect(() => {
@@ -174,6 +184,20 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     window.addEventListener(TRAINING_MASTER_EVENT, syncInstructorMaster);
     return () =>
       window.removeEventListener(TRAINING_MASTER_EVENT, syncInstructorMaster);
+  }, []);
+
+  useEffect(() => {
+    const syncInstituteProviderMaster = () =>
+      setInstituteProviders(
+        readMasterCollection(
+          TRAINING_MASTER_KEYS.instituteProviders,
+          defaultInstituteProviderRows,
+        ),
+      );
+
+    window.addEventListener(TRAINING_MASTER_EVENT, syncInstituteProviderMaster);
+    return () =>
+      window.removeEventListener(TRAINING_MASTER_EVENT, syncInstituteProviderMaster);
   }, []);
 
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
@@ -773,11 +797,22 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               <label>
                 Institute / Provider
                 <input
+                  list="institute-provider-master-options"
                   disabled={!selectedCourse}
                   placeholder="Enter provider, e.g. HRD Center or institute name"
                   value={form.provider}
                   onChange={(event) => updateForm("provider", event.target.value)}
                 />
+                <datalist id="institute-provider-master-options">
+                  <option value="HRD Center">HRD Center</option>
+                  {instituteProviders.map((provider) => (
+                    <option key={provider.id} value={provider.name}>
+                      {provider.code !== provider.name
+                        ? `[${provider.code}] ${provider.name}`
+                        : provider.name}
+                    </option>
+                  ))}
+                </datalist>
               </label>
             </div>
             {selectedCourse ? (

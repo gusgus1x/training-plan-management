@@ -22,13 +22,14 @@ describe("Master Data workflow integration", () => {
     expect(trainingCourseModules).not.toContain("courseGroupModule");
   });
 
-  it("persists Function, Position, Level, and Instructor masters", () => {
+  it("persists Function, Position, Level, Instructor, and Institute Provider masters", () => {
     const workflowSource = readSource("app/lib/trainingWorkflow.ts");
 
     expect(workflowSource).toContain('functions: "tpm_master_functions"');
     expect(workflowSource).toContain('positions: "tpm_master_positions"');
     expect(workflowSource).toContain('levels: "tpm_master_levels"');
     expect(workflowSource).toContain('instructors: "tpm_master_instructors"');
+    expect(workflowSource).toContain('instituteProviders: "tpm_master_institute_providers"');
     expect(workflowSource).toContain("TRAINING_MASTER_EVENT");
 
     [
@@ -36,6 +37,7 @@ describe("Master Data workflow integration", () => {
       "PositionData.tsx",
       "LevelData.tsx",
       "InstructorData.tsx",
+      "InstituteProviderData.tsx",
     ].forEach((fileName) => {
       const source = readSource(
         `app/components/center_factory/MasterDataManagement/modules/${fileName}`,
@@ -77,7 +79,7 @@ describe("Master Data workflow integration", () => {
     expect(surveySource).toContain("normalizeEmployeeLevel(level)");
   });
 
-  it("lets OAP select a master instructor or enter an external name", () => {
+  it("lets OAP select a master instructor or provider or enter a custom name", () => {
     const oapSource = readSource(
       "app/components/center_factory/TrainingPlanManagement/modules/TrainingOAP.tsx",
     );
@@ -85,7 +87,9 @@ describe("Master Data workflow integration", () => {
     expect(oapSource).toContain("TRAINING_MASTER_KEYS.instructors");
     expect(oapSource).toContain('list="instructor-master-options"');
     expect(oapSource).toContain('<datalist id="instructor-master-options">');
-    expect(oapSource).toContain("type an external instructor name");
+    expect(oapSource).toContain("TRAINING_MASTER_KEYS.instituteProviders");
+    expect(oapSource).toContain('list="institute-provider-master-options"');
+    expect(oapSource).toContain('<datalist id="institute-provider-master-options">');
   });
 
   it("guides OAP entry inside each field and requires a course first", () => {
