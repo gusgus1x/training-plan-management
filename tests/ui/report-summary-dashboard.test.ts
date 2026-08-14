@@ -14,11 +14,11 @@ describe("Report Management summary dashboard", () => {
     expect(moduleIndex).toContain('from "./SummaryDashboard"');
     expect(
       moduleIndex.indexOf(
-        '{ ...summaryDashboardModule, icon: "📊", Component: SummaryDashboard }',
+        '{ ...withSlug(summaryDashboardModule), icon: "📊", Component: SummaryDashboard }',
       ),
     ).toBeLessThan(
       moduleIndex.indexOf(
-        '{ ...scheduleCalendarModule, icon: "📅", Component: ScheduleCalendar }',
+        '{ ...withSlug(scheduleCalendarModule), icon: "📅", Component: ScheduleCalendar }',
       ),
     );
   });
@@ -93,11 +93,14 @@ describe("Report Management summary dashboard", () => {
       "app/components/center_factory/ReportManagement/CenterFactory_ReportManagement.tsx",
     );
     const navbarSource = readSource("app/components/Navbar.tsx");
+    const sectionNavigationSource = readSource(
+      "app/lib/useSectionNavigation.ts",
+    );
 
     expect(moduleIndex).toContain(
-      '{ ...internalReportModule, icon: "✉️", Component: InternalReport, locked: true }',
+      '{ ...withSlug(internalReportModule), icon: "✉️", Component: InternalReport, locked: true }',
     );
-    expect(managementSource).toContain("if (item.locked)");
+    expect(sectionNavigationSource).toContain("if (item.locked)");
     expect(managementSource).toContain("disabled={item.locked}");
     expect(managementSource).toContain('item.locked ? "Locked" : "Open"');
     expect(managementSource).toContain(

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Noto_Sans_Thai } from "next/font/google";
+import AuthGate from "./components/AuthGate";
 import ThaiUiLocalization from "./components/ThaiUiLocalization";
+import { getServerSessionUser } from "./lib/auth/server-session";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,18 +35,22 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const user = await getServerSessionUser();
+
   return (
     <html
       lang="th"
       className={`${geistSans.variable} ${geistMono.variable} ${notoSansThai.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <ThaiUiLocalization>{children}</ThaiUiLocalization>
+        <ThaiUiLocalization>
+          <AuthGate user={user}>{children}</AuthGate>
+        </ThaiUiLocalization>
       </body>
     </html>
   );

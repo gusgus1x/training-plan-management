@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { withSlug } from "../../../../lib/slug";
 import RequestTrainingNeed, {
   requestTrainingNeedModule,
 } from "./RequestTrainingNeed";
@@ -14,12 +15,13 @@ export type PlanModuleTopic = {
   subtitle: string;
   description: string;
   locked?: boolean;
+  slug: string;
   Component: ComponentType<{ onOpenTrainingOap?: () => void; username?: string }>;
 };
 
 export const planItems: readonly PlanModuleTopic[] = [
-  { ...trainingOapModule, icon: "🗓️", Component: TrainingOAP },
-  { ...trainingRollingModule, icon: "📆", Component: TrainingRolling },
-  { ...requestTrainingNeedModule, icon: "🔒", locked: true, Component: RequestTrainingNeed },
-  { ...trainingAcceptSurveyModule, icon: "☑️", Component: TrainingAcceptSurvey },
+  { ...withSlug(trainingOapModule), icon: "🗓️", Component: TrainingOAP },
+  { ...withSlug(trainingRollingModule), icon: "📆", Component: TrainingRolling },
+  { ...withSlug(requestTrainingNeedModule), icon: "🔒", locked: true, Component: RequestTrainingNeed },
+  { ...withSlug(trainingAcceptSurveyModule), icon: "☑️", Component: TrainingAcceptSurvey },
 ];

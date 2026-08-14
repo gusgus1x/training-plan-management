@@ -5,14 +5,26 @@ const loginPageSource = readFileSync(
   new URL("../../app/components/LoginPage.tsx", import.meta.url),
   "utf8",
 );
-const appSource = readFileSync(
-  new URL("../../app/components/TrainingPlanManagement.tsx", import.meta.url),
+const authGateSource = readFileSync(
+  new URL("../../app/components/AuthGate.tsx", import.meta.url),
+  "utf8",
+);
+const pageSource = readFileSync(
+  new URL("../../app/page.tsx", import.meta.url),
+  "utf8",
+);
+const layoutSource = readFileSync(
+  new URL("../../app/layout.tsx", import.meta.url),
+  "utf8",
+);
+const serverSessionSource = readFileSync(
+  new URL("../../app/lib/auth/server-session.ts", import.meta.url),
   "utf8",
 );
 
 describe("login UI contract", () => {
   it("contains no browser credential storage or leaked server secrets", () => {
-    const authenticationUiSource = `${loginPageSource}\n${appSource}`;
+    const authenticationUiSource = `${loginPageSource}\n${authGateSource}`;
 
     expect(authenticationUiSource).not.toContain("defaultValue=");
     expect(authenticationUiSource).not.toContain("localStorage");
@@ -24,13 +36,11 @@ describe("login UI contract", () => {
 
   it("keeps real login on the API and limits mock preview to development", () => {
     expect(loginPageSource).toContain("Mock UI Preview");
-    expect(appSource).toContain(
-      'process.env.NODE_ENV === "development"',
-    );
-    expect(appSource).toContain('status: "preview"');
-    expect(appSource).toContain("DEVELOPMENT_PREVIEW_USERS");
-    expect(appSource).toContain("No server session");
-    expect(appSource).toContain("loginWithCredentials(username, password)");
+    expect(authGateSource).toContain('process.env.NODE_ENV === "development"');
+    expect(authGateSource).toContain("previewUser");
+    expect(authGateSource).toContain("DEVELOPMENT_PREVIEW_USERS");
+    expect(authGateSource).toContain("No server session");
+    expect(authGateSource).toContain("loginWithCredentials(username, password)");
   });
 
   it("disables form controls while submitting and clears password state", () => {
@@ -39,30 +49,25 @@ describe("login UI contract", () => {
     expect(loginPageSource).toContain("GENERIC_LOGIN_ERROR");
   });
 
-  it("checks the current session and uses server-derived identity", () => {
-    expect(appSource).toContain("getCurrentSession()");
-    expect(appSource).toContain('status: "error"');
-    expect(appSource).toContain("Retry session check");
-    expect(appSource).toContain("username={user.username}");
-    expect(appSource).toContain("logoutCurrentSession()");
+  it("derives identity server-side and signs out through the API", () => {
+    expect(layoutSource).toContain("getServerSessionUser()");
+    expect(serverSessionSource).toContain("verifySessionToken");
+    expect(serverSessionSource).not.toContain("use client");
+    expect(authGateSource).not.toContain("getCurrentSession()");
+    expect(authGateSource).toContain("logoutCurrentSession()");
   });
 
   it("maps employees separately and shares the center/factory application", () => {
-    expect(appSource).toContain('user.roleCode === "EMPLOYEE"');
-    expect(appSource).toContain("<UserDashboard");
-    expect(appSource).toContain("<CenterFactoryDashboard");
-    expect(appSource).not.toContain('user.roleCode === "HRD_FACTORY"');
-    expect(appSource).not.toContain("<FactoryDashboard");
+    expect(pageSource).toContain('user.roleCode === "EMPLOYEE"');
+    expect(pageSource).toContain("<UserDashboard");
+    expect(pageSource).toContain("<CenterFactoryDashboard");
+    expect(pageSource).not.toContain('user.roleCode === "HRD_FACTORY"');
+    expect(pageSource).not.toContain("<FactoryDashboard");
   });
 
   it("preserves mockup page navigation without treating preview as a session", () => {
-    expect(appSource).toContain('setView("training-plan")');
-    expect(appSource).toContain('setView("training-record")');
-    expect(appSource).toContain('setView("training-course")');
-    expect(appSource).toContain('setView("master-data")');
-    expect(appSource).toContain('setView("report")');
-    expect(appSource).not.toContain("setIsLoggedIn");
-    expect(appSource).not.toContain("UserRole");
-    expect(appSource).not.toContain('status: "authenticated", user: DEVELOPMENT_PREVIEW');
+    expect(pageSource).not.toContain("setIsLoggedIn");
+    expect(pageSource).not.toContain("UserRole");
+    expect(pageSource).not.toContain('status: "authenticated", user: DEVELOPMENT_PREVIEW');
   });
 });

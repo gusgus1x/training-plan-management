@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { withSlug } from "../../../../lib/slug";
 import Assessment, { assessmentModule } from "./Assessment";
 import CourseMasterWorkspace, {
   courseMasterWorkspaceModule,
@@ -13,11 +14,12 @@ export type CourseModuleTopic = {
   subtitle: string;
   description: string;
   locked?: boolean;
+  slug: string;
   Component: ComponentType;
 };
 
 export const centerCourseItems: readonly CourseModuleTopic[] = [
-  { ...courseMasterWorkspaceModule, icon: "📘", Component: CourseMasterWorkspace },
-  { ...assessmentModule, icon: "📝", Component: Assessment },
-  { ...evaluationManagementModule, icon: "⭐", Component: EvaluationManagement },
+  { ...withSlug(courseMasterWorkspaceModule), icon: "📘", Component: CourseMasterWorkspace },
+  { ...withSlug(assessmentModule), icon: "📝", Component: Assessment },
+  { ...withSlug(evaluationManagementModule), icon: "⭐", Component: EvaluationManagement },
 ];

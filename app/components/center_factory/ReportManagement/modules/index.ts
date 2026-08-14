@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { withSlug } from "../../../../lib/slug";
 import InternalReport, {
   type InternalReportDraft,
   internalReportModule,
@@ -24,12 +25,13 @@ export type ReportModuleTopic = {
   title: string;
   subtitle: string;
   description: string;
+  slug: string;
   Component: ComponentType<ReportModuleProps>;
   locked?: boolean;
 };
 
 export const centerReportItems: readonly ReportModuleTopic[] = [
-  { ...summaryDashboardModule, icon: "📊", Component: SummaryDashboard },
-  { ...scheduleCalendarModule, icon: "📅", Component: ScheduleCalendar },
-  { ...internalReportModule, icon: "✉️", Component: InternalReport, locked: true },
+  { ...withSlug(summaryDashboardModule), icon: "📊", Component: SummaryDashboard },
+  { ...withSlug(scheduleCalendarModule), icon: "📅", Component: ScheduleCalendar },
+  { ...withSlug(internalReportModule), icon: "✉️", Component: InternalReport, locked: true },
 ];

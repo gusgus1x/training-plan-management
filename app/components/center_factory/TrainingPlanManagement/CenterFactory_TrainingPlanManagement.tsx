@@ -1,34 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthActions } from "../../AuthActionsContext";
+import { useAuthenticatedUser } from "../../AuthenticatedUserContext";
+import { useSectionNavigation } from "../../../lib/useSectionNavigation";
 import Navbar from "../../Navbar";
 import styles from "./CenterFactory_TrainingPlanManagement.module.css";
 import { planItems } from "./modules";
 
 type TrainingPlanManagementProps = {
-  username: string;
-  onBack: () => void;
-  onHome: () => void;
-  onLogout: () => void;
+  selectedSlug?: string | null;
 };
 
 export default function TrainingPlanManagement({
-  username,
-  onBack,
-  onHome,
-  onLogout,
+  selectedSlug = null,
 }: TrainingPlanManagementProps) {
-  const [selectedItem, setSelectedItem] = useState<(typeof planItems)[number] | null>(null);
+  const router = useRouter();
+  const { logout } = useAuthActions();
+  const username = useAuthenticatedUser()?.username ?? "";
+  const { selectedItem, openSection, goToGrid } = useSectionNavigation(
+    "/training-plan",
+    planItems,
+    selectedSlug,
+  );
   const SelectedModule = selectedItem?.Component;
   const trainingOapItem = planItems.find((item) => item.title === "Training OAP");
 
   const handleBack = () => {
     if (selectedItem) {
-      setSelectedItem(null);
+      goToGrid();
       return;
     }
 
-    onBack();
+    router.push("/");
   };
 
   return (
@@ -44,14 +48,11 @@ export default function TrainingPlanManagement({
           title: item.title,
           active: item.title === selectedItem?.title,
           locked: item.locked,
-          onClick: () => {
-            if (item.locked) return;
-            setSelectedItem(item);
-          },
+          onClick: () => openSection(item),
         }))}
         onBack={handleBack}
-        onHome={onHome}
-        onLogout={onLogout}
+        onHome={() => router.push("/")}
+        onLogout={logout}
       />
 
       <section className={styles.header}>
@@ -73,7 +74,7 @@ export default function TrainingPlanManagement({
         <SelectedModule
           onOpenTrainingOap={() => {
             if (trainingOapItem) {
-              setSelectedItem(trainingOapItem);
+              openSection(trainingOapItem);
             }
           }}
           username={username}
@@ -99,7 +100,7 @@ export default function TrainingPlanManagement({
                     alert("🔒 ฟังก์ชันคำขอฝึกอบรม (Request Training Need) ถูกล็อกการใช้งานไว้ชั่วคราว");
                     return;
                   }
-                  setSelectedItem(item);
+                  openSection(item);
                 }}
               >
                 <span className={styles.moduleIcon} aria-hidden="true">

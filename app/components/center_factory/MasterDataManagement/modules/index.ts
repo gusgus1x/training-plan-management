@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { withSlug } from "../../../../lib/slug";
 import CompanyData, { companyDataModule } from "./CompanyData";
 import EmployeeData, { employeeDataModule } from "./EmployeeData";
 import FunctionData, { functionDataModule } from "./FunctionData";
@@ -14,16 +15,17 @@ export type MasterDataModuleTopic = {
   subtitle: string;
   description: string;
   locked?: boolean;
+  slug: string;
   Component: ComponentType;
 };
 
 export const masterDataItems: readonly MasterDataModuleTopic[] = [
-  { ...courseTypeModule, icon: "🏷️", Component: CourseType },
-  { ...courseGroupModule, icon: "🗂️", Component: CourseGroup },
-  { ...companyDataModule, icon: "🏢", Component: CompanyData },
-  { ...functionDataModule, icon: "⚙️", Component: FunctionData },
-  { ...positionDataModule, icon: "💼", Component: PositionData },
-  { ...levelDataModule, icon: "📶", Component: LevelData },
-  { ...employeeDataModule, icon: "👥", Component: EmployeeData },
-  { ...instructorDataModule, icon: "🧑‍🏫", Component: InstructorData },
+  { ...withSlug(courseTypeModule), icon: "🏷️", Component: CourseType },
+  { ...withSlug(courseGroupModule), icon: "🗂️", Component: CourseGroup },
+  { ...withSlug(companyDataModule), icon: "🏢", Component: CompanyData },
+  { ...withSlug(functionDataModule), icon: "⚙️", Component: FunctionData },
+  { ...withSlug(positionDataModule), icon: "💼", Component: PositionData },
+  { ...withSlug(levelDataModule), icon: "📶", Component: LevelData },
+  { ...withSlug(employeeDataModule), icon: "👥", Component: EmployeeData },
+  { ...withSlug(instructorDataModule), icon: "🧑‍🏫", Component: InstructorData },
 ];

@@ -61,6 +61,7 @@ export const authenticateApiRequest = async (
     ((currentPayload: SessionPayload) =>
       createSessionToken(currentPayload.userId, {
         issuedAt: currentPayload.issuedAt,
+        principal,
       }))
   )(payload);
 

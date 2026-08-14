@@ -1,33 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthActions } from "../../AuthActionsContext";
+import { useAuthenticatedUser } from "../../AuthenticatedUserContext";
+import { useSectionNavigation } from "../../../lib/useSectionNavigation";
 import Navbar from "../../Navbar";
 import styles from "./CenterFactory_MasterDataManagement.module.css";
 import { masterDataItems } from "./modules";
 
 type MasterDataManagementProps = {
-  username: string;
-  onBack: () => void;
-  onHome: () => void;
-  onLogout: () => void;
+  selectedSlug?: string | null;
 };
 
 export default function MasterDataManagement({
-  username,
-  onBack,
-  onHome,
-  onLogout,
+  selectedSlug = null,
 }: MasterDataManagementProps) {
-  const [selectedItem, setSelectedItem] = useState<(typeof masterDataItems)[number] | null>(null);
+  const router = useRouter();
+  const { logout } = useAuthActions();
+  const username = useAuthenticatedUser()?.username ?? "";
+  const { selectedItem, openSection, goToGrid } = useSectionNavigation(
+    "/master-data",
+    masterDataItems,
+    selectedSlug,
+  );
   const SelectedModule = selectedItem?.Component;
 
   const handleBack = () => {
     if (selectedItem) {
-      setSelectedItem(null);
+      goToGrid();
       return;
     }
 
-    onBack();
+    router.push("/");
   };
 
   return (
@@ -43,14 +47,11 @@ export default function MasterDataManagement({
           title: item.title,
           active: item.title === selectedItem?.title,
           locked: item.locked,
-          onClick: () => {
-            if (item.locked) return;
-            setSelectedItem(item);
-          },
+          onClick: () => openSection(item),
         }))}
         onBack={handleBack}
-        onHome={onHome}
-        onLogout={onLogout}
+        onHome={() => router.push("/")}
+        onLogout={logout}
       />
 
       <section className={styles.header}>
@@ -86,7 +87,7 @@ export default function MasterDataManagement({
                 className={styles.moduleCard}
                 key={item.title}
                 type="button"
-                onClick={() => setSelectedItem(item)}
+                onClick={() => openSection(item)}
               >
                 <span className={styles.moduleIcon} aria-hidden="true">
                   <span>{item.icon}</span>

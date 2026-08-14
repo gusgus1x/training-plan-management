@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { withSlug } from "../../../../lib/slug";
 import TrainingActual, { trainingActualModule } from "./TrainingActual";
 import TrainingRecord, { trainingRecordModule } from "./TrainingRecord";
 
@@ -8,10 +9,11 @@ export type RecordModuleTopic = {
   subtitle: string;
   description: string;
   locked?: boolean;
+  slug: string;
   Component: ComponentType;
 };
 
 export const recordItems: readonly RecordModuleTopic[] = [
-  { ...trainingActualModule, icon: "👥", Component: TrainingActual },
-  { ...trainingRecordModule, icon: "🏅", Component: TrainingRecord },
+  { ...withSlug(trainingActualModule), icon: "👥", Component: TrainingActual },
+  { ...withSlug(trainingRecordModule), icon: "🏅", Component: TrainingRecord },
 ];

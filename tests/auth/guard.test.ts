@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 import { apiSuccess } from "../../app/lib/api/response";
 import { createProtectedRoute } from "../../app/lib/auth/guard";
-import { SESSION_COOKIE_NAME } from "../../app/lib/auth/session";
+import { SESSION_COOKIE_NAME, verifySessionToken } from "../../app/lib/auth/session";
 import type { AuthenticatedPrincipal } from "../../app/lib/auth/types";
 
 const principal: AuthenticatedPrincipal = {
@@ -58,6 +58,40 @@ describe("protected API route foundation", () => {
     expect(response.headers.get("set-cookie")).toContain("rolled-token");
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(response.headers.get("vary")).toBe("Cookie");
+  });
+
+  it("rolls the cookie to a version-2 token carrying the principal by default (regression: used to roll to a bare version-1 token, silently logging every user out on their next server-rendered navigation)", async () => {
+    const previousSecret = process.env.AUTH_SESSION_SECRET;
+    process.env.AUTH_SESSION_SECRET = "test-only-session-secret-with-32-characters";
+
+    try {
+      const now = Math.floor(Date.now() / 1000);
+      const handler = vi.fn(async (_request, authenticatedUser) =>
+        apiSuccess({ userId: authenticatedUser.userId }),
+      );
+      const route = createProtectedRoute(handler, {
+        verifyToken: () => ({
+          version: 1,
+          userId: "42",
+          issuedAt: now - 60,
+          lastSeenAt: now - 60,
+        }),
+        revalidate: vi.fn().mockResolvedValue(principal),
+        production: false,
+      });
+      const response = await route(requestWithSession(), undefined);
+
+      const setCookie = response.headers.get("set-cookie") ?? "";
+      const token = setCookie.match(new RegExp(`${SESSION_COOKIE_NAME}=([^;]+)`))?.[1];
+      const rolledPayload = token ? verifySessionToken(decodeURIComponent(token)) : null;
+
+      expect(rolledPayload?.version).toBe(2);
+      if (rolledPayload?.version === 2) {
+        expect(rolledPayload.principal).toEqual(principal);
+      }
+    } finally {
+      process.env.AUTH_SESSION_SECRET = previousSecret;
+    }
   });
 
   it("rejects a missing session before calling business logic", async () => {
