@@ -420,7 +420,7 @@ export default function PositionData() {
                   <th>Remark.</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody translate="no">
                 {visibleRows.map((row, index) => (
                   <tr
                     className={row.id === selectedId ? styles.selectedRow : undefined}

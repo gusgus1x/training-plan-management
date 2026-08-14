@@ -93,6 +93,13 @@ export default function EmployeeData() {
   const [openCompanies, setOpenCompanies] = useState<CompanyCode[]>([]);
   const [formMode, setFormMode] = useState<"new" | "edit" | null>(null);
   const [formValues, setFormValues] = useState<EmployeeRecord>(emptyRecord);
+  const [companyPages, setCompanyPages] = useState<Record<string, number>>({});
+
+  const PAGE_SIZE = 50;
+
+  const getCompanyPage = (company: string) => companyPages[company] ?? 1;
+  const setCompanyPage = (company: string, page: number) =>
+    setCompanyPages((prev) => ({ ...prev, [company]: page }));
   const [functionRows, setFunctionRows] = useState(() =>
     readMasterCollection(TRAINING_MASTER_KEYS.functions, defaultFunctionRows),
   );
@@ -524,6 +531,13 @@ export default function EmployeeData() {
           <div className={styles.companyDirectory}>
             {visibleCompanyGroups.map((companyGroup) => {
               const isOpen = openCompanies.includes(companyGroup.code);
+              const page = getCompanyPage(companyGroup.code);
+              const totalCount = companyGroup.rows.length;
+              const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+              const paginatedRows = companyGroup.rows.slice(
+                (page - 1) * PAGE_SIZE,
+                page * PAGE_SIZE,
+              );
 
               return (
                 <section
@@ -540,68 +554,117 @@ export default function EmployeeData() {
                       Company: <strong>{companyGroup.code}</strong>
                     </span>
                     <b>({companyGroup.totalRecords})</b>
-                    <small>{companyGroup.rows.length} records in view</small>
+                    <small>
+                      {companyGroup.rows.length} records in view
+                      {totalPages > 1 ? ` (Page ${page}/${totalPages})` : ""}
+                    </small>
                   </button>
 
                   {isOpen ? (
-                    <div className={styles.tableWrap}>
-                      <table className={styles.employeeTable}>
-                        <thead>
-                          <tr>
-                            <th>No.</th>
-                            <th>Company</th>
-                            <th>Emp Code</th>
-                            <th>ID Card</th>
-                            <th>Name(TH)</th>
-                            <th>Surname(TH)</th>
-                            <th>Title(EN)</th>
-                            <th>Name(EN)</th>
-                            <th>Surname(EN)</th>
-                            <th>Birthday</th>
-                            <th>Workday</th>
-                            <th>Function Code</th>
-                            <th>Function Name</th>
-                            <th>Department</th>
-                            <th>Position Name</th>
-                            <th>Level Key</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {companyGroup.rows.map((row, index) => (
-                            <tr
-                              className={row.id === selectedId ? styles.selectedRow : undefined}
-                              key={row.id}
-                              onClick={() => setSelectedId(row.id)}
-                            >
-                              <td>{index + 1}</td>
-                              <td>
-                                <span className={styles.companyPill}>{row.company}</span>
-                              </td>
-                              <td>{row.empCode}</td>
-                              <td>{row.idCard}</td>
-                              <td>{row.nameTh}</td>
-                              <td>{row.surnameTh}</td>
-                              <td>{row.titleEn}</td>
-                              <td>{row.nameEn}</td>
-                              <td>{row.surnameEn}</td>
-                              <td>{row.birthday}</td>
-                              <td>{row.workday}</td>
-                              <td>{row.functionCode}</td>
-                              <td>{row.functionName}</td>
-                              <td>{row.department || "-"}</td>
-                              <td>{row.positionName}</td>
-                              <td>
-                                <span className={styles.levelPill}>{row.levelKey}</span>
-                              </td>
-                            </tr>
-                          ))}
-                          {companyGroup.rows.length === 0 ? (
+                    <div>
+                      <div className={styles.tableWrap}>
+                        <table className={styles.employeeTable}>
+                          <thead>
                             <tr>
-                              <td colSpan={16}>No employee data found for this company.</td>
+                              <th>No.</th>
+                              <th>Company</th>
+                              <th>Emp Code</th>
+                              <th>ID Card</th>
+                              <th>Name(TH)</th>
+                              <th>Surname(TH)</th>
+                              <th>Title(EN)</th>
+                              <th>Name(EN)</th>
+                              <th>Surname(EN)</th>
+                              <th>Birthday</th>
+                              <th>Workday</th>
+                              <th>Function Code</th>
+                              <th>Function Name</th>
+                              <th>Department</th>
+                              <th>Position Name</th>
+                              <th>Level Key</th>
                             </tr>
-                          ) : null}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody translate="no">
+                            {paginatedRows.map((row, index) => (
+                              <tr
+                                className={row.id === selectedId ? styles.selectedRow : undefined}
+                                key={row.id}
+                                onClick={() => setSelectedId(row.id)}
+                              >
+                                <td>{(page - 1) * PAGE_SIZE + index + 1}</td>
+                                <td>
+                                  <span className={styles.companyPill}>{row.company}</span>
+                                </td>
+                                <td>{row.empCode}</td>
+                                <td>{row.idCard}</td>
+                                <td>{row.nameTh}</td>
+                                <td>{row.surnameTh}</td>
+                                <td>{row.titleEn}</td>
+                                <td>{row.nameEn}</td>
+                                <td>{row.surnameEn}</td>
+                                <td>{row.birthday}</td>
+                                <td>{row.workday}</td>
+                                <td>{row.functionCode}</td>
+                                <td>{row.functionName}</td>
+                                <td>{row.department || "-"}</td>
+                                <td>{row.positionName}</td>
+                                <td>
+                                  <span className={styles.levelPill}>{row.levelKey}</span>
+                                </td>
+                              </tr>
+                            ))}
+                            {paginatedRows.length === 0 ? (
+                              <tr>
+                                <td colSpan={16}>No employee data found for this company.</td>
+                              </tr>
+                            ) : null}
+                          </tbody>
+                        </table>
+                      </div>
+                      {totalPages > 1 ? (
+                        <div className={styles.paginationBar}>
+                          <span className={styles.paginationInfo}>
+                            Showing {(page - 1) * PAGE_SIZE + 1} - {Math.min(page * PAGE_SIZE, totalCount)} of {totalCount} records in {companyGroup.code}
+                          </span>
+                          <div className={styles.paginationButtons}>
+                            <button
+                              type="button"
+                              className={styles.paginationBtn}
+                              disabled={page === 1}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCompanyPage(companyGroup.code, Math.max(1, page - 1));
+                              }}
+                            >
+                              ‹ Previous
+                            </button>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                              <button
+                                key={p}
+                                type="button"
+                                className={`${styles.paginationBtn} ${p === page ? styles.paginationBtnActive : ""}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCompanyPage(companyGroup.code, p);
+                                }}
+                              >
+                                {p}
+                              </button>
+                            ))}
+                            <button
+                              type="button"
+                              className={styles.paginationBtn}
+                              disabled={page === totalPages}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCompanyPage(companyGroup.code, Math.min(totalPages, page + 1));
+                              }}
+                            >
+                              Next ›
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                 </section>

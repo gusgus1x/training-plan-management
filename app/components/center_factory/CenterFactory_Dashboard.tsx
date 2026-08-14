@@ -178,9 +178,7 @@ export default function Dashboard({
   const isCenterDashboard = authenticatedUser?.roleCode === "HRD_CENTER";
   const userCompanyCode = profileValue(authenticatedUser?.companyCode);
   const dashboardScope = isCenterDashboard ? "Center" : "Factory";
-  const dashboardTitle = isThai
-    ? `${dashboardScope === "Center" ? "ศูนย์ฝึกอบรม" : "โรงงาน"} แดชบอร์ด`
-    : `${dashboardScope} Dashboard`;
+  const dashboardTitle = `${dashboardScope} Dashboard`;
   const [calendarToday] = useState(getCurrentCalendarDate);
   const [selectedCalendarYear, setSelectedCalendarYear] = useState(
     calendarToday.year,
@@ -381,10 +379,10 @@ export default function Dashboard({
 
   const menuItems: DashboardMenuItem[] = [
     {
-      badge: isThai ? "จัดการหลักสูตร" : "COURSE MANAGEMENT",
+      badge: "COURSE MANAGEMENT",
       step: "01",
       icon: "📚",
-      title: isThai ? "หลักสูตรอบรม" : "Training Course",
+      title: "Training Course",
       subTitle: "Training Course Management",
       description: isThai
         ? "ดูแลฐานข้อมูลหลักสูตร มาตรฐานกลุ่มเป้าหมาย ประเภทหลักสูตร และแบบทดสอบก่อน-หลังอบรม"
@@ -396,10 +394,10 @@ export default function Dashboard({
       onClick: onOpenTrainingCourse,
     },
     {
-      badge: isThai ? "จัดการแผนอบรม" : "PLAN MANAGEMENT",
+      badge: "PLAN MANAGEMENT",
       step: "02",
       icon: "📅",
-      title: isThai ? "แผนการอบรม" : "Training Plan",
+      title: "Training Plan",
       subTitle: "Training Plan Management",
       description: isThai
         ? "จัดการแผน OAP ประจำปี คำขอฝึกอบรม แบบตอบรับจากบริษัท และแผนอบรมรายเดือน"
@@ -411,10 +409,10 @@ export default function Dashboard({
       onClick: onOpenTrainingPlan,
     },
     {
-      badge: isThai ? "บันทึกผลอบรม" : "RECORD MANAGEMENT",
+      badge: "RECORD MANAGEMENT",
       step: "03",
       icon: "📋",
-      title: isThai ? "ประวัติการอบรม" : "Training Record",
+      title: "Training Record",
       subTitle: "Training Record Management",
       description: isThai
         ? "บันทึกผู้เข้าอบรมจริง ผลประเมินหลังอบรม ค่าใช้จ่าย และรายชื่อที่เพิ่มภายหลัง"
@@ -426,10 +424,10 @@ export default function Dashboard({
       onClick: onOpenTrainingRecord,
     },
     {
-      badge: isThai ? "รายงาน" : "REPORT MANAGEMENT",
+      badge: "REPORT MANAGEMENT",
       step: "04",
       icon: "📊",
-      title: isThai ? "รายงานและวิเคราะห์ผล" : "Reports & Analytics",
+      title: "Reports & Analytics",
       subTitle: "Reports & Analytics Management",
       description: isThai
         ? "ดูปฏิทินอบรม สรุปความคืบหน้า ค่าใช้จ่าย และร่างอีเมลรายงาน"
@@ -441,10 +439,10 @@ export default function Dashboard({
       onClick: () => onOpenReport(),
     },
     {
-      badge: isThai ? "ข้อมูลหลัก" : "MASTER DATA",
+      badge: "MASTER DATA",
       step: "05",
       icon: "🗃️",
-      title: isThai ? "ข้อมูลหลัก" : "Master Data",
+      title: "Master Data",
       subTitle: "Master Data Management",
       description: isThai
         ? "ข้อมูลหลักของบริษัท พนักงาน วิทยากร ระดับ ตำแหน่ง และหน่วยงาน"
@@ -470,7 +468,7 @@ export default function Dashboard({
 
       <section className={styles.heroPanel} aria-label="Dashboard overview">
         <div className={styles.heroCopy}>
-          <span>{isThai ? "ระบบบริหารจัดการการฝึกอบรม HRD" : `HRD Training ${dashboardScope}`}</span>
+          <span>HRD Training {dashboardScope}</span>
           <h1>{dashboardTitle}</h1>
           <p>
             {isThai
@@ -529,7 +527,7 @@ export default function Dashboard({
           <div className={styles.panelHeader}>
             <div>
               <span>{selectedMonthLabel} {selectedCalendarYear}</span>
-              <h2>{isThai ? "ปฏิทินการฝึกอบรม" : "Training Calendar"}</h2>
+              <h2>Training Calendar</h2>
             </div>
             <div className={styles.calendarHeaderActions}>
               <b className={styles.courseCountBadge}>
@@ -547,14 +545,14 @@ export default function Dashboard({
                   <polyline points="15 3 21 3 21 9" />
                   <line x1="10" y1="14" x2="21" y2="3" />
                 </svg>
-                <span>{isThai ? "ปฏิทินใหญ่" : "Full Calendar"}</span>
+                <span>Full Calendar</span>
               </button>
             </div>
           </div>
 
           <div className={styles.calendarFilters}>
             <div className={styles.filterItem}>
-              <span className={styles.filterTitle}>{isThai ? "บริษัท" : "Company"}</span>
+              <span className={styles.filterTitle}>Company</span>
               <div className={styles.selectWrapper}>
                 <select
                   className={styles.filterSelect}
@@ -579,7 +577,7 @@ export default function Dashboard({
             </div>
 
             <div className={styles.filterItem}>
-              <span className={styles.filterTitle}>{isThai ? "ปี" : "Year"}</span>
+              <span className={styles.filterTitle}>Year</span>
               <div className={styles.selectWrapper}>
                 <select
                   className={styles.filterSelect}
@@ -597,7 +595,7 @@ export default function Dashboard({
             </div>
 
             <div className={styles.filterItem}>
-              <span className={styles.filterTitle}>{isThai ? "เดือน" : "Month"}</span>
+              <span className={styles.filterTitle}>Month</span>
               <div className={styles.selectWrapper}>
                 <select
                   className={styles.filterSelect}
@@ -740,8 +738,8 @@ export default function Dashboard({
       <section className={styles.menuPanel} aria-label="Main workspace menu">
         <div className={styles.menuHeader}>
           <div>
-            <span>{isThai ? "เมนูการทำงาน" : "Workspace Operations"}</span>
-            <h2>{isThai ? "เลือกโมดูลที่ต้องการใช้งาน" : "Select a Workspace Module"}</h2>
+            <span>Workspace Operations</span>
+            <h2>Select a Workspace Module</h2>
           </div>
           <p className={styles.coreModulesBadge}>5 Core Modules</p>
         </div>
@@ -775,7 +773,7 @@ export default function Dashboard({
               </div>
 
               <div className={styles.cardFooterAction}>
-                <span className={styles.openBtn}>{isThai ? "เปิด" : "Open"}</span>
+                <span className={styles.openBtn}>Open</span>
               </div>
             </button>
           ))}

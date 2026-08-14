@@ -59,8 +59,8 @@ export default function TrainingCourseManagement({
         </div>
         <div className={styles.heroPanel}>
           <div>
-            <p className={styles.kicker}>Training Course</p>
-            <h1>{selectedItem ? selectedItem.title : "Training Course Management"}</h1>
+            <p className={styles.kicker} translate="no">Training Course</p>
+            <h1 translate="no">{selectedItem ? selectedItem.title : "Training Course Management"}</h1>
             <p>
               Build and maintain courses, standards, assessments, and evaluation forms from one place.
             </p>
@@ -75,7 +75,7 @@ export default function TrainingCourseManagement({
           <div className={styles.moduleHeader}>
             <div>
               <span>Course Setup</span>
-              <h2>Select a workspace</h2>
+              <h2 translate="no">Select a workspace</h2>
             </div>
             <p>{centerCourseItems.length} modules</p>
           </div>
@@ -95,8 +95,8 @@ export default function TrainingCourseManagement({
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div>
-                  <span className={styles.cardSubtitle}>{item.subtitle}</span>
-                  <h3>{item.title}</h3>
+                  <span className={styles.cardSubtitle} translate="no">{item.subtitle}</span>
+                  <h3 translate="no">{item.title}</h3>
                   <p>{item.description}</p>
                 </div>
                 <strong>Open</strong>

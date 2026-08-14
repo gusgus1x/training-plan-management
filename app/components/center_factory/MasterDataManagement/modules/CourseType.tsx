@@ -211,7 +211,7 @@ export default function CourseType() {
                   <th>Course Type</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody translate="no">
                 {filteredCourseTypes.map((courseType, index) => (
                   <tr
                     className={courseType.id === selectedId ? styles.selectedRow : undefined}

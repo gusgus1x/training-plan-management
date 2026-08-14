@@ -47,92 +47,97 @@ const createEmployee = (
 });
 
 const companySlots: PositionLevelSlot[] = [
-  // 1. President / จ4 / FNC0016 President Office
+  // 1. Executive Office & Advisory
   { positionName: "President", levelKey: "จ4", functionCode: "FNC0016", functionName: "President Office", department: "Executive Office" },
-  // 2. Executive Vice President / จ4 / FNC0010 Production
   { positionName: "Executive Vice President", levelKey: "จ4", functionCode: "FNC0010", functionName: "Production", department: "Executive Office" },
-  // 3. Vice President / จ4 / FNC0012 Engineering and Maintenance
   { positionName: "Vice President", levelKey: "จ4", functionCode: "FNC0012", functionName: "Engineering and Maintenance", department: "Operations" },
-  // 4. Senior Advisor / จ4 / FNC0004 Human Resource
   { positionName: "Senior Advisor", levelKey: "จ4", functionCode: "FNC0004", functionName: "Human Resource", department: "Advisory" },
-  // 5. Advisor / จ3 / FNC0013 Quality
   { positionName: "Advisor", levelKey: "จ3", functionCode: "FNC0013", functionName: "Quality", department: "Quality Advisory" },
-  // 6. Executive General Manager / จ3 / FNC0004 Human Resource
   { positionName: "Executive General Manager", levelKey: "จ3", functionCode: "FNC0004", functionName: "Human Resource", department: "HR & Admin" },
-  // 7. Senior General Manager / จ3 / FNC0009 Warehouse
   { positionName: "Senior General Manager", levelKey: "จ3", functionCode: "FNC0009", functionName: "คลังสินค้า", department: "Logistics" },
-  // 8. Plant Manager / จ3 / FNC0010 Production
   { positionName: "Plant Manager", levelKey: "จ3", functionCode: "FNC0010", functionName: "Production", department: "Plant Operations" },
-  // 9. Senior Executive Coordinator / จ2 / FNC0008 IT Promotion
   { positionName: "Senior Executive Coordinator", levelKey: "จ2", functionCode: "FNC0008", functionName: "IT Promotion", department: "Executive Coordination" },
-  // 10. General Manager / จ2 / FNC0010 Production
   { positionName: "General Manager", levelKey: "จ2", functionCode: "FNC0010", functionName: "Production", department: "Manufacturing" },
-  // 11. General Manager / จ2 / FNC0001 Sales
   { positionName: "General Manager", levelKey: "จ2", functionCode: "FNC0001", functionName: "การขาย", department: "Sales & Marketing" },
-  // 12. Manager / จ1 / FNC0010 Production
+  { positionName: "General Manager", levelKey: "จ2", functionCode: "FNC0003", functionName: "Account and Financial", department: "Finance & Accounting" },
+
+  // 2. Managers (จ1)
   { positionName: "Manager", levelKey: "จ1", functionCode: "FNC0010", functionName: "Production", department: "Production" },
-  // 13. Manager / จ1 / FNC0013 Quality
   { positionName: "Manager", levelKey: "จ1", functionCode: "FNC0013", functionName: "Quality", department: "Quality Assurance" },
-  // 14. Manager / จ1 / FNC0003 Account and Financial
   { positionName: "Manager", levelKey: "จ1", functionCode: "FNC0003", functionName: "Account and Financial", department: "Finance & Accounting" },
-  // 15. Manager / จ1 / FNC0007 Purchase
   { positionName: "Manager", levelKey: "จ1", functionCode: "FNC0007", functionName: "Purchase", department: "Procurement" },
-  // 16. Section Head / บ4 / FNC0010 Production
+  { positionName: "Manager", levelKey: "จ1", functionCode: "FNC0004", functionName: "Human Resource", department: "Human Resource" },
+  { positionName: "Manager", levelKey: "จ1", functionCode: "FNC0012", functionName: "Engineering and Maintenance", department: "Engineering" },
+  { positionName: "Manager", levelKey: "จ1", functionCode: "FNC0014", functionName: "Safety and Environment", department: "Safety & EHS" },
+  { positionName: "Manager", levelKey: "จ1", functionCode: "FNC0008", functionName: "IT Promotion", department: "IT System" },
+
+  // 3. Section Heads (บ4) & Supervisors
   { positionName: "Section Head", levelKey: "บ4", functionCode: "FNC0010", functionName: "Production", department: "Assembly" },
-  // 17. Section Head / บ4 / FNC0012 Engineering and Maintenance
   { positionName: "Section Head", levelKey: "บ4", functionCode: "FNC0012", functionName: "Engineering and Maintenance", department: "Maintenance" },
-  // 18. Section Head / บ4 / FNC0002 Sale Planing
   { positionName: "Section Head", levelKey: "บ4", functionCode: "FNC0002", functionName: "Sale Planing", department: "Sales Planning" },
-  // 19. Section Head / บ4 / FNC0011 Production Planing
   { positionName: "Section Head", levelKey: "บ4", functionCode: "FNC0011", functionName: "Production Planing", department: "Planning" },
-  // 20. Senior Foreman / บ3 / FNC0010 Production
+  { positionName: "Section Head", levelKey: "บ4", functionCode: "FNC0013", functionName: "Quality", department: "Quality Inspection" },
+  { positionName: "Section Head", levelKey: "บ4", functionCode: "FNC0009", functionName: "คลังสินค้า", department: "Warehouse" },
+  { positionName: "Section Head", levelKey: "บ4", functionCode: "FNC0005", functionName: "ธุรการ", department: "General Administration" },
+  { positionName: "Supervisor", levelKey: "บ4", functionCode: "FNC0010", functionName: "Production", department: "Manufacturing Line 1" },
+  { positionName: "Supervisor", levelKey: "บ4", functionCode: "FNC0012", functionName: "Engineering and Maintenance", department: "Facility Maintenance" },
+
+  // 4. Senior Foremen & Officers (บ3, บ2)
   { positionName: "Senior Foreman", levelKey: "บ3", functionCode: "FNC0010", functionName: "Production", department: "Machining" },
-  // 21. Officer / บ3 / FNC0013 Quality
   { positionName: "Officer", levelKey: "บ3", functionCode: "FNC0013", functionName: "Quality", department: "Quality Control" },
-  // 22. Officer / บ3 / FNC0014 Safety and Environment
   { positionName: "Officer", levelKey: "บ3", functionCode: "FNC0014", functionName: "Safety and Environment", department: "Safety" },
-  // 23. Officer / บ2 / FNC0004 Human Resource
+  { positionName: "Officer", levelKey: "บ3", functionCode: "FNC0003", functionName: "Account and Financial", department: "Accounting" },
+  { positionName: "Officer", levelKey: "บ3", functionCode: "FNC0007", functionName: "Purchase", department: "Purchasing" },
   { positionName: "Officer", levelKey: "บ2", functionCode: "FNC0004", functionName: "Human Resource", department: "Training" },
-  // 24. Foreman / บ2 / FNC0010 Production
+  { positionName: "Officer", levelKey: "บ2", functionCode: "FNC0001", functionName: "การขาย", department: "Domestic Sales" },
   { positionName: "Foreman", levelKey: "บ2", functionCode: "FNC0010", functionName: "Production", department: "Casting" },
-  // 25. Foreman / บ2 / FNC0012 Engineering and Maintenance
   { positionName: "Foreman", levelKey: "บ2", functionCode: "FNC0012", functionName: "Engineering and Maintenance", department: "Tooling" },
-  // 26. Engineer / บ1 / FNC0012 Engineering and Maintenance
+  { positionName: "Foreman", levelKey: "บ2", functionCode: "FNC0010", functionName: "Production", department: "Stamping" },
+
+  // 5. Engineers (บ1, S1)
   { positionName: "Engineer", levelKey: "บ1", functionCode: "FNC0012", functionName: "Engineering and Maintenance", department: "Engineering" },
-  // 27. Engineer / บ1 / FNC0013 Quality
   { positionName: "Engineer", levelKey: "บ1", functionCode: "FNC0013", functionName: "Quality", department: "QA/QC" },
-  // 28. Engineer / บ1 / FNC0015 Project Engineering
   { positionName: "Engineer", levelKey: "บ1", functionCode: "FNC0015", functionName: "Project Engineering", department: "Project Engineering" },
-  // 29. Engineer / บ1 / FNC0008 IT Promotion
   { positionName: "Engineer", levelKey: "บ1", functionCode: "FNC0008", functionName: "IT Promotion", department: "System Development" },
-  // 30. Leader / ป5 / FNC0010 Production
+  { positionName: "Engineer", levelKey: "บ1", functionCode: "FNC0010", functionName: "Production", department: "Process Engineering" },
+  { positionName: "Engineer", levelKey: "บ1", functionCode: "FNC0014", functionName: "Safety and Environment", department: "Environmental Control" },
+
+  // 6. Leaders (ป5, ป4, O5, O4)
   { positionName: "Leader", levelKey: "ป5", functionCode: "FNC0010", functionName: "Production", department: "Assembly Line 1" },
-  // 31. Leader / ป5 / FNC0014 Safety and Environment
   { positionName: "Leader", levelKey: "ป5", functionCode: "FNC0014", functionName: "Safety and Environment", department: "Safety Operations" },
-  // 32. Leader / ป4 / FNC0010 Production
+  { positionName: "Leader", levelKey: "ป5", functionCode: "FNC0013", functionName: "Quality", department: "Line Inspection" },
   { positionName: "Leader", levelKey: "ป4", functionCode: "FNC0010", functionName: "Production", department: "Machining Line" },
-  // 33. Leader / ป4 / FNC0009 Warehouse
   { positionName: "Leader", levelKey: "ป4", functionCode: "FNC0009", functionName: "คลังสินค้า", department: "Warehouse Store" },
-  // 34. Staff / ป3 / FNC0008 IT Promotion
+  { positionName: "Leader", levelKey: "ป4", functionCode: "FNC0012", functionName: "Engineering and Maintenance", department: "Preventive Maintenance" },
+
+  // 7. Staff (ป3, ป2, O3, O2)
   { positionName: "Staff", levelKey: "ป3", functionCode: "FNC0008", functionName: "IT Promotion", department: "IT Support" },
-  // 35. Staff / ป3 / FNC0011 Production Planing
   { positionName: "Staff", levelKey: "ป3", functionCode: "FNC0011", functionName: "Production Planing", department: "Production Control" },
-  // 36. Staff / ป3 / FNC0004 Human Resource
   { positionName: "Staff", levelKey: "ป3", functionCode: "FNC0004", functionName: "Human Resource", department: "HR & Welfare" },
-  // 37. Staff / ป3 / FNC0005 General Affairs
   { positionName: "Staff", levelKey: "ป3", functionCode: "FNC0005", functionName: "ธุรการ", department: "General Affairs" },
-  // 38. Staff / ป2 / FNC0006 Interpreter & Secretary
+  { positionName: "Staff", levelKey: "ป3", functionCode: "FNC0003", functionName: "Account and Financial", department: "Finance" },
   { positionName: "Staff", levelKey: "ป2", functionCode: "FNC0006", functionName: "ล่ามและเลขานุการ", department: "Translation & Secretary" },
-  // 39. Staff / ป2 / FNC0007 Purchase
   { positionName: "Staff", levelKey: "ป2", functionCode: "FNC0007", functionName: "Purchase", department: "Purchasing" },
-  // 40. Operator / ป2 / FNC0010 Production
+  { positionName: "Staff", levelKey: "ป2", functionCode: "FNC0009", functionName: "คลังสินค้า", department: "Inventory Control" },
+  { positionName: "Staff", levelKey: "ป2", functionCode: "FNC0002", functionName: "Sale Planing", department: "Export Sales" },
+
+  // 8. Operators (ป2, ป1, O2, O1) - Total 75 slots per company
   { positionName: "Operator", levelKey: "ป2", functionCode: "FNC0010", functionName: "Production", department: "Casting Section" },
-  // 41. Operator / ป1 / FNC0010 Production
+  { positionName: "Operator", levelKey: "ป2", functionCode: "FNC0010", functionName: "Production", department: "Plating Section" },
+  { positionName: "Operator", levelKey: "ป2", functionCode: "FNC0010", functionName: "Production", department: "Welding Line" },
   { positionName: "Operator", levelKey: "ป1", functionCode: "FNC0010", functionName: "Production", department: "Assembly Line A" },
-  // 42. Operator / ป1 / FNC0010 Production
   { positionName: "Operator", levelKey: "ป1", functionCode: "FNC0010", functionName: "Production", department: "Assembly Line B" },
-  // 43. Operator / ป1 / FNC0012 Engineering and Maintenance
+  { positionName: "Operator", levelKey: "ป1", functionCode: "FNC0010", functionName: "Production", department: "Assembly Line C" },
+  { positionName: "Operator", levelKey: "ป1", functionCode: "FNC0010", functionName: "Production", department: "Assembly Line D" },
+  { positionName: "Operator", levelKey: "ป1", functionCode: "FNC0010", functionName: "Production", department: "Packaging Line 1" },
+  { positionName: "Operator", levelKey: "ป1", functionCode: "FNC0010", functionName: "Production", department: "Packaging Line 2" },
+  { positionName: "Operator", levelKey: "ป1", functionCode: "FNC0010", functionName: "Production", department: "Painting Line" },
+  { positionName: "Operator", levelKey: "ป1", functionCode: "FNC0010", functionName: "Production", department: "Press Line" },
   { positionName: "Operator", levelKey: "ป1", functionCode: "FNC0012", functionName: "Engineering and Maintenance", department: "Maintenance Support" },
+  { positionName: "Operator", levelKey: "ป1", functionCode: "FNC0013", functionName: "Quality", department: "Final Inspection" },
+  { positionName: "Operator", levelKey: "ป1", functionCode: "FNC0009", functionName: "คลังสินค้า", department: "Material Handling" },
+  { positionName: "Operator", levelKey: "ป1", functionCode: "FNC0009", functionName: "คลังสินค้า", department: "Forklift Driver" },
+  { positionName: "Operator", levelKey: "ป1", functionCode: "FNC0005", functionName: "ธุรการ", department: "Housekeeping & Facility" },
 ];
 
 const thaiGivenNames = [
@@ -374,7 +379,7 @@ export const getLevelRank = (levelKey: string): number => {
 };
 
 const EMPLOYEE_MASTER_SEED_VERSION_KEY = "tpm_master_employees_seed_version";
-const EMPLOYEE_MASTER_SEED_VERSION = "2026-08-10-numeric-employee-id-v6";
+const EMPLOYEE_MASTER_SEED_VERSION = "2026-08-14-75-employees-per-company-v7";
 
 export const readEmployeeMasterData = () => {
   if (typeof window === "undefined") {

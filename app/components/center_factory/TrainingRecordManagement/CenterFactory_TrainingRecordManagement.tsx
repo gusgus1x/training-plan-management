@@ -59,8 +59,8 @@ export default function TrainingRecordManagement({
         </div>
         <div className={styles.heroPanel}>
           <div>
-            <p className={styles.kicker}>Training Record</p>
-            <h1>{selectedItem ? selectedItem.title : "Training Record Management"}</h1>
+            <p className={styles.kicker} translate="no">Training Record</p>
+            <h1 translate="no">{selectedItem ? selectedItem.title : "Training Record Management"}</h1>
             <p>
               Record actual training, verify employee history, and follow completion evidence across the HRD workflow.
             </p>
@@ -75,7 +75,7 @@ export default function TrainingRecordManagement({
           <div className={styles.moduleHeader}>
             <div>
               <span>Record Operation</span>
-              <h2>Select a workspace</h2>
+              <h2 translate="no">Select a workspace</h2>
             </div>
             <p>{recordItems.length} modules</p>
           </div>
@@ -95,8 +95,8 @@ export default function TrainingRecordManagement({
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div>
-                  <span className={styles.cardSubtitle}>{item.subtitle}</span>
-                  <h3>{item.title}</h3>
+                  <span className={styles.cardSubtitle} translate="no">{item.subtitle}</span>
+                  <h3 translate="no">{item.title}</h3>
                   <p>{item.description}</p>
                 </div>
                 <strong>Open</strong>

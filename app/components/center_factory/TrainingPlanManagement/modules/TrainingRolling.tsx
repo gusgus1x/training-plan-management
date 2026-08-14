@@ -14,6 +14,7 @@ import {
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { getCourseOutlineFileName } from "../../../../lib/courseOutlineExport";
 import styles from "./TrainingRolling.module.css";
 
 export const trainingRollingModule = {
@@ -519,12 +520,20 @@ export default function TrainingRolling() {
 
     // 1. OAP plans
     oapPlans.forEach((plan) => {
-      const isOwner = isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode);
-      if (!isOwner) return;
       if (isFactoryUser && userCompanyCode) {
         if (plan.ownerCompany !== userCompanyCode && plan.course.ownerCompany !== userCompanyCode) {
           return;
         }
+      } else {
+        // Center mode: only show Center-owned OAP plans in course selection dropdown
+        const isCenterPlan =
+          plan.owner === "CENTER" ||
+          plan.ownerCompany === "HRD Center" ||
+          plan.ownerCompany === "All Companies" ||
+          !plan.ownerCompany ||
+          plan.course.owner === "CENTER" ||
+          plan.course.ownerCompany === "HRD Center";
+        if (!isCenterPlan) return;
       }
       const source: OapSource = {
         id: plan.id,
@@ -560,10 +569,16 @@ export default function TrainingRolling() {
     // 2. Course Master courses (including QT-001)
     courses.forEach((course) => {
       if (sourcesMap.has(course.courseCode)) return;
-      const isOwner = isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode);
-      if (!isOwner) return;
       if (isFactoryUser && userCompanyCode) {
         if (course.ownerCompany !== userCompanyCode) return;
+      } else {
+        // Center mode: only show Center-owned courses in course selection dropdown
+        const isCenterCourse =
+          course.owner === "CENTER" ||
+          course.ownerCompany === "HRD Center" ||
+          course.ownerCompany === "All Companies" ||
+          !course.ownerCompany;
+        if (!isCenterCourse) return;
       }
       const source: OapSource = {
         id: `course-src-${course.id}`,
@@ -610,6 +625,8 @@ export default function TrainingRolling() {
   const [editingPlanIds, setEditingPlanIds] = useState<string[]>([]);
   const [openDetailId, setOpenDetailId] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState("");
+  const [exportingPlanId, setExportingPlanId] = useState("");
+  const [exportMessage, setExportMessage] = useState("");
   const [search, setSearch] = useState("");
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [selectedYear, setSelectedYear] = useState("2026");
@@ -796,6 +813,90 @@ export default function TrainingRolling() {
   const saveRollingPlans = (nextPlans: RollingPlan[]) => {
     setRollingPlans(nextPlans);
     writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.rollingPlans, nextPlans);
+  };
+
+  const handleExportOutline = async (plan: RollingPlan) => {
+    const matchedCourse = courses.find(
+      (c) => c.courseCode === plan.course.code,
+    );
+    const course: WorkflowCourse = matchedCourse ?? {
+      id: `course-${plan.course.code}`,
+      courseCode: plan.course.code,
+      courseNameTh: plan.course.nameTh || plan.course.name,
+      courseNameEn: plan.course.nameEn || plan.course.name,
+      objective: plan.course.objective || "",
+      targetGroup: plan.course.targetGroup || "",
+      learningContent: plan.course.learningContent || "",
+      methodology: plan.course.methodology || "Lecture / Workshop",
+      preTest: plan.course.preTest || "-",
+      postTest: plan.course.postTest || "-",
+      evaluation: plan.course.evaluation || "-",
+      evaluationAfter30Day: plan.course.evaluationAfter30Day || "-",
+      lifeCycleMonth: plan.course.lifeCycleMonth || "12",
+      status: "Active",
+      courseType: plan.course.courseType || "IN-HOUSE",
+      courseGroup: plan.course.courseGroup || "General",
+      remark: "",
+      owner: plan.ownerScope || "CENTER",
+      ownerCompany: plan.ownerCompany || "HRD Center",
+      updatedAt: plan.updatedAt,
+    };
+
+    const standard =
+      standards.find(
+        (item) =>
+          item.courseId === course.id ||
+          item.courseCode === course.courseCode,
+      ) ?? null;
+
+    const oapPlanPayload: WorkflowOapPlan = {
+      id: plan.id,
+      sequence: plan.sequence,
+      course: course,
+      participants: plan.participants || "0",
+      hours: plan.hours || "0",
+      budget: plan.budget || "0",
+      trainer: plan.trainer || "",
+      provider: plan.provider || "",
+      owner: (plan.owner === "FACTORY" ? "FACTORY" : "CENTER") as WorkflowOwner,
+      ownerCompany: plan.ownerCompany || "HRD Center",
+      createdBy: user?.username || "system",
+      status: "Planning",
+    };
+
+    setExportingPlanId(plan.rollingId || plan.id);
+    setExportMessage("");
+
+    try {
+      const response = await fetch("/api/course-master/course-outline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ course, standard, oapPlan: oapPlanPayload }),
+      });
+      const errorPayload = response.ok
+        ? null
+        : ((await response.json().catch(() => null)) as { error?: string } | null);
+      if (!response.ok) {
+        throw new Error(errorPayload?.error || "Unable to create Course Outline.");
+      }
+
+      const file = await response.blob();
+      const downloadUrl = URL.createObjectURL(file);
+      const downloadLink = document.createElement("a");
+      downloadLink.href = downloadUrl;
+      downloadLink.download = getCourseOutlineFileName(course);
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+      setExportMessage(`Exported Course Outline: ${course.courseCode}`);
+    } catch (error) {
+      setExportMessage(
+        error instanceof Error ? error.message : "Unable to export Course Outline.",
+      );
+    } finally {
+      setExportingPlanId("");
+    }
   };
 
   const updateOap = (value: string) => {
@@ -1131,7 +1232,7 @@ export default function TrainingRolling() {
         {isFactoryUser ? (
           <div className={styles.companyFilterBar}>
             <div className={styles.companyFilterHeader}>
-              <span>🏢 ขอบเขตสิทธิ์โรงงาน (Factory Scope)</span>
+              <span>🏢 Factory Scope</span>
             </div>
             <div className={styles.companyFilterBtnGroup}>
               <span className={`${styles.companyFilterBtn} ${styles.companyFilterBtnActive}`}>
@@ -1143,7 +1244,7 @@ export default function TrainingRolling() {
         ) : (
           <div className={styles.companyFilterBar}>
             <div className={styles.companyFilterHeader}>
-              <span>🏢 เลือกดูตามบริษัท (Company Filter)</span>
+              <span>🏢 Company Filter</span>
             </div>
             <div className={styles.companyFilterBtnGroup}>
               <button
@@ -1189,57 +1290,59 @@ export default function TrainingRolling() {
         )}
 
         <div className={styles.toolbar}>
-          <label className={styles.filterBox}>
-            <span>Company</span>
-            <select
-              disabled={isFactoryUser}
-              value={isFactoryUser ? (userCompanyCode || "factory") : companyFilter}
-              onChange={(event) => setCompanyFilter(event.target.value)}
-            >
-              {isFactoryUser ? (
-                <option value={userCompanyCode || "factory"}>
-                  {userCompanyCode || "Factory Scope"} (โรงงานของคุณ)
-                </option>
-              ) : (
-                <>
-                  <option value="all">ทุกบริษัท (All Companies)</option>
-                  <option value="center">
-                    ของตัวเอง ({userCompanyCode && userCompanyCode !== "HRD Center" ? userCompanyCode : "Center"})
+          <div className={styles.filterGroup}>
+            <label className={styles.filterBox}>
+              <span>Company</span>
+              <select
+                disabled={isFactoryUser}
+                value={isFactoryUser ? (userCompanyCode || "factory") : companyFilter}
+                onChange={(event) => setCompanyFilter(event.target.value)}
+              >
+                {isFactoryUser ? (
+                  <option value={userCompanyCode || "factory"}>
+                    {userCompanyCode || "Factory Scope"} (โรงงานของคุณ)
                   </option>
-                  {availableCompanies.map((comp) => (
-                    <option key={comp} value={comp}>
-                      {comp}
+                ) : (
+                  <>
+                    <option value="all">ทุกบริษัท (All Companies)</option>
+                    <option value="center">
+                      ของตัวเอง ({userCompanyCode && userCompanyCode !== "HRD Center" ? userCompanyCode : "Center"})
                     </option>
-                  ))}
-                </>
-              )}
-            </select>
-          </label>
-          <label className={styles.filterBox}>
-            <span>Year</span>
-            <select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
-              {yearOptions.map((year) => <option key={year}>{year}</option>)}
-            </select>
-          </label>
-          <label className={styles.filterBox}>
-            <span>Month</span>
-            <select value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)}>
-              <option value="all">All Year</option>
-              {monthOptions.map((month) => <option key={month.value} value={month.value}>{month.label}</option>)}
-            </select>
-          </label>
-          <label className={styles.filterBox}>
-            <span>Status</span>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | RollingStatus)}>
-              <option value="all">All status</option>
-              <option value="Planning">Planning</option>
-              <option value="Planned">Planned</option>
-            </select>
-          </label>
-          <label className={styles.searchBox}>
-            <span>Search</span>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Course, company, location, status" />
-          </label>
+                    {availableCompanies.map((comp) => (
+                      <option key={comp} value={comp}>
+                        {comp}
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+            </label>
+            <label className={styles.filterBox}>
+              <span>Year</span>
+              <select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
+                {yearOptions.map((year) => <option key={year}>{year}</option>)}
+              </select>
+            </label>
+            <label className={styles.filterBox}>
+              <span>Month</span>
+              <select value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)}>
+                <option value="all">All Year</option>
+                {monthOptions.map((month) => <option key={month.value} value={month.value}>{month.label}</option>)}
+              </select>
+            </label>
+            <label className={styles.filterBox}>
+              <span>Status</span>
+              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | RollingStatus)}>
+                <option value="all">All status</option>
+                <option value="Planning">Planning</option>
+                <option value="Planned">Planned</option>
+              </select>
+            </label>
+            <label className={styles.searchBox}>
+              <span>Search</span>
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Course, company, location, status" />
+            </label>
+          </div>
           <div className={styles.toolbarActions}>
             <button
               className={styles.primaryButton}
@@ -1269,9 +1372,29 @@ export default function TrainingRolling() {
             >
               Delete
             </button>
+            <button
+              className={styles.secondaryButton}
+              disabled={!selectedGroup || Boolean(exportingPlanId)}
+              type="button"
+              onClick={() => selectedGroup?.plans[0] && void handleExportOutline(selectedGroup.plans[0])}
+            >
+              {exportingPlanId ? "Preparing..." : "Export Outline"}
+            </button>
             <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>Refresh</button>
           </div>
         </div>
+
+        <p className={styles.selectionHint} aria-live="polite">
+          {selectedGroup && selectedGroup.plans[0]
+            ? `Selected: ${selectedGroup.plans[0].course.code} / ${selectedGroup.plans[0].course.name}`
+            : "Select a row using the circle under Seq. to Edit, Delete, or Export Outline."}
+        </p>
+
+        {exportMessage ? (
+          <p className={styles.exportStatus} role="status">
+            {exportMessage}
+          </p>
+        ) : null}
 
         {isNewOpen ? (
           <section className={styles.formPanel}>
@@ -1609,7 +1732,11 @@ export default function TrainingRolling() {
 
                 return (
                   <Fragment key={group.id}>
-                    <tr className={group.id === selectedGroupId ? styles.selectedRow : undefined}>
+                    <tr
+                      className={group.id === selectedGroupId ? styles.selectedRow : undefined}
+                      onClick={() => setSelectedGroupId(group.id)}
+                      style={{ cursor: "pointer" }}
+                    >
                       <td>
                         <label className={styles.selectionControl}>
                           <input

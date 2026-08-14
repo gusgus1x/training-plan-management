@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { downloadCsvTemplate, parseCsvText } from "../../../../lib/excelHelper";
 import {
   TRAINING_MASTER_KEYS,
   TRAINING_WORKFLOW_EVENT,
@@ -339,6 +340,121 @@ function CourseMaster() {
   const [levelRows, setLevelRows] = useState(() =>
     readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows),
   );
+
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importRows, setImportRows] = useState<any[]>([]);
+  const [importFileName, setImportFileName] = useState("");
+  const [importNotice, setImportNotice] = useState<string | null>(null);
+  const importFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleDownloadExcelTemplate = () => {
+    downloadCsvTemplate();
+  };
+
+  const handleExcelFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const text = String(evt.target?.result || "");
+        const mapped = parseCsvText(text);
+        setImportRows(mapped);
+        setImportNotice(null);
+      } catch (err) {
+        console.error("Excel/CSV parse error:", err);
+        setImportNotice("❌ ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบรูปแบบไฟล์ CSV / Excel");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleCommitExcelImport = () => {
+    if (importRows.length === 0) return;
+
+    let importedCount = 0;
+    const newCourses: CourseRecord[] = [...courses];
+    const newStandards: CourseStandardRecord[] = [...standards];
+
+    importRows.forEach((item) => {
+      if (!item.courseNameTh) return;
+
+      const resolvedGroup = item.courseGroup || "General";
+      const resolvedCode =
+        item.courseCode ||
+        buildCourseCode(resolvedGroup, "", "");
+
+      if (user?.roleCode === "HRD_CENTER") {
+        const factoryPrefixes = ["ATA-", "TEP-", "ATFB-", "NIC-", "SATI-", "SNF-"];
+        if (factoryPrefixes.some((p) => resolvedCode.toUpperCase().startsWith(p))) {
+          return;
+        }
+      }
+
+      const courseId = `course-${resolvedCode.toLowerCase()}-${Math.random().toString(36).substring(2, 9)}`;
+
+      const courseRec: CourseRecord = {
+        id: courseId,
+        courseCode: resolvedCode,
+        courseNameTh: item.courseNameTh,
+        courseNameEn: item.courseNameEn || item.courseNameTh,
+        courseGroup: resolvedGroup,
+        courseType: item.courseType || "IN-HOUSE",
+        objective: item.objective || "-",
+        learningContent: item.learningContent || "-",
+        targetGroup: item.targetGroup || "-",
+        methodology: item.methodology || "Lecture / Workshop",
+        preTest: item.preTest?.toLowerCase() === "yes" ? "Pre Test" : "-",
+        postTest: item.postTest?.toLowerCase() === "yes" ? "Post Test" : "-",
+        evaluation: "After Training Evaluation",
+        evaluationAfter30Day: "30-Day Evaluation",
+        lifeCycleMonth: item.lifeCycleMonth || "12",
+        status: "Active",
+        remark: "",
+        updatedAt: new Date().toISOString().slice(0, 10),
+        owner: user?.roleCode === "HRD_CENTER" ? "CENTER" : "FACTORY",
+        ownerCompany: user?.roleCode === "HRD_CENTER" ? "HRD Center" : (userCompanyCode || "Factory"),
+        createdBy: profileValue(user?.displayName ?? user?.username),
+      };
+
+      const posArray = item.positions
+        ? item.positions.split(",").map((p: string) => p.trim()).filter(Boolean)
+        : [];
+      const lvlArray = item.levels
+        ? item.levels.split(",").map((l: string) => normalizeEmployeeLevel(l.trim())).filter(Boolean)
+        : [];
+
+      const standardRec: CourseStandardRecord = {
+        id: `standard-${courseId}`,
+        courseId: courseId,
+        courseCode: resolvedCode,
+        courseName: getCourseDisplayName(courseRec),
+        companies: [],
+        functionCode: item.functionCode || "",
+        functionName: item.functionName || allFunctionOption,
+        section: "",
+        department: "",
+        division: "",
+        positions: posArray,
+        levels: lvlArray,
+        owner: courseRec.owner,
+        ownerCompany: courseRec.ownerCompany || "HRD Center",
+      };
+
+      newCourses.unshift(courseRec);
+      newStandards.unshift(standardRec);
+      importedCount += 1;
+    });
+
+    saveCourses(newCourses);
+    saveStandards(newStandards);
+    setIsImportModalOpen(false);
+    setImportRows([]);
+    setImportFileName("");
+    alert(`🎉 นำเข้าข้อมูล Course Master สำเร็จจำนวน ${importedCount} รายการ!`);
+  };
   const allFunctionDisplayName =
     language === "th" ? allFunctionThaiDisplayName : allFunctionOption;
   const getLocalizedFunctionName = (row: (typeof functionRows)[number]) =>
@@ -469,7 +585,7 @@ function CourseMaster() {
 
   const sectionSelectOptions: SearchableSelectOption[] = useMemo(
     () => [
-      { value: "all", label: "All Sections (ทุกแผนก)" },
+      { value: "all", label: "All Sections" },
       ...availableStandardSections.map((sec) => ({
         value: sec,
         label: sec,
@@ -480,7 +596,7 @@ function CourseMaster() {
 
   const departmentSelectOptions: SearchableSelectOption[] = useMemo(
     () => [
-      { value: "all", label: "All Departments (ทุกส่วน)" },
+      { value: "all", label: "All Departments" },
       ...availableStandardDepartments.map((dept) => ({
         value: dept,
         label: dept,
@@ -491,7 +607,7 @@ function CourseMaster() {
 
   const divisionSelectOptions: SearchableSelectOption[] = useMemo(
     () => [
-      { value: "all", label: "All Divisions (ทุกฝ่าย)" },
+      { value: "all", label: "All Divisions" },
       ...availableStandardDivisions.map((div) => ({
         value: div,
         label: div,
@@ -946,6 +1062,15 @@ function CourseMaster() {
     const resolvedCourseCode =
       form.courseCode.trim() ||
       buildCourseCode(form.courseGroup, "", selectedCourseId);
+
+    if (!isFactoryUser) {
+      const factoryPrefixes = ["ATA-", "TEP-", "ATFB-", "NIC-", "SATI-", "SNF-"];
+      const upperCode = resolvedCourseCode.toUpperCase();
+      if (factoryPrefixes.some((p) => upperCode.startsWith(p))) {
+        alert("Center สามารถสร้าง Course ได้เฉพาะ Code ของ Center เท่านั้น (ห้ามใช้รหัสประจำโรงงาน เช่น ATA-, TEP-...)");
+        return;
+      }
+    }
     const nextCourse: CourseRecord = {
       ...form,
       id: selectedCourseId || `course-${resolvedCourseCode.toLowerCase()}`,
@@ -1128,7 +1253,7 @@ function CourseMaster() {
           <input
             value={form.courseNameTh}
             disabled={!isEditing}
-            placeholder="Example: หลักสูตรความปลอดภัยพื้นฐาน"
+            placeholder="Example: Basic Safety Course"
             onChange={(event) => updateForm("courseNameTh", event.target.value)}
 
           />
@@ -1401,13 +1526,13 @@ function CourseMaster() {
 
         <div className={styles.standard_companySection}>
           <div className={styles.companyHeaderRow}>
-            <span className={styles.fieldLabel}>Company (บริษัทกลุ่มเป้าหมาย)</span>
+            <span className={styles.fieldLabel}>Target Company</span>
             <span className={styles.companySummaryBadge}>
               {standardCompanies.length === 0
-                ? "กรุณาเลือกอย่างน้อย 1 บริษัท"
+                ? "Please select at least 1 company"
                 : isAllCompaniesSelected
-                  ? `ทุกบริษัท (${companyCodes.length} บริษัท - ${distinctFunctions.length} หน่วยงาน)`
-                  : `เลือก ${standardCompanies.length} จาก ${companyCodes.length} บริษัท (${distinctFunctions.length} หน่วยงาน)`}
+                  ? `All Companies (${companyCodes.length} companies - ${distinctFunctions.length} functions)`
+                  : `Selected ${standardCompanies.length} of ${companyCodes.length} companies (${distinctFunctions.length} functions)`}
             </span>
           </div>
           <div className={styles.standard_companyCheckGrid}>
@@ -1426,7 +1551,7 @@ function CourseMaster() {
               <span className={styles.standard_checkMark} aria-hidden="true">
                 {isAllCompaniesSelected ? "✓" : ""}
               </span>
-              <span>All Companies (ทุกบริษัท)</span>
+              <span>All Companies</span>
             </label>
             {companyCodes.map((comp) => {
               const isChecked = standardCompanies.includes(comp);
@@ -1456,8 +1581,8 @@ function CourseMaster() {
 
         <div className={styles.standard_formGrid}>
           <SearchableSelect
-            label="Function Name (หน่วยงาน)"
-            placeholder="พิมพ์ค้นหาหน่วยงาน เช่น PM, Production..."
+            label="Function Name"
+            placeholder="Type to search function e.g. PM, Production..."
             value={standardFunctionCode}
             disabled={!isEditing}
             options={functionSelectOptions}
@@ -1478,32 +1603,32 @@ function CourseMaster() {
           />
 
           <SearchableSelect
-            label="Section (แผนก)"
-            placeholder="พิมพ์ค้นหาแผนก เช่น ซ่อม, บัญชี, ผลิต..."
+            label="Section"
+            placeholder="Type to search section e.g. Maintenance, Accounting, Assembly..."
             value={standardSection}
             disabled={!isEditing}
             options={sectionSelectOptions}
-            allOptionLabel="All Sections (ทุกแผนก)"
+            allOptionLabel="All Sections"
             onChange={(nextSec) => setStandardSection(nextSec)}
           />
 
           <SearchableSelect
-            label="Department (ส่วน)"
-            placeholder="พิมพ์ค้นหาส่วน เช่น คุณภาพ, จัดซื้อ..."
+            label="Department"
+            placeholder="Type to search department e.g. Quality, Procurement..."
             value={standardDepartment}
             disabled={!isEditing}
             options={departmentSelectOptions}
-            allOptionLabel="All Departments (ทุกส่วน)"
+            allOptionLabel="All Departments"
             onChange={(nextDept) => setStandardDepartment(nextDept)}
           />
 
           <SearchableSelect
-            label="Division (ฝ่าย)"
-            placeholder="พิมพ์ค้นหาฝ่าย เช่น บริหาร, ผลิต..."
+            label="Division"
+            placeholder="Type to search division e.g. Executive, Production..."
             value={standardDivision}
             disabled={!isEditing}
             options={divisionSelectOptions}
-            allOptionLabel="All Divisions (ทุกฝ่าย)"
+            allOptionLabel="All Divisions"
             onChange={(nextDiv) => setStandardDivision(nextDiv)}
           />
         </div>
@@ -1579,7 +1704,7 @@ function CourseMaster() {
             type="button"
             onClick={handleSave}
           >
-            บันทึกหลักสูตรและมาตรฐาน / Save Course & Standard
+            Save Course & Standard
           </button>
           <button className={styles.secondaryButton} type="button" onClick={handleClosePanel}>
             Cancel
@@ -1618,6 +1743,22 @@ function CourseMaster() {
         </button>
         <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>
           Refresh
+        </button>
+        <button
+          className={styles.secondaryButton}
+          type="button"
+          onClick={() => setIsImportModalOpen(true)}
+          style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+        >
+          📥 Import Excel
+        </button>
+        <button
+          className={styles.secondaryButton}
+          type="button"
+          onClick={handleDownloadExcelTemplate}
+          style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
+        >
+          📄 Download Template
         </button>
       </section>
 
@@ -1696,16 +1837,16 @@ function CourseMaster() {
                             ? [
                                 courseStandard.companies?.length &&
                                 courseStandard.companies.length < companyCodes.length
-                                  ? `บริษัท: ${courseStandard.companies.join(", ")}`
+                                  ? `Company: ${courseStandard.companies.join(", ")}`
                                   : "",
                                 courseStandard.section && courseStandard.section !== "all"
-                                  ? `แผนก: ${courseStandard.section}`
+                                  ? `Section: ${courseStandard.section}`
                                   : "",
                                 courseStandard.department && courseStandard.department !== "all"
-                                  ? `ส่วน: ${courseStandard.department}`
+                                  ? `Department: ${courseStandard.department}`
                                   : "",
                                 courseStandard.division && courseStandard.division !== "all"
-                                  ? `ฝ่าย: ${courseStandard.division}`
+                                  ? `Division: ${courseStandard.division}`
                                   : "",
                                 `${courseStandard.positions.length} positions · ${courseStandard.levels.length} levels`,
                               ]
@@ -1750,6 +1891,228 @@ function CourseMaster() {
           </table>
         </div>
       </section>
+
+      {isImportModalOpen ? (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(15, 23, 42, 0.6)",
+            backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 999,
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "16px",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+              width: "100%",
+              maxWidth: "900px",
+              maxHeight: "85vh",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                padding: "20px 24px",
+                borderBottom: "1px solid #e2e8f0",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                background: "#f8fafc",
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: "1.2rem", color: "#0f172a", fontWeight: 800 }}>
+                  📥 Import Course Master via Excel (.xlsx / .csv)
+                </h3>
+                <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+                  เลือกไฟล์ Excel เพื่อสร้างรายชื่อหลักสูตรและมาตรฐานกลุ่มเป้าหมายในระบบจำนวนมาก
+                </p>
+              </div>
+              <button
+                type="button"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  fontSize: "1.2rem",
+                  cursor: "pointer",
+                  color: "#64748b",
+                }}
+                onClick={() => {
+                  setIsImportModalOpen(false);
+                  setImportRows([]);
+                  setImportFileName("");
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>
+              <div
+                style={{
+                  border: "2px dashed #cbd5e1",
+                  borderRadius: "12px",
+                  padding: "24px",
+                  textAlign: "center",
+                  background: "#f8fafc",
+                  marginBottom: "20px",
+                }}
+              >
+                <input
+                  ref={importFileInputRef}
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  style={{ display: "none" }}
+                  onChange={handleExcelFileChange}
+                />
+                <div style={{ fontSize: "2rem", marginBottom: "8px" }}>📊</div>
+                <h4 style={{ margin: "0 0 6px", color: "#1e293b", fontSize: "1rem" }}>
+                  {importFileName ? `ไฟล์ที่เลือก: ${importFileName}` : "ลากไฟล์มาวางที่นี่ หรือคลิกปุ่มเพื่อเลือกไฟล์ Excel"}
+                </h4>
+                <p style={{ margin: "0 0 16px", color: "#64748b", fontSize: "0.82rem" }}>
+                  รองรับไฟล์รูปแบบ .xlsx, .xls และ .csv
+                </p>
+                <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                  <button
+                    type="button"
+                    style={{
+                      background: "#3b82f6",
+                      color: "#ffffff",
+                      border: "none",
+                      padding: "8px 18px",
+                      borderRadius: "8px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => importFileInputRef.current?.click()}
+                  >
+                    📁 Select Excel File
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      background: "#f1f5f9",
+                      color: "#334155",
+                      border: "1px solid #cbd5e1",
+                      padding: "8px 18px",
+                      borderRadius: "8px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                    onClick={handleDownloadExcelTemplate}
+                  >
+                    📄 Download Template
+                  </button>
+                </div>
+              </div>
+
+              {importNotice ? (
+                <div style={{ color: "#ef4444", fontWeight: 700, marginBottom: "16px", fontSize: "0.88rem" }}>
+                  {importNotice}
+                </div>
+              ) : null}
+
+              {importRows.length > 0 ? (
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                    <h4 style={{ margin: 0, color: "#0f172a" }}>
+                      ตัวอย่างข้อมูลที่พบ ({importRows.length} รายการ):
+                    </h4>
+                  </div>
+                  <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "8px", maxHeight: "280px" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+                      <thead>
+                        <tr style={{ background: "#f1f5f9", textAlign: "left" }}>
+                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>#</th>
+                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Course Code</th>
+                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Course Name (TH)</th>
+                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Group</th>
+                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Type</th>
+                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Positions</th>
+                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Levels</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importRows.map((row, i) => (
+                          <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                            <td style={{ padding: "8px 12px" }}>{row.rowNum}</td>
+                            <td style={{ padding: "8px 12px", fontWeight: 700, color: "#2563eb" }}>{row.courseCode || "(Auto)"}</td>
+                            <td style={{ padding: "8px 12px" }}>{row.courseNameTh}</td>
+                            <td style={{ padding: "8px 12px" }}>{row.courseGroup || "General"}</td>
+                            <td style={{ padding: "8px 12px" }}>{row.courseType || "IN-HOUSE"}</td>
+                            <td style={{ padding: "8px 12px" }}>{row.positions || "-"}</td>
+                            <td style={{ padding: "8px 12px" }}>{row.levels || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div
+              style={{
+                padding: "16px 24px",
+                borderTop: "1px solid #e2e8f0",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "12px",
+                background: "#f8fafc",
+              }}
+            >
+              <button
+                type="button"
+                style={{
+                  background: "#f1f5f9",
+                  color: "#475569",
+                  border: "1px solid #cbd5e1",
+                  padding: "8px 18px",
+                  borderRadius: "8px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+                onClick={() => {
+                  setIsImportModalOpen(false);
+                  setImportRows([]);
+                  setImportFileName("");
+                }}
+              >
+                ยกเลิก (Cancel)
+              </button>
+              <button
+                type="button"
+                disabled={importRows.length === 0}
+                style={{
+                  background: importRows.length === 0 ? "#94a3b8" : "#10b981",
+                  color: "#ffffff",
+                  border: "none",
+                  padding: "8px 22px",
+                  borderRadius: "8px",
+                  fontWeight: 700,
+                  cursor: importRows.length === 0 ? "not-allowed" : "pointer",
+                }}
+                onClick={handleCommitExcelImport}
+              >
+                ยืนยันการนำเข้าข้อมูล ({importRows.length} รายการ)
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
     </section>
   );

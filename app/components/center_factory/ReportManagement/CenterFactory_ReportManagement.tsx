@@ -95,8 +95,8 @@ export default function ReportManagement({
         </div>
         <div className={styles.heroPanel}>
           <div>
-            <p className={styles.kicker}>Report</p>
-            <h1>{selectedItem ? selectedItem.title : "Report Management"}</h1>
+            <p className={styles.kicker} translate="no">Report</p>
+            <h1 translate="no">{selectedItem ? selectedItem.title : "Report Management"}</h1>
             <p>
               Review training schedules, internal reports, and HRD reporting outputs in one workspace.
             </p>
@@ -118,7 +118,7 @@ export default function ReportManagement({
           <div className={styles.moduleHeader}>
             <div>
               <span>Report Operation</span>
-              <h2>Select a workspace</h2>
+              <h2 translate="no">Select a workspace</h2>
             </div>
             <p>{centerReportItems.length} modules</p>
           </div>
@@ -140,8 +140,8 @@ export default function ReportManagement({
                   {item.locked ? "🔒" : String(index + 1).padStart(2, "0")}
                 </span>
                 <div>
-                  <span className={styles.cardSubtitle}>{item.subtitle}</span>
-                  <h3>{item.title}</h3>
+                  <span className={styles.cardSubtitle} translate="no">{item.subtitle}</span>
+                  <h3 translate="no">{item.title}</h3>
                   <p>{item.description}</p>
                 </div>
                 <strong>{item.locked ? "Locked" : "Open"}</strong>

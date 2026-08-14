@@ -350,15 +350,15 @@ export default function FunctionData() {
           </div>
           <div className={styles.heroMetric}>
             <strong>{stats.sections}</strong>
-            <span>Sections (แผนก)</span>
+            <span>Sections</span>
           </div>
           <div className={styles.heroMetric}>
             <strong>{stats.departments}</strong>
-            <span>Departments (ส่วน)</span>
+            <span>Departments</span>
           </div>
           <div className={styles.heroMetric}>
             <strong>{stats.divisions}</strong>
-            <span>Divisions (ฝ่าย)</span>
+            <span>Divisions</span>
           </div>
         </div>
       </section>
@@ -444,7 +444,7 @@ export default function FunctionData() {
                 setSelectedDivision("all");
               }}
             >
-              <option value="all">All Sections (แผนก)</option>
+              <option value="all">All Sections</option>
               {availableSections.map((sec) => (
                 <option key={sec} value={sec}>
                   {sec}
@@ -460,7 +460,7 @@ export default function FunctionData() {
                 setSelectedDivision("all");
               }}
             >
-              <option value="all">All Departments (ส่วน)</option>
+              <option value="all">All Departments</option>
               {availableDepartments.map((dept) => (
                 <option key={dept} value={dept}>
                   {dept}
@@ -473,7 +473,7 @@ export default function FunctionData() {
               value={selectedDivision}
               onChange={(event) => setSelectedDivision(event.target.value)}
             >
-              <option value="all">All Divisions (ฝ่าย)</option>
+              <option value="all">All Divisions</option>
               {availableDivisions.map((div) => (
                 <option key={div} value={div}>
                   {div}
@@ -651,13 +651,13 @@ export default function FunctionData() {
                 <tr>
                   <th>No.</th>
                   <th>Company</th>
-                  <th>Function (หน่วยงาน)</th>
-                  <th>Section (แผนก)</th>
-                  <th>Department (ส่วน)</th>
-                  <th>Division (ฝ่าย)</th>
+                  <th>Function</th>
+                  <th>Section</th>
+                  <th>Department</th>
+                  <th>Division</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody translate="no">
                 {visibleRows.map((row, index) => (
                   <tr
                     className={row.id === selectedId ? styles.selectedRow : undefined}

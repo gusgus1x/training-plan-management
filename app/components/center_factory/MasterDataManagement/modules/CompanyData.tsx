@@ -69,7 +69,7 @@ export const companyNameByCode: Record<
     compId: "0430",
     compNameTh: "บริษัท นวโลหะไทย จำกัด",
     compNameEn: "The Siam Nawaloha Foundry Co., Ltd.",
-    remark: "เลขที่ 1 หมู่ 9 ต.บ้านครัว อ.บ้านหมอ จ. สระบุรี 18270",
+    remark: "1 หมู่ 9 ต.บ้านครัว อ.บ้านหมอ จ. สระบุรี 18270",
   },
 };
 
@@ -286,7 +286,7 @@ export default function CompanyData() {
       <section className={styles.panel}>
         <div className={styles.sectionHeader}>
           <div>
-            <h3>Company Master Table (ตารางข้อมูลบริษัท)</h3>
+            <h3>Company Master Table</h3>
             <p>{visibleRows.length} companies from Master Data</p>
           </div>
         </div>
@@ -302,7 +302,7 @@ export default function CompanyData() {
                 <th>Remark / Address</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody translate="no">
               {visibleRows.map((row, index) => (
                 <tr
                   className={row.id === selectedId ? styles.selectedRow : undefined}

@@ -389,30 +389,59 @@
 
 .functionTable {
   width: 100%;
-  min-width: 980px;
+  min-width: 1120px;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .functionTable th,
 .functionTable td {
   border-bottom: 1px solid var(--ui-30-border);
-  padding: 10px 14px;
+  padding: 12px 14px;
   text-align: left;
   vertical-align: middle;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .functionTable th {
   background: var(--ui-60-surface-soft);
   color: var(--ui-30-muted);
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 900;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.functionTable th:first-child,
-.functionTable td:first-child {
-  width: 60px;
+.functionTable th:nth-child(1),
+.functionTable td:nth-child(1) {
+  width: 56px;
   text-align: center;
+}
+
+.functionTable th:nth-child(2),
+.functionTable td:nth-child(2) {
+  width: 110px;
+}
+
+.functionTable th:nth-child(3),
+.functionTable td:nth-child(3) {
+  width: 230px;
+}
+
+.functionTable th:nth-child(4),
+.functionTable td:nth-child(4) {
+  width: 240px;
+}
+
+.functionTable th:nth-child(5),
+.functionTable td:nth-child(5) {
+  width: 240px;
+}
+
+.functionTable th:nth-child(6),
+.functionTable td:nth-child(6) {
+  width: 240px;
 }
 
 .functionTable tbody tr {
@@ -450,17 +479,19 @@
 .bilingualCell {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
+  line-height: 1.35;
 }
 
 .bilingualCell strong {
   color: var(--ui-30-ink);
   font-size: 0.84rem;
+  font-weight: 700;
 }
 
 .bilingualCell span {
   color: var(--ui-30-muted);
-  font-size: 0.74rem;
+  font-size: 0.75rem;
 }
 
 .emptyCell {

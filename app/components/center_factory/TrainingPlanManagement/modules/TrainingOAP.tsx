@@ -20,7 +20,6 @@ import {
   type WorkflowOapPlan,
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
-import { getCourseOutlineFileName } from "../../../../lib/courseOutlineExport";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import {
   defaultInstructorRows,
@@ -112,12 +111,11 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const [editingId, setEditingId] = useState("");
   const [openDetailId, setOpenDetailId] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState("");
-  const [exportingPlanId, setExportingPlanId] = useState("");
-  const [exportMessage, setExportMessage] = useState("");
   const [search, setSearch] = useState("");
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | OapStatus>("all");
   const [yearFilter, setYearFilter] = useState<string>("all");
+  const [createdSuccessNotice, setCreatedSuccessNotice] = useState<string | null>(null);
   const [instructors, setInstructors] = useState<InstructorRecord[]>(() =>
     readMasterCollection(TRAINING_MASTER_KEYS.instructors, defaultInstructorRows),
   );
@@ -192,16 +190,17 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                 standard.ownerCompany === "All Companies"
               );
             }
-            return isWorkflowOwner(
-              standard.owner,
-              standard.ownerCompany,
-              user?.roleCode,
-              userCompanyCode,
+            // Center user: only see Center-owned standards
+            return (
+              standard.owner === "CENTER" ||
+              standard.ownerCompany === "HRD Center" ||
+              standard.ownerCompany === "All Companies" ||
+              !standard.ownerCompany
             );
           })
           .map((standard) => standard.courseId),
       ),
-    [standards, user?.roleCode, userCompanyCode, isFactoryUser],
+    [standards, userCompanyCode, isFactoryUser],
   );
   const courseOptions = useMemo(
     () => {
@@ -213,16 +212,20 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             course.ownerCompany === userCompanyCode
           );
         }
+        // Center user: only show Center-owned courses in New OAP dropdown
         return (
           standardCourseIds.has(course.id) &&
-          isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode)
+          (course.owner === "CENTER" ||
+            course.ownerCompany === "HRD Center" ||
+            course.ownerCompany === "All Companies" ||
+            !course.ownerCompany)
         );
       });
       return approvedRequest
         ? [buildRequestCourse(approvedRequest), ...standardizedCourses]
         : standardizedCourses;
     },
-    [approvedRequest, courses, standardCourseIds, user?.roleCode, userCompanyCode, isFactoryUser],
+    [approvedRequest, courses, standardCourseIds, userCompanyCode, isFactoryUser],
   );
   const selectedCourse =
     courseOptions.find((course) => course.courseCode === form.courseCode) ?? null;
@@ -403,7 +406,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       trainer: form.trainer.trim() || "Pending trainer",
       provider: form.provider.trim() || "Pending provider",
       createdBy: username,
-      status: "Planning",
+      status: "Planned",
       year: yearFilter === "all" ? new Date().getFullYear().toString() : yearFilter,
       owner: isFactoryUser ? "FACTORY" : selectedCourse.owner,
       ownerCompany: isFactoryUser
@@ -411,10 +414,57 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
         : selectedCourse.ownerCompany ?? "HRD Center",
     };
     savePlans([nextPlan, ...plans]);
+
+    // Automatically create corresponding Rolling Plan entry for Training Rolling
+    const existingRolling = readWorkflowCollection<any>(TRAINING_WORKFLOW_KEYS.rollingPlans);
+    const newRollingEntry = {
+      id: `rolling-${nextPlan.id}`,
+      rollingId: `rolling-${nextPlan.id}`,
+      sequence: existingRolling.length + 1,
+      company: nextPlan.ownerCompany || "All Companies",
+      year: nextPlan.year || new Date().getFullYear().toString(),
+      month: "01",
+      course: {
+        code: selectedCourse.courseCode,
+        name: getCourseDisplayName(selectedCourse),
+        nameTh: selectedCourse.courseNameTh,
+        nameEn: selectedCourse.courseNameEn,
+        objective: selectedCourse.objective,
+        learningContent: selectedCourse.learningContent,
+        targetGroup: selectedCourse.targetGroup,
+        methodology: selectedCourse.methodology,
+        preTest: selectedCourse.preTest,
+        postTest: selectedCourse.postTest,
+        evaluation: selectedCourse.evaluation,
+        evaluationAfter30Day: selectedCourse.evaluationAfter30Day,
+        lifeCycleMonth: selectedCourse.lifeCycleMonth,
+        courseType: selectedCourse.courseType,
+        courseGroup: selectedCourse.courseGroup,
+      },
+      participants: nextPlan.participants,
+      hours: nextPlan.hours,
+      budget: nextPlan.budget,
+      trainer: nextPlan.trainer,
+      provider: nextPlan.provider,
+      location: "Pending location",
+      trainingDate: `${nextPlan.year || "2026"}-01-15`,
+      startTime: "09:00",
+      endTime: "16:00",
+      status: "Planned",
+      owner: nextPlan.createdBy,
+      ownerScope: nextPlan.owner,
+      ownerCompany: nextPlan.ownerCompany,
+      updatedAt: new Date().toISOString().slice(0, 10),
+    };
+    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.rollingPlans, [newRollingEntry, ...existingRolling]);
+
     setForm(emptyForm);
     setApprovedRequest(null);
     window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
     setIsNewOpen(false);
+    setCreatedSuccessNotice(
+      `🎉 บันทึกแผน OAP (${selectedCourse.courseCode}) สำเร็จ! ระบบได้เพิ่มข้อมูลเข้าหน้า Training Rolling ให้เรียบร้อยแล้ว สามารถสลับไปกำหนดวันและรอบอบรมต่อในหน้า Rolling Plan ได้ทันที`
+    );
   };
 
   const handleEdit = (plan: OapPlan) => {
@@ -450,48 +500,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     savePlans(plans.map((plan) => plan.id === planId ? { ...plan, status } : plan));
   };
 
-  const handleExportOutline = async (plan: OapPlan) => {
-    const standard =
-      standards.find(
-        (item) =>
-          item.courseId === plan.course.id ||
-          item.courseCode === plan.course.courseCode,
-      ) ?? null;
-    setExportingPlanId(plan.id);
-    setExportMessage("");
-
-    try {
-      const response = await fetch("/api/course-master/course-outline", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ course: plan.course, standard, oapPlan: plan }),
-      });
-      const errorPayload = response.ok
-        ? null
-        : ((await response.json().catch(() => null)) as { error?: string } | null);
-      if (!response.ok) {
-        throw new Error(errorPayload?.error || "Unable to create Course Outline.");
-      }
-
-      const file = await response.blob();
-      const downloadUrl = URL.createObjectURL(file);
-      const downloadLink = document.createElement("a");
-      downloadLink.href = downloadUrl;
-      downloadLink.download = getCourseOutlineFileName(plan.course);
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      downloadLink.remove();
-      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
-      setExportMessage(`Exported Course Outline: ${plan.course.courseCode}`);
-    } catch (error) {
-      setExportMessage(
-        error instanceof Error ? error.message : "Unable to export Course Outline.",
-      );
-    } finally {
-      setExportingPlanId("");
-    }
-  };
-
   const handleRefresh = () => {
     setCourses(readWorkflowCollection<WorkflowCourse>(TRAINING_WORKFLOW_KEYS.courses));
     setStandards(
@@ -505,7 +513,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     setEditingId("");
     setOpenDetailId("");
     setSelectedPlanId("");
-    setExportMessage("");
     setSearch("");
     setCompanyFilter("all");
     setStatusFilter("all");
@@ -531,6 +538,19 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       </section>
 
       <section className={styles.workspace}>
+        {createdSuccessNotice ? (
+          <div className={styles.successNoticeBanner}>
+            <span>{createdSuccessNotice}</span>
+            <button
+              className={styles.successNoticeCloseBtn}
+              type="button"
+              onClick={() => setCreatedSuccessNotice(null)}
+            >
+              รับทราบ (Close)
+            </button>
+          </div>
+        ) : null}
+
         <div className={styles.workspaceHeader}>
           <div>
             <p className={styles.kicker}>Annual plan list</p>
@@ -542,7 +562,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
         {isFactoryUser ? (
           <div className={styles.companyFilterBar}>
             <div className={styles.companyFilterHeader}>
-              <span>🏢 ขอบเขตสิทธิ์โรงงาน (Factory Scope)</span>
+              <span>🏢 Factory Scope</span>
             </div>
             <div className={styles.companyFilterBtnGroup}>
               <span className={`${styles.companyFilterBtn} ${styles.companyFilterBtnActive}`}>
@@ -554,7 +574,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
         ) : (
           <div className={styles.companyFilterBar}>
             <div className={styles.companyFilterHeader}>
-              <span>🏢 เลือกดูตามบริษัท (Company Filter)</span>
+              <span>🏢 Company Filter</span>
             </div>
             <div className={styles.companyFilterBtnGroup}>
               <button
@@ -600,68 +620,62 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
         )}
 
         <div className={styles.toolbar}>
-          <label className={styles.searchBox}>
-            <span>Search</span>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Course, trainer, provider, status" />
-          </label>
-          <label className={styles.filterBox}>
-            <span>Company</span>
-            <select
-              disabled={isFactoryUser}
-              value={isFactoryUser ? (userCompanyCode || "factory") : companyFilter}
-              onChange={(event) => setCompanyFilter(event.target.value)}
-            >
-              {isFactoryUser ? (
-                <option value={userCompanyCode || "factory"}>
-                  {userCompanyCode || "Factory Scope"} (โรงงานของคุณ)
-                </option>
-              ) : (
-                <>
-                  <option value="all">ทุกบริษัท (All Companies)</option>
-                  <option value="center">
-                    ของตัวเอง ({userCompanyCode && userCompanyCode !== "HRD Center" ? userCompanyCode : "Center"})
+          <div className={styles.filterGroup}>
+            <label className={styles.filterBox}>
+              <span>Company</span>
+              <select
+                disabled={isFactoryUser}
+                value={isFactoryUser ? (userCompanyCode || "factory") : companyFilter}
+                onChange={(event) => setCompanyFilter(event.target.value)}
+              >
+                {isFactoryUser ? (
+                  <option value={userCompanyCode || "factory"}>
+                    {userCompanyCode || "Factory Scope"} (โรงงานของคุณ)
                   </option>
-                  {availableCompanies.map((comp) => (
-                    <option key={comp} value={comp}>
-                      {comp}
+                ) : (
+                  <>
+                    <option value="all">ทุกบริษัท (All Companies)</option>
+                    <option value="center">
+                      ของตัวเอง ({userCompanyCode && userCompanyCode !== "HRD Center" ? userCompanyCode : "Center"})
                     </option>
-                  ))}
-                </>
-              )}
-            </select>
-          </label>
-          <label className={styles.filterBox}>
-            <span>Year</span>
-            <select value={yearFilter} onChange={(event) => setYearFilter(event.target.value)}>
-              <option value="all">All years</option>
-              {availableYears.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className={styles.filterBox}>
-            <span>Status</span>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | OapStatus)}>
-              <option value="all">All status</option>
-              <option value="Planning">Planning</option>
-              <option value="Planned">Planned</option>
-              <option value="Cancel">Cancel</option>
-            </select>
-          </label>
+                    {availableCompanies.map((comp) => (
+                      <option key={comp} value={comp}>
+                        {comp}
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+            </label>
+            <label className={styles.filterBox}>
+              <span>Year</span>
+              <select value={yearFilter} onChange={(event) => setYearFilter(event.target.value)}>
+                <option value="all">All years</option>
+                {availableYears.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className={styles.filterBox}>
+              <span>Status</span>
+              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | OapStatus)}>
+                <option value="all">All status</option>
+                <option value="Planning">Planning</option>
+                <option value="Planned">Planned</option>
+                <option value="Cancel">Cancel</option>
+              </select>
+            </label>
+            <label className={styles.searchBox}>
+              <span>Search</span>
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Course, trainer, provider, status" />
+            </label>
+          </div>
           <div className={styles.toolbarActions}>
             <button className={styles.primaryButton} disabled={courseOptions.length === 0} type="button" onClick={handleNew}>New</button>
             <button className={styles.secondaryButton} disabled={!selectedPlan} type="button" onClick={() => selectedPlan && handleEdit(selectedPlan)}>Edit</button>
             <button className={styles.dangerButton} disabled={!selectedPlan} type="button" onClick={() => selectedPlan && handleDelete(selectedPlan.id)}>Delete</button>
-            <button
-              className={styles.secondaryButton}
-              disabled={!selectedPlan || Boolean(exportingPlanId)}
-              type="button"
-              onClick={() => selectedPlan && void handleExportOutline(selectedPlan)}
-            >
-              {exportingPlanId ? "Preparing..." : "Export Outline"}
-            </button>
             <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>Refresh</button>
           </div>
         </div>
@@ -669,14 +683,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
         <p className={styles.selectionHint} aria-live="polite">
           {selectedPlan
             ? `Selected: ${selectedPlan.course.courseCode} / ${getCourseDisplayName(selectedPlan.course)}`
-            : "Select a row using the circle under Seq. to Edit, Delete, or Export Outline."}
+            : "Select a row using the circle under Seq. to Edit or Delete."}
         </p>
-
-        {exportMessage ? (
-          <p className={styles.exportStatus} role="status">
-            {exportMessage}
-          </p>
-        ) : null}
 
         {isNewOpen ? (
           <section className={styles.formPanel}>
@@ -931,7 +939,11 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                 const isOpen = openDetailId === plan.id;
                 return (
                   <Fragment key={plan.id}>
-                    <tr className={plan.id === selectedPlanId ? styles.selectedRow : undefined}>
+                    <tr
+                      className={plan.id === selectedPlanId ? styles.selectedRow : undefined}
+                      onClick={() => setSelectedPlanId(plan.id)}
+                      style={{ cursor: "pointer" }}
+                    >
                       <td>
                         <label className={styles.selectionControl}>
                           <input
@@ -976,28 +988,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                           >
                             {isOpen ? "Hide" : "Details"}
                           </button>
-                          {plan.status === "Planning" ? (
-                            <button
-                              className={`${styles.rowActionButton} ${styles.confirmAction}`}
-                              type="button"
-                              onClick={() => {
-                                setSelectedPlanId(plan.id);
-                                updateStatus(plan.id, "Planned");
-                              }}
-                            >
-                              Confirm
-                            </button>
-                          ) : (
-                            <span
-                              className={`${styles.rowActionState} ${
-                                plan.status === "Planned"
-                                  ? styles.confirmedAction
-                                  : styles.cancelledAction
-                              }`}
-                            >
-                              {plan.status === "Planned" ? "Confirmed" : "Cancelled"}
-                            </span>
-                          )}
                         </div>
                       </td>
                       <td>{plan.participants}</td>
@@ -1039,10 +1029,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                               <div><span>Trainer</span><strong>{plan.trainer}</strong></div>
                               <div><span>Provider</span><strong>{plan.provider}</strong></div>
                               <div><span>Created By</span><strong>{plan.createdBy}</strong></div>
-                            </div>
-                            <div className={styles.formActions}>
-                              <button className={styles.primaryButton} disabled={plan.status !== "Planning"} type="button" onClick={() => updateStatus(plan.id, "Planned")}>Confirm</button>
-                              <button className={styles.dangerButton} disabled={plan.status === "Cancel"} type="button" onClick={() => updateStatus(plan.id, "Cancel")}>Cancel Plan</button>
                             </div>
                           </section>
                         </td>

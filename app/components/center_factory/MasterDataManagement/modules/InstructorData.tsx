@@ -267,7 +267,7 @@ export default function InstructorData() {
                 <th>Log Date</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody translate="no">
               {visibleRows.map((row, index) => (
                 <tr
                   className={row.id === selectedId ? styles.selectedRow : undefined}

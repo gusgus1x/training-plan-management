@@ -208,7 +208,7 @@ export default function CourseGroup() {
                 <th>Group ID</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody translate="no">
               {courseGroups.map((courseGroup, index) => (
                 <tr
                   className={courseGroup.id === selectedId ? styles.selectedRow : undefined}

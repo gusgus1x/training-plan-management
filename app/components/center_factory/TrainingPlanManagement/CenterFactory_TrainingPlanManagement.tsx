@@ -60,8 +60,8 @@ export default function TrainingPlanManagement({
         </div>
         <div className={styles.heroPanel}>
           <div>
-            <p className={styles.kicker}>Training Plan</p>
-            <h1>{selectedItem ? selectedItem.title : "Training Plan Management"}</h1>
+            <p className={styles.kicker} translate="no">Training Plan</p>
+            <h1 translate="no">{selectedItem ? selectedItem.title : "Training Plan Management"}</h1>
             <p>
               Prepare annual training plans, rolling schedules, training needs, and acceptance surveys for the HRD workflow.
             </p>
@@ -83,7 +83,7 @@ export default function TrainingPlanManagement({
           <div className={styles.moduleHeader}>
             <div>
               <span>Plan Setup</span>
-              <h2>Select a workspace</h2>
+              <h2 translate="no">Select a workspace</h2>
             </div>
             <p>{planItems.length} modules</p>
           </div>
@@ -109,10 +109,10 @@ export default function TrainingPlanManagement({
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 <div>
-                  <span className={styles.cardSubtitle}>{item.subtitle}</span>
-                  <h3>
+                  <span className={styles.cardSubtitle} translate="no">{item.subtitle}</span>
+                  <h3 translate="no">
                     {item.title}
-                    {item.locked ? <span className={styles.lockedTag}>🔒 ล็อกการใช้งาน</span> : null}
+                    {item.locked ? <span className={styles.lockedTag}>🔒 Locked</span> : null}
                   </h3>
                   <p>{item.description}</p>
                 </div>

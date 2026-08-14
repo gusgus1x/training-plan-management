@@ -77,6 +77,7 @@ type CourseSurvey = {
   targetFunctionName: string;
   targetPositions: string[];
   targetLevels: string[];
+  standardCompanies?: string[];
   companies: string[];
 };
 
@@ -438,6 +439,21 @@ export default function TrainingAcceptSurvey() {
   const [hasUnsavedParticipants, setHasUnsavedParticipants] = useState(false);
   const [participantSaveMessage, setParticipantSaveMessage] = useState<string | null>(null);
   const [isExportingAttendance, setIsExportingAttendance] = useState(false);
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [companyTargetPages, setCompanyTargetPages] = useState<Record<string, number>>({});
+  const [companyOutTargetPages, setCompanyOutTargetPages] = useState<Record<string, number>>({});
+  const [companyTargetSearchQueries, setCompanyTargetSearchQueries] = useState<Record<string, string>>({});
+  const [companyOutTargetSearchQueries, setCompanyOutTargetSearchQueries] = useState<Record<string, string>>({});
+  const [isTargetSectionOpen, setIsTargetSectionOpen] = useState(true);
+  const [isOutTargetSectionOpen, setIsOutTargetSectionOpen] = useState(true);
+
+  const getCompanyTargetPage = (company: string) => companyTargetPages[company] ?? 1;
+  const setCompanyTargetPage = (company: string, page: number) =>
+    setCompanyTargetPages((prev) => ({ ...prev, [company]: page }));
+
+  const getCompanyOutTargetPage = (company: string) => companyOutTargetPages[company] ?? 1;
+  const setCompanyOutTargetPage = (company: string, page: number) =>
+    setCompanyOutTargetPages((prev) => ({ ...prev, [company]: page }));
 
   useEffect(() => {
     const syncWorkflow = () => {
@@ -547,21 +563,17 @@ export default function TrainingAcceptSurvey() {
             targetFunctionName: standard?.functionName ?? "All Function",
             targetPositions: standard?.positions ?? [],
             targetLevels: standard?.levels ?? [],
+            standardCompanies: standard?.companies ?? [],
             companies: getRollingPlanCompanies(plan),
           };
         }),
     [rollingPlans, standards],
   );
 
-  const courseOwnerOptions =
-    roleMode === "center"
-      ? [
-          { value: "center" as const, label: "Center" },
-        ]
-      : [
-          { value: "factory" as const, label: "Factory" },
-          { value: "center" as const, label: "Center" },
-        ];
+  const courseOwnerOptions = [
+    { value: "center" as const, label: "Center" },
+    { value: "factory" as const, label: "Factory" },
+  ];
   const availableCourseGroups = useMemo<CourseSurveyGroup[]>(() => {
     const ownerFilteredSessions =
       selectedCourseOwner === ""
@@ -618,8 +630,9 @@ export default function TrainingAcceptSurvey() {
     selectedCourse.ownerCompany === userCompanyCode;
   const isFactorySubmittingToCenter =
     roleMode === "factory" && selectedCourse?.owner === "center";
-  const hasSelectedCourse = selectedCourse !== null;
-  const canShowAcceptanceList = hasSelectedCourse && (roleMode === "center" || isFactoryOwnedByUser);
+  const canShowAcceptanceList =
+    Boolean(selectedCourse) &&
+    ((roleMode === "center" && selectedCourse?.owner === "center") || isFactoryOwnedByUser);
 
   const accessibleCompanies: string[] =
     roleMode === "center"
@@ -686,8 +699,11 @@ export default function TrainingAcceptSurvey() {
       off: "off",
       officer: "off",
       office: "off",
-      supervisor: "off",
       "เจ้าหน้าที่": "off",
+      sup: "sup",
+      supervisor: "sup",
+      "ซุปเปอร์ไวเซอร์": "sup",
+      "หัวหน้างาน": "sup",
       sfm: "sfm",
       "senior foreman": "sfm",
       "ซีเนียร์โฟร์แมน": "sfm",
@@ -709,6 +725,17 @@ export default function TrainingAcceptSurvey() {
 
   const matchesCourseTarget = (employee: Employee) => {
     if (!selectedCourse) return false;
+
+    // 0. Standard Company Matching (บริษัทต้องตรงตามกำหนดของ Course Standard หากมีระบุไว้)
+    if (
+      selectedCourse.standardCompanies &&
+      selectedCourse.standardCompanies.length > 0 &&
+      !selectedCourse.standardCompanies.includes("All Companies") &&
+      !selectedCourse.standardCompanies.includes("ทุกบริษัท") &&
+      !selectedCourse.standardCompanies.includes(employee.company)
+    ) {
+      return false;
+    }
 
     // 1. Function Matching (หน้าที่ต้องสอดคล้องกัน)
     const targetFunctionCode = (selectedCourse.targetFunctionCode || "").trim().toUpperCase();
@@ -768,7 +795,7 @@ export default function TrainingAcceptSurvey() {
     // ถ้าหน้าที่/ฝ่าย ไม่สอดคล้องกัน -> ไม่เข้ากลุ่มเป้าหมาย
     if (!matchesFunction) return false;
 
-    // 2. Position & Level Matching (ถ้า Level ถึง หรือ Position ตรง -> แสดงในกลุ่มเป้าหมาย)
+    // 2. Position & Level Matching (อิงตาม Course Standard)
     const hasTargetPositions = selectedCourse.targetPositions.length > 0;
     const hasTargetLevels = selectedCourse.targetLevels.length > 0;
 
@@ -778,18 +805,26 @@ export default function TrainingAcceptSurvey() {
 
     const matchesPosition =
       hasTargetPositions &&
-      selectedCourse.targetPositions.some(
-        (position) =>
-          normalizeTargetPosition(position) ===
-          normalizeTargetPosition(employee.position),
-      );
+      selectedCourse.targetPositions.some((position) => {
+        const normTarget = normalizeTargetPosition(position);
+        const normEmp = normalizeTargetPosition(employee.position);
+        const rawTarget = position.trim().toLowerCase();
+        const rawEmp = employee.position.trim().toLowerCase();
+        return (
+          normTarget === normEmp ||
+          rawTarget === rawEmp ||
+          rawEmp.includes(rawTarget) ||
+          rawTarget.includes(rawEmp)
+        );
+      });
 
     const isDirectLevelMatch =
       hasTargetLevels &&
       selectedCourse.targetLevels.some(
         (level) =>
           normalizeEmployeeLevel(level) === normalizeEmployeeLevel(employee.level) ||
-          getLevelRank(level) === getLevelRank(employee.level),
+          getLevelRank(level) === getLevelRank(employee.level) ||
+          level.trim().toUpperCase() === employee.level.trim().toUpperCase(),
       );
 
     const targetRanks = hasTargetLevels
@@ -804,8 +839,8 @@ export default function TrainingAcceptSurvey() {
     const matchesLevel = isDirectLevelMatch || isLevelEligible;
 
     if (hasTargetPositions && hasTargetLevels) {
-      // ถ้าคอร์สระบุทั้ง Position และ Level: ถ้า Position ตรง หรือ Level ถึง -> แสดงในกลุ่มเป้าหมาย
-      return matchesPosition || matchesLevel;
+      // อิงตาม Course Standard ที่กำหนดไว้: พนักงานต้องตรงทั้ง Position และ Level
+      return matchesPosition && matchesLevel;
     }
 
     if (hasTargetPositions) {
@@ -825,10 +860,7 @@ export default function TrainingAcceptSurvey() {
     : [];
   const acceptedParticipants = courseCandidates.filter(
     (candidate) =>
-      selectedCourse !== null &&
-      (selectedCourse.owner === "factory"
-        ? candidate.status === "Factory Approved"
-        : candidate.status === "Center Approved"),
+      candidate.status === "Center Approved" || candidate.status === "Factory Approved",
   );
   const remainingSeats = selectedCourse
     ? Math.max(0, selectedCourse.capacity - acceptedParticipants.length)
@@ -851,19 +883,53 @@ export default function TrainingAcceptSurvey() {
   const additionalEmployees = availableEmployees.filter(
     (employee) => !matchesCourseTarget(employee),
   );
+
+  const PAGE_SIZE = 50;
+
+  const filterBySearch = (emp: Employee) => {
+    if (!employeeSearch.trim()) return true;
+    const q = employeeSearch.trim().toLowerCase();
+    const nameProf = getEmployeeNameProfile(emp);
+    return [
+      emp.id,
+      emp.name,
+      nameProf.firstName,
+      nameProf.lastName,
+      emp.company,
+      emp.position,
+      emp.level,
+      emp.department,
+      emp.functionName,
+    ]
+      .join(" ")
+      .toLowerCase()
+      .includes(q);
+  };
+
+  const filteredAvailableTargetEmployees = useMemo(
+    () => availableTargetEmployees.filter(filterBySearch),
+    [availableTargetEmployees, employeeSearch],
+  );
+
+  const filteredAdditionalEmployees = useMemo(
+    () => additionalEmployees.filter(filterBySearch),
+    [additionalEmployees, employeeSearch],
+  );
+
   const targetEmployeeGroups = accessibleCompanies
     .map((company) => ({
       company,
-      employees: availableTargetEmployees.filter(
+      employees: filteredAvailableTargetEmployees.filter(
         (employee) => employee.company === company,
       ),
       targetCount: targetEmployees.filter((employee) => employee.company === company).length,
     }))
     .filter((group) => group.employees.length > 0);
+
   const additionalEmployeeGroups = accessibleCompanies
     .map((company) => ({
       company,
-      employees: additionalEmployees.filter(
+      employees: filteredAdditionalEmployees.filter(
         (employee) => employee.company === company,
       ),
     }))
@@ -934,7 +1000,7 @@ export default function TrainingAcceptSurvey() {
     : [];
 
   const isCenterOwned = selectedCourse?.owner === "center";
-  const canCenterApprove = roleMode === "center" && isCenterOwned;
+  const canCenterApprove = roleMode === "center";
   const canFactoryApprove = isFactoryOwnedByUser;
   const targetActionLabel = isFactorySubmittingToCenter
     ? "Submit"
@@ -1580,40 +1646,335 @@ export default function TrainingAcceptSurvey() {
         </section>
       ) : null}
 
+      <div className={styles.employeeSearchBox}>
+        <span className={styles.employeeSearchLabel}>🔍 Search employee:</span>
+        <input
+          className={styles.employeeSearchInput}
+          placeholder="Search by Employee ID, Name, Department, Position, Level, or Company..."
+          value={employeeSearch}
+          onChange={(e) => {
+            setEmployeeSearch(e.target.value);
+            setCompanyTargetPages({});
+            setCompanyOutTargetPages({});
+          }}
+        />
+        {employeeSearch ? (
+          <button
+            type="button"
+            className={styles.paginationBtn}
+            onClick={() => {
+              setEmployeeSearch("");
+              setCompanyTargetPages({});
+              setCompanyOutTargetPages({});
+            }}
+          >
+            Clear
+          </button>
+        ) : null}
+      </div>
+
       <div className={styles.surveySplit}>
-        <section className={styles.targetPanel}>
+        <section className={`${styles.targetPanel} ${styles.targetPanelRedBorder}`}>
           <div className={styles.workspaceHeader}>
             <div>
               <p className={styles.kicker}>Automatic target group</p>
               <h3>Course Standard target employees</h3>
             </div>
-            <span>
-              {availableTargetEmployees.length} available / {targetEmployees.length} target
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span>
+                {filteredAvailableTargetEmployees.length} available / {targetEmployees.length} target
+              </span>
+              <button
+                type="button"
+                className={styles.paginationBtn}
+                onClick={() => setIsTargetSectionOpen((prev) => !prev)}
+              >
+                {isTargetSectionOpen ? "▲ ซ่อนกลุ่มเป้าหมาย" : "▼ แสดงกลุ่มเป้าหมาย"}
+              </button>
+            </div>
           </div>
           <p className={styles.targetRuleNote}>
             Automatically matched from position and level in Course Standard.
           </p>
+          {isTargetSectionOpen ? (
           <div className={styles.companyGroupGrid}>
-            {targetEmployeeGroups.map((group) => (
+            {targetEmployeeGroups.map((group) => {
+              const groupSearch = (companyTargetSearchQueries[group.company] ?? "").trim().toLowerCase();
+              const filteredCompanyEmployees = groupSearch
+                ? group.employees.filter((emp) =>
+                    [
+                      emp.id,
+                      emp.name,
+                      emp.company,
+                      emp.departmentCode,
+                      emp.functionName,
+                      emp.department,
+                      emp.position,
+                      emp.level,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")
+                      .toLowerCase()
+                      .includes(groupSearch),
+                  )
+                : group.employees;
+              const page = getCompanyTargetPage(group.company);
+              const totalCount = filteredCompanyEmployees.length;
+              const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+              const paginatedEmployees = filteredCompanyEmployees.slice(
+                (page - 1) * PAGE_SIZE,
+                page * PAGE_SIZE,
+              );
+
+              return (
+                <details
+                  className={`${styles.companyGroupCard} ${styles.targetCompanyCardRed}`}
+                  key={group.company}
+                >
+                  <summary className={styles.companyGroupHeader}>
+                    <div>
+                      <strong>{group.company}</strong>
+                      <span>
+                        {totalCount} available / {group.targetCount} target
+                        {totalPages > 1 ? ` (Page ${page}/${totalPages})` : ""}
+                      </span>
+                    </div>
+                  </summary>
+                  <div className={styles.dropdownScroll}>
+                    <div className={styles.companySearchBox}>
+                      <span className={styles.employeeSearchLabel}>🔍 Search employee in {group.company}:</span>
+                      <input
+                        className={styles.employeeSearchInput}
+                        placeholder={`Search employee ID, name, position, level, department in ${group.company}...`}
+                        value={companyTargetSearchQueries[group.company] ?? ""}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCompanyTargetSearchQueries((prev) => ({ ...prev, [group.company]: val }));
+                          setCompanyTargetPage(group.company, 1);
+                        }}
+                      />
+                      {companyTargetSearchQueries[group.company] ? (
+                        <button
+                          type="button"
+                          className={styles.paginationBtn}
+                          onClick={() => {
+                            setCompanyTargetSearchQueries((prev) => ({ ...prev, [group.company]: "" }));
+                            setCompanyTargetPage(group.company, 1);
+                          }}
+                        >
+                          Clear
+                        </button>
+                      ) : null}
+                    </div>
+                    <div className={styles.relatedPeopleGrid}>
+                      <div className={`${styles.targetEmployeeHeader} ${styles.targetListHeader}`}>
+                        <span>Action</span>
+                        <div className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}>
+                          <span>Employee ID</span>
+                          <span>Prefix</span>
+                          <span>First Name</span>
+                          <span>Last Name</span>
+                          <span>Company</span>
+                          <span>Function</span>
+                          <span>Department</span>
+                          <span>Position / Level</span>
+                        </div>
+                      </div>
+                      {paginatedEmployees.map((employee) => {
+                        const nameProfile = getEmployeeNameProfile(employee);
+
+                        return (
+                          <article
+                            className={`${styles.employeeRow} ${styles.targetListRow}`}
+                            key={employee.id}
+                          >
+                            <button
+                              className={styles.addTargetButton}
+                              type="button"
+                              onClick={() => handleAddEmployee(employee)}
+                            >
+                              {targetActionLabel}
+                            </button>
+                            <div className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}>
+                              <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{employee.id}</span>
+                              <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{nameProfile.prefix}</span>
+                              <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{nameProfile.firstName}</span>
+                              <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{nameProfile.lastName}</span>
+                              <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{employee.company}</span>
+                              <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`} title={getEmployeeFunctionDisplay(employee)}>
+                                {getEmployeeFunctionDisplay(employee)}
+                              </span>
+                              <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`} title={employee.department || "-"}>
+                                {employee.department || "-"}
+                              </span>
+                              <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>
+                                {getEmployeePositionLevelDisplay(employee)}
+                              </span>
+                            </div>
+                          </article>
+                        );
+                      })}
+                      {paginatedEmployees.length === 0 ? (
+                        <div className={styles.emptyCompact}>No employees shown for this company.</div>
+                      ) : null}
+                    </div>
+                    {totalPages > 1 ? (
+                      <div className={styles.paginationBar} style={{ marginTop: "12px" }}>
+                        <span className={styles.paginationInfo}>
+                          Showing {(page - 1) * PAGE_SIZE + 1} - {Math.min(page * PAGE_SIZE, totalCount)} of {totalCount} employees in {group.company}
+                        </span>
+                        <div className={styles.paginationButtons}>
+                          <button
+                            type="button"
+                            className={styles.paginationBtn}
+                            disabled={page === 1}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCompanyTargetPage(group.company, Math.max(1, page - 1));
+                            }}
+                          >
+                            ‹ Previous
+                          </button>
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                            <button
+                              key={p}
+                              type="button"
+                              className={`${styles.paginationBtn} ${p === page ? styles.paginationBtnActive : ""}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCompanyTargetPage(group.company, p);
+                              }}
+                            >
+                              {p}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            className={styles.paginationBtn}
+                            disabled={page === totalPages}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCompanyTargetPage(group.company, Math.min(totalPages, page + 1));
+                            }}
+                          >
+                            Next ›
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                </details>
+              );
+            })}
+            {filteredAvailableTargetEmployees.length === 0 ? (
+              <div className={styles.emptyCompact}>
+                {employeeSearch ? "No target employees match your search." : "No remaining Course Standard target employees."}
+              </div>
+            ) : null}
+          </div>
+          ) : null}
+        </section>
+      </div>
+
+      <section className={`${styles.targetPanel} ${styles.outTargetPanelAmberBorder}`}>
+        <div className={styles.workspaceHeader}>
+          <div>
+            <p className={styles.kicker}>Out-of-target group</p>
+            <h3>Add employees outside the target group</h3>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span>{filteredAdditionalEmployees.length} available</span>
+            <button
+              type="button"
+              className={styles.paginationBtn}
+              onClick={() => setIsOutTargetSectionOpen((prev) => !prev)}
+            >
+              {isOutTargetSectionOpen ? "▲ ซ่อนกลุ่มนอกเป้าหมาย" : "▼ แสดงกลุ่มนอกเป้าหมาย"}
+            </button>
+          </div>
+        </div>
+        {isOutTargetSectionOpen ? (
+          <>
+            <p className={styles.targetRuleNote}>
+              💡 Select a company below to view and add employees who do not match the Course Standard position and level.
+            </p>
+            <div className={styles.companyGroupGrid}>
+          {additionalEmployeeGroups.map((group) => {
+            const groupSearch = (companyOutTargetSearchQueries[group.company] ?? "").trim().toLowerCase();
+            const filteredCompanyEmployees = groupSearch
+              ? group.employees.filter((emp) =>
+                  [
+                    emp.id,
+                    emp.name,
+                    emp.company,
+                    emp.departmentCode,
+                    emp.functionName,
+                    emp.department,
+                    emp.position,
+                    emp.level,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")
+                    .toLowerCase()
+                    .includes(groupSearch),
+                )
+              : group.employees;
+            const page = getCompanyOutTargetPage(group.company);
+            const totalCount = filteredCompanyEmployees.length;
+            const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+            const paginatedEmployees = filteredCompanyEmployees.slice(
+              (page - 1) * PAGE_SIZE,
+              page * PAGE_SIZE,
+            );
+
+            return (
               <details
-                className={styles.companyGroupCard}
+                className={`${styles.companyGroupCard} ${styles.additionalDisclosure} ${styles.outTargetCompanyCardAmber}`}
                 key={group.company}
-                open
               >
                 <summary className={styles.companyGroupHeader}>
                   <div>
                     <strong>{group.company}</strong>
                     <span>
-                      {group.employees.length} available / {group.targetCount} target
+                      {totalCount} available
+                      {totalPages > 1 ? ` (Page ${page}/${totalPages})` : ""}
                     </span>
                   </div>
                 </summary>
                 <div className={styles.dropdownScroll}>
+                  <div className={styles.companySearchBox}>
+                    <span className={styles.employeeSearchLabel}>🔍 Search employee in {group.company}:</span>
+                    <input
+                      className={styles.employeeSearchInput}
+                      placeholder={`Search employee ID, name, position, level, department in ${group.company}...`}
+                      value={companyOutTargetSearchQueries[group.company] ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCompanyOutTargetSearchQueries((prev) => ({ ...prev, [group.company]: val }));
+                        setCompanyOutTargetPage(group.company, 1);
+                      }}
+                    />
+                    {companyOutTargetSearchQueries[group.company] ? (
+                      <button
+                        type="button"
+                        className={styles.paginationBtn}
+                        onClick={() => {
+                          setCompanyOutTargetSearchQueries((prev) => ({ ...prev, [group.company]: "" }));
+                          setCompanyOutTargetPage(group.company, 1);
+                        }}
+                      >
+                        Clear
+                      </button>
+                    ) : null}
+                  </div>
                   <div className={styles.relatedPeopleGrid}>
-                    <div className={`${styles.targetEmployeeHeader} ${styles.targetListHeader}`}>
+                    <div
+                      className={`${styles.targetEmployeeHeader} ${styles.targetListHeader}`}
+                    >
                       <span>Action</span>
-                      <div className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}>
+                      <div
+                        className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}
+                      >
                         <span>Employee ID</span>
                         <span>Prefix</span>
                         <span>First Name</span>
@@ -1624,11 +1985,14 @@ export default function TrainingAcceptSurvey() {
                         <span>Position / Level</span>
                       </div>
                     </div>
-                    {group.employees.map((employee) => {
+                    {paginatedEmployees.map((employee) => {
                       const nameProfile = getEmployeeNameProfile(employee);
 
                       return (
-                        <article className={`${styles.employeeRow} ${styles.targetListRow}`} key={employee.id}>
+                        <article
+                          className={`${styles.employeeRow} ${styles.targetListRow}`}
+                          key={employee.id}
+                        >
                           <button
                             className={styles.addTargetButton}
                             type="button"
@@ -1636,160 +2000,115 @@ export default function TrainingAcceptSurvey() {
                           >
                             {targetActionLabel}
                           </button>
-                          <div className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}>
-                            <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{employee.id}</span>
-                            <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{nameProfile.prefix}</span>
-                            <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{nameProfile.firstName}</span>
-                            <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{nameProfile.lastName}</span>
-                            <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>{employee.company}</span>
-                            <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`} title={getEmployeeFunctionDisplay(employee)}>
+                          <div
+                            className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}
+                          >
+                            <span
+                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                            >
+                              {employee.id}
+                            </span>
+                            <span
+                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                            >
+                              {nameProfile.prefix}
+                            </span>
+                            <span
+                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                            >
+                              {nameProfile.firstName}
+                            </span>
+                            <span
+                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                            >
+                              {nameProfile.lastName}
+                            </span>
+                            <span
+                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                            >
+                              {employee.company}
+                            </span>
+                            <span
+                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                              title={getEmployeeFunctionDisplay(employee)}
+                            >
                               {getEmployeeFunctionDisplay(employee)}
                             </span>
-                            <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`} title={employee.department || "-"}>
+                            <span
+                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                              title={employee.department || "-"}
+                            >
                               {employee.department || "-"}
                             </span>
-                            <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>
+                            <span
+                              className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
+                            >
                               {getEmployeePositionLevelDisplay(employee)}
                             </span>
                           </div>
                         </article>
                       );
                     })}
-                    {group.employees.length === 0 ? (
+                    {paginatedEmployees.length === 0 ? (
                       <div className={styles.emptyCompact}>No employees shown for this company.</div>
                     ) : null}
                   </div>
-                </div>
-              </details>
-            ))}
-            {availableTargetEmployees.length === 0 ? (
-              <div className={styles.emptyCompact}>
-                No remaining Course Standard target employees.
-              </div>
-            ) : null}
-          </div>
-        </section>
-      </div>
-
-      <section className={styles.targetPanel}>
-        <div className={styles.workspaceHeader}>
-          <div>
-            <p className={styles.kicker}>Out-of-target group</p>
-            <h3>Add employees outside the target group</h3>
-          </div>
-          <span>{additionalEmployees.length} available</span>
-        </div>
-        <p className={styles.targetRuleNote}>
-          💡 Select a company below to view and add employees who do not match the Course Standard position and level.
-        </p>
-        <div className={styles.companyGroupGrid}>
-          {additionalEmployeeGroups.map((group) => (
-            <details
-              className={`${styles.companyGroupCard} ${styles.additionalDisclosure}`}
-              key={group.company}
-            >
-              <summary className={styles.companyGroupHeader}>
-                <div>
-                  <strong>{group.company}</strong>
-                  <span>{group.employees.length} available</span>
-                </div>
-              </summary>
-              <div className={styles.dropdownScroll}>
-                <div className={styles.relatedPeopleGrid}>
-                  <div
-                    className={`${styles.targetEmployeeHeader} ${styles.targetListHeader}`}
-                  >
-                    <span>Action</span>
-                    <div
-                      className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}
-                    >
-                      <span>Employee ID</span>
-                      <span>Prefix</span>
-                      <span>First Name</span>
-                      <span>Last Name</span>
-                      <span>Company</span>
-                      <span>Function</span>
-                      <span>Department</span>
-                      <span>Position / Level</span>
-                    </div>
-                  </div>
-                  {group.employees.map((employee) => {
-                    const nameProfile = getEmployeeNameProfile(employee);
-
-                    return (
-                      <article
-                        className={`${styles.employeeRow} ${styles.targetListRow}`}
-                        key={employee.id}
-                      >
+                  {totalPages > 1 ? (
+                    <div className={styles.paginationBar} style={{ marginTop: "12px" }}>
+                      <span className={styles.paginationInfo}>
+                        Showing {(page - 1) * PAGE_SIZE + 1} - {Math.min(page * PAGE_SIZE, totalCount)} of {totalCount} employees in {group.company}
+                      </span>
+                      <div className={styles.paginationButtons}>
                         <button
-                          className={styles.addTargetButton}
                           type="button"
-                          onClick={() => handleAddEmployee(employee)}
+                          className={styles.paginationBtn}
+                          disabled={page === 1}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCompanyOutTargetPage(group.company, Math.max(1, page - 1));
+                          }}
                         >
-                          {targetActionLabel}
+                          ‹ Previous
                         </button>
-                        <div
-                          className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            className={`${styles.paginationBtn} ${p === page ? styles.paginationBtnActive : ""}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCompanyOutTargetPage(group.company, p);
+                            }}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          className={styles.paginationBtn}
+                          disabled={page === totalPages}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCompanyOutTargetPage(group.company, Math.min(totalPages, page + 1));
+                          }}
                         >
-                          <span
-                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                          >
-                            {employee.id}
-                          </span>
-                          <span
-                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                          >
-                            {nameProfile.prefix}
-                          </span>
-                          <span
-                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                          >
-                            {nameProfile.firstName}
-                          </span>
-                          <span
-                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                          >
-                            {nameProfile.lastName}
-                          </span>
-                          <span
-                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                          >
-                            {employee.company}
-                          </span>
-                          <span
-                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                            title={getEmployeeFunctionDisplay(employee)}
-                          >
-                            {getEmployeeFunctionDisplay(employee)}
-                          </span>
-                          <span
-                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                            title={employee.department || "-"}
-                          >
-                            {employee.department || "-"}
-                          </span>
-                          <span
-                            className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}
-                          >
-                            {getEmployeePositionLevelDisplay(employee)}
-                          </span>
-                        </div>
-                      </article>
-                    );
-                  })}
-                  {group.employees.length === 0 ? (
-                    <div className={styles.emptyCompact}>No additional employees for this company.</div>
+                          Next ›
+                        </button>
+                      </div>
+                    </div>
                   ) : null}
                 </div>
-              </div>
-            </details>
-          ))}
-          {additionalEmployees.length === 0 ? (
+              </details>
+            );
+          })}
+          {filteredAdditionalEmployees.length === 0 ? (
             <div className={styles.emptyCompact}>
-              No additional employees are available.
+              {employeeSearch ? "No out-of-target employees match your search." : "No out-of-target employees."}
             </div>
           ) : null}
         </div>
+        </>
+        ) : null}
       </section>
 
 
