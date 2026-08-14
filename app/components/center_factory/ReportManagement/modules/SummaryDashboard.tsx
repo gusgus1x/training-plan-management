@@ -270,8 +270,8 @@ export default function SummaryDashboard() {
           <h2>Financial & Attendance Overview</h2>
           <p>{summaryDashboardModule.description}</p>
         </div>
-        <span className={styles.scopeBadge}>
-          {isFactoryUser ? userCompanyCode : "HRD Center"}
+        <span className={`${styles.scopeBadge} ${isFactoryUser ? styles.factoryScopeBadge : ""}`}>
+          {isFactoryUser ? `🏭 ${userCompanyCode}` : "🏢 HRD Center"}
         </span>
       </section>
 

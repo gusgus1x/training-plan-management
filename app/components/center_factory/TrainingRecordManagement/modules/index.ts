@@ -7,6 +7,7 @@ export type RecordModuleTopic = {
   title: string;
   subtitle: string;
   description: string;
+  locked?: boolean;
   Component: ComponentType;
 };
 

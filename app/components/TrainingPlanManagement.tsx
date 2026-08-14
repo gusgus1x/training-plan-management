@@ -113,6 +113,9 @@ export default function TrainingPlanManagement() {
   const [authentication, setAuthentication] =
     useState<AuthenticationState>({ status: "checking" });
   const [view, setView] = useState<AppView>("dashboard");
+  const [reportModuleTitle, setReportModuleTitle] = useState<string | undefined>(undefined);
+  const [reportYear, setReportYear] = useState<string | undefined>(undefined);
+  const [reportMonth, setReportMonth] = useState<string | undefined>(undefined);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutMessage, setLogoutMessage] = useState<string | null>(null);
 
@@ -281,7 +284,12 @@ export default function TrainingPlanManagement() {
 
   const { user } = authentication;
   const isDevelopmentPreview = authentication.status === "preview";
-  const goHome = () => setView("dashboard");
+  const goHome = () => {
+    setReportModuleTitle(undefined);
+    setReportYear(undefined);
+    setReportMonth(undefined);
+    setView("dashboard");
+  };
   const logout = () => void handleLogout();
   let application: ReactNode;
 
@@ -336,6 +344,9 @@ export default function TrainingPlanManagement() {
         onHome={goHome}
         onLogout={logout}
         username={user.username}
+        initialModuleTitle={reportModuleTitle}
+        initialYear={reportYear}
+        initialMonth={reportMonth}
       />
     );
   } else {
@@ -345,7 +356,12 @@ export default function TrainingPlanManagement() {
         onOpenTrainingRecord={() => setView("training-record")}
         onOpenTrainingCourse={() => setView("training-course")}
         onOpenMasterData={() => setView("master-data")}
-        onOpenReport={() => setView("report")}
+        onOpenReport={(targetModule, year, month) => {
+          setReportModuleTitle(targetModule);
+          setReportYear(year);
+          setReportMonth(month);
+          setView("report");
+        }}
         onHome={goHome}
         onLogout={logout}
         username={user.username}

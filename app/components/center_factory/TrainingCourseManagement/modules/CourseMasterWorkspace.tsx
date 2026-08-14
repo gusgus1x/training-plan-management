@@ -3,11 +3,9 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
-  TRAINING_MASTER_KEYS,
   getCourseDisplayName,
   getCourseSecondaryName,
   isWorkflowOwner,
-  readMasterCollection,
   type WorkflowCourse,
   type WorkflowOwner,
   type WorkflowStandard,
@@ -23,9 +21,11 @@ import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserCo
 import { listCourseGroups } from "../../../../lib/courseGroups/client";
 import { listCourseTypes } from "../../../../lib/courseTypes/client";
 import { listFunctions } from "../../../../lib/functions/client";
+import { listPositions } from "../../../../lib/positions/client";
+import type { PositionRecord } from "../../../../lib/positions/types";
+import { listLevels } from "../../../../lib/levels/client";
+import type { LevelRecord } from "../../../../lib/levels/types";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
-import { defaultLevelRows } from "../../MasterDataManagement/modules/LevelData";
-import { defaultPositionRows } from "../../MasterDataManagement/modules/PositionData";
 import styles from "./CourseMasterWorkspace.module.css";
 
 export const courseMasterWorkspaceModule = {
@@ -172,7 +172,9 @@ function CourseMaster() {
       listCourseGroups({ status: "ACTIVE" }),
       listCourses({ search: "", status: null }),
       listFunctions(),
-    ]).then(([types, groups, courseData, functions]) => {
+      listPositions(),
+      listLevels(),
+    ]).then(([types, groups, courseData, functions, positions, levels]) => {
       if (!active) return;
       setCourseTypeOptions(types.items.map((item: any) => ({ name: item.name, typeId: item.courseTypeId || item.code })));
       setCourseGroupOptions(groups.items.map((item: any) => ({ name: item.name, groupId: item.courseGroupId || item.code })));
@@ -183,11 +185,15 @@ function CourseMaster() {
           .filter((item) => item.status === "ACTIVE")
           .map((item) => ({ id: item.functionId, code: item.functionCode, name: item.functionNameEn || item.functionNameTh })),
       );
+      setPositionRows(positions.items.filter((item) => item.status === "ACTIVE"));
+      setLevelRows(levels.items.filter((item) => item.status === "ACTIVE"));
     }).catch(() => {
       if (!active) return;
       setCourseTypeOptions([]);
       setCourseGroupOptions([]);
       setFunctionRows([]);
+      setPositionRows([]);
+      setLevelRows([]);
     });
     void loadPublishedForms();
     return () => { active = false; };
@@ -202,12 +208,8 @@ function CourseMaster() {
   const [functionRows, setFunctionRows] = useState<
     Array<{ id: string; code: string; name: string }>
   >([]);
-  const [positionRows, setPositionRows] = useState(() =>
-    readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows),
-  );
-  const [levelRows, setLevelRows] = useState(() =>
-    readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows),
-  );
+  const [positionRows, setPositionRows] = useState<PositionRecord[]>([]);
+  const [levelRows, setLevelRows] = useState<LevelRecord[]>([]);
   const allFunctionDisplayName =
     language === "th" ? allFunctionThaiDisplayName : allFunctionOption;
   const functionOptions = [
@@ -230,7 +232,7 @@ function CourseMaster() {
     return matchingFunction ? matchingFunction.name : functionName;
   };
   const positionChecklist = positionRows
-    .map((row) => row.positionNameEn.trim())
+    .map((row) => (row.positionNameEn ?? "").trim())
     .filter(Boolean);
   const levelChecklist = levelRows
     .map((row) => normalizeEmployeeLevel(row.levelKey))
@@ -565,8 +567,12 @@ function CourseMaster() {
   const handleRefresh = async () => {
     void listOapPlans({ search: null, status: null }).then((result) => setOapPlans(result.oapPlans || []));
     void loadWorkflowRollingPlans().then(setRollingPlans);
-    setPositionRows(readMasterCollection(TRAINING_MASTER_KEYS.positions, defaultPositionRows));
-    setLevelRows(readMasterCollection(TRAINING_MASTER_KEYS.levels, defaultLevelRows));
+    listPositions()
+      .then((result) => setPositionRows(result.items.filter((item) => item.status === "ACTIVE")))
+      .catch(() => setPositionRows([]));
+    listLevels()
+      .then((result) => setLevelRows(result.items.filter((item) => item.status === "ACTIVE")))
+      .catch(() => setLevelRows([]));
     void loadPublishedForms();
     listFunctions()
       .then((functions) =>

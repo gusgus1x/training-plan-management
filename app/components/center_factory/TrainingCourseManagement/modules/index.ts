@@ -12,6 +12,7 @@ export type CourseModuleTopic = {
   title: string;
   subtitle: string;
   description: string;
+  locked?: boolean;
   Component: ComponentType;
 };
 

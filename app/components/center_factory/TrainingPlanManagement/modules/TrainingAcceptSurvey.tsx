@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   TRAINING_MASTER_EVENT,
-  TRAINING_MASTER_KEYS,
-  readMasterCollection,
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
 import {
@@ -28,7 +26,7 @@ import type { EmployeeRecord } from "../../../../lib/employees/types";
 import { createEnrollment, listEnrollments, updateEnrollmentStatus } from "../../../../lib/trainingEnrollment/client";
 import type { EnrollmentRecord, EnrollmentSource, EnrollmentStatus } from "../../../../lib/trainingEnrollment/types";
 import { defaultFunctionRows } from "../../MasterDataManagement/modules/FunctionData";
-import { defaultPositionRows } from "../../MasterDataManagement/modules/PositionData";
+import { listPositions } from "../../../../lib/positions/client";
 import styles from "./TrainingAcceptSurvey.module.css";
 
 export const trainingAcceptSurveyModule = {
@@ -511,6 +509,9 @@ export default function TrainingAcceptSurvey() {
     setActionMessage(null);
 
     try {
+      const positionRows = await listPositions()
+        .then((result) => result.items)
+        .catch(() => []);
       const response = await fetch(
         "/api/training-accept-survey/attendance-sheet",
         {
@@ -527,10 +528,10 @@ export default function TrainingAcceptSurvey() {
                 position: candidate.position,
               })),
               readEmployeeMasterData(),
-              readMasterCollection(
-                TRAINING_MASTER_KEYS.positions,
-                defaultPositionRows,
-              ),
+              positionRows.map((position) => ({
+                positionNameTh: position.positionNameTh,
+                positionNameEn: position.positionNameEn ?? "",
+              })),
             ),
           }),
         },

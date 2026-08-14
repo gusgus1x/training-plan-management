@@ -196,7 +196,10 @@
   content: "";
 }
 
-.courseMetric::before,
+.courseMetric::before {
+  background: #0284c7;
+}
+
 .budgetMetric::before,
 .remainingMetric::before {
   background: var(--ui-30-primary);
@@ -277,8 +280,8 @@
   background:
     linear-gradient(
       135deg,
-      rgba(238, 247, 242, 0.82),
-      var(--ui-60-surface) 46%
+      var(--ui-30-primary-soft),
+      var(--ui-60-surface) 50%
     );
 }
 
@@ -408,16 +411,22 @@
   padding: 0 9px;
 }
 
+.factoryScopeBadge {
+  border-color: rgba(2, 132, 199, 0.3) !important;
+  background: rgba(2, 132, 199, 0.1) !important;
+  color: #0284c7 !important;
+}
+
 .methodBadge {
-  border: 1px solid var(--ui-30-primary-border);
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary-strong);
+  border: 1px solid rgba(2, 132, 199, 0.3);
+  background: rgba(2, 132, 199, 0.1);
+  color: #0284c7;
 }
 
 .plannedStatus {
-  border: 1px solid var(--ui-30-border);
-  background: var(--ui-60-surface-muted);
-  color: var(--ui-30-text);
+  border: 1px solid var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
 }
 
 .completedStatus {

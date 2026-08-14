@@ -142,9 +142,7 @@ export default function LoginPage({
           onSubmit={handleSubmit}
         >
           <div className={styles.formHeader}>
-            <p className={styles.formEyebrow}>Sign in</p>
-            <h2>ATTG TRAINING PLAN MANAGEMENT
-            </h2>
+            <h2>ATTG Training<br />Plan Management</h2>
           </div>
 
           <label className={styles.field}>
@@ -216,7 +214,12 @@ export default function LoginPage({
             type="submit"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Signing in..." : "Login"}
+            {isSubmitting ? "Signing in..." : "Sign in"}
+            {!isSubmitting && (
+              <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            )}
           </button>
 
         </form>

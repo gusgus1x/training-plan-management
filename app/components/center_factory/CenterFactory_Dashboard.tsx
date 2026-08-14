@@ -103,7 +103,7 @@ type DashboardProps = {
   onOpenTrainingRecord: () => void;
   onOpenTrainingCourse: () => void;
   onOpenMasterData: () => void;
-  onOpenReport: () => void;
+  onOpenReport: (targetModule?: string, year?: string, month?: string) => void;
 };
 
 type DashboardMenuItem = {
@@ -184,6 +184,39 @@ export default function Dashboard({
     calendarToday.month,
   );
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("all");
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
+  const handlePrevMonth = () => {
+    if (selectedCalendarMonth === "all") {
+      setSelectedCalendarMonth("12");
+    } else {
+      const current = Number(selectedCalendarMonth);
+      if (current === 1) {
+        setSelectedCalendarMonth("12");
+        const yearNum = Number(selectedCalendarYear);
+        setSelectedCalendarYear(String(yearNum - 1));
+      } else {
+        setSelectedCalendarMonth(String(current - 1).padStart(2, "0"));
+      }
+    }
+    setSelectedDay(null);
+  };
+
+  const handleNextMonth = () => {
+    if (selectedCalendarMonth === "all") {
+      setSelectedCalendarMonth("01");
+    } else {
+      const current = Number(selectedCalendarMonth);
+      if (current === 12) {
+        setSelectedCalendarMonth("01");
+        const yearNum = Number(selectedCalendarYear);
+        setSelectedCalendarYear(String(yearNum + 1));
+      } else {
+        setSelectedCalendarMonth(String(current + 1).padStart(2, "0"));
+      }
+    }
+    setSelectedDay(null);
+  };
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
 
   useEffect(() => {
@@ -389,7 +422,7 @@ export default function Dashboard({
       accentSoft: "var(--ui-30-primary-soft)",
       accentBorder: "var(--ui-30-primary)",
       accentGlow: "rgba(0, 122, 61, 0.18)",
-      onClick: onOpenReport,
+      onClick: () => onOpenReport(),
     },
     {
       badge: isThai ? "ข้อมูลหลัก" : "MASTER DATA",
@@ -483,7 +516,23 @@ export default function Dashboard({
               <h2>{isThai ? "ปฏิทินการฝึกอบรม" : "Training Calendar"}</h2>
             </div>
             <div className={styles.calendarHeaderActions}>
-              <b className={styles.courseCountBadge}>{filteredTrainingSchedule.length} {isThai ? "หลักสูตร" : "courses"}</b>
+              <b className={styles.courseCountBadge}>
+                <span className={styles.badgeDot} />
+                {filteredTrainingSchedule.length} {isThai ? "หลักสูตร" : "courses"}
+              </b>
+              <button
+                type="button"
+                className={styles.fullCalendarBtn}
+                onClick={() => onOpenReport("Schedule calendar", selectedCalendarYear, selectedCalendarMonth)}
+                title={isThai ? "ดูปฏิทินแบบเต็ม (Full Calendar)" : "View Full Calendar"}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+                <span>{isThai ? "ปฏิทินใหญ่" : "Full Calendar"}</span>
+              </button>
             </div>
           </div>
 
@@ -556,42 +605,48 @@ export default function Dashboard({
               aria-label={`Training schedule in ${selectedMonthLabel} ${selectedCalendarYear}`}
             >
               {weekDays.map((day, index) => (
-                <b key={`${day}-${index}`}>{day}</b>
+                <b key={`${day}-${index}`} className={index === 0 ? styles.sunHeader : index === 6 ? styles.satHeader : undefined}>
+                  {day}
+                </b>
               ))}
               {calendarDays.map((item, index) => {
+                const isToday = isViewingCurrentMonth && item.day === calendarToday.day;
+                const hasTrainings = item.trainings.length > 0;
+                const isSelected = item.day !== null && item.day === selectedDay;
+                const isWeekend = index % 7 === 0 || index % 7 === 6;
                 const className = [
                   styles.calendarDay,
-                  item.trainings.length > 0 ? styles.trainingDay : "",
-                  isViewingCurrentMonth && item.day === calendarToday.day
-                    ? styles.today
-                    : "",
+                  hasTrainings ? styles.trainingDay : "",
+                  isToday ? styles.today : "",
+                  isSelected ? styles.selectedDay : "",
+                  isWeekend ? styles.weekendDay : "",
                 ]
                   .filter(Boolean)
                   .join(" ");
 
                 return (
-                  <div className={className} key={`${item.day ?? "empty"}-${index}`}>
+                  <div
+                    className={className}
+                    key={`${item.day ?? "empty"}-${index}`}
+                    onClick={() => {
+                      if (item.day !== null && hasTrainings) {
+                        setSelectedDay(item.day === selectedDay ? null : item.day);
+                      }
+                    }}
+                    style={hasTrainings ? { cursor: "pointer" } : undefined}
+                    title={hasTrainings ? `${item.trainings.length} ${isThai ? "หลักสูตร (กดเพื่อดูรายละเอียด)" : "courses (click for details)"}` : undefined}
+                  >
                     {item.day ? (
                       <>
-                        <span>{item.day}</span>
-                        {item.trainings.map((training) => {
-                          const displayCompany =
-                            training.company === "All Companies"
-                              ? "ALL"
-                              : training.company;
-
-                          return (
-                            <small
-                              key={`${training.date}-${training.course}-${training.time}`}
-                              title={`${training.course} (${training.company})`}
-                            >
-                              <b style={{ color: training.isCenterPlan ? "#007a3d" : "#475569" }}>
-                                [{displayCompany}]
-                              </b>{" "}
-                              {training.shortName}
-                            </small>
-                          );
-                        })}
+                        <div className={styles.dayCellTop}>
+                          <span className={styles.dayNumberBadge}>{item.day}</span>
+                          {isToday && <span className={styles.todayDotIndicator} title={isThai ? "วันนี้" : "Today"} />}
+                        </div>
+                        {hasTrainings && (
+                          <span className={styles.topRightBadge}>
+                            {item.trainings.length}
+                          </span>
+                        )}
                       </>
                     ) : null}
                   </div>
@@ -600,33 +655,69 @@ export default function Dashboard({
             </div>
           )}
 
-          {filteredTrainingSchedule.length > 0 ? (
-            <div className={styles.trainingList} aria-label="Upcoming training courses">
-              {filteredTrainingSchedule.map((item) => {
-                const date = new Date(`${item.date}T00:00:00`);
-                const dateLabel = date.toLocaleDateString("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                });
-
-                return (
-                  <article className={styles.trainingItem} key={`${item.date}-${item.course}-${item.time}`}>
-                    <time dateTime={item.date}>{dateLabel}</time>
-                    <div>
-                      <strong>{item.course}</strong>
-                      <span>
-                        <b style={{ color: item.isCenterPlan ? "#007a3d" : "#0f172a", fontWeight: 700 }}>
-                          {item.isCenterPlan ? "HRD Center" : item.company}
-                        </b>{" "}
-                        ({item.company}) • {item.time} / {item.room}
-                      </span>
+          {selectedCalendarMonth !== "all" && selectedDay !== null && (() => {
+            const dayTrainings = filteredTrainingSchedule.filter(
+              (item) => Number(item.date.slice(8, 10)) === selectedDay,
+            );
+            if (dayTrainings.length === 0) return null;
+            const dateStr = `${selectedCalendarYear}-${selectedCalendarMonth}-${String(selectedDay).padStart(2, "0")}`;
+            const dateLabel = new Date(`${dateStr}T00:00:00`).toLocaleDateString(isThai ? "th-TH" : "en-US", {
+              weekday: "long", day: "numeric", month: "long", year: "numeric",
+            });
+            return (
+              <div className={styles.dayDetailPanel} aria-label={`Training detail for day ${selectedDay}`}>
+                <div className={styles.dayDetailHeader}>
+                  <div>
+                    <strong>📅 {dateLabel}</strong>
+                    <span>{dayTrainings.length} {isThai ? "รายการอบรมในวันนี้" : "training courses scheduled today"}</span>
+                  </div>
+                  <button
+                    className={styles.dayDetailClose}
+                    type="button"
+                    onClick={() => setSelectedDay(null)}
+                    title="Close"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className={styles.dayDetailList}>
+                  {dayTrainings.map((training, i) => (
+                    <div className={styles.dayDetailItem} key={`${training.date}-${training.course}-${i}`}>
+                      <div className={styles.dayDetailItemMeta}>
+                        <span
+                          className={styles.dayDetailOwnerBadge}
+                          style={{
+                            background: training.isCenterPlan ? "rgba(0,122,61,0.12)" : "rgba(59,130,246,0.1)",
+                            color: training.isCenterPlan ? "#007a3d" : "#2563eb",
+                            border: `1px solid ${training.isCenterPlan ? "rgba(0,122,61,0.25)" : "rgba(59,130,246,0.25)"}`
+                          }}
+                        >
+                          {training.isCenterPlan ? "🏢 HRD Center" : `🏭 ${training.company}`}
+                        </span>
+                        <span
+                          className={styles.dayDetailStatusBadge}
+                          style={{
+                            background: training.status === "Published" || training.status === "Planned" ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.12)",
+                            color: training.status === "Published" || training.status === "Planned" ? "#059669" : "#d97706",
+                            border: `1px solid ${training.status === "Published" || training.status === "Planned" ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)"}`
+                          }}
+                        >
+                          <span className={styles.pulseDot} style={{ background: training.status === "Published" || training.status === "Planned" ? "#10b981" : "#f59e0b" }} />
+                          {training.status}
+                        </span>
+                      </div>
+                      <strong className={styles.dayDetailCourseName}>{training.course}</strong>
+                      <div className={styles.dayDetailInfo}>
+                        <span>🕐 {training.time}</span>
+                        <span>📍 {training.room}</span>
+                      </div>
                     </div>
-                    <b>{item.status}</b>
-                  </article>
-                );
-              })}
-            </div>
-          ) : null}
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
         </section>
       </div>
 

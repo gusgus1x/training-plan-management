@@ -18,8 +18,8 @@ describe("Schedule Calendar workflow", () => {
   });
 
   it("starts with the current year overview and can return to the current month", () => {
-    expect(scheduleSource).toContain("useState(calendarToday.year)");
-    expect(scheduleSource).toContain('useState<"all" | string>("all")');
+    expect(scheduleSource).toContain("initialYear || calendarToday.year");
+    expect(scheduleSource).toContain('useState<"all" | string>(() => initialMonth || "all")');
     expect(scheduleSource).toContain("handleShowCurrentMonth");
     expect(scheduleSource).toContain("todayDate");
   });
