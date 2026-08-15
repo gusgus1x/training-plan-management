@@ -797,7 +797,23 @@ export default function TrainingRolling() {
                           <span>{group.sequence}</span>
                         </label>
                       </td>
-                      <td><strong>{plan.course.name}</strong><span>{plan.course.code}</span></td>
+                      <td>
+                        <strong>{plan.course.name}</strong>
+                        <span>{plan.course.code}</span>
+                        {plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.ownerName === "Center HRD" || plan.provider === "HRD Center" ? (
+                          <div>
+                            <span className={styles.creatorBadgeCenter}>
+                              🏢 จัดหลักสูตรโดย HRD Center
+                            </span>
+                          </div>
+                        ) : (
+                          <div>
+                            <span className={styles.creatorBadgeFactory}>
+                              🏬 จัดหลักสูตรโดย {plan.ownerCompany || plan.company}
+                            </span>
+                          </div>
+                        )}
+                      </td>
                       <td>
                         <span className={`${styles.statusPill} ${styles[`status${groupStatus}`]}`}>
                           <span className={styles.statusDot} />
@@ -825,7 +841,8 @@ export default function TrainingRolling() {
                         <span>
                           {dates.length === 1
                             ? dates[0]
-                            : `${dates.length} dates`}
+                            : `${dates.length} dates`}{" "}
+                          / Batches: {group.plans.map((item) => item.batch).join(", ")}
                         </span>
                       </td>
                       <td>{formatRollingPlanCompanies(plan)}</td>
@@ -864,7 +881,14 @@ export default function TrainingRolling() {
                               <div><span>Training Hours</span><strong>{plan.hours}</strong></div>
                               <div><span>Trainer</span><strong>{plan.trainer}</strong></div>
                               <div><span>Provider</span><strong>{plan.provider}</strong></div>
-                              <div><span>Owner</span><strong>{plan.ownerName}</strong></div>
+                              <div>
+                                <span>Created By (ผู้จัดอบรม)</span>
+                                <strong>
+                                  {plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.ownerName === "Center HRD"
+                                    ? `🏢 HRD Center (ส่วนกลางจัดอบรมให้บริษัท ${formatRollingPlanCompanies(plan)})`
+                                    : `🏬 ${plan.ownerCompany || plan.company} (โรงงานจัดอบรมเอง)`}
+                                </strong>
+                              </div>
                               <div><span>Last Updated</span><strong>{plan.updatedAt}</strong></div>
                             </div>
 

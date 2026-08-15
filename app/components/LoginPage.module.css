@@ -118,7 +118,7 @@
   align-items: center;
   gap: 12px;
   margin: 0 0 16px;
-  color: var(--ui-10-accent);
+  color: var(--ui-10-accent-on-dark);
   font-size: 10px;
   font-weight: 900;
   letter-spacing: 0.22em;

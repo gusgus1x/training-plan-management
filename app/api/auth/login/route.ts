@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { ApiError } from "../../../lib/api/errors";
 import { apiFailure, apiSuccess } from "../../../lib/api/response";
 import { authenticateCredentials } from "../../../lib/auth/authentication";
@@ -76,6 +77,7 @@ export const createLoginHandler = (
 
       return response;
     } catch (error: unknown) {
+      console.error("[Login Handler Error]", error);
       const response = apiFailure(error);
       response.headers.set("Cache-Control", "no-store");
       return response;

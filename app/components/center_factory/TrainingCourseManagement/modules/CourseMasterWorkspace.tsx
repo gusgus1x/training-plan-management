@@ -1,7 +1,8 @@
 
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { downloadCsvTemplate, parseCsvText, type CourseMasterImportRow } from "../../../../lib/excelHelper";
 import {
   getCourseDisplayName,
   getCourseSecondaryName,
@@ -164,6 +165,118 @@ function CourseMaster() {
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [standardFunctionCode, setStandardFunctionCode] = useState(allFunctionCode);
   const [standardFunctionName, setStandardFunctionName] = useState(allFunctionOption);
+
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importRows, setImportRows] = useState<CourseMasterImportRow[]>([]);
+  const [importFileName, setImportFileName] = useState("");
+  const [importNotice, setImportNotice] = useState<string | null>(null);
+  const importFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleDownloadExcelTemplate = () => {
+    downloadCsvTemplate();
+  };
+
+  const handleExcelFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const text = String(evt.target?.result || "");
+        const mapped = parseCsvText(text);
+        setImportRows(mapped);
+        setImportNotice(null);
+      } catch (err) {
+        console.error("Excel/CSV parse error:", err);
+        setImportNotice("❌ ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบรูปแบบไฟล์ CSV / Excel");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleCommitExcelImport = () => {
+    if (importRows.length === 0) return;
+
+    let importedCount = 0;
+    const newCourses: CourseRecord[] = [...courses];
+    const newStandards: CourseStandardRecord[] = [...standards];
+
+    importRows.forEach((item) => {
+      if (!item.courseNameTh) return;
+
+      const resolvedGroup = item.courseGroup || "General";
+      const resolvedCode =
+        item.courseCode ||
+        buildCourseCode(resolvedGroup, "", "");
+
+      const courseId = `course-${resolvedCode.toLowerCase()}-${Math.random().toString(36).substring(2, 9)}`;
+
+      const courseRec: CourseRecord = {
+        id: courseId,
+        courseCode: resolvedCode,
+        courseNameTh: item.courseNameTh,
+        courseNameEn: item.courseNameEn || item.courseNameTh,
+        courseGroup: resolvedGroup,
+        courseType: item.courseType || "IN-HOUSE",
+        objective: item.objective || "-",
+        learningContent: item.learningContent || "-",
+        targetGroup: item.targetGroup || "-",
+        methodology: item.methodology || "Lecture / Workshop",
+        preTestId: "",
+        preTest: item.preTest?.toLowerCase() === "yes" ? "Pre Test" : "-",
+        postTestId: "",
+        postTest: item.postTest?.toLowerCase() === "yes" ? "Post Test" : "-",
+        evaluationId: "",
+        evaluation: "After Training Evaluation",
+        evaluationAfter30DayId: "",
+        evaluationAfter30Day: "30-Day Evaluation",
+        lifeCycleMonth: item.lifeCycleMonth || "12",
+        status: "Active",
+        remark: "",
+        updatedAt: new Date().toISOString().slice(0, 10),
+        owner: user?.roleCode === "HRD_CENTER" ? "CENTER" : "FACTORY",
+        ownerCompany: user?.roleCode === "HRD_CENTER" ? "HRD Center" : (profileValue(user?.companyCode) || "Factory"),
+        createdBy: profileValue(user?.displayName ?? user?.username),
+      };
+
+      const posArray = item.positions
+        ? item.positions.split(",").map((p: string) => p.trim()).filter(Boolean)
+        : [];
+      const lvlArray = item.levels
+        ? item.levels.split(",").map((l: string) => normalizeEmployeeLevel(l.trim())).filter(Boolean)
+        : [];
+
+      const standardRec: CourseStandardRecord = {
+        id: `standard-${courseId}`,
+        courseId: courseId,
+        courseCode: resolvedCode,
+        courseName: getCourseDisplayName(courseRec),
+        companies: [],
+        functionCode: item.functionCode || "",
+        functionName: item.functionName || allFunctionOption,
+        section: "",
+        department: "",
+        division: "",
+        positions: posArray,
+        levels: lvlArray,
+        owner: courseRec.owner,
+        ownerCompany: courseRec.ownerCompany || "HRD Center",
+      };
+
+      newCourses.unshift(courseRec);
+      newStandards.unshift(standardRec);
+      importedCount += 1;
+    });
+
+    setCourses(newCourses);
+    setStandards(newStandards);
+    setIsImportModalOpen(false);
+    setImportRows([]);
+    setImportFileName("");
+    alert(`🎉 นำเข้าข้อมูล Course Master สำเร็จจำนวน ${importedCount} รายการ!`);
+  };
 
   useEffect(() => {
     let active = true;
@@ -1154,7 +1267,7 @@ function CourseMaster() {
             type="button"
             onClick={handleSave}
           >
-            Save Course & Standard
+            บันทึกหลักสูตรและมาตรฐาน / Save Course & Standard
           </button>
           <button className={styles.secondaryButton} type="button" onClick={handleClosePanel}>
             Cancel
@@ -1190,6 +1303,9 @@ function CourseMaster() {
         </button>
         <button className={styles.dangerButton} type="button" onClick={handleDelete} disabled={!selectedCourse || isSelectedCourseLocked}>
           Delete
+        </button>
+        <button className={styles.secondaryButton} type="button" onClick={() => setIsImportModalOpen(true)}>
+          📥 Import Excel
         </button>
         <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>
           Refresh
@@ -1296,6 +1412,225 @@ function CourseMaster() {
           </table>
         </div>
       </section>
+
+      {isImportModalOpen ? (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.65)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: "20px",
+          }}
+        >
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: "16px",
+              width: "min(860px, 95vw)",
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                padding: "20px 24px",
+                borderBottom: "1px solid #e2e8f0",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                background: "#f8fafc",
+              }}
+            >
+              <div>
+                <h3 style={{ margin: "0 0 4px", fontSize: "1.15rem", color: "#0f172a" }}>
+                  📥 นำเข้าข้อมูลหลักสูตร (Import Course Master via Excel/CSV)
+                </h3>
+                <p style={{ margin: 0, fontSize: "0.82rem", color: "#64748b" }}>
+                  เลือกไฟล์ Excel เพื่อสร้างรายชื่อหลักสูตรและมาตรฐานกลุ่มเป้าหมายในระบบจำนวนมาก
+                </p>
+              </div>
+              <button
+                type="button"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  fontSize: "1.2rem",
+                  cursor: "pointer",
+                  color: "#64748b",
+                }}
+                onClick={() => {
+                  setIsImportModalOpen(false);
+                  setImportRows([]);
+                  setImportFileName("");
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>
+              <div
+                style={{
+                  border: "2px dashed #cbd5e1",
+                  borderRadius: "12px",
+                  padding: "24px",
+                  textAlign: "center",
+                  background: "#f8fafc",
+                  marginBottom: "20px",
+                }}
+              >
+                <input
+                  ref={importFileInputRef}
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  style={{ display: "none" }}
+                  onChange={handleExcelFileChange}
+                />
+                <div style={{ fontSize: "2rem", marginBottom: "8px" }}>📊</div>
+                <h4 style={{ margin: "0 0 6px", color: "#1e293b", fontSize: "1rem" }}>
+                  {importFileName ? `ไฟล์ที่เลือก: ${importFileName}` : "ลากไฟล์มาวางที่นี่ หรือคลิกปุ่มเพื่อเลือกไฟล์ Excel"}
+                </h4>
+                <p style={{ margin: "0 0 16px", color: "#64748b", fontSize: "0.82rem" }}>
+                  รองรับไฟล์รูปแบบ .xlsx, .xls และ .csv
+                </p>
+                <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                  <button
+                    type="button"
+                    style={{
+                      background: "#3b82f6",
+                      color: "#ffffff",
+                      border: "none",
+                      padding: "8px 18px",
+                      borderRadius: "8px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => importFileInputRef.current?.click()}
+                  >
+                    📁 Select Excel File
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      background: "#f1f5f9",
+                      color: "#334155",
+                      border: "1px solid #cbd5e1",
+                      padding: "8px 18px",
+                      borderRadius: "8px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                    onClick={handleDownloadExcelTemplate}
+                  >
+                    📄 Download Template
+                  </button>
+                </div>
+              </div>
+
+              {importNotice ? (
+                <div style={{ color: "#ef4444", fontWeight: 700, marginBottom: "16px", fontSize: "0.88rem" }}>
+                  {importNotice}
+                </div>
+              ) : null}
+
+              {importRows.length > 0 ? (
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                    <h4 style={{ margin: 0, color: "#0f172a" }}>
+                      ตัวอย่างข้อมูลที่พบ ({importRows.length} รายการ):
+                    </h4>
+                  </div>
+                  <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "8px", maxHeight: "280px" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+                      <thead>
+                        <tr style={{ background: "#f1f5f9", textAlign: "left" }}>
+                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>#</th>
+                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Course Code</th>
+                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Course Name (TH)</th>
+                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Group</th>
+                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Type</th>
+                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Positions</th>
+                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Levels</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importRows.map((row, i) => (
+                          <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                            <td style={{ padding: "8px 12px" }}>{row.rowNum}</td>
+                            <td style={{ padding: "8px 12px", fontWeight: 700, color: "#2563eb" }}>{row.courseCode || "(Auto)"}</td>
+                            <td style={{ padding: "8px 12px" }}>{row.courseNameTh}</td>
+                            <td style={{ padding: "8px 12px" }}>{row.courseGroup || "General"}</td>
+                            <td style={{ padding: "8px 12px" }}>{row.courseType || "IN-HOUSE"}</td>
+                            <td style={{ padding: "8px 12px" }}>{row.positions || "-"}</td>
+                            <td style={{ padding: "8px 12px" }}>{row.levels || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div
+              style={{
+                padding: "16px 24px",
+                borderTop: "1px solid #e2e8f0",
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "12px",
+                background: "#f8fafc",
+              }}
+            >
+              <button
+                type="button"
+                style={{
+                  background: "#f1f5f9",
+                  color: "#475569",
+                  border: "1px solid #cbd5e1",
+                  padding: "8px 18px",
+                  borderRadius: "8px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+                onClick={() => {
+                  setIsImportModalOpen(false);
+                  setImportRows([]);
+                  setImportFileName("");
+                }}
+              >
+                ยกเลิก (Cancel)
+              </button>
+              <button
+                type="button"
+                disabled={importRows.length === 0}
+                style={{
+                  background: importRows.length === 0 ? "#94a3b8" : "#10b981",
+                  color: "#ffffff",
+                  border: "none",
+                  padding: "8px 22px",
+                  borderRadius: "8px",
+                  fontWeight: 700,
+                  cursor: importRows.length === 0 ? "not-allowed" : "pointer",
+                }}
+                onClick={handleCommitExcelImport}
+              >
+                ยืนยันการนำเข้าข้อมูล ({importRows.length} รายการ)
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
     </section>
   );

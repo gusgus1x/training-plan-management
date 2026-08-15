@@ -1,4 +1,4 @@
-import { BigInt, NVarChar, type ConnectionPool } from "mssql";
+import sql, { type ConnectionPool } from "mssql";
 import { getSqlServerPool, resetSqlServerPool } from "../database/pool";
 import type { AuthenticationAccount } from "./types";
 
@@ -172,7 +172,7 @@ export const createAuthenticationRepository = (
       (pool) =>
         pool
           .request()
-          .input("username", NVarChar(100), username)
+          .input("username", sql.NVarChar(100), username)
           .query<AuthenticationRow>(FIND_AUTHENTICATION_ACCOUNT_BY_USERNAME_QUERY),
       getPool,
     );
@@ -185,7 +185,7 @@ export const createAuthenticationRepository = (
       (pool) =>
         pool
           .request()
-          .input("userId", BigInt, userId)
+          .input("userId", sql.BigInt, userId)
           .query<AuthenticationRow>(FIND_AUTHENTICATION_ACCOUNT_BY_USER_ID_QUERY),
       getPool,
     );

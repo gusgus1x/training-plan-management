@@ -1545,23 +1545,31 @@
   transition: all 0.15s ease;
 }
 
-.standard_checkItem input {
+.standard_checkItem input,
+.standard_nativeCheckbox {
   width: 16px;
   min-width: 16px;
   height: 16px;
   min-height: 16px;
   flex: 0 0 16px;
   margin: 0;
-  accent-color: var(--ui-30-primary);
+  accent-color: #168a47;
 }
 
 .standard_checkItem.standard_checkItemSelected,
+.standard_checkItemSelected,
 .standard_checkItem.standard_checkItemSelected:hover {
   border: 1px solid #16a34a;
-  background: #ecfdf5;
+  border-color: #8cd4aa;
+  background: #eaf8ef;
   box-shadow: none;
   color: #064e3b;
   font-weight: 800;
+}
+
+.standard_checkMark {
+  color: #168a47;
+  font-weight: 900;
 }
 
 .standard_checkItem > span:not(.standard_checkMark) {
