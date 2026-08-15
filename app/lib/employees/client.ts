@@ -6,9 +6,14 @@ export const listEmployees=async()=>{
   const pageSize=100;
   const fetchPage=async(page:number)=>read<{items:EmployeeRecord[];pagination:{totalPages:number}}>(await fetch(`/api/master-data/employees?page=${page}&pageSize=${pageSize}`,{credentials:"include",cache:"no-store"}));
   const first=await fetchPage(1);
-  const restPages=Array.from({length:Math.max(0,(first.pagination?.totalPages??1)-1)},(_,i)=>i+2);
-  const rest=await Promise.all(restPages.map(fetchPage));
-  return{items:[...first.items,...rest.flatMap((r)=>r.items)]};
+  const items=[...first.items];
+  // Sequential, not Promise.all: firing every page at once saturates the DB
+  // connection pool once employee count crosses a few thousand, causing
+  // page timeouts that fail the whole listing.
+  for(let page=2;page<=(first.pagination?.totalPages??1);page++){
+    items.push(...(await fetchPage(page)).items);
+  }
+  return{items};
 };
 export const createEmployee=async(i:EmployeeInput)=>read<{employee:EmployeeRecord}>(await fetch("/api/master-data/employees",json("POST",i)));
 export const updateEmployee=async(id:string,i:UpdateEmployeeInput)=>read<{employee:EmployeeRecord}>(await fetch(`/api/master-data/employees/${id}`,json("PATCH",i)));

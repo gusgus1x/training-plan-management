@@ -18,7 +18,7 @@ import type { InternalReportDraft } from "./InternalReport";
 import styles from "./ScheduleCalendar.module.css";
 
 export const scheduleCalendarModule = {
-  title: "Schedule Calendar",
+  title: "Schedule calendar",
   subtitle: "Training schedule",
   description: "Show monthly training details from Training Rolling data",
 } as const;
@@ -529,7 +529,7 @@ export default function ScheduleCalendar({
         <section className={styles.courseOverview} aria-label="Monthly course overview">
           <header>
             <div>
-              <h3>Monthly Course Overview</h3>
+              <h3>{uiLang === "th" ? "ภาพรวมคอร์สอบรมประจำเดือน" : "Monthly Course Overview"}</h3>
             </div>
             <span className={styles.headerMonthBadge}>
               {thMonthLabels[Number(selectedMonth) - 1] && uiLang === "th"
