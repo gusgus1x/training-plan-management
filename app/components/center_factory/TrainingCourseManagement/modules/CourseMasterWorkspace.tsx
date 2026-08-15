@@ -209,7 +209,7 @@ function CourseMaster() {
       const resolvedGroup = item.courseGroup || "General";
       const resolvedCode =
         item.courseCode ||
-        buildCourseCode(resolvedGroup, "", "");
+        `CRS-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
       const courseId = `course-${resolvedCode.toLowerCase()}-${Math.random().toString(36).substring(2, 9)}`;
 

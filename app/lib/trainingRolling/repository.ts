@@ -48,12 +48,12 @@ const mapCourseSnapshot = (row: CourseWithRelations): WorkflowCourse => {
     lifeCycleMonth: row.validity_months?.toString() || "12",
     remark: row.description || "",
     status: row.status === "ACTIVE" ? "Active" : row.status === "DRAFT" ? "Draft" : "Inactive",
-    courseType: row.course_type.course_type_name,
-    courseGroup: row.course_group.course_group_name,
-    updatedAt: (row.updated_at || row.created_at).toISOString(),
+    courseType: row.course_type?.course_type_name || "",
+    courseGroup: row.course_group?.course_group_name || "",
+    updatedAt: (row.updated_at || row.created_at || new Date()).toISOString(),
     owner,
     ownerCompany,
-    createdBy: row.created_by.toString(),
+    createdBy: row.created_by?.toString() || "",
   };
 };
 
@@ -83,18 +83,25 @@ const UI_STATUS_TO_DB: Record<RollingPlanStatus, string> = {
   Cancel: "CANCELLED",
 };
 
-const splitDateTime = (value: Date) => ({
-  trainingDate: `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`,
-  time: `${pad2(value.getHours())}:${pad2(value.getMinutes())}`,
-});
+const splitDateTime = (value: Date | string | null | undefined) => {
+  if (!value) return { trainingDate: "", time: "" };
+  const d = value instanceof Date ? value : new Date(value);
+  if (isNaN(d.getTime())) return { trainingDate: "", time: "" };
+  return {
+    trainingDate: `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`,
+    time: `${pad2(d.getHours())}:${pad2(d.getMinutes())}`,
+  };
+};
 
 const combineDateTime = (trainingDate: string, time: string) => new Date(`${trainingDate}T${time}:00`);
 
 const mapRollingPlan = (row: RollingPlanWithRelations) => {
   const oap = row.training_plan_oap;
-  const owner = oap.company_id ? "FACTORY" : "CENTER";
-  const ownerCompany = oap.company?.company_code ?? "CENTER";
-  const instructorName = oap.instructor ? `${oap.instructor.first_name} ${oap.instructor.last_name}`.trim() : "";
+  const owner = oap?.company_id ? "FACTORY" : "CENTER";
+  const ownerCompany = oap?.company?.company_code ?? "CENTER";
+  const instructorName = oap?.instructor
+    ? `${oap.instructor.first_name || ""} ${oap.instructor.last_name || ""}`.trim()
+    : "";
   const start = splitDateTime(row.start_datetime);
   const end = splitDateTime(row.end_datetime);
   return {
@@ -110,14 +117,14 @@ const mapRollingPlan = (row: RollingPlanWithRelations) => {
     endTime: end.time,
     capacity: row.capacity,
     status: DB_STATUS_TO_UI[row.status] ?? "Planning",
-    createdBy: row.created_by.toString(),
-    updatedAt: (row.updated_at || row.created_at).toISOString(),
-    course: mapCourseSnapshot(oap.course),
-    oapParticipants: oap.default_participant_count.toString(),
-    oapHours: oap.planned_duration_hours.toString(),
-    oapBudget: oap.total_planned_budget.toString(),
-    oapTrainer: oap.instructor_name_text || instructorName,
-    oapProvider: oap.provider_name || "",
+    createdBy: row.created_by?.toString() || "",
+    updatedAt: (row.updated_at || row.created_at || new Date()).toISOString(),
+    course: oap?.course ? mapCourseSnapshot(oap.course) : null,
+    oapParticipants: oap?.default_participant_count?.toString() || "0",
+    oapHours: oap?.planned_duration_hours?.toString() || "0",
+    oapBudget: oap?.total_planned_budget?.toString() || "0",
+    oapTrainer: oap?.instructor_name_text || instructorName,
+    oapProvider: oap?.provider_name || "",
     owner,
     ownerCompany,
   };

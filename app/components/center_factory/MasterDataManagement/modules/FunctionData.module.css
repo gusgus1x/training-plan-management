@@ -88,28 +88,35 @@
   line-height: 1.45;
 }
 
+.heroMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
 .heroMetric {
   display: grid;
-  min-width: 122px;
+  min-width: 110px;
   align-content: center;
   justify-items: start;
   border: 1px solid var(--ui-30-primary-border);
   border-radius: 8px;
   background: var(--ui-60-surface-soft);
-  padding: 12px;
+  padding: 10px 14px;
 }
 
 .heroMetric strong {
   color: var(--ui-30-ink);
-  font-size: 1.45rem;
+  font-size: 1.35rem;
   font-weight: 900;
   line-height: 1;
 }
 
 .heroMetric span {
-  margin-top: 5px;
+  margin-top: 4px;
   color: var(--ui-30-text);
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 900;
   text-transform: uppercase;
 }

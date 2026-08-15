@@ -7,6 +7,7 @@ const databaseMutationTest =
 databaseMutationTest(
   "performs Function and Mapping CRUD through the application login",
   async () => {
+    loadEnvironment({ path: ".env", quiet: true });
     loadEnvironment({ path: ".env.local", quiet: true });
     const { getPrismaClient, resetPrismaClient } = await import(
       "../../app/lib/database/prisma"
