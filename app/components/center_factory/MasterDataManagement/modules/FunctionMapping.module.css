@@ -482,6 +482,126 @@
   padding: 3px 8px;
 }
 
+.panelHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.newGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.rowActions {
+  display: flex;
+  gap: 6px;
+}
+
+.companyDirectory {
+  display: grid;
+  gap: 10px;
+}
+
+.companyGroup {
+  overflow: hidden;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+}
+
+.companyGroup .tableWrap {
+  border-width: 1px 0 0;
+  border-radius: 0;
+}
+
+.companyHeader {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 18px auto auto 1fr;
+  gap: 8px;
+  align-items: center;
+  border: 0;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
+  cursor: pointer;
+  font: inherit;
+  min-height: 42px;
+  padding: 10px 13px;
+  text-align: left;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.companyHeader:hover {
+  background: var(--ui-60-surface-muted);
+}
+
+.companyHeader span {
+  color: var(--ui-30-text);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.companyHeader strong {
+  font-weight: 900;
+}
+
+.companyHeader b {
+  color: var(--ui-30-primary);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.companyHeader small {
+  justify-self: end;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 999px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 6px 9px;
+  white-space: nowrap;
+}
+
+.chevron {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 6px solid var(--ui-30-muted);
+  transform-origin: 45% 50%;
+  transition: transform 140ms ease;
+}
+
+.openGroup .chevron {
+  transform: rotate(90deg);
+}
+
+.openGroup .companyHeader {
+  background: var(--ui-30-primary-soft);
+}
+
+.mappingTable {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+
+.mappingTable th,
+.mappingTable td {
+  border-bottom: 1px solid var(--ui-30-border);
+  padding: 10px 11px;
+  text-align: left;
+  vertical-align: middle;
+}
+
 @media (max-width: 760px) {
   .page,
   .moduleWorkspace {
@@ -498,5 +618,13 @@
   .questionGrid {
     display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .companyHeader {
+    grid-template-columns: 16px 1fr;
+  }
+
+  .companyHeader small {
+    justify-self: start;
   }
 }

@@ -307,7 +307,7 @@
 
 .functionTable {
   width: 100%;
-  min-width: 860px;
+  min-width: 1200px;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -333,33 +333,19 @@
 
 .functionTable th:first-child,
 .functionTable td:first-child {
-  width: 72px;
+  width: 56px;
   text-align: center;
 }
 
 .functionTable th:nth-child(2),
-.functionTable td:nth-child(2) {
-  width: 110px;
-}
-
+.functionTable td:nth-child(2),
 .functionTable th:nth-child(3),
-.functionTable td:nth-child(3) {
-  width: 230px;
-}
-
+.functionTable td:nth-child(3),
 .functionTable th:nth-child(4),
-.functionTable td:nth-child(4) {
-  width: 240px;
-}
-
+.functionTable td:nth-child(4),
 .functionTable th:nth-child(5),
 .functionTable td:nth-child(5) {
-  width: 240px;
-}
-
-.functionTable th:nth-child(6),
-.functionTable td:nth-child(6) {
-  width: 240px;
+  width: 23%;
 }
 
 .functionTable tbody tr {
@@ -388,6 +374,103 @@
   padding: 5px 9px;
 }
 
+.newGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.selectedLabel {
+  margin-left: auto;
+  color: var(--ui-30-text);
+  font-size: 0.76rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.treeLabel {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--ui-30-ink);
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.treeLabel span:last-child {
+  min-width: 0;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.treeLabel:hover {
+  background: var(--ui-60-surface-soft);
+}
+
+.treeLabel[data-selected="true"] {
+  background: var(--ui-30-primary-soft);
+  box-shadow: inset 3px 0 0 var(--ui-10-accent);
+}
+
+.treePlaceholderLabel {
+  display: inline-block;
+  padding: 6px 8px;
+  color: var(--ui-30-muted);
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+.treeEmptyHint {
+  margin: 2px 0;
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+  font-style: italic;
+}
+
+.orphanPanel {
+  margin-top: 14px;
+  border-top: 1px solid var(--ui-30-border);
+  padding-top: 12px;
+}
+
+.orphanPanel summary {
+  cursor: pointer;
+  color: var(--ui-30-text);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.orphanGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.orphanGrid h4 {
+  margin: 0 0 6px;
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.orphanList {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 @media (max-width: 760px) {
   .page {
     width: min(100% - 28px, 560px);
@@ -406,7 +489,15 @@
     width: 100%;
   }
 
+  .selectedLabel {
+    margin-left: 0;
+  }
+
   .formActions {
     display: grid;
+  }
+
+  .orphanGrid {
+    grid-template-columns: 1fr;
   }
 }

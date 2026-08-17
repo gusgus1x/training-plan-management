@@ -1,15 +1,18 @@
 import { ApiError } from "../api/errors";
 import {
   readOptionalString,
+  readPositiveId,
   readRequiredString,
   type InputObject,
 } from "../api/validation";
 import {
   SECTION_STATUSES,
   type CreateSectionInput,
+  type CreateSectionMappingInput,
   type SectionListFilters,
   type SectionStatus,
   type UpdateSectionInput,
+  type UpdateSectionMappingInput,
 } from "./types";
 
 const CODE_PATTERN = /^[A-Z0-9][A-Z0-9_-]*$/;
@@ -77,6 +80,56 @@ export const parseUpdateSection = (
     update.sectionNameEn = readOptionalString(input, "sectionNameEn", {
       maxLength: 255,
     });
+  }
+  if (hasOwn(input, "status")) update.status = status(input.status);
+  if (Object.keys(update).length === 0) {
+    throw invalid("body", "At least one editable field is required");
+  }
+  return update;
+};
+
+const plantSectionCode = (input: InputObject) => {
+  const value = readRequiredString(input, "plantSectionCode", {
+    maxLength: 50,
+  }).toUpperCase();
+  if (!CODE_PATTERN.test(value)) {
+    throw invalid(
+      "plantSectionCode",
+      "Use only letters, numbers, hyphens, and underscores",
+    );
+  }
+  return value;
+};
+
+export const parseCreateSectionMapping = (
+  input: InputObject,
+): CreateSectionMappingInput => ({
+  companyId:
+    input.companyId === undefined || input.companyId === null
+      ? null
+      : readPositiveId(input.companyId, "companyId"),
+  plantSectionCode: plantSectionCode(input),
+  plantSectionName: readRequiredString(input, "plantSectionName", {
+    maxLength: 255,
+  }),
+  sectionId: readPositiveId(input.sectionId, "sectionId"),
+  status: status(input.status, "ACTIVE"),
+});
+
+export const parseUpdateSectionMapping = (
+  input: InputObject,
+): UpdateSectionMappingInput => {
+  const update: UpdateSectionMappingInput = {};
+  if (hasOwn(input, "plantSectionCode")) {
+    update.plantSectionCode = plantSectionCode(input);
+  }
+  if (hasOwn(input, "plantSectionName")) {
+    update.plantSectionName = readRequiredString(input, "plantSectionName", {
+      maxLength: 255,
+    });
+  }
+  if (hasOwn(input, "sectionId")) {
+    update.sectionId = readPositiveId(input.sectionId, "sectionId");
   }
   if (hasOwn(input, "status")) update.status = status(input.status);
   if (Object.keys(update).length === 0) {

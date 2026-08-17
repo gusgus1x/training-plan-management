@@ -24,3 +24,37 @@ export type CreateDepartmentInput = {
 };
 
 export type UpdateDepartmentInput = Partial<CreateDepartmentInput>;
+
+export type DepartmentMappingRecord = {
+  departmentMappingId: string;
+  companyId: string;
+  companyCode: string;
+  companyNameTh: string;
+  plantDepartmentCode: string;
+  plantDepartmentName: string;
+  departmentId: string;
+  departmentCode: string;
+  departmentNameTh: string;
+  status: DepartmentStatus;
+};
+
+export type MappingListFilters = DepartmentListFilters & {
+  companyId: string | null;
+};
+
+export type CreateDepartmentMappingInput = {
+  companyId: string | null;
+  plantDepartmentCode: string;
+  plantDepartmentName: string;
+  departmentId: string;
+  status: DepartmentStatus;
+};
+
+export type UpdateDepartmentMappingInput = Partial<
+  Omit<CreateDepartmentMappingInput, "companyId">
+>;
+
+export type PaginatedResult<Item> = {
+  items: Item[];
+  totalItems: number;
+};

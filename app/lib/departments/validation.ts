@@ -1,15 +1,18 @@
 import { ApiError } from "../api/errors";
 import {
   readOptionalString,
+  readPositiveId,
   readRequiredString,
   type InputObject,
 } from "../api/validation";
 import {
   DEPARTMENT_STATUSES,
   type CreateDepartmentInput,
+  type CreateDepartmentMappingInput,
   type DepartmentListFilters,
   type DepartmentStatus,
   type UpdateDepartmentInput,
+  type UpdateDepartmentMappingInput,
 } from "./types";
 
 const CODE_PATTERN = /^[A-Z0-9][A-Z0-9_-]*$/;
@@ -77,6 +80,58 @@ export const parseUpdateDepartment = (
     update.departmentNameEn = readOptionalString(input, "departmentNameEn", {
       maxLength: 255,
     });
+  }
+  if (hasOwn(input, "status")) update.status = status(input.status);
+  if (Object.keys(update).length === 0) {
+    throw invalid("body", "At least one editable field is required");
+  }
+  return update;
+};
+
+const plantDepartmentCode = (input: InputObject) => {
+  const value = readRequiredString(input, "plantDepartmentCode", {
+    maxLength: 50,
+  }).toUpperCase();
+  if (!CODE_PATTERN.test(value)) {
+    throw invalid(
+      "plantDepartmentCode",
+      "Use only letters, numbers, hyphens, and underscores",
+    );
+  }
+  return value;
+};
+
+export const parseCreateDepartmentMapping = (
+  input: InputObject,
+): CreateDepartmentMappingInput => ({
+  companyId:
+    input.companyId === undefined || input.companyId === null
+      ? null
+      : readPositiveId(input.companyId, "companyId"),
+  plantDepartmentCode: plantDepartmentCode(input),
+  plantDepartmentName: readRequiredString(input, "plantDepartmentName", {
+    maxLength: 255,
+  }),
+  departmentId: readPositiveId(input.departmentId, "departmentId"),
+  status: status(input.status, "ACTIVE"),
+});
+
+export const parseUpdateDepartmentMapping = (
+  input: InputObject,
+): UpdateDepartmentMappingInput => {
+  const update: UpdateDepartmentMappingInput = {};
+  if (hasOwn(input, "plantDepartmentCode")) {
+    update.plantDepartmentCode = plantDepartmentCode(input);
+  }
+  if (hasOwn(input, "plantDepartmentName")) {
+    update.plantDepartmentName = readRequiredString(
+      input,
+      "plantDepartmentName",
+      { maxLength: 255 },
+    );
+  }
+  if (hasOwn(input, "departmentId")) {
+    update.departmentId = readPositiveId(input.departmentId, "departmentId");
   }
   if (hasOwn(input, "status")) update.status = status(input.status);
   if (Object.keys(update).length === 0) {

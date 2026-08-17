@@ -5,14 +5,17 @@ import {
 } from "./repository";
 import type {
   CreateSectionInput,
+  CreateSectionMappingInput,
+  MappingListFilters,
   SectionListFilters,
   UpdateSectionInput,
+  UpdateSectionMappingInput,
 } from "./types";
 
-const notFound = () =>
+const notFound = (resource: "Section" | "Section mapping" = "Section") =>
   new ApiError({
-    code: "SECTION_NOT_FOUND",
-    message: "Section not found",
+    code: resource === "Section" ? "SECTION_NOT_FOUND" : "MAPPING_NOT_FOUND",
+    message: `${resource} not found`,
     status: 404,
   });
 const conflict = (code: string, message: string) =>
@@ -57,6 +60,58 @@ export const createSectionService = (
       }
       throw error;
     }
+  },
+
+  listMappings: (filters: MappingListFilters) => repository.listMappings(filters),
+
+  async getMapping(mappingId: string) {
+    const record = await repository.findMappingById(mappingId);
+    if (!record) throw notFound("Section mapping");
+    return record;
+  },
+
+  async createMapping(input: CreateSectionMappingInput & { companyId: string }) {
+    if (!(await repository.findById(input.sectionId))) {
+      throw notFound("Section");
+    }
+    if (
+      await repository.findMappingByCode(input.companyId, input.plantSectionCode)
+    ) {
+      throw conflict(
+        "MAPPING_CODE_CONFLICT",
+        "Plant section code already exists for this company",
+      );
+    }
+    return repository.createMapping(input);
+  },
+
+  async updateMapping(mappingId: string, input: UpdateSectionMappingInput) {
+    const current = await repository.findMappingById(mappingId);
+    if (!current) throw notFound("Section mapping");
+    if (input.sectionId && !(await repository.findById(input.sectionId))) {
+      throw notFound("Section");
+    }
+    if (
+      input.plantSectionCode &&
+      (await repository.findMappingByCode(
+        current.companyId,
+        input.plantSectionCode,
+        mappingId,
+      ))
+    ) {
+      throw conflict(
+        "MAPPING_CODE_CONFLICT",
+        "Plant section code already exists for this company",
+      );
+    }
+    return repository.updateMapping(mappingId, input);
+  },
+
+  async deleteMapping(mappingId: string) {
+    if (!(await repository.findMappingById(mappingId))) {
+      throw notFound("Section mapping");
+    }
+    return repository.deleteMapping(mappingId);
   },
 });
 

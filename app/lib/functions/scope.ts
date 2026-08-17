@@ -1,7 +1,6 @@
 import { ApiError } from "../api/errors";
 import { requireCompanyScope } from "../auth/authorization";
 import type { AuthenticatedPrincipal } from "../auth/types";
-import type { FunctionMappingRecord } from "./types";
 
 export const resolveMappingCompanyId = (
   principal: AuthenticatedPrincipal,
@@ -24,7 +23,9 @@ export const resolveMappingCompanyId = (
   });
 };
 
+// Generic on purpose: shared by the Function/Division/Department/Section mapping API routes,
+// none of which need anything beyond the mapping record's companyId to enforce scope.
 export const requireMappingScope = (
   principal: AuthenticatedPrincipal,
-  mapping: Pick<FunctionMappingRecord, "companyId">,
+  mapping: { companyId: string },
 ) => requireCompanyScope(principal, mapping.companyId, { allowHrdCenter: true });

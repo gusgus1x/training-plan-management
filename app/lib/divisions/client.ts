@@ -2,8 +2,11 @@
 
 import type {
   CreateDivisionInput,
+  CreateDivisionMappingInput,
+  DivisionMappingRecord,
   DivisionRecord,
   UpdateDivisionInput,
+  UpdateDivisionMappingInput,
 } from "./types";
 
 type Fetcher = typeof fetch;
@@ -70,6 +73,48 @@ export const updateDivision = async (
 export const deleteDivision = async (id: string, fetcher: Fetcher = fetch) =>
   read<{ division: DivisionRecord }>(
     await fetcher(`/api/master-data/divisions/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    }),
+  );
+
+export const listDivisionMappings = async (fetcher: Fetcher = fetch) =>
+  read<{ items: DivisionMappingRecord[] }>(
+    await fetcher("/api/master-data/division-mappings?page=1&pageSize=100", {
+      credentials: "include",
+      cache: "no-store",
+    }),
+  );
+
+export const createDivisionMapping = async (
+  input: CreateDivisionMappingInput,
+  fetcher: Fetcher = fetch,
+) =>
+  read<{ mapping: DivisionMappingRecord }>(
+    await fetcher(
+      "/api/master-data/division-mappings",
+      json("POST", input),
+    ),
+  );
+
+export const updateDivisionMapping = async (
+  id: string,
+  input: UpdateDivisionMappingInput,
+  fetcher: Fetcher = fetch,
+) =>
+  read<{ mapping: DivisionMappingRecord }>(
+    await fetcher(
+      `/api/master-data/division-mappings/${id}`,
+      json("PATCH", input),
+    ),
+  );
+
+export const deleteDivisionMapping = async (
+  id: string,
+  fetcher: Fetcher = fetch,
+) =>
+  read<{ mapping: DivisionMappingRecord }>(
+    await fetcher(`/api/master-data/division-mappings/${id}`, {
       method: "DELETE",
       credentials: "include",
     }),

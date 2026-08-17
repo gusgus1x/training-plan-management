@@ -46,6 +46,8 @@ import type {
   SectionRecord,
   SectionStatus,
 } from "../../../../lib/sections/types";
+import { listOrgHierarchyUsage } from "../../../../lib/orgHierarchy/client";
+import type { OrgHierarchyUsageRow } from "../../../../lib/orgHierarchy/types";
 import styles from "./FunctionData.module.css";
 
 export type FunctionRecord = {
@@ -106,6 +108,38 @@ const blankForm = (): GenericForm => ({
   status: "ACTIVE",
 });
 
+// Auto-numbering for new records: continues the most common "<letters><digits>" pattern already
+// in use (so it follows whatever prefix convention real data already established, e.g. "PLT0001"),
+// falling back to fallbackPrefix + "0001" when there's no existing data to follow yet.
+const CODE_PATTERN = /^([A-Za-z]+)(\d+)$/;
+const nextAutoCode = (existingCodes: string[], fallbackPrefix: string) => {
+  const prefixCounts = new Map<string, number>();
+  for (const code of existingCodes) {
+    const match = code.trim().match(CODE_PATTERN);
+    if (match) prefixCounts.set(match[1], (prefixCounts.get(match[1]) ?? 0) + 1);
+  }
+  let activePrefix = fallbackPrefix;
+  let topCount = 0;
+  for (const [prefix, count] of prefixCounts) {
+    if (count > topCount) {
+      topCount = count;
+      activePrefix = prefix;
+    }
+  }
+  let maxNumber = 0;
+  let width = 4;
+  for (const code of existingCodes) {
+    const match = code.trim().match(CODE_PATTERN);
+    if (!match || match[1] !== activePrefix) continue;
+    const value = parseInt(match[2], 10);
+    if (value > maxNumber) {
+      maxNumber = value;
+      width = match[2].length;
+    }
+  }
+  return `${activePrefix}${String(maxNumber + 1).padStart(width, "0")}`;
+};
+
 const functionErrorText = (error: unknown) =>
   error instanceof FunctionClientError
     ? error.message
@@ -126,6 +160,53 @@ const sectionErrorText = (error: unknown) =>
     ? error.message
     : "Unable to process section data. Please try again.";
 
+type SelectedLevel = "function" | "division" | "department" | "section";
+
+const NO_DIVISION_KEY = "__NO_DIVISION__";
+const NO_DEPARTMENT_KEY = "__NO_DEPARTMENT__";
+
+type CombinationRow = {
+  key: string;
+  functionRecord: OrganizationFunctionRecord;
+  divisionRecord: DivisionRecord | null;
+  departmentRecord: DepartmentRecord | null;
+  sectionRecord: SectionRecord | null;
+};
+
+const textMatches = (query: string, ...values: Array<string | null | undefined>) =>
+  values.some((value) => value && value.toLowerCase().includes(query));
+
+const displayName = (nameTh: string, nameEn: string | null) => nameEn?.trim() || nameTh;
+
+const Cell = ({
+  code,
+  label,
+  selected,
+  onSelect,
+}: {
+  code?: string;
+  label: string;
+  selected: boolean;
+  onSelect?: () => void;
+}) =>
+  onSelect ? (
+    <button
+      type="button"
+      className={styles.treeLabel}
+      data-selected={selected ? "true" : undefined}
+      onClick={onSelect}
+    >
+      {code ? (
+        <span className={styles.codePill} translate="no">
+          {code}
+        </span>
+      ) : null}
+      <span translate="no">{label}</span>
+    </button>
+  ) : (
+    <span className={styles.treePlaceholderLabel}>{label}</span>
+  );
+
 export default function FunctionData() {
   const user = useAuthenticatedUser();
   const isCenter = user?.roleCode === "HRD_CENTER";
@@ -133,7 +214,6 @@ export default function FunctionData() {
   // --- 1. Function State ---
   const [rows, setRows] = useState<OrganizationFunctionRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
   const [formMode, setFormMode] = useState<"new" | "edit" | null>(null);
   const [form, setForm] = useState<{
     functionCode: string;
@@ -154,7 +234,6 @@ export default function FunctionData() {
   // --- 2. Division State ---
   const [divisionRows, setDivisionRows] = useState<DivisionRecord[]>([]);
   const [selectedDivisionId, setSelectedDivisionId] = useState<string | null>(null);
-  const [divisionSearch, setDivisionSearch] = useState("");
   const [divisionFormMode, setDivisionFormMode] = useState<"new" | "edit" | null>(null);
   const [divisionForm, setDivisionForm] = useState<GenericForm>(blankForm);
   const [isLoadingDivision, setIsLoadingDivision] = useState(true);
@@ -165,7 +244,6 @@ export default function FunctionData() {
   // --- 3. Department State ---
   const [departmentRows, setDepartmentRows] = useState<DepartmentRecord[]>([]);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
-  const [departmentSearch, setDepartmentSearch] = useState("");
   const [departmentFormMode, setDepartmentFormMode] = useState<"new" | "edit" | null>(null);
   const [departmentForm, setDepartmentForm] = useState<GenericForm>(blankForm);
   const [isLoadingDepartment, setIsLoadingDepartment] = useState(true);
@@ -176,7 +254,6 @@ export default function FunctionData() {
   // --- 4. Section State ---
   const [sectionRows, setSectionRows] = useState<SectionRecord[]>([]);
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
-  const [sectionSearch, setSectionSearch] = useState("");
   const [sectionFormMode, setSectionFormMode] = useState<"new" | "edit" | null>(null);
   const [sectionForm, setSectionForm] = useState<GenericForm>(blankForm);
   const [isLoadingSection, setIsLoadingSection] = useState(true);
@@ -184,58 +261,234 @@ export default function FunctionData() {
   const [sectionError, setSectionError] = useState<string | null>(null);
   const [sectionMessage, setSectionMessage] = useState<string | null>(null);
 
-  // --- Filtered Rows ---
+  // --- 5. Combined relationship-tree state ---
+  const [orgHierarchyUsage, setOrgHierarchyUsage] = useState<OrgHierarchyUsageRow[]>([]);
+  const [isLoadingUsage, setIsLoadingUsage] = useState(true);
+  const [treeQuery, setTreeQuery] = useState("");
+  const [selectedLevel, setSelectedLevel] = useState<SelectedLevel | null>(null);
+
   const selected = rows.find((row) => row.functionId === selectedId) ?? null;
-  const visibleRows = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return rows;
-    return rows.filter((row) =>
-      [row.functionCode, row.functionNameTh, row.functionNameEn, row.status]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(query),
-    );
-  }, [rows, search]);
+  const selectedDivision =
+    divisionRows.find((row) => row.divisionId === selectedDivisionId) ?? null;
+  const selectedDepartment =
+    departmentRows.find((row) => row.departmentId === selectedDepartmentId) ?? null;
+  const selectedSection =
+    sectionRows.find((row) => row.sectionId === selectedSectionId) ?? null;
 
-  const selectedDivision = divisionRows.find((row) => row.divisionId === selectedDivisionId) ?? null;
-  const visibleDivisionRows = useMemo(() => {
-    const query = divisionSearch.trim().toLowerCase();
-    if (!query) return divisionRows;
-    return divisionRows.filter((row) =>
-      [row.divisionCode, row.divisionNameTh, row.divisionNameEn, row.status]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(query),
-    );
-  }, [divisionRows, divisionSearch]);
+  const isBusy = isSaving || isSavingDivision || isSavingDepartment || isSavingSection;
+  const isBusyLoading =
+    isLoading || isLoadingDivision || isLoadingDepartment || isLoadingSection || isLoadingUsage;
 
-  const selectedDepartment = departmentRows.find((row) => row.departmentId === selectedDepartmentId) ?? null;
-  const visibleDepartmentRows = useMemo(() => {
-    const query = departmentSearch.trim().toLowerCase();
-    if (!query) return departmentRows;
-    return departmentRows.filter((row) =>
-      [row.departmentCode, row.departmentNameTh, row.departmentNameEn, row.status]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(query),
-    );
-  }, [departmentRows, departmentSearch]);
+  const selectedLabel = useMemo(() => {
+    if (selectedLevel === "function" && selected) return `Function · ${selected.functionCode}`;
+    if (selectedLevel === "division" && selectedDivision)
+      return `Division · ${selectedDivision.divisionCode}`;
+    if (selectedLevel === "department" && selectedDepartment)
+      return `Department · ${selectedDepartment.departmentCode}`;
+    if (selectedLevel === "section" && selectedSection)
+      return `Section · ${selectedSection.sectionCode}`;
+    return "No record selected";
+  }, [selectedLevel, selected, selectedDivision, selectedDepartment, selectedSection]);
 
-  const selectedSection = sectionRows.find((row) => row.sectionId === selectedSectionId) ?? null;
-  const visibleSectionRows = useMemo(() => {
-    const query = sectionSearch.trim().toLowerCase();
-    if (!query) return sectionRows;
-    return sectionRows.filter((row) =>
-      [row.sectionCode, row.sectionNameTh, row.sectionNameEn, row.status]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(query),
+  // --- Real-data relationship table: one row per real Function+Division+Department+Section
+  // combination found in ACTIVE employee data. Deduped across companies (company isn't a column
+  // here), and across the "no employees at all" case each Function still gets a placeholder-only
+  // row so it stays visible/editable even with zero linked employees.
+  const combinationRows: CombinationRow[] = useMemo(() => {
+    const divisionById = new Map(divisionRows.map((row) => [row.divisionId, row]));
+    const departmentById = new Map(departmentRows.map((row) => [row.departmentId, row]));
+    const sectionById = new Map(sectionRows.map((row) => [row.sectionId, row]));
+    const functionById = new Map(rows.map((row) => [row.functionId, row]));
+
+    const seen = new Map<string, CombinationRow>();
+    const functionsWithUsage = new Set<string>();
+
+    for (const usage of orgHierarchyUsage) {
+      if (!usage.functionId) continue;
+      const functionRecord = functionById.get(usage.functionId);
+      if (!functionRecord) continue;
+      functionsWithUsage.add(usage.functionId);
+      const divKey = usage.divisionId ?? NO_DIVISION_KEY;
+      const deptKey = usage.departmentId ?? NO_DEPARTMENT_KEY;
+      const sectionKey = usage.sectionId ?? "";
+      const key = `${usage.functionId}:${divKey}:${deptKey}:${sectionKey}`;
+      if (seen.has(key)) continue;
+      seen.set(key, {
+        key,
+        functionRecord,
+        divisionRecord: usage.divisionId ? divisionById.get(usage.divisionId) ?? null : null,
+        departmentRecord: usage.departmentId ? departmentById.get(usage.departmentId) ?? null : null,
+        sectionRecord: usage.sectionId ? sectionById.get(usage.sectionId) ?? null : null,
+      });
+    }
+
+    for (const functionRecord of rows) {
+      if (!functionsWithUsage.has(functionRecord.functionId)) {
+        const key = `${functionRecord.functionId}:${NO_DIVISION_KEY}:${NO_DEPARTMENT_KEY}:`;
+        seen.set(key, {
+          key,
+          functionRecord,
+          divisionRecord: null,
+          departmentRecord: null,
+          sectionRecord: null,
+        });
+      }
+    }
+
+    return Array.from(seen.values()).sort((a, b) => {
+      const byFunction = a.functionRecord.functionCode.localeCompare(b.functionRecord.functionCode);
+      if (byFunction !== 0) return byFunction;
+      const byDivision = (a.divisionRecord?.divisionCode ?? "").localeCompare(
+        b.divisionRecord?.divisionCode ?? "",
+      );
+      if (byDivision !== 0) return byDivision;
+      const byDepartment = (a.departmentRecord?.departmentCode ?? "").localeCompare(
+        b.departmentRecord?.departmentCode ?? "",
+      );
+      if (byDepartment !== 0) return byDepartment;
+      return (a.sectionRecord?.sectionCode ?? "").localeCompare(b.sectionRecord?.sectionCode ?? "");
+    });
+  }, [rows, divisionRows, departmentRows, sectionRows, orgHierarchyUsage]);
+
+  const searchQuery = treeQuery.trim().toLowerCase();
+
+  const visibleCombinationRows = useMemo(() => {
+    if (!searchQuery) return combinationRows;
+    return combinationRows.filter((row) =>
+      textMatches(
+        searchQuery,
+        row.functionRecord.functionCode,
+        row.functionRecord.functionNameTh,
+        row.functionRecord.functionNameEn,
+        row.divisionRecord?.divisionCode,
+        row.divisionRecord?.divisionNameTh,
+        row.divisionRecord?.divisionNameEn,
+        row.departmentRecord?.departmentCode,
+        row.departmentRecord?.departmentNameTh,
+        row.departmentRecord?.departmentNameEn,
+        row.sectionRecord?.sectionCode,
+        row.sectionRecord?.sectionNameTh,
+        row.sectionRecord?.sectionNameEn,
+      ),
     );
-  }, [sectionRows, sectionSearch]);
+  }, [combinationRows, searchQuery]);
+
+  // --- Records not referenced by any active employee (still reachable for edit/delete) ---
+  const usedDivisionIds = useMemo(
+    () => new Set(orgHierarchyUsage.map((row) => row.divisionId).filter((id): id is string => Boolean(id))),
+    [orgHierarchyUsage],
+  );
+  const usedDepartmentIds = useMemo(
+    () => new Set(orgHierarchyUsage.map((row) => row.departmentId).filter((id): id is string => Boolean(id))),
+    [orgHierarchyUsage],
+  );
+  const usedSectionIds = useMemo(
+    () => new Set(orgHierarchyUsage.map((row) => row.sectionId).filter((id): id is string => Boolean(id))),
+    [orgHierarchyUsage],
+  );
+  const orphanDivisions = useMemo(
+    () => divisionRows.filter((row) => !usedDivisionIds.has(row.divisionId)),
+    [divisionRows, usedDivisionIds],
+  );
+  const orphanDepartments = useMemo(
+    () => departmentRows.filter((row) => !usedDepartmentIds.has(row.departmentId)),
+    [departmentRows, usedDepartmentIds],
+  );
+  const orphanSections = useMemo(
+    () => sectionRows.filter((row) => !usedSectionIds.has(row.sectionId)),
+    [sectionRows, usedSectionIds],
+  );
+
+  // Each of these opens the edit form directly from the clicked record (not from selection
+  // state), so a single click always edits exactly the record you clicked — never a stale or
+  // previously-selected one.
+  const editFunctionRecord = (record: OrganizationFunctionRecord) => {
+    if (!isCenter) return;
+    setFormMode(null);
+    setDivisionFormMode(null);
+    setDepartmentFormMode(null);
+    setSectionFormMode(null);
+    setSelectedLevel("function");
+    setSelectedId(record.functionId);
+    setForm({
+      functionCode: record.functionCode,
+      functionNameTh: record.functionNameTh,
+      functionNameEn: record.functionNameEn ?? "",
+      status: record.status,
+    });
+    setFormMode("edit");
+    setError(null);
+    setMessage(null);
+  };
+
+  const editDivisionRecord = (record: DivisionRecord) => {
+    if (!isCenter) return;
+    setFormMode(null);
+    setDivisionFormMode(null);
+    setDepartmentFormMode(null);
+    setSectionFormMode(null);
+    setSelectedLevel("division");
+    setSelectedDivisionId(record.divisionId);
+    setDivisionForm({
+      code: record.divisionCode,
+      nameTh: record.divisionNameTh,
+      nameEn: record.divisionNameEn ?? "",
+      status: record.status,
+    });
+    setDivisionFormMode("edit");
+    setDivisionError(null);
+    setDivisionMessage(null);
+  };
+
+  const editDepartmentRecord = (record: DepartmentRecord) => {
+    if (!isCenter) return;
+    setFormMode(null);
+    setDivisionFormMode(null);
+    setDepartmentFormMode(null);
+    setSectionFormMode(null);
+    setSelectedLevel("department");
+    setSelectedDepartmentId(record.departmentId);
+    setDepartmentForm({
+      code: record.departmentCode,
+      nameTh: record.departmentNameTh,
+      nameEn: record.departmentNameEn ?? "",
+      status: record.status,
+    });
+    setDepartmentFormMode("edit");
+    setDepartmentError(null);
+    setDepartmentMessage(null);
+  };
+
+  const editSectionRecord = (record: SectionRecord) => {
+    if (!isCenter) return;
+    setFormMode(null);
+    setDivisionFormMode(null);
+    setDepartmentFormMode(null);
+    setSectionFormMode(null);
+    setSelectedLevel("section");
+    setSelectedSectionId(record.sectionId);
+    setSectionForm({
+      code: record.sectionCode,
+      nameTh: record.sectionNameTh,
+      nameEn: record.sectionNameEn ?? "",
+      status: record.status,
+    });
+    setSectionFormMode("edit");
+    setSectionError(null);
+    setSectionMessage(null);
+  };
+
+  const loadOrgHierarchyUsage = async () => {
+    setIsLoadingUsage(true);
+    try {
+      const result = await listOrgHierarchyUsage();
+      setOrgHierarchyUsage(result.items);
+    } catch {
+      setOrgHierarchyUsage([]);
+    } finally {
+      setIsLoadingUsage(false);
+    }
+  };
 
   // --- Functions CRUD Handlers ---
   const applyRows = (items: OrganizationFunctionRecord[]) => {
@@ -261,21 +514,13 @@ export default function FunctionData() {
 
   const startNew = () => {
     if (!isCenter) return;
-    setForm({ functionCode: "", functionNameTh: "", functionNameEn: "", status: "ACTIVE" });
-    setFormMode("new");
-    setError(null);
-    setMessage(null);
-  };
-
-  const startEdit = () => {
-    if (!isCenter || !selected) return;
     setForm({
-      functionCode: selected.functionCode,
-      functionNameTh: selected.functionNameTh,
-      functionNameEn: selected.functionNameEn ?? "",
-      status: selected.status,
+      functionCode: nextAutoCode(rows.map((row) => row.functionCode), "FNC"),
+      functionNameTh: "",
+      functionNameEn: "",
+      status: "ACTIVE",
     });
-    setFormMode("edit");
+    setFormMode("new");
     setError(null);
     setMessage(null);
   };
@@ -314,6 +559,7 @@ export default function FunctionData() {
         .then((refreshed) => applyRows(refreshed.items))
         .catch(() => undefined);
       setSelectedId(result.function.functionId);
+      setSelectedLevel("function");
       setFormMode(null);
       setForm({ functionCode: "", functionNameTh: "", functionNameEn: "", status: "ACTIVE" });
       setMessage(`${result.function.functionCode} was saved.`);
@@ -356,12 +602,16 @@ export default function FunctionData() {
 
   const refresh = () => {
     setFormMode(null);
+    setDivisionFormMode(null);
+    setDepartmentFormMode(null);
+    setSectionFormMode(null);
     setForm({ functionCode: "", functionNameTh: "", functionNameEn: "", status: "ACTIVE" });
     setMessage(null);
     void loadRows();
     void loadDivisionRows();
     void loadDepartmentRows();
     void loadSectionRows();
+    void loadOrgHierarchyUsage();
   };
 
   // --- Division CRUD Handlers ---
@@ -388,21 +638,11 @@ export default function FunctionData() {
 
   const startNewDivision = () => {
     if (!isCenter) return;
-    setDivisionForm(blankForm());
-    setDivisionFormMode("new");
-    setDivisionError(null);
-    setDivisionMessage(null);
-  };
-
-  const startEditDivision = () => {
-    if (!isCenter || !selectedDivision) return;
     setDivisionForm({
-      code: selectedDivision.divisionCode,
-      nameTh: selectedDivision.divisionNameTh,
-      nameEn: selectedDivision.divisionNameEn ?? "",
-      status: selectedDivision.status,
+      ...blankForm(),
+      code: nextAutoCode(divisionRows.map((row) => row.divisionCode), "DIV"),
     });
-    setDivisionFormMode("edit");
+    setDivisionFormMode("new");
     setDivisionError(null);
     setDivisionMessage(null);
   };
@@ -441,6 +681,7 @@ export default function FunctionData() {
         .then((refreshed) => applyDivisionRows(refreshed.items))
         .catch(() => undefined);
       setSelectedDivisionId(result.division.divisionId);
+      setSelectedLevel("division");
       setDivisionFormMode(null);
       setDivisionForm(blankForm());
       setDivisionMessage(`${result.division.divisionCode} was saved.`);
@@ -505,21 +746,11 @@ export default function FunctionData() {
 
   const startNewDepartment = () => {
     if (!isCenter) return;
-    setDepartmentForm(blankForm());
-    setDepartmentFormMode("new");
-    setDepartmentError(null);
-    setDepartmentMessage(null);
-  };
-
-  const startEditDepartment = () => {
-    if (!isCenter || !selectedDepartment) return;
     setDepartmentForm({
-      code: selectedDepartment.departmentCode,
-      nameTh: selectedDepartment.departmentNameTh,
-      nameEn: selectedDepartment.departmentNameEn ?? "",
-      status: selectedDepartment.status,
+      ...blankForm(),
+      code: nextAutoCode(departmentRows.map((row) => row.departmentCode), "DEPT"),
     });
-    setDepartmentFormMode("edit");
+    setDepartmentFormMode("new");
     setDepartmentError(null);
     setDepartmentMessage(null);
   };
@@ -558,6 +789,7 @@ export default function FunctionData() {
         .then((refreshed) => applyDepartmentRows(refreshed.items))
         .catch(() => undefined);
       setSelectedDepartmentId(result.department.departmentId);
+      setSelectedLevel("department");
       setDepartmentFormMode(null);
       setDepartmentForm(blankForm());
       setDepartmentMessage(`${result.department.departmentCode} was saved.`);
@@ -622,21 +854,11 @@ export default function FunctionData() {
 
   const startNewSection = () => {
     if (!isCenter) return;
-    setSectionForm(blankForm());
-    setSectionFormMode("new");
-    setSectionError(null);
-    setSectionMessage(null);
-  };
-
-  const startEditSection = () => {
-    if (!isCenter || !selectedSection) return;
     setSectionForm({
-      code: selectedSection.sectionCode,
-      nameTh: selectedSection.sectionNameTh,
-      nameEn: selectedSection.sectionNameEn ?? "",
-      status: selectedSection.status,
+      ...blankForm(),
+      code: nextAutoCode(sectionRows.map((row) => row.sectionCode), "SEC"),
     });
-    setSectionFormMode("edit");
+    setSectionFormMode("new");
     setSectionError(null);
     setSectionMessage(null);
   };
@@ -675,6 +897,7 @@ export default function FunctionData() {
         .then((refreshed) => applySectionRows(refreshed.items))
         .catch(() => undefined);
       setSelectedSectionId(result.section.sectionId);
+      setSelectedLevel("section");
       setSectionFormMode(null);
       setSectionForm(blankForm());
       setSectionMessage(`${result.section.sectionCode} was saved.`);
@@ -713,6 +936,26 @@ export default function FunctionData() {
     } finally {
       setIsSavingSection(false);
     }
+  };
+
+  // --- Shared toolbar dispatch (New/Delete act on whichever level is selected; Edit happens
+  // directly from a table cell click instead, via editFunctionRecord/editDivisionRecord/etc.) ---
+  const startNewAtLevel = (level: SelectedLevel) => {
+    setFormMode(null);
+    setDivisionFormMode(null);
+    setDepartmentFormMode(null);
+    setSectionFormMode(null);
+    if (level === "function") startNew();
+    else if (level === "division") startNewDivision();
+    else if (level === "department") startNewDepartment();
+    else startNewSection();
+  };
+
+  const deleteSelected = () => {
+    if (selectedLevel === "function") void remove();
+    else if (selectedLevel === "division") void removeDivision();
+    else if (selectedLevel === "department") void removeDepartment();
+    else if (selectedLevel === "section") void removeSection();
   };
 
   // --- Initial Load ---
@@ -770,6 +1013,17 @@ export default function FunctionData() {
         if (current) setIsLoadingSection(false);
       });
 
+    listOrgHierarchyUsage()
+      .then((result) => {
+        if (current) setOrgHierarchyUsage(result.items);
+      })
+      .catch(() => {
+        if (current) setOrgHierarchyUsage([]);
+      })
+      .finally(() => {
+        if (current) setIsLoadingUsage(false);
+      });
+
     return () => {
       current = false;
     };
@@ -803,67 +1057,94 @@ export default function FunctionData() {
         </div>
       </section>
 
-      {/* ==================================================================== */}
-      {/* 1. FUNCTION RECORDS WORKSPACE */}
-      {/* ==================================================================== */}
-      <section className={styles.workspace} aria-busy={isLoading}>
+      <section className={styles.workspace} aria-busy={isBusyLoading}>
         <div className={styles.toolbar}>
           <input
-            aria-label="Search function data"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search function code or name"
+            aria-label="Search function, division, department, or section"
+            value={treeQuery}
+            onChange={(event) => setTreeQuery(event.target.value)}
+            placeholder="Search Function, Division, Department, or Section"
           />
           {isCenter ? (
-            <>
+            <div className={styles.newGroup}>
               <button
+                type="button"
                 className={styles.newButton}
-                type="button"
-                onClick={startNew}
-                disabled={isSaving}
+                onClick={() => startNewAtLevel("function")}
+                disabled={isBusy}
               >
-                New
+                + Function
               </button>
               <button
-                className={styles.editButton}
                 type="button"
-                onClick={startEdit}
-                disabled={!selected || isSaving}
+                className={styles.newButton}
+                onClick={() => startNewAtLevel("division")}
+                disabled={isBusy}
               >
-                Edit
+                + Division
               </button>
               <button
-                className={styles.deleteButton}
                 type="button"
-                onClick={() => void remove()}
-                disabled={!selected || isSaving}
+                className={styles.newButton}
+                onClick={() => startNewAtLevel("department")}
+                disabled={isBusy}
               >
-                Delete
+                + Department
               </button>
-            </>
+              <button
+                type="button"
+                className={styles.newButton}
+                onClick={() => startNewAtLevel("section")}
+                disabled={isBusy}
+              >
+                + Section
+              </button>
+            </div>
+          ) : null}
+          <span className={styles.selectedLabel}>{selectedLabel}</span>
+          {isCenter ? (
+            <button
+              type="button"
+              className={styles.deleteButton}
+              onClick={deleteSelected}
+              disabled={!selectedLevel || isBusy}
+            >
+              Delete
+            </button>
           ) : null}
           <button
-            className={styles.refreshButton}
             type="button"
+            className={styles.refreshButton}
             onClick={refresh}
-            disabled={isLoading || isSaving}
+            disabled={isBusyLoading || isBusy}
           >
             Refresh
           </button>
         </div>
 
+        <p className={styles.treeEmptyHint}>
+          Click any Function, Division, Department, or Section code below to edit it.
+        </p>
+
         {error ? <p role="alert">{error}</p> : null}
+        {divisionError ? <p role="alert">{divisionError}</p> : null}
+        {departmentError ? <p role="alert">{departmentError}</p> : null}
+        {sectionError ? <p role="alert">{sectionError}</p> : null}
         {message ? <p role="status">{message}</p> : null}
+        {divisionMessage ? <p role="status">{divisionMessage}</p> : null}
+        {departmentMessage ? <p role="status">{departmentMessage}</p> : null}
+        {sectionMessage ? <p role="status">{sectionMessage}</p> : null}
 
         {formMode ? (
           <section className={styles.editorPanel}>
             <h3>{formMode === "new" ? "Create Function" : "Edit Function"}</h3>
             <div className={styles.formGrid}>
               <label>
-                Function Code
+                Function Code{formMode === "new" ? " (auto)" : ""}
                 <input
                   value={form.functionCode}
                   maxLength={30}
+                  readOnly={formMode === "new"}
                   onChange={(event) =>
                     setForm((current) => ({
                       ...current,
@@ -935,119 +1216,16 @@ export default function FunctionData() {
           </section>
         ) : null}
 
-        <section className={styles.tablePanel}>
-          <div className={styles.panelHeader}>
-            <div>
-              <span>Shared Master</span>
-              <h3>Function Records</h3>
-            </div>
-            <p>{visibleRows.length} records</p>
-          </div>
-          <div className={styles.tableWrap}>
-            <table className={styles.functionTable}>
-              <thead>
-                <tr>
-                  <th>No.</th>
-                  <th>Function Code</th>
-                  <th>Function Name(TH)</th>
-                  <th>Function Name(EN)</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody translate="no">
-                {visibleRows.map((row, index) => (
-                  <tr
-                    key={row.functionId}
-                    className={
-                      row.functionId === selectedId
-                        ? styles.selectedRow
-                        : undefined
-                    }
-                    onClick={() => setSelectedId(row.functionId)}
-                  >
-                    <td>{index + 1}</td>
-                    <td>
-                      <span className={styles.codePill}>
-                        {row.functionCode}
-                      </span>
-                    </td>
-                    <td>{row.functionNameTh}</td>
-                    <td>{row.functionNameEn ?? "-"}</td>
-                    <td>{row.status}</td>
-                  </tr>
-                ))}
-                {!isLoading && visibleRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={5}>No function data found.</td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </section>
-
-      {/* ==================================================================== */}
-      {/* 2. DIVISION RECORDS WORKSPACE */}
-      {/* ==================================================================== */}
-      <section className={styles.workspace} aria-busy={isLoadingDivision}>
-        <div className={styles.toolbar}>
-          <input
-            aria-label="Search division data"
-            value={divisionSearch}
-            onChange={(event) => setDivisionSearch(event.target.value)}
-            placeholder="Search division code or name"
-          />
-          {isCenter ? (
-            <>
-              <button
-                className={styles.newButton}
-                type="button"
-                onClick={startNewDivision}
-                disabled={isSavingDivision}
-              >
-                New
-              </button>
-              <button
-                className={styles.editButton}
-                type="button"
-                onClick={startEditDivision}
-                disabled={!selectedDivision || isSavingDivision}
-              >
-                Edit
-              </button>
-              <button
-                className={styles.deleteButton}
-                type="button"
-                onClick={() => void removeDivision()}
-                disabled={!selectedDivision || isSavingDivision}
-              >
-                Delete
-              </button>
-            </>
-          ) : null}
-          <button
-            className={styles.refreshButton}
-            type="button"
-            onClick={loadDivisionRows}
-            disabled={isLoadingDivision || isSavingDivision}
-          >
-            Refresh
-          </button>
-        </div>
-
-        {divisionError ? <p role="alert">{divisionError}</p> : null}
-        {divisionMessage ? <p role="status">{divisionMessage}</p> : null}
-
         {divisionFormMode ? (
           <section className={styles.editorPanel}>
             <h3>{divisionFormMode === "new" ? "Create Division" : "Edit Division"}</h3>
             <div className={styles.formGrid}>
               <label>
-                Division Code
+                Division Code{divisionFormMode === "new" ? " (auto)" : ""}
                 <input
                   value={divisionForm.code}
                   maxLength={30}
+                  readOnly={divisionFormMode === "new"}
                   onChange={(event) =>
                     setDivisionForm((current) => ({
                       ...current,
@@ -1119,119 +1297,16 @@ export default function FunctionData() {
           </section>
         ) : null}
 
-        <section className={styles.tablePanel}>
-          <div className={styles.panelHeader}>
-            <div>
-              <span>Division Master</span>
-              <h3>Division Records</h3>
-            </div>
-            <p>{visibleDivisionRows.length} records</p>
-          </div>
-          <div className={styles.tableWrap}>
-            <table className={styles.functionTable}>
-              <thead>
-                <tr>
-                  <th>No.</th>
-                  <th>Division Code</th>
-                  <th>Division Name(TH)</th>
-                  <th>Division Name(EN)</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody translate="no">
-                {visibleDivisionRows.map((row, index) => (
-                  <tr
-                    key={row.divisionId}
-                    className={
-                      row.divisionId === selectedDivisionId
-                        ? styles.selectedRow
-                        : undefined
-                    }
-                    onClick={() => setSelectedDivisionId(row.divisionId)}
-                  >
-                    <td>{index + 1}</td>
-                    <td>
-                      <span className={styles.codePill}>
-                        {row.divisionCode}
-                      </span>
-                    </td>
-                    <td>{row.divisionNameTh}</td>
-                    <td>{row.divisionNameEn ?? "-"}</td>
-                    <td>{row.status}</td>
-                  </tr>
-                ))}
-                {!isLoadingDivision && visibleDivisionRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={5}>No division data found.</td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </section>
-
-      {/* ==================================================================== */}
-      {/* 3. DEPARTMENT RECORDS WORKSPACE */}
-      {/* ==================================================================== */}
-      <section className={styles.workspace} aria-busy={isLoadingDepartment}>
-        <div className={styles.toolbar}>
-          <input
-            aria-label="Search department data"
-            value={departmentSearch}
-            onChange={(event) => setDepartmentSearch(event.target.value)}
-            placeholder="Search department code or name"
-          />
-          {isCenter ? (
-            <>
-              <button
-                className={styles.newButton}
-                type="button"
-                onClick={startNewDepartment}
-                disabled={isSavingDepartment}
-              >
-                New
-              </button>
-              <button
-                className={styles.editButton}
-                type="button"
-                onClick={startEditDepartment}
-                disabled={!selectedDepartment || isSavingDepartment}
-              >
-                Edit
-              </button>
-              <button
-                className={styles.deleteButton}
-                type="button"
-                onClick={() => void removeDepartment()}
-                disabled={!selectedDepartment || isSavingDepartment}
-              >
-                Delete
-              </button>
-            </>
-          ) : null}
-          <button
-            className={styles.refreshButton}
-            type="button"
-            onClick={loadDepartmentRows}
-            disabled={isLoadingDepartment || isSavingDepartment}
-          >
-            Refresh
-          </button>
-        </div>
-
-        {departmentError ? <p role="alert">{departmentError}</p> : null}
-        {departmentMessage ? <p role="status">{departmentMessage}</p> : null}
-
         {departmentFormMode ? (
           <section className={styles.editorPanel}>
             <h3>{departmentFormMode === "new" ? "Create Department" : "Edit Department"}</h3>
             <div className={styles.formGrid}>
               <label>
-                Department Code
+                Department Code{departmentFormMode === "new" ? " (auto)" : ""}
                 <input
                   value={departmentForm.code}
                   maxLength={30}
+                  readOnly={departmentFormMode === "new"}
                   onChange={(event) =>
                     setDepartmentForm((current) => ({
                       ...current,
@@ -1303,119 +1378,16 @@ export default function FunctionData() {
           </section>
         ) : null}
 
-        <section className={styles.tablePanel}>
-          <div className={styles.panelHeader}>
-            <div>
-              <span>Department Master</span>
-              <h3>Department Records</h3>
-            </div>
-            <p>{visibleDepartmentRows.length} records</p>
-          </div>
-          <div className={styles.tableWrap}>
-            <table className={styles.functionTable}>
-              <thead>
-                <tr>
-                  <th>No.</th>
-                  <th>Department Code</th>
-                  <th>Department Name(TH)</th>
-                  <th>Department Name(EN)</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody translate="no">
-                {visibleDepartmentRows.map((row, index) => (
-                  <tr
-                    key={row.departmentId}
-                    className={
-                      row.departmentId === selectedDepartmentId
-                        ? styles.selectedRow
-                        : undefined
-                    }
-                    onClick={() => setSelectedDepartmentId(row.departmentId)}
-                  >
-                    <td>{index + 1}</td>
-                    <td>
-                      <span className={styles.codePill}>
-                        {row.departmentCode}
-                      </span>
-                    </td>
-                    <td>{row.departmentNameTh}</td>
-                    <td>{row.departmentNameEn ?? "-"}</td>
-                    <td>{row.status}</td>
-                  </tr>
-                ))}
-                {!isLoadingDepartment && visibleDepartmentRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={5}>No department data found.</td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </section>
-
-      {/* ==================================================================== */}
-      {/* 4. SECTION RECORDS WORKSPACE */}
-      {/* ==================================================================== */}
-      <section className={styles.workspace} aria-busy={isLoadingSection}>
-        <div className={styles.toolbar}>
-          <input
-            aria-label="Search section data"
-            value={sectionSearch}
-            onChange={(event) => setSectionSearch(event.target.value)}
-            placeholder="Search section code or name"
-          />
-          {isCenter ? (
-            <>
-              <button
-                className={styles.newButton}
-                type="button"
-                onClick={startNewSection}
-                disabled={isSavingSection}
-              >
-                New
-              </button>
-              <button
-                className={styles.editButton}
-                type="button"
-                onClick={startEditSection}
-                disabled={!selectedSection || isSavingSection}
-              >
-                Edit
-              </button>
-              <button
-                className={styles.deleteButton}
-                type="button"
-                onClick={() => void removeSection()}
-                disabled={!selectedSection || isSavingSection}
-              >
-                Delete
-              </button>
-            </>
-          ) : null}
-          <button
-            className={styles.refreshButton}
-            type="button"
-            onClick={loadSectionRows}
-            disabled={isLoadingSection || isSavingSection}
-          >
-            Refresh
-          </button>
-        </div>
-
-        {sectionError ? <p role="alert">{sectionError}</p> : null}
-        {sectionMessage ? <p role="status">{sectionMessage}</p> : null}
-
         {sectionFormMode ? (
           <section className={styles.editorPanel}>
             <h3>{sectionFormMode === "new" ? "Create Section" : "Edit Section"}</h3>
             <div className={styles.formGrid}>
               <label>
-                Section Code
+                Section Code{sectionFormMode === "new" ? " (auto)" : ""}
                 <input
                   value={sectionForm.code}
                   maxLength={30}
+                  readOnly={sectionFormMode === "new"}
                   onChange={(event) =>
                     setSectionForm((current) => ({
                       ...current,
@@ -1490,52 +1462,193 @@ export default function FunctionData() {
         <section className={styles.tablePanel}>
           <div className={styles.panelHeader}>
             <div>
-              <span>Section Master</span>
-              <h3>Section Records</h3>
+              <span>Organization Structure</span>
+              <h3>Function, Division, Department & Section</h3>
             </div>
-            <p>{visibleSectionRows.length} records</p>
+            <p>
+              {visibleCombinationRows.length} row
+              {visibleCombinationRows.length === 1 ? "" : "s"}
+            </p>
           </div>
+
           <div className={styles.tableWrap}>
             <table className={styles.functionTable}>
               <thead>
                 <tr>
                   <th>No.</th>
-                  <th>Section Code</th>
-                  <th>Section Name(TH)</th>
-                  <th>Section Name(EN)</th>
-                  <th>Status</th>
+                  <th>Function</th>
+                  <th>Division</th>
+                  <th>Department</th>
+                  <th>Section</th>
                 </tr>
               </thead>
               <tbody translate="no">
-                {visibleSectionRows.map((row, index) => (
-                  <tr
-                    key={row.sectionId}
-                    className={
-                      row.sectionId === selectedSectionId
-                        ? styles.selectedRow
-                        : undefined
-                    }
-                    onClick={() => setSelectedSectionId(row.sectionId)}
-                  >
+                {visibleCombinationRows.map((row, index) => (
+                  <tr key={row.key}>
                     <td>{index + 1}</td>
                     <td>
-                      <span className={styles.codePill}>
-                        {row.sectionCode}
-                      </span>
+                      <Cell
+                        code={row.functionRecord.functionCode}
+                        label={displayName(
+                          row.functionRecord.functionNameTh,
+                          row.functionRecord.functionNameEn,
+                        )}
+                        selected={
+                          selectedLevel === "function" &&
+                          selectedId === row.functionRecord.functionId
+                        }
+                        onSelect={() => editFunctionRecord(row.functionRecord)}
+                      />
                     </td>
-                    <td>{row.sectionNameTh}</td>
-                    <td>{row.sectionNameEn ?? "-"}</td>
-                    <td>{row.status}</td>
+                    <td>
+                      <Cell
+                        code={row.divisionRecord?.divisionCode}
+                        label={
+                          row.divisionRecord
+                            ? displayName(row.divisionRecord.divisionNameTh, row.divisionRecord.divisionNameEn)
+                            : "(No Division)"
+                        }
+                        selected={
+                          selectedLevel === "division" &&
+                          selectedDivisionId === row.divisionRecord?.divisionId
+                        }
+                        onSelect={
+                          row.divisionRecord
+                            ? () => editDivisionRecord(row.divisionRecord!)
+                            : undefined
+                        }
+                      />
+                    </td>
+                    <td>
+                      <Cell
+                        code={row.departmentRecord?.departmentCode}
+                        label={
+                          row.departmentRecord
+                            ? displayName(
+                                row.departmentRecord.departmentNameTh,
+                                row.departmentRecord.departmentNameEn,
+                              )
+                            : "(No Department)"
+                        }
+                        selected={
+                          selectedLevel === "department" &&
+                          selectedDepartmentId === row.departmentRecord?.departmentId
+                        }
+                        onSelect={
+                          row.departmentRecord
+                            ? () => editDepartmentRecord(row.departmentRecord!)
+                            : undefined
+                        }
+                      />
+                    </td>
+                    <td>
+                      <Cell
+                        code={row.sectionRecord?.sectionCode}
+                        label={
+                          row.sectionRecord
+                            ? displayName(row.sectionRecord.sectionNameTh, row.sectionRecord.sectionNameEn)
+                            : "(No Section)"
+                        }
+                        selected={
+                          selectedLevel === "section" &&
+                          selectedSectionId === row.sectionRecord?.sectionId
+                        }
+                        onSelect={
+                          row.sectionRecord
+                            ? () => editSectionRecord(row.sectionRecord!)
+                            : undefined
+                        }
+                      />
+                    </td>
                   </tr>
                 ))}
-                {!isLoadingSection && visibleSectionRows.length === 0 ? (
+                {!isBusyLoading && visibleCombinationRows.length === 0 ? (
                   <tr>
-                    <td colSpan={5}>No section data found.</td>
+                    <td colSpan={5}>No matching records.</td>
                   </tr>
                 ) : null}
               </tbody>
             </table>
           </div>
+
+          <details className={styles.orphanPanel}>
+            <summary>
+              Unlinked records ({orphanDivisions.length + orphanDepartments.length + orphanSections.length})
+            </summary>
+            <div className={styles.orphanGrid}>
+              <div>
+                <h4>Divisions</h4>
+                {orphanDivisions.length === 0 ? (
+                  <p className={styles.treeEmptyHint}>None</p>
+                ) : (
+                  <ul className={styles.orphanList}>
+                    {orphanDivisions.map((row) => (
+                      <li key={row.divisionId}>
+                        <button
+                          type="button"
+                          className={styles.treeLabel}
+                          onClick={() => editDivisionRecord(row)}
+                        >
+                          <span className={styles.codePill} translate="no">
+                            {row.divisionCode}
+                          </span>
+                          <span translate="no">{displayName(row.divisionNameTh, row.divisionNameEn)}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div>
+                <h4>Departments</h4>
+                {orphanDepartments.length === 0 ? (
+                  <p className={styles.treeEmptyHint}>None</p>
+                ) : (
+                  <ul className={styles.orphanList}>
+                    {orphanDepartments.map((row) => (
+                      <li key={row.departmentId}>
+                        <button
+                          type="button"
+                          className={styles.treeLabel}
+                          onClick={() => editDepartmentRecord(row)}
+                        >
+                          <span className={styles.codePill} translate="no">
+                            {row.departmentCode}
+                          </span>
+                          <span translate="no">
+                            {displayName(row.departmentNameTh, row.departmentNameEn)}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div>
+                <h4>Sections</h4>
+                {orphanSections.length === 0 ? (
+                  <p className={styles.treeEmptyHint}>None</p>
+                ) : (
+                  <ul className={styles.orphanList}>
+                    {orphanSections.map((row) => (
+                      <li key={row.sectionId}>
+                        <button
+                          type="button"
+                          className={styles.treeLabel}
+                          onClick={() => editSectionRecord(row)}
+                        >
+                          <span className={styles.codePill} translate="no">
+                            {row.sectionCode}
+                          </span>
+                          <span translate="no">{displayName(row.sectionNameTh, row.sectionNameEn)}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </details>
         </section>
       </section>
     </section>

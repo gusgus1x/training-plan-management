@@ -2,8 +2,11 @@
 
 import type {
   CreateDepartmentInput,
+  CreateDepartmentMappingInput,
+  DepartmentMappingRecord,
   DepartmentRecord,
   UpdateDepartmentInput,
+  UpdateDepartmentMappingInput,
 } from "./types";
 
 type Fetcher = typeof fetch;
@@ -70,6 +73,48 @@ export const updateDepartment = async (
 export const deleteDepartment = async (id: string, fetcher: Fetcher = fetch) =>
   read<{ department: DepartmentRecord }>(
     await fetcher(`/api/master-data/departments/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    }),
+  );
+
+export const listDepartmentMappings = async (fetcher: Fetcher = fetch) =>
+  read<{ items: DepartmentMappingRecord[] }>(
+    await fetcher("/api/master-data/department-mappings?page=1&pageSize=100", {
+      credentials: "include",
+      cache: "no-store",
+    }),
+  );
+
+export const createDepartmentMapping = async (
+  input: CreateDepartmentMappingInput,
+  fetcher: Fetcher = fetch,
+) =>
+  read<{ mapping: DepartmentMappingRecord }>(
+    await fetcher(
+      "/api/master-data/department-mappings",
+      json("POST", input),
+    ),
+  );
+
+export const updateDepartmentMapping = async (
+  id: string,
+  input: UpdateDepartmentMappingInput,
+  fetcher: Fetcher = fetch,
+) =>
+  read<{ mapping: DepartmentMappingRecord }>(
+    await fetcher(
+      `/api/master-data/department-mappings/${id}`,
+      json("PATCH", input),
+    ),
+  );
+
+export const deleteDepartmentMapping = async (
+  id: string,
+  fetcher: Fetcher = fetch,
+) =>
+  read<{ mapping: DepartmentMappingRecord }>(
+    await fetcher(`/api/master-data/department-mappings/${id}`, {
       method: "DELETE",
       credentials: "include",
     }),

@@ -1,15 +1,18 @@
 import { ApiError } from "../api/errors";
 import {
   readOptionalString,
+  readPositiveId,
   readRequiredString,
   type InputObject,
 } from "../api/validation";
 import {
   DIVISION_STATUSES,
   type CreateDivisionInput,
+  type CreateDivisionMappingInput,
   type DivisionListFilters,
   type DivisionStatus,
   type UpdateDivisionInput,
+  type UpdateDivisionMappingInput,
 } from "./types";
 
 const CODE_PATTERN = /^[A-Z0-9][A-Z0-9_-]*$/;
@@ -77,6 +80,56 @@ export const parseUpdateDivision = (
     update.divisionNameEn = readOptionalString(input, "divisionNameEn", {
       maxLength: 255,
     });
+  }
+  if (hasOwn(input, "status")) update.status = status(input.status);
+  if (Object.keys(update).length === 0) {
+    throw invalid("body", "At least one editable field is required");
+  }
+  return update;
+};
+
+const plantDivisionCode = (input: InputObject) => {
+  const value = readRequiredString(input, "plantDivisionCode", {
+    maxLength: 50,
+  }).toUpperCase();
+  if (!CODE_PATTERN.test(value)) {
+    throw invalid(
+      "plantDivisionCode",
+      "Use only letters, numbers, hyphens, and underscores",
+    );
+  }
+  return value;
+};
+
+export const parseCreateDivisionMapping = (
+  input: InputObject,
+): CreateDivisionMappingInput => ({
+  companyId:
+    input.companyId === undefined || input.companyId === null
+      ? null
+      : readPositiveId(input.companyId, "companyId"),
+  plantDivisionCode: plantDivisionCode(input),
+  plantDivisionName: readRequiredString(input, "plantDivisionName", {
+    maxLength: 255,
+  }),
+  divisionId: readPositiveId(input.divisionId, "divisionId"),
+  status: status(input.status, "ACTIVE"),
+});
+
+export const parseUpdateDivisionMapping = (
+  input: InputObject,
+): UpdateDivisionMappingInput => {
+  const update: UpdateDivisionMappingInput = {};
+  if (hasOwn(input, "plantDivisionCode")) {
+    update.plantDivisionCode = plantDivisionCode(input);
+  }
+  if (hasOwn(input, "plantDivisionName")) {
+    update.plantDivisionName = readRequiredString(input, "plantDivisionName", {
+      maxLength: 255,
+    });
+  }
+  if (hasOwn(input, "divisionId")) {
+    update.divisionId = readPositiveId(input.divisionId, "divisionId");
   }
   if (hasOwn(input, "status")) update.status = status(input.status);
   if (Object.keys(update).length === 0) {

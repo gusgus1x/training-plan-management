@@ -2,8 +2,11 @@
 
 import type {
   CreateSectionInput,
+  CreateSectionMappingInput,
+  SectionMappingRecord,
   SectionRecord,
   UpdateSectionInput,
+  UpdateSectionMappingInput,
 } from "./types";
 
 type Fetcher = typeof fetch;
@@ -70,6 +73,45 @@ export const updateSection = async (
 export const deleteSection = async (id: string, fetcher: Fetcher = fetch) =>
   read<{ section: SectionRecord }>(
     await fetcher(`/api/master-data/sections/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    }),
+  );
+
+export const listSectionMappings = async (fetcher: Fetcher = fetch) =>
+  read<{ items: SectionMappingRecord[] }>(
+    await fetcher("/api/master-data/section-mappings?page=1&pageSize=100", {
+      credentials: "include",
+      cache: "no-store",
+    }),
+  );
+
+export const createSectionMapping = async (
+  input: CreateSectionMappingInput,
+  fetcher: Fetcher = fetch,
+) =>
+  read<{ mapping: SectionMappingRecord }>(
+    await fetcher("/api/master-data/section-mappings", json("POST", input)),
+  );
+
+export const updateSectionMapping = async (
+  id: string,
+  input: UpdateSectionMappingInput,
+  fetcher: Fetcher = fetch,
+) =>
+  read<{ mapping: SectionMappingRecord }>(
+    await fetcher(
+      `/api/master-data/section-mappings/${id}`,
+      json("PATCH", input),
+    ),
+  );
+
+export const deleteSectionMapping = async (
+  id: string,
+  fetcher: Fetcher = fetch,
+) =>
+  read<{ mapping: SectionMappingRecord }>(
+    await fetcher(`/api/master-data/section-mappings/${id}`, {
       method: "DELETE",
       credentials: "include",
     }),

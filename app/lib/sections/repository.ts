@@ -4,12 +4,20 @@ import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
 import type {
   CreateSectionInput,
+  CreateSectionMappingInput,
+  MappingListFilters,
+  PaginatedResult,
   SectionListFilters,
+  SectionMappingRecord,
   SectionRecord,
   UpdateSectionInput,
+  UpdateSectionMappingInput,
 } from "./types";
 
-type DatabaseClient = Pick<PrismaClient, "section">;
+type DatabaseClient = Pick<
+  PrismaClient,
+  "section" | "company_section_mapping"
+>;
 const select = {
   section_id: true,
   section_code: true,
@@ -24,6 +32,42 @@ const map = (row: Row): SectionRecord => ({
   sectionNameTh: row.section_name_th,
   sectionNameEn: row.section_name_en,
   status: row.status as SectionRecord["status"],
+});
+
+const mappingSelect = {
+  section_mapping_id: true,
+  company_id: true,
+  plant_section_code: true,
+  plant_section_name: true,
+  section_id: true,
+  status: true,
+  company: {
+    select: {
+      company_code: true,
+      company_name_th: true,
+    },
+  },
+  section: {
+    select: {
+      section_code: true,
+      section_name_th: true,
+    },
+  },
+} satisfies Prisma.company_section_mappingSelect;
+type MappingRow = Prisma.company_section_mappingGetPayload<{
+  select: typeof mappingSelect;
+}>;
+const mapMapping = (row: MappingRow): SectionMappingRecord => ({
+  sectionMappingId: row.section_mapping_id.toString(),
+  companyId: row.company_id.toString(),
+  companyCode: row.company.company_code,
+  companyNameTh: row.company.company_name_th,
+  plantSectionCode: row.plant_section_code,
+  plantSectionName: row.plant_section_name,
+  sectionId: row.section_id.toString(),
+  sectionCode: row.section.section_code,
+  sectionNameTh: row.section.section_name_th,
+  status: row.status as SectionMappingRecord["status"],
 });
 
 export type SectionRepository = ReturnType<typeof createSectionRepository>;
@@ -121,6 +165,116 @@ export const createSectionRepository = (client?: DatabaseClient) => {
           await database().section.delete({
             where: { section_id: BigInt(id) },
             select,
+          }),
+        ),
+      );
+    },
+
+    async listMappings(
+      filters: MappingListFilters,
+    ): Promise<PaginatedResult<SectionMappingRecord>> {
+      const where: Prisma.company_section_mappingWhereInput = {};
+      if (filters.companyId) where.company_id = BigInt(filters.companyId);
+      if (filters.status) where.status = filters.status;
+      if (filters.search) {
+        where.OR = [
+          { plant_section_code: { contains: filters.search } },
+          { plant_section_name: { contains: filters.search } },
+          { company: { company_code: { contains: filters.search } } },
+          { section: { section_code: { contains: filters.search } } },
+        ];
+      }
+      return withDatabaseErrorMapping(async () => {
+        const [rows, totalItems] = await Promise.all([
+          database().company_section_mapping.findMany({
+            where,
+            select: mappingSelect,
+            orderBy: [{ company_id: "asc" }, { section_mapping_id: "asc" }],
+            skip: filters.skip,
+            take: filters.take,
+          }),
+          database().company_section_mapping.count({ where }),
+        ]);
+        return { items: rows.map(mapMapping), totalItems };
+      });
+    },
+
+    async findMappingById(mappingId: string) {
+      return withDatabaseErrorMapping(async () => {
+        const row = await database().company_section_mapping.findUnique({
+          where: { section_mapping_id: BigInt(mappingId) },
+          select: mappingSelect,
+        });
+        return row ? mapMapping(row) : null;
+      });
+    },
+
+    async findMappingByCode(
+      companyId: string,
+      plantSectionCode: string,
+      excludeId?: string,
+    ) {
+      return withDatabaseErrorMapping(async () => {
+        const row = await database().company_section_mapping.findFirst({
+          where: {
+            company_id: BigInt(companyId),
+            plant_section_code: plantSectionCode,
+            ...(excludeId
+              ? { NOT: { section_mapping_id: BigInt(excludeId) } }
+              : {}),
+          },
+          select: mappingSelect,
+        });
+        return row ? mapMapping(row) : null;
+      });
+    },
+
+    async createMapping(input: CreateSectionMappingInput & { companyId: string }) {
+      return withDatabaseErrorMapping(async () =>
+        mapMapping(
+          await database().company_section_mapping.create({
+            data: {
+              company_id: BigInt(input.companyId),
+              plant_section_code: input.plantSectionCode,
+              plant_section_name: input.plantSectionName,
+              section_id: BigInt(input.sectionId),
+              status: input.status,
+            },
+            select: mappingSelect,
+          }),
+        ),
+      );
+    },
+
+    async updateMapping(mappingId: string, input: UpdateSectionMappingInput) {
+      return withDatabaseErrorMapping(async () =>
+        mapMapping(
+          await database().company_section_mapping.update({
+            where: { section_mapping_id: BigInt(mappingId) },
+            data: {
+              ...(input.plantSectionCode !== undefined
+                ? { plant_section_code: input.plantSectionCode }
+                : {}),
+              ...(input.plantSectionName !== undefined
+                ? { plant_section_name: input.plantSectionName }
+                : {}),
+              ...(input.sectionId !== undefined
+                ? { section_id: BigInt(input.sectionId) }
+                : {}),
+              ...(input.status !== undefined ? { status: input.status } : {}),
+            },
+            select: mappingSelect,
+          }),
+        ),
+      );
+    },
+
+    async deleteMapping(mappingId: string) {
+      return withDatabaseErrorMapping(async () =>
+        mapMapping(
+          await database().company_section_mapping.delete({
+            where: { section_mapping_id: BigInt(mappingId) },
+            select: mappingSelect,
           }),
         ),
       );

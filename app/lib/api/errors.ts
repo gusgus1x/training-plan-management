@@ -26,6 +26,8 @@ export const normalizeApiError = (error: unknown) => {
     return error;
   }
 
+  console.error("[API] Unhandled error:", error);
+
   return new ApiError({
     code: "INTERNAL_ERROR",
     message: "An unexpected error occurred",

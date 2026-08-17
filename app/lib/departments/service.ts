@@ -5,14 +5,18 @@ import {
 } from "./repository";
 import type {
   CreateDepartmentInput,
+  CreateDepartmentMappingInput,
   DepartmentListFilters,
+  MappingListFilters,
   UpdateDepartmentInput,
+  UpdateDepartmentMappingInput,
 } from "./types";
 
-const notFound = () =>
+const notFound = (resource: "Department" | "Department mapping" = "Department") =>
   new ApiError({
-    code: "DEPARTMENT_NOT_FOUND",
-    message: "Department not found",
+    code:
+      resource === "Department" ? "DEPARTMENT_NOT_FOUND" : "MAPPING_NOT_FOUND",
+    message: `${resource} not found`,
     status: 404,
   });
 const conflict = (code: string, message: string) =>
@@ -57,6 +61,66 @@ export const createDepartmentService = (
       }
       throw error;
     }
+  },
+
+  listMappings: (filters: MappingListFilters) => repository.listMappings(filters),
+
+  async getMapping(mappingId: string) {
+    const record = await repository.findMappingById(mappingId);
+    if (!record) throw notFound("Department mapping");
+    return record;
+  },
+
+  async createMapping(
+    input: CreateDepartmentMappingInput & { companyId: string },
+  ) {
+    if (!(await repository.findById(input.departmentId))) {
+      throw notFound("Department");
+    }
+    if (
+      await repository.findMappingByCode(
+        input.companyId,
+        input.plantDepartmentCode,
+      )
+    ) {
+      throw conflict(
+        "MAPPING_CODE_CONFLICT",
+        "Plant department code already exists for this company",
+      );
+    }
+    return repository.createMapping(input);
+  },
+
+  async updateMapping(mappingId: string, input: UpdateDepartmentMappingInput) {
+    const current = await repository.findMappingById(mappingId);
+    if (!current) throw notFound("Department mapping");
+    if (
+      input.departmentId &&
+      !(await repository.findById(input.departmentId))
+    ) {
+      throw notFound("Department");
+    }
+    if (
+      input.plantDepartmentCode &&
+      (await repository.findMappingByCode(
+        current.companyId,
+        input.plantDepartmentCode,
+        mappingId,
+      ))
+    ) {
+      throw conflict(
+        "MAPPING_CODE_CONFLICT",
+        "Plant department code already exists for this company",
+      );
+    }
+    return repository.updateMapping(mappingId, input);
+  },
+
+  async deleteMapping(mappingId: string) {
+    if (!(await repository.findMappingById(mappingId))) {
+      throw notFound("Department mapping");
+    }
+    return repository.deleteMapping(mappingId);
   },
 });
 

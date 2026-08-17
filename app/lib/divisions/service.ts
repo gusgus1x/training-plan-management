@@ -5,14 +5,18 @@ import {
 } from "./repository";
 import type {
   CreateDivisionInput,
+  CreateDivisionMappingInput,
   DivisionListFilters,
+  MappingListFilters,
   UpdateDivisionInput,
+  UpdateDivisionMappingInput,
 } from "./types";
 
-const notFound = () =>
+const notFound = (resource: "Division" | "Division mapping" = "Division") =>
   new ApiError({
-    code: "DIVISION_NOT_FOUND",
-    message: "Division not found",
+    code:
+      resource === "Division" ? "DIVISION_NOT_FOUND" : "MAPPING_NOT_FOUND",
+    message: `${resource} not found`,
     status: 404,
   });
 const conflict = (code: string, message: string) =>
@@ -57,6 +61,58 @@ export const createDivisionService = (
       }
       throw error;
     }
+  },
+
+  listMappings: (filters: MappingListFilters) => repository.listMappings(filters),
+
+  async getMapping(mappingId: string) {
+    const record = await repository.findMappingById(mappingId);
+    if (!record) throw notFound("Division mapping");
+    return record;
+  },
+
+  async createMapping(input: CreateDivisionMappingInput & { companyId: string }) {
+    if (!(await repository.findById(input.divisionId))) {
+      throw notFound("Division");
+    }
+    if (
+      await repository.findMappingByCode(input.companyId, input.plantDivisionCode)
+    ) {
+      throw conflict(
+        "MAPPING_CODE_CONFLICT",
+        "Plant division code already exists for this company",
+      );
+    }
+    return repository.createMapping(input);
+  },
+
+  async updateMapping(mappingId: string, input: UpdateDivisionMappingInput) {
+    const current = await repository.findMappingById(mappingId);
+    if (!current) throw notFound("Division mapping");
+    if (input.divisionId && !(await repository.findById(input.divisionId))) {
+      throw notFound("Division");
+    }
+    if (
+      input.plantDivisionCode &&
+      (await repository.findMappingByCode(
+        current.companyId,
+        input.plantDivisionCode,
+        mappingId,
+      ))
+    ) {
+      throw conflict(
+        "MAPPING_CODE_CONFLICT",
+        "Plant division code already exists for this company",
+      );
+    }
+    return repository.updateMapping(mappingId, input);
+  },
+
+  async deleteMapping(mappingId: string) {
+    if (!(await repository.findMappingById(mappingId))) {
+      throw notFound("Division mapping");
+    }
+    return repository.deleteMapping(mappingId);
   },
 });
 

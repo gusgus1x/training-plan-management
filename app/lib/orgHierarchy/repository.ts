@@ -14,11 +14,18 @@ export const createOrgHierarchyRepository = (client?: DatabaseClient) => {
       return withDatabaseErrorMapping(async () => {
         const rows = await database().employee.findMany({
           where: { employment_status: "ACTIVE" },
-          select: { company_id: true, division_id: true, department_id: true, section_id: true },
-          distinct: ["company_id", "division_id", "department_id", "section_id"],
+          select: {
+            company_id: true,
+            function_id: true,
+            division_id: true,
+            department_id: true,
+            section_id: true,
+          },
+          distinct: ["company_id", "function_id", "division_id", "department_id", "section_id"],
         });
         return rows.map((row) => ({
           companyId: row.company_id?.toString() ?? null,
+          functionId: row.function_id?.toString() ?? null,
           divisionId: row.division_id?.toString() ?? null,
           departmentId: row.department_id?.toString() ?? null,
           sectionId: row.section_id?.toString() ?? null,

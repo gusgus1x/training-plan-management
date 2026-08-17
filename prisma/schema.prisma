@@ -190,7 +190,10 @@ model company {
   status                         String                           @db.NVarChar(20)
   announcement                   announcement[]
   assessment_series              assessment_series[]
+  company_department_mapping     company_department_mapping[]
+  company_division_mapping       company_division_mapping[]
   company_function_mapping       company_function_mapping[]
+  company_section_mapping        company_section_mapping[]
   course                         course[]
   course_standard                course_standard[]
   course_standard_target_company course_standard_target_company[]
@@ -401,33 +404,36 @@ model employee {
 }
 
 model division {
-  division_id            BigInt                   @id(map: "PK_division") @default(autoincrement())
-  division_code          String                   @unique(map: "UQ_division_division_code") @db.NVarChar(30)
-  division_name_th       String                   @db.NVarChar(255)
-  division_name_en       String?                  @db.NVarChar(255)
-  status                 String                   @db.NVarChar(20)
-  course_standard_course course_standard_course[]
-  employee               employee[]
+  division_id              BigInt                     @id(map: "PK_division") @default(autoincrement())
+  division_code            String                     @unique(map: "UQ_division_division_code") @db.NVarChar(30)
+  division_name_th         String                     @db.NVarChar(255)
+  division_name_en         String?                    @db.NVarChar(255)
+  status                   String                     @db.NVarChar(20)
+  company_division_mapping company_division_mapping[]
+  course_standard_course   course_standard_course[]
+  employee                 employee[]
 }
 
 model department {
-  department_id          BigInt                   @id(map: "PK_department") @default(autoincrement())
-  department_code        String                   @unique(map: "UQ_department_department_code") @db.NVarChar(30)
-  department_name_th     String                   @db.NVarChar(255)
-  department_name_en     String?                  @db.NVarChar(255)
-  status                 String                   @db.NVarChar(20)
-  course_standard_course course_standard_course[]
-  employee               employee[]
+  department_id              BigInt                       @id(map: "PK_department") @default(autoincrement())
+  department_code            String                       @unique(map: "UQ_department_department_code") @db.NVarChar(30)
+  department_name_th         String                       @db.NVarChar(255)
+  department_name_en         String?                      @db.NVarChar(255)
+  status                     String                       @db.NVarChar(20)
+  company_department_mapping company_department_mapping[]
+  course_standard_course     course_standard_course[]
+  employee                   employee[]
 }
 
 model section {
-  section_id             BigInt                   @id(map: "PK_section") @default(autoincrement())
-  section_code           String                   @unique(map: "UQ_section_section_code") @db.NVarChar(30)
-  section_name_th        String                   @db.NVarChar(255)
-  section_name_en        String?                  @db.NVarChar(255)
-  status                 String                   @db.NVarChar(20)
-  course_standard_course course_standard_course[]
-  employee               employee[]
+  section_id              BigInt                    @id(map: "PK_section") @default(autoincrement())
+  section_code            String                    @unique(map: "UQ_section_section_code") @db.NVarChar(30)
+  section_name_th         String                    @db.NVarChar(255)
+  section_name_en         String?                   @db.NVarChar(255)
+  status                  String                    @db.NVarChar(20)
+  company_section_mapping company_section_mapping[]
+  course_standard_course  course_standard_course[]
+  employee                employee[]
 }
 
 model employee_level {
@@ -926,4 +932,46 @@ model course_standard_target_company {
   course_standard_course course_standard_course @relation(fields: [standard_course_id], references: [standard_course_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_course_standard_target_company_standard_course_id")
 
   @@unique([standard_course_id, company_id], map: "UQ_standard_course_target_company")
+}
+
+model company_department_mapping {
+  department_mapping_id BigInt     @id(map: "PK_company_department_mapping") @default(autoincrement())
+  company_id            BigInt
+  plant_department_code String     @db.NVarChar(50)
+  plant_department_name String     @db.NVarChar(255)
+  department_id         BigInt
+  status                String     @db.NVarChar(20)
+  company               company    @relation(fields: [company_id], references: [company_id], onUpdate: NoAction, map: "FK_company_department_mapping_company_company_id")
+  department            department @relation(fields: [department_id], references: [department_id], onUpdate: NoAction, map: "FK_company_department_mapping_department_department_id")
+
+  @@unique([company_id, plant_department_code], map: "UQ_company_department_mapping_company_id_plant_department_code")
+  @@index([department_id], map: "IX_company_department_mapping_department_id")
+}
+
+model company_division_mapping {
+  division_mapping_id BigInt   @id(map: "PK_company_division_mapping") @default(autoincrement())
+  company_id          BigInt
+  plant_division_code String   @db.NVarChar(50)
+  plant_division_name String   @db.NVarChar(255)
+  division_id         BigInt
+  status              String   @db.NVarChar(20)
+  company             company  @relation(fields: [company_id], references: [company_id], onUpdate: NoAction, map: "FK_company_division_mapping_company_company_id")
+  division            division @relation(fields: [division_id], references: [division_id], onUpdate: NoAction, map: "FK_company_division_mapping_division_division_id")
+
+  @@unique([company_id, plant_division_code], map: "UQ_company_division_mapping_company_id_plant_division_code")
+  @@index([division_id], map: "IX_company_division_mapping_division_id")
+}
+
+model company_section_mapping {
+  section_mapping_id BigInt  @id(map: "PK_company_section_mapping") @default(autoincrement())
+  company_id         BigInt
+  plant_section_code String  @db.NVarChar(50)
+  plant_section_name String  @db.NVarChar(255)
+  section_id         BigInt
+  status             String  @db.NVarChar(20)
+  company            company @relation(fields: [company_id], references: [company_id], onUpdate: NoAction, map: "FK_company_section_mapping_company_company_id")
+  section            section @relation(fields: [section_id], references: [section_id], onUpdate: NoAction, map: "FK_company_section_mapping_section_section_id")
+
+  @@unique([company_id, plant_section_code], map: "UQ_company_section_mapping_company_id_plant_section_code")
+  @@index([section_id], map: "IX_company_section_mapping_section_id")
 }
