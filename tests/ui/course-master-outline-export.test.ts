@@ -146,8 +146,15 @@ describe("Course outline export", () => {
     expect(englishSheet).toMatch(/<row[^>]*r="17"[^>]*customHeight="1"/);
   });
 
-  it("places the export action in Training OAP instead of Course Master", async () => {
-    const [oapSource, courseMasterSource] = await Promise.all([
+  it("places the export action in Training Rolling instead of Training OAP or Course Master", async () => {
+    const [rollingSource, oapSource, courseMasterSource] = await Promise.all([
+      readFile(
+        path.join(
+          process.cwd(),
+          "app/components/center_factory/TrainingPlanManagement/modules/TrainingRolling.tsx",
+        ),
+        "utf8",
+      ),
       readFile(
         path.join(
           process.cwd(),
@@ -164,9 +171,8 @@ describe("Course outline export", () => {
       ),
     ]);
 
-    expect(oapSource).toContain("Export Outline");
-    expect(oapSource).toContain("selectedPlan && handleEdit(selectedPlan)");
-    expect(oapSource).toContain("selectedPlan && void handleDelete(selectedPlan.id)");
+    expect(rollingSource).toContain("Export Outline");
+    expect(oapSource).not.toContain("Export Outline");
     expect(courseMasterSource).not.toContain("Export Outline");
   });
 });

@@ -784,22 +784,35 @@ function CourseMaster() {
     setOpenDetailCourseId(course.id);
   };
 
-  const handleEdit = () => {
-    if (!selectedCourse || isSelectedCourseLocked) return;
-
-    openCourseEditor(selectedCourse);
-  };
-
-  const handleDelete = async () => {
-    if (!selectedCourse || isSelectedCourseLocked) return;
+  const handleDeleteCourse = async (course: CourseRecord) => {
+    const courseName = getCourseDisplayName(course);
+    if (!confirm(`Are you sure you want to delete course "${course.courseCode} - ${courseName}"?`)) {
+      return;
+    }
 
     try {
-      await deleteCourse(selectedCourse.id);
+      await deleteCourse(course.id);
+      if (selectedCourseId === course.id) {
+        setSelectedCourseId("");
+      }
+      if (openDetailCourseId === course.id) {
+        setOpenDetailCourseId("");
+      }
       await handleRefresh();
     } catch (error) {
       console.error("Failed to delete course", error);
       alert("Failed to delete course");
     }
+  };
+
+  const handleEdit = () => {
+    if (!selectedCourse) return;
+    openCourseEditor(selectedCourse);
+  };
+
+  const handleDelete = async () => {
+    if (!selectedCourse) return;
+    await handleDeleteCourse(selectedCourse);
   };
 
   const handleRefresh = async () => {
@@ -912,7 +925,10 @@ function CourseMaster() {
       targetGroup: form.targetGroup,
       methodology: form.methodology,
       durationHours: 1, // UI does not capture duration; default 1 to satisfy DB CHECK (duration_hours > 0)
-      validityMonths: form.lifeCycleMonth ? Number(form.lifeCycleMonth) : null,
+      validityMonths:
+        form.lifeCycleMonth && Number(form.lifeCycleMonth) > 0
+          ? Number(form.lifeCycleMonth)
+          : null,
       preAssessmentId: form.preTestId || null,
       postAssessmentId: form.postTestId || null,
       evaluationFormId: form.evaluationId || null,
@@ -1477,7 +1493,7 @@ function CourseMaster() {
         <div className={styles.standard_checkSection}>
           <div>
             <h4>Check List Position</h4>
-            <div className={styles.standard_checkGrid}>
+            <div className={styles.standard_checkGrid} translate="no">
               {positionChecklist.map((position) => (
                 <label
                   className={`${styles.standard_checkItem} ${
@@ -1499,7 +1515,7 @@ function CourseMaster() {
                   <span className={styles.standard_checkMark} aria-hidden="true">
                     {selectedPositions.includes(position) ? "✓" : ""}
                   </span>
-                  <span>{position}</span>
+                  <span translate="no">{position}</span>
                 </label>
               ))}
             </div>
@@ -1507,7 +1523,7 @@ function CourseMaster() {
 
           <div>
             <h4>Check List Level</h4>
-            <div className={styles.standard_levelGrid}>
+            <div className={styles.standard_levelGrid} translate="no">
               {levelChecklist.map((level) => (
                 <label
                   className={`${styles.standard_checkItem} ${
@@ -1529,7 +1545,7 @@ function CourseMaster() {
                   <span className={styles.standard_checkMark} aria-hidden="true">
                     {selectedLevels.includes(level) ? "✓" : ""}
                   </span>
-                  <span>{level}</span>
+                  <span translate="no">{level}</span>
                 </label>
               ))}
             </div>
@@ -1574,12 +1590,22 @@ function CourseMaster() {
           placeholder="Search course code, name, type, group"
         />
         <button className={styles.primaryButton} type="button" onClick={handleNew}>
-          New
+          + New
         </button>
-        <button className={styles.secondaryButton} type="button" onClick={handleEdit} disabled={!selectedCourse || isSelectedCourseLocked}>
+        <button
+          className={styles.secondaryButton}
+          type="button"
+          onClick={handleEdit}
+          disabled={!selectedCourse}
+        >
           Edit
         </button>
-        <button className={styles.dangerButton} type="button" onClick={handleDelete} disabled={!selectedCourse || isSelectedCourseLocked}>
+        <button
+          className={styles.dangerButton}
+          type="button"
+          onClick={handleDelete}
+          disabled={!selectedCourse}
+        >
           Delete
         </button>
         <button className={styles.secondaryButton} type="button" onClick={() => setIsImportModalOpen(true)}>
@@ -1589,6 +1615,12 @@ function CourseMaster() {
           Refresh
         </button>
       </section>
+
+      <p className={styles.selectionHint} aria-live="polite">
+        {selectedCourse
+          ? `Selected: [${selectedCourse.courseCode}] ${getCourseDisplayName(selectedCourse)}`
+          : "Click on any course row in the table below to select, edit, or delete."}
+      </p>
 
       {isNewOpen ? (
         <div className={styles.topDropPanel}>
@@ -1626,7 +1658,11 @@ function CourseMaster() {
                 );
                 return (
                   <Fragment key={course.id}>
-                    <tr className={course.id === selectedCourseId ? styles.selectedRow : undefined}>
+                    <tr
+                      className={course.id === selectedCourseId ? styles.selectedRow : undefined}
+                      onClick={() => setSelectedCourseId(course.id === selectedCourseId ? "" : course.id)}
+                      style={{ cursor: "pointer" }}
+                    >
                       <td>{course.courseCode}</td>
                       <td>
                         <strong>{getCourseDisplayName(course)}</strong>
@@ -1653,7 +1689,7 @@ function CourseMaster() {
                             : "No standard"}
                         </span>
                       </td>
-                      <td className={styles.actionCell}>
+                      <td className={styles.actionCell} onClick={(e) => e.stopPropagation()}>
                         <button
                           className={styles.detailButton}
                           type="button"
@@ -1662,12 +1698,18 @@ function CourseMaster() {
                           {isOpen && !isEditing ? "Hide" : "Details"}
                         </button>
                         <button
-                          className={styles.detailButton}
+                          className={styles.secondaryButton}
                           type="button"
                           onClick={() => openCourseEditor(course)}
-                          disabled={usedCourseCodes.has(course.courseCode)}
                         >
                           Edit
+                        </button>
+                        <button
+                          className={styles.dangerButton}
+                          type="button"
+                          onClick={() => void handleDeleteCourse(course)}
+                        >
+                          Delete
                         </button>
                       </td>
                     </tr>

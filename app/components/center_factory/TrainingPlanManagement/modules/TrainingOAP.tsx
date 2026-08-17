@@ -12,7 +12,6 @@ import {
   type WorkflowCourse,
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
-import { getCourseOutlineFileName } from "../../../../lib/courseOutlineExport";
 import { listInstructors } from "../../../../lib/instructors/client";
 import type { InstructorRecord } from "../../../../lib/instructors/types";
 import { listInstituteProviders } from "../../../../lib/instituteProviders/client";
@@ -62,20 +61,20 @@ const readApprovedTrainingNeed = () => {
 const buildRequestCourse = (request: EmployeeTrainingNeedRequest): WorkflowCourse => ({
   id: `request-${request.id}`,
   courseCode: `REQ-${request.requestNo}`,
-  courseNameEn: request.courseNeed,
   courseNameTh: request.courseNeed,
+  courseNameEn: request.courseNeed,
   objective: request.reason,
   learningContent: request.expectedBenefit,
   targetGroup: `${request.employeeName} / ${request.company} / ${request.functionName}`,
-  methodology: "To be defined by HRD",
-  preTest: "To be defined",
-  postTest: "To be defined",
-  evaluation: "Course evaluation",
-  evaluationAfter30Day: "HRD follow-up after training",
+  methodology: "Classroom / Workshop",
+  preTest: "",
+  postTest: "",
+  evaluation: "Course Evaluation",
+  evaluationAfter30Day: "Follow-up evaluation",
   lifeCycleMonth: "12",
-  courseType: request.sourceCourseOwner === "Factory" ? "FACTORY REQUEST" : "CENTER REQUEST",
-  courseGroup: "Training Need",
-  remark: "Created from an approved employee training need.",
+  courseType: request.sourceCourseOwner === "Factory" ? "Factory Specific" : "Center Standard",
+  courseGroup: request.company,
+  remark: `Approved from request #${request.requestNo} by ${request.employeeName}`,
   status: "Active",
   updatedAt: new Date().toISOString().slice(0, 10),
   owner: request.sourceCourseOwner === "Factory" ? "FACTORY" : "CENTER",
@@ -94,10 +93,9 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const [editingId, setEditingId] = useState("");
   const [openDetailId, setOpenDetailId] = useState("");
   const [selectedPlanId, setSelectedPlanId] = useState("");
-  const [exportingPlanId, setExportingPlanId] = useState("");
-  const [exportMessage, setExportMessage] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | OapStatus>("all");
+  const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [instructors, setInstructors] = useState<InstructorRecord[]>([]);
   const [providers, setProviders] = useState<InstituteProviderRecord[]>([]);
   const userCompanyCode = profileValue(user?.companyCode);
@@ -182,20 +180,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   }, []);
 
   const standardCourseIds = useMemo(
-    () =>
-      new Set(
-        standards
-          .filter((standard) =>
-            isWorkflowOwner(
-              standard.owner,
-              standard.ownerCompany,
-              user?.roleCode,
-              userCompanyCode,
-            ),
-          )
-          .map((standard) => standard.courseId),
-      ),
-    [standards, user?.roleCode, userCompanyCode],
+    () => new Set(standards.map((standard) => standard.courseId)),
+    [standards],
   );
   const courseOptions = useMemo(
     () => {
@@ -235,6 +221,16 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const visiblePlans = useMemo(
     () =>
       scopedPlans
+        .filter((plan) => {
+          if (companyFilter !== "all") {
+            const matchesCompany =
+              companyFilter === "CENTER"
+                ? plan.owner === "CENTER" || plan.ownerCompany === "HRD Center" || plan.ownerCompany === "CENTER"
+                : plan.ownerCompany === companyFilter;
+            if (!matchesCompany) return false;
+          }
+          return true;
+        })
         .filter((plan) =>
           [
             plan.course.courseCode,
@@ -249,7 +245,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             .includes(search.toLowerCase()),
         )
         .filter((plan) => statusFilter === "all" || plan.status === statusFilter),
-    [scopedPlans, search, statusFilter],
+    [companyFilter, scopedPlans, search, statusFilter],
   );
   const selectedPlan =
     visiblePlans.find((plan) => plan.id === selectedPlanId) ?? null;
@@ -294,7 +290,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       if (editingId) {
         await updateOapPlan(editingId, input);
       } else {
-        await createOapPlan({ ...input, planYear: new Date().getFullYear(), status: "Planning" });
+        await createOapPlan({ ...input, planYear: new Date().getFullYear(), status: "Planned" });
       }
       setEditingId("");
       setForm(emptyForm);
@@ -353,48 +349,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     }
   };
 
-  const handleExportOutline = async (plan: OapPlan) => {
-    const standard =
-      standards.find(
-        (item) =>
-          item.courseId === plan.course.id ||
-          item.courseCode === plan.course.courseCode,
-      ) ?? null;
-    setExportingPlanId(plan.id);
-    setExportMessage("");
-
-    try {
-      const response = await fetch("/api/course-master/course-outline", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ course: plan.course, standard, oapPlan: plan }),
-      });
-      const errorPayload = response.ok
-        ? null
-        : ((await response.json().catch(() => null)) as { error?: string } | null);
-      if (!response.ok) {
-        throw new Error(errorPayload?.error || "Unable to create Course Outline.");
-      }
-
-      const file = await response.blob();
-      const downloadUrl = URL.createObjectURL(file);
-      const downloadLink = document.createElement("a");
-      downloadLink.href = downloadUrl;
-      downloadLink.download = getCourseOutlineFileName(plan.course);
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      downloadLink.remove();
-      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
-      setExportMessage(`Exported Course Outline: ${plan.course.courseCode}`);
-    } catch (error) {
-      setExportMessage(
-        error instanceof Error ? error.message : "Unable to export Course Outline.",
-      );
-    } finally {
-      setExportingPlanId("");
-    }
-  };
-
   const handleRefresh = async () => {
     await loadWorkspace();
     setForm(emptyForm);
@@ -404,7 +358,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     setEditingId("");
     setOpenDetailId("");
     setSelectedPlanId("");
-    setExportMessage("");
     setSearch("");
     setStatusFilter("all");
   };
@@ -437,47 +390,74 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
           <span>{visiblePlans.length} shown</span>
         </div>
 
-        <div className={styles.toolbar}>
-          <label className={styles.searchBox}>
-            <span>Search</span>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Course, trainer, provider, status" />
-          </label>
-          <label className={styles.filterBox}>
-            <span>Status</span>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | OapStatus)}>
-              <option value="all">All status</option>
-              <option value="Planning">Planning</option>
-              <option value="Planned">Planned</option>
-              <option value="Cancel">Cancel</option>
-            </select>
-          </label>
-          <div className={styles.toolbarActions}>
-            <button className={styles.primaryButton} disabled={courseOptions.length === 0} type="button" onClick={handleNew}>New</button>
-            <button className={styles.secondaryButton} disabled={!selectedPlan} type="button" onClick={() => selectedPlan && handleEdit(selectedPlan)}>Edit</button>
-            <button className={styles.dangerButton} disabled={!selectedPlan} type="button" onClick={() => selectedPlan && void handleDelete(selectedPlan.id)}>Delete</button>
-            <button
-              className={styles.secondaryButton}
-              disabled={!selectedPlan || Boolean(exportingPlanId)}
-              type="button"
-              onClick={() => selectedPlan && void handleExportOutline(selectedPlan)}
-            >
-              {exportingPlanId ? "Preparing..." : "Export Outline"}
-            </button>
-            <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>Refresh</button>
+        <section className={styles.toolbar} aria-label="Training OAP toolbar">
+          <div className={styles.filterRow}>
+            <div className={styles.searchWrapper}>
+              <span className={styles.searchIcon}>🔍</span>
+              <input
+                className={styles.searchInput}
+                aria-label="Search annual training plan"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search course code, name, trainer, provider, status..."
+              />
+            </div>
+            {user?.roleCode === "HRD_CENTER" ? (
+              <label className={styles.filterLabel}>
+                <span>Company</span>
+                <select
+                  className={styles.statusSelect}
+                  aria-label="Filter company"
+                  value={companyFilter}
+                  onChange={(event) => setCompanyFilter(event.target.value)}
+                >
+                  <option value="all">All Companies</option>
+                  <option value="CENTER">HRD Center</option>
+                  <option value="ATA">ATA</option>
+                  <option value="TEP">TEP</option>
+                  <option value="ATFB">ATFB</option>
+                  <option value="NIC">NIC</option>
+                  <option value="SATI">SATI</option>
+                  <option value="SNF">SNF</option>
+                </select>
+              </label>
+            ) : null}
+            <label className={styles.filterLabel}>
+              <span>Status</span>
+              <select
+                className={styles.statusSelect}
+                aria-label="Filter status"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as "all" | OapStatus)}
+              >
+                <option value="all">All status</option>
+                <option value="Planning">Planning</option>
+                <option value="Planned">Planned</option>
+                <option value="Cancel">Cancel</option>
+              </select>
+            </label>
           </div>
-        </div>
+          <div className={styles.actionRow}>
+            <button className={styles.primaryButton} disabled={courseOptions.length === 0} type="button" onClick={handleNew}>
+              + New
+            </button>
+            <button className={styles.secondaryButton} disabled={!selectedPlan} type="button" onClick={() => selectedPlan && handleEdit(selectedPlan)}>
+              Edit
+            </button>
+            <button className={styles.dangerButton} disabled={!selectedPlan} type="button" onClick={() => selectedPlan && void handleDelete(selectedPlan.id)}>
+              Delete
+            </button>
+            <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>
+              Refresh
+            </button>
+          </div>
+        </section>
 
         <p className={styles.selectionHint} aria-live="polite">
           {selectedPlan
             ? `Selected: ${selectedPlan.course.courseCode} / ${getCourseDisplayName(selectedPlan.course)}`
-            : "Select a row using the circle under Seq. to Edit, Delete, or Export Outline."}
+            : "Click on any course row to select, Edit, or Delete."}
         </p>
-
-        {exportMessage ? (
-          <p className={styles.exportStatus} role="status">
-            {exportMessage}
-          </p>
-        ) : null}
 
         {isNewOpen ? (
           <section className={styles.formPanel}>
@@ -636,67 +616,62 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
                   <div className={styles.previewCard}>
                     <div className={styles.previewCardHeader}>
-                      <span>👥 Target & Standard Mapping</span>
+                      <span>👥 Target & Standard</span>
                     </div>
                     <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>Target Group</span>
                       <span className={styles.previewFieldValue}>{selectedCourse.targetGroup || "-"}</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>Function</span>
+                      <span className={styles.previewFieldLabel}>Standard Target</span>
                       <span className={styles.previewFieldValue}>
-                        {selectedCourseStandard?.functionName
-                          ? `${selectedCourseStandard.functionName} (${selectedCourseStandard.functionCode || "N/A"})`
-                          : "General / All Functions"}
-                      </span>
-                    </div>
-                    <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>Positions</span>
-                      <span className={styles.previewFieldValue}>
-                        {selectedCourseStandard?.positions?.length
-                          ? selectedCourseStandard.positions.join(", ")
-                          : "All positions in function"}
-                      </span>
-                    </div>
-                    <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>Levels</span>
-                      <span className={styles.previewFieldValue}>
-                        {selectedCourseStandard?.levels?.length
-                          ? selectedCourseStandard.levels.join(", ")
-                          : "All levels"}
+                        {selectedCourseStandard
+                          ? `${selectedCourseStandard.functionName} (${selectedCourseStandard.positions.length} pos, ${selectedCourseStandard.levels.length} lvl)`
+                          : "No standard defined"}
                       </span>
                     </div>
                   </div>
 
-                  <div className={`${styles.previewCard} ${styles.previewCardFull}`}>
+                  <div className={styles.previewCard}>
                     <div className={styles.previewCardHeader}>
-                      <span>📋 Assessments & Evaluation</span>
+                      <span>📝 Assessment Forms</span>
                     </div>
-                    <div className={styles.assessmentGrid}>
-                      <div className={styles.assessmentItem}>
-                        <span className={styles.previewFieldLabel}>Pre-Test</span>
-                        <strong className={styles.previewFieldValue}>{selectedCourse.preTest || "None"}</strong>
-                      </div>
-                      <div className={styles.assessmentItem}>
-                        <span className={styles.previewFieldLabel}>Post-Test</span>
-                        <strong className={styles.previewFieldValue}>{selectedCourse.postTest || "None"}</strong>
-                      </div>
-                      <div className={styles.assessmentItem}>
-                        <span className={styles.previewFieldLabel}>Course Evaluation</span>
-                        <strong className={styles.previewFieldValue}>{selectedCourse.evaluation || "Standard"}</strong>
-                      </div>
-                      <div className={styles.assessmentItem}>
-                        <span className={styles.previewFieldLabel}>30-Day Follow-Up</span>
-                        <strong className={styles.previewFieldValue}>{selectedCourse.evaluationAfter30Day || "Standard"}</strong>
-                      </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>Pre-Test</span>
+                      <span className={styles.previewFieldValue}>{selectedCourse.preTest || "None"}</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>Post-Test</span>
+                      <span className={styles.previewFieldValue}>{selectedCourse.postTest || "None"}</span>
+                    </div>
+                  </div>
+
+                  <div className={styles.previewCard}>
+                    <div className={styles.previewCardHeader}>
+                      <span>⭐ Evaluation Forms</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>Evaluation</span>
+                      <span className={styles.previewFieldValue}>{selectedCourse.evaluation || "Standard"}</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>30-Day Follow-Up</span>
+                      <span className={styles.previewFieldValue}>{selectedCourse.evaluationAfter30Day || "Standard"}</span>
                     </div>
                   </div>
                 </div>
               </div>
             ) : null}
             <div className={styles.formActions}>
-              <button className={styles.primaryButton} disabled={!selectedCourse} type="button" onClick={handleSave}>{editingId ? "Save changes" : "Save Draft"}</button>
-              <button className={styles.secondaryButton} type="button" onClick={() => { setEditingId(""); setForm(emptyForm); setIsNewOpen(false); }}>Cancel</button>
+              <button
+                className={styles.primaryButton}
+                disabled={!selectedCourse || !form.participants || !form.hours || !form.budget}
+                type="button"
+                onClick={() => void handleSave()}
+              >
+                {editingId ? "Save changes" : "Save Draft"}
+              </button>
+              <button className={styles.secondaryButton} type="button" onClick={() => { setForm(emptyForm); setEditingId(""); setIsNewOpen(false); }}>Cancel</button>
             </div>
           </section>
         ) : null}
@@ -711,9 +686,9 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                 <th>Actions</th>
                 <th>Participants</th>
                 <th>Hours</th>
-                <th>Budget</th>
-                <th>Trainer</th>
-                <th>Provider</th>
+                <th>Budget (THB)</th>
+                <th>Trainer Name</th>
+                <th>Institute / Provider</th>
                 <th>Created By</th>
               </tr>
             </thead>
@@ -722,9 +697,12 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                 const isOpen = openDetailId === plan.id;
                 return (
                   <Fragment key={plan.id}>
-                    <tr className={plan.id === selectedPlanId ? styles.selectedRow : undefined}>
+                    <tr
+                      className={`${plan.id === selectedPlanId ? styles.selectedRow : ""} ${styles.clickableRow}`}
+                      onClick={() => setSelectedPlanId(plan.id === selectedPlanId ? "" : plan.id)}
+                    >
                       <td>
-                        <label className={styles.selectionControl}>
+                        <label className={styles.selectionControl} onClick={(e) => e.stopPropagation()}>
                           <input
                             aria-label={`Select ${plan.course.courseCode}`}
                             checked={plan.id === selectedPlanId}
@@ -750,7 +728,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                           {plan.status === "Planned" ? "วางแผนแล้ว" : plan.status === "Planning" ? "รอวางแผน" : plan.status === "Cancel" ? "ยกเลิก" : plan.status}
                         </span>
                       </td>
-                      <td className={styles.actionCell}>
+                      <td className={styles.actionCell} onClick={(e) => e.stopPropagation()}>
                         <div className={styles.actionButtons}>
                           <button
                             aria-expanded={isOpen}
@@ -763,28 +741,26 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                           >
                             {isOpen ? "Hide" : "Details"}
                           </button>
-                          {plan.status === "Planning" ? (
-                            <button
-                              className={`${styles.rowActionButton} ${styles.confirmAction}`}
-                              type="button"
-                              onClick={() => {
-                                setSelectedPlanId(plan.id);
-                                void updateStatus(plan.id, "Planned");
-                              }}
-                            >
-                              Confirm
-                            </button>
-                          ) : (
-                            <span
-                              className={`${styles.rowActionState} ${
-                                plan.status === "Planned"
-                                  ? styles.confirmedAction
-                                  : styles.cancelledAction
-                              }`}
-                            >
-                              {plan.status === "Planned" ? "Confirmed" : "Cancelled"}
-                            </span>
-                          )}
+                          <button
+                            className={`${styles.rowActionButton} ${styles.detailsAction}`}
+                            type="button"
+                            onClick={() => {
+                              setSelectedPlanId(plan.id);
+                              handleEdit(plan);
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className={`${styles.rowActionButton} ${styles.dangerAction}`}
+                            type="button"
+                            onClick={() => {
+                              setSelectedPlanId(plan.id);
+                              void handleDelete(plan.id);
+                            }}
+                          >
+                            Delete
+                          </button>
                         </div>
                       </td>
                       <td>{plan.participants}</td>
@@ -828,8 +804,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                               <div><span>Created By</span><strong>{plan.owner === "CENTER" ? "Center" : plan.ownerCompany}</strong></div>
                             </div>
                             <div className={styles.formActions}>
-                              <button className={styles.primaryButton} disabled={plan.status !== "Planning"} type="button" onClick={() => void updateStatus(plan.id, "Planned")}>Confirm</button>
                               <button className={styles.dangerButton} disabled={plan.status === "Cancel"} type="button" onClick={() => void updateStatus(plan.id, "Cancel")}>Cancel Plan</button>
+                              <button className={styles.secondaryButton} type="button" onClick={() => setOpenDetailId("")}>Close</button>
                             </div>
                           </section>
                         </td>

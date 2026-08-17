@@ -7,6 +7,7 @@ import {
   type WorkflowCourse,
   type WorkflowOwner,
 } from "../../../../lib/trainingWorkflow";
+import { getCourseOutlineFileName } from "../../../../lib/courseOutlineExport";
 import { listOapPlans } from "../../../../lib/trainingOap/client";
 import type { OapPlanRecord } from "../../../../lib/trainingOap/types";
 import {
@@ -229,11 +230,15 @@ export default function TrainingRolling() {
   const [selectedYear, setSelectedYear] = useState("2026");
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | RollingStatus>("all");
+  const [companyFilter, setCompanyFilter] = useState<string>("all");
+  const [exportingPlanId, setExportingPlanId] = useState("");
+  const [exportMessage, setExportMessage] = useState("");
+  const [deletedSessionDbIds, setDeletedSessionDbIds] = useState<string[]>([]);
 
   const loadWorkspace = async () => {
     try {
       const [oapData, rollingData] = await Promise.all([
-        listOapPlans({ search: null, status: "Planned" }),
+        listOapPlans({ search: null, status: null }),
         loadWorkflowRollingPlans(),
       ]);
       setOapPlans(oapData.oapPlans || []);
@@ -251,8 +256,10 @@ export default function TrainingRolling() {
 
   const oapSources = useMemo(
     () =>
-      oapPlans.filter((plan) =>
-        isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode),
+      oapPlans.filter(
+        (plan) =>
+          plan.status !== "Cancel" &&
+          isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode),
       ),
     [oapPlans, user?.roleCode, userCompanyCode],
   );
@@ -274,25 +281,37 @@ export default function TrainingRolling() {
       [...scopedRollingPlans]
         .sort((a, b) => a.trainingDate.localeCompare(b.trainingDate))
         .map((plan, index) => ({ ...plan, sequence: index + 1 }))
-        .filter((plan) =>
-          plan.trainingDate.startsWith(`${selectedYear}-`) &&
-          (selectedMonth === "all" ||
-            plan.trainingDate.startsWith(`${selectedYear}-${selectedMonth}`)) &&
-          (statusFilter === "all" || plan.status === statusFilter) &&
-          [
-            plan.course.name,
-            plan.course.code,
-            plan.batch,
-            plan.location,
-            formatRollingPlanCompanies(plan),
-            plan.status,
-            getJobStatus(plan.trainingDate),
-          ]
-            .join(" ")
-            .toLowerCase()
-            .includes(search.toLowerCase()),
-        ),
-    [scopedRollingPlans, search, selectedMonth, selectedYear, statusFilter],
+        .filter((plan) => {
+          if (companyFilter !== "all") {
+            const planCompanies = getRollingPlanCompanies(plan);
+            const matchesCompany =
+              companyFilter === "CENTER"
+                ? plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.company === "All Companies"
+                : planCompanies.includes(companyFilter) ||
+                  plan.ownerCompany === companyFilter ||
+                  plan.company === companyFilter;
+            if (!matchesCompany) return false;
+          }
+          return (
+            plan.trainingDate.startsWith(`${selectedYear}-`) &&
+            (selectedMonth === "all" ||
+              plan.trainingDate.startsWith(`${selectedYear}-${selectedMonth}`)) &&
+            (statusFilter === "all" || plan.status === statusFilter) &&
+            [
+              plan.course.name,
+              plan.course.code,
+              plan.batch,
+              plan.location,
+              formatRollingPlanCompanies(plan),
+              plan.status,
+              getJobStatus(plan.trainingDate),
+            ]
+              .join(" ")
+              .toLowerCase()
+              .includes(search.toLowerCase())
+          );
+        }),
+    [companyFilter, scopedRollingPlans, search, selectedMonth, selectedYear, statusFilter],
   );
   const visiblePlanGroups = useMemo(() => {
     const groups = new Map<string, RollingPlan[]>();
@@ -342,6 +361,10 @@ export default function TrainingRolling() {
   };
 
   const removeSession = (sessionId: string) => {
+    const sessionToRemove = form.sessions.find((s) => s.id === sessionId);
+    if (sessionToRemove?.dbId) {
+      setDeletedSessionDbIds((prev) => [...prev, sessionToRemove.dbId!]);
+    }
     setForm((current) => ({
       ...current,
       sessions:
@@ -359,6 +382,13 @@ export default function TrainingRolling() {
     const today = new Date().toISOString().slice(0, 10);
 
     try {
+      // 1. Delete any sessions removed from the form
+      for (const dbId of deletedSessionDbIds) {
+        await deleteRollingPlan(dbId);
+      }
+      setDeletedSessionDbIds([]);
+
+      // 2. Save or update remaining sessions
       for (const session of form.sessions) {
         const input = {
           oapPlanId: selectedOap.id,
@@ -385,7 +415,47 @@ export default function TrainingRolling() {
     }
   };
 
+  const handleEditGroup = (group: { id: string; plans: RollingPlan[] }) => {
+    const plan = group.plans[0];
+    setDeletedSessionDbIds([]);
+    setForm({
+      oapId: plan.oapId,
+      sessions: group.plans.map((p, index) => ({
+        id: p.rollingId || `session-${index}`,
+        dbId: p.rollingId,
+        batchName: p.batch,
+        location: p.location,
+        trainingDate: p.trainingDate,
+        startTime: p.startTime || "09:00",
+        endTime: p.endTime || "16:00",
+      })),
+    });
+    setIsNewOpen(true);
+    setOpenDetailId("");
+  };
+
+  const handleDeleteGroup = async (group: { id: string; plans: RollingPlan[] }) => {
+    const courseName = group.plans[0]?.course.name || "selected plan";
+    if (!confirm(`Are you sure you want to delete all ${group.plans.length} session(s) for "${courseName}"?`)) {
+      return;
+    }
+    try {
+      for (const plan of group.plans) {
+        await deleteRollingPlan(plan.rollingId);
+      }
+      setSelectedGroupId("");
+      if (openDetailId === group.id) {
+        setOpenDetailId("");
+      }
+      await loadWorkspace();
+    } catch (error) {
+      console.error("Failed to delete Training Rolling plan", error);
+      alert("Failed to delete Training Rolling plan");
+    }
+  };
+
   const handleEditSession = (plan: RollingPlan) => {
+    setDeletedSessionDbIds([]);
     setForm({
       oapId: plan.oapId,
       sessions: [
@@ -405,6 +475,9 @@ export default function TrainingRolling() {
   };
 
   const handleDelete = async (rollingId: string) => {
+    if (!confirm("Are you sure you want to delete this session?")) {
+      return;
+    }
     try {
       await deleteRollingPlan(rollingId);
       if (openDetailId === rollingId) {
@@ -417,12 +490,74 @@ export default function TrainingRolling() {
     }
   };
 
+  const handleExportOutline = async (plan: RollingPlan) => {
+    const oapPlan = oapPlans.find((item) => item.id === plan.oapId) ?? null;
+    const course: WorkflowCourse = oapPlan?.course ?? {
+      id: plan.course.code,
+      courseCode: plan.course.code,
+      courseNameTh: plan.course.name,
+      courseNameEn: plan.course.name,
+      objective: plan.course.objective,
+      learningContent: plan.course.learningContent,
+      targetGroup: plan.course.targetGroup,
+      methodology: plan.course.methodology,
+      preTest: plan.course.preTest,
+      postTest: plan.course.postTest,
+      evaluation: plan.course.evaluation,
+      evaluationAfter30Day: plan.course.evaluationAfter30Day,
+      lifeCycleMonth: plan.course.lifeCycleMonth,
+      courseType: plan.course.courseType,
+      courseGroup: plan.course.courseGroup,
+      remark: "",
+      status: "Active",
+      updatedAt: plan.updatedAt,
+      owner: plan.owner,
+      ownerCompany: plan.ownerCompany,
+      createdBy: plan.ownerName,
+    };
+
+    setExportingPlanId(plan.rollingId);
+    setExportMessage("");
+
+    try {
+      const response = await fetch("/api/course-master/course-outline", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ course, standard: null, oapPlan }),
+      });
+      const errorPayload = response.ok
+        ? null
+        : ((await response.json().catch(() => null)) as { error?: string } | null);
+      if (!response.ok) {
+        throw new Error(errorPayload?.error || "Unable to create Course Outline.");
+      }
+
+      const file = await response.blob();
+      const downloadUrl = URL.createObjectURL(file);
+      const downloadLink = document.createElement("a");
+      downloadLink.href = downloadUrl;
+      downloadLink.download = getCourseOutlineFileName(course);
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+      window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
+      setExportMessage(`Exported Course Outline: ${course.courseCode}`);
+    } catch (error) {
+      setExportMessage(
+        error instanceof Error ? error.message : "Unable to export Course Outline.",
+      );
+    } finally {
+      setExportingPlanId("");
+    }
+  };
+
   const handleRefresh = async () => {
     await loadWorkspace();
     setForm(createEmptyForm());
     setIsNewOpen(false);
     setOpenDetailId("");
     setSelectedGroupId("");
+    setExportMessage("");
     setSearch("");
     setSelectedYear("2026");
     setSelectedMonth("all");
@@ -433,6 +568,7 @@ export default function TrainingRolling() {
     setForm(createEmptyForm());
     setOpenDetailId("");
     setSelectedGroupId("");
+    setExportMessage("");
     setIsNewOpen(true);
   };
 
@@ -479,45 +615,113 @@ export default function TrainingRolling() {
           <span>{visiblePlans.length} shown</span>
         </div>
 
-        <div className={styles.toolbar}>
-          <label className={styles.filterBox}>
-            <span>Year</span>
-            <select value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
-              {yearOptions.map((year) => <option key={year}>{year}</option>)}
-            </select>
-          </label>
-          <label className={styles.filterBox}>
-            <span>Month</span>
-            <select value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)}>
-              <option value="all">All Year</option>
-              {monthOptions.map((month) => <option key={month.value} value={month.value}>{month.label}</option>)}
-            </select>
-          </label>
-          <label className={styles.filterBox}>
-            <span>Status</span>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | RollingStatus)}>
-              <option value="all">All status</option>
-              <option value="Planning">Planning</option>
-              <option value="Planned">Planned</option>
-            </select>
-          </label>
-          <label className={styles.searchBox}>
-            <span>Search</span>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Course, batch, location, status" />
-          </label>
-          <div className={styles.toolbarActions}>
+        <section className={styles.toolbar} aria-label="Training Rolling toolbar">
+          <div className={styles.filterRow}>
+            <div className={styles.searchWrapper}>
+              <span className={styles.searchIcon}>🔍</span>
+              <input
+                className={styles.searchInput}
+                aria-label="Search monthly rolling plan"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search course code, name, batch, location, status..."
+              />
+            </div>
+            <div className={styles.filterGroup}>
+              {user?.roleCode === "HRD_CENTER" ? (
+                <label className={styles.filterLabel}>
+                  <span>Company</span>
+                  <select
+                    className={styles.selectInput}
+                    aria-label="Filter company"
+                    value={companyFilter}
+                    onChange={(event) => setCompanyFilter(event.target.value)}
+                  >
+                    <option value="all">All Companies</option>
+                    <option value="CENTER">HRD Center</option>
+                    <option value="ATA">ATA</option>
+                    <option value="TEP">TEP</option>
+                    <option value="ATFB">ATFB</option>
+                    <option value="NIC">NIC</option>
+                    <option value="SATI">SATI</option>
+                    <option value="SNF">SNF</option>
+                  </select>
+                </label>
+              ) : null}
+              <label className={styles.filterLabel}>
+                <span>Year</span>
+                <select className={styles.selectInput} aria-label="Filter year" value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
+                  {yearOptions.map((year) => <option key={year} value={year}>{year}</option>)}
+                </select>
+              </label>
+              <label className={styles.filterLabel}>
+                <span>Month</span>
+                <select className={styles.selectInput} aria-label="Filter month" value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)}>
+                  <option value="all">All Year</option>
+                  {monthOptions.map((month) => <option key={month.value} value={month.value}>{month.label}</option>)}
+                </select>
+              </label>
+              <label className={styles.filterLabel}>
+                <span>Status</span>
+                <select className={styles.selectInput} aria-label="Filter status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | RollingStatus)}>
+                  <option value="all">All status</option>
+                  <option value="Planning">Planning</option>
+                  <option value="Planned">Planned</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <div className={styles.actionRow}>
             <button
               className={styles.primaryButton}
               disabled={oapSources.length === 0}
-              title={oapSources.length === 0 ? "Confirm a Training OAP before creating a rolling plan." : "Create monthly rolling plan"}
+              title={oapSources.length === 0 ? "Create a Training OAP before creating a rolling plan." : "Create monthly rolling plan"}
               type="button"
               onClick={handleNew}
             >
-              New
+              + New
             </button>
-            <button className={styles.secondaryButton} type="button" onClick={() => void handleRefresh()}>Refresh</button>
+            <button
+              className={styles.secondaryButton}
+              disabled={!selectedGroup}
+              type="button"
+              onClick={() => selectedGroup && handleEditGroup(selectedGroup)}
+            >
+              Edit
+            </button>
+            <button
+              className={styles.dangerButton}
+              disabled={!selectedGroup}
+              type="button"
+              onClick={() => selectedGroup && void handleDeleteGroup(selectedGroup)}
+            >
+              Delete
+            </button>
+            <button
+              className={styles.secondaryButton}
+              disabled={!selectedGroup || Boolean(exportingPlanId)}
+              type="button"
+              onClick={() => selectedGroup && void handleExportOutline(selectedGroup.plans[0])}
+            >
+              {exportingPlanId ? "Preparing..." : "Export Outline"}
+            </button>
+            <button className={styles.secondaryButton} type="button" onClick={() => void handleRefresh()}>
+              Refresh
+            </button>
           </div>
-        </div>
+        </section>
+
+        <p className={styles.selectionHint} aria-live="polite">
+          {selectedGroup
+            ? `Selected: ${selectedGroup.plans[0]?.course.code} / ${selectedGroup.plans[0]?.course.name}`
+            : "Click on any course row to select, Edit, Delete, Export Outline or view details."}
+        </p>
+
+        {exportMessage ? (
+          <p className={styles.exportStatus} role="status">
+            {exportMessage}
+          </p>
+        ) : null}
 
         {isNewOpen ? (
           <section className={styles.formPanel}>
@@ -784,9 +988,12 @@ export default function TrainingRolling() {
 
                 return (
                   <Fragment key={group.id}>
-                    <tr className={group.id === selectedGroupId ? styles.selectedRow : undefined}>
+                    <tr
+                      className={`${group.id === selectedGroupId ? styles.selectedRow : ""} ${styles.clickableRow}`}
+                      onClick={() => setSelectedGroupId(group.id === selectedGroupId ? "" : group.id)}
+                    >
                       <td>
-                        <label className={styles.selectionControl}>
+                        <label className={styles.selectionControl} onClick={(e) => e.stopPropagation()}>
                           <input
                             aria-label={`Select ${plan.course.code}`}
                             checked={group.id === selectedGroupId}
@@ -821,10 +1028,30 @@ export default function TrainingRolling() {
                         </span>
                       </td>
                       <td><span className={`${styles.jobPill} ${styles[`job${groupJobStatus}`]}`}>{groupJobStatus}</span></td>
-                      <td className={styles.actionCell}>
+                      <td className={styles.actionCell} onClick={(e) => e.stopPropagation()}>
                         <div className={styles.actionButtons}>
                           <button className={styles.detailButton} type="button" onClick={() => setOpenDetailId(isOpen ? "" : group.id)}>
                             {isOpen ? "Hide" : "Details"}
+                          </button>
+                          <button
+                            className={styles.secondaryButton}
+                            type="button"
+                            onClick={() => {
+                              setSelectedGroupId(group.id);
+                              handleEditGroup(group);
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className={styles.dangerButton}
+                            type="button"
+                            onClick={() => {
+                              setSelectedGroupId(group.id);
+                              void handleDeleteGroup(group);
+                            }}
+                          >
+                            Delete
                           </button>
                           <button
                             className={styles.primaryButton}
@@ -856,7 +1083,17 @@ export default function TrainingRolling() {
                                 <p className={styles.kicker}>Rolling detail</p>
                                 <h3>{plan.course.name}</h3>
                               </div>
-                              <button className={styles.closeButton} type="button" onClick={() => setOpenDetailId("")}>Close</button>
+                              <div className={styles.panelHeaderActions}>
+                                <button
+                                  className={styles.secondaryButton}
+                                  disabled={Boolean(exportingPlanId)}
+                                  type="button"
+                                  onClick={() => void handleExportOutline(plan)}
+                                >
+                                  {exportingPlanId === plan.rollingId ? "Preparing..." : "Export Outline"}
+                                </button>
+                                <button className={styles.closeButton} type="button" onClick={() => setOpenDetailId("")}>Close</button>
+                              </div>
                             </div>
                             <div className={styles.detailGrid}>
                               <div><span>Course Sequence</span><strong>{group.sequence}</strong></div>
@@ -953,10 +1190,10 @@ export default function TrainingRolling() {
           </table>
           {visiblePlanGroups.length === 0 ? (
             <div className={styles.emptyState}>
-              <strong>{oapSources.length === 0 ? "No confirmed Training OAP" : "No rolling plans found"}</strong>
+              <strong>{oapSources.length === 0 ? "No Training OAP found" : "No rolling plans found"}</strong>
               <span>
                 {oapSources.length === 0
-                  ? "Open Training OAP and click Confirm on an annual plan before creating a monthly rolling plan."
+                  ? "Create a Training OAP plan first before creating a monthly rolling plan."
                   : "Try changing the month, year, status, or search text."}
               </span>
             </div>

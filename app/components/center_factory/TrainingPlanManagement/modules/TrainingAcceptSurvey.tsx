@@ -77,6 +77,8 @@ type SurveyEmployee = {
   id: string;
   employeeCode: string;
   name: string;
+  nameTh?: string;
+  nameEn?: string;
   company: string;
   departmentCode: string | null;
   functionName?: string;
@@ -86,6 +88,12 @@ type SurveyEmployee = {
   prefix: string;
   firstName: string;
   lastName: string;
+  titleTh?: string | null;
+  titleEn?: string | null;
+  firstNameTh?: string;
+  lastNameTh?: string;
+  firstNameEn?: string | null;
+  lastNameEn?: string | null;
 };
 
 const companies = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
@@ -110,26 +118,61 @@ const sourceClass: Record<EnrollmentSource, string> = {
   HRD_CENTER: styles.sourceCenter,
 };
 
-const toSurveyEmployee = (employee: EmployeeRecord): SurveyEmployee => ({
-  id: employee.employeeId,
-  employeeCode: employee.employeeCode,
-  name:
-    [employee.firstNameEn, employee.lastNameEn].filter(Boolean).join(" ") ||
-    [employee.firstNameTh, employee.lastNameTh].filter(Boolean).join(" "),
-  company: employee.companyCode,
-  departmentCode: employee.functionCode,
-  department: employee.functionName || "-",
-  position: employee.positionName || "-",
-  level: employee.levelKey ? normalizeEmployeeLevel(employee.levelKey) || "-" : "-",
-  prefix: employee.titleEn || employee.titleTh || "-",
-  firstName: employee.firstNameEn || employee.firstNameTh,
-  lastName: employee.lastNameEn || employee.lastNameTh,
-});
+const toSurveyEmployee = (employee: EmployeeRecord): SurveyEmployee => {
+  const thaiName = [employee.firstNameTh, employee.lastNameTh].filter(Boolean).join(" ");
+  const engName = [employee.firstNameEn, employee.lastNameEn].filter(Boolean).join(" ");
+  const rawPrefix = employee.titleTh || employee.titleEn || "";
+  const prefix = (!rawPrefix || rawPrefix === "-") ? "นาย" : rawPrefix;
+  return {
+    id: employee.employeeId,
+    employeeCode: employee.employeeCode,
+    name: thaiName || engName,
+    nameTh: thaiName,
+    nameEn: engName,
+    company: employee.companyCode,
+    departmentCode: employee.functionCode,
+    department: employee.functionName || "-",
+    functionName: employee.functionName || "-",
+    position: employee.positionName || "-",
+    level: normalizeEmployeeLevel(employee.levelCode || employee.levelKey || "-") || "-",
+    prefix,
+    firstName: employee.firstNameTh || employee.firstNameEn || "-",
+    lastName: employee.lastNameTh || employee.lastNameEn || "-",
+    titleTh: employee.titleTh,
+    titleEn: employee.titleEn,
+    firstNameTh: employee.firstNameTh,
+    lastNameTh: employee.lastNameTh,
+    firstNameEn: employee.firstNameEn,
+    lastNameEn: employee.lastNameEn,
+  };
+};
 
-const getEmployeeNameProfile = (employee: { name: string; prefix?: string; firstName?: string; lastName?: string }) => {
+const getEmployeeNameProfile = (employee: {
+  name: string;
+  prefix?: string;
+  firstName?: string;
+  lastName?: string;
+  titleTh?: string | null;
+  titleEn?: string | null;
+  firstNameTh?: string;
+  lastNameTh?: string;
+}) => {
+  const prefix =
+    employee.titleTh ||
+    (employee.prefix && employee.prefix !== "-" ? employee.prefix : "") ||
+    employee.titleEn ||
+    "นาย";
+
+  if (employee.firstNameTh || employee.lastNameTh) {
+    return {
+      prefix,
+      firstName: employee.firstNameTh || employee.firstName || employee.name,
+      lastName: employee.lastNameTh || employee.lastName || "-",
+    };
+  }
   if (employee.firstName || employee.lastName) {
     return {
-      prefix: employee.prefix || "นาย",
+      prefix,
       firstName: employee.firstName || employee.name,
       lastName: employee.lastName || "-",
     };
@@ -137,7 +180,7 @@ const getEmployeeNameProfile = (employee: { name: string; prefix?: string; first
 
   const nameParts = employee.name.trim().split(/\s+/);
   return {
-    prefix: "นาย",
+    prefix,
     firstName: nameParts[0] || employee.name,
     lastName: nameParts.slice(1).join(" ") || "-",
   };
@@ -153,6 +196,44 @@ const getEmployeeFunctionDisplay = (emp: { departmentCode?: string | null; funct
 const getEmployeePositionLevelDisplay = (emp: { position?: string; level?: string }) => {
   const parts = [emp.position, emp.level].filter((p) => p && p !== "-");
   return parts.length > 0 ? parts.join(" / ") : "-";
+};
+
+const POSITION_RANKS: Record<string, number> = {
+  president: 13,
+  "executive vice president": 12,
+  "vice president": 11,
+  "senior advisor": 10,
+  advisor: 9,
+  "executive general manager": 8,
+  "senior general manager": 7,
+  "plant manager": 6,
+  "senior executive coordinator": 5,
+  "general manager": 4,
+  "assistant general manager": 3,
+  "section head": 2,
+  supervisor: 1,
+  engineer: 1,
+  officer: 1,
+  foreman: 0,
+  staff: 0,
+  operator: -1,
+};
+
+const getEmployeeRank = (emp: { level?: string; position?: string }) => {
+  const lvlRank = getLevelRank(emp.level || "");
+  const normPos = (emp.position || "").trim().toLowerCase();
+  const posRank = POSITION_RANKS[normPos] ?? 0;
+  return lvlRank * 100 + posRank;
+};
+
+const sortEmployeesDescending = <T extends { level?: string; position?: string; employeeCode?: string; id?: string }>(
+  list: T[],
+): T[] => {
+  return [...list].sort((a, b) => {
+    const rankDiff = getEmployeeRank(b) - getEmployeeRank(a);
+    if (rankDiff !== 0) return rankDiff;
+    return (a.employeeCode || a.id || "").localeCompare(b.employeeCode || b.id || "");
+  });
 };
 
 export default function TrainingAcceptSurvey() {
@@ -192,12 +273,28 @@ export default function TrainingAcceptSurvey() {
         .filter((plan) => plan.status === "Planned")
         .map((plan) => {
           const standard = standards.find(
-            (item) => item.courseCode === plan.course.code,
+            (item) =>
+              (item.courseCode && item.courseCode === plan.course.code) ||
+              (item.courseId && item.courseId === plan.id) ||
+              (item.courseName && item.courseName === plan.course.name),
           );
           const isCenterPlan =
             plan.ownerScope === "CENTER" ||
             plan.ownerCompany === "HRD Center" ||
             plan.provider === "HRD Center";
+          const standardCompanies =
+            standard?.companies && standard.companies.length > 0
+              ? standard.companies
+              : [];
+          const planCompanies = getRollingPlanCompanies(plan).filter(
+            (c) => c !== "HRD Center" && c !== "All Companies",
+          );
+          const targetCompanies =
+            standardCompanies.length > 0
+              ? standardCompanies
+              : planCompanies.length > 0
+                ? planCompanies
+                : ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"];
 
           return {
             id: plan.rollingId,
@@ -220,13 +317,13 @@ export default function TrainingAcceptSurvey() {
             courseGroup: plan.course.courseGroup,
             objective: plan.course.objective,
             standardName: standard
-              ? `${standard.functionName} target standard`
+              ? `${standard.functionName || "All Function"} target standard`
               : "No Course Standard",
             targetFunctionCode: standard?.functionCode ?? "",
             targetFunctionName: standard?.functionName ?? "All Function",
             targetPositions: standard?.positions ?? [],
             targetLevels: standard?.levels ?? [],
-            companies: getRollingPlanCompanies(plan),
+            companies: targetCompanies,
           };
         }),
     [rollingPlans, standards],
@@ -332,50 +429,113 @@ export default function TrainingAcceptSurvey() {
 
   const accessibleCompanies: string[] =
     roleMode === "center"
-      ? (selectedCourse?.companies ?? [])
-      : selectedCourse?.companies.includes(userCompanyCode)
-        ? [userCompanyCode]
-        : [];
+      ? (selectedCourse?.companies && selectedCourse.companies.length > 0
+          ? selectedCourse.companies
+          : ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"])
+      : selectedCourse?.companies && selectedCourse.companies.length > 0
+        ? selectedCourse.companies.includes(userCompanyCode)
+          ? [userCompanyCode]
+          : []
+        : [userCompanyCode];
 
   const normalizeTargetPosition = (position: string) => {
-    const normalized = position.trim().toLowerCase();
+    const normalized = (position || "").trim().toLowerCase();
     const aliases: Record<string, string> = {
       sh: "section head",
       office: "supervisor",
       "manager up": "manager",
       "manager++": "manager",
       "force man": "foreman",
+      asst: "assistant",
+      "asst. manager": "assistant manager",
     };
     return aliases[normalized] ?? normalized;
   };
-  const matchesCourseTarget = (employee: SurveyEmployee) =>
-    selectedCourse !== null &&
-    (selectedCourse.targetFunctionName === "All Function" ||
-      (selectedCourse.targetFunctionCode && employee.departmentCode
-        ? employee.departmentCode === selectedCourse.targetFunctionCode
-        : employee.department.trim().toLowerCase() ===
-          selectedCourse.targetFunctionName.trim().toLowerCase())) &&
-    selectedCourse.targetPositions.some(
-      (position) =>
-        normalizeTargetPosition(position) ===
-        normalizeTargetPosition(employee.position),
-    ) &&
-    selectedCourse.targetLevels.some(
-      (level) => normalizeEmployeeLevel(level) === employee.level,
-    );
+
+  const matchesCourseTarget = (employee: SurveyEmployee) => {
+    if (!selectedCourse) return false;
+
+    // 1. Company check: must be one of the target companies selected in Course Standard
+    const targetCompanies =
+      selectedCourse.companies && selectedCourse.companies.length > 0
+        ? selectedCourse.companies
+        : ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"];
+    if (!targetCompanies.includes(employee.company)) {
+      return false;
+    }
+
+    // 2. Function check:
+    const targetFn = (selectedCourse.targetFunctionName || "").trim();
+    const targetCode = (selectedCourse.targetFunctionCode || "").trim().toUpperCase();
+    const isAllFunction =
+      !targetCode ||
+      targetCode === "ALL" ||
+      !targetFn ||
+      targetFn.toLowerCase().includes("all function") ||
+      targetFn.toLowerCase() === "all" ||
+      targetFn === "ทุกฝ่ายงาน";
+
+    if (!isAllFunction) {
+      const clean = (s: string) => s.toLowerCase().replace(/[\s\.\(\)\-_'"]/g, "");
+      const empFnCode = (employee.departmentCode || "").trim().toUpperCase();
+      const empFnName = (employee.functionName || employee.department || "").trim();
+      const fnMatches =
+        (targetCode && empFnCode && empFnCode === targetCode) ||
+        (targetFn && empFnName && clean(empFnName).includes(clean(targetFn))) ||
+        (targetFn && empFnName && clean(targetFn).includes(clean(empFnName)));
+      if (!fnMatches) {
+        return false;
+      }
+    }
+
+    // 3. Position & Level matching:
+    // When both are specified, matching either position OR level (or both) includes the employee in the target group
+    const hasPositions = Boolean(selectedCourse.targetPositions && selectedCourse.targetPositions.length > 0);
+    const hasLevels = Boolean(selectedCourse.targetLevels && selectedCourse.targetLevels.length > 0);
+
+    let posMatches = false;
+    if (hasPositions) {
+      const empPosNorm = normalizeTargetPosition(employee.position);
+      posMatches = selectedCourse.targetPositions.some((pos) => {
+        const targetPosNorm = normalizeTargetPosition(pos);
+        return targetPosNorm === empPosNorm;
+      });
+    }
+
+    let lvlMatches = false;
+    if (hasLevels) {
+      const empLvlNorm = normalizeEmployeeLevel(employee.level);
+      lvlMatches = selectedCourse.targetLevels.some((lvl) => {
+        const targetLvlNorm = normalizeEmployeeLevel(lvl);
+        return targetLvlNorm === empLvlNorm;
+      });
+    }
+
+    if (hasPositions && hasLevels) {
+      return posMatches || lvlMatches;
+    } else if (hasPositions) {
+      return posMatches;
+    } else if (hasLevels) {
+      return lvlMatches;
+    }
+
+    return true;
+  };
   const targetEmployees = masterEmployees.filter(
     (employee) =>
       accessibleCompanies.includes(employee.company) &&
       matchesCourseTarget(employee),
   );
 
-  const acceptedParticipants = enrollments.filter(
-    (candidate) =>
-      selectedCourse !== null &&
-      (roleMode === "factory" ? candidate.company === userCompanyCode : true) &&
-      (selectedCourse.owner === "factory"
-        ? candidate.status === "Factory Approved"
-        : candidate.status === "Center Approved"),
+  const acceptedParticipants = sortEmployeesDescending(
+    enrollments.filter(
+      (candidate) =>
+        selectedCourse !== null &&
+        (roleMode === "factory" ? candidate.company === userCompanyCode : true) &&
+        (selectedCourse.owner === "factory"
+          ? candidate.status === "Factory Approved"
+          : candidate.status === "Center Approved"),
+    ),
   );
   const activeEmployeeIds = new Set(
     enrollments
@@ -398,8 +558,10 @@ export default function TrainingAcceptSurvey() {
   const targetEmployeeGroups = accessibleCompanies
     .map((company) => ({
       company,
-      employees: availableTargetEmployees.filter(
-        (employee) => employee.company === company,
+      employees: sortEmployeesDescending(
+        availableTargetEmployees.filter(
+          (employee) => employee.company === company,
+        ),
       ),
       targetCount: targetEmployees.filter((employee) => employee.company === company).length,
     }))
@@ -407,8 +569,10 @@ export default function TrainingAcceptSurvey() {
   const additionalEmployeeGroups = accessibleCompanies
     .map((company) => ({
       company,
-      employees: additionalEmployees.filter(
-        (employee) => employee.company === company,
+      employees: sortEmployeesDescending(
+        additionalEmployees.filter(
+          (employee) => employee.company === company,
+        ),
       ),
     }))
     .filter((group) => group.employees.length > 0);
@@ -430,21 +594,25 @@ export default function TrainingAcceptSurvey() {
           )
         : [];
 
-  const approvalQueue = visibleCandidates.filter((candidate) =>
-    roleMode === "center"
-      ? candidate.status === "Pending Approval"
-      : isFactoryOwnedByUser &&
-        candidate.company === userCompanyCode &&
-        candidate.status === "Pending Approval",
-  );
-  const submittedToCenterCandidates = isFactorySubmittingToCenter
-    ? enrollments.filter(
-        (candidate) =>
+  const approvalQueue = sortEmployeesDescending(
+    visibleCandidates.filter((candidate) =>
+      roleMode === "center"
+        ? candidate.status === "Pending Approval"
+        : isFactoryOwnedByUser &&
           candidate.company === userCompanyCode &&
-          candidate.source === "HRD_FACTORY" &&
           candidate.status === "Pending Approval",
-      )
-    : [];
+    ),
+  );
+  const submittedToCenterCandidates = sortEmployeesDescending(
+    isFactorySubmittingToCenter
+      ? enrollments.filter(
+          (candidate) =>
+            candidate.company === userCompanyCode &&
+            candidate.source === "HRD_FACTORY" &&
+            candidate.status === "Pending Approval",
+        )
+      : [],
+  );
 
   const isCenterOwned = selectedCourse?.owner === "center";
   const canCenterApprove = roleMode === "center" && isCenterOwned;
@@ -512,6 +680,15 @@ export default function TrainingAcceptSurvey() {
       const positionRows = await listPositions()
         .then((result) => result.items)
         .catch(() => []);
+      const employeeRecords = masterEmployees.map((emp) => ({
+        empCode: emp.employeeCode,
+        company: emp.company,
+        nameTh: emp.firstNameTh || emp.firstName,
+        surnameTh: emp.lastNameTh || emp.lastName,
+        titleEn: emp.titleTh || (emp.prefix && emp.prefix !== "-" ? emp.prefix : "") || emp.titleEn || "นาย",
+        functionName: emp.functionName || emp.department,
+        positionName: emp.position,
+      }));
       const response = await fetch(
         "/api/training-accept-survey/attendance-sheet",
         {
@@ -527,7 +704,7 @@ export default function TrainingAcceptSurvey() {
                 department: candidate.department,
                 position: candidate.position,
               })),
-              readEmployeeMasterData(),
+              employeeRecords.length > 0 ? employeeRecords : readEmployeeMasterData(),
               positionRows.map((position) => ({
                 positionNameTh: position.positionNameTh,
                 positionNameEn: position.positionNameEn ?? "",
@@ -717,10 +894,10 @@ export default function TrainingAcceptSurvey() {
           </article>
         </div>
         <div className={styles.ruleRow}>
-          <span>Function: {selectedCourse.targetFunctionName}</span>
-          <span>Position: {selectedCourse.targetPositions.join(", ")}</span>
-          <span>Level: {selectedCourse.targetLevels.join(", ")}</span>
-          <span>Company: {selectedCourse.companies.join(", ")}</span>
+          <span>Function: {selectedCourse.targetFunctionName || "All Function"}</span>
+          <span>Position: {selectedCourse.targetPositions.length > 0 ? selectedCourse.targetPositions.join(", ") : "All Positions"}</span>
+          <span>Level: {selectedCourse.targetLevels.length > 0 ? selectedCourse.targetLevels.join(", ") : "All Levels"}</span>
+          <span>Company: {selectedCourse.companies.length > 0 ? selectedCourse.companies.join(", ") : "All Companies"}</span>
         </div>
       </section>
 
@@ -772,7 +949,14 @@ export default function TrainingAcceptSurvey() {
               </div>
             ) : null}
             {acceptedParticipants.map((participant) => {
-              const nameProfile = getEmployeeNameProfile({ name: participant.employeeName });
+              const masterEmp = masterEmployees.find(
+                (emp) =>
+                  emp.employeeCode === participant.employeeCode ||
+                  emp.id === participant.employeeId,
+              );
+              const nameProfile = masterEmp
+                ? getEmployeeNameProfile(masterEmp)
+                : getEmployeeNameProfile({ name: participant.employeeName });
 
               return (
                 <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={participant.id}>
@@ -1052,7 +1236,14 @@ export default function TrainingAcceptSurvey() {
               </div>
             ) : null}
             {submittedToCenterCandidates.map((candidate) => {
-              const nameProfile = getEmployeeNameProfile({ name: candidate.employeeName });
+              const masterEmp = masterEmployees.find(
+                (emp) =>
+                  emp.employeeCode === candidate.employeeCode ||
+                  emp.id === candidate.employeeId,
+              );
+              const nameProfile = masterEmp
+                ? getEmployeeNameProfile(masterEmp)
+                : getEmployeeNameProfile({ name: candidate.employeeName });
 
               return (
                 <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={candidate.id}>

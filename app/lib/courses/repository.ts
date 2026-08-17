@@ -163,7 +163,7 @@ export const createCourseRepository = (client?: DatabaseClient) => {
               target_group: input.targetGroup || null,
               methodology: input.methodology || null,
               duration_hours: input.durationHours,
-              validity_months: input.validityMonths,
+              validity_months: (input.validityMonths && input.validityMonths > 0) ? input.validityMonths : null,
               pre_assessment_id: safeBigInt(input.preAssessmentId),
               post_assessment_id: safeBigInt(input.postAssessmentId),
               evaluation_form_id: safeBigInt(input.evaluationFormId),
@@ -269,7 +269,7 @@ export const createCourseRepository = (client?: DatabaseClient) => {
           if (input.targetGroup !== undefined) courseData.target_group = input.targetGroup || null;
           if (input.methodology !== undefined) courseData.methodology = input.methodology || null;
           if (input.durationHours !== undefined) courseData.duration_hours = input.durationHours;
-          if (input.validityMonths !== undefined) courseData.validity_months = input.validityMonths;
+          if (input.validityMonths !== undefined) courseData.validity_months = (input.validityMonths && input.validityMonths > 0) ? input.validityMonths : null;
           if (input.preAssessmentId !== undefined) courseData.pre_assessment_id = safeBigInt(input.preAssessmentId);
           if (input.postAssessmentId !== undefined) courseData.post_assessment_id = safeBigInt(input.postAssessmentId);
           if (input.evaluationFormId !== undefined) courseData.evaluation_form_id = safeBigInt(input.evaluationFormId);
@@ -393,6 +393,147 @@ export const createCourseRepository = (client?: DatabaseClient) => {
           }
 
           return { courseId: id };
+        });
+      });
+    },
+
+    async delete(id: string) {
+      return withDatabaseErrorMapping(async () => {
+        const courseId = BigInt(id);
+        return await db().$transaction(async (tx) => {
+          // 1. Cascade delete OAPs and rolling plans for this course first
+          const oaps = await tx.training_plan_oap.findMany({
+            where: { course_id: courseId },
+            select: { oap_plan_id: true },
+          });
+          const oapIds = oaps.map((o) => o.oap_plan_id);
+
+          if (oapIds.length > 0) {
+            const plans = await tx.training_plan.findMany({
+              where: { oap_plan_id: { in: oapIds } },
+              select: { plan_id: true },
+            });
+            const planIds = plans.map((p) => p.plan_id);
+
+            if (planIds.length > 0) {
+              const enrollments = await tx.training_enrollment.findMany({
+                where: { plan_id: { in: planIds } },
+                select: { enrollment_id: true },
+              });
+              const enrollmentIds = enrollments.map((e) => e.enrollment_id);
+
+              if (enrollmentIds.length > 0) {
+                const assessmentSubmissions = await tx.assessment_submission.findMany({
+                  where: { enrollment_id: { in: enrollmentIds } },
+                  select: { submission_id: true },
+                });
+                if (assessmentSubmissions.length > 0) {
+                  const subIds = assessmentSubmissions.map((s) => s.submission_id);
+                  await tx.assessment_answer.deleteMany({
+                    where: { submission_id: { in: subIds } },
+                  });
+                  await tx.assessment_submission.deleteMany({
+                    where: { submission_id: { in: subIds } },
+                  });
+                }
+
+                const evaluationSubmissions = await tx.evaluation_submission.findMany({
+                  where: { enrollment_id: { in: enrollmentIds } },
+                  select: { evaluation_submission_id: true },
+                });
+                if (evaluationSubmissions.length > 0) {
+                  const evalSubIds = evaluationSubmissions.map((s) => s.evaluation_submission_id);
+                  await tx.evaluation_answer.deleteMany({
+                    where: { evaluation_submission_id: { in: evalSubIds } },
+                  });
+                  await tx.evaluation_submission.deleteMany({
+                    where: { evaluation_submission_id: { in: evalSubIds } },
+                  });
+                }
+
+                await tx.attendance.deleteMany({
+                  where: { enrollment_id: { in: enrollmentIds } },
+                });
+
+                await tx.training_result.deleteMany({
+                  where: { enrollment_id: { in: enrollmentIds } },
+                });
+
+                await tx.training_certificate_file.updateMany({
+                  where: { enrollment_id: { in: enrollmentIds } },
+                  data: { enrollment_id: null },
+                });
+
+                await tx.training_enrollment.deleteMany({
+                  where: { plan_id: { in: planIds } },
+                });
+              }
+
+              await tx.training_plan_assessment_setting.deleteMany({
+                where: { plan_id: { in: planIds } },
+              });
+
+              await tx.training_expense.deleteMany({
+                where: { plan_id: { in: planIds } },
+              });
+
+              await tx.training_need_request.updateMany({
+                where: { training_plan_id: { in: planIds } },
+                data: { training_plan_id: null },
+              });
+
+              await tx.certificate_import_batch.deleteMany({
+                where: { plan_id: { in: planIds } },
+              });
+
+              await tx.training_plan.deleteMany({
+                where: { oap_plan_id: { in: oapIds } },
+              });
+            }
+
+            await tx.training_plan_oap.deleteMany({
+              where: { course_id: courseId },
+            });
+          }
+
+          // 2. Unlink standard_course_id from any remaining enrollments and delete standard course targets
+          const stdCourses = await tx.course_standard_course.findMany({
+            where: { course_id: courseId },
+            select: { standard_course_id: true, standard_id: true },
+          });
+          const stdCourseIds = stdCourses.map((sc) => sc.standard_course_id);
+
+          if (stdCourseIds.length > 0) {
+            await tx.training_enrollment.updateMany({
+              where: { standard_course_id: { in: stdCourseIds } },
+              data: { standard_course_id: null },
+            });
+            await tx.course_standard_target_company.deleteMany({
+              where: { standard_course_id: { in: stdCourseIds } },
+            });
+            await tx.course_standard_target_position.deleteMany({
+              where: { standard_course_id: { in: stdCourseIds } },
+            });
+            await tx.course_standard_target_level.deleteMany({
+              where: { standard_course_id: { in: stdCourseIds } },
+            });
+            await tx.course_standard_course.deleteMany({
+              where: { course_id: courseId },
+            });
+          }
+
+          // 3. Unlink training need requests
+          await tx.training_need_request.updateMany({
+            where: { course_id: courseId },
+            data: { course_id: null },
+          });
+
+          // 4. Delete the course itself
+          await tx.course.delete({
+            where: { course_id: courseId },
+          });
+
+          return { courseId: id, outcome: "DELETED" as const };
         });
       });
     }

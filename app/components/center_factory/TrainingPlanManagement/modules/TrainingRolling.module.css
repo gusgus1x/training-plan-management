@@ -212,79 +212,108 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  padding: 16px 20px;
   margin-bottom: 16px;
-  padding: 16px 18px;
-  border: 1px solid var(--ui-30-border, #e2e8f0);
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
   border-radius: 12px;
-  background: var(--ui-60-surface, #ffffff);
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.filterRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.searchWrapper {
+  position: relative;
+  flex: 1 1 280px;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  font-size: 0.85rem;
+  color: var(--ui-30-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 14px 8px 36px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft, rgba(255, 255, 255, 0.04));
+  color: var(--ui-30-ink);
+  font-size: 0.86rem;
+  font-weight: 500;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.searchInput:focus {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  background: var(--ui-60-surface);
 }
 
 .filterGroup {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 12px 14px;
-  width: 100%;
-}
-
-.filterBox {
-  display: grid;
-  gap: 5px;
-  min-width: 120px;
-  color: var(--ui-30-muted, #64748b);
-  font-size: 0.7rem;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.searchBox {
-  display: grid;
-  gap: 5px;
-  flex: 1 1 200px;
-  min-width: 180px;
-  color: var(--ui-30-muted, #64748b);
-  font-size: 0.7rem;
-  font-weight: 900;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.toolbarActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
   align-items: center;
-  justify-content: center;
-  width: 100%;
-  padding-top: 14px;
-  border-top: 1px dashed var(--ui-30-border, #e2e8f0);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.filterLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   white-space: nowrap;
 }
 
-.toolbar input,
-.toolbar select,
-.formGrid input,
-.formGrid select {
-  min-height: 38px;
+.selectInput {
+  min-height: 40px;
+  width: auto;
+  min-width: 110px;
+  padding: 8px 12px;
   border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: var(--ui-60-surface);
+  background: var(--ui-60-surface-soft, rgba(255, 255, 255, 0.04));
   color: var(--ui-30-ink);
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 0.86rem;
+  font-weight: 600;
   outline: none;
-  padding: 8px 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.toolbar input:focus,
-.toolbar select:focus,
-.formGrid input:focus,
-.formGrid select:focus {
+.selectInput:focus {
   border-color: var(--ui-30-primary);
-  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.16);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  background: var(--ui-60-surface);
+}
+
+.actionRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+  padding-top: 12px;
+  border-top: 1px dashed var(--ui-30-border);
 }
 
 .primaryButton,
@@ -292,73 +321,103 @@
 .dangerButton,
 .detailButton,
 .closeButton {
-  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 16px;
   border-radius: 8px;
-  cursor: pointer;
   font: inherit;
-  font-size: 0.78rem;
-  font-weight: 900;
-  padding: 8px 12px;
-  transition:
-    background 140ms ease,
-    border-color 140ms ease,
-    box-shadow 140ms ease,
-    transform 140ms ease;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
 }
 
 .primaryButton {
-  border: 0;
-  background: var(--ui-10-accent);
+  border: 1px solid var(--ui-30-primary, #10b981);
+  background: var(--ui-30-primary, #10b981);
   color: #ffffff;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 }
 
-.primaryButton:hover {
-  background: var(--ui-10-accent-strong);
-  box-shadow: 0 10px 20px rgba(215, 25, 32, 0.18);
+.primaryButton:hover:not(:disabled) {
+  background: #059669;
+  border-color: #059669;
   transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
 }
 
 .secondaryButton,
 .detailButton,
 .closeButton {
   border: 1px solid var(--ui-30-border);
-  background: var(--ui-60-surface);
+  background: var(--ui-60-surface-soft, rgba(255, 255, 255, 0.05));
   color: var(--ui-30-ink);
 }
 
-.secondaryButton:hover,
-.detailButton:hover,
-.closeButton:hover {
+.secondaryButton:hover:not(:disabled),
+.detailButton:hover:not(:disabled),
+.closeButton:hover:not(:disabled) {
   border-color: var(--ui-30-primary);
-  background: var(--ui-60-surface-soft);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-primary);
+  transform: translateY(-1px);
 }
 
 .dangerButton {
-  border: 1px solid var(--ui-10-accent-border);
-  background: var(--ui-10-accent-soft);
-  color: var(--ui-10-accent-strong);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
 }
 
-.dangerButton:hover {
-  border-color: var(--ui-10-accent);
-  background: var(--ui-10-accent);
+.dangerButton:hover:not(:disabled) {
+  border-color: #ef4444;
+  background: #ef4444;
   color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled,
+.dangerButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.panelHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .selectionHint {
-  text-align: center;
-  margin: 4px 0 14px;
-  color: var(--ui-30-muted, #64748b);
-  font-size: 0.76rem;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft, rgba(255, 255, 255, 0.03));
+  border: 1px dashed var(--ui-30-border);
+  color: var(--ui-30-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 
 .exportStatus {
-  text-align: center;
-  margin: 4px 0 14px;
-  color: #007a3d;
+  margin: -2px 0 12px;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 8px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  padding: 9px 12px;
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .formPanel {
@@ -755,12 +814,15 @@
 }
 
 .actionButtons .detailButton,
-.actionButtons .primaryButton {
+.actionButtons .primaryButton,
+.actionButtons .secondaryButton,
+.actionButtons .dangerButton {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   border-radius: 4px !important;
   padding: 4px 8px !important;
+  min-height: 28px !important;
   font: inherit !important;
   font-size: 0.72rem !important;
   font-weight: 700 !important;
@@ -771,15 +833,29 @@
   transition: all 0.2s ease;
 }
 
-.actionButtons .detailButton {
+.actionButtons .detailButton,
+.actionButtons .secondaryButton {
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   background: rgba(255, 255, 255, 0.05) !important;
   color: var(--ui-30-ink) !important;
 }
 
-.actionButtons .detailButton:hover {
+.actionButtons .detailButton:hover,
+.actionButtons .secondaryButton:hover {
   border-color: rgba(255, 255, 255, 0.2) !important;
   background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.actionButtons .dangerButton {
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #ef4444 !important;
+}
+
+.actionButtons .dangerButton:hover {
+  border-color: #ef4444 !important;
+  background: #ef4444 !important;
+  color: #ffffff !important;
 }
 
 .actionButtons .primaryButton {
@@ -1584,3 +1660,21 @@
   color: var(--ui-30-muted);
   font-size: 0.76rem;
 }
+
+.clickableRow {
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.clickableRow:hover td {
+  background: rgba(59, 130, 246, 0.05) !important;
+}
+
+.selectedRow td {
+  background: rgba(59, 130, 246, 0.12) !important;
+}
+
+.selectedRow td:first-child {
+  border-left: 3px solid #3b82f6;
+}
+

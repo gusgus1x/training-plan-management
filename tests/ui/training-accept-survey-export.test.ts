@@ -42,7 +42,7 @@ describe("Training Accept Survey attendance sheet export", () => {
   it("fills accepted participants into the real v2 Excel template", () => {
     const workbook = buildAttendanceWorkbook(template, course, [
       {
-        id: "ATA-1001",
+        id: "ATA-10001",
         name: "Anan Sukprasert",
         company: "ATA",
         department: "Production",
@@ -62,16 +62,59 @@ describe("Training Accept Survey attendance sheet export", () => {
     expect(worksheetXml).toContain("หลักสูตรภาวะผู้นำ Leadership Essentials");
     expect(worksheetXml).toContain("พ.ศ. 2569");
     expect(worksheetXml).toContain("Somchai P.");
-    expect(worksheetXml).toContain("ATA-1001");
+    expect(worksheetXml).toContain("10001");
     expect(worksheetXml).toContain("Anan");
     expect(worksheetXml).toContain("Sukprasert");
     expect(stylesXml).toMatch(
       /<xf\b[^>]*fontId="5"[^>]*applyAlignment="1"[^>]*><alignment horizontal="center" vertical="center"\/><\/xf>/,
     );
+    const drawingXml = readXlsxEntry(workbook, "xl/drawings/drawing1.xml").toString("utf8");
+    expect(drawingXml).toContain('name="Line 22"');
+    expect(drawingXml).toContain("<xdr:row>6</xdr:row>");
     expect(worksheetXml).toContain('<c r="B12"');
     expect(worksheetXml).toMatch(
       /<c r="B12" s="\d+" t="inlineStr"><is><t xml:space="preserve"><\/t>/,
     );
+  });
+
+  it("renders dashes --- for missing date, time, location, and trainer", () => {
+    const workbook = buildAttendanceWorkbook(
+      template,
+      {
+        code: "CRS-999",
+        title: "Test Course",
+        date: "",
+        batch: "",
+        location: "",
+        startTime: "",
+        endTime: "",
+        trainer: "",
+        ownerCompany: "HRD Center",
+      },
+      [
+        {
+          id: "ATA-2001",
+          name: "สมชาย ใจดี",
+          company: "ATA",
+          department: "Production",
+          position: "Supervisor",
+          prefix: "นาย",
+          firstName: "สมชาย",
+          lastName: "ใจดี",
+        },
+      ],
+    );
+    const worksheetXml = readXlsxEntry(
+      workbook,
+      "xl/worksheets/sheet1.xml",
+    ).toString("utf8");
+
+    expect(worksheetXml).toContain("วันที่ --- เดือน --- พ.ศ. ---");
+    expect(worksheetXml).toContain("เวลา --- น.");
+    expect(worksheetXml).toContain("สถานที่ ---");
+    expect(worksheetXml).toContain("วิทยากร ---");
+    expect(worksheetXml).toContain("สมชาย");
+    expect(worksheetXml).toContain("ใจดี");
   });
 
   it("escapes XML values supplied by workflow data", () => {
@@ -80,7 +123,7 @@ describe("Training Accept Survey attendance sheet export", () => {
       { ...course, title: "Safety & <Quality>" },
       [
         {
-          id: "EMP&001",
+          id: "&0001",
           name: "<Admin>",
           company: "A&B",
           department: "R&D",
@@ -95,14 +138,14 @@ describe("Training Accept Survey attendance sheet export", () => {
 
     expect(worksheetXml).not.toContain("Safety & <Quality>");
     expect(worksheetXml).toContain("Safety &amp; &lt;Quality&gt;");
-    expect(worksheetXml).toContain("EMP&amp;001");
+    expect(worksheetXml).toContain("&amp;0001");
     expect(worksheetXml).toContain("A&amp;B");
     expect(worksheetXml).toContain("&quot;Lead&quot;");
   });
 
   it("splits more than 50 participants into complete 30-row template sheets", () => {
     const participants = Array.from({ length: 65 }, (_, index) => ({
-      id: `EMP-${index + 1}`,
+      id: `EMP-${String(index + 1).padStart(5, "0")}`,
       name: `Employee ${index + 1}`,
       company: "ATA",
       department: "Production",
@@ -126,11 +169,11 @@ describe("Training Accept Survey attendance sheet export", () => {
     expect(workbookXml).toContain('name="รายชื่อ 61-65"');
     expect(secondSheetXml).not.toContain("หน้า 2/3");
     expect(secondSheetXml).not.toContain("หน้า 1/3");
-    expect(secondSheetXml).toContain("EMP-31");
+    expect(secondSheetXml).toContain("00031");
     expect(secondSheetXml).toContain(
       '<c r="B11" s="13" t="inlineStr"><is><t xml:space="preserve">31</t>',
     );
-    expect(thirdSheetXml).toContain("EMP-65");
+    expect(thirdSheetXml).toContain("00065");
     expect(() =>
       readXlsxEntry(workbook, "xl/drawings/drawing3.xml"),
     ).not.toThrow();

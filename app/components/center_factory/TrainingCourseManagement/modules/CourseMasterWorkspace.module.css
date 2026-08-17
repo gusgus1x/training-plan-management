@@ -377,19 +377,32 @@
   white-space: nowrap;
 }
 
+.selectionHint {
+  margin: -6px 0 16px;
+  color: var(--ui-30-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
 .actionCell button + button {
   margin-left: 6px;
 }
 
+.actionCell .secondaryButton,
+.actionCell .dangerButton,
+.detailButton {
+  border-radius: 8px;
+  min-height: 32px;
+  padding: 5px 12px;
+  font-weight: 800;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
 .detailButton {
   border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
   background: var(--ui-60-surface);
   color: var(--ui-30-primary);
-  min-height: 34px;
-  padding: 7px 12px;
-  font-weight: 800;
-  cursor: pointer;
 }
 
 .detailButton:hover {
