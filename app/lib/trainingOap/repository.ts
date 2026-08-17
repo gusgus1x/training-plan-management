@@ -216,7 +216,97 @@ export const createOapPlanRepository = (client?: DatabaseClient) => {
 
     async delete(id: string) {
       return withDatabaseErrorMapping(async () => {
-        await db().training_plan_oap.delete({ where: { oap_plan_id: BigInt(id) } });
+        const oapPlanId = BigInt(id);
+        await db().$transaction(async (tx) => {
+          // Find all training_plans for this OAP plan
+          const plans = await tx.training_plan.findMany({
+            where: { oap_plan_id: oapPlanId },
+            select: { plan_id: true },
+          });
+          const planIds = plans.map((p) => p.plan_id);
+
+          if (planIds.length > 0) {
+            // Find all enrollments
+            const enrollments = await tx.training_enrollment.findMany({
+              where: { plan_id: { in: planIds } },
+              select: { enrollment_id: true },
+            });
+            const enrollmentIds = enrollments.map((e) => e.enrollment_id);
+
+            if (enrollmentIds.length > 0) {
+              const assessmentSubmissions = await tx.assessment_submission.findMany({
+                where: { enrollment_id: { in: enrollmentIds } },
+                select: { submission_id: true },
+              });
+              if (assessmentSubmissions.length > 0) {
+                const submissionIds = assessmentSubmissions.map((s) => s.submission_id);
+                await tx.assessment_answer.deleteMany({
+                  where: { submission_id: { in: submissionIds } },
+                });
+                await tx.assessment_submission.deleteMany({
+                  where: { submission_id: { in: submissionIds } },
+                });
+              }
+
+              const evaluationSubmissions = await tx.evaluation_submission.findMany({
+                where: { enrollment_id: { in: enrollmentIds } },
+                select: { evaluation_submission_id: true },
+              });
+              if (evaluationSubmissions.length > 0) {
+                const evalSubIds = evaluationSubmissions.map((s) => s.evaluation_submission_id);
+                await tx.evaluation_answer.deleteMany({
+                  where: { evaluation_submission_id: { in: evalSubIds } },
+                });
+                await tx.evaluation_submission.deleteMany({
+                  where: { evaluation_submission_id: { in: evalSubIds } },
+                });
+              }
+
+              await tx.attendance.deleteMany({
+                where: { enrollment_id: { in: enrollmentIds } },
+              });
+
+              await tx.training_result.deleteMany({
+                where: { enrollment_id: { in: enrollmentIds } },
+              });
+
+              await tx.training_certificate_file.updateMany({
+                where: { enrollment_id: { in: enrollmentIds } },
+                data: { enrollment_id: null },
+              });
+
+              await tx.training_enrollment.deleteMany({
+                where: { plan_id: { in: planIds } },
+              });
+            }
+
+            await tx.training_plan_assessment_setting.deleteMany({
+              where: { plan_id: { in: planIds } },
+            });
+
+            await tx.training_expense.deleteMany({
+              where: { plan_id: { in: planIds } },
+            });
+
+            await tx.training_need_request.updateMany({
+              where: { training_plan_id: { in: planIds } },
+              data: { training_plan_id: null },
+            });
+
+            await tx.certificate_import_batch.deleteMany({
+              where: { plan_id: { in: planIds } },
+            });
+
+            await tx.training_plan.deleteMany({
+              where: { oap_plan_id: oapPlanId },
+            });
+          }
+
+          await tx.training_plan_oap.delete({
+            where: { oap_plan_id: oapPlanId },
+          });
+        });
+
         return { oapPlanId: id, outcome: "DELETED" as const };
       });
     },

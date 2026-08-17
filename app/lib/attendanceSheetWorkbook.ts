@@ -36,17 +36,20 @@ const thaiMonths = [
 ];
 
 const getCourseDetailLine = (course: AttendanceSheetCourse) => {
-  const parsedDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec(course.date);
+  const parsedDate = /^(\d{4})-(\d{2})-(\d{2})$/.exec((course.date || "").trim());
   const dateText = parsedDate
     ? `วันที่ ${Number(parsedDate[3])} เดือน ${thaiMonths[Number(parsedDate[2]) - 1]} พ.ศ. ${Number(parsedDate[1]) + 543}`
-    : `วันที่ ${course.date || ""}`;
+    : `วันที่ --- เดือน --- พ.ศ. ---`;
   const time = [course.startTime, course.endTime].filter(Boolean).join(" - ");
+  const timeText = time ? `เวลา ${time} น.` : `เวลา --- น.`;
+  const locationText = `สถานที่ ${course.location && course.location !== "-" ? course.location : "---"}`;
+  const trainerText = `วิทยากร ${course.trainer && course.trainer !== "-" ? course.trainer : "---"}`;
 
   return [
     dateText,
-    `เวลา ${time ? `${time} น.` : ""}`,
-    `สถานที่ ${course.location ?? ""}`,
-    `วิทยากร ${course.trainer ?? ""}`,
+    timeText,
+    locationText,
+    trainerText,
   ].join("   ");
 };
 
@@ -102,6 +105,12 @@ const centerCourseTitleStyle = (
   styles.data = Buffer.from(stylesXml, "utf8");
 };
 
+const formatAttendanceEmployeeId = (id?: string) => {
+  if (!id) return "";
+  const trimmed = id.trim();
+  return trimmed.length > 5 ? trimmed.slice(-5) : trimmed;
+};
+
 const fillAttendanceWorksheet = (
   templateXml: string,
   course: AttendanceSheetCourse,
@@ -129,7 +138,7 @@ const fillAttendanceWorksheet = (
     const values: Record<string, string | number> = {
       B: participant ? participantOffset + index + 1 : "",
       C: participant?.company ?? "",
-      D: participant?.id ?? "",
+      D: formatAttendanceEmployeeId(participant?.id),
       E: name.prefix,
       F: name.firstName,
       G: name.lastName,
@@ -221,6 +230,19 @@ const updateWorkbookMetadata = (
   }
 };
 
+const ensureDateLineShape = (drawingXml: string): string => {
+  if (
+    drawingXml.includes('name="Line 22"') ||
+    drawingXml.includes("<xdr:row>6</xdr:row>")
+  ) {
+    return drawingXml;
+  }
+
+  const dateLineShape = `<xdr:twoCellAnchor><xdr:from><xdr:col>4</xdr:col><xdr:colOff>314325</xdr:colOff><xdr:row>6</xdr:row><xdr:rowOff>286616</xdr:rowOff></xdr:from><xdr:to><xdr:col>11</xdr:col><xdr:colOff>1053812</xdr:colOff><xdr:row>6</xdr:row><xdr:rowOff>286616</xdr:rowOff></xdr:to><xdr:sp macro="" textlink=""><xdr:nvSpPr><xdr:cNvPr id="22" name="Line 22"><a:extLst><a:ext uri="{FF2B5EF4-FFF2-40B4-BE49-F238E27FC236}"><a16:creationId xmlns:a16="http://schemas.microsoft.com/office/drawing/2014/main" id="{465B87AE-6E01-49E5-8675-11AAD653F6C8}"/></a:ext></a:extLst></xdr:cNvPr><xdr:cNvSpPr><a:spLocks noChangeShapeType="1"/></xdr:cNvSpPr></xdr:nvSpPr><xdr:spPr bwMode="auto"><a:xfrm><a:off x="2280285" y="2105816"/><a:ext cx="8382347" cy="0"/></a:xfrm><a:prstGeom prst="line"><a:avLst/></a:prstGeom><a:noFill/><a:ln w="9525"><a:solidFill><a:srgbClr val="000000"/></a:solidFill><a:prstDash val="dash"/><a:round/><a:headEnd/><a:tailEnd/></a:ln></xdr:spPr></xdr:sp><xdr:clientData/></xdr:twoCellAnchor>`;
+
+  return drawingXml.replace("</xdr:wsDr>", `${dateLineShape}</xdr:wsDr>`);
+};
+
 export const buildAttendanceWorkbook = (
   template: Buffer,
   course: AttendanceSheetCourse,
@@ -230,6 +252,10 @@ export const buildAttendanceWorkbook = (
   const worksheet = getRequiredEntry(entries, WORKSHEET_PATH);
   const worksheetRels = getRequiredEntry(entries, WORKSHEET_RELS_PATH);
   const drawing = getRequiredEntry(entries, DRAWING_PATH);
+  drawing.data = Buffer.from(
+    ensureDateLineShape(drawing.data.toString("utf8")),
+    "utf8",
+  );
   const drawingRels = getRequiredEntry(entries, DRAWING_RELS_PATH);
   const printerSettings = getRequiredEntry(entries, PRINTER_SETTINGS_PATH);
   const templateWorksheetXml = worksheet.data.toString("utf8");

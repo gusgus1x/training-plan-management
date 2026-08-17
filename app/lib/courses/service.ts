@@ -14,7 +14,7 @@ export const createCourseService = (repository: CourseRepository = courseReposit
     return repository.update(id, input, userId);
   },
   async deleteCourse(id: string, userId: string) {
-    return repository.update(id, { status: "Inactive" }, userId);
+    return repository.delete(id);
   }
 });
 

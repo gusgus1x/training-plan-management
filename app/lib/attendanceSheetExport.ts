@@ -36,12 +36,13 @@ export type AttendancePositionMaster = {
   positionNameEn: string;
 };
 
-const getThaiTitle = (title: string) => {
-  const normalized = title.trim().toLocaleLowerCase();
-  if (["mr", "mr."].includes(normalized)) return "นาย";
-  if (["mrs", "mrs."].includes(normalized)) return "นาง";
-  if (["ms", "ms.", "miss"].includes(normalized)) return "น.ส.";
-  return title;
+const getThaiTitle = (title?: string | null) => {
+  const normalized = (title || "").trim().toLocaleLowerCase();
+  if (["mr", "mr.", "mr. ", "นาย"].includes(normalized)) return "นาย";
+  if (["mrs", "mrs.", "mrs. ", "นาง"].includes(normalized)) return "นาง";
+  if (["ms", "ms.", "ms. ", "miss", "น.ส.", "น.ส", "นางสาว"].includes(normalized)) return "น.ส.";
+  if (!normalized || normalized === "-") return "นาย";
+  return title || "นาย";
 };
 
 const companyAndEmployeeCollator = new Intl.Collator("th", {
@@ -80,20 +81,22 @@ export const localizeAndSortAttendanceParticipants = (
       if (!employee) {
         return {
           ...participant,
+          prefix: getThaiTitle(participant.prefix),
           position: displayPosition,
         };
       }
 
-      const firstName = employee.nameTh.trim();
-      const lastName = employee.surnameTh.trim();
+      const firstName = (employee.nameTh || participant.firstName || "").trim();
+      const lastName = (employee.surnameTh || participant.lastName || "").trim();
+      const thaiName = [firstName, lastName].filter(Boolean).join(" ");
+
       return {
         ...participant,
-        name:
-          [firstName, lastName].filter(Boolean).join(" ") || participant.name,
+        name: thaiName || participant.name,
         company: employee.company || participant.company,
         department: employee.functionName || participant.department,
         position: displayPosition,
-        prefix: getThaiTitle(employee.titleEn),
+        prefix: getThaiTitle(employee.titleEn || participant.prefix || ""),
         firstName: firstName || participant.firstName,
         lastName: lastName || participant.lastName,
       };
@@ -108,9 +111,10 @@ export const localizeAndSortAttendanceParticipants = (
 export const getParticipantName = (
   participant: AttendanceSheetParticipant,
 ) => {
+  const prefix = getThaiTitle(participant.prefix);
   if (participant.firstName || participant.lastName) {
     return {
-      prefix: participant.prefix ?? "",
+      prefix,
       firstName: participant.firstName || participant.name,
       lastName: participant.lastName ?? "",
     };
@@ -118,7 +122,7 @@ export const getParticipantName = (
 
   const nameParts = participant.name.trim().split(/\s+/);
   return {
-    prefix: participant.prefix ?? "",
+    prefix,
     firstName: nameParts[0] || participant.name,
     lastName: nameParts.slice(1).join(" "),
   };
