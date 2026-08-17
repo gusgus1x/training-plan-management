@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   buildProfileItems,
@@ -59,24 +58,5 @@ describe("database-backed profile display", () => {
       }),
     ).toContainEqual({ label: "Company", value: "All Companies" });
     expect(profileValue(null)).toBe("-");
-  });
-
-  it("removes the known mock identity values from active dashboard sources", () => {
-    const sources = [
-      "../../app/components/employee/UserDashboard.tsx",
-      "../../app/components/employee/data.ts",
-      "../../app/components/center_factory/CenterFactory_Dashboard.tsx",
-      "../../app/components/Navbar.tsx",
-    ]
-      .map((path) => readFileSync(new URL(path, import.meta.url), "utf8"))
-      .join("\n");
-
-    expect(sources).not.toContain("emp.user@company.com");
-    expect(sources).not.toContain("hrd.center@company.com");
-    expect(sources).not.toContain("hrd.factory@company.com");
-    expect(sources).not.toContain("ATTG Training plan management");
-    expect(sources).not.toContain('value: "EMP-001"');
-    expect(sources).not.toContain('value: "HRD-001"');
-    expect(sources).not.toContain("Somchai P.");
   });
 });

@@ -84,26 +84,41 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
   };
 };
 
-const computeTargetMatch = async (
+export const computeTargetMatch = async (
   db: DatabaseClient,
   courseId: bigint,
   employee: EmployeeWithRelations,
 ) => {
   const standard = await db.course_standard_course.findFirst({
     where: { course_id: courseId },
-    include: { course_standard_target_position: true, course_standard_target_level: true },
+    include: {
+      course_standard_target_position: true,
+      course_standard_target_level: true,
+      course_standard_target_company: true,
+    },
   });
 
   if (!standard) {
     return { targetMatchStatus: "NOT_MATCHED" as const, levelMatchStatus: "NOT_REQUIRED" as const, standardCourseId: null as bigint | null };
   }
 
-  const targetMatchStatus =
+  const positionMatch =
     standard.course_standard_target_position.length === 0 ||
     (employee.position_id !== null &&
-      standard.course_standard_target_position.some((row) => row.position_id === employee.position_id))
-      ? ("MATCHED" as const)
-      : ("NOT_MATCHED" as const);
+      standard.course_standard_target_position.some((row) => row.position_id === employee.position_id));
+
+  const orgMatch =
+    (standard.function_id === null || standard.function_id === employee.function_id) &&
+    (standard.division_id === null || standard.division_id === employee.division_id) &&
+    (standard.department_id === null || standard.department_id === employee.department_id) &&
+    (standard.section_id === null || standard.section_id === employee.section_id);
+
+  const companyMatch =
+    standard.course_standard_target_company.length === 0 ||
+    standard.course_standard_target_company.some((row) => row.company_id === employee.company_id);
+
+  const targetMatchStatus =
+    positionMatch && orgMatch && companyMatch ? ("MATCHED" as const) : ("NOT_MATCHED" as const);
 
   const levelMatchStatus =
     standard.course_standard_target_level.length === 0

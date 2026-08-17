@@ -63,6 +63,7 @@ TrainingPlanManagement — Project & Database Handover Context.md
 # real employee data samples — never commit
 real data employee.rpt
 *.rpt
+ResultData
 Position_Review.xlsx
 Function_Review.xlsx
 result-funtion

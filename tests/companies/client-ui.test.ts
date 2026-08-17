@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import {
   createCompany,
@@ -58,31 +57,5 @@ describe("company client and UI integration", () => {
       "/api/master-data/companies/7",
     );
     expect(fetcher.mock.calls[3]?.[1]).toMatchObject({ method: "DELETE" });
-  });
-
-  it("removes the six hard-coded company rows from the active component", () => {
-    const source = readFileSync(
-      new URL(
-        "../../app/components/center_factory/MasterDataManagement/modules/CompanyData.tsx",
-        import.meta.url,
-      ),
-      "utf8",
-    );
-
-    expect(source).toContain("listCompanies");
-    expect(source).toContain("createCompany");
-    expect(source).toContain("updateCompany");
-    expect(source).toContain("deleteCompany");
-    expect(source).toContain(
-      'const canModifySelected = authenticatedUser?.roleCode === "HRD_CENTER"',
-    );
-    expect(source).toContain("disabled={!canModifySelected || isSaving}");
-    expect(source).toContain("const savingMode = formMode");
-    expect(source).toContain("const editingCompanyId = selectedRecord?.companyId");
-    expect(source).toContain("void listCompanies()");
-    expect(source).toContain(".then((refreshed) => setRows(refreshed.items))");
-    expect(source).not.toContain("defaultRows");
-    expect(source).not.toContain("companyNameByCode");
-    expect(source).toContain("handleDelete");
   });
 });

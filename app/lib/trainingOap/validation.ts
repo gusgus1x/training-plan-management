@@ -34,6 +34,7 @@ export const parseCreateOapPlan = (input: InputObject): CreateOapPlanInput => ({
   trainerName: readOptionalString(input, "trainerName") || "",
   instructorId: readOptionalString(input, "instructorId"),
   providerName: readOptionalString(input, "providerName") || "",
+  providerId: readOptionalString(input, "providerId"),
   status: status(input.status, "Planning"),
 });
 
@@ -47,6 +48,7 @@ export const parseUpdateOapPlan = (input: InputObject): UpdateOapPlanInput => {
   if (hasOwn(input, "trainerName")) update.trainerName = readOptionalString(input, "trainerName") || "";
   if (hasOwn(input, "instructorId")) update.instructorId = readOptionalString(input, "instructorId");
   if (hasOwn(input, "providerName")) update.providerName = readOptionalString(input, "providerName") || "";
+  if (hasOwn(input, "providerId")) update.providerId = readOptionalString(input, "providerId");
   if (hasOwn(input, "status")) update.status = status(input.status);
 
   if (!Object.keys(update).length) throw invalid("body", "At least one editable field is required");

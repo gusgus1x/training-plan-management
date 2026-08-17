@@ -10,7 +10,8 @@ export type OapPlanRecord = {
   hours: string;
   budget: string;
   trainer: string;
-  provider: string;
+  providerId: string | null;
+  providerName: string;
   createdBy: string;
   status: OapPlanStatus;
   owner: WorkflowOwner;
@@ -26,6 +27,7 @@ export type CreateOapPlanInput = {
   trainerName: string;
   instructorId: string | null;
   providerName: string;
+  providerId: string | null;
   status: OapPlanStatus;
 };
 

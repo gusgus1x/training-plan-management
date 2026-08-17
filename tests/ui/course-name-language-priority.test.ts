@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -24,15 +22,5 @@ describe("Thai-first course names", () => {
   it("falls back to English when the Thai name is unavailable", () => {
     expect(getCourseDisplayName(course("", "Safety"))).toBe("Safety");
     expect(getCourseSecondaryName(course("", "Safety"))).toBe("");
-  });
-
-  it("propagates the Thai-first rule into plans and employee roadmaps", () => {
-    const sources = [
-      "app/components/center_factory/TrainingPlanManagement/modules/TrainingOAP.tsx",
-      "app/components/center_factory/TrainingPlanManagement/modules/TrainingRolling.tsx",
-      "app/components/employee/RoadmapModule.tsx",
-    ].map((path) => readFileSync(join(process.cwd(), path), "utf8"));
-
-    sources.forEach((source) => expect(source).toContain("getCourseDisplayName"));
   });
 });

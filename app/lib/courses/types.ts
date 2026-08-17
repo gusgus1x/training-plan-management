@@ -18,6 +18,10 @@ export type CreateCourseInput = {
   standardCode: string;
   standardName: string;
   functionId: string | null;
+  divisionId: string | null;
+  departmentId: string | null;
+  sectionId: string | null;
+  targetCompanies: string[];
   targetPositions: string[];
   targetLevels: string[];
   standardYear: number;

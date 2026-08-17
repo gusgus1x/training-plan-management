@@ -117,7 +117,7 @@ const mapRollingPlan = (row: RollingPlanWithRelations) => {
     oapHours: oap.planned_duration_hours.toString(),
     oapBudget: oap.total_planned_budget.toString(),
     oapTrainer: oap.instructor_name_text || instructorName,
-    oapProvider: oap.provider_name || "",
+    oapProvider: oap.provider_name_text || "",
     owner,
     ownerCompany,
   };

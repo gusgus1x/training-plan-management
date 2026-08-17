@@ -548,7 +548,7 @@ export default function TrainingRolling() {
               <label>Training Hours<input disabled value={selectedOap?.hours ?? ""} /></label>
               <label>Budget<input disabled value={selectedOap ? Number(selectedOap.budget).toLocaleString("en-US") : ""} /></label>
               <label>Trainer<input disabled value={selectedOap?.trainer ?? ""} /></label>
-              <label>Institute / Provider<input disabled value={selectedOap?.provider ?? ""} /></label>
+              <label>Institute / Provider<input disabled value={selectedOap?.providerName ?? ""} /></label>
               <label>Scope<input disabled value={selectedOap ? (selectedOap.owner === "CENTER" ? "All Companies" : selectedOap.ownerCompany) : ""} /></label>
 
               <div className={`${styles.fullField} ${styles.sessionSection}`}>

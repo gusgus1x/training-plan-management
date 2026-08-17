@@ -65,6 +65,7 @@ const mapCourseSnapshot = (row: CourseWithRelations): WorkflowCourse => {
 const oapInclude = {
   course: { include: courseInclude },
   instructor: true,
+  institute_provider: true,
   company: true,
 } satisfies Prisma.training_plan_oapInclude;
 
@@ -94,7 +95,8 @@ const mapOapPlan = (row: OapPlanWithRelations, sequence: number) => {
     hours: row.planned_duration_hours.toString(),
     budget: row.total_planned_budget.toString(),
     trainer: row.instructor_name_text || instructorName,
-    provider: row.provider_name || "",
+    providerId: row.provider_id?.toString() ?? null,
+    providerName: row.provider_name_text || row.institute_provider?.institute_provider_name || "",
     createdBy: row.created_by.toString(),
     status: DB_STATUS_TO_UI[row.status] ?? "Planning",
     owner,
@@ -114,7 +116,7 @@ export const createOapPlanRepository = (client?: DatabaseClient) => {
         where.OR = [
           { course_name_snapshot: { contains: filters.search } },
           { instructor_name_text: { contains: filters.search } },
-          { provider_name: { contains: filters.search } },
+          { provider_name_text: { contains: filters.search } },
         ];
       }
 
@@ -156,7 +158,8 @@ export const createOapPlanRepository = (client?: DatabaseClient) => {
             total_planned_budget: input.budget,
             instructor_id: safeBigInt(input.instructorId),
             instructor_name_text: input.trainerName || null,
-            provider_name: input.providerName || null,
+            provider_id: safeBigInt(input.providerId),
+            provider_name_text: input.providerName || null,
             enrollment_mode: "BOTH",
             allow_non_target: false,
             status: UI_STATUS_TO_DB[input.status],
@@ -197,7 +200,8 @@ export const createOapPlanRepository = (client?: DatabaseClient) => {
         if (input.budget !== undefined) data.total_planned_budget = input.budget;
         if (input.instructorId !== undefined) data.instructor_id = safeBigInt(input.instructorId);
         if (input.trainerName !== undefined) data.instructor_name_text = input.trainerName || null;
-        if (input.providerName !== undefined) data.provider_name = input.providerName || null;
+        if (input.providerId !== undefined) data.provider_id = safeBigInt(input.providerId);
+        if (input.providerName !== undefined) data.provider_name_text = input.providerName || null;
         if (input.status !== undefined) data.status = UI_STATUS_TO_DB[input.status];
 
         const updated = await db().training_plan_oap.update({

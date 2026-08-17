@@ -22,6 +22,12 @@ import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserCo
 import { listCourseGroups } from "../../../../lib/courseGroups/client";
 import { listCourseTypes } from "../../../../lib/courseTypes/client";
 import { listFunctions } from "../../../../lib/functions/client";
+import { listCompanies } from "../../../../lib/companies/client";
+import { listDivisions } from "../../../../lib/divisions/client";
+import { listDepartments } from "../../../../lib/departments/client";
+import { listSections } from "../../../../lib/sections/client";
+import { listOrgHierarchyUsage } from "../../../../lib/orgHierarchy/client";
+import type { OrgHierarchyUsageRow } from "../../../../lib/orgHierarchy/types";
 import { listPositions } from "../../../../lib/positions/client";
 import type { PositionRecord } from "../../../../lib/positions/types";
 import { listLevels } from "../../../../lib/levels/client";
@@ -165,6 +171,9 @@ function CourseMaster() {
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [standardFunctionCode, setStandardFunctionCode] = useState(allFunctionCode);
   const [standardFunctionName, setStandardFunctionName] = useState(allFunctionOption);
+  const [standardDivisionCode, setStandardDivisionCode] = useState(allFunctionCode);
+  const [standardDepartmentCode, setStandardDepartmentCode] = useState(allFunctionCode);
+  const [standardSectionCode, setStandardSectionCode] = useState(allFunctionCode);
 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importRows, setImportRows] = useState<CourseMasterImportRow[]>([]);
@@ -285,9 +294,14 @@ function CourseMaster() {
       listCourseGroups({ status: "ACTIVE" }),
       listCourses({ search: "", status: null }),
       listFunctions(),
+      listCompanies(),
+      listDivisions(),
+      listDepartments(),
+      listSections(),
+      listOrgHierarchyUsage(),
       listPositions(),
       listLevels(),
-    ]).then(([types, groups, courseData, functions, positions, levels]) => {
+    ]).then(([types, groups, courseData, functions, companies, divisions, departments, sections, orgHierarchyUsage, positions, levels]) => {
       if (!active) return;
       setCourseTypeOptions(types.items.map((item: any) => ({ name: item.name, typeId: item.courseTypeId || item.code })));
       setCourseGroupOptions(groups.items.map((item: any) => ({ name: item.name, groupId: item.courseGroupId || item.code })));
@@ -298,6 +312,27 @@ function CourseMaster() {
           .filter((item) => item.status === "ACTIVE")
           .map((item) => ({ id: item.functionId, code: item.functionCode, name: item.functionNameEn || item.functionNameTh })),
       );
+      setCompanyRows(
+        companies.items
+          .filter((item) => item.status === "ACTIVE")
+          .map((item) => ({ id: item.companyId, code: item.companyCode, name: item.companyNameEn || item.companyNameTh })),
+      );
+      setDivisionRows(
+        divisions.items
+          .filter((item) => item.status === "ACTIVE")
+          .map((item) => ({ id: item.divisionId, code: item.divisionCode, name: item.divisionNameEn || item.divisionNameTh })),
+      );
+      setDepartmentRows(
+        departments.items
+          .filter((item) => item.status === "ACTIVE")
+          .map((item) => ({ id: item.departmentId, code: item.departmentCode, name: item.departmentNameEn || item.departmentNameTh })),
+      );
+      setSectionRows(
+        sections.items
+          .filter((item) => item.status === "ACTIVE")
+          .map((item) => ({ id: item.sectionId, code: item.sectionCode, name: item.sectionNameEn || item.sectionNameTh })),
+      );
+      setOrgUsage(orgHierarchyUsage.items);
       setPositionRows(positions.items.filter((item) => item.status === "ACTIVE"));
       setLevelRows(levels.items.filter((item) => item.status === "ACTIVE"));
     }).catch(() => {
@@ -305,6 +340,11 @@ function CourseMaster() {
       setCourseTypeOptions([]);
       setCourseGroupOptions([]);
       setFunctionRows([]);
+      setCompanyRows([]);
+      setDivisionRows([]);
+      setDepartmentRows([]);
+      setSectionRows([]);
+      setOrgUsage([]);
       setPositionRows([]);
       setLevelRows([]);
     });
@@ -318,9 +358,23 @@ function CourseMaster() {
   }, []);
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  const [companyRows, setCompanyRows] = useState<
+    Array<{ id: string; code: string; name: string }>
+  >([]);
   const [functionRows, setFunctionRows] = useState<
     Array<{ id: string; code: string; name: string }>
   >([]);
+  const [divisionRows, setDivisionRows] = useState<
+    Array<{ id: string; code: string; name: string }>
+  >([]);
+  const [departmentRows, setDepartmentRows] = useState<
+    Array<{ id: string; code: string; name: string }>
+  >([]);
+  const [sectionRows, setSectionRows] = useState<
+    Array<{ id: string; code: string; name: string }>
+  >([]);
+  const [orgUsage, setOrgUsage] = useState<OrgHierarchyUsageRow[]>([]);
   const [positionRows, setPositionRows] = useState<PositionRecord[]>([]);
   const [levelRows, setLevelRows] = useState<LevelRecord[]>([]);
   const allFunctionDisplayName =
@@ -328,6 +382,60 @@ function CourseMaster() {
   const functionOptions = [
     { id: "", code: allFunctionCode, name: allFunctionDisplayName },
     ...functionRows,
+  ];
+  const divisionOptions = [
+    { id: "", code: allFunctionCode, name: "All Division" },
+    ...divisionRows,
+  ];
+  const selectedDivisionId = divisionOptions.find(
+    (option) => option.code === standardDivisionCode,
+  )?.id;
+  const selectedCompanyIds = companyRows
+    .filter((row) => selectedCompanies.includes(row.code))
+    .map((row) => row.id);
+  const usageInSelectedCompanies = (usage: OrgHierarchyUsageRow) =>
+    selectedCompanies.length === 0 ||
+    (usage.companyId !== null && selectedCompanyIds.includes(usage.companyId));
+  // Cascading is data-driven (which departments/sections are actually used by active
+  // employees in the checked companies and, once picked, under the selected division), not
+  // enforced by the DB — company/division/department/section are flat lookup tables with no
+  // hierarchy FK between them. The currently selected department/section is always kept
+  // visible even if it falls outside the live usage snapshot, so an already-saved standard
+  // never appears to lose its selection.
+  const departmentOptions = [
+    { id: "", code: allFunctionCode, name: "All Department" },
+    ...departmentRows.filter((row) => {
+      if (row.code === standardDepartmentCode) return true;
+      if (
+        selectedCompanies.length > 0 &&
+        !orgUsage.some((usage) => usageInSelectedCompanies(usage) && usage.departmentId === row.id)
+      ) {
+        return false;
+      }
+      if (standardDivisionCode === allFunctionCode) return true;
+      return orgUsage.some(
+        (usage) => usage.divisionId === selectedDivisionId && usage.departmentId === row.id,
+      );
+    }),
+  ];
+  const selectedDepartmentId = departmentOptions.find(
+    (option) => option.code === standardDepartmentCode,
+  )?.id;
+  const sectionOptions = [
+    { id: "", code: allFunctionCode, name: "All Section" },
+    ...sectionRows.filter((row) => {
+      if (row.code === standardSectionCode) return true;
+      if (
+        selectedCompanies.length > 0 &&
+        !orgUsage.some((usage) => usageInSelectedCompanies(usage) && usage.sectionId === row.id)
+      ) {
+        return false;
+      }
+      if (standardDepartmentCode === allFunctionCode) return true;
+      return orgUsage.some(
+        (usage) => usage.departmentId === selectedDepartmentId && usage.sectionId === row.id,
+      );
+    }),
   ];
   const getFunctionDisplayName = (functionCode?: string, functionName = "") => {
     if (functionCode === allFunctionCode || functionName === allFunctionOption) {
@@ -344,6 +452,7 @@ function CourseMaster() {
 
     return matchingFunction ? matchingFunction.name : functionName;
   };
+  const companyChecklist = companyRows.map((row) => row.code).filter(Boolean);
   const positionChecklist = positionRows
     .map((row) => (row.positionNameEn ?? "").trim())
     .filter(Boolean);
@@ -435,6 +544,10 @@ function CourseMaster() {
   const resetStandardForm = () => {
     setStandardFunctionCode(allFunctionCode);
     setStandardFunctionName(allFunctionDisplayName);
+    setStandardDivisionCode(allFunctionCode);
+    setStandardDepartmentCode(allFunctionCode);
+    setStandardSectionCode(allFunctionCode);
+    setSelectedCompanies([]);
     setSelectedPositions([]);
     setSelectedLevels([]);
   };
@@ -458,6 +571,18 @@ function CourseMaster() {
     setStandardFunctionName(
       getFunctionDisplayName(standard.functionCode, standard.functionName) ||
         allFunctionDisplayName,
+    );
+    // Match against the raw (unfiltered) rows rather than the cascade-filtered Options —
+    // the Options list depends on the division/department state we're about to set below,
+    // so it may still reflect the previous selection at this point in the render.
+    const matchingDivisionRow = divisionRows.find((row) => row.name === standard.division);
+    setStandardDivisionCode(standard.division ? matchingDivisionRow?.code ?? allFunctionCode : allFunctionCode);
+    const matchingDepartmentRow = departmentRows.find((row) => row.name === standard.department);
+    setStandardDepartmentCode(standard.department ? matchingDepartmentRow?.code ?? allFunctionCode : allFunctionCode);
+    const matchingSectionRow = sectionRows.find((row) => row.name === standard.section);
+    setStandardSectionCode(standard.section ? matchingSectionRow?.code ?? allFunctionCode : allFunctionCode);
+    setSelectedCompanies(
+      companyChecklist.filter((code) => standard.companies?.includes(code)),
     );
     setSelectedPositions(
       positionChecklist.filter((position) =>
@@ -696,6 +821,45 @@ function CourseMaster() {
         ),
       )
       .catch(() => setFunctionRows([]));
+    listCompanies()
+      .then((companies) =>
+        setCompanyRows(
+          companies.items
+            .filter((item) => item.status === "ACTIVE")
+            .map((item) => ({ id: item.companyId, code: item.companyCode, name: item.companyNameEn || item.companyNameTh })),
+        ),
+      )
+      .catch(() => setCompanyRows([]));
+    listDivisions()
+      .then((divisions) =>
+        setDivisionRows(
+          divisions.items
+            .filter((item) => item.status === "ACTIVE")
+            .map((item) => ({ id: item.divisionId, code: item.divisionCode, name: item.divisionNameEn || item.divisionNameTh })),
+        ),
+      )
+      .catch(() => setDivisionRows([]));
+    listDepartments()
+      .then((departments) =>
+        setDepartmentRows(
+          departments.items
+            .filter((item) => item.status === "ACTIVE")
+            .map((item) => ({ id: item.departmentId, code: item.departmentCode, name: item.departmentNameEn || item.departmentNameTh })),
+        ),
+      )
+      .catch(() => setDepartmentRows([]));
+    listSections()
+      .then((sections) =>
+        setSectionRows(
+          sections.items
+            .filter((item) => item.status === "ACTIVE")
+            .map((item) => ({ id: item.sectionId, code: item.sectionCode, name: item.sectionNameEn || item.sectionNameTh })),
+        ),
+      )
+      .catch(() => setSectionRows([]));
+    listOrgHierarchyUsage()
+      .then((result) => setOrgUsage(result.items))
+      .catch(() => setOrgUsage([]));
 
     try {
       const courseData = await listCourses({ search: "", status: null });
@@ -734,7 +898,7 @@ function CourseMaster() {
   };
 
   const handleSave = async () => {
-    if (!isCourseFormReady || !standardFunctionName.trim()) return;
+    if (!isCourseFormReady || !standardFunctionName.trim() || selectedCompanies.length === 0) return;
 
     const courseTypeId = courseTypeOptions.find(t => t.name === form.courseType)?.typeId || "";
     const courseGroupId = courseGroupOptions.find(g => g.name === form.courseGroup)?.groupId || "";
@@ -766,6 +930,19 @@ function CourseMaster() {
         standardFunctionCode === allFunctionCode
           ? null
           : functionOptions.find((option) => option.code === standardFunctionCode)?.id || null,
+      divisionId:
+        standardDivisionCode === allFunctionCode
+          ? null
+          : divisionOptions.find((option) => option.code === standardDivisionCode)?.id || null,
+      departmentId:
+        standardDepartmentCode === allFunctionCode
+          ? null
+          : departmentOptions.find((option) => option.code === standardDepartmentCode)?.id || null,
+      sectionId:
+        standardSectionCode === allFunctionCode
+          ? null
+          : sectionOptions.find((option) => option.code === standardSectionCode)?.id || null,
+      targetCompanies: selectedCompanies,
       targetPositions: selectedPositions,
       targetLevels: selectedLevels,
       standardYear,
@@ -1172,6 +1349,62 @@ function CourseMaster() {
           </div>
         </div>
 
+        <div className={styles.standard_checkSection}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+              <h4>Check List Company <span style={{ color: "#d71920" }}>*</span></h4>
+              <button
+                className={styles.secondaryButton}
+                type="button"
+                disabled={!isEditing || companyChecklist.length === 0}
+                onClick={() =>
+                  setSelectedCompanies(
+                    companyChecklist.every((code) => selectedCompanies.includes(code))
+                      ? []
+                      : companyChecklist,
+                  )
+                }
+              >
+                {companyChecklist.length > 0 &&
+                companyChecklist.every((code) => selectedCompanies.includes(code))
+                  ? "Uncheck All"
+                  : "Check All"}
+              </button>
+            </div>
+            <div className={styles.standard_checkGrid}>
+              {companyChecklist.map((code) => (
+                <label
+                  className={`${styles.standard_checkItem} ${
+                    selectedCompanies.includes(code)
+                      ? styles.standard_checkItemSelected
+                      : ""
+                  }`}
+                  key={code}
+                >
+                  <input
+                    className={styles.standard_nativeCheckbox}
+                    checked={selectedCompanies.includes(code)}
+                    disabled={!isEditing}
+                    type="checkbox"
+                    onChange={() =>
+                      toggleStandardItem(code, selectedCompanies, setSelectedCompanies)
+                    }
+                  />
+                  <span className={styles.standard_checkMark} aria-hidden="true">
+                    {selectedCompanies.includes(code) ? "✓" : ""}
+                  </span>
+                  <span translate="no">{code}</span>
+                </label>
+              ))}
+            </div>
+            {isEditing && selectedCompanies.length === 0 ? (
+              <p style={{ color: "#d71920", margin: "6px 0 0" }}>
+                Select at least one company.
+              </p>
+            ) : null}
+          </div>
+        </div>
+
         <div className={styles.standard_formGrid}>
           <label>
             Function Name
@@ -1188,6 +1421,51 @@ function CourseMaster() {
               }}
             >
               {functionOptions.map((option) => (
+                <option key={option.code} value={option.code} translate="no">
+                  {option.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Division
+            <select
+              value={standardDivisionCode}
+              disabled={!isEditing}
+              onChange={(event) => setStandardDivisionCode(event.target.value)}
+            >
+              {divisionOptions.map((option) => (
+                <option key={option.code} value={option.code} translate="no">
+                  {option.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Department
+            <select
+              value={standardDepartmentCode}
+              disabled={!isEditing}
+              onChange={(event) => setStandardDepartmentCode(event.target.value)}
+            >
+              {departmentOptions.map((option) => (
+                <option key={option.code} value={option.code} translate="no">
+                  {option.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Section
+            <select
+              value={standardSectionCode}
+              disabled={!isEditing}
+              onChange={(event) => setStandardSectionCode(event.target.value)}
+            >
+              {sectionOptions.map((option) => (
                 <option key={option.code} value={option.code} translate="no">
                   {option.name}
                 </option>
@@ -1263,7 +1541,7 @@ function CourseMaster() {
         <div className={styles.formActions}>
           <button
             className={styles.primaryButton}
-            disabled={!isCourseFormReady}
+            disabled={!isCourseFormReady || selectedCompanies.length === 0}
             type="button"
             onClick={handleSave}
           >

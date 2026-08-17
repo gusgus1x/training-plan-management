@@ -47,6 +47,14 @@ export const parseCreateCourse = (input: InputObject): CreateCourseInput => ({
   standardCode: readRequiredString(input, "standardCode", { maxLength: 50 }),
   standardName: readRequiredString(input, "standardName", { maxLength: 255 }),
   functionId: readOptionalString(input, "functionId"),
+  divisionId: readOptionalString(input, "divisionId"),
+  departmentId: readOptionalString(input, "departmentId"),
+  sectionId: readOptionalString(input, "sectionId"),
+  targetCompanies: (() => {
+    const companies = arrayString(input, "targetCompanies");
+    if (companies.length === 0) throw invalid("targetCompanies", "Select at least one company");
+    return companies;
+  })(),
   targetPositions: arrayString(input, "targetPositions"),
   targetLevels: arrayString(input, "targetLevels"),
   standardYear: readOptionalNumber(input, "standardYear") || new Date().getFullYear(),
@@ -73,6 +81,14 @@ export const parseUpdateCourse = (input: InputObject): UpdateCourseInput => {
   if (hasOwn(input, "standardCode")) update.standardCode = readRequiredString(input, "standardCode", { maxLength: 50 });
   if (hasOwn(input, "standardName")) update.standardName = readRequiredString(input, "standardName", { maxLength: 255 });
   if (hasOwn(input, "functionId")) update.functionId = readOptionalString(input, "functionId");
+  if (hasOwn(input, "divisionId")) update.divisionId = readOptionalString(input, "divisionId");
+  if (hasOwn(input, "departmentId")) update.departmentId = readOptionalString(input, "departmentId");
+  if (hasOwn(input, "sectionId")) update.sectionId = readOptionalString(input, "sectionId");
+  if (hasOwn(input, "targetCompanies")) {
+    const companies = arrayString(input, "targetCompanies");
+    if (companies.length === 0) throw invalid("targetCompanies", "Select at least one company");
+    update.targetCompanies = companies;
+  }
   if (hasOwn(input, "targetPositions")) update.targetPositions = arrayString(input, "targetPositions");
   if (hasOwn(input, "targetLevels")) update.targetLevels = arrayString(input, "targetLevels");
   if (hasOwn(input, "standardYear")) update.standardYear = readOptionalNumber(input, "standardYear") ?? undefined;

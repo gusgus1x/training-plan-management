@@ -15,6 +15,8 @@ import {
 import { getCourseOutlineFileName } from "../../../../lib/courseOutlineExport";
 import { listInstructors } from "../../../../lib/instructors/client";
 import type { InstructorRecord } from "../../../../lib/instructors/types";
+import { listInstituteProviders } from "../../../../lib/instituteProviders/client";
+import type { InstituteProviderRecord } from "../../../../lib/instituteProviders/types";
 import { listCourses } from "../../../../lib/courses/client";
 import { listOapPlans, createOapPlan, updateOapPlan, deleteOapPlan } from "../../../../lib/trainingOap/client";
 import type { OapPlanRecord } from "../../../../lib/trainingOap/types";
@@ -97,6 +99,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | OapStatus>("all");
   const [instructors, setInstructors] = useState<InstructorRecord[]>([]);
+  const [providers, setProviders] = useState<InstituteProviderRecord[]>([]);
   const userCompanyCode = profileValue(user?.companyCode);
 
   useEffect(() => {
@@ -137,6 +140,20 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       })
       .catch(() => {
         if (current) setInstructors([]);
+      });
+    return () => {
+      current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let current = true;
+    listInstituteProviders({ status: "ACTIVE" })
+      .then((result) => {
+        if (current) setProviders(result.items);
+      })
+      .catch(() => {
+        if (current) setProviders([]);
       });
     return () => {
       current = false;
@@ -225,7 +242,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             plan.course.courseNameEn,
             plan.status,
             plan.trainer,
-            plan.provider,
+            plan.providerName,
           ]
             .join(" ")
             .toLowerCase()
@@ -249,6 +266,14 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     return matched?.instructorId ?? null;
   };
 
+  const resolveProviderId = (providerName: string) => {
+    const trimmed = providerName.trim();
+    const matched = providers.find(
+      (provider) => provider.instituteProviderName.trim() === trimmed,
+    );
+    return matched?.instituteProviderId ?? null;
+  };
+
   const handleSave = async () => {
     if (!selectedCourse) {
       return;
@@ -262,6 +287,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       trainerName: form.trainer.trim(),
       instructorId: resolveInstructorId(form.trainer),
       providerName: form.provider.trim(),
+      providerId: resolveProviderId(form.provider),
     };
 
     try {
@@ -290,7 +316,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       hours: plan.hours,
       budget: plan.budget,
       trainer: plan.trainer,
-      provider: plan.provider,
+      provider: plan.providerName,
     });
     setIsNewOpen(true);
     setOpenDetailId("");
@@ -540,11 +566,19 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               <label>
                 Institute / Provider
                 <input
+                  list="institute-provider-options"
                   disabled={!selectedCourse}
-                  placeholder="Enter provider, e.g. HRD Center or institute name"
                   value={form.provider}
                   onChange={(event) => updateForm("provider", event.target.value)}
+                  placeholder="Select from Institute/Provider Master or enter another name"
                 />
+                <datalist id="institute-provider-options">
+                  {providers.map((provider) => (
+                    <option key={provider.instituteProviderId} value={provider.instituteProviderName}>
+                      {provider.instituteProviderCode}
+                    </option>
+                  ))}
+                </datalist>
               </label>
             </div>
             {selectedCourse ? (
@@ -757,7 +791,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                       <td>{plan.hours}</td>
                       <td>{Number(plan.budget).toLocaleString("en-US")}</td>
                       <td>{plan.trainer}</td>
-                      <td>{plan.provider}</td>
+                      <td>{plan.providerName}</td>
                       <td>{plan.owner === "CENTER" ? "Center" : plan.ownerCompany}</td>
                     </tr>
                     {isOpen ? (
@@ -790,7 +824,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                               <div><span>Training Hours</span><strong>{plan.hours}</strong></div>
                               <div><span>Budget</span><strong>{Number(plan.budget).toLocaleString("en-US")}</strong></div>
                               <div><span>Trainer</span><strong>{plan.trainer}</strong></div>
-                              <div><span>Provider</span><strong>{plan.provider}</strong></div>
+                              <div><span>Provider</span><strong>{plan.providerName}</strong></div>
                               <div><span>Created By</span><strong>{plan.owner === "CENTER" ? "Center" : plan.ownerCompany}</strong></div>
                             </div>
                             <div className={styles.formActions}>

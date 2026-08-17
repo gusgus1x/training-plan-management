@@ -62,7 +62,11 @@ export const createCourseRepository = (client?: DatabaseClient) => {
                 course_standard: true,
                 course_standard_target_level: { include: { employee_level: true } },
                 course_standard_target_position: { include: { position: true } },
+                course_standard_target_company: { include: { company: true } },
                 organization_function: true,
+                division: true,
+                department: true,
+                section: true,
               }
             }
           },
@@ -116,6 +120,16 @@ export const createCourseRepository = (client?: DatabaseClient) => {
               functionName: stdCourse.organization_function
                 ? stdCourse.organization_function.function_name_en || stdCourse.organization_function.function_name_th
                 : "All Function",
+              division: stdCourse.division
+                ? stdCourse.division.division_name_en || stdCourse.division.division_name_th
+                : "",
+              department: stdCourse.department
+                ? stdCourse.department.department_name_en || stdCourse.department.department_name_th
+                : "",
+              section: stdCourse.section
+                ? stdCourse.section.section_name_en || stdCourse.section.section_name_th
+                : "",
+              companies: stdCourse.course_standard_target_company.map(c => c.company.company_code),
               positions: stdCourse.course_standard_target_position.map(p => p.position.position_name_en || ""),
               levels: stdCourse.course_standard_target_level.map(l => l.employee_level.level_code),
               owner,
@@ -189,9 +203,25 @@ export const createCourseRepository = (client?: DatabaseClient) => {
               standard_id: standard.standard_id,
               course_id: course.course_id,
               function_id: safeBigInt(input.functionId),
+              division_id: safeBigInt(input.divisionId),
+              department_id: safeBigInt(input.departmentId),
+              section_id: safeBigInt(input.sectionId),
               created_at: new Date()
             }
           });
+
+          // 3b. Create target companies
+          if (input.targetCompanies && input.targetCompanies.length > 0) {
+            const companies = await tx.company.findMany({
+              where: { company_code: { in: input.targetCompanies } }
+            });
+            await tx.course_standard_target_company.createMany({
+              data: companies.map(c => ({
+                standard_course_id: stdCourse.standard_course_id,
+                company_id: c.company_id
+              }))
+            });
+          }
 
           // 4. Create target positions
           if (input.targetPositions && input.targetPositions.length > 0) {
@@ -287,6 +317,44 @@ export const createCourseRepository = (client?: DatabaseClient) => {
                 where: { standard_course_id: stdCourse.standard_course_id },
                 data: { function_id: safeBigInt(input.functionId) }
               });
+            }
+
+            if (input.divisionId !== undefined) {
+              await tx.course_standard_course.update({
+                where: { standard_course_id: stdCourse.standard_course_id },
+                data: { division_id: safeBigInt(input.divisionId) }
+              });
+            }
+
+            if (input.departmentId !== undefined) {
+              await tx.course_standard_course.update({
+                where: { standard_course_id: stdCourse.standard_course_id },
+                data: { department_id: safeBigInt(input.departmentId) }
+              });
+            }
+
+            if (input.sectionId !== undefined) {
+              await tx.course_standard_course.update({
+                where: { standard_course_id: stdCourse.standard_course_id },
+                data: { section_id: safeBigInt(input.sectionId) }
+              });
+            }
+
+            if (input.targetCompanies !== undefined) {
+              await tx.course_standard_target_company.deleteMany({
+                where: { standard_course_id: stdCourse.standard_course_id }
+              });
+              if (input.targetCompanies.length > 0) {
+                const companies = await tx.company.findMany({
+                  where: { company_code: { in: input.targetCompanies } }
+                });
+                await tx.course_standard_target_company.createMany({
+                  data: companies.map(c => ({
+                    standard_course_id: stdCourse.standard_course_id,
+                    company_id: c.company_id
+                  }))
+                });
+              }
             }
 
             if (input.targetPositions !== undefined) {
