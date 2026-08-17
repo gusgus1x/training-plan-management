@@ -172,7 +172,7 @@ export const createAuthenticationRepository = (
       (pool) =>
         pool
           .request()
-          .input("username", sql.NVarChar(100), username)
+          .input("username", sql.NVarChar, username)
           .query<AuthenticationRow>(FIND_AUTHENTICATION_ACCOUNT_BY_USERNAME_QUERY),
       getPool,
     );

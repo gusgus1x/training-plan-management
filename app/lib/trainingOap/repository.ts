@@ -2,6 +2,7 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import { Prisma } from "../../generated/prisma/client";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
+import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
 import type { WorkflowCourse } from "../trainingWorkflow";
 import type { CreateOapPlanInput, OapPlanListFilters, OapPlanStatus, UpdateOapPlanInput } from "./types";
 
@@ -140,7 +141,25 @@ export const createOapPlanRepository = (client?: DatabaseClient) => {
           include: courseInclude,
         });
 
-        const oapCode = `OAP-${input.planYear}-${course.course_code}`;
+        const baseCode = `OAP-${input.planYear}-${course.course_code}`;
+        let oapCode = baseCode;
+        const existingOaps = await db().training_plan_oap.findMany({
+          where: {
+            plan_year: input.planYear,
+            course_id: courseId,
+          },
+          select: { oap_code: true },
+        });
+
+        if (existingOaps.some((o) => o.oap_code === oapCode)) {
+          let counter = 2;
+          while (existingOaps.some((o) => o.oap_code === `${baseCode}-${counter}`)) {
+            counter++;
+          }
+          oapCode = `${baseCode}-${counter}`;
+        }
+
+        const cleanBudget = String(input.budget ?? "0").replace(/,/g, "").trim() || "0";
 
         const created = await db().training_plan_oap.create({
           data: {
@@ -155,7 +174,7 @@ export const createOapPlanRepository = (client?: DatabaseClient) => {
             evaluation_form_id: course.evaluation_form_id,
             planned_duration_hours: input.hours,
             default_participant_count: input.participants,
-            total_planned_budget: input.budget,
+            total_planned_budget: cleanBudget,
             instructor_id: safeBigInt(input.instructorId),
             instructor_name_text: input.trainerName || null,
             provider_id: safeBigInt(input.providerId),
@@ -197,7 +216,7 @@ export const createOapPlanRepository = (client?: DatabaseClient) => {
         if (input.planYear !== undefined) data.plan_year = input.planYear;
         if (input.hours !== undefined) data.planned_duration_hours = input.hours;
         if (input.participants !== undefined) data.default_participant_count = input.participants;
-        if (input.budget !== undefined) data.total_planned_budget = input.budget;
+        if (input.budget !== undefined) data.total_planned_budget = String(input.budget).replace(/,/g, "").trim() || "0";
         if (input.instructorId !== undefined) data.instructor_id = safeBigInt(input.instructorId);
         if (input.trainerName !== undefined) data.instructor_name_text = input.trainerName || null;
         if (input.providerId !== undefined) data.provider_id = safeBigInt(input.providerId);
@@ -226,80 +245,7 @@ export const createOapPlanRepository = (client?: DatabaseClient) => {
           const planIds = plans.map((p) => p.plan_id);
 
           if (planIds.length > 0) {
-            // Find all enrollments
-            const enrollments = await tx.training_enrollment.findMany({
-              where: { plan_id: { in: planIds } },
-              select: { enrollment_id: true },
-            });
-            const enrollmentIds = enrollments.map((e) => e.enrollment_id);
-
-            if (enrollmentIds.length > 0) {
-              const assessmentSubmissions = await tx.assessment_submission.findMany({
-                where: { enrollment_id: { in: enrollmentIds } },
-                select: { submission_id: true },
-              });
-              if (assessmentSubmissions.length > 0) {
-                const submissionIds = assessmentSubmissions.map((s) => s.submission_id);
-                await tx.assessment_answer.deleteMany({
-                  where: { submission_id: { in: submissionIds } },
-                });
-                await tx.assessment_submission.deleteMany({
-                  where: { submission_id: { in: submissionIds } },
-                });
-              }
-
-              const evaluationSubmissions = await tx.evaluation_submission.findMany({
-                where: { enrollment_id: { in: enrollmentIds } },
-                select: { evaluation_submission_id: true },
-              });
-              if (evaluationSubmissions.length > 0) {
-                const evalSubIds = evaluationSubmissions.map((s) => s.evaluation_submission_id);
-                await tx.evaluation_answer.deleteMany({
-                  where: { evaluation_submission_id: { in: evalSubIds } },
-                });
-                await tx.evaluation_submission.deleteMany({
-                  where: { evaluation_submission_id: { in: evalSubIds } },
-                });
-              }
-
-              await tx.attendance.deleteMany({
-                where: { enrollment_id: { in: enrollmentIds } },
-              });
-
-              await tx.training_result.deleteMany({
-                where: { enrollment_id: { in: enrollmentIds } },
-              });
-
-              await tx.training_certificate_file.updateMany({
-                where: { enrollment_id: { in: enrollmentIds } },
-                data: { enrollment_id: null },
-              });
-
-              await tx.training_enrollment.deleteMany({
-                where: { plan_id: { in: planIds } },
-              });
-            }
-
-            await tx.training_plan_assessment_setting.deleteMany({
-              where: { plan_id: { in: planIds } },
-            });
-
-            await tx.training_expense.deleteMany({
-              where: { plan_id: { in: planIds } },
-            });
-
-            await tx.training_need_request.updateMany({
-              where: { training_plan_id: { in: planIds } },
-              data: { training_plan_id: null },
-            });
-
-            await tx.certificate_import_batch.deleteMany({
-              where: { plan_id: { in: planIds } },
-            });
-
-            await tx.training_plan.deleteMany({
-              where: { oap_plan_id: oapPlanId },
-            });
+            await cascadeDeleteTrainingPlans(tx, planIds);
           }
 
           await tx.training_plan_oap.delete({

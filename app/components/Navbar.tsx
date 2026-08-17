@@ -37,6 +37,7 @@ export default function Navbar({
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
+  const contextItemsRef = useRef<HTMLDivElement>(null);
   const { language, setLanguage } = useUiLanguage();
   const user = useAuthenticatedUser();
   const displayUsername = user?.username ?? username;
@@ -59,6 +60,34 @@ export default function Navbar({
       : user?.roleCode === "HRD_FACTORY"
         ? "HF"
         : "HC";
+
+  const contextKey = contextTitle?.split("/")[0]?.trim() || "default";
+
+  // Auto-scroll active item into view & preserve horizontal scroll position
+  useEffect(() => {
+    if (!contextItemsRef.current) return;
+    const container = contextItemsRef.current;
+
+    const savedScroll = sessionStorage.getItem(`navbar-scroll-${contextKey}`);
+    if (savedScroll !== null) {
+      container.scrollLeft = Number(savedScroll);
+    }
+
+    const activeItem = container.querySelector<HTMLElement>(`.${styles.activeContextItem}`);
+    if (activeItem) {
+      activeItem.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "nearest",
+      });
+    }
+  }, [contextTitle, contextItems, contextKey]);
+
+  const handleContextScroll = () => {
+    if (contextItemsRef.current) {
+      sessionStorage.setItem(`navbar-scroll-${contextKey}`, String(contextItemsRef.current.scrollLeft));
+    }
+  };
 
   const BrandContent = (
     <>
@@ -292,7 +321,11 @@ export default function Navbar({
               <strong translate="no">{contextTitle}</strong>
             </div>
             {contextItems.length > 0 ? (
-              <div className={styles.contextItems}>
+              <div
+                className={styles.contextItems}
+                ref={contextItemsRef}
+                onScroll={handleContextScroll}
+              >
                 {contextItems.map((item) => (
                   <button
                     aria-label={

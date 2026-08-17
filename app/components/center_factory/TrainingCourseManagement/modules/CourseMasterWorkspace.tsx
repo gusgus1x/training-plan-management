@@ -15,7 +15,7 @@ import { listCourses, createCourse, updateCourse, deleteCourse } from "../../../
 import { listOapPlans } from "../../../../lib/trainingOap/client";
 import type { OapPlanRecord } from "../../../../lib/trainingOap/types";
 import { loadWorkflowRollingPlans, type RollingPlan } from "../../TrainingPlanManagement/modules/TrainingRolling";
-import { normalizeEmployeeLevel } from "../../../../lib/employeeMasterData";
+import { getLevelRank, normalizeEmployeeLevel } from "../../../../lib/employeeMasterData";
 import { listAssessments } from "../../../../lib/assessments/client";
 import { listEvaluations } from "../../../../lib/evaluations/client";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
@@ -155,7 +155,9 @@ function CourseMaster() {
   const courseTypes = isFactoryUser
     ? courseTypeOptions.map((type) => type.name).filter((name) => factoryCourseTypeAllowlist.includes(name))
     : courseTypeOptions.map((type) => type.name);
-  const [courseGroupOptions, setCourseGroupOptions] = useState<Array<{ name: string; groupId: string }>>([]);
+  const [courseGroupOptions, setCourseGroupOptions] = useState<
+    Array<{ name: string; groupId: string; code: string; lastCourseNumber: number }>
+  >([]);
   const courseGroups = courseGroupOptions.map((group) => group.name);
   const [assessmentOptions, setAssessmentOptions] = useState<TrainingAssessmentOption[]>([]);
   const [evaluationOptions, setEvaluationOptions] = useState<TrainingEvaluationOption[]>([]);
@@ -304,7 +306,14 @@ function CourseMaster() {
     ]).then(([types, groups, courseData, functions, companies, divisions, departments, sections, orgHierarchyUsage, positions, levels]) => {
       if (!active) return;
       setCourseTypeOptions(types.items.map((item: any) => ({ name: item.name, typeId: item.courseTypeId || item.code })));
-      setCourseGroupOptions(groups.items.map((item: any) => ({ name: item.name, groupId: item.courseGroupId || item.code })));
+      setCourseGroupOptions(
+        groups.items.map((item: any) => ({
+          name: item.name,
+          groupId: item.courseGroupId || item.code,
+          code: item.code || "",
+          lastCourseNumber: item.lastCourseNumber ?? 0,
+        })),
+      );
       setCourses(courseData.courses || []);
       setStandards(courseData.standards || []);
       setFunctionRows(
@@ -377,10 +386,8 @@ function CourseMaster() {
   const [orgUsage, setOrgUsage] = useState<OrgHierarchyUsageRow[]>([]);
   const [positionRows, setPositionRows] = useState<PositionRecord[]>([]);
   const [levelRows, setLevelRows] = useState<LevelRecord[]>([]);
-  const allFunctionDisplayName =
-    language === "th" ? allFunctionThaiDisplayName : allFunctionOption;
   const functionOptions = [
-    { id: "", code: allFunctionCode, name: allFunctionDisplayName },
+    { id: "", code: allFunctionCode, name: "All Function" },
     ...functionRows,
   ];
   const divisionOptions = [
@@ -439,7 +446,7 @@ function CourseMaster() {
   ];
   const getFunctionDisplayName = (functionCode?: string, functionName = "") => {
     if (functionCode === allFunctionCode || functionName === allFunctionOption) {
-      return allFunctionDisplayName;
+      return "All Function";
     }
 
     if (!functionCode && !functionName) {
@@ -456,9 +463,12 @@ function CourseMaster() {
   const positionChecklist = positionRows
     .map((row) => (row.positionNameEn ?? "").trim())
     .filter(Boolean);
-  const levelChecklist = levelRows
-    .map((row) => normalizeEmployeeLevel(row.levelKey))
-    .filter(Boolean);
+  const levelChecklist = useMemo(() => {
+    const unique = Array.from(
+      new Set(levelRows.map((row) => normalizeEmployeeLevel(row.levelKey)).filter(Boolean)),
+    );
+    return unique.sort((a, b) => getLevelRank(b) - getLevelRank(a));
+  }, [levelRows]);
 
   const requiredCourseValues = [
     form.courseNameTh,
@@ -543,7 +553,7 @@ function CourseMaster() {
 
   const resetStandardForm = () => {
     setStandardFunctionCode(allFunctionCode);
-    setStandardFunctionName(allFunctionDisplayName);
+    setStandardFunctionName("All Function");
     setStandardDivisionCode(allFunctionCode);
     setStandardDepartmentCode(allFunctionCode);
     setStandardSectionCode(allFunctionCode);
@@ -570,7 +580,7 @@ function CourseMaster() {
     setStandardFunctionCode(matchingFunctionOption?.code ?? allFunctionCode);
     setStandardFunctionName(
       getFunctionDisplayName(standard.functionCode, standard.functionName) ||
-        allFunctionDisplayName,
+        "All Function",
     );
     // Match against the raw (unfiltered) rows rather than the cascade-filtered Options —
     // the Options list depends on the division/department state we're about to set below,
@@ -753,14 +763,30 @@ function CourseMaster() {
     }
   };
 
-  // course_code is system-generated server-side from course_group_code + an
-  // atomically incremented per-group running number (Data Dictionary V6.2).
-  // The browser never computes it — it only shows the value the server returns.
   const handleCourseGroupChange = (courseGroup: string) => {
+    const matchedGroup = courseGroupOptions.find((g) => g.name === courseGroup);
+    let nextCode = "";
+    if (matchedGroup && matchedGroup.code) {
+      if (selectedCourse && selectedCourse.courseGroup === courseGroup && selectedCourse.courseCode) {
+        nextCode = selectedCourse.courseCode;
+      } else {
+        const groupCourses = courses.filter((c) => c.courseGroup === courseGroup);
+        let maxSeq = 0;
+        for (const c of groupCourses) {
+          const parts = (c.courseCode || "").split("-");
+          const num = parseInt(parts[parts.length - 1], 10);
+          if (!isNaN(num) && num > maxSeq) {
+            maxSeq = num;
+          }
+        }
+        const nextNum = groupCourses.length === 0 ? 1 : Math.max(maxSeq + 1, (matchedGroup.lastCourseNumber ?? 0) + 1);
+        nextCode = `${matchedGroup.code.trim()}-${String(nextNum).padStart(6, "0")}`;
+      }
+    }
     setForm((current) => ({
       ...current,
       courseGroup,
-      courseCode: "",
+      courseCode: nextCode,
     }));
   };
 
@@ -816,6 +842,25 @@ function CourseMaster() {
   };
 
   const handleRefresh = async () => {
+    listCourseTypes({ status: "ACTIVE" })
+      .then((types) =>
+        setCourseTypeOptions(
+          types.items.map((item: any) => ({ name: item.name, typeId: item.courseTypeId || item.code })),
+        ),
+      )
+      .catch(() => setCourseTypeOptions([]));
+    listCourseGroups({ status: "ACTIVE" })
+      .then((groups) =>
+        setCourseGroupOptions(
+          groups.items.map((item: any) => ({
+            name: item.name,
+            groupId: item.courseGroupId || item.code,
+            code: item.code || "",
+            lastCourseNumber: item.lastCourseNumber ?? 0,
+          })),
+        ),
+      )
+      .catch(() => setCourseGroupOptions([]));
     void listOapPlans({ search: null, status: null }).then((result) => setOapPlans(result.oapPlans || []));
     void loadWorkflowRollingPlans().then(setRollingPlans);
     listPositions()
@@ -1059,10 +1104,10 @@ function CourseMaster() {
           <input
             value={form.courseCode}
             readOnly
-            placeholder="Generated by the server when saved"
-            title="Assigned automatically by the server on save, from the selected Course Group's code"
+            placeholder="Select Course Group to generate code"
+            title="Auto-generated from the selected Course Group"
           />
-          <small className={styles.fieldHint}>Assigned by the server on save; not editable.</small>
+          <small className={styles.fieldHint}>Auto-generated based on selected Course Group.</small>
         </label>
         <label>
           <span className={styles.fieldLabel}>Course Type <b>*</b></span>
@@ -1143,6 +1188,15 @@ function CourseMaster() {
             disabled={!isEditing}
             placeholder="Example: Lecture, workshop, demonstration, and practice"
             onChange={(event) => updateForm("methodology", event.target.value)}
+          />
+        </label>
+        <label className={styles.fullWidth}>
+          <span className={styles.fieldLabel}>Remark <em>Optional</em></span>
+          <textarea
+            value={form.remark}
+            disabled={!isEditing}
+            placeholder="Add supporting notes or special conditions."
+            onChange={(event) => updateForm("remark", event.target.value)}
           />
         </label>
         <div className={styles.linkedFormsHeader}>
@@ -1343,17 +1397,6 @@ function CourseMaster() {
                 : `${publishedFollowUpEvaluations.length} published 30-Day Follow-up option${publishedFollowUpEvaluations.length === 1 ? "" : "s"}`}
           </small>
         </label>
-        <label className={styles.fullWidth}>
-          <span className={styles.fieldLabel}>Remark <em>Optional</em></span>
-          <textarea
-            value={form.remark}
-            disabled={!isEditing}
-            placeholder="Add supporting notes or special conditions."
-            onChange={(event) => updateForm("remark", event.target.value)}
-          />
-        </label>
-
-
       </div>
 
       <section className={styles.standard_formPanel} aria-label="Course Standard setup">
@@ -1423,16 +1466,17 @@ function CourseMaster() {
 
         <div className={styles.standard_formGrid}>
           <label>
-            Function Name
+            <span className={styles.fieldLabel} translate="no">Function Name</span>
             <select
               value={standardFunctionCode}
               disabled={!isEditing}
+              translate="no"
               onChange={(event) => {
                 const nextCode = event.target.value;
                 setStandardFunctionCode(nextCode);
                 setStandardFunctionName(
                   functionOptions.find((option) => option.code === nextCode)
-                    ?.name ?? allFunctionOption,
+                    ?.name ?? "All Function",
                 );
               }}
             >
@@ -1445,10 +1489,11 @@ function CourseMaster() {
           </label>
 
           <label>
-            Division
+            <span className={styles.fieldLabel} translate="no">Division</span>
             <select
               value={standardDivisionCode}
               disabled={!isEditing}
+              translate="no"
               onChange={(event) => setStandardDivisionCode(event.target.value)}
             >
               {divisionOptions.map((option) => (
@@ -1460,10 +1505,11 @@ function CourseMaster() {
           </label>
 
           <label>
-            Department
+            <span className={styles.fieldLabel} translate="no">Department</span>
             <select
               value={standardDepartmentCode}
               disabled={!isEditing}
+              translate="no"
               onChange={(event) => setStandardDepartmentCode(event.target.value)}
             >
               {departmentOptions.map((option) => (
@@ -1475,10 +1521,11 @@ function CourseMaster() {
           </label>
 
           <label>
-            Section
+            <span className={styles.fieldLabel} translate="no">Section</span>
             <select
               value={standardSectionCode}
               disabled={!isEditing}
+              translate="no"
               onChange={(event) => setStandardSectionCode(event.target.value)}
             >
               {sectionOptions.map((option) => (

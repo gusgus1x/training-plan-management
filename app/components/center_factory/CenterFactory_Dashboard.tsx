@@ -368,7 +368,7 @@ export default function Dashboard({
       badge: isThai ? "จัดการหลักสูตร" : "COURSE MANAGEMENT",
       step: "01",
       icon: "📚",
-      title: isThai ? "หลักสูตรอบรม" : "Training Course",
+      title: "Training Course",
       subTitle: "Training Course Management",
       description: isThai
         ? "ดูแลฐานข้อมูลหลักสูตร มาตรฐานกลุ่มเป้าหมาย ประเภทหลักสูตร และแบบทดสอบก่อน-หลังอบรม"
@@ -383,7 +383,7 @@ export default function Dashboard({
       badge: isThai ? "จัดการแผนอบรม" : "PLAN MANAGEMENT",
       step: "02",
       icon: "📅",
-      title: isThai ? "แผนการอบรม" : "Training Plan",
+      title: "Training Plan",
       subTitle: "Training Plan Management",
       description: isThai
         ? "จัดการแผน OAP ประจำปี คำขอฝึกอบรม แบบตอบรับจากบริษัท และแผนอบรมรายเดือน"
@@ -398,7 +398,7 @@ export default function Dashboard({
       badge: isThai ? "บันทึกผลอบรม" : "RECORD MANAGEMENT",
       step: "03",
       icon: "📋",
-      title: isThai ? "ประวัติการอบรม" : "Training Record",
+      title: "Training Record",
       subTitle: "Training Record Management",
       description: isThai
         ? "บันทึกผู้เข้าอบรมจริง ผลประเมินหลังอบรม ค่าใช้จ่าย และรายชื่อที่เพิ่มภายหลัง"
@@ -413,7 +413,7 @@ export default function Dashboard({
       badge: isThai ? "รายงาน" : "REPORT MANAGEMENT",
       step: "04",
       icon: "📊",
-      title: isThai ? "รายงานและวิเคราะห์ผล" : "Reports & Analytics",
+      title: "Reports & Analytics",
       subTitle: "Reports & Analytics Management",
       description: isThai
         ? "ดูปฏิทินอบรม สรุปความคืบหน้า ค่าใช้จ่าย และร่างอีเมลรายงาน"
@@ -428,7 +428,7 @@ export default function Dashboard({
       badge: isThai ? "ข้อมูลหลัก" : "MASTER DATA",
       step: "05",
       icon: "🗃️",
-      title: isThai ? "ข้อมูลหลัก" : "Master Data",
+      title: "Master Data",
       subTitle: "Master Data Management",
       description: isThai
         ? "ข้อมูลหลักของบริษัท พนักงาน วิทยากร ระดับ ตำแหน่ง และหน่วยงาน"
@@ -754,7 +754,7 @@ export default function Dashboard({
 
               <div className={styles.cardBodyContent}>
                 <span className={styles.cardKicker}>{item.badge}</span>
-                <strong className={styles.cardMainTitle}>{item.title}</strong>
+                <strong className={styles.cardMainTitle} translate="no">{item.title}</strong>
                 <p className={styles.cardDescText}>{item.description}</p>
               </div>
 

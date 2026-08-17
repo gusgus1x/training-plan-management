@@ -22,9 +22,157 @@ export default function CourseGroup() {
   }, []);
   const save = async () => { if (!canWrite || !draft.code.trim() || !draft.name.trim()) return; setBusy(true); setMessage(""); try { if (mode === "edit" && selected) await updateCourseGroup(selected.courseGroupId, draft); else await createCourseGroup(draft); setMode("idle"); setDraft(emptyDraft); await load(); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to save course group"); } finally { setBusy(false); } };
   const remove = async () => { if (!canWrite || !selected) return; setBusy(true); setMessage(""); try { await deleteCourseGroup(selected.courseGroupId); setSelectedId(""); setMode("idle"); await load(); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to delete course group"); } finally { setBusy(false); } };
-  return <section className={styles.page} aria-label="Course Group management"><section className={styles.hero}><div><p className={styles.kicker}>{courseGroupModule.subtitle}</p><h2>{courseGroupModule.title}</h2><p>{canWrite ? courseGroupModule.description : "Shared course groups — read only"}</p></div></section><section className={styles.workspace}>
-    <div className={styles.toolbar}><span className={styles.listMeta}>{items.length} groups</span><button className={styles.newButton} type="button" disabled={!canWrite || busy} onClick={() => { setSelectedId(""); setDraft(emptyDraft); setMode("new"); setMessage(""); }}>New</button><button className={styles.editButton} type="button" disabled={!canWrite || !selected || busy} onClick={() => { if (selected) { setDraft({ code: selected.code, name: selected.name, status: selected.status }); setMode("edit"); setMessage(""); } }}>Edit</button><button className={styles.deleteButton} type="button" disabled={!canWrite || !selected || busy} onClick={() => void remove()}>Delete</button><button className={styles.refreshButton} type="button" disabled={busy} onClick={() => void load()}>Refresh</button><button className={styles.exportButton} type="button" onClick={() => setMessage(`Export ready: ${items.length} course groups`)}>Export</button></div>
-    {mode !== "idle" ? <div className={styles.editor}><label>Course Group Name<input maxLength={255} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Quality" /></label><label>Group ID / Code<input maxLength={2} disabled={mode === "edit" && (selected?.lastCourseNumber ?? 0) > 0} value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value.toUpperCase() })} placeholder="QT" /></label><label>Status<select value={draft.status} onChange={(e) => setDraft({ ...draft, status: e.target.value as CourseGroupStatus })}><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select></label>{mode === "edit" ? <label>Last Course Number<input readOnly value={selected?.lastCourseNumber ?? 0} /></label> : null}<button className={styles.saveButton} type="button" disabled={busy} onClick={() => void save()}>Save</button><button className={styles.cancelButton} type="button" disabled={busy} onClick={() => setMode("idle")}>Cancel</button></div> : null}
-    {message ? <p className={styles.exportMessage} role="status">{message}</p> : null}<div className={styles.tableWrap}><table className={styles.courseGroupTable}><thead><tr><th>No.</th><th>Course Group</th><th>Group ID / Code</th><th>Status</th></tr></thead><tbody>{items.map((item, index) => <tr className={item.courseGroupId === selectedId ? styles.selectedRow : undefined} key={item.courseGroupId} onClick={() => { setSelectedId(item.courseGroupId); setMessage(""); }}><td>{index + 1}</td><td>{item.name}</td><td>{item.code}</td><td><span className={styles.statusPill}>{item.status}</span></td></tr>)}</tbody></table></div>
-  </section></section>;
+  return (
+    <section className={styles.page} aria-label="Course Group management">
+      <section className={styles.hero}>
+        <div>
+          <p className={styles.kicker} translate="no">{courseGroupModule.subtitle}</p>
+          <h2 translate="no">{courseGroupModule.title}</h2>
+          <p>{canWrite ? courseGroupModule.description : "Shared course groups — read only"}</p>
+        </div>
+      </section>
+      <section className={styles.workspace}>
+        <div className={styles.toolbar}>
+          <span className={styles.listMeta} translate="no">{items.length} groups</span>
+          <button
+            className={styles.newButton}
+            type="button"
+            disabled={!canWrite || busy}
+            onClick={() => {
+              setSelectedId("");
+              setDraft(emptyDraft);
+              setMode("new");
+              setMessage("");
+            }}
+          >
+            New
+          </button>
+          <button
+            className={styles.editButton}
+            type="button"
+            disabled={!canWrite || !selected || busy}
+            onClick={() => {
+              if (selected) {
+                setDraft({ code: selected.code, name: selected.name, status: selected.status });
+                setMode("edit");
+                setMessage("");
+              }
+            }}
+          >
+            Edit
+          </button>
+          <button
+            className={styles.deleteButton}
+            type="button"
+            disabled={!canWrite || !selected || busy}
+            onClick={() => void remove()}
+          >
+            Delete
+          </button>
+          <button
+            className={styles.refreshButton}
+            type="button"
+            disabled={busy}
+            onClick={() => void load()}
+          >
+            Refresh
+          </button>
+          <button
+            className={styles.exportButton}
+            type="button"
+            onClick={() => setMessage(`Export ready: ${items.length} course groups`)}
+          >
+            Export
+          </button>
+        </div>
+
+        {mode !== "idle" ? (
+          <div className={styles.editor}>
+            <label>
+              Course Group Name
+              <input
+                maxLength={255}
+                value={draft.name}
+                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                placeholder="Quality"
+                translate="no"
+              />
+            </label>
+            <label>
+              Group ID / Code
+              <input
+                maxLength={2}
+                disabled={mode === "edit" && (selected?.lastCourseNumber ?? 0) > 0}
+                value={draft.code}
+                onChange={(e) => setDraft({ ...draft, code: e.target.value.toUpperCase() })}
+                placeholder="QT"
+                translate="no"
+              />
+            </label>
+            <label>
+              Status
+              <select
+                value={draft.status}
+                onChange={(e) => setDraft({ ...draft, status: e.target.value as CourseGroupStatus })}
+                translate="no"
+              >
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="INACTIVE">INACTIVE</option>
+              </select>
+            </label>
+            {mode === "edit" ? (
+              <label>
+                Last Course Number
+                <input readOnly value={selected?.lastCourseNumber ?? 0} translate="no" />
+              </label>
+            ) : null}
+            <button className={styles.saveButton} type="button" disabled={busy} onClick={() => void save()}>
+              Save
+            </button>
+            <button className={styles.cancelButton} type="button" disabled={busy} onClick={() => setMode("idle")}>
+              Cancel
+            </button>
+          </div>
+        ) : null}
+
+        {message ? (
+          <p className={styles.exportMessage} role="status">
+            {message}
+          </p>
+        ) : null}
+
+        <div className={styles.tableWrap}>
+          <table className={styles.courseGroupTable}>
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Course Group</th>
+                <th>Group ID / Code</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody translate="no">
+              {items.map((item, index) => (
+                <tr
+                  className={item.courseGroupId === selectedId ? styles.selectedRow : undefined}
+                  key={item.courseGroupId}
+                  onClick={() => {
+                    setSelectedId(item.courseGroupId);
+                    setMessage("");
+                  }}
+                >
+                  <td>{index + 1}</td>
+                  <td>{item.name}</td>
+                  <td>{item.code}</td>
+                  <td>
+                    <span className={styles.statusPill}>{item.status}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  );
 }

@@ -22,10 +22,10 @@ export const useSectionNavigation = <T extends SectionTopic>(
     if (item.locked) {
       return;
     }
-    router.push(`${basePath}/${item.slug}`);
+    router.push(`${basePath}/${item.slug}`, { scroll: false });
   };
 
-  const goToGrid = () => router.push(basePath);
+  const goToGrid = () => router.push(basePath, { scroll: false });
 
   return { selectedItem, openSection, goToGrid };
 };

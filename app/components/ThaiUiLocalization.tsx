@@ -108,8 +108,8 @@ const thaiUiDictionary: Record<string, string> = {
   "Center permission: center requests": "สิทธิ์ส่วนกลาง: คำขอของส่วนกลาง",
   Central: "ส่วนกลาง",
   "Certificate No.": "เลขที่ใบรับรอง",
-  "Check List Level": "เลือกระดับเป้าหมาย",
-  "Check List Position": "เลือกตำแหน่งเป้าหมาย",
+  "Check List Level": "เลือกระดับกลุ่มเป้าหมาย",
+  "Check List Position": "เลือกตำแหน่งกลุ่มเป้าหมาย",
   "Checking your session...": "กำลังตรวจสอบเซสชัน...",
   Choice: "ตัวเลือก",
   "Choose an owner first, then select a course to record actual attendance and training expenses.":

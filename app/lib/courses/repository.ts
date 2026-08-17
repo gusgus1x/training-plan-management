@@ -2,6 +2,7 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import { Prisma } from "../../generated/prisma/client";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
+import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
 import type { CourseListFilters, CreateCourseInput, UpdateCourseInput } from "./types";
 import type { WorkflowCourse, WorkflowStandard } from "../trainingWorkflow";
 
@@ -18,16 +19,35 @@ const safeBigInt = (val: string | null | undefined): bigint | null => {
   }
 };
 
-// Data Dictionary V6.2: course_code = "{course_group_code}-{last_course_number, min 6 digits}",
-// system-generated only. last_course_number is incremented atomically within the transaction,
-// never decreased, never reused.
 const generateCourseCode = async (tx: Prisma.TransactionClient, courseGroupId: bigint) => {
-  const group = await tx.course_group.update({
+  const group = await tx.course_group.findUnique({
     where: { course_group_id: courseGroupId },
-    data: { last_course_number: { increment: 1 } },
     select: { course_group_code: true, last_course_number: true },
   });
-  return `${group.course_group_code.trim()}-${String(group.last_course_number).padStart(6, "0")}`;
+  if (!group) throw new Error("Course group not found");
+
+  const existingCourses = await tx.course.findMany({
+    where: { course_group_id: courseGroupId },
+    select: { course_code: true },
+  });
+
+  let maxSeq = 0;
+  for (const c of existingCourses) {
+    const parts = c.course_code.split("-");
+    const num = parseInt(parts[parts.length - 1], 10);
+    if (!isNaN(num) && num > maxSeq) {
+      maxSeq = num;
+    }
+  }
+
+  const nextSeq = existingCourses.length === 0 ? 1 : Math.max(maxSeq + 1, (group.last_course_number ?? 0) + 1);
+
+  await tx.course_group.update({
+    where: { course_group_id: courseGroupId },
+    data: { last_course_number: nextSeq },
+  });
+
+  return `${group.course_group_code.trim()}-${String(nextSeq).padStart(6, "0")}`;
 };
 
 export type CourseRepository = ReturnType<typeof createCourseRepository>;
@@ -416,79 +436,7 @@ export const createCourseRepository = (client?: DatabaseClient) => {
             const planIds = plans.map((p) => p.plan_id);
 
             if (planIds.length > 0) {
-              const enrollments = await tx.training_enrollment.findMany({
-                where: { plan_id: { in: planIds } },
-                select: { enrollment_id: true },
-              });
-              const enrollmentIds = enrollments.map((e) => e.enrollment_id);
-
-              if (enrollmentIds.length > 0) {
-                const assessmentSubmissions = await tx.assessment_submission.findMany({
-                  where: { enrollment_id: { in: enrollmentIds } },
-                  select: { submission_id: true },
-                });
-                if (assessmentSubmissions.length > 0) {
-                  const subIds = assessmentSubmissions.map((s) => s.submission_id);
-                  await tx.assessment_answer.deleteMany({
-                    where: { submission_id: { in: subIds } },
-                  });
-                  await tx.assessment_submission.deleteMany({
-                    where: { submission_id: { in: subIds } },
-                  });
-                }
-
-                const evaluationSubmissions = await tx.evaluation_submission.findMany({
-                  where: { enrollment_id: { in: enrollmentIds } },
-                  select: { evaluation_submission_id: true },
-                });
-                if (evaluationSubmissions.length > 0) {
-                  const evalSubIds = evaluationSubmissions.map((s) => s.evaluation_submission_id);
-                  await tx.evaluation_answer.deleteMany({
-                    where: { evaluation_submission_id: { in: evalSubIds } },
-                  });
-                  await tx.evaluation_submission.deleteMany({
-                    where: { evaluation_submission_id: { in: evalSubIds } },
-                  });
-                }
-
-                await tx.attendance.deleteMany({
-                  where: { enrollment_id: { in: enrollmentIds } },
-                });
-
-                await tx.training_result.deleteMany({
-                  where: { enrollment_id: { in: enrollmentIds } },
-                });
-
-                await tx.training_certificate_file.updateMany({
-                  where: { enrollment_id: { in: enrollmentIds } },
-                  data: { enrollment_id: null },
-                });
-
-                await tx.training_enrollment.deleteMany({
-                  where: { plan_id: { in: planIds } },
-                });
-              }
-
-              await tx.training_plan_assessment_setting.deleteMany({
-                where: { plan_id: { in: planIds } },
-              });
-
-              await tx.training_expense.deleteMany({
-                where: { plan_id: { in: planIds } },
-              });
-
-              await tx.training_need_request.updateMany({
-                where: { training_plan_id: { in: planIds } },
-                data: { training_plan_id: null },
-              });
-
-              await tx.certificate_import_batch.deleteMany({
-                where: { plan_id: { in: planIds } },
-              });
-
-              await tx.training_plan.deleteMany({
-                where: { oap_plan_id: { in: oapIds } },
-              });
+              await cascadeDeleteTrainingPlans(tx, planIds);
             }
 
             await tx.training_plan_oap.deleteMany({
@@ -526,7 +474,7 @@ export const createCourseRepository = (client?: DatabaseClient) => {
           await tx.training_need_request.updateMany({
             where: { course_id: courseId },
             data: { course_id: null },
-          });
+          }).catch(() => undefined);
 
           // 4. Delete the course itself
           await tx.course.delete({
@@ -536,7 +484,7 @@ export const createCourseRepository = (client?: DatabaseClient) => {
           return { courseId: id, outcome: "DELETED" as const };
         });
       });
-    }
+    },
   };
 };
 

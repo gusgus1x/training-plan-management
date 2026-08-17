@@ -53,9 +53,15 @@ export const authenticateApiRequest = async (
     throw unauthenticated();
   }
 
-  const principal = await (
-    options.revalidate ?? revalidateAuthenticatedUser
-  )(payload.userId);
+  let principal: AuthenticatedPrincipal;
+  try {
+    principal = await (
+      options.revalidate ?? revalidateAuthenticatedUser
+    )(payload.userId);
+  } catch {
+    throw unauthenticated();
+  }
+
   const rolledToken = (
     options.rollToken ??
     ((currentPayload: SessionPayload) =>

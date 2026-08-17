@@ -25,12 +25,18 @@ const status = (value: unknown, fallback?: OapPlanStatus): OapPlanStatus => {
   return value as OapPlanStatus;
 };
 
+const cleanBudgetString = (val: unknown): string => {
+  if (typeof val === "number") return isNaN(val) ? "0" : String(val);
+  if (typeof val === "string") return val.replace(/,/g, "").trim() || "0";
+  return "0";
+};
+
 export const parseCreateOapPlan = (input: InputObject): CreateOapPlanInput => ({
   courseId: readRequiredString(input, "courseId"),
   planYear: readNumber(input, "planYear") || new Date().getFullYear(),
   participants: readNumber(input, "participants", { required: true }),
   hours: readNumber(input, "hours", { required: true }),
-  budget: readOptionalString(input, "budget") || "0",
+  budget: cleanBudgetString(input.budget),
   trainerName: readOptionalString(input, "trainerName") || "",
   instructorId: readOptionalString(input, "instructorId"),
   providerName: readOptionalString(input, "providerName") || "",
@@ -44,7 +50,7 @@ export const parseUpdateOapPlan = (input: InputObject): UpdateOapPlanInput => {
   if (hasOwn(input, "planYear")) update.planYear = readNumber(input, "planYear") || new Date().getFullYear();
   if (hasOwn(input, "participants")) update.participants = readNumber(input, "participants", { required: true });
   if (hasOwn(input, "hours")) update.hours = readNumber(input, "hours", { required: true });
-  if (hasOwn(input, "budget")) update.budget = readOptionalString(input, "budget") || "0";
+  if (hasOwn(input, "budget")) update.budget = cleanBudgetString(input.budget);
   if (hasOwn(input, "trainerName")) update.trainerName = readOptionalString(input, "trainerName") || "";
   if (hasOwn(input, "instructorId")) update.instructorId = readOptionalString(input, "instructorId");
   if (hasOwn(input, "providerName")) update.providerName = readOptionalString(input, "providerName") || "";

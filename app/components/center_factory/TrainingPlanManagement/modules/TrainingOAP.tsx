@@ -319,6 +319,9 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   };
 
   const handleDelete = async (planId: string) => {
+    if (!confirm("Are you sure you want to delete this OAP plan and all associated sessions?")) {
+      return;
+    }
     try {
       await deleteOapPlan(planId);
       if (selectedPlanId === planId) {

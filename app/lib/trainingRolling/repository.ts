@@ -4,6 +4,7 @@ import { Prisma } from "../../generated/prisma/client";
 import { ApiError } from "../api/errors";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
+import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
 import type { WorkflowCourse } from "../trainingWorkflow";
 import type { CreateRollingPlanInput, RollingPlanListFilters, RollingPlanStatus, UpdateRollingPlanInput } from "./types";
 
@@ -252,91 +253,7 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
       return withDatabaseErrorMapping(async () => {
         const planId = BigInt(id);
         await db().$transaction(async (tx) => {
-          // 1. Find all enrollment IDs for this plan
-          const enrollments = await tx.training_enrollment.findMany({
-            where: { plan_id: planId },
-            select: { enrollment_id: true },
-          });
-          const enrollmentIds = enrollments.map((e) => e.enrollment_id);
-
-          if (enrollmentIds.length > 0) {
-            // Delete assessment submissions & answers
-            const assessmentSubmissions = await tx.assessment_submission.findMany({
-              where: { enrollment_id: { in: enrollmentIds } },
-              select: { submission_id: true },
-            });
-            if (assessmentSubmissions.length > 0) {
-              const submissionIds = assessmentSubmissions.map((s) => s.submission_id);
-              await tx.assessment_answer.deleteMany({
-                where: { submission_id: { in: submissionIds } },
-              });
-              await tx.assessment_submission.deleteMany({
-                where: { submission_id: { in: submissionIds } },
-              });
-            }
-
-            // Delete evaluation submissions & answers
-            const evaluationSubmissions = await tx.evaluation_submission.findMany({
-              where: { enrollment_id: { in: enrollmentIds } },
-              select: { evaluation_submission_id: true },
-            });
-            if (evaluationSubmissions.length > 0) {
-              const evalSubIds = evaluationSubmissions.map((s) => s.evaluation_submission_id);
-              await tx.evaluation_answer.deleteMany({
-                where: { evaluation_submission_id: { in: evalSubIds } },
-              });
-              await tx.evaluation_submission.deleteMany({
-                where: { evaluation_submission_id: { in: evalSubIds } },
-              });
-            }
-
-            // Delete attendance
-            await tx.attendance.deleteMany({
-              where: { enrollment_id: { in: enrollmentIds } },
-            });
-
-            // Delete training results
-            await tx.training_result.deleteMany({
-              where: { enrollment_id: { in: enrollmentIds } },
-            });
-
-            // Unlink certificate files
-            await tx.training_certificate_file.updateMany({
-              where: { enrollment_id: { in: enrollmentIds } },
-              data: { enrollment_id: null },
-            });
-
-            // Delete training enrollments
-            await tx.training_enrollment.deleteMany({
-              where: { plan_id: planId },
-            });
-          }
-
-          // 2. Delete training plan assessment settings
-          await tx.training_plan_assessment_setting.deleteMany({
-            where: { plan_id: planId },
-          });
-
-          // 3. Delete training expenses
-          await tx.training_expense.deleteMany({
-            where: { plan_id: planId },
-          });
-
-          // 4. Unlink training need requests
-          await tx.training_need_request.updateMany({
-            where: { training_plan_id: planId },
-            data: { training_plan_id: null },
-          });
-
-          // 5. Delete certificate import batches
-          await tx.certificate_import_batch.deleteMany({
-            where: { plan_id: planId },
-          });
-
-          // 6. Delete the training plan itself
-          await tx.training_plan.delete({
-            where: { plan_id: planId },
-          });
+          await cascadeDeleteTrainingPlans(tx, [planId]);
         });
 
         return { rollingPlanId: id, outcome: "DELETED" as const };
