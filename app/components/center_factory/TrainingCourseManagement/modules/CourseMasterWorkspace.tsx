@@ -323,11 +323,11 @@ function CourseMaster() {
   const [standards, setStandards] = useState<CourseStandardRecord[]>([]);
   const [oapPlans, setOapPlans] = useState<OapPlanRecord[]>([]);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
-  const [standardFunctionCode, setStandardFunctionCode] = useState(allFunctionCode);
-  const [standardFunctionName, setStandardFunctionName] = useState(allFunctionOption);
-  const [standardDivisionCode, setStandardDivisionCode] = useState(allFunctionCode);
-  const [standardDepartmentCode, setStandardDepartmentCode] = useState(allFunctionCode);
-  const [standardSectionCode, setStandardSectionCode] = useState(allFunctionCode);
+  const [standardFunctionCode, setStandardFunctionCode] = useState("");
+  const [standardFunctionName, setStandardFunctionName] = useState("");
+  const [standardDivisionCode, setStandardDivisionCode] = useState("");
+  const [standardDepartmentCode, setStandardDepartmentCode] = useState("");
+  const [standardSectionCode, setStandardSectionCode] = useState("");
 
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importRows, setImportRows] = useState<CourseMasterImportRow[]>([]);
@@ -790,11 +790,11 @@ function CourseMaster() {
   );
 
   const resetStandardForm = () => {
-    setStandardFunctionCode(allFunctionCode);
-    setStandardFunctionName("All Function");
-    setStandardDivisionCode(allFunctionCode);
-    setStandardDepartmentCode(allFunctionCode);
-    setStandardSectionCode(allFunctionCode);
+    setStandardFunctionCode("");
+    setStandardFunctionName("");
+    setStandardDivisionCode("");
+    setStandardDepartmentCode("");
+    setStandardSectionCode("");
     setSelectedCompanies(isFactoryUser && userCompanyCode ? [userCompanyCode] : []);
     setSelectedPositions([]);
     setSelectedLevels([]);
@@ -815,20 +815,19 @@ function CourseMaster() {
         option.code === standard.functionCode ||
         option.name === standard.functionName,
     );
-    setStandardFunctionCode(matchingFunctionOption?.code ?? allFunctionCode);
+    setStandardFunctionCode(matchingFunctionOption?.code ?? (standard.functionCode || ""));
     setStandardFunctionName(
-      getFunctionDisplayName(standard.functionCode, standard.functionName) ||
-        "All Function",
+      getFunctionDisplayName(standard.functionCode, standard.functionName) || "",
     );
     // Match against the raw (unfiltered) rows rather than the cascade-filtered Options —
     // the Options list depends on the division/department state we're about to set below,
     // so it may still reflect the previous selection at this point in the render.
     const matchingDivisionRow = divisionRows.find((row) => row.name === standard.division);
-    setStandardDivisionCode(standard.division ? matchingDivisionRow?.code ?? allFunctionCode : allFunctionCode);
+    setStandardDivisionCode(standard.division ? matchingDivisionRow?.code ?? "" : "");
     const matchingDepartmentRow = departmentRows.find((row) => row.name === standard.department);
-    setStandardDepartmentCode(standard.department ? matchingDepartmentRow?.code ?? allFunctionCode : allFunctionCode);
+    setStandardDepartmentCode(standard.department ? matchingDepartmentRow?.code ?? "" : "");
     const matchingSectionRow = sectionRows.find((row) => row.name === standard.section);
-    setStandardSectionCode(standard.section ? matchingSectionRow?.code ?? allFunctionCode : allFunctionCode);
+    setStandardSectionCode(standard.section ? matchingSectionRow?.code ?? "" : "");
     if (isFactoryUser && userCompanyCode) {
       setSelectedCompanies([userCompanyCode]);
     } else {
