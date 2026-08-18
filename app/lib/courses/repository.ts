@@ -92,7 +92,12 @@ export const createCourseRepository = (client?: DatabaseClient) => {
       const andList: Prisma.courseWhereInput[] = [];
 
       if (companyId) {
-        andList.push({ company_id: BigInt(companyId) });
+        andList.push({
+          OR: [
+            { company_id: BigInt(companyId) },
+            { company_id: null },
+          ],
+        });
       }
 
       if (filters.status) {

@@ -1300,8 +1300,22 @@ export default function TrainingAcceptSurvey() {
         </div>
         <div className={styles.ruleRow}>
           <span>Function: {selectedCourse.targetFunctionName || "All Function"}</span>
-          <span>Position: {selectedCourse.targetPositions.length > 0 ? selectedCourse.targetPositions.join(", ") : "All Positions"}</span>
-          <span>Level: {selectedCourse.targetLevels.length > 0 ? selectedCourse.targetLevels.join(", ") : "All Levels"}</span>
+          <span>
+            Position:{" "}
+            {selectedCourse.targetPositions.length > 0
+              ? selectedCourse.targetPositions.join(", ")
+              : selectedCourse.targetGroup && selectedCourse.targetGroup !== "-"
+                ? selectedCourse.targetGroup
+                : "All Positions"}
+          </span>
+          <span>
+            Level:{" "}
+            {selectedCourse.targetLevels.length > 0
+              ? selectedCourse.targetLevels.join(", ")
+              : selectedCourse.targetGroup && selectedCourse.targetGroup !== "-"
+                ? selectedCourse.targetGroup
+                : "All Levels"}
+          </span>
           <span>Company: {selectedCourse.companies.length > 0 ? selectedCourse.companies.join(", ") : "All Companies"}</span>
         </div>
       </section>
