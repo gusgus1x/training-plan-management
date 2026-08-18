@@ -2658,3 +2658,119 @@
   background: rgba(2, 132, 199, 0.1);
   color: #0284c7;
 }
+
+/* Searchable Select Combobox */
+.searchableSelectContainer {
+  position: relative;
+  width: 100%;
+  font-size: 0.8rem;
+}
+
+.searchableSelectTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--ui-30-border, #334155);
+  border-radius: 8px;
+  background: var(--ui-60-surface, #1e293b);
+  color: var(--ui-30-ink, #f8fafc);
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.searchableSelectTrigger:hover:not(.disabled) {
+  border-color: var(--ui-30-primary, #3b82f6);
+}
+
+.searchableSelectTrigger.open {
+  border-color: var(--ui-30-primary, #3b82f6);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.searchableSelectTrigger.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.searchableSelectValue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.searchableSelectInput {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  outline: none;
+}
+
+.searchableSelectArrow {
+  margin-left: 8px;
+  font-size: 0.65rem;
+  opacity: 0.6;
+  transition: transform 0.15s ease;
+}
+
+.searchableSelectTrigger.open .searchableSelectArrow {
+  transform: rotate(180deg);
+}
+
+.searchableSelectMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 200;
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--ui-30-border, #334155);
+  border-radius: 8px;
+  background: var(--ui-60-surface, #1e293b);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+}
+
+.searchableSelectItem {
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.searchableSelectItem:hover {
+  background: var(--ui-60-surface-soft, rgba(59, 130, 246, 0.15));
+  color: var(--ui-30-ink, #ffffff);
+}
+
+.searchableSelectItem.selected {
+  background: rgba(59, 130, 246, 0.25);
+  color: #60a5fa;
+  font-weight: 700;
+}
+
+.itemMain {
+  font-size: 0.82rem;
+}
+
+.itemSub {
+  font-size: 0.72rem;
+  color: var(--ui-30-muted, #94a3b8);
+  margin-top: 2px;
+}
+
+.searchableSelectEmpty {
+  padding: 12px;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--ui-30-muted, #94a3b8);
+}

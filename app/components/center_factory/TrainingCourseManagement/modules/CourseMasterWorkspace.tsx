@@ -147,6 +147,157 @@ const emptyCourseForm: CourseForm = {
   courseGroup: "",
 };
 
+const EN_KEYS = " `1234567890-=qwertyuiop[]\\asdfghjkl;'zxcvbnm,./~!@#$%^&*()_+QWERTYUIOP{}|ASDFGHJKL:\"ZXCVBNM<>?";
+const TH_KEYS = " -ภถุึคตจขชๆไำพะัีรนยบลฃฟหกดเ้่าสวงผปแอิืทมใฝ_๑๒๓๔ู฿๕๖๗๘๙ํ๊๋็ัีรนยิ์ืฺํ๊๋็ัีรนยบลฅฟหกดเ้่าสวงผปแอิืทมใฝ";
+
+function translateKeyboard(input: string): string {
+  let result = "";
+  for (let i = 0; i < input.length; i++) {
+    const char = input[i];
+    const enIdx = EN_KEYS.indexOf(char);
+    if (enIdx !== -1 && enIdx < TH_KEYS.length) {
+      result += TH_KEYS[enIdx];
+      continue;
+    }
+    const thIdx = TH_KEYS.indexOf(char);
+    if (thIdx !== -1 && thIdx < EN_KEYS.length) {
+      result += EN_KEYS[thIdx];
+      continue;
+    }
+    result += char;
+  }
+  return result;
+}
+
+interface SearchableSelectOption {
+  id?: string;
+  code: string;
+  name: string;
+  nameTh?: string;
+  nameEn?: string;
+}
+
+interface SearchableSelectProps {
+  value: string;
+  options: SearchableSelectOption[];
+  disabled?: boolean;
+  placeholder?: string;
+  onChange: (valueCode: string) => void;
+}
+
+const SearchableSelect = ({
+  value,
+  options,
+  disabled = false,
+  placeholder = "Select or search...",
+  onChange,
+}: SearchableSelectProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const selectedOption = options.find((opt) => opt.code === value);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        setSearchQuery("");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredOptions = useMemo(() => {
+    if (!searchQuery.trim()) return options;
+    const q = searchQuery.trim().toLowerCase();
+    const translatedQ = translateKeyboard(q).toLowerCase();
+
+    return options.filter((option) => {
+      const code = (option.code || "").toLowerCase();
+      const name = (option.name || "").toLowerCase();
+      const nameTh = (option.nameTh || "").toLowerCase();
+      const nameEn = (option.nameEn || "").toLowerCase();
+
+      return (
+        code.includes(q) ||
+        name.includes(q) ||
+        nameTh.includes(q) ||
+        nameEn.includes(q) ||
+        (translatedQ !== q &&
+          (code.includes(translatedQ) ||
+            name.includes(translatedQ) ||
+            nameTh.includes(translatedQ) ||
+            nameEn.includes(translatedQ)))
+      );
+    });
+  }, [options, searchQuery]);
+
+  return (
+    <div className={styles.searchableSelectContainer} ref={containerRef}>
+      <div
+        className={`${styles.searchableSelectTrigger} ${disabled ? styles.disabled : ""} ${
+          isOpen ? styles.open : ""
+        }`}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev);
+            setSearchQuery("");
+          }
+        }}
+      >
+        {isOpen ? (
+          <input
+            type="text"
+            className={styles.searchableSelectInput}
+            value={searchQuery}
+            autoFocus
+            disabled={disabled}
+            placeholder={`Search ${selectedOption?.name || placeholder}...`}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span className={styles.searchableSelectValue} translate="no">
+            {selectedOption ? selectedOption.name : placeholder}
+          </span>
+        )}
+        <span className={styles.searchableSelectArrow}>▼</span>
+      </div>
+
+      {isOpen && !disabled && (
+        <ul className={styles.searchableSelectMenu}>
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((opt) => (
+              <li
+                key={opt.code + (opt.id || "")}
+                className={`${styles.searchableSelectItem} ${
+                  opt.code === value ? styles.selected : ""
+                }`}
+                onClick={() => {
+                  onChange(opt.code);
+                  setIsOpen(false);
+                  setSearchQuery("");
+                }}
+              >
+                <div className={styles.itemMain} translate="no">{opt.name}</div>
+                {opt.nameTh && opt.nameEn && opt.nameTh !== opt.nameEn ? (
+                  <div className={styles.itemSub} translate="no">
+                    {opt.nameTh} · {opt.nameEn}
+                  </div>
+                ) : null}
+              </li>
+            ))
+          ) : (
+            <li className={styles.searchableSelectEmpty}>No matches found</li>
+          )}
+        </ul>
+      )}
+    </div>
+  );
+};
+
 function CourseMaster() {
   const user = useAuthenticatedUser();
   const { language } = useUiLanguage();
@@ -320,27 +471,27 @@ function CourseMaster() {
       setFunctionRows(
         functions.items
           .filter((item) => item.status === "ACTIVE")
-          .map((item) => ({ id: item.functionId, code: item.functionCode, name: item.functionNameEn || item.functionNameTh })),
+          .map((item) => ({ id: item.functionId, code: item.functionCode, name: item.functionNameEn || item.functionNameTh, nameTh: item.functionNameTh, nameEn: item.functionNameEn || undefined })),
       );
       setCompanyRows(
         companies.items
           .filter((item) => item.status === "ACTIVE")
-          .map((item) => ({ id: item.companyId, code: item.companyCode, name: item.companyNameEn || item.companyNameTh })),
+          .map((item) => ({ id: item.companyId, code: item.companyCode, name: item.companyNameEn || item.companyNameTh, nameTh: item.companyNameTh, nameEn: item.companyNameEn || undefined })),
       );
       setDivisionRows(
         divisions.items
           .filter((item) => item.status === "ACTIVE")
-          .map((item) => ({ id: item.divisionId, code: item.divisionCode, name: item.divisionNameEn || item.divisionNameTh })),
+          .map((item) => ({ id: item.divisionId, code: item.divisionCode, name: item.divisionNameEn || item.divisionNameTh, nameTh: item.divisionNameTh, nameEn: item.divisionNameEn || undefined })),
       );
       setDepartmentRows(
         departments.items
           .filter((item) => item.status === "ACTIVE")
-          .map((item) => ({ id: item.departmentId, code: item.departmentCode, name: item.departmentNameEn || item.departmentNameTh })),
+          .map((item) => ({ id: item.departmentId, code: item.departmentCode, name: item.departmentNameEn || item.departmentNameTh, nameTh: item.departmentNameTh, nameEn: item.departmentNameEn || undefined })),
       );
       setSectionRows(
         sections.items
           .filter((item) => item.status === "ACTIVE")
-          .map((item) => ({ id: item.sectionId, code: item.sectionCode, name: item.sectionNameEn || item.sectionNameTh })),
+          .map((item) => ({ id: item.sectionId, code: item.sectionCode, name: item.sectionNameEn || item.sectionNameTh, nameTh: item.sectionNameTh, nameEn: item.sectionNameEn || undefined })),
       );
       setOrgUsage(orgHierarchyUsage.items);
       setPositionRows(positions.items.filter((item) => item.status === "ACTIVE"));
@@ -370,19 +521,19 @@ function CourseMaster() {
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
   const [companyRows, setCompanyRows] = useState<
-    Array<{ id: string; code: string; name: string }>
+    Array<{ id: string; code: string; name: string; nameTh?: string; nameEn?: string }>
   >([]);
   const [functionRows, setFunctionRows] = useState<
-    Array<{ id: string; code: string; name: string }>
+    Array<{ id: string; code: string; name: string; nameTh?: string; nameEn?: string }>
   >([]);
   const [divisionRows, setDivisionRows] = useState<
-    Array<{ id: string; code: string; name: string }>
+    Array<{ id: string; code: string; name: string; nameTh?: string; nameEn?: string }>
   >([]);
   const [departmentRows, setDepartmentRows] = useState<
-    Array<{ id: string; code: string; name: string }>
+    Array<{ id: string; code: string; name: string; nameTh?: string; nameEn?: string }>
   >([]);
   const [sectionRows, setSectionRows] = useState<
-    Array<{ id: string; code: string; name: string }>
+    Array<{ id: string; code: string; name: string; nameTh?: string; nameEn?: string }>
   >([]);
   const [orgUsage, setOrgUsage] = useState<OrgHierarchyUsageRow[]>([]);
   const [positionRows, setPositionRows] = useState<PositionRecord[]>([]);
@@ -1570,73 +1721,52 @@ function CourseMaster() {
         <div className={styles.standard_formGrid}>
           <label>
             <span className={styles.fieldLabel} translate="no">Function Name</span>
-            <select
+            <SearchableSelect
               value={standardFunctionCode}
               disabled={!isEditing}
-              translate="no"
-              onChange={(event) => {
-                const nextCode = event.target.value;
+              options={functionOptions}
+              placeholder="Search or select Function"
+              onChange={(nextCode) => {
                 setStandardFunctionCode(nextCode);
                 setStandardFunctionName(
                   functionOptions.find((option) => option.code === nextCode)
                     ?.name ?? "All Function",
                 );
               }}
-            >
-              {functionOptions.map((option) => (
-                <option key={option.code} value={option.code} translate="no">
-                  {option.name}
-                </option>
-              ))}
-            </select>
+            />
           </label>
 
           <label>
             <span className={styles.fieldLabel} translate="no">Division</span>
-            <select
+            <SearchableSelect
               value={standardDivisionCode}
               disabled={!isEditing}
-              translate="no"
-              onChange={(event) => setStandardDivisionCode(event.target.value)}
-            >
-              {divisionOptions.map((option) => (
-                <option key={option.code} value={option.code} translate="no">
-                  {option.name}
-                </option>
-              ))}
-            </select>
+              options={divisionOptions}
+              placeholder="Search or select Division"
+              onChange={(nextCode) => setStandardDivisionCode(nextCode)}
+            />
           </label>
 
           <label>
             <span className={styles.fieldLabel} translate="no">Department</span>
-            <select
+            <SearchableSelect
               value={standardDepartmentCode}
               disabled={!isEditing}
-              translate="no"
-              onChange={(event) => setStandardDepartmentCode(event.target.value)}
-            >
-              {departmentOptions.map((option) => (
-                <option key={option.code} value={option.code} translate="no">
-                  {option.name}
-                </option>
-              ))}
-            </select>
+              options={departmentOptions}
+              placeholder="Search or select Department"
+              onChange={(nextCode) => setStandardDepartmentCode(nextCode)}
+            />
           </label>
 
           <label>
             <span className={styles.fieldLabel} translate="no">Section</span>
-            <select
+            <SearchableSelect
               value={standardSectionCode}
               disabled={!isEditing}
-              translate="no"
-              onChange={(event) => setStandardSectionCode(event.target.value)}
-            >
-              {sectionOptions.map((option) => (
-                <option key={option.code} value={option.code} translate="no">
-                  {option.name}
-                </option>
-              ))}
-            </select>
+              options={sectionOptions}
+              placeholder="Search or select Section"
+              onChange={(nextCode) => setStandardSectionCode(nextCode)}
+            />
           </label>
         </div>
 
