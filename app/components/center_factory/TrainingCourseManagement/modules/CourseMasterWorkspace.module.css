@@ -206,7 +206,7 @@
   min-height: 44px;
   padding: 10px 14px;
   outline: none;
-  font-size: 0.98rem;
+  font-size: 16px;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -232,7 +232,7 @@
   border-radius: 999px;
   padding: 10px 22px;
   font-weight: 800;
-  font-size: 0.95rem;
+  font-size: 16px;
   cursor: pointer;
   transition: all 160ms ease;
 }
@@ -531,7 +531,7 @@
 .cancelButton {
   min-height: 44px;
   padding: 10px 18px;
-  font-size: 0.95rem;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -545,7 +545,7 @@
 .questionGrid textarea {
   min-height: 44px;
   padding: 10px 14px;
-  font-size: 0.98rem;
+  font-size: 16px;
 }
 
 .panelHeader {
@@ -554,13 +554,13 @@
 
 .panelHeader h3,
 .checkSection h4 {
-  font-size: 1.15rem;
+  font-size: 18px;
   font-weight: 800;
 }
 
 .panelHeader span,
 .summaryCard span {
-  font-size: 0.88rem;
+  font-size: 14px;
   font-weight: 600;
 }
 
@@ -573,7 +573,7 @@
 .questionGrid label,
 .editor label {
   gap: 8px;
-  font-size: 0.95rem;
+  font-size: 16px;
   font-weight: 800;
   color: var(--ui-30-text);
 }
@@ -588,7 +588,7 @@
 .standardTable th,
 .assessmentTable th {
   padding: 12px 14px;
-  font-size: 0.88rem;
+  font-size: 14px;
   font-weight: 800;
   color: var(--ui-30-muted);
 }
@@ -599,14 +599,14 @@
 .standardTable td,
 .assessmentTable td {
   padding: 14px 14px;
-  font-size: 0.98rem;
+  font-size: 16px;
   vertical-align: middle;
 }
 
 .courseTable td strong,
 .courseTypeTable td:last-child,
 .courseGroupTable td:last-child {
-  font-size: 1.05rem;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -614,7 +614,7 @@
 .questionList span,
 .questionList p,
 .emptyState {
-  font-size: 0.88rem;
+  font-size: 14px;
 }
 
 .statusPill,
@@ -1543,7 +1543,7 @@
   display: grid;
   gap: 8px;
   color: var(--ui-30-text);
-  font-size: 0.95rem;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -1555,7 +1555,7 @@
 
 .standard_checkSection h4 {
   color: var(--ui-30-ink);
-  font-size: 1.05rem;
+  font-size: 18px;
 }
 
 .standard_checkGrid,
@@ -1583,7 +1583,7 @@
   padding: 10px 14px;
   min-height: 44px;
   color: var(--ui-30-text, #1e293b);
-  font-size: 0.95rem;
+  font-size: 16px;
   font-weight: 800;
   box-shadow: none;
   cursor: pointer;
@@ -1678,7 +1678,7 @@
   padding: 14px 12px;
   text-align: left;
   white-space: nowrap;
-  font-size: 0.96rem;
+  font-size: 16px;
 }
 
 .standard_standardTable th {
@@ -1686,7 +1686,7 @@
   top: 0;
   z-index: 1;
   color: var(--ui-30-muted);
-  font-size: 0.88rem;
+  font-size: 14px;
   font-weight: 800;
   text-transform: uppercase;
   background: var(--ui-60-surface-soft);
@@ -2681,7 +2681,7 @@
 .searchableSelectContainer {
   position: relative;
   width: 100%;
-  font-size: 0.98rem;
+  font-size: 16px;
 }
 
 .searchableSelectTrigger {
@@ -2694,7 +2694,7 @@
   border-radius: 10px;
   background: var(--ui-60-surface, #1e293b);
   color: var(--ui-30-ink, #f8fafc);
-  font-size: 0.98rem;
+  font-size: 16px;
   cursor: pointer;
   user-select: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -2719,7 +2719,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
-  font-size: 0.98rem;
+  font-size: 16px;
 }
 
 .searchableSelectInput {
@@ -2728,13 +2728,13 @@
   background: transparent;
   color: inherit;
   font-family: inherit;
-  font-size: 0.98rem;
+  font-size: 16px;
   outline: none;
 }
 
 .searchableSelectArrow {
   margin-left: 8px;
-  font-size: 0.8rem;
+  font-size: 14px;
   opacity: 0.7;
   transition: transform 0.15s ease;
 }
@@ -2779,12 +2779,12 @@
 }
 
 .itemMain {
-  font-size: 0.98rem;
+  font-size: 16px;
   font-weight: 600;
 }
 
 .itemSub {
-  font-size: 0.84rem;
+  font-size: 14px;
   color: var(--ui-30-muted, #94a3b8);
   margin-top: 3px;
 }
@@ -2792,6 +2792,6 @@
 .searchableSelectEmpty {
   padding: 14px;
   text-align: center;
-  font-size: 0.9rem;
+  font-size: 14px;
   color: var(--ui-30-muted, #94a3b8);
 }
