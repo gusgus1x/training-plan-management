@@ -85,6 +85,7 @@ export type RollingPlan = {
   company: string;
   relatedCompanies: string[];
   status: RollingStatus;
+  dbStatus?: string;
   updatedAt: string;
 };
 
@@ -168,6 +169,7 @@ const mapRecordToRollingPlan = (record: RollingPlanRecord): RollingPlan => {
     company: isCentral ? "All Companies" : record.ownerCompany,
     relatedCompanies: isCentral ? [...rollingCompanyOptions] : [record.ownerCompany],
     status: record.status === "Cancel" ? "Planning" : record.status,
+    dbStatus: record.dbStatus,
     updatedAt: record.updatedAt,
   };
 };
@@ -214,10 +216,16 @@ const createEmptyForm = (): RollingForm => ({
   sessions: [createEmptySession()],
 });
 
-export const getJobStatus = (trainingDate: string) => {
+export const getJobStatus = (item: { status?: RollingStatus; trainingDate: string; dbStatus?: string }) => {
+  if (item.status === "Planning") {
+    return "Planning";
+  }
+  if (item.dbStatus === "COMPLETED") {
+    return "Completed";
+  }
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const target = new Date(`${trainingDate}T00:00:00`);
+  const target = new Date(`${item.trainingDate}T00:00:00`);
   return target < today ? "Completed" : "Rolling";
 };
 
@@ -317,7 +325,7 @@ export default function TrainingRolling() {
               plan.location,
               formatRollingPlanCompanies(plan),
               plan.status,
-              getJobStatus(plan.trainingDate),
+              getJobStatus(plan),
             ]
               .join(" ")
               .toLowerCase()
@@ -1154,11 +1162,17 @@ export default function TrainingRolling() {
                       const groupStatus: RollingStatus = allPublished
                         ? "Planned"
                         : "Planning";
-                      const groupJobStatus = group.plans.some(
-                        (item) => getJobStatus(item.trainingDate) === "Rolling",
-                      )
+                      const allCompleted = group.plans.every(
+                        (item) => getJobStatus(item) === "Completed",
+                      );
+                      const hasRolling = group.plans.some(
+                        (item) => getJobStatus(item) === "Rolling",
+                      );
+                      const groupJobStatus = allCompleted
+                        ? "Completed"
+                        : hasRolling
                         ? "Rolling"
-                        : "Completed";
+                        : "Planning";
 
                       return (
                         <Fragment key={group.id}>

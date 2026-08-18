@@ -153,6 +153,10 @@ export const createTrainingRecordRepository = (client?: DatabaseClient) => {
               })),
             });
           }
+          await tx.training_plan.update({
+            where: { plan_id: id },
+            data: { status: "COMPLETED", updated_at: new Date() },
+          });
         });
 
         const updated = await db().training_plan.findUniqueOrThrow({

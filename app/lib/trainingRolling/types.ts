@@ -16,6 +16,7 @@ export type RollingPlanRecord = {
   endTime: string;
   capacity: number;
   status: RollingPlanStatus;
+  dbStatus?: string;
   createdBy: string;
   updatedAt: string;
   course: WorkflowCourse;

@@ -119,6 +119,7 @@ const mapRollingPlan = (row: RollingPlanWithRelations) => {
     endTime: end.time,
     capacity: row.capacity,
     status: DB_STATUS_TO_UI[row.status] ?? "Planning",
+    dbStatus: row.status,
     createdBy: row.created_by?.toString() || "",
     updatedAt: (row.updated_at || row.created_at || new Date()).toISOString(),
     course: oap?.course ? mapCourseSnapshot(oap.course) : null,
