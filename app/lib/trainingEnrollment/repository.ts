@@ -157,9 +157,19 @@ const loadPlanScope = async (db: DatabaseClient, planId: bigint) => {
   return { courseId: plan.training_plan_oap.course_id, companyId: plan.training_plan_oap.company_id };
 };
 
-const assertFactoryOwnsPlan = (companyId: bigint | null, requesterCompanyId: string | null) => {
-  if (companyId === null || requesterCompanyId === null || companyId.toString() !== requesterCompanyId) {
-    throw forbidden("This training plan is not owned by your company");
+const assertFactoryScopeForEnrollment = (
+  planCompanyId: bigint | null,
+  employeeCompanyId: bigint | null,
+  requesterCompanyId: string | null,
+) => {
+  if (requesterCompanyId === null) {
+    throw forbidden("This training plan or employee is outside your permitted scope");
+  }
+  const isOwnPlan = planCompanyId !== null && planCompanyId.toString() === requesterCompanyId;
+  const isOwnEmployee = employeeCompanyId !== null && employeeCompanyId.toString() === requesterCompanyId;
+
+  if (!isOwnPlan && !isOwnEmployee) {
+    throw forbidden("This training plan or employee is outside your permitted scope");
   }
 };
 
@@ -197,6 +207,11 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
         const employeeId = BigInt(input.employeeId);
         const { courseId, companyId: planCompanyId } = await loadPlanScope(db(), planId);
         const employee = await db().employee.findUniqueOrThrow({ where: { employee_id: employeeId }, include: employeeInclude });
+
+        if (role === "HRD_FACTORY") {
+          assertFactoryScopeForEnrollment(planCompanyId, employee.company_id, companyId);
+        }
+
         const { targetMatchStatus, levelMatchStatus, standardCourseId } = await computeTargetMatch(db(), courseId, employee);
 
         const isOwnFactoryPlan = planCompanyId !== null && companyId !== null && planCompanyId.toString() === companyId;
@@ -251,7 +266,11 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
         });
 
         if (role === "HRD_FACTORY") {
-          assertFactoryOwnsPlan(current.training_plan.training_plan_oap.company_id, companyId);
+          assertFactoryScopeForEnrollment(
+            current.training_plan.training_plan_oap.company_id,
+            current.employee.company_id,
+            companyId,
+          );
         } else if (role === "EMPLOYEE") {
           if (action !== "cancel" || requesterEmployeeId === null || current.employee_id.toString() !== requesterEmployeeId) {
             throw forbidden("You can only withdraw your own registration");
@@ -289,7 +308,11 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
         });
 
         if (role === "HRD_FACTORY") {
-          assertFactoryOwnsPlan(current.training_plan.training_plan_oap.company_id, companyId);
+          assertFactoryScopeForEnrollment(
+            current.training_plan.training_plan_oap.company_id,
+            current.employee.company_id,
+            companyId,
+          );
         }
 
         if (!attended) {
