@@ -203,10 +203,10 @@
   border-radius: 10px;
   background: var(--ui-60-surface-soft);
   color: var(--ui-30-ink);
-  min-height: 40px;
+  min-height: 44px;
   padding: 10px 14px;
   outline: none;
-  font-size: 0.86rem;
+  font-size: 0.98rem;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -228,11 +228,11 @@
 .primaryButton,
 .secondaryButton,
 .dangerButton {
-  min-height: 40px;
+  min-height: 44px;
   border-radius: 999px;
-  padding: 10px 20px;
+  padding: 10px 22px;
   font-weight: 800;
-  font-size: 0.84rem;
+  font-size: 0.95rem;
   cursor: pointer;
   transition: all 160ms ease;
 }
@@ -317,14 +317,16 @@
 .courseTable th,
 .courseTable td {
   border-bottom: 1px solid var(--ui-30-border);
-  padding: 12px 10px;
+  padding: 14px 12px;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
+  font-size: 0.98rem;
 }
 
 .courseTable th {
   color: var(--ui-30-muted);
-  font-size: 0.74rem;
+  font-size: 0.88rem;
+  font-weight: 800;
   text-transform: uppercase;
   background: var(--ui-60-surface-soft);
 }
@@ -336,14 +338,15 @@
 
 .courseTable td strong {
   display: block;
-  font-size: 0.92rem;
+  font-size: 1.02rem;
+  font-weight: 800;
 }
 
 .courseTable td span {
   display: block;
   margin-top: 4px;
   color: var(--ui-30-muted);
-  font-size: 0.8rem;
+  font-size: 0.88rem;
 }
 
 .detailRow td {
@@ -367,8 +370,8 @@
   border-radius: 999px;
   background: var(--ui-30-primary-soft);
   color: var(--ui-30-primary);
-  padding: 4px 9px;
-  font-size: 0.74rem;
+  padding: 5px 12px;
+  font-size: 0.85rem;
   font-weight: 800;
 }
 
@@ -380,7 +383,7 @@
 .selectionHint {
   margin: -6px 0 16px;
   color: var(--ui-30-muted);
-  font-size: 0.82rem;
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
@@ -392,10 +395,10 @@
 .actionCell .dangerButton,
 .detailButton {
   border-radius: 8px;
-  min-height: 32px;
-  padding: 5px 12px;
+  min-height: 38px;
+  padding: 6px 14px;
   font-weight: 800;
-  font-size: 0.76rem;
+  font-size: 0.88rem;
   cursor: pointer;
 }
 
@@ -479,7 +482,7 @@
 
 /* Compact readability pass */
 .page {
-  font-size: 0.88rem;
+  font-size: 1rem;
 }
 
 .hero {
@@ -1526,9 +1529,9 @@
 
 .standard_formGrid label {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   color: var(--ui-30-text);
-  font-size: 0.82rem;
+  font-size: 0.95rem;
   font-weight: 800;
 }
 
@@ -1540,7 +1543,7 @@
 
 .standard_checkSection h4 {
   color: var(--ui-30-ink);
-  font-size: 0.95rem;
+  font-size: 1.05rem;
 }
 
 .standard_checkGrid,
@@ -1560,14 +1563,15 @@
 
 .standard_checkItem {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
   border: 1px solid var(--ui-30-primary-border, #cbd5e1);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--ui-60-surface, #ffffff);
-  padding: 8px 12px;
+  padding: 10px 14px;
+  min-height: 44px;
   color: var(--ui-30-text, #1e293b);
-  font-size: 0.84rem;
+  font-size: 0.95rem;
   font-weight: 800;
   box-shadow: none;
   cursor: pointer;
@@ -1659,9 +1663,10 @@
 .standard_standardTable td {
   border-bottom: 1px solid var(--ui-30-border);
   background: var(--ui-60-surface);
-  padding: 12px 10px;
+  padding: 14px 12px;
   text-align: left;
   white-space: nowrap;
+  font-size: 0.96rem;
 }
 
 .standard_standardTable th {
@@ -1669,7 +1674,8 @@
   top: 0;
   z-index: 1;
   color: var(--ui-30-muted);
-  font-size: 0.72rem;
+  font-size: 0.88rem;
+  font-weight: 800;
   text-transform: uppercase;
   background: var(--ui-60-surface-soft);
 }
@@ -2663,19 +2669,20 @@
 .searchableSelectContainer {
   position: relative;
   width: 100%;
-  font-size: 0.8rem;
+  font-size: 0.98rem;
 }
 
 .searchableSelectTrigger {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 36px;
-  padding: 6px 12px;
+  min-height: 44px;
+  padding: 8px 14px;
   border: 1px solid var(--ui-30-border, #334155);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--ui-60-surface, #1e293b);
   color: var(--ui-30-ink, #f8fafc);
+  font-size: 0.98rem;
   cursor: pointer;
   user-select: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -2699,7 +2706,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 0.98rem;
 }
 
 .searchableSelectInput {
@@ -2708,14 +2716,14 @@
   background: transparent;
   color: inherit;
   font-family: inherit;
-  font-size: inherit;
+  font-size: 0.98rem;
   outline: none;
 }
 
 .searchableSelectArrow {
   margin-left: 8px;
-  font-size: 0.65rem;
-  opacity: 0.6;
+  font-size: 0.8rem;
+  opacity: 0.7;
   transition: transform 0.15s ease;
 }
 
@@ -2729,20 +2737,20 @@
   left: 0;
   right: 0;
   z-index: 200;
-  max-height: 240px;
+  max-height: 260px;
   overflow-y: auto;
   margin: 0;
-  padding: 4px;
+  padding: 6px;
   list-style: none;
   border: 1px solid var(--ui-30-border, #334155);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--ui-60-surface, #1e293b);
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
 }
 
 .searchableSelectItem {
-  padding: 8px 12px;
-  border-radius: 6px;
+  padding: 10px 14px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease;
 }
@@ -2759,18 +2767,19 @@
 }
 
 .itemMain {
-  font-size: 0.82rem;
+  font-size: 0.98rem;
+  font-weight: 600;
 }
 
 .itemSub {
-  font-size: 0.72rem;
+  font-size: 0.84rem;
   color: var(--ui-30-muted, #94a3b8);
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .searchableSelectEmpty {
-  padding: 12px;
+  padding: 14px;
   text-align: center;
-  font-size: 0.78rem;
+  font-size: 0.9rem;
   color: var(--ui-30-muted, #94a3b8);
 }
