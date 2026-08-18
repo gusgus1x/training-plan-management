@@ -521,13 +521,11 @@ function CourseMaster() {
     () =>
       courses.filter((course) => {
         if (isFactoryUser) {
-          const isCenter = course.owner === "CENTER" || course.ownerCompany === "CENTER" || course.ownerCompany === "HRD Center" || !course.ownerCompany;
-          const isOwnFactory = course.ownerCompany === userCompanyCode;
-          return isCenter || isOwnFactory;
+          return course.ownerCompany === userCompanyCode;
         }
         return isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode);
       }),
-    [courses, isFactoryUser, user?.roleCode, userCompanyCode],
+    [courses, isFactoryUser, userCompanyCode, user?.roleCode],
   );
   const selectedCourse = scopedCourses.find((course) => course.id === selectedCourseId) ?? null;
   const isSelectedCourseCenter = selectedCourse
