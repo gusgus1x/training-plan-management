@@ -37,6 +37,12 @@ export const parseCreateOapPlan = (input: InputObject): CreateOapPlanInput => ({
   participants: readNumber(input, "participants", { required: true }),
   hours: readNumber(input, "hours", { required: true }),
   budget: cleanBudgetString(input.budget),
+  budgetInstructor: cleanBudgetString(input.budgetInstructor),
+  budgetTraveling: cleanBudgetString(input.budgetTraveling),
+  budgetSeminarRoom: cleanBudgetString(input.budgetSeminarRoom),
+  budgetAccommodation: cleanBudgetString(input.budgetAccommodation),
+  budgetMaterial: cleanBudgetString(input.budgetMaterial),
+  budgetFoodBeverage: cleanBudgetString(input.budgetFoodBeverage),
   trainerName: readOptionalString(input, "trainerName") || "",
   instructorId: readOptionalString(input, "instructorId"),
   providerName: readOptionalString(input, "providerName") || "",
@@ -51,6 +57,12 @@ export const parseUpdateOapPlan = (input: InputObject): UpdateOapPlanInput => {
   if (hasOwn(input, "participants")) update.participants = readNumber(input, "participants", { required: true });
   if (hasOwn(input, "hours")) update.hours = readNumber(input, "hours", { required: true });
   if (hasOwn(input, "budget")) update.budget = cleanBudgetString(input.budget);
+  if (hasOwn(input, "budgetInstructor")) update.budgetInstructor = cleanBudgetString(input.budgetInstructor);
+  if (hasOwn(input, "budgetTraveling")) update.budgetTraveling = cleanBudgetString(input.budgetTraveling);
+  if (hasOwn(input, "budgetSeminarRoom")) update.budgetSeminarRoom = cleanBudgetString(input.budgetSeminarRoom);
+  if (hasOwn(input, "budgetAccommodation")) update.budgetAccommodation = cleanBudgetString(input.budgetAccommodation);
+  if (hasOwn(input, "budgetMaterial")) update.budgetMaterial = cleanBudgetString(input.budgetMaterial);
+  if (hasOwn(input, "budgetFoodBeverage")) update.budgetFoodBeverage = cleanBudgetString(input.budgetFoodBeverage);
   if (hasOwn(input, "trainerName")) update.trainerName = readOptionalString(input, "trainerName") || "";
   if (hasOwn(input, "instructorId")) update.instructorId = readOptionalString(input, "instructorId");
   if (hasOwn(input, "providerName")) update.providerName = readOptionalString(input, "providerName") || "";

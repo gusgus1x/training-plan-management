@@ -1,9 +1,17 @@
 import type { PrismaClient } from "../../generated/prisma/client";
 import { Prisma } from "../../generated/prisma/client";
 import { ApiError } from "../api/errors";
+import type { AuthenticatedPrincipal } from "../auth/types";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
-import { EXPENSE_CATEGORIES, type ExpenseCategory, type SaveExpensesInput, type TrainingRecordSummary } from "./types";
+import {
+  EXPENSE_CATEGORIES,
+  type CostBreakdown,
+  type ExpenseCategory,
+  type SaveExpensesInput,
+  type TrainingRecordExpenses,
+  type TrainingRecordSummary,
+} from "./types";
 
 type DatabaseClient = Pick<PrismaClient, "training_plan" | "training_expense">;
 
@@ -152,6 +160,115 @@ export const createTrainingRecordRepository = (client?: DatabaseClient) => {
           include: trainingRecordInclude,
         });
         return mapTrainingRecord(updated);
+      });
+    },
+
+    async getCostBreakdown(planId: string, principal: AuthenticatedPrincipal): Promise<CostBreakdown> {
+      return withDatabaseErrorMapping(async () => {
+        const id = BigInt(planId);
+        const plan = await db().training_plan.findUniqueOrThrow({
+          where: { plan_id: id },
+          include: {
+            training_plan_oap: {
+              select: {
+                company_id: true,
+                total_planned_budget: true,
+                budget_instructor: true,
+                budget_traveling: true,
+                budget_seminar_room: true,
+                budget_accommodation: true,
+                budget_material: true,
+                budget_food_beverage: true,
+              },
+            },
+            training_expense: true,
+            training_enrollment: {
+              where: { approval_status: "APPROVED" },
+              include: { employee: { include: { company: true } }, attendance: true },
+            },
+          },
+        });
+
+        if (principal.role === "HRD_FACTORY") {
+          const ownsPlan = plan.training_plan_oap.company_id?.toString() === principal.companyId;
+          const hasOwnEmployee = plan.training_enrollment.some(
+            (enrollment) => enrollment.employee.company_id.toString() === principal.companyId,
+          );
+          if (!ownsPlan && !hasOwnEmployee) {
+            throw new ApiError({ code: "FORBIDDEN", message: "This training plan is outside your permitted scope", status: 403 });
+          }
+        }
+
+        const actualTotals: TrainingRecordExpenses = {
+          accommodation: 0, foodBeverage: 0, instructor: 0, material: 0, seminarRoom: 0, traveling: 0,
+        };
+        for (const expense of plan.training_expense) {
+          const key = CATEGORY_TO_EXPENSE_KEY[expense.expense_category as ExpenseCategory];
+          if (key) actualTotals[key] += Number(expense.amount);
+        }
+        const actualGrandTotal = Object.values(actualTotals).reduce((sum, value) => sum + value, 0);
+
+        const oap = plan.training_plan_oap;
+        const plannedTotals: TrainingRecordExpenses = {
+          instructor: Number(oap.budget_instructor ?? 0),
+          traveling: Number(oap.budget_traveling ?? 0),
+          seminarRoom: Number(oap.budget_seminar_room ?? 0),
+          accommodation: Number(oap.budget_accommodation ?? 0),
+          material: Number(oap.budget_material ?? 0),
+          foodBeverage: Number(oap.budget_food_beverage ?? 0),
+        };
+        const plannedCategorySum = Object.values(plannedTotals).reduce((sum, value) => sum + value, 0);
+        // Plans created before the budget-category breakdown existed only have the old lump-sum
+        // total_planned_budget with no per-category values — fall back to that instead of
+        // showing a misleading "Planned: 0".
+        const plannedGrandTotal = plannedCategorySum || Number(oap.total_planned_budget ?? 0);
+
+        // "Present" only — count only enrollments whose attendance record was actually marked
+        // PRESENT, not just any attendance row (matches how cost-per-person should reflect who
+        // genuinely attended, not everyone who was ever checked in regardless of status).
+        const presentEnrollments = plan.training_enrollment.filter(
+          (enrollment) => enrollment.attendance?.attendance_status === "PRESENT",
+        );
+        const presentCount = presentEnrollments.length;
+        const costPerPersonRaw = presentCount > 0 ? actualGrandTotal / presentCount : 0;
+
+        type CompanyGroup = { companyId: string; companyCode: string; presentCount: number };
+        const companyGroups = new Map<string, CompanyGroup>();
+        for (const enrollment of presentEnrollments) {
+          const companyId = enrollment.employee.company_id.toString();
+          const existing = companyGroups.get(companyId);
+          if (existing) {
+            existing.presentCount += 1;
+          } else {
+            companyGroups.set(companyId, {
+              companyId,
+              companyCode: enrollment.employee.company.company_code,
+              presentCount: 1,
+            });
+          }
+        }
+        let groups = Array.from(companyGroups.values());
+        // HRD_FACTORY only ever sees their own company's row here — the course-wide total is
+        // still visible via presentCount/actualGrandTotal above, which are never filtered.
+        if (principal.role === "HRD_FACTORY" && principal.companyId) {
+          groups = groups.filter((group) => group.companyId === principal.companyId);
+        }
+        const companyBreakdown = groups.map(({ companyCode, presentCount: count }) => ({
+          companyCode,
+          presentCount: count,
+          allocatedCost: Math.round(count * costPerPersonRaw),
+        }));
+
+        return {
+          planId,
+          plannedTotals,
+          plannedGrandTotal,
+          actualTotals,
+          actualGrandTotal,
+          presentCount,
+          costPerPerson: Math.round(costPerPersonRaw),
+          companyBreakdown,
+        };
       });
     },
   };

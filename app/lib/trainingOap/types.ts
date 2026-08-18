@@ -9,6 +9,12 @@ export type OapPlanRecord = {
   participants: string;
   hours: string;
   budget: string;
+  budgetInstructor: string;
+  budgetTraveling: string;
+  budgetSeminarRoom: string;
+  budgetAccommodation: string;
+  budgetMaterial: string;
+  budgetFoodBeverage: string;
   trainer: string;
   providerId: string | null;
   providerName: string;
@@ -24,6 +30,12 @@ export type CreateOapPlanInput = {
   participants: number;
   hours: number;
   budget: string;
+  budgetInstructor: string;
+  budgetTraveling: string;
+  budgetSeminarRoom: string;
+  budgetAccommodation: string;
+  budgetMaterial: string;
+  budgetFoodBeverage: string;
   trainerName: string;
   instructorId: string | null;
   providerName: string;

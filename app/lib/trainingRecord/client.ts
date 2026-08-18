@@ -1,6 +1,6 @@
 "use client";
 
-import type { SaveExpensesInput, TrainingRecordSummary } from "./types";
+import type { CostBreakdown, SaveExpensesInput, TrainingRecordSummary } from "./types";
 
 const parseApiResponse = async <T>(response: Response): Promise<T> => {
   let json: any;
@@ -40,4 +40,12 @@ export const listTrainingRecords = async () => {
 export const saveTrainingRecordExpenses = async (planId: string, input: SaveExpensesInput) => {
   const response = await fetch(`/api/training-plan/training-records/${planId}/expenses`, jsonInit("PUT", input));
   return parseApiResponse<{ trainingRecord: TrainingRecordSummary }>(response);
+};
+
+export const getCostBreakdown = async (planId: string) => {
+  const response = await fetch(`/api/training-plan/training-records/${planId}/cost-breakdown`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+  return parseApiResponse<{ costBreakdown: CostBreakdown }>(response);
 };

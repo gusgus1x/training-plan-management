@@ -95,6 +95,12 @@ const mapOapPlan = (row: OapPlanWithRelations, sequence: number) => {
     participants: row.default_participant_count.toString(),
     hours: row.planned_duration_hours.toString(),
     budget: row.total_planned_budget.toString(),
+    budgetInstructor: row.budget_instructor?.toString() ?? "",
+    budgetTraveling: row.budget_traveling?.toString() ?? "",
+    budgetSeminarRoom: row.budget_seminar_room?.toString() ?? "",
+    budgetAccommodation: row.budget_accommodation?.toString() ?? "",
+    budgetMaterial: row.budget_material?.toString() ?? "",
+    budgetFoodBeverage: row.budget_food_beverage?.toString() ?? "",
     trainer: row.instructor_name_text || instructorName,
     providerId: row.provider_id?.toString() ?? null,
     providerName: row.provider_name_text || row.institute_provider?.institute_provider_name || "",
@@ -160,6 +166,8 @@ export const createOapPlanRepository = (client?: DatabaseClient) => {
         }
 
         const cleanBudget = String(input.budget ?? "0").replace(/,/g, "").trim() || "0";
+        const cleanBudgetPart = (value: string | undefined) =>
+          value !== undefined ? String(value).replace(/,/g, "").trim() || "0" : null;
 
         const created = await db().training_plan_oap.create({
           data: {
@@ -175,6 +183,12 @@ export const createOapPlanRepository = (client?: DatabaseClient) => {
             planned_duration_hours: input.hours,
             default_participant_count: input.participants,
             total_planned_budget: cleanBudget,
+            budget_instructor: cleanBudgetPart(input.budgetInstructor),
+            budget_traveling: cleanBudgetPart(input.budgetTraveling),
+            budget_seminar_room: cleanBudgetPart(input.budgetSeminarRoom),
+            budget_accommodation: cleanBudgetPart(input.budgetAccommodation),
+            budget_material: cleanBudgetPart(input.budgetMaterial),
+            budget_food_beverage: cleanBudgetPart(input.budgetFoodBeverage),
             instructor_id: safeBigInt(input.instructorId),
             instructor_name_text: input.trainerName || null,
             provider_id: safeBigInt(input.providerId),
@@ -217,6 +231,12 @@ export const createOapPlanRepository = (client?: DatabaseClient) => {
         if (input.hours !== undefined) data.planned_duration_hours = input.hours;
         if (input.participants !== undefined) data.default_participant_count = input.participants;
         if (input.budget !== undefined) data.total_planned_budget = String(input.budget).replace(/,/g, "").trim() || "0";
+        if (input.budgetInstructor !== undefined) data.budget_instructor = String(input.budgetInstructor).replace(/,/g, "").trim() || "0";
+        if (input.budgetTraveling !== undefined) data.budget_traveling = String(input.budgetTraveling).replace(/,/g, "").trim() || "0";
+        if (input.budgetSeminarRoom !== undefined) data.budget_seminar_room = String(input.budgetSeminarRoom).replace(/,/g, "").trim() || "0";
+        if (input.budgetAccommodation !== undefined) data.budget_accommodation = String(input.budgetAccommodation).replace(/,/g, "").trim() || "0";
+        if (input.budgetMaterial !== undefined) data.budget_material = String(input.budgetMaterial).replace(/,/g, "").trim() || "0";
+        if (input.budgetFoodBeverage !== undefined) data.budget_food_beverage = String(input.budgetFoodBeverage).replace(/,/g, "").trim() || "0";
         if (input.instructorId !== undefined) data.instructor_id = safeBigInt(input.instructorId);
         if (input.trainerName !== undefined) data.instructor_name_text = input.trainerName || null;
         if (input.providerId !== undefined) data.provider_id = safeBigInt(input.providerId);

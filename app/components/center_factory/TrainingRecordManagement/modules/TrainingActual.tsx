@@ -10,7 +10,8 @@ import {
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
 import { listEnrollments, setEnrollmentAttendance } from "../../../../lib/trainingEnrollment/client";
 import type { EnrollmentRecord } from "../../../../lib/trainingEnrollment/types";
-import { saveTrainingRecordExpenses } from "../../../../lib/trainingRecord/client";
+import { getCostBreakdown, saveTrainingRecordExpenses } from "../../../../lib/trainingRecord/client";
+import type { CostBreakdown } from "../../../../lib/trainingRecord/types";
 import styles from "./TrainingRecord.module.css";
 
 export const trainingActualModule = {
@@ -100,6 +101,14 @@ const parseMoney = (value?: string) => {
   return Number.isFinite(parsedValue) ? parsedValue : 0;
 };
 
+// Same shape TrainingRolling.tsx already uses to detect a center-owned plan — a course is
+// "center" if it's owned centrally or targets every company, regardless of which field carries
+// that signal for a given data source.
+const isCenterCourse = (course: Pick<ActualCourse, "owner" | "ownerCompany" | "company">) =>
+  course.owner === "CENTER" ||
+  (course.ownerCompany ?? course.company) === "HRD Center" ||
+  course.company === "All Companies";
+
 export default function TrainingActual() {
   const user = useAuthenticatedUser();
   const [courses, setCourses] = useState<ActualCourse[]>([]);
@@ -112,6 +121,7 @@ export default function TrainingActual() {
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [expenses, setExpenses] = useState<Record<ExpenseKey, string>>(emptyExpenses);
+  const [costBreakdown, setCostBreakdown] = useState<CostBreakdown | null>(null);
 
   useEffect(() => {
     void loadWorkflowRollingPlans().then(setRollingPlans);
@@ -150,13 +160,14 @@ export default function TrainingActual() {
       isFactoryUser
         ? courses.filter(
             (course) =>
-              course.owner === "FACTORY" &&
-              (course.ownerCompany ?? course.company) === userCompanyCode,
+              isCenterCourse(course) ||
+              (course.owner === "FACTORY" &&
+                (course.ownerCompany ?? course.company) === userCompanyCode),
           )
         : courses,
     [courses, isFactoryUser, userCompanyCode],
   );
-  const selectedCourseOwner: CourseOwnerFilter = isFactoryUser ? "FACTORY" : courseOwnerFilter;
+  const selectedCourseOwner: CourseOwnerFilter = courseOwnerFilter;
   const ownerFilteredCourses = useMemo(
     () =>
       selectedCourseOwner
@@ -194,6 +205,8 @@ export default function TrainingActual() {
   const availableSessions = selectedCourseGroup?.sessions ?? [];
   const selectedCourse =
     availableSessions.find((course) => course.id === selectedCourseId) ?? null;
+  const isSelectedCourseCenter = selectedCourse ? isCenterCourse(selectedCourse) : false;
+  const isSelectedCourseReadOnlyForFactory = isFactoryUser && isSelectedCourseCenter;
 
   useEffect(() => {
     if (!selectedCourse) {
@@ -219,6 +232,24 @@ export default function TrainingActual() {
     setSavedMessage("");
   }, [selectedCourse?.id]);
 
+  const reloadCostBreakdown = async (planId: string) => {
+    try {
+      const result = await getCostBreakdown(planId);
+      setCostBreakdown(result.costBreakdown);
+    } catch (error) {
+      console.error("Failed to load cost breakdown", error);
+      setCostBreakdown(null);
+    }
+  };
+
+  useEffect(() => {
+    if (!selectedCourse) {
+      setCostBreakdown(null);
+      return;
+    }
+    void reloadCostBreakdown(selectedCourse.id);
+  }, [selectedCourse?.id]);
+
   const attendees: Attendee[] = selectedCourse
     ? enrollments
         .filter((candidate) =>
@@ -233,7 +264,9 @@ export default function TrainingActual() {
           department: candidate.department,
           company: candidate.company,
           registered: true,
-          attended: candidate.attendance !== null,
+          // Present-only, matching the server's cost-breakdown counting rule (getCostBreakdown
+          // in app/lib/trainingRecord/repository.ts) — not just "has any attendance record".
+          attended: candidate.attendance?.status === "PRESENT",
         }))
     : [];
 
@@ -245,34 +278,21 @@ export default function TrainingActual() {
     (total, field) => total + Number(expenses[field.key] || 0),
     0,
   );
-  const actualCostPerPerson = actualCount > 0 ? Math.round(expenseTotal / actualCount) : 0;
-  const plannedBudget = selectedCourse ? parseMoney(selectedCourse.budget) : 0;
-  const remainingBudget = plannedBudget - expenseTotal;
+  // Cost-per-person, planned/actual totals, and the company breakdown all come from the server
+  // (app/lib/trainingRecord/repository.ts getCostBreakdown) rather than being derived from the
+  // locally-fetched enrollments list: a HRD_FACTORY user viewing a HRD_CENTER-owned course only
+  // ever gets their own employees back from listEnrollments, so a client-side sum can't produce
+  // a correct course-wide total — the server computes it once with full visibility instead.
+  const actualCostPerPerson = costBreakdown?.costPerPerson ?? 0;
+  const savedActualTotal = costBreakdown?.actualGrandTotal ?? 0;
+  const plannedBudget = costBreakdown?.plannedGrandTotal ?? (selectedCourse ? parseMoney(selectedCourse.budget) : 0);
+  const remainingBudget = plannedBudget - savedActualTotal;
   const budgetStatus =
     plannedBudget > 0 && remainingBudget < 0 ? "Over budget" : "Within budget";
   const allAttended = Boolean(
     attendees.length && attendees.every((attendee) => attendee.attended),
   );
-
-  const companyCostBreakdown = useMemo(() => {
-    const companyMap = new Map<string, { total: number; attended: number }>();
-    attendees.forEach((attendee) => {
-      const companyKey = attendee.company || selectedCourse?.company || "Other";
-      const current = companyMap.get(companyKey) ?? { total: 0, attended: 0 };
-      current.total += 1;
-      if (attendee.attended) {
-        current.attended += 1;
-      }
-      companyMap.set(companyKey, current);
-    });
-
-    return Array.from(companyMap.entries()).map(([company, data]) => ({
-      company,
-      total: data.total,
-      attended: data.attended,
-      allocatedCost: data.attended * actualCostPerPerson,
-    }));
-  }, [attendees, selectedCourse, actualCostPerPerson]);
+  const companyCostBreakdown = costBreakdown?.companyBreakdown ?? [];
 
   const reloadEnrollments = async () => {
     if (!selectedCourse) return;
@@ -285,9 +305,11 @@ export default function TrainingActual() {
   };
 
   const toggleAttendance = async (enrollmentId: string, attended: boolean) => {
+    if (isSelectedCourseReadOnlyForFactory) return;
     try {
       await setEnrollmentAttendance(enrollmentId, { attended: !attended });
       await reloadEnrollments();
+      if (selectedCourse) await reloadCostBreakdown(selectedCourse.id);
     } catch (error) {
       console.error("Failed to update attendance", error);
       setSavedMessage("Failed to update attendance.");
@@ -295,6 +317,7 @@ export default function TrainingActual() {
   };
 
   const setAllAttendance = async (attended: boolean) => {
+    if (isSelectedCourseReadOnlyForFactory) return;
     try {
       await Promise.all(
         attendees
@@ -302,6 +325,7 @@ export default function TrainingActual() {
           .map((attendee) => setEnrollmentAttendance(attendee.id, { attended })),
       );
       await reloadEnrollments();
+      if (selectedCourse) await reloadCostBreakdown(selectedCourse.id);
     } catch (error) {
       console.error("Failed to update attendance", error);
       setSavedMessage("Failed to update attendance.");
@@ -313,7 +337,7 @@ export default function TrainingActual() {
   };
 
   const handleSave = async () => {
-    if (!selectedCourse) {
+    if (!selectedCourse || isSelectedCourseReadOnlyForFactory) {
       return;
     }
 
@@ -334,6 +358,7 @@ export default function TrainingActual() {
         seminarRoom: Number(expenses.seminarRoom || 0),
         traveling: Number(expenses.traveling || 0),
       });
+      await reloadCostBreakdown(selectedCourse.id);
 
       setSavedMessage(
         `Saved ${selectedCourse.code} with ${actualCount} actual attendees, total THB ${formatCurrency(expenseTotal)} (THB ${formatCurrency(actualCostPerPerson)}/person) at ${now}.`,
@@ -378,7 +403,6 @@ export default function TrainingActual() {
           <label className={styles.actualCourseSelect}>
             Course Owner
             <select
-              disabled={isFactoryUser}
               value={selectedCourseOwner}
               onChange={(event) => {
                 setCourseOwnerFilter(event.target.value as CourseOwnerFilter);
@@ -492,9 +516,13 @@ export default function TrainingActual() {
               </div>
             </div>
 
-            {isFactoryUser ? (
+            {isSelectedCourseReadOnlyForFactory ? (
               <div className={styles.actualPermissionNote}>
-                Factory permission: only courses owned by {userCompanyCode} are available.
+                แผนจัดอบรมของส่วนกลาง (HRD Center) — โรงงานดูรายงานได้แต่ไม่สามารถบันทึกการเข้าอบรมหรือค่าใช้จ่ายได้
+              </div>
+            ) : isFactoryUser ? (
+              <div className={styles.actualPermissionNote}>
+                Factory permission: courses owned by {userCompanyCode}, plus HRD Center courses (view-only).
               </div>
             ) : null}
 
@@ -508,7 +536,7 @@ export default function TrainingActual() {
                 <label className={styles.selectAllAttendance}>
                   <input
                     checked={allAttended}
-                    disabled={attendees.length === 0}
+                    disabled={attendees.length === 0 || isSelectedCourseReadOnlyForFactory}
                     type="checkbox"
                     onChange={() => void setAllAttendance(!allAttended)}
                   />
@@ -536,6 +564,7 @@ export default function TrainingActual() {
                         <input
                           type="checkbox"
                           checked={attendee.attended}
+                          disabled={isSelectedCourseReadOnlyForFactory}
                           onChange={() => void toggleAttendance(attendee.id, attendee.attended)}
                         />
                         <span>{attendee.attended ? "Attend" : "Absent"}</span>
@@ -587,6 +616,7 @@ export default function TrainingActual() {
                   {field.label}
                   <input
                     inputMode="decimal"
+                    disabled={isSelectedCourseReadOnlyForFactory}
                     value={expenses[field.key]}
                     onChange={(event) => updateExpense(field.key, event.target.value)}
                   />
@@ -595,35 +625,84 @@ export default function TrainingActual() {
             </div>
 
             <div className={styles.actualTotalBox}>
-              <span>Total Actual Cost</span>
+              <span>Total Actual Cost (unsaved draft)</span>
               <strong>THB {formatCurrency(expenseTotal)}</strong>
+            </div>
+
+            <div className={`${styles.tableWrap}`}>
+              <table className={styles.recordTable}>
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Planned</th>
+                    <th>Actual (saved)</th>
+                    <th>Variance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {expenseFields.map((field) => {
+                    const planned = costBreakdown?.plannedTotals[field.key] ?? 0;
+                    const actual = costBreakdown?.actualTotals[field.key] ?? 0;
+                    const variance = planned - actual;
+                    return (
+                      <tr key={field.key}>
+                        <td>{field.label}</td>
+                        <td>THB {formatCurrency(planned)}</td>
+                        <td>THB {formatCurrency(actual)}</td>
+                        <td className={variance < 0 ? styles.actualBudgetOverrun : undefined}>
+                          THB {formatCurrency(variance)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  <tr>
+                    <td><strong>Total</strong></td>
+                    <td><strong>THB {formatCurrency(plannedBudget)}</strong></td>
+                    <td><strong>THB {formatCurrency(savedActualTotal)}</strong></td>
+                    <td className={remainingBudget < 0 ? styles.actualBudgetOverrun : undefined}>
+                      <strong>THB {formatCurrency(remainingBudget)}</strong>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
 
             <div className={styles.actualCostPerPersonSummary}>
               <div>
-                <span>Cost / Person (Actual)</span>
+                <span>Cost / Person (Actual, saved)</span>
                 <strong>THB {formatCurrency(actualCostPerPerson)}</strong>
               </div>
               <small>
-                Calculated from THB {formatCurrency(expenseTotal)} ÷ {actualCount} actual attendee{actualCount === 1 ? "" : "s"}
+                Calculated from THB {formatCurrency(savedActualTotal)} ÷ {costBreakdown?.presentCount ?? 0} present attendee{(costBreakdown?.presentCount ?? 0) === 1 ? "" : "s"}
               </small>
             </div>
 
             {companyCostBreakdown.length > 0 ? (
               <div className={styles.actualCompanyBreakdownBox}>
-                <p className={styles.kicker}>Company Cost Allocation</p>
+                <p className={styles.kicker}>
+                  {isSelectedCourseReadOnlyForFactory || (isFactoryUser && isSelectedCourseCenter)
+                    ? "Company Cost Allocation (your company)"
+                    : "Company Cost Allocation"}
+                </p>
                 <div className={styles.actualCompanyList}>
                   {companyCostBreakdown.map((item) => (
-                    <div key={item.company} className={styles.actualCompanyRow}>
+                    <div key={item.companyCode} className={styles.actualCompanyRow}>
                       <div>
-                        <strong>{item.company}</strong>
-                        <span>
-                          {item.attended} / {item.total} attended
-                        </span>
+                        <strong>{item.companyCode}</strong>
+                        <span>{item.presentCount} present</span>
                       </div>
                       <strong>THB {formatCurrency(item.allocatedCost)}</strong>
                     </div>
                   ))}
+                  {isFactoryUser && isSelectedCourseCenter ? (
+                    <div className={styles.actualCompanyRow}>
+                      <div>
+                        <strong>Course total (all companies)</strong>
+                        <span>{costBreakdown?.presentCount ?? 0} present</span>
+                      </div>
+                      <strong>THB {formatCurrency(savedActualTotal)}</strong>
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ) : null}
@@ -650,7 +729,12 @@ export default function TrainingActual() {
               </p>
             </div>
 
-            <button className={styles.actualSaveButton} type="button" onClick={() => void handleSave()}>
+            <button
+              className={styles.actualSaveButton}
+              type="button"
+              disabled={isSelectedCourseReadOnlyForFactory}
+              onClick={() => void handleSave()}
+            >
               Save Training Actual
             </button>
 

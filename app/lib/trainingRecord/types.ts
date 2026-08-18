@@ -32,6 +32,23 @@ export type TrainingRecordSummary = {
   savedAt: string;
 };
 
+export type CompanyCostBreakdownRow = {
+  companyCode: string;
+  presentCount: number;
+  allocatedCost: number;
+};
+
+export type CostBreakdown = {
+  planId: string;
+  plannedTotals: TrainingRecordExpenses;
+  plannedGrandTotal: number;
+  actualTotals: TrainingRecordExpenses;
+  actualGrandTotal: number;
+  presentCount: number;
+  costPerPerson: number;
+  companyBreakdown: CompanyCostBreakdownRow[];
+};
+
 export const EXPENSE_CATEGORIES = [
   "ACCOMMODATION",
   "FOOD_BEVERAGE",

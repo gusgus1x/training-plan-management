@@ -41,9 +41,27 @@ const emptyForm = {
   participants: "",
   hours: "",
   budget: "",
+  budgetInstructor: "",
+  budgetTraveling: "",
+  budgetSeminarRoom: "",
+  budgetAccommodation: "",
+  budgetMaterial: "",
+  budgetFoodBeverage: "",
   trainer: "",
   provider: "",
 };
+
+const BUDGET_PART_FIELDS = [
+  "budgetInstructor",
+  "budgetTraveling",
+  "budgetSeminarRoom",
+  "budgetAccommodation",
+  "budgetMaterial",
+  "budgetFoodBeverage",
+] as const;
+
+const sumBudgetParts = (form: Record<(typeof BUDGET_PART_FIELDS)[number], string>) =>
+  BUDGET_PART_FIELDS.reduce((total, field) => total + (Number(form[field]) || 0), 0);
 
 const readApprovedTrainingNeed = () => {
   if (typeof window === "undefined") {
@@ -110,11 +128,9 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
       setApprovedRequest(request);
       setForm({
+        ...emptyForm,
         courseCode: `REQ-${request.requestNo}`,
         participants: "1",
-        hours: "",
-        budget: "",
-        trainer: "",
         provider: request.sourceCourseOwner === "Factory" ? request.company : "HRD Center",
       });
       setEditingId("");
@@ -334,6 +350,13 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     setForm((current) => ({ ...current, [field]: value }));
   };
 
+  const updateBudgetPart = (field: (typeof BUDGET_PART_FIELDS)[number], value: string) => {
+    setForm((current) => {
+      const next = { ...current, [field]: value };
+      return { ...next, budget: String(sumBudgetParts(next)) };
+    });
+  };
+
   const resolveInstructorId = (trainerName: string) => {
     const trimmed = trainerName.trim();
     const matched = instructors.find(
@@ -360,6 +383,12 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       participants: Number(form.participants) || 0,
       hours: Number(form.hours) || 0,
       budget: form.budget.trim() || "0",
+      budgetInstructor: form.budgetInstructor.trim() || "0",
+      budgetTraveling: form.budgetTraveling.trim() || "0",
+      budgetSeminarRoom: form.budgetSeminarRoom.trim() || "0",
+      budgetAccommodation: form.budgetAccommodation.trim() || "0",
+      budgetMaterial: form.budgetMaterial.trim() || "0",
+      budgetFoodBeverage: form.budgetFoodBeverage.trim() || "0",
       trainerName: form.trainer.trim(),
       instructorId: resolveInstructorId(form.trainer),
       providerName: form.provider.trim(),
@@ -391,6 +420,12 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       participants: plan.participants,
       hours: plan.hours,
       budget: plan.budget,
+      budgetInstructor: plan.budgetInstructor,
+      budgetTraveling: plan.budgetTraveling,
+      budgetSeminarRoom: plan.budgetSeminarRoom,
+      budgetAccommodation: plan.budgetAccommodation,
+      budgetMaterial: plan.budgetMaterial,
+      budgetFoodBeverage: plan.budgetFoodBeverage,
       trainer: plan.trainer,
       provider: plan.providerName,
     });
@@ -601,13 +636,71 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                 />
               </label>
               <label>
-                <span>Budget <span className={styles.required}>*</span></span>
+                <span>Instructor Budget</span>
                 <input
                   disabled={!selectedCourse}
                   inputMode="numeric"
-                  placeholder="Enter budget amount, e.g. 15000"
-                  value={form.budget}
-                  onChange={(event) => updateForm("budget", event.target.value)}
+                  placeholder="0"
+                  value={form.budgetInstructor}
+                  onChange={(event) => updateBudgetPart("budgetInstructor", event.target.value)}
+                />
+              </label>
+              <label>
+                <span>Traveling Budget</span>
+                <input
+                  disabled={!selectedCourse}
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={form.budgetTraveling}
+                  onChange={(event) => updateBudgetPart("budgetTraveling", event.target.value)}
+                />
+              </label>
+              <label>
+                <span>Seminar Room Budget</span>
+                <input
+                  disabled={!selectedCourse}
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={form.budgetSeminarRoom}
+                  onChange={(event) => updateBudgetPart("budgetSeminarRoom", event.target.value)}
+                />
+              </label>
+              <label>
+                <span>Accommodation Budget</span>
+                <input
+                  disabled={!selectedCourse}
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={form.budgetAccommodation}
+                  onChange={(event) => updateBudgetPart("budgetAccommodation", event.target.value)}
+                />
+              </label>
+              <label>
+                <span>Material Budget</span>
+                <input
+                  disabled={!selectedCourse}
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={form.budgetMaterial}
+                  onChange={(event) => updateBudgetPart("budgetMaterial", event.target.value)}
+                />
+              </label>
+              <label>
+                <span>Food &amp; Beverage Budget</span>
+                <input
+                  disabled={!selectedCourse}
+                  inputMode="numeric"
+                  placeholder="0"
+                  value={form.budgetFoodBeverage}
+                  onChange={(event) => updateBudgetPart("budgetFoodBeverage", event.target.value)}
+                />
+              </label>
+              <label className={styles.totalBudgetField}>
+                <span>Total Budget <span className={styles.required}>*</span></span>
+                <input
+                  disabled
+                  readOnly
+                  value={form.budget ? Number(form.budget).toLocaleString("en-US") : "0"}
                 />
               </label>
               <label>

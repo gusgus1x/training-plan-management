@@ -794,6 +794,12 @@ model training_plan_oap {
   updated_by                                                  BigInt?
   updated_at                                                  DateTime?
   provider_id                                                 BigInt?
+  budget_instructor                                           Decimal?            @db.Decimal(14, 2)
+  budget_traveling                                            Decimal?            @db.Decimal(14, 2)
+  budget_seminar_room                                         Decimal?            @db.Decimal(14, 2)
+  budget_accommodation                                        Decimal?            @db.Decimal(14, 2)
+  budget_material                                             Decimal?            @db.Decimal(14, 2)
+  budget_food_beverage                                        Decimal?            @db.Decimal(14, 2)
   training_plan                                               training_plan[]
   institute_provider                                          institute_provider? @relation(fields: [provider_id], references: [institute_provider_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_plan_oap_institute_provider_provider_id")
   company                                                     company?            @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F039_training_plan_oap_company_id")

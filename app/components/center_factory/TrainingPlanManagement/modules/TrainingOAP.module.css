@@ -445,6 +445,18 @@
   border-color: var(--ui-30-border);
 }
 
+.totalBudgetField {
+  grid-column: span 3;
+}
+
+.totalBudgetField input:disabled {
+  opacity: 1;
+  border-color: var(--ui-30-primary);
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--ui-30-ink);
+  font-weight: 800;
+}
+
 .fullField {
   grid-column: span 6 !important;
 }
