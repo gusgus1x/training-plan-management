@@ -300,6 +300,33 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
         .map((plan, index) => ({ ...plan, sequence: index + 1 })),
     [companyFilter, scopedPlans, search, statusFilter, userCompanyCode],
   );
+
+  const companySections = useMemo(() => {
+    const groupsMap = new Map<string, OapPlan[]>();
+
+    visiblePlans.forEach((plan) => {
+      const compKey = plan.owner === "CENTER" ? "HRD Center" : (plan.ownerCompany || "Other");
+      groupsMap.set(compKey, [...(groupsMap.get(compKey) ?? []), plan]);
+    });
+
+    const userCompLabel = userCompanyCode && userCompanyCode !== "CENTER" ? userCompanyCode : "";
+
+    const entries = [...groupsMap.entries()].map(([companyName, planList]) => ({
+      companyName,
+      plans: planList,
+      isUserCompany: userCompLabel ? companyName === userCompLabel : companyName === "HRD Center",
+    }));
+
+    return entries.sort((a, b) => {
+      if (a.isUserCompany && !b.isUserCompany) return -1;
+      if (!a.isUserCompany && b.isUserCompany) return 1;
+
+      if (a.companyName === "HRD Center") return -1;
+      if (b.companyName === "HRD Center") return 1;
+
+      return a.companyName.localeCompare(b.companyName);
+    });
+  }, [visiblePlans, userCompanyCode]);
   const selectedPlan =
     visiblePlans.find((plan) => plan.id === selectedPlanId) ?? null;
 
@@ -732,175 +759,159 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
           </section>
         ) : null}
 
-        <div className={styles.tableWrap}>
-          <table className={styles.planTable}>
-            <thead>
-              <tr>
-                <th>Seq.</th>
-                <th>Course Name</th>
-                <th>Status</th>
-                {companyColumns.map((company) => {
-                  const isUserComp = company === userCompanyCode;
-                  return (
-                    <th key={company} className={isUserComp ? styles.ownCompanyHeader : styles.companyHeader}>
-                      {company}
-                      {isUserComp ? <span className={styles.ownCompanyTag}> (ของฉัน)</span> : null}
-                    </th>
-                  );
-                })}
-                <th>Actions</th>
-                <th>Participants</th>
-                <th>Hours</th>
-                <th>Budget (THB)</th>
-                <th>Trainer Name</th>
-                <th>Institute / Provider</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visiblePlans.map((plan) => {
-                const isOpen = openDetailId === plan.id;
+        <div className={styles.companySectionsContainer}>
+          {companySections.map((section) => (
+            <div key={section.companyName} className={styles.companySectionBlock}>
+              <div className={`${styles.companySectionHeader} ${section.isUserCompany ? styles.ownCompanySectionHeader : ""}`}>
+                <div className={styles.companySectionTitle}>
+                  <span className={styles.companyIcon}>{section.companyName === "HRD Center" ? "🏢" : "🏬"}</span>
+                  <h4>แผนอบรม {section.companyName}</h4>
+                  {section.isUserCompany ? <span className={styles.ownCompanySectionTag}>⭐ บริษัทของฉัน ({userCompanyCode || "HRD Center"})</span> : null}
+                </div>
+                <span className={styles.companyCountBadge}>{section.plans.length} หลักสูตร</span>
+              </div>
 
-                return (
-                  <Fragment key={plan.id}>
-                    <tr
-                      className={`${plan.id === selectedPlanId ? styles.selectedRow : ""} ${styles.clickableRow}`}
-                      onClick={() => setSelectedPlanId(plan.id === selectedPlanId ? "" : plan.id)}
-                    >
-                      <td>
-                        <label className={styles.selectionControl} onClick={(e) => e.stopPropagation()}>
-                          <input
-                            aria-label={`Select ${plan.course.courseCode}`}
-                            checked={plan.id === selectedPlanId}
-                            name="selected-oap-plan"
-                            type="radio"
-                            onChange={() => setSelectedPlanId(plan.id)}
-                          />
-                          <span>{plan.sequence}</span>
-                        </label>
-                      </td>
-                      <td>
-                        <strong>{getCourseDisplayName(plan.course)}</strong>
-                        <span>
-                          {plan.course.courseCode}
-                          {getCourseSecondaryName(plan.course)
-                            ? ` / ${getCourseSecondaryName(plan.course)}`
-                            : ""}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`${styles.statusPill} ${styles[`status${plan.status}`]}`}>
-                          <span className={styles.statusDot} />
-                          {plan.status === "Planned" ? "วางแผนแล้ว" : plan.status === "Planning" ? "รอวางแผน" : plan.status === "Cancel" ? "ยกเลิก" : plan.status}
-                        </span>
-                      </td>
-                      {companyColumns.map((company) => {
-                        const isIncluded = isCompanyIncludedInOap(plan, company);
-                        const isOwner = isCompanyOwnerOfOap(plan, company);
-                        const isUserComp = company === userCompanyCode;
-
-                        return (
-                          <td key={company} className={`${styles.companyCell} ${isUserComp ? styles.ownCompanyCell : ""}`}>
-                            {isOwner ? (
-                              <span className={styles.ownerMark} title={`${company} เป็นเจ้าของหลักสูตร`}>
-                                🏬 Owner
-                              </span>
-                            ) : isIncluded ? (
-                              <span className={styles.activeCheckMark} title={`${company} มีการจัดอบรมหลักสูตรนี้`}>
-                                ✓
-                              </span>
-                            ) : (
-                              <span className={styles.inactiveMark}>-</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                      <td className={styles.actionCell} onClick={(e) => e.stopPropagation()}>
-                        <div className={styles.actionButtons}>
-                          <button
-                            aria-expanded={isOpen}
-                            className={`${styles.rowActionButton} ${styles.detailsAction}`}
-                            type="button"
-                            onClick={() => {
-                              setSelectedPlanId(plan.id);
-                              setOpenDetailId(isOpen ? "" : plan.id);
-                            }}
-                          >
-                            {isOpen ? "Hide" : "Details"}
-                          </button>
-                          <button
-                            className={`${styles.rowActionButton} ${styles.detailsAction}`}
-                            type="button"
-                            onClick={() => {
-                              setSelectedPlanId(plan.id);
-                              handleEdit(plan);
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className={`${styles.rowActionButton} ${styles.dangerAction}`}
-                            type="button"
-                            onClick={() => {
-                              setSelectedPlanId(plan.id);
-                              void handleDelete(plan.id);
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                      <td>{plan.participants}</td>
-                      <td>{plan.hours}</td>
-                      <td>{Number(plan.budget).toLocaleString("en-US")}</td>
-                      <td>{plan.trainer}</td>
-                      <td>{plan.providerName}</td>
+              <div className={styles.tableWrap}>
+                <table className={styles.planTable}>
+                  <thead>
+                    <tr>
+                      <th>Seq.</th>
+                      <th>Course Name</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                      <th>Participants</th>
+                      <th>Hours</th>
+                      <th>Budget (THB)</th>
+                      <th>Trainer Name</th>
+                      <th>Institute / Provider</th>
                     </tr>
-                    {isOpen ? (
-                      <tr className={styles.detailRow}>
-                        <td colSpan={10}>
-                          <section className={styles.detailPanel}>
-                            <div className={styles.panelHeader}>
-                              <div>
-                                <p className={styles.kicker}>Course detail from Course Master</p>
-                                <h3>{getCourseDisplayName(plan.course)}</h3>
+                  </thead>
+                  <tbody>
+                    {section.plans.map((plan, index) => {
+                      const isOpen = openDetailId === plan.id;
+                      return (
+                        <Fragment key={plan.id}>
+                          <tr
+                            className={`${plan.id === selectedPlanId ? styles.selectedRow : ""} ${styles.clickableRow}`}
+                            onClick={() => setSelectedPlanId(plan.id === selectedPlanId ? "" : plan.id)}
+                          >
+                            <td>
+                              <label className={styles.selectionControl} onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  aria-label={`Select ${plan.course.courseCode}`}
+                                  checked={plan.id === selectedPlanId}
+                                  name="selected-oap-plan"
+                                  type="radio"
+                                  onChange={() => setSelectedPlanId(plan.id)}
+                                />
+                                <span>{index + 1}</span>
+                              </label>
+                            </td>
+                            <td>
+                              <strong>{getCourseDisplayName(plan.course)}</strong>
+                              <span>
+                                {plan.course.courseCode}
+                                {getCourseSecondaryName(plan.course)
+                                  ? ` / ${getCourseSecondaryName(plan.course)}`
+                                  : ""}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={`${styles.statusPill} ${styles[`status${plan.status}`]}`}>
+                                <span className={styles.statusDot} />
+                                {plan.status === "Planned" ? "วางแผนแล้ว" : plan.status === "Planning" ? "รอวางแผน" : plan.status === "Cancel" ? "ยกเลิก" : plan.status}
+                              </span>
+                            </td>
+                            <td className={styles.actionCell} onClick={(e) => e.stopPropagation()}>
+                              <div className={styles.actionButtons}>
+                                <button
+                                  aria-expanded={isOpen}
+                                  className={`${styles.rowActionButton} ${styles.detailsAction}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedPlanId(plan.id);
+                                    setOpenDetailId(isOpen ? "" : plan.id);
+                                  }}
+                                >
+                                  {isOpen ? "Hide" : "Details"}
+                                </button>
+                                <button
+                                  className={`${styles.rowActionButton} ${styles.detailsAction}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedPlanId(plan.id);
+                                    handleEdit(plan);
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  className={`${styles.rowActionButton} ${styles.dangerAction}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedPlanId(plan.id);
+                                    void handleDelete(plan.id);
+                                  }}
+                                >
+                                  Delete
+                                </button>
                               </div>
-                              <button className={styles.closeButton} type="button" onClick={() => setOpenDetailId("")}>Close</button>
-                            </div>
-                            <div className={styles.detailGrid}>
-                              <div><span>Course Code</span><strong>{plan.course.courseCode}</strong></div>
-                              <div><span>Course Name (TH)</span><strong>{plan.course.courseNameTh}</strong></div>
-                              <div><span>Course Name (EN)</span><strong>{plan.course.courseNameEn}</strong></div>
-                              <div><span>Course Type</span><strong>{plan.course.courseType}</strong></div>
-                              <div><span>Course Group</span><strong>{plan.course.courseGroup}</strong></div>
-                              <div><span>Objective</span><p>{plan.course.objective}</p></div>
-                              <div><span>Learning Content</span><p>{plan.course.learningContent}</p></div>
-                              <div><span>Target Group</span><p>{plan.course.targetGroup}</p></div>
-                              <div><span>Methodology</span><p>{plan.course.methodology}</p></div>
-                              <div><span>Pre test</span><strong>{plan.course.preTest}</strong></div>
-                              <div><span>Post test</span><strong>{plan.course.postTest}</strong></div>
-                              <div><span>Evaluation</span><strong>{plan.course.evaluation}</strong></div>
-                              <div><span>Evaluation After 30 Day</span><strong>{plan.course.evaluationAfter30Day}</strong></div>
-                              <div><span>Life Cycle (Month)</span><strong>{plan.course.lifeCycleMonth}</strong></div>
-                              <div><span>Participants / Group</span><strong>{plan.participants}</strong></div>
-                              <div><span>Training Hours</span><strong>{plan.hours}</strong></div>
-                              <div><span>Budget</span><strong>{Number(plan.budget).toLocaleString("en-US")}</strong></div>
-                              <div><span>Trainer</span><strong>{plan.trainer}</strong></div>
-                              <div><span>Provider</span><strong>{plan.providerName}</strong></div>
-                              <div><span>Created By</span><strong>{plan.owner === "CENTER" ? "Center" : plan.ownerCompany}</strong></div>
-                            </div>
-                            <div className={styles.formActions}>
-                              <button className={styles.dangerButton} disabled={plan.status === "Cancel"} type="button" onClick={() => void updateStatus(plan.id, "Cancel")}>Cancel Plan</button>
-                              <button className={styles.secondaryButton} type="button" onClick={() => setOpenDetailId("")}>Close</button>
-                            </div>
-                          </section>
-                        </td>
-                      </tr>
-                    ) : null}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+                            </td>
+                            <td>{plan.participants}</td>
+                            <td>{plan.hours}</td>
+                            <td>{Number(plan.budget).toLocaleString("en-US")}</td>
+                            <td>{plan.trainer}</td>
+                            <td>{plan.providerName}</td>
+                          </tr>
+                          {isOpen ? (
+                            <tr className={styles.detailRow}>
+                              <td colSpan={9}>
+                                <section className={styles.detailPanel}>
+                                  <div className={styles.panelHeader}>
+                                    <div>
+                                      <p className={styles.kicker}>Course detail from Course Master</p>
+                                      <h3>{getCourseDisplayName(plan.course)}</h3>
+                                    </div>
+                                    <button className={styles.closeButton} type="button" onClick={() => setOpenDetailId("")}>Close</button>
+                                  </div>
+                                  <div className={styles.detailGrid}>
+                                    <div><span>Course Code</span><strong>{plan.course.courseCode}</strong></div>
+                                    <div><span>Course Name (TH)</span><strong>{plan.course.courseNameTh}</strong></div>
+                                    <div><span>Course Name (EN)</span><strong>{plan.course.courseNameEn}</strong></div>
+                                    <div><span>Course Type</span><strong>{plan.course.courseType}</strong></div>
+                                    <div><span>Course Group</span><strong>{plan.course.courseGroup}</strong></div>
+                                    <div><span>Objective</span><p>{plan.course.objective}</p></div>
+                                    <div><span>Learning Content</span><p>{plan.course.learningContent}</p></div>
+                                    <div><span>Target Group</span><p>{plan.course.targetGroup}</p></div>
+                                    <div><span>Methodology</span><p>{plan.course.methodology}</p></div>
+                                    <div><span>Pre test</span><strong>{plan.course.preTest}</strong></div>
+                                    <div><span>Post test</span><strong>{plan.course.postTest}</strong></div>
+                                    <div><span>Evaluation</span><strong>{plan.course.evaluation}</strong></div>
+                                    <div><span>Evaluation After 30 Day</span><strong>{plan.course.evaluationAfter30Day}</strong></div>
+                                    <div><span>Life Cycle (Month)</span><strong>{plan.course.lifeCycleMonth}</strong></div>
+                                    <div><span>Participants / Group</span><strong>{plan.participants}</strong></div>
+                                    <div><span>Training Hours</span><strong>{plan.hours}</strong></div>
+                                    <div><span>Budget</span><strong>{Number(plan.budget).toLocaleString("en-US")}</strong></div>
+                                    <div><span>Trainer</span><strong>{plan.trainer}</strong></div>
+                                    <div><span>Provider</span><strong>{plan.providerName}</strong></div>
+                                    <div><span>Created By</span><strong>{plan.owner === "CENTER" ? "Center" : plan.ownerCompany}</strong></div>
+                                  </div>
+                                  <div className={styles.formActions}>
+                                    <button className={styles.dangerButton} disabled={plan.status === "Cancel"} type="button" onClick={() => void updateStatus(plan.id, "Cancel")}>Cancel Plan</button>
+                                    <button className={styles.secondaryButton} type="button" onClick={() => setOpenDetailId("")}>Close</button>
+                                  </div>
+                                </section>
+                              </td>
+                            </tr>
+                          ) : null}
+                        </Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
           {visiblePlans.length === 0 ? (
             <div className={styles.emptyState}>
               <strong>No training plans found</strong>

@@ -408,6 +408,36 @@ export default function TrainingRolling() {
         sequence: index + 1,
       }));
   }, [visiblePlans, userCompanyCode]);
+  const companyPlanGroups = useMemo(() => {
+    const groupsMap = new Map<string, typeof visiblePlanGroups>();
+
+    visiblePlanGroups.forEach((group) => {
+      const plan = group.plans[0];
+      const isCenter = plan?.ownerScope === "CENTER" || plan?.ownerCompany === "HRD Center" || plan?.ownerName === "Center HRD" || plan?.provider === "HRD Center";
+      const compKey = isCenter ? "HRD Center" : (plan?.ownerCompany || plan?.company || "Other");
+
+      groupsMap.set(compKey, [...(groupsMap.get(compKey) ?? []), group]);
+    });
+
+    const userCompLabel = userCompanyCode && userCompanyCode !== "CENTER" ? userCompanyCode : "";
+
+    const entries = [...groupsMap.entries()].map(([companyName, groupList]) => ({
+      companyName,
+      groups: groupList,
+      isUserCompany: userCompLabel ? companyName === userCompLabel : companyName === "HRD Center",
+    }));
+
+    return entries.sort((a, b) => {
+      if (a.isUserCompany && !b.isUserCompany) return -1;
+      if (!a.isUserCompany && b.isUserCompany) return 1;
+
+      if (a.companyName === "HRD Center") return -1;
+      if (b.companyName === "HRD Center") return 1;
+
+      return a.companyName.localeCompare(b.companyName);
+    });
+  }, [visiblePlanGroups, userCompanyCode]);
+
   const selectedGroup =
     visiblePlanGroups.find((group) => group.id === selectedGroupId) ?? null;
   const isSelectedGroupCenter = selectedGroup
@@ -1085,276 +1115,279 @@ export default function TrainingRolling() {
           </section>
         ) : null}
 
-        <div className={styles.tableWrap}>
-          <table className={styles.rollingTable}>
-            <thead>
-              <tr>
-                <th>Seq.</th>
-                <th>Course Name</th>
-                <th>Company (บริษัท)</th>
-                <th>Status</th>
-                <th>Job Status</th>
-                <th>Actions</th>
-                <th>Training Sessions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visiblePlanGroups.map((group) => {
-                const plan = group.plans[0];
-                const isOpen = openDetailId === group.id;
-                const isCenterGroup = plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.ownerName === "Center HRD" || plan.provider === "HRD Center";
-                const isRowReadOnlyForFactory = isFactoryUser && isCenterGroup;
-                const dates = [
-                  ...new Set(group.plans.map((item) => item.trainingDate)),
-                ];
-                const allPublished = group.plans.every(
-                  (item) => item.status === "Planned",
-                );
-                const groupStatus: RollingStatus = allPublished
-                  ? "Planned"
-                  : "Planning";
-                const groupJobStatus = group.plans.some(
-                  (item) => getJobStatus(item.trainingDate) === "Rolling",
-                )
-                  ? "Rolling"
-                  : "Completed";
+        <div className={styles.companySectionsContainer}>
+          {companyPlanGroups.map((section) => (
+            <div key={section.companyName} className={styles.companySectionBlock}>
+              <div className={`${styles.companySectionHeader} ${section.isUserCompany ? styles.ownCompanySectionHeader : ""}`}>
+                <div className={styles.companySectionTitle}>
+                  <span className={styles.companyIcon}>{section.companyName === "HRD Center" ? "🏢" : "🏬"}</span>
+                  <h4>แผนอบรม {section.companyName}</h4>
+                  {section.isUserCompany ? <span className={styles.ownCompanySectionTag}>⭐ บริษัทของฉัน ({userCompanyCode || "HRD Center"})</span> : null}
+                </div>
+                <span className={styles.companyCountBadge}>{section.groups.length} รายการจัดอบรม</span>
+              </div>
 
-                const planCompanies = getRollingPlanCompanies(plan);
-                const isOwnCompany = userCompanyCode
-                  ? plan.ownerCompany === userCompanyCode || plan.company === userCompanyCode || planCompanies.includes(userCompanyCode) || (userCompanyCode === "CENTER" && isCenterGroup)
-                  : isCenterGroup;
-
-                return (
-                  <Fragment key={group.id}>
-                    <tr
-                      className={`${group.id === selectedGroupId ? styles.selectedRow : ""} ${styles.clickableRow}`}
-                      onClick={() => setSelectedGroupId(group.id === selectedGroupId ? "" : group.id)}
-                    >
-                      <td>
-                        <label className={styles.selectionControl} onClick={(e) => e.stopPropagation()}>
-                          <input
-                            aria-label={`Select ${plan.course.code}`}
-                            checked={group.id === selectedGroupId}
-                            name="selected-rolling-group"
-                            type="radio"
-                            onChange={() => setSelectedGroupId(group.id)}
-                          />
-                          <span>{group.sequence}</span>
-                        </label>
-                      </td>
-                      <td>
-                        <strong>{plan.course.name}</strong>
-                        <span>{plan.course.code}</span>
-                        {isCenterGroup ? (
-                          <div>
-                            <span className={styles.creatorBadgeCenter}>
-                              🏢 จัดหลักสูตรโดย HRD Center
-                            </span>
-                          </div>
-                        ) : (
-                          <div>
-                            <span className={styles.creatorBadgeFactory}>
-                              🏬 จัดหลักสูตรโดย {plan.ownerCompany || plan.company}
-                            </span>
-                          </div>
-                        )}
-                      </td>
-                      <td>
-                        <span className={`${styles.companyBadge} ${isOwnCompany ? styles.ownCompanyBadge : ""}`}>
-                          {formatRollingPlanCompanies(plan)}
-                          {isOwnCompany ? <span className={styles.ownTag}> (ของฉัน)</span> : null}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`${styles.statusPill} ${styles[`status${groupStatus}`]}`}>
-                          <span className={styles.statusDot} />
-                          {groupStatus === "Planned" ? "วางแผนแล้ว" : groupStatus === "Planning" ? "รอวางแผน" : groupStatus === "Cancel" ? "ยกเลิก" : groupStatus}
-                        </span>
-                      </td>
-                      <td><span className={`${styles.jobPill} ${styles[`job${groupJobStatus}`]}`}>{groupJobStatus}</span></td>
-                      <td className={styles.actionCell} onClick={(e) => e.stopPropagation()}>
-                        <div className={styles.actionButtons}>
-                          <button className={styles.detailButton} type="button" onClick={() => setOpenDetailId(isOpen ? "" : group.id)}>
-                            {isOpen ? "Hide" : "Details"}
-                          </button>
-                          <button
-                            className={styles.secondaryButton}
-                            disabled={isRowReadOnlyForFactory}
-                            title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้ (ส่งผู้เข้าร่วมได้ใน Training Accept Survey)" : undefined}
-                            type="button"
-                            onClick={() => {
-                              if (isRowReadOnlyForFactory) return;
-                              setSelectedGroupId(group.id);
-                              handleEditGroup(group);
-                            }}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className={styles.dangerButton}
-                            disabled={isRowReadOnlyForFactory}
-                            title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
-                            type="button"
-                            onClick={() => {
-                              if (isRowReadOnlyForFactory) return;
-                              setSelectedGroupId(group.id);
-                              void handleDeleteGroup(group);
-                            }}
-                          >
-                            Delete
-                          </button>
-                          <button
-                            className={styles.primaryButton}
-                            disabled={allPublished || isRowReadOnlyForFactory}
-                            title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถเผยแพร่ได้" : undefined}
-                            type="button"
-                            onClick={() => !isRowReadOnlyForFactory && handleConfirmGroup(group.plans)}
-                          >
-                            {allPublished ? "All published" : "Publish all"}
-                          </button>
-                        </div>
-                      </td>
-                      <td>
-                        <strong>{group.plans.length} sessions</strong>
-                        <span>
-                          {dates.length === 1
-                            ? dates[0]
-                            : `${dates.length} dates`}{" "}
-                          / Batches: {group.plans.map((item) => item.batch).join(", ")}
-                        </span>
-                      </td>
+              <div className={styles.tableWrap}>
+                <table className={styles.rollingTable}>
+                  <thead>
+                    <tr>
+                      <th>Seq.</th>
+                      <th>Course Name</th>
+                      <th>Status</th>
+                      <th>Job Status</th>
+                      <th>Actions</th>
+                      <th>Training Sessions</th>
                     </tr>
-                    {isOpen ? (
-                      <tr className={styles.detailRow}>
-                        <td colSpan={7}>
-                          <section className={styles.detailPanel}>
-                            <div className={styles.panelHeader}>
-                              <div>
-                                <p className={styles.kicker}>Rolling detail</p>
-                                <h3>{plan.course.name}</h3>
-                              </div>
-                              <div className={styles.panelHeaderActions}>
+                  </thead>
+                  <tbody>
+                    {section.groups.map((group, index) => {
+                      const plan = group.plans[0];
+                      const isOpen = openDetailId === group.id;
+                      const isCenterGroup = plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.ownerName === "Center HRD" || plan.provider === "HRD Center";
+                      const isRowReadOnlyForFactory = isFactoryUser && isCenterGroup;
+                      const dates = [
+                        ...new Set(group.plans.map((item) => item.trainingDate)),
+                      ];
+                      const allPublished = group.plans.every(
+                        (item) => item.status === "Planned",
+                      );
+                      const groupStatus: RollingStatus = allPublished
+                        ? "Planned"
+                        : "Planning";
+                      const groupJobStatus = group.plans.some(
+                        (item) => getJobStatus(item.trainingDate) === "Rolling",
+                      )
+                        ? "Rolling"
+                        : "Completed";
+
+                      return (
+                        <Fragment key={group.id}>
+                          <tr
+                            className={`${group.id === selectedGroupId ? styles.selectedRow : ""} ${styles.clickableRow}`}
+                            onClick={() => setSelectedGroupId(group.id === selectedGroupId ? "" : group.id)}
+                          >
+                            <td>
+                              <label className={styles.selectionControl} onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  aria-label={`Select ${plan.course.code}`}
+                                  checked={group.id === selectedGroupId}
+                                  name="selected-rolling-group"
+                                  type="radio"
+                                  onChange={() => setSelectedGroupId(group.id)}
+                                />
+                                <span>{index + 1}</span>
+                              </label>
+                            </td>
+                            <td>
+                              <strong>{plan.course.name}</strong>
+                              <span>{plan.course.code}</span>
+                              {isCenterGroup ? (
+                                <div>
+                                  <span className={styles.creatorBadgeCenter}>
+                                    🏢 จัดหลักสูตรโดย HRD Center
+                                  </span>
+                                </div>
+                              ) : (
+                                <div>
+                                  <span className={styles.creatorBadgeFactory}>
+                                    🏬 จัดหลักสูตรโดย {plan.ownerCompany || plan.company}
+                                  </span>
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              <span className={`${styles.statusPill} ${styles[`status${groupStatus}`]}`}>
+                                <span className={styles.statusDot} />
+                                {groupStatus === "Planned" ? "วางแผนแล้ว" : groupStatus === "Planning" ? "รอวางแผน" : groupStatus === "Cancel" ? "ยกเลิก" : groupStatus}
+                              </span>
+                            </td>
+                            <td><span className={`${styles.jobPill} ${styles[`job${groupJobStatus}`]}`}>{groupJobStatus}</span></td>
+                            <td className={styles.actionCell} onClick={(e) => e.stopPropagation()}>
+                              <div className={styles.actionButtons}>
+                                <button className={styles.detailButton} type="button" onClick={() => setOpenDetailId(isOpen ? "" : group.id)}>
+                                  {isOpen ? "Hide" : "Details"}
+                                </button>
                                 <button
                                   className={styles.secondaryButton}
-                                  disabled={Boolean(exportingPlanId)}
+                                  disabled={isRowReadOnlyForFactory}
+                                  title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้ (ส่งผู้เข้าร่วมได้ใน Training Accept Survey)" : undefined}
                                   type="button"
-                                  onClick={() => void handleExportOutline(plan)}
+                                  onClick={() => {
+                                    if (isRowReadOnlyForFactory) return;
+                                    setSelectedGroupId(group.id);
+                                    handleEditGroup(group);
+                                  }}
                                 >
-                                  {exportingPlanId === plan.rollingId ? "Preparing..." : "Export Outline"}
+                                  Edit
                                 </button>
-                                <button className={styles.closeButton} type="button" onClick={() => setOpenDetailId("")}>Close</button>
+                                <button
+                                  className={styles.dangerButton}
+                                  disabled={isRowReadOnlyForFactory}
+                                  title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
+                                  type="button"
+                                  onClick={() => {
+                                    if (isRowReadOnlyForFactory) return;
+                                    setSelectedGroupId(group.id);
+                                    void handleDeleteGroup(group);
+                                  }}
+                                >
+                                  Delete
+                                </button>
+                                <button
+                                  className={styles.primaryButton}
+                                  disabled={allPublished || isRowReadOnlyForFactory}
+                                  title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถเผยแพร่ได้" : undefined}
+                                  type="button"
+                                  onClick={() => !isRowReadOnlyForFactory && handleConfirmGroup(group.plans)}
+                                >
+                                  {allPublished ? "All published" : "Publish all"}
+                                </button>
                               </div>
-                            </div>
-                            <div className={styles.detailGrid}>
-                              <div><span>Course Sequence</span><strong>{group.sequence}</strong></div>
-                              <div><span>Sessions</span><strong>{group.plans.length}</strong></div>
-                              <div><span>Status</span><strong>{groupStatus}</strong></div>
-                              <div><span>Job Status</span><strong>{groupJobStatus}</strong></div>
-                              <div><span>Course Code</span><strong>{plan.course.code}</strong></div>
-                              <div><span>Course Type</span><strong>{plan.course.courseType}</strong></div>
-                              <div><span>Course Group</span><strong>{plan.course.courseGroup}</strong></div>
-                              <div><span>Objective</span><p>{plan.course.objective}</p></div>
-                              <div><span>Learning Content</span><p>{plan.course.learningContent}</p></div>
-                              <div><span>Target Group</span><p>{plan.course.targetGroup}</p></div>
-                              <div><span>Methodology</span><p>{plan.course.methodology}</p></div>
-                              <div><span>Pre test</span><strong>{plan.course.preTest}</strong></div>
-                              <div><span>Post test</span><strong>{plan.course.postTest}</strong></div>
-                              <div><span>Evaluation</span><strong>{plan.course.evaluation}</strong></div>
-                              <div><span>Evaluation After 30 Day</span><strong>{plan.course.evaluationAfter30Day}</strong></div>
-                              <div><span>Life Cycle (Month)</span><strong>{plan.course.lifeCycleMonth}</strong></div>
-                              <div><span>ผู้เข้าอบรม (Participants)</span><strong>{plan.participants} ท่าน</strong></div>
-                              <div><span>ชั่วโมงอบรม (Training Hours)</span><strong>{plan.hours} ชม.</strong></div>
-                              <div><span>งบประมาณ (Budget)</span><strong>฿{Number(plan.budget).toLocaleString("en-US")}</strong></div>
-                              <div><span>วิทยากร (Trainer)</span><strong>{plan.trainer || "-"}</strong></div>
-                              <div><span>สถาบัน / ผู้ให้บริการ (Provider)</span><strong>{plan.provider || "-"}</strong></div>
-                              <div><span>ขอบเขต (Scope)</span><strong>{formatRollingPlanCompanies(plan)}</strong></div>
-                              <div>
-                                <span>Created By (ผู้จัดอบรม)</span>
-                                <strong>
-                                  {plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.ownerName === "Center HRD"
-                                    ? `🏢 HRD Center (ส่วนกลางจัดอบรมให้บริษัท ${formatRollingPlanCompanies(plan)})`
-                                    : `🏬 ${plan.ownerCompany || plan.company} (โรงงานจัดอบรมเอง)`}
-                                </strong>
-                              </div>
-                              <div><span>Last Updated</span><strong>{plan.updatedAt}</strong></div>
-                            </div>
+                            </td>
+                            <td>
+                              <strong>{group.plans.length} sessions</strong>
+                              <span>
+                                {dates.length === 1
+                                  ? dates[0]
+                                  : `${dates.length} dates`}{" "}
+                                / Batches: {group.plans.map((item) => item.batch).join(", ")}
+                              </span>
+                            </td>
+                          </tr>
+                          {isOpen ? (
+                            <tr className={styles.detailRow}>
+                              <td colSpan={6}>
+                                <section className={styles.detailPanel}>
+                                  <div className={styles.panelHeader}>
+                                    <div>
+                                      <p className={styles.kicker}>Rolling detail</p>
+                                      <h3>{plan.course.name}</h3>
+                                    </div>
+                                    <div className={styles.panelHeaderActions}>
+                                      <button
+                                        className={styles.secondaryButton}
+                                        disabled={Boolean(exportingPlanId)}
+                                        type="button"
+                                        onClick={() => void handleExportOutline(plan)}
+                                      >
+                                        {exportingPlanId === plan.rollingId ? "Preparing..." : "Export Outline"}
+                                      </button>
+                                      <button className={styles.closeButton} type="button" onClick={() => setOpenDetailId("")}>Close</button>
+                                    </div>
+                                  </div>
+                                  <div className={styles.detailGrid}>
+                                    <div><span>Course Sequence</span><strong>{group.sequence}</strong></div>
+                                    <div><span>Sessions</span><strong>{group.plans.length}</strong></div>
+                                    <div><span>Status</span><strong>{groupStatus}</strong></div>
+                                    <div><span>Job Status</span><strong>{groupJobStatus}</strong></div>
+                                    <div><span>Course Code</span><strong>{plan.course.code}</strong></div>
+                                    <div><span>Course Type</span><strong>{plan.course.courseType}</strong></div>
+                                    <div><span>Course Group</span><strong>{plan.course.courseGroup}</strong></div>
+                                    <div><span>Objective</span><p>{plan.course.objective}</p></div>
+                                    <div><span>Learning Content</span><p>{plan.course.learningContent}</p></div>
+                                    <div><span>Target Group</span><p>{plan.course.targetGroup}</p></div>
+                                    <div><span>Methodology</span><p>{plan.course.methodology}</p></div>
+                                    <div><span>Pre test</span><strong>{plan.course.preTest}</strong></div>
+                                    <div><span>Post test</span><strong>{plan.course.postTest}</strong></div>
+                                    <div><span>Evaluation</span><strong>{plan.course.evaluation}</strong></div>
+                                    <div><span>Evaluation After 30 Day</span><strong>{plan.course.evaluationAfter30Day}</strong></div>
+                                    <div><span>Life Cycle (Month)</span><strong>{plan.course.lifeCycleMonth}</strong></div>
+                                    <div><span>ผู้เข้าอบรม (Participants)</span><strong>{plan.participants} ท่าน</strong></div>
+                                    <div><span>ชั่วโมงอบรม (Training Hours)</span><strong>{plan.hours} ชม.</strong></div>
+                                    <div><span>งบประมาณ (Budget)</span><strong>฿{Number(plan.budget).toLocaleString("en-US")}</strong></div>
+                                    <div><span>วิทยากร (Trainer)</span><strong>{plan.trainer || "-"}</strong></div>
+                                    <div><span>สถาบัน / ผู้ให้บริการ (Provider)</span><strong>{plan.provider || "-"}</strong></div>
+                                    <div><span>ขอบเขต (Scope)</span><strong>{formatRollingPlanCompanies(plan)}</strong></div>
+                                    <div>
+                                      <span>Created By (ผู้จัดอบรม)</span>
+                                      <strong>
+                                        {plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.ownerName === "Center HRD"
+                                          ? `🏢 HRD Center (ส่วนกลางจัดอบรมให้บริษัท ${formatRollingPlanCompanies(plan)})`
+                                          : `🏬 ${plan.ownerCompany || plan.company} (โรงงานจัดอบรมเอง)`}
+                                      </strong>
+                                    </div>
+                                    <div><span>Last Updated</span><strong>{plan.updatedAt}</strong></div>
+                                  </div>
 
-                            <div className={styles.sessionDetailHeader}>
-                              <div>
-                                <strong>Session schedule</strong>
-                                <span>Edit, publish, or remove each session independently.</span>
-                              </div>
-                              <span>{group.plans.length} sessions</span>
-                            </div>
-                            <div className={styles.sessionSummaryList}>
-                              {group.plans.map((session, index) => (
-                                <article key={session.rollingId}>
-                                  <div>
-                                    <span>Session {index + 1}</span>
-                                    <strong>{session.batch}</strong>
+                                  <div className={styles.sessionDetailHeader}>
+                                    <div>
+                                      <strong>Session schedule</strong>
+                                      <span>Edit, publish, or remove each session independently.</span>
+                                    </div>
+                                    <span>{group.plans.length} sessions</span>
                                   </div>
-                                  <div>
-                                    <span>Training Date</span>
-                                    <strong>{session.trainingDate}</strong>
+                                  <div className={styles.sessionSummaryList}>
+                                    {group.plans.map((session, sIndex) => (
+                                      <article key={session.rollingId}>
+                                        <div>
+                                          <span>Session {sIndex + 1}</span>
+                                          <strong>{session.batch}</strong>
+                                        </div>
+                                        <div>
+                                          <span>Training Date</span>
+                                          <strong>{session.trainingDate}</strong>
+                                        </div>
+                                        <div>
+                                          <span>Time</span>
+                                          <strong>{session.startTime} - {session.endTime}</strong>
+                                        </div>
+                                        <div>
+                                          <span>Location</span>
+                                          <strong>{session.location}</strong>
+                                        </div>
+                                        <div>
+                                          <span>Status</span>
+                                          <strong>
+                                            <span className={`${styles.statusPill} ${styles[`status${session.status}`]}`}>
+                                              <span className={styles.statusDot} />
+                                              {session.status === "Planned" ? "วางแผนแล้ว" : session.status === "Planning" ? "รอวางแผน" : session.status === "Cancel" ? "ยกเลิก" : session.status}
+                                            </span>
+                                          </strong>
+                                        </div>
+                                        <div className={styles.sessionActions}>
+                                          <button
+                                            className={styles.detailButton}
+                                            disabled={isRowReadOnlyForFactory}
+                                            title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้" : undefined}
+                                            type="button"
+                                            onClick={() => !isRowReadOnlyForFactory && handleEditSession(session)}
+                                          >
+                                            Edit
+                                          </button>
+                                          <button
+                                            className={styles.primaryButton}
+                                            disabled={session.status === "Planned" || isRowReadOnlyForFactory}
+                                            title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถเผยแพร่ได้" : undefined}
+                                            type="button"
+                                            onClick={() => !isRowReadOnlyForFactory && void handleConfirm(session.rollingId)}
+                                          >
+                                            {session.status === "Planned" ? "Published" : "Publish"}
+                                          </button>
+                                          <button
+                                            className={styles.dangerButton}
+                                            disabled={isRowReadOnlyForFactory}
+                                            title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
+                                            type="button"
+                                            onClick={() => !isRowReadOnlyForFactory && void handleDelete(session.rollingId)}
+                                          >
+                                            Delete
+                                          </button>
+                                        </div>
+                                      </article>
+                                    ))}
                                   </div>
-                                  <div>
-                                    <span>Time</span>
-                                    <strong>{session.startTime} - {session.endTime}</strong>
-                                  </div>
-                                  <div>
-                                    <span>Location</span>
-                                    <strong>{session.location}</strong>
-                                  </div>
-                                  <div>
-                                    <span>Status</span>
-                                    <strong>
-                                      <span className={`${styles.statusPill} ${styles[`status${session.status}`]}`}>
-                                        <span className={styles.statusDot} />
-                                        {session.status === "Planned" ? "วางแผนแล้ว" : session.status === "Planning" ? "รอวางแผน" : session.status === "Cancel" ? "ยกเลิก" : session.status}
-                                      </span>
-                                    </strong>
-                                  </div>
-                                  <div className={styles.sessionActions}>
-                                    <button
-                                      className={styles.detailButton}
-                                      disabled={isRowReadOnlyForFactory}
-                                      title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้" : undefined}
-                                      type="button"
-                                      onClick={() => !isRowReadOnlyForFactory && handleEditSession(session)}
-                                    >
-                                      Edit
-                                    </button>
-                                    <button
-                                      className={styles.primaryButton}
-                                      disabled={session.status === "Planned" || isRowReadOnlyForFactory}
-                                      title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถเผยแพร่ได้" : undefined}
-                                      type="button"
-                                      onClick={() => !isRowReadOnlyForFactory && void handleConfirm(session.rollingId)}
-                                    >
-                                      {session.status === "Planned" ? "Published" : "Publish"}
-                                    </button>
-                                    <button
-                                      className={styles.dangerButton}
-                                      disabled={isRowReadOnlyForFactory}
-                                      title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
-                                      type="button"
-                                      onClick={() => !isRowReadOnlyForFactory && void handleDelete(session.rollingId)}
-                                    >
-                                      Delete
-                                    </button>
-                                  </div>
-                                </article>
-                              ))}
-                            </div>
-                          </section>
-                        </td>
-                      </tr>
-                    ) : null}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+                                </section>
+                              </td>
+                            </tr>
+                          ) : null}
+                        </Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
           {visiblePlanGroups.length === 0 ? (
             <div className={styles.emptyState}>
               <strong>{oapSources.length === 0 ? "No Training OAP found" : "No rolling plans found"}</strong>
