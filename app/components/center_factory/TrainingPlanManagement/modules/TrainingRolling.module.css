@@ -1727,3 +1727,32 @@
   border-left: 3px solid #3b82f6;
 }
 
+.companyBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: var(--ui-60-surface-soft, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--ui-30-border, rgba(255, 255, 255, 0.14));
+  color: var(--ui-30-ink, #f8fafc);
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ownCompanyBadge {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: #10b981 !important;
+  font-weight: 800;
+}
+
+.ownTag {
+  display: inline-block;
+  margin-left: 2px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #10b981;
+}
+

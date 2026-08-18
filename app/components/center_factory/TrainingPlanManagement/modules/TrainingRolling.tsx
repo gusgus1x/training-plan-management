@@ -326,6 +326,24 @@ export default function TrainingRolling() {
         }),
     [companyFilter, scopedRollingPlans, search, selectedMonth, selectedYear, statusFilter],
   );
+  const getCompanySortWeight = (plan: RollingPlan) => {
+    const currentUserCompany = userCompanyCode || "CENTER";
+    const planCompanies = getRollingPlanCompanies(plan);
+    const planOwner = plan.ownerCompany || plan.company;
+
+    if (
+      planOwner === currentUserCompany ||
+      planCompanies.includes(currentUserCompany) ||
+      (currentUserCompany === "CENTER" && (plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.company === "All Companies"))
+    ) {
+      return 0;
+    }
+    if (plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.company === "All Companies") {
+      return 1;
+    }
+    return 2;
+  };
+
   const visiblePlanGroups = useMemo(() => {
     const groups = new Map<string, RollingPlan[]>();
 
@@ -333,16 +351,37 @@ export default function TrainingRolling() {
       groups.set(plan.scheduleGroupId, [...(groups.get(plan.scheduleGroupId) ?? []), plan]);
     });
 
-    return [...groups.entries()].map(([id, plans], index) => ({
-      id,
-      sequence: index + 1,
-      plans: [...plans].sort(
+    const mappedGroups = [...groups.entries()].map(([id, plans]) => {
+      const sortedPlans = [...plans].sort(
         (a, b) =>
           a.trainingDate.localeCompare(b.trainingDate) ||
           a.startTime.localeCompare(b.startTime),
-      ),
-    }));
-  }, [visiblePlans]);
+      );
+      return {
+        id,
+        plans: sortedPlans,
+        firstPlan: sortedPlans[0],
+      };
+    });
+
+    return mappedGroups
+      .sort((groupA, groupB) => {
+        const weightA = getCompanySortWeight(groupA.firstPlan);
+        const weightB = getCompanySortWeight(groupB.firstPlan);
+        if (weightA !== weightB) return weightA - weightB;
+
+        const companyA = formatRollingPlanCompanies(groupA.firstPlan);
+        const companyB = formatRollingPlanCompanies(groupB.firstPlan);
+        if (companyA !== companyB) return companyA.localeCompare(companyB);
+
+        return groupA.firstPlan.trainingDate.localeCompare(groupB.firstPlan.trainingDate);
+      })
+      .map((group, index) => ({
+        id: group.id,
+        plans: group.plans,
+        sequence: index + 1,
+      }));
+  }, [visiblePlans, userCompanyCode]);
   const selectedGroup =
     visiblePlanGroups.find((group) => group.id === selectedGroupId) ?? null;
   const isSelectedGroupCenter = selectedGroup
@@ -1026,11 +1065,11 @@ export default function TrainingRolling() {
               <tr>
                 <th>Seq.</th>
                 <th>Course Name</th>
+                <th>Company (บริษัท)</th>
                 <th>Status</th>
                 <th>Job Status</th>
                 <th>Actions</th>
                 <th>Training Sessions</th>
-                <th>Company</th>
               </tr>
             </thead>
             <tbody>
@@ -1054,6 +1093,11 @@ export default function TrainingRolling() {
                   ? "Rolling"
                   : "Completed";
 
+                const planCompanies = getRollingPlanCompanies(plan);
+                const isOwnCompany = userCompanyCode
+                  ? plan.ownerCompany === userCompanyCode || plan.company === userCompanyCode || planCompanies.includes(userCompanyCode) || (userCompanyCode === "CENTER" && isCenterGroup)
+                  : isCenterGroup;
+
                 return (
                   <Fragment key={group.id}>
                     <tr
@@ -1075,7 +1119,7 @@ export default function TrainingRolling() {
                       <td>
                         <strong>{plan.course.name}</strong>
                         <span>{plan.course.code}</span>
-                        {plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.ownerName === "Center HRD" || plan.provider === "HRD Center" ? (
+                        {isCenterGroup ? (
                           <div>
                             <span className={styles.creatorBadgeCenter}>
                               🏢 จัดหลักสูตรโดย HRD Center
@@ -1088,6 +1132,12 @@ export default function TrainingRolling() {
                             </span>
                           </div>
                         )}
+                      </td>
+                      <td>
+                        <span className={`${styles.companyBadge} ${isOwnCompany ? styles.ownCompanyBadge : ""}`}>
+                          {formatRollingPlanCompanies(plan)}
+                          {isOwnCompany ? <span className={styles.ownTag}> (ของฉัน)</span> : null}
+                        </span>
                       </td>
                       <td>
                         <span className={`${styles.statusPill} ${styles[`status${groupStatus}`]}`}>
@@ -1147,7 +1197,6 @@ export default function TrainingRolling() {
                           / Batches: {group.plans.map((item) => item.batch).join(", ")}
                         </span>
                       </td>
-                      <td>{formatRollingPlanCompanies(plan)}</td>
                     </tr>
                     {isOpen ? (
                       <tr className={styles.detailRow}>

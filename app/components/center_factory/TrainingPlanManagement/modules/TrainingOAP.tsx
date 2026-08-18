@@ -218,6 +218,22 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     [plans, user?.roleCode, userCompanyCode],
   );
 
+  const getCompanySortWeight = (plan: OapPlan) => {
+    const planCompany = plan.owner === "CENTER" ? "CENTER" : plan.ownerCompany;
+    const currentUserCompany = userCompanyCode || "CENTER";
+
+    if (
+      planCompany === currentUserCompany ||
+      (currentUserCompany === "CENTER" && (plan.owner === "CENTER" || plan.ownerCompany === "HRD Center"))
+    ) {
+      return 0;
+    }
+    if (plan.owner === "CENTER" || plan.ownerCompany === "HRD Center") {
+      return 1;
+    }
+    return 2;
+  };
+
   const visiblePlans = useMemo(
     () =>
       scopedPlans
@@ -239,13 +255,26 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             plan.status,
             plan.trainer,
             plan.providerName,
+            plan.owner === "CENTER" ? "HRD Center" : plan.ownerCompany,
           ]
             .join(" ")
             .toLowerCase()
             .includes(search.toLowerCase()),
         )
-        .filter((plan) => statusFilter === "all" || plan.status === statusFilter),
-    [companyFilter, scopedPlans, search, statusFilter],
+        .filter((plan) => statusFilter === "all" || plan.status === statusFilter)
+        .sort((a, b) => {
+          const weightA = getCompanySortWeight(a);
+          const weightB = getCompanySortWeight(b);
+          if (weightA !== weightB) return weightA - weightB;
+
+          const companyA = a.owner === "CENTER" ? "HRD Center" : a.ownerCompany || "";
+          const companyB = b.owner === "CENTER" ? "HRD Center" : b.ownerCompany || "";
+          if (companyA !== companyB) return companyA.localeCompare(companyB);
+
+          return a.sequence - b.sequence;
+        })
+        .map((plan, index) => ({ ...plan, sequence: index + 1 })),
+    [companyFilter, scopedPlans, search, statusFilter, userCompanyCode],
   );
   const selectedPlan =
     visiblePlans.find((plan) => plan.id === selectedPlanId) ?? null;
@@ -685,6 +714,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               <tr>
                 <th>Seq.</th>
                 <th>Course Name</th>
+                <th>Company (บริษัท)</th>
                 <th>Status</th>
                 <th>Actions</th>
                 <th>Participants</th>
@@ -692,12 +722,16 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                 <th>Budget (THB)</th>
                 <th>Trainer Name</th>
                 <th>Institute / Provider</th>
-                <th>Created By</th>
               </tr>
             </thead>
             <tbody>
               {visiblePlans.map((plan) => {
                 const isOpen = openDetailId === plan.id;
+                const planCompany = plan.owner === "CENTER" ? "CENTER" : plan.ownerCompany;
+                const isOwnCompany = userCompanyCode
+                  ? planCompany === userCompanyCode || (userCompanyCode === "CENTER" && plan.owner === "CENTER")
+                  : plan.owner === "CENTER";
+
                 return (
                   <Fragment key={plan.id}>
                     <tr
@@ -723,6 +757,12 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                           {getCourseSecondaryName(plan.course)
                             ? ` / ${getCourseSecondaryName(plan.course)}`
                             : ""}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`${styles.companyBadge} ${isOwnCompany ? styles.ownCompanyBadge : ""}`}>
+                          {plan.owner === "CENTER" ? "🏢 HRD Center" : `🏬 ${plan.ownerCompany}`}
+                          {isOwnCompany ? <span className={styles.ownTag}> (ของฉัน)</span> : null}
                         </span>
                       </td>
                       <td>
@@ -771,7 +811,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                       <td>{Number(plan.budget).toLocaleString("en-US")}</td>
                       <td>{plan.trainer}</td>
                       <td>{plan.providerName}</td>
-                      <td>{plan.owner === "CENTER" ? "Center" : plan.ownerCompany}</td>
                     </tr>
                     {isOpen ? (
                       <tr className={styles.detailRow}>
