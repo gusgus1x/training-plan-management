@@ -2,6 +2,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { toDataURL as generateQrCodeDataUrl } from "qrcode";
 import { downloadCsvTemplate, parseCsvText, type CourseMasterImportRow } from "../../../../lib/excelHelper";
 import {
   getCourseDisplayName,
@@ -824,6 +825,23 @@ function CourseMaster() {
     }));
   };
 
+  const handleDownloadQrCode = async (link: string, filenamePart: string) => {
+    const trimmedLink = link.trim();
+    if (!trimmedLink) return;
+    try {
+      const dataUrl = await generateQrCodeDataUrl(trimmedLink, { width: 480, margin: 2 });
+      const anchor = document.createElement("a");
+      anchor.href = dataUrl;
+      anchor.download = `${form.courseCode || "course"}-${filenamePart}-qr.png`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+    } catch (error) {
+      console.error("Failed to generate QR code", error);
+      alert("Failed to generate QR code");
+    }
+  };
+
   const handleNew = () => {
     void loadPublishedForms();
     setSelectedCourseId("");
@@ -1012,6 +1030,10 @@ function CourseMaster() {
       postAssessmentId: form.postTestId || null,
       evaluationFormId: form.evaluationId || null,
       evaluationFormAfter30DayId: form.evaluationAfter30DayId || null,
+      preTestLink: form.preTestLink.trim() || null,
+      postTestLink: form.postTestLink.trim() || null,
+      evaluationLink: form.evaluationLink.trim() || null,
+      evaluationAfter30DayLink: form.evaluationAfter30DayLink.trim() || null,
       status: "Active" as const,
       courseTypeId,
       courseGroupId,
@@ -1267,20 +1289,31 @@ function CourseMaster() {
               </option>
             ))}
           </select>
-          <input
-            value={form.preTestLink}
-            disabled={!isEditing}
-            placeholder="Paste pre-test form link"
-            type="url"
-            onChange={(event) =>
-              handleFormLinkChange(
-                "preTestLink",
-                "preTestId",
-                "preTest",
-                event.target.value,
-              )
-            }
-          />
+          <div className={styles.linkField}>
+            <input
+              value={form.preTestLink}
+              disabled={!isEditing}
+              placeholder="Paste pre-test form link"
+              type="url"
+              onChange={(event) =>
+                handleFormLinkChange(
+                  "preTestLink",
+                  "preTestId",
+                  "preTest",
+                  event.target.value,
+                )
+              }
+            />
+            {selectedCourseId && form.preTestLink.trim() ? (
+              <button
+                type="button"
+                className={styles.detailButton}
+                onClick={() => void handleDownloadQrCode(form.preTestLink, "pre-test")}
+              >
+                Download QR
+              </button>
+            ) : null}
+          </div>
           <small className={styles.catalogHint}>
             {selectedPreTest
               ? `${selectedPreTest.questionCount} questions · Linked course: ${selectedPreTest.courseName}`
@@ -1314,20 +1347,31 @@ function CourseMaster() {
               </option>
             ))}
           </select>
-          <input
-            value={form.postTestLink}
-            disabled={!isEditing}
-            placeholder="Paste post-test form link"
-            type="url"
-            onChange={(event) =>
-              handleFormLinkChange(
-                "postTestLink",
-                "postTestId",
-                "postTest",
-                event.target.value,
-              )
-            }
-          />
+          <div className={styles.linkField}>
+            <input
+              value={form.postTestLink}
+              disabled={!isEditing}
+              placeholder="Paste post-test form link"
+              type="url"
+              onChange={(event) =>
+                handleFormLinkChange(
+                  "postTestLink",
+                  "postTestId",
+                  "postTest",
+                  event.target.value,
+                )
+              }
+            />
+            {selectedCourseId && form.postTestLink.trim() ? (
+              <button
+                type="button"
+                className={styles.detailButton}
+                onClick={() => void handleDownloadQrCode(form.postTestLink, "post-test")}
+              >
+                Download QR
+              </button>
+            ) : null}
+          </div>
           <small className={styles.catalogHint}>
             {selectedPostTest
               ? `${selectedPostTest.questionCount} questions · Linked course: ${selectedPostTest.courseName}`
@@ -1361,20 +1405,31 @@ function CourseMaster() {
               </option>
             ))}
           </select>
-          <input
-            value={form.evaluationLink}
-            disabled={!isEditing}
-            placeholder="Paste evaluation form link"
-            type="url"
-            onChange={(event) =>
-              handleFormLinkChange(
-                "evaluationLink",
-                "evaluationId",
-                "evaluation",
-                event.target.value,
-              )
-            }
-          />
+          <div className={styles.linkField}>
+            <input
+              value={form.evaluationLink}
+              disabled={!isEditing}
+              placeholder="Paste evaluation form link"
+              type="url"
+              onChange={(event) =>
+                handleFormLinkChange(
+                  "evaluationLink",
+                  "evaluationId",
+                  "evaluation",
+                  event.target.value,
+                )
+              }
+            />
+            {selectedCourseId && form.evaluationLink.trim() ? (
+              <button
+                type="button"
+                className={styles.detailButton}
+                onClick={() => void handleDownloadQrCode(form.evaluationLink, "evaluation")}
+              >
+                Download QR
+              </button>
+            ) : null}
+          </div>
           <small className={styles.catalogHint}>
             {selectedEvaluation
               ? `${selectedEvaluation.questionCount} questions · ${selectedEvaluation.respondent} · ${selectedEvaluation.scope}`
@@ -1409,20 +1464,33 @@ function CourseMaster() {
               </option>
             ))}
           </select>
-          <input
-            value={form.evaluationAfter30DayLink}
-            disabled={!isEditing}
-            placeholder="Paste 30-day evaluation form link"
-            type="url"
-            onChange={(event) =>
-              handleFormLinkChange(
-                "evaluationAfter30DayLink",
-                "evaluationAfter30DayId",
-                "evaluationAfter30Day",
-                event.target.value,
-              )
-            }
-          />
+          <div className={styles.linkField}>
+            <input
+              value={form.evaluationAfter30DayLink}
+              disabled={!isEditing}
+              placeholder="Paste 30-day evaluation form link"
+              type="url"
+              onChange={(event) =>
+                handleFormLinkChange(
+                  "evaluationAfter30DayLink",
+                  "evaluationAfter30DayId",
+                  "evaluationAfter30Day",
+                  event.target.value,
+                )
+              }
+            />
+            {selectedCourseId && form.evaluationAfter30DayLink.trim() ? (
+              <button
+                type="button"
+                className={styles.detailButton}
+                onClick={() =>
+                  void handleDownloadQrCode(form.evaluationAfter30DayLink, "evaluation-30day")
+                }
+              >
+                Download QR
+              </button>
+            ) : null}
+          </div>
           <small className={styles.catalogHint}>
             {selectedFollowUpEvaluation
               ? `${selectedFollowUpEvaluation.questionCount} questions · ${selectedFollowUpEvaluation.respondent} · ${selectedFollowUpEvaluation.scope}`

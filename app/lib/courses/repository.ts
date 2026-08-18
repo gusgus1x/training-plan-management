@@ -162,6 +162,10 @@ export const createCourseRepository = (client?: DatabaseClient) => {
             evaluation: row.evaluation_form?.form_name || "",
             evaluationAfter30DayId: row.evaluation_form_after_30day_id?.toString() || "",
             evaluationAfter30Day: row.evaluation_form_after_30day?.form_name || "",
+            preTestLink: row.pre_test_link || undefined,
+            postTestLink: row.post_test_link || undefined,
+            evaluationLink: row.evaluation_link || undefined,
+            evaluationAfter30DayLink: row.evaluation_after_30day_link || undefined,
             lifeCycleMonth: row.validity_months?.toString() || "12",
             remark: row.description || "",
             status: row.status === "ACTIVE" ? "Active" : row.status === "DRAFT" ? "Draft" : "Inactive",
@@ -233,6 +237,10 @@ export const createCourseRepository = (client?: DatabaseClient) => {
               post_assessment_id: safeBigInt(input.postAssessmentId),
               evaluation_form_id: safeBigInt(input.evaluationFormId),
               evaluation_form_after_30day_id: safeBigInt(input.evaluationFormAfter30DayId),
+              pre_test_link: input.preTestLink || null,
+              post_test_link: input.postTestLink || null,
+              evaluation_link: input.evaluationLink || null,
+              evaluation_after_30day_link: input.evaluationAfter30DayLink || null,
               status: input.status.toUpperCase(),
               created_by: safeBigInt(userId) ?? BigInt(0),
               created_at: new Date(),
@@ -362,6 +370,10 @@ export const createCourseRepository = (client?: DatabaseClient) => {
           if (input.postAssessmentId !== undefined) courseData.post_assessment_id = safeBigInt(input.postAssessmentId);
           if (input.evaluationFormId !== undefined) courseData.evaluation_form_id = safeBigInt(input.evaluationFormId);
           if (input.evaluationFormAfter30DayId !== undefined) courseData.evaluation_form_after_30day_id = safeBigInt(input.evaluationFormAfter30DayId);
+          if (input.preTestLink !== undefined) courseData.pre_test_link = input.preTestLink || null;
+          if (input.postTestLink !== undefined) courseData.post_test_link = input.postTestLink || null;
+          if (input.evaluationLink !== undefined) courseData.evaluation_link = input.evaluationLink || null;
+          if (input.evaluationAfter30DayLink !== undefined) courseData.evaluation_after_30day_link = input.evaluationAfter30DayLink || null;
           if (input.status !== undefined) courseData.status = input.status.toUpperCase();
           if (input.courseTypeId !== undefined) courseData.course_type_id = safeBigInt(input.courseTypeId);
           if (input.courseGroupId !== undefined) {

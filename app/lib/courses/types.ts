@@ -11,6 +11,10 @@ export type CreateCourseInput = {
   postAssessmentId: string | null;
   evaluationFormId: string | null;
   evaluationFormAfter30DayId: string | null;
+  preTestLink: string | null;
+  postTestLink: string | null;
+  evaluationLink: string | null;
+  evaluationAfter30DayLink: string | null;
   status: "Active" | "Draft" | "Inactive";
   courseTypeId: string;
   courseGroupId: string;

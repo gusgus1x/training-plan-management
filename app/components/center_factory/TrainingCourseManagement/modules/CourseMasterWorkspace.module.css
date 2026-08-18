@@ -836,6 +836,22 @@
   font-weight: 700;
 }
 
+.linkField {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.linkField input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.linkField .detailButton {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .fieldHint,
 .catalogHint {
   color: var(--ui-30-muted);

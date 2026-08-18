@@ -244,6 +244,10 @@ model course {
   target_group                                     String?                  @db.NVarChar(Max)
   methodology                                      String?                  @db.NVarChar(Max)
   evaluation_form_after_30day_id                   BigInt?
+  pre_test_link                                    String?                  @db.NVarChar(2048)
+  post_test_link                                   String?                  @db.NVarChar(2048)
+  evaluation_link                                  String?                  @db.NVarChar(2048)
+  evaluation_after_30day_link                      String?                  @db.NVarChar(2048)
   evaluation_form_after_30day                      evaluation_form?         @relation("CourseEvaluationFormAfter30Day", fields: [evaluation_form_after_30day_id], references: [evaluation_form_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_course_evaluation_form_after_30day_id")
   company                                          company?                 @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F014_course_company_id")
   course_group                                     course_group             @relation(fields: [course_group_id], references: [course_group_id], onUpdate: NoAction, map: "FK_V6F015_course_course_group_id")

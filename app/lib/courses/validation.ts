@@ -40,6 +40,10 @@ export const parseCreateCourse = (input: InputObject): CreateCourseInput => ({
   postAssessmentId: readOptionalString(input, "postAssessmentId"),
   evaluationFormId: readOptionalString(input, "evaluationFormId"),
   evaluationFormAfter30DayId: readOptionalString(input, "evaluationFormAfter30DayId"),
+  preTestLink: readOptionalString(input, "preTestLink", { maxLength: 2048 }),
+  postTestLink: readOptionalString(input, "postTestLink", { maxLength: 2048 }),
+  evaluationLink: readOptionalString(input, "evaluationLink", { maxLength: 2048 }),
+  evaluationAfter30DayLink: readOptionalString(input, "evaluationAfter30DayLink", { maxLength: 2048 }),
   status: status(input.status, "Active"),
   courseTypeId: readRequiredString(input, "courseTypeId"),
   courseGroupId: readRequiredString(input, "courseGroupId"),
@@ -74,6 +78,10 @@ export const parseUpdateCourse = (input: InputObject): UpdateCourseInput => {
   if (hasOwn(input, "postAssessmentId")) update.postAssessmentId = readOptionalString(input, "postAssessmentId");
   if (hasOwn(input, "evaluationFormId")) update.evaluationFormId = readOptionalString(input, "evaluationFormId");
   if (hasOwn(input, "evaluationFormAfter30DayId")) update.evaluationFormAfter30DayId = readOptionalString(input, "evaluationFormAfter30DayId");
+  if (hasOwn(input, "preTestLink")) update.preTestLink = readOptionalString(input, "preTestLink", { maxLength: 2048 });
+  if (hasOwn(input, "postTestLink")) update.postTestLink = readOptionalString(input, "postTestLink", { maxLength: 2048 });
+  if (hasOwn(input, "evaluationLink")) update.evaluationLink = readOptionalString(input, "evaluationLink", { maxLength: 2048 });
+  if (hasOwn(input, "evaluationAfter30DayLink")) update.evaluationAfter30DayLink = readOptionalString(input, "evaluationAfter30DayLink", { maxLength: 2048 });
   if (hasOwn(input, "status")) update.status = status(input.status);
   if (hasOwn(input, "courseTypeId")) update.courseTypeId = readRequiredString(input, "courseTypeId");
   if (hasOwn(input, "courseGroupId")) update.courseGroupId = readRequiredString(input, "courseGroupId");
