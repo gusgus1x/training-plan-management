@@ -552,63 +552,23 @@ function CourseMaster() {
 
   const functionOptions = useMemo(() => [
     { id: "", code: allFunctionCode, name: "All Function" },
-    ...functionRows.filter((row) => {
-      if (row.code === standardFunctionCode) return true;
-      return orgUsage.some((usage) => {
-        if (!usageInSelectedCompanies(usage)) return false;
-        if (usage.functionId !== row.id) return false;
-        if (standardDivisionCode !== allFunctionCode && selectedDivisionId && usage.divisionId !== selectedDivisionId) return false;
-        if (standardDepartmentCode !== allFunctionCode && selectedDepartmentId && usage.departmentId !== selectedDepartmentId) return false;
-        if (standardSectionCode !== allFunctionCode && selectedSectionId && usage.sectionId !== selectedSectionId) return false;
-        return true;
-      });
-    }),
-  ], [functionRows, orgUsage, selectedCompanies, standardFunctionCode, standardDivisionCode, standardDepartmentCode, standardSectionCode, selectedDivisionId, selectedDepartmentId, selectedSectionId]);
+    ...functionRows,
+  ], [functionRows]);
 
   const divisionOptions = useMemo(() => [
     { id: "", code: allFunctionCode, name: "All Division" },
-    ...divisionRows.filter((row) => {
-      if (row.code === standardDivisionCode) return true;
-      return orgUsage.some((usage) => {
-        if (!usageInSelectedCompanies(usage)) return false;
-        if (usage.divisionId !== row.id) return false;
-        if (standardFunctionCode !== allFunctionCode && selectedFunctionId && usage.functionId !== selectedFunctionId) return false;
-        if (standardDepartmentCode !== allFunctionCode && selectedDepartmentId && usage.departmentId !== selectedDepartmentId) return false;
-        if (standardSectionCode !== allFunctionCode && selectedSectionId && usage.sectionId !== selectedSectionId) return false;
-        return true;
-      });
-    }),
-  ], [divisionRows, orgUsage, selectedCompanies, standardDivisionCode, standardFunctionCode, standardDepartmentCode, standardSectionCode, selectedFunctionId, selectedDepartmentId, selectedSectionId]);
+    ...divisionRows,
+  ], [divisionRows]);
 
   const departmentOptions = useMemo(() => [
     { id: "", code: allFunctionCode, name: "All Department" },
-    ...departmentRows.filter((row) => {
-      if (row.code === standardDepartmentCode) return true;
-      return orgUsage.some((usage) => {
-        if (!usageInSelectedCompanies(usage)) return false;
-        if (usage.departmentId !== row.id) return false;
-        if (standardFunctionCode !== allFunctionCode && selectedFunctionId && usage.functionId !== selectedFunctionId) return false;
-        if (standardDivisionCode !== allFunctionCode && selectedDivisionId && usage.divisionId !== selectedDivisionId) return false;
-        if (standardSectionCode !== allFunctionCode && selectedSectionId && usage.sectionId !== selectedSectionId) return false;
-        return true;
-      });
-    }),
-  ], [departmentRows, orgUsage, selectedCompanies, standardDepartmentCode, standardFunctionCode, standardDivisionCode, standardSectionCode, selectedFunctionId, selectedDivisionId, selectedSectionId]);
+    ...departmentRows,
+  ], [departmentRows]);
 
   const sectionOptions = useMemo(() => [
     { id: "", code: allFunctionCode, name: "All Section" },
-    ...sectionRows.filter((row) => {
-      if (row.code === standardSectionCode) return true;
-      return orgUsage.some((usage) => {
-        if (!usageInSelectedCompanies(usage)) return false;
-        if (usage.sectionId !== row.id) return false;
-        if (standardFunctionCode !== allFunctionCode && selectedFunctionId && usage.functionId !== selectedFunctionId) return false;
-        if (standardDivisionCode !== allFunctionCode && selectedDivisionId && usage.divisionId !== selectedDivisionId) return false;
-        if (standardDepartmentCode !== allFunctionCode && selectedDepartmentId && usage.departmentId !== selectedDepartmentId) return false;
-        return true;
-      });
-    }),
-  ], [sectionRows, orgUsage, selectedCompanies, standardSectionCode, standardFunctionCode, standardDivisionCode, standardDepartmentCode, selectedFunctionId, selectedDivisionId, selectedDepartmentId]);
+    ...sectionRows,
+  ], [sectionRows]);
   const getFunctionDisplayName = (functionCode?: string, functionName = "") => {
     if (functionCode === allFunctionCode || functionName === allFunctionOption) {
       return "All Function";
@@ -1756,7 +1716,22 @@ function CourseMaster() {
               disabled={!isEditing}
               options={divisionOptions}
               placeholder="Search or select Division"
-              onChange={(nextCode) => setStandardDivisionCode(nextCode)}
+              onChange={(nextCode) => {
+                setStandardDivisionCode(nextCode);
+                if (nextCode !== allFunctionCode) {
+                  const divRow = divisionRows.find((dv) => dv.code === nextCode);
+                  if (divRow) {
+                    const usage = orgUsage.find((u) => u.divisionId === divRow.id);
+                    if (usage && usage.functionId) {
+                      const fnRow = functionRows.find((f) => f.id === usage.functionId);
+                      if (fnRow) {
+                        setStandardFunctionCode(fnRow.code);
+                        setStandardFunctionName(fnRow.name);
+                      }
+                    }
+                  }
+                }
+              }}
             />
           </label>
 
@@ -1767,7 +1742,28 @@ function CourseMaster() {
               disabled={!isEditing}
               options={departmentOptions}
               placeholder="Search or select Department"
-              onChange={(nextCode) => setStandardDepartmentCode(nextCode)}
+              onChange={(nextCode) => {
+                setStandardDepartmentCode(nextCode);
+                if (nextCode !== allFunctionCode) {
+                  const deptRow = departmentRows.find((d) => d.code === nextCode);
+                  if (deptRow) {
+                    const usage = orgUsage.find((u) => u.departmentId === deptRow.id);
+                    if (usage) {
+                      if (usage.divisionId) {
+                        const divRow = divisionRows.find((dv) => dv.id === usage.divisionId);
+                        if (divRow) setStandardDivisionCode(divRow.code);
+                      }
+                      if (usage.functionId) {
+                        const fnRow = functionRows.find((f) => f.id === usage.functionId);
+                        if (fnRow) {
+                          setStandardFunctionCode(fnRow.code);
+                          setStandardFunctionName(fnRow.name);
+                        }
+                      }
+                    }
+                  }
+                }
+              }}
             />
           </label>
 
@@ -1778,7 +1774,32 @@ function CourseMaster() {
               disabled={!isEditing}
               options={sectionOptions}
               placeholder="Search or select Section"
-              onChange={(nextCode) => setStandardSectionCode(nextCode)}
+              onChange={(nextCode) => {
+                setStandardSectionCode(nextCode);
+                if (nextCode !== allFunctionCode) {
+                  const secRow = sectionRows.find((s) => s.code === nextCode);
+                  if (secRow) {
+                    const usage = orgUsage.find((u) => u.sectionId === secRow.id);
+                    if (usage) {
+                      if (usage.departmentId) {
+                        const deptRow = departmentRows.find((d) => d.id === usage.departmentId);
+                        if (deptRow) setStandardDepartmentCode(deptRow.code);
+                      }
+                      if (usage.divisionId) {
+                        const divRow = divisionRows.find((dv) => dv.id === usage.divisionId);
+                        if (divRow) setStandardDivisionCode(divRow.code);
+                      }
+                      if (usage.functionId) {
+                        const fnRow = functionRows.find((f) => f.id === usage.functionId);
+                        if (fnRow) {
+                          setStandardFunctionCode(fnRow.code);
+                          setStandardFunctionName(fnRow.name);
+                        }
+                      }
+                    }
+                  }
+                }
+              }}
             />
           </label>
         </div>
