@@ -356,26 +356,24 @@ function PaginatedEmployeeGrid({
     }
   };
 
-  const getPageNumbers = () => {
-    if (totalPages <= 7) {
+  const getVisiblePages = () => {
+    if (totalPages <= 5) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
-    const pages: (number | string)[] = [];
-    pages.push(1);
-    if (activePage > 3) {
-      pages.push("...");
+    let start = Math.max(1, activePage - 2);
+    let end = start + 4;
+    if (end > totalPages) {
+      end = totalPages;
+      start = Math.max(1, end - 4);
     }
-    const start = Math.max(2, activePage - 1);
-    const end = Math.min(totalPages - 1, activePage + 1);
-    for (let i = start; i <= end; i++) {
-      pages.push(i);
-    }
-    if (activePage < totalPages - 2) {
-      pages.push("...");
-    }
-    pages.push(totalPages);
-    return pages;
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
   };
+
+  const visiblePages = getVisiblePages();
+  const windowStart = visiblePages[0] ?? 1;
+  const windowEnd = visiblePages[visiblePages.length - 1] ?? 1;
+  const showLeftArrows = totalPages > 5 && windowStart > 1;
+  const showRightArrows = totalPages > 5 && windowEnd < totalPages;
 
   return (
     <div className={styles.paginatedContainer}>
@@ -478,40 +476,58 @@ function PaginatedEmployeeGrid({
             หน้า {activePage} จาก {totalPages} (ทั้งหมด {filteredEmployees.length} คน)
           </span>
           <div className={styles.paginationNav}>
-            <button
-              className={styles.pageBtn}
-              type="button"
-              disabled={activePage <= 1}
-              onClick={() => handlePageChange(activePage - 1)}
-              title="หน้าก่อนหน้า"
-            >
-              ‹
-            </button>
-            {getPageNumbers().map((p, idx) =>
-              typeof p === "number" ? (
+            {showLeftArrows ? (
+              <>
                 <button
-                  key={idx}
-                  className={`${styles.pageBtn} ${p === activePage ? styles.pageBtnActive : ""}`}
+                  className={styles.pageBtn}
                   type="button"
-                  onClick={() => handlePageChange(p)}
+                  onClick={() => handlePageChange(1)}
+                  title="ไปหน้าแรก"
                 >
-                  {p}
+                  «
                 </button>
-              ) : (
-                <span key={idx} style={{ padding: "0 4px", color: "var(--ui-30-muted)" }}>
-                  {p}
-                </span>
-              ),
-            )}
-            <button
-              className={styles.pageBtn}
-              type="button"
-              disabled={activePage >= totalPages}
-              onClick={() => handlePageChange(activePage + 1)}
-              title="หน้าถัดไป"
-            >
-              ›
-            </button>
+                <button
+                  className={styles.pageBtn}
+                  type="button"
+                  onClick={() => handlePageChange(activePage - 1)}
+                  title="หน้าก่อนหน้า"
+                >
+                  ‹
+                </button>
+              </>
+            ) : null}
+
+            {visiblePages.map((p) => (
+              <button
+                key={p}
+                className={`${styles.pageBtn} ${p === activePage ? styles.pageBtnActive : ""}`}
+                type="button"
+                onClick={() => handlePageChange(p)}
+              >
+                {p}
+              </button>
+            ))}
+
+            {showRightArrows ? (
+              <>
+                <button
+                  className={styles.pageBtn}
+                  type="button"
+                  onClick={() => handlePageChange(activePage + 1)}
+                  title="หน้าถัดไป"
+                >
+                  ›
+                </button>
+                <button
+                  className={styles.pageBtn}
+                  type="button"
+                  onClick={() => handlePageChange(totalPages)}
+                  title="ไปหน้าสุดท้าย"
+                >
+                  »
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
       ) : null}
