@@ -89,18 +89,31 @@ export const createCourseRepository = (client?: DatabaseClient) => {
   const db = () => (client ?? getPrismaClient()) as PrismaClient;
   return {
     async list(filters: CourseListFilters, companyId: string | null) {
-      const where: Prisma.courseWhereInput = {};
+      const andList: Prisma.courseWhereInput[] = [];
+
       if (companyId) {
-        where.OR = [
-          { company_id: BigInt(companyId) },
-          { company_id: null },
-        ];
+        andList.push({
+          OR: [
+            { company_id: BigInt(companyId) },
+            { company_id: null },
+          ],
+        });
       }
-      if (filters.status) where.status = filters.status.toUpperCase();
-      if (filters.search) where.OR = [
-        { course_code: { contains: filters.search } },
-        { course_name: { contains: filters.search } },
-      ];
+
+      if (filters.status) {
+        andList.push({ status: filters.status.toUpperCase() });
+      }
+
+      if (filters.search) {
+        andList.push({
+          OR: [
+            { course_code: { contains: filters.search } },
+            { course_name: { contains: filters.search } },
+          ],
+        });
+      }
+
+      const where: Prisma.courseWhereInput = andList.length > 0 ? { AND: andList } : {};
 
       return withDatabaseErrorMapping(async () => {
         const rows = await db().course.findMany({
