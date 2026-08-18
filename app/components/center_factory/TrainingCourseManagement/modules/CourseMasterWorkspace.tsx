@@ -1231,7 +1231,7 @@ function CourseMaster() {
   };
 
   const handleSave = async () => {
-    if (!isCourseFormReady || !standardFunctionName.trim() || selectedCompanies.length === 0) return;
+    if (!isCourseFormReady || selectedCompanies.length === 0) return;
 
     const courseTypeId = courseTypeOptions.find(t => t.name === form.courseType)?.typeId || "";
     const courseGroupId = courseGroupOptions.find(g => g.name === form.courseGroup)?.groupId || "";
@@ -1267,19 +1267,19 @@ function CourseMaster() {
       standardCode: `STD-${standardYear}-G${courseGroupId}`,
       standardName: form.courseNameTh.trim() || form.courseNameEn.trim(),
       functionId:
-        standardFunctionCode === allFunctionCode
+        !standardFunctionCode || standardFunctionCode === allFunctionCode
           ? null
           : functionOptions.find((option) => option.code === standardFunctionCode)?.id || null,
       divisionId:
-        standardDivisionCode === allFunctionCode
+        !standardDivisionCode || standardDivisionCode === allFunctionCode
           ? null
           : divisionOptions.find((option) => option.code === standardDivisionCode)?.id || null,
       departmentId:
-        standardDepartmentCode === allFunctionCode
+        !standardDepartmentCode || standardDepartmentCode === allFunctionCode
           ? null
           : departmentOptions.find((option) => option.code === standardDepartmentCode)?.id || null,
       sectionId:
-        standardSectionCode === allFunctionCode
+        !standardSectionCode || standardSectionCode === allFunctionCode
           ? null
           : sectionOptions.find((option) => option.code === standardSectionCode)?.id || null,
       targetCompanies: selectedCompanies,
@@ -1802,7 +1802,7 @@ function CourseMaster() {
                 setStandardFunctionCode(nextCode);
                 setStandardFunctionName(
                   functionOptions.find((option) => option.code === nextCode)
-                    ?.name ?? "All Function",
+                    ?.name ?? "",
                 );
               }}
             />
@@ -1815,22 +1815,7 @@ function CourseMaster() {
               disabled={!isEditing}
               options={divisionOptions}
               placeholder="Search or select Division"
-              onChange={(nextCode) => {
-                setStandardDivisionCode(nextCode);
-                if (nextCode !== allFunctionCode) {
-                  const divRow = divisionRows.find((dv) => dv.code === nextCode);
-                  if (divRow) {
-                    const usage = orgUsage.find((u) => u.divisionId === divRow.id);
-                    if (usage && usage.functionId) {
-                      const fnRow = functionRows.find((f) => f.id === usage.functionId);
-                      if (fnRow) {
-                        setStandardFunctionCode(fnRow.code);
-                        setStandardFunctionName(fnRow.name);
-                      }
-                    }
-                  }
-                }
-              }}
+              onChange={(nextCode) => setStandardDivisionCode(nextCode)}
             />
           </label>
 
@@ -1841,28 +1826,7 @@ function CourseMaster() {
               disabled={!isEditing}
               options={departmentOptions}
               placeholder="Search or select Department"
-              onChange={(nextCode) => {
-                setStandardDepartmentCode(nextCode);
-                if (nextCode !== allFunctionCode) {
-                  const deptRow = departmentRows.find((d) => d.code === nextCode);
-                  if (deptRow) {
-                    const usage = orgUsage.find((u) => u.departmentId === deptRow.id);
-                    if (usage) {
-                      if (usage.divisionId) {
-                        const divRow = divisionRows.find((dv) => dv.id === usage.divisionId);
-                        if (divRow) setStandardDivisionCode(divRow.code);
-                      }
-                      if (usage.functionId) {
-                        const fnRow = functionRows.find((f) => f.id === usage.functionId);
-                        if (fnRow) {
-                          setStandardFunctionCode(fnRow.code);
-                          setStandardFunctionName(fnRow.name);
-                        }
-                      }
-                    }
-                  }
-                }
-              }}
+              onChange={(nextCode) => setStandardDepartmentCode(nextCode)}
             />
           </label>
 
@@ -1873,32 +1837,7 @@ function CourseMaster() {
               disabled={!isEditing}
               options={sectionOptions}
               placeholder="Search or select Section"
-              onChange={(nextCode) => {
-                setStandardSectionCode(nextCode);
-                if (nextCode !== allFunctionCode) {
-                  const secRow = sectionRows.find((s) => s.code === nextCode);
-                  if (secRow) {
-                    const usage = orgUsage.find((u) => u.sectionId === secRow.id);
-                    if (usage) {
-                      if (usage.departmentId) {
-                        const deptRow = departmentRows.find((d) => d.id === usage.departmentId);
-                        if (deptRow) setStandardDepartmentCode(deptRow.code);
-                      }
-                      if (usage.divisionId) {
-                        const divRow = divisionRows.find((dv) => dv.id === usage.divisionId);
-                        if (divRow) setStandardDivisionCode(divRow.code);
-                      }
-                      if (usage.functionId) {
-                        const fnRow = functionRows.find((f) => f.id === usage.functionId);
-                        if (fnRow) {
-                          setStandardFunctionCode(fnRow.code);
-                          setStandardFunctionName(fnRow.name);
-                        }
-                      }
-                    }
-                  }
-                }
-              }}
+              onChange={(nextCode) => setStandardSectionCode(nextCode)}
             />
           </label>
         </div>
