@@ -114,6 +114,60 @@ describe("computeTargetMatch", () => {
     expect(result.targetMatchStatus).toBe("NOT_MATCHED");
   });
 
+  it("matches an employee when only level is targeted and level matches (Level is primary / position ignored)", async () => {
+    const standard = {
+      ...baseStandard,
+      course_standard_target_level: [{ level_id: BigInt(20) }],
+      course_standard_target_position: [],
+    };
+    const result = await computeTargetMatch(dbWithStandard(standard), BigInt(1), employee());
+    expect(result.targetMatchStatus).toBe("MATCHED");
+    expect(result.levelMatchStatus).toBe("MATCHED");
+  });
+
+  it("matches an employee whose both level and position match targeted criteria", async () => {
+    const standard = {
+      ...baseStandard,
+      course_standard_target_level: [{ level_id: BigInt(20) }],
+      course_standard_target_position: [{ position_id: BigInt(10) }],
+    };
+    const result = await computeTargetMatch(dbWithStandard(standard), BigInt(1), employee());
+    expect(result.targetMatchStatus).toBe("MATCHED");
+    expect(result.levelMatchStatus).toBe("MATCHED");
+  });
+
+  it("rejects an employee whose level does not match targeted levels even if position matches", async () => {
+    const standard = {
+      ...baseStandard,
+      course_standard_target_level: [{ level_id: BigInt(999) }],
+      course_standard_target_position: [{ position_id: BigInt(10) }],
+    };
+    const result = await computeTargetMatch(dbWithStandard(standard), BigInt(1), employee());
+    expect(result.targetMatchStatus).toBe("NOT_MATCHED");
+    expect(result.levelMatchStatus).toBe("NOT_MATCHED");
+  });
+
+  it("rejects an employee whose position does not match targeted positions when both are specified", async () => {
+    const standard = {
+      ...baseStandard,
+      course_standard_target_level: [{ level_id: BigInt(20) }],
+      course_standard_target_position: [{ position_id: BigInt(999) }],
+    };
+    const result = await computeTargetMatch(dbWithStandard(standard), BigInt(1), employee());
+    expect(result.targetMatchStatus).toBe("NOT_MATCHED");
+    expect(result.levelMatchStatus).toBe("MATCHED");
+  });
+
+  it("rejects an employee when neither targeted level nor targeted position matches", async () => {
+    const standard = {
+      ...baseStandard,
+      course_standard_target_level: [{ level_id: BigInt(999) }],
+      course_standard_target_position: [{ position_id: BigInt(999) }],
+    };
+    const result = await computeTargetMatch(dbWithStandard(standard), BigInt(1), employee());
+    expect(result.targetMatchStatus).toBe("NOT_MATCHED");
+  });
+
   it("matches everyone when the target-company checklist is empty (defensive default)", async () => {
     const result = await computeTargetMatch(dbWithStandard(baseStandard), BigInt(1), employee());
     expect(result.targetMatchStatus).toBe("MATCHED");

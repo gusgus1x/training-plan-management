@@ -79,6 +79,7 @@ export type RollingPlan = {
   batch: string;
   location: string;
   trainingDate: string;
+  endDate: string;
   startTime: string;
   endTime: string;
   company: string;
@@ -121,7 +122,7 @@ export const monthOptions = [
   { value: "11", label: "November" },
   { value: "12", label: "December" },
 ] as const;
-export const yearOptions = ["2026", "2027"] as const;
+export const yearOptions = ["2026", "2025", "2024"] as const;
 
 const mapCourseDetail = (course: WorkflowCourse): RollingCourseDetail => ({
   code: course.courseCode,
@@ -161,6 +162,7 @@ const mapRecordToRollingPlan = (record: RollingPlanRecord): RollingPlan => {
     batch: record.batchName || `Batch ${record.batchNo}`,
     location: record.venue,
     trainingDate: record.trainingDate,
+    endDate: record.endDate || record.trainingDate,
     startTime: record.startTime,
     endTime: record.endTime,
     company: isCentral ? "All Companies" : record.ownerCompany,
@@ -186,6 +188,7 @@ type RollingSessionForm = {
   batchName: string;
   location: string;
   trainingDate: string;
+  endDate: string;
   startTime: string;
   endTime: string;
 };
@@ -201,6 +204,7 @@ const createEmptySession = (index = 0): RollingSessionForm => ({
   batchName: "",
   location: "",
   trainingDate: "",
+  endDate: "",
   startTime: "09:00",
   endTime: "16:00",
 });
@@ -390,11 +394,13 @@ export default function TrainingRolling() {
 
       // 2. Save or update remaining sessions
       for (const session of form.sessions) {
+        const startDate = session.trainingDate || today;
         const input = {
           oapPlanId: selectedOap.id,
           batchName: session.batchName.trim() || null,
           venue: session.location.trim(),
-          trainingDate: session.trainingDate || today,
+          trainingDate: startDate,
+          endDate: session.endDate || startDate,
           startTime: session.startTime || "09:00",
           endTime: session.endTime || "16:00",
         };
@@ -426,6 +432,7 @@ export default function TrainingRolling() {
         batchName: p.batch,
         location: p.location,
         trainingDate: p.trainingDate,
+        endDate: p.endDate || p.trainingDate,
         startTime: p.startTime || "09:00",
         endTime: p.endTime || "16:00",
       })),
@@ -465,6 +472,7 @@ export default function TrainingRolling() {
           batchName: plan.batch,
           location: plan.location,
           trainingDate: plan.trainingDate,
+          endDate: plan.endDate || plan.trainingDate,
           startTime: plan.startTime,
           endTime: plan.endTime,
         },
@@ -748,12 +756,6 @@ export default function TrainingRolling() {
                   })}
                 </select>
               </label>
-              <label>Participants<input disabled value={selectedOap?.participants ?? ""} /></label>
-              <label>Training Hours<input disabled value={selectedOap?.hours ?? ""} /></label>
-              <label>Budget<input disabled value={selectedOap ? Number(selectedOap.budget).toLocaleString("en-US") : ""} /></label>
-              <label>Trainer<input disabled value={selectedOap?.trainer ?? ""} /></label>
-              <label>Institute / Provider<input disabled value={selectedOap?.providerName ?? ""} /></label>
-              <label>Scope<input disabled value={selectedOap ? (selectedOap.owner === "CENTER" ? "All Companies" : selectedOap.ownerCompany) : ""} /></label>
 
               <div className={`${styles.fullField} ${styles.sessionSection}`}>
                 <div className={styles.sectionHeader}>
@@ -804,33 +806,69 @@ export default function TrainingRolling() {
                         </label>
 
                         <label>
-                          <span>Training Date <span className={styles.required}>*</span></span>
+                          <span>Start Date (วันที่เริ่ม) <span className={styles.required}>*</span></span>
                           <input
                             disabled={!selectedOap}
                             type="date"
                             value={session.trainingDate}
+                            onClick={(e) => {
+                              try {
+                                e.currentTarget.showPicker?.();
+                              } catch {}
+                            }}
+                            onChange={(event) => {
+                              const newDate = event.target.value;
+                              updateSession(session.id, "trainingDate", newDate);
+                              if (!session.endDate || session.endDate < newDate) {
+                                updateSession(session.id, "endDate", newDate);
+                              }
+                            }}
+                          />
+                        </label>
+                        <label>
+                          <span>End Date (วันที่สิ้นสุด) <span className={styles.required}>*</span></span>
+                          <input
+                            disabled={!selectedOap}
+                            type="date"
+                            min={session.trainingDate}
+                            value={session.endDate || session.trainingDate}
+                            onClick={(e) => {
+                              try {
+                                e.currentTarget.showPicker?.();
+                              } catch {}
+                            }}
                             onChange={(event) =>
-                              updateSession(session.id, "trainingDate", event.target.value)
+                              updateSession(session.id, "endDate", event.target.value)
                             }
                           />
                         </label>
                         <label>
-                          <span>Start Time <span className={styles.required}>*</span></span>
+                          <span>Start Time (เวลาเริ่ม) <span className={styles.required}>*</span></span>
                           <input
                             disabled={!selectedOap}
                             type="time"
                             value={session.startTime}
+                            onClick={(e) => {
+                              try {
+                                e.currentTarget.showPicker?.();
+                              } catch {}
+                            }}
                             onChange={(event) =>
                               updateSession(session.id, "startTime", event.target.value)
                             }
                           />
                         </label>
                         <label>
-                          <span>End Time <span className={styles.required}>*</span></span>
+                          <span>End Time (เวลาสิ้นสุด) <span className={styles.required}>*</span></span>
                           <input
                             disabled={!selectedOap}
                             type="time"
                             value={session.endTime}
+                            onClick={(e) => {
+                              try {
+                                e.currentTarget.showPicker?.();
+                              } catch {}
+                            }}
                             onChange={(event) =>
                               updateSession(session.id, "endTime", event.target.value)
                             }
@@ -874,43 +912,53 @@ export default function TrainingRolling() {
                 <div className={styles.previewSections}>
                   <div className={styles.previewCard}>
                     <div className={styles.previewCardHeader}>
-                      <span>🎯 Objectives & Content</span>
+                      <span>🎯 วัตถุประสงค์และเนื้อหา (Objectives & Content)</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>Objective</span>
+                      <span className={styles.previewFieldLabel}>วัตถุประสงค์</span>
                       <span className={styles.previewFieldValue}>{selectedOap.course.objective || "-"}</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>Learning Content</span>
+                      <span className={styles.previewFieldLabel}>หัวข้อการเรียนรู้</span>
                       <span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>
                         {selectedOap.course.learningContent || "-"}
                       </span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>Methodology</span>
+                      <span className={styles.previewFieldLabel}>วิธีการอบรม</span>
                       <span className={styles.previewFieldValue}>{selectedOap.course.methodology || "-"}</span>
                     </div>
                   </div>
 
                   <div className={styles.previewCard}>
                     <div className={styles.previewCardHeader}>
-                      <span>👥 Target & Planning Basis</span>
+                      <span>👥 ข้อมูลการจัดอบรม (Planning Details)</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>Target Group</span>
-                      <span className={styles.previewFieldValue}>{selectedOap.course.targetGroup || "-"}</span>
+                      <span className={styles.previewFieldLabel}>ผู้เข้าอบรม</span>
+                      <span className={styles.previewFieldValue}>{selectedOap.participants} ท่าน</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>OAP Target</span>
-                      <span className={styles.previewFieldValue}>
-                        {selectedOap.participants} participants / {selectedOap.hours} hours
-                      </span>
+                      <span className={styles.previewFieldLabel}>ชั่วโมงอบรม</span>
+                      <span className={styles.previewFieldValue}>{selectedOap.hours} ชม.</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>OAP Budget</span>
+                      <span className={styles.previewFieldLabel}>งบประมาณ</span>
                       <span className={styles.previewFieldValue}>
                         ฿{Number(selectedOap.budget).toLocaleString("en-US")}
                       </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>วิทยากร</span>
+                      <span className={styles.previewFieldValue}>{selectedOap.trainer || "-"}</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>สถาบัน / ผู้ให้บริการ</span>
+                      <span className={styles.previewFieldValue}>{selectedOap.providerName || "-"}</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>ขอบเขต</span>
+                      <span className={styles.previewFieldValue}>{selectedOap.owner === "CENTER" ? "ทุกบริษัท (All Companies)" : selectedOap.ownerCompany}</span>
                     </div>
                   </div>
 
@@ -1112,12 +1160,12 @@ export default function TrainingRolling() {
                               <div><span>Evaluation</span><strong>{plan.course.evaluation}</strong></div>
                               <div><span>Evaluation After 30 Day</span><strong>{plan.course.evaluationAfter30Day}</strong></div>
                               <div><span>Life Cycle (Month)</span><strong>{plan.course.lifeCycleMonth}</strong></div>
-                              <div><span>Budget</span><strong>{Number(plan.budget).toLocaleString("en-US")}</strong></div>
-                              <div><span>Scope</span><strong>{formatRollingPlanCompanies(plan)}</strong></div>
-                              <div><span>Participants</span><strong>{plan.participants}</strong></div>
-                              <div><span>Training Hours</span><strong>{plan.hours}</strong></div>
-                              <div><span>Trainer</span><strong>{plan.trainer}</strong></div>
-                              <div><span>Provider</span><strong>{plan.provider}</strong></div>
+                              <div><span>ผู้เข้าอบรม (Participants)</span><strong>{plan.participants} ท่าน</strong></div>
+                              <div><span>ชั่วโมงอบรม (Training Hours)</span><strong>{plan.hours} ชม.</strong></div>
+                              <div><span>งบประมาณ (Budget)</span><strong>฿{Number(plan.budget).toLocaleString("en-US")}</strong></div>
+                              <div><span>วิทยากร (Trainer)</span><strong>{plan.trainer || "-"}</strong></div>
+                              <div><span>สถาบัน / ผู้ให้บริการ (Provider)</span><strong>{plan.provider || "-"}</strong></div>
+                              <div><span>ขอบเขต (Scope)</span><strong>{formatRollingPlanCompanies(plan)}</strong></div>
                               <div>
                                 <span>Created By (ผู้จัดอบรม)</span>
                                 <strong>

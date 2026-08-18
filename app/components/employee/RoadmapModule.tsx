@@ -139,8 +139,8 @@ export default function RoadmapModule() {
         (item) =>
           isTargetMatch(item.targetCompanies, employeeCompany) &&
           isTargetMatch(item.targetFunctions, employeeFunction) &&
-          isTargetMatch(item.targetPositions, employeePosition) &&
-          isTargetMatch(item.targetLevels, employeeLevel),
+          isTargetMatch(item.targetLevels, employeeLevel) &&
+          isTargetMatch(item.targetPositions, employeePosition),
       ),
     [employeeCompany, employeeFunction, employeeLevel, employeePosition, roadmapItems],
   );

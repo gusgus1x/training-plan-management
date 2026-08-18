@@ -323,9 +323,24 @@ export const defaultEmployeeRows: EmployeeMasterRecord[] = companyConfigs.flatMa
     }),
 );
 
-export const normalizeEmployeeLevel = (levelKey: string) => {
-  const normalized = levelKey.trim().toUpperCase();
-  return normalized
+export const normalizeEmployeeLevel = (levelKey: string | null | undefined) => {
+  if (!levelKey) return "";
+  const raw = String(levelKey).trim().toUpperCase();
+  const clean = raw.replace(/[\s\.\-_]/g, "");
+
+  const thaiFullMatch = clean.match(/^(จัดการ|บังคับบัญชา|ปฏิบัติการ)(\d+)$/);
+  if (thaiFullMatch) {
+    const prefixMap: Record<string, string> = { จัดการ: "M", บังคับบัญชา: "S", ปฏิบัติการ: "O" };
+    return `${prefixMap[thaiFullMatch[1]] || ""}${thaiFullMatch[2]}`;
+  }
+
+  const engFullMatch = clean.match(/^(MANAGEMENT|SUPERVISOR|OPERATOR)(\d+)$/);
+  if (engFullMatch) {
+    const prefixMap: Record<string, string> = { MANAGEMENT: "M", SUPERVISOR: "S", OPERATOR: "O" };
+    return `${prefixMap[engFullMatch[1]] || ""}${engFullMatch[2]}`;
+  }
+
+  return clean
     .replace(/^จ/, "M")
     .replace(/^บ/, "S")
     .replace(/^ป/, "O")

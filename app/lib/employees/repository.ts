@@ -11,10 +11,11 @@ const map=(r:any):EmployeeRecord=>({employeeId:String(r.employee_id),companyId:S
   departmentId:r.department_id?String(r.department_id):null,departmentCode:r.department?.department_code??null,departmentName:r.department?.department_name_en??r.department?.department_name_th??null,
   sectionId:r.section_id?String(r.section_id):null,sectionCode:r.section?.section_code??null,sectionName:r.section?.section_name_en??r.section?.section_name_th??null,
   positionId:r.position_id?String(r.position_id):null,positionCode:r.position?.position_code??null,positionName:r.position?.position_name_en??r.position?.position_name_th??null,
-  levelId:r.level_id?String(r.level_id):null,levelCode:r.employee_level?.level_code??null,levelKey:r.employee_level?.level_key??null,
+  levelId:r.level_id?String(r.level_id):null,levelCode:r.employee_level?.level_key??r.employee_level?.level_code_en??r.employee_level?.level_code_th??r.employee_level?.level_code??null,levelKey:r.employee_level?.level_key??r.employee_level?.level_code_en??r.employee_level?.level_code_th??r.employee_level?.level_code??null,
   titleTh:r.title_th,titleEn:r.title_en,firstNameTh:r.first_name_th,lastNameTh:r.last_name_th,firstNameEn:r.first_name_en,lastNameEn:r.last_name_en,
   birthDate:r.birth_date?.toISOString().slice(0,10)??null,hireDate:r.hire_date?.toISOString().slice(0,10)??null,telephone:r.telephone,email:r.email,
   employmentStatus:r.employment_status,nationalIdMasked:maskNationalId(r.national_id_last4)??"*************"});
+
 const include={company:true,organization_function:true,division:true,department:true,section:true,position:true,employee_level:true} as const;
 const data=(i:EmployeeInput,p:{hash:string;encrypted:Buffer;last4:string;keyVersion:number})=>({company_id:BigInt(i.companyId),function_id:i.functionId?BigInt(i.functionId):null,division_id:i.divisionId?BigInt(i.divisionId):null,department_id:i.departmentId?BigInt(i.departmentId):null,section_id:i.sectionId?BigInt(i.sectionId):null,position_id:i.positionId?BigInt(i.positionId):null,level_id:i.levelId?BigInt(i.levelId):null,
   employee_code:i.employeeCode,national_id_hash:p.hash,national_id_encrypted:Uint8Array.from(p.encrypted),national_id_last4:p.last4,national_id_key_version:p.keyVersion,

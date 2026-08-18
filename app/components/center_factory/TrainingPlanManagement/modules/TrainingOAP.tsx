@@ -625,11 +625,11 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                       <span className={styles.previewFieldLabel}>Target Group</span>
                       <span className={styles.previewFieldValue}>{selectedCourse.targetGroup || "-"}</span>
                     </div>
-                    <div className={styles.previewFieldRow}>
+                    <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
                       <span className={styles.previewFieldLabel}>Standard Target</span>
                       <span className={styles.previewFieldValue}>
                         {selectedCourseStandard
-                          ? `${selectedCourseStandard.functionName} (${selectedCourseStandard.positions.length} pos, ${selectedCourseStandard.levels.length} lvl)`
+                          ? `${selectedCourseStandard.functionName} (${selectedCourseStandard.positions.length} ตำแหน่ง, ${selectedCourseStandard.levels.length} ระดับ)`
                           : "No standard defined"}
                       </span>
                     </div>

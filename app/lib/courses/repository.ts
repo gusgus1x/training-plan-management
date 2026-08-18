@@ -183,8 +183,8 @@ export const createCourseRepository = (client?: DatabaseClient) => {
                 ? stdCourse.section.section_name_en || stdCourse.section.section_name_th
                 : "",
               companies: stdCourse.course_standard_target_company.map(c => c.company.company_code),
-              positions: stdCourse.course_standard_target_position.map(p => p.position.position_name_en || ""),
-              levels: stdCourse.course_standard_target_level.map(l => l.employee_level.level_code),
+              positions: stdCourse.course_standard_target_position.flatMap(p => [p.position.position_name_th, p.position.position_name_en, p.position.position_code].filter(Boolean) as string[]),
+              levels: stdCourse.course_standard_target_level.flatMap(l => [l.employee_level.level_code, l.employee_level.level_code_th, l.employee_level.level_code_en, l.employee_level.level_key].filter(Boolean) as string[]),
               owner,
               ownerCompany,
             });
@@ -279,7 +279,13 @@ export const createCourseRepository = (client?: DatabaseClient) => {
           // 4. Create target positions
           if (input.targetPositions && input.targetPositions.length > 0) {
             const positions = await tx.position.findMany({
-              where: { position_name_en: { in: input.targetPositions } }
+              where: {
+                OR: [
+                  { position_name_en: { in: input.targetPositions } },
+                  { position_name_th: { in: input.targetPositions } },
+                  { position_code: { in: input.targetPositions } },
+                ]
+              }
             });
             await tx.course_standard_target_position.createMany({
               data: positions.map(p => ({
@@ -292,7 +298,14 @@ export const createCourseRepository = (client?: DatabaseClient) => {
           // 5. Create target levels
           if (input.targetLevels && input.targetLevels.length > 0) {
             const levels = await tx.employee_level.findMany({
-              where: { level_code: { in: input.targetLevels } }
+              where: {
+                OR: [
+                  { level_code: { in: input.targetLevels } },
+                  { level_key: { in: input.targetLevels } },
+                  { level_code_th: { in: input.targetLevels } },
+                  { level_code_en: { in: input.targetLevels } },
+                ]
+              }
             });
             await tx.course_standard_target_level.createMany({
               data: levels.map(l => ({
@@ -416,7 +429,13 @@ export const createCourseRepository = (client?: DatabaseClient) => {
               });
               if (input.targetPositions.length > 0) {
                 const positions = await tx.position.findMany({
-                  where: { position_name_en: { in: input.targetPositions } }
+                  where: {
+                    OR: [
+                      { position_name_en: { in: input.targetPositions } },
+                      { position_name_th: { in: input.targetPositions } },
+                      { position_code: { in: input.targetPositions } },
+                    ]
+                  }
                 });
                 await tx.course_standard_target_position.createMany({
                   data: positions.map(p => ({
@@ -433,7 +452,14 @@ export const createCourseRepository = (client?: DatabaseClient) => {
               });
               if (input.targetLevels.length > 0) {
                 const levels = await tx.employee_level.findMany({
-                  where: { level_code: { in: input.targetLevels } }
+                  where: {
+                    OR: [
+                      { level_code: { in: input.targetLevels } },
+                      { level_key: { in: input.targetLevels } },
+                      { level_code_th: { in: input.targetLevels } },
+                      { level_code_en: { in: input.targetLevels } },
+                    ]
+                  }
                 });
                 await tx.course_standard_target_level.createMany({
                   data: levels.map(l => ({

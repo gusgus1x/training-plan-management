@@ -421,10 +421,12 @@
 }
 
 .formPanel {
-  border-color: var(--ui-30-border);
-  background: var(--ui-60-surface-soft);
-  box-shadow: 0 10px 24px rgba(24, 36, 56, 0.06);
-  margin-bottom: 14px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 12px;
+  background: var(--ui-60-surface);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  padding: 18px 20px;
+  margin-bottom: 16px;
 }
 
 .panelHeader {
@@ -434,27 +436,71 @@
   gap: 12px;
   border-bottom: 1px solid var(--ui-30-border);
   padding-bottom: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .formGrid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 10px;
+  gap: 14px 16px;
 }
 
 .formGrid label {
   display: grid;
   grid-column: span 2;
-  gap: 5px;
+  gap: 6px;
   color: var(--ui-30-text);
-  font-size: 0.72rem;
-  font-weight: 900;
+  font-size: 0.76rem;
+  font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.formGrid input,
+.formGrid select {
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 14px;
+  border: 1.5px solid var(--ui-30-border);
+  border-radius: 10px;
+  background: var(--ui-60-surface-soft, rgba(255, 255, 255, 0.05));
+  color: var(--ui-30-ink);
+  font-size: 0.88rem;
+  font-weight: 600;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.formGrid input:hover:not(:disabled),
+.formGrid select:hover:not(:disabled) {
+  border-color: var(--ui-30-primary);
+  background: var(--ui-60-surface);
+}
+
+.formGrid input:focus:not(:disabled),
+.formGrid select:focus:not(:disabled) {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+  background: var(--ui-60-surface);
+}
+
+.formGrid input:disabled,
+.formGrid select:disabled {
+  opacity: 0.55;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  cursor: not-allowed;
+  border-color: var(--ui-30-border);
+}
+
+.formGrid input[type="date"],
+.formGrid input[type="time"] {
+  cursor: pointer;
 }
 
 .fullField {
-  grid-column: span 6;
+  grid-column: span 6 !important;
 }
 
 .coursePreview {
@@ -571,10 +617,13 @@
 
 .previewFieldRow {
   display: grid;
-  grid-template-columns: 110px 1fr;
-  gap: 8px;
-  font-size: 0.78rem;
-  line-height: 1.45;
+  grid-template-columns: 145px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  padding: 3px 0;
+  border-bottom: 1px rgba(255, 255, 255, 0.03) solid;
 }
 
 @media (max-width: 480px) {
@@ -1315,8 +1364,8 @@
 
 .sessionGrid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
 }
 
 .formGrid .sessionGrid label {

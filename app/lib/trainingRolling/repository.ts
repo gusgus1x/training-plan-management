@@ -114,6 +114,7 @@ const mapRollingPlan = (row: RollingPlanWithRelations) => {
     planName: row.plan_name,
     venue: row.venue || "",
     trainingDate: start.trainingDate,
+    endDate: end.trainingDate || start.trainingDate,
     startTime: start.time,
     endTime: end.time,
     capacity: row.capacity,
@@ -181,9 +182,8 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
     async create(input: CreateRollingPlanInput, userId: string, companyId: string | null) {
       return withDatabaseErrorMapping(async () => {
         const oap = await loadOapSummary(db(), input.oapPlanId, companyId);
-        const oapPlanId = oap.oap_plan_id;
-
         const created = await db().$transaction(async (tx) => {
+          const oapPlanId = BigInt(input.oapPlanId);
           const batchNo = await nextBatchNo(tx, oapPlanId);
           const courseName = oap.course.course_name.trim() || oap.course.course_name_en?.trim() || "Course";
           const planCode = `${oap.oap_code}-B${pad2(batchNo)}`;
@@ -197,7 +197,7 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
               plan_code: planCode,
               plan_name: planName,
               start_datetime: combineDateTime(input.trainingDate, input.startTime),
-              end_datetime: combineDateTime(input.trainingDate, input.endTime),
+              end_datetime: combineDateTime(input.endDate || input.trainingDate, input.endTime),
               venue: input.venue.trim() || oap.default_venue || null,
               capacity: oap.default_participant_count,
               capacity_control_mode: "HARD_LIMIT",
@@ -270,13 +270,19 @@ const applyRemainingFields = async (
 ) => {
   if (input.batchName !== undefined) data.batch_name = input.batchName?.trim() || null;
   if (input.venue !== undefined) data.venue = input.venue.trim() || null;
-  if (input.trainingDate !== undefined || input.startTime !== undefined || input.endTime !== undefined) {
+  if (
+    input.trainingDate !== undefined ||
+    input.endDate !== undefined ||
+    input.startTime !== undefined ||
+    input.endTime !== undefined
+  ) {
     const current = await db.training_plan.findUniqueOrThrow({ where: { plan_id: BigInt(id) } });
     const trainingDate = input.trainingDate ?? splitDateTime(current.start_datetime).trainingDate;
+    const endDate = input.endDate ?? splitDateTime(current.end_datetime).trainingDate ?? trainingDate;
     const startTime = input.startTime ?? splitDateTime(current.start_datetime).time;
     const endTime = input.endTime ?? splitDateTime(current.end_datetime).time;
     data.start_datetime = combineDateTime(trainingDate, startTime);
-    data.end_datetime = combineDateTime(trainingDate, endTime);
+    data.end_datetime = combineDateTime(endDate, endTime);
   }
   if (input.status !== undefined) data.status = UI_STATUS_TO_DB[input.status];
 

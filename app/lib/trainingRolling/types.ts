@@ -11,6 +11,7 @@ export type RollingPlanRecord = {
   planName: string;
   venue: string;
   trainingDate: string;
+  endDate: string;
   startTime: string;
   endTime: string;
   capacity: number;
@@ -32,6 +33,7 @@ export type CreateRollingPlanInput = {
   batchName: string | null;
   venue: string;
   trainingDate: string;
+  endDate?: string;
   startTime: string;
   endTime: string;
   status: RollingPlanStatus;

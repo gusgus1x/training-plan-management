@@ -35,6 +35,7 @@ export const parseCreateRollingPlan = (input: InputObject): CreateRollingPlanInp
   batchName: readOptionalString(input, "batchName"),
   venue: readOptionalString(input, "venue") || "",
   trainingDate: readDate(input, "trainingDate"),
+  endDate: hasOwn(input, "endDate") && input.endDate ? readDate(input, "endDate") : readDate(input, "trainingDate"),
   startTime: readTime(input, "startTime"),
   endTime: readTime(input, "endTime"),
   status: status(input.status, "Planning"),
@@ -46,6 +47,7 @@ export const parseUpdateRollingPlan = (input: InputObject): UpdateRollingPlanInp
   if (hasOwn(input, "batchName")) update.batchName = readOptionalString(input, "batchName");
   if (hasOwn(input, "venue")) update.venue = readOptionalString(input, "venue") || "";
   if (hasOwn(input, "trainingDate")) update.trainingDate = readDate(input, "trainingDate");
+  if (hasOwn(input, "endDate")) update.endDate = readDate(input, "endDate");
   if (hasOwn(input, "startTime")) update.startTime = readTime(input, "startTime");
   if (hasOwn(input, "endTime")) update.endTime = readTime(input, "endTime");
   if (hasOwn(input, "status")) update.status = status(input.status);

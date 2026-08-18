@@ -61,7 +61,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
     company: employee.company.company_code,
     department: employee.organization_function?.function_name_en || employee.organization_function?.function_name_th || "",
     position: employee.position?.position_name_en || employee.position?.position_name_th || "",
-    level: employee.employee_level?.level_name_en || employee.employee_level?.level_name_th || "",
+    level: employee.employee_level?.level_key || employee.employee_level?.level_code_en || employee.employee_level?.level_code_th || employee.employee_level?.level_name_en || employee.employee_level?.level_code || "",
     source: row.enrollment_source as EnrollmentSource,
     status: mapStatus(row.approval_status, planOwnerIsFactory),
     targetMatchStatus: row.target_match_status as "MATCHED" | "NOT_MATCHED",
@@ -102,10 +102,29 @@ export const computeTargetMatch = async (
     return { targetMatchStatus: "NOT_MATCHED" as const, levelMatchStatus: "NOT_REQUIRED" as const, standardCourseId: null as bigint | null };
   }
 
-  const positionMatch =
-    standard.course_standard_target_position.length === 0 ||
-    (employee.position_id !== null &&
-      standard.course_standard_target_position.some((row) => row.position_id === employee.position_id));
+  const hasLevels = standard.course_standard_target_level.length > 0;
+  const hasPositions = standard.course_standard_target_position.length > 0;
+
+  const isLevelMatched =
+    hasLevels &&
+    employee.level_id !== null &&
+    standard.course_standard_target_level.some((row) => row.level_id === employee.level_id);
+
+  const isPositionMatched =
+    hasPositions &&
+    employee.position_id !== null &&
+    standard.course_standard_target_position.some((row) => row.position_id === employee.position_id);
+
+  let posLevelMatch = true;
+  if (hasLevels && hasPositions) {
+    // Level is primary and both level & position must match when both are specified
+    posLevelMatch = isLevelMatched && isPositionMatched;
+  } else if (hasLevels) {
+    // Level is primary, not caring about position
+    posLevelMatch = isLevelMatched;
+  } else if (hasPositions) {
+    posLevelMatch = isPositionMatched;
+  }
 
   const orgMatch =
     (standard.function_id === null || standard.function_id === employee.function_id) &&
@@ -118,13 +137,12 @@ export const computeTargetMatch = async (
     standard.course_standard_target_company.some((row) => row.company_id === employee.company_id);
 
   const targetMatchStatus =
-    positionMatch && orgMatch && companyMatch ? ("MATCHED" as const) : ("NOT_MATCHED" as const);
+    orgMatch && companyMatch && posLevelMatch ? ("MATCHED" as const) : ("NOT_MATCHED" as const);
 
   const levelMatchStatus =
-    standard.course_standard_target_level.length === 0
+    !hasLevels
       ? ("NOT_REQUIRED" as const)
-      : employee.level_id !== null &&
-          standard.course_standard_target_level.some((row) => row.level_id === employee.level_id)
+      : isLevelMatched
         ? ("MATCHED" as const)
         : ("NOT_MATCHED" as const);
 
@@ -194,7 +212,7 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
           position_code_snapshot: employee.position?.position_code || null,
           position_name_snapshot: employee.position?.position_name_en || employee.position?.position_name_th || null,
           level_id_snapshot: employee.level_id,
-          level_code_snapshot: employee.employee_level?.level_code || null,
+          level_code_snapshot: employee.employee_level?.level_key || employee.employee_level?.level_code_en || employee.employee_level?.level_code || null,
           level_name_snapshot: employee.employee_level?.level_name_en || employee.employee_level?.level_name_th || null,
           target_match_status: targetMatchStatus,
           level_match_status: levelMatchStatus,

@@ -29,13 +29,13 @@ describe("cascadeDeleteTrainingPlans", () => {
 
     const mockTx = {
       training_enrollment: {
-        findMany: vi.fn().mockResolvedValue([{ enrollment_id: 101n }, { enrollment_id: 102n }]),
+        findMany: vi.fn().mockResolvedValue([{ enrollment_id: BigInt(101) }, { enrollment_id: BigInt(102) }]),
         deleteMany: vi.fn().mockImplementation(async () => {
           callOrder.push("training_enrollment.deleteMany");
         }),
       },
       certificate_import_batch: {
-        findMany: vi.fn().mockResolvedValue([{ certificate_import_batch_id: 201n }]),
+        findMany: vi.fn().mockResolvedValue([{ certificate_import_batch_id: BigInt(201) }]),
         deleteMany: vi.fn().mockImplementation(async () => {
           callOrder.push("certificate_import_batch.deleteMany");
         }),
@@ -54,7 +54,7 @@ describe("cascadeDeleteTrainingPlans", () => {
         }),
       },
       assessment_submission: {
-        findMany: vi.fn().mockResolvedValue([{ submission_id: 301n }]),
+        findMany: vi.fn().mockResolvedValue([{ submission_id: BigInt(301) }]),
         deleteMany: vi.fn().mockImplementation(async () => {
           callOrder.push("assessment_submission.deleteMany");
         }),
@@ -65,7 +65,7 @@ describe("cascadeDeleteTrainingPlans", () => {
         }),
       },
       evaluation_submission: {
-        findMany: vi.fn().mockResolvedValue([{ evaluation_submission_id: 401n }]),
+        findMany: vi.fn().mockResolvedValue([{ evaluation_submission_id: BigInt(401) }]),
         deleteMany: vi.fn().mockImplementation(async () => {
           callOrder.push("evaluation_submission.deleteMany");
         }),
@@ -102,7 +102,7 @@ describe("cascadeDeleteTrainingPlans", () => {
       },
     };
 
-    await cascadeDeleteTrainingPlans(mockTx as any, [1n, 2n]);
+    await cascadeDeleteTrainingPlans(mockTx as any, [BigInt(1), BigInt(2)]);
 
     // Verify order
     expect(callOrder).toEqual([
