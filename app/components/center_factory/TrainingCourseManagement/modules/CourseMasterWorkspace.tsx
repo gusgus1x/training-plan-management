@@ -459,7 +459,16 @@ function CourseMaster() {
 
     return matchingFunction ? matchingFunction.name : functionName;
   };
-  const companyChecklist = companyRows.map((row) => row.code).filter(Boolean);
+  const userCompanyCode = profileValue(user?.companyCode);
+  const owner: WorkflowOwner = user?.roleCode === "HRD_CENTER" ? "CENTER" : "FACTORY";
+  const ownerCompany = owner === "CENTER" ? "HRD Center" : userCompanyCode;
+
+  const companyChecklist = useMemo(() => {
+    if (isFactoryUser && userCompanyCode) {
+      return [userCompanyCode];
+    }
+    return companyRows.map((row) => row.code).filter(Boolean);
+  }, [isFactoryUser, userCompanyCode, companyRows]);
   const positionChecklist = positionRows
     .map((row) => (row.positionNameEn ?? "").trim())
     .filter(Boolean);
@@ -507,10 +516,6 @@ function CourseMaster() {
       ),
     [evaluationOptions],
   );
-
-  const userCompanyCode = profileValue(user?.companyCode);
-  const owner: WorkflowOwner = user?.roleCode === "HRD_CENTER" ? "CENTER" : "FACTORY";
-  const ownerCompany = owner === "CENTER" ? "HRD Center" : userCompanyCode;
 
   const scopedCourses = useMemo(
     () =>
@@ -567,7 +572,7 @@ function CourseMaster() {
     setStandardDivisionCode(allFunctionCode);
     setStandardDepartmentCode(allFunctionCode);
     setStandardSectionCode(allFunctionCode);
-    setSelectedCompanies([]);
+    setSelectedCompanies(isFactoryUser && userCompanyCode ? [userCompanyCode] : []);
     setSelectedPositions([]);
     setSelectedLevels([]);
   };
@@ -601,9 +606,13 @@ function CourseMaster() {
     setStandardDepartmentCode(standard.department ? matchingDepartmentRow?.code ?? allFunctionCode : allFunctionCode);
     const matchingSectionRow = sectionRows.find((row) => row.name === standard.section);
     setStandardSectionCode(standard.section ? matchingSectionRow?.code ?? allFunctionCode : allFunctionCode);
-    setSelectedCompanies(
-      companyChecklist.filter((code) => standard.companies?.includes(code)),
-    );
+    if (isFactoryUser && userCompanyCode) {
+      setSelectedCompanies([userCompanyCode]);
+    } else {
+      setSelectedCompanies(
+        companyChecklist.filter((code) => standard.companies?.includes(code)),
+      );
+    }
     setSelectedPositions(
       positionChecklist.filter((position) =>
         standard.positions.some(
@@ -1442,8 +1451,9 @@ function CourseMaster() {
               <button
                 className={styles.secondaryButton}
                 type="button"
-                disabled={!isEditing || companyChecklist.length === 0}
+                disabled={!isEditing || isFactoryUser || companyChecklist.length === 0}
                 onClick={() =>
+                  !isFactoryUser &&
                   setSelectedCompanies(
                     companyChecklist.every((code) => selectedCompanies.includes(code))
                       ? []
@@ -1470,10 +1480,10 @@ function CourseMaster() {
                   <input
                     className={styles.standard_nativeCheckbox}
                     checked={selectedCompanies.includes(code)}
-                    disabled={!isEditing}
+                    disabled={!isEditing || isFactoryUser}
                     type="checkbox"
                     onChange={() =>
-                      toggleStandardItem(code, selectedCompanies, setSelectedCompanies)
+                      !isFactoryUser && toggleStandardItem(code, selectedCompanies, setSelectedCompanies)
                     }
                   />
                   <span className={styles.standard_checkMark} aria-hidden="true">
