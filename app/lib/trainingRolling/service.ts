@@ -10,8 +10,8 @@ export const createRollingPlanService = (repository: RollingPlanRepository = rol
   async updateRollingPlan(id: string, input: UpdateRollingPlanInput, userId: string, companyId: string | null) {
     return repository.update(id, input, userId, companyId);
   },
-  async deleteRollingPlan(id: string) {
-    return repository.delete(id);
+  async deleteRollingPlan(id: string, companyId?: string | null) {
+    return repository.delete(id, companyId ?? null);
   },
 });
 

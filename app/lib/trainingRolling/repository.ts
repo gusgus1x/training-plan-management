@@ -158,7 +158,14 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
   return {
     async list(filters: RollingPlanListFilters, companyId: string | null) {
       const where: Prisma.training_planWhereInput = {};
-      if (companyId) where.training_plan_oap = { company_id: BigInt(companyId) };
+      if (companyId) {
+        where.training_plan_oap = {
+          OR: [
+            { company_id: BigInt(companyId) },
+            { company_id: null },
+          ],
+        };
+      }
       if (filters.oapPlanId) where.oap_plan_id = BigInt(filters.oapPlanId);
       if (filters.status) where.status = UI_STATUS_TO_DB[filters.status];
       if (filters.search) {
@@ -222,7 +229,7 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
           include: rollingInclude,
         });
         if (companyId && current.training_plan_oap.company_id?.toString() !== companyId) {
-          throw new ApiError({ code: "FORBIDDEN", message: "This rolling plan belongs to a different company", status: 403 });
+          throw new ApiError({ code: "FORBIDDEN", message: "Factory users cannot modify plans created by HRD Center or other factories", status: 403 });
         }
 
         const data: Prisma.training_planUncheckedUpdateInput = {
@@ -249,9 +256,18 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
       });
     },
 
-    async delete(id: string) {
+    async delete(id: string, companyId: string | null = null) {
       return withDatabaseErrorMapping(async () => {
         const planId = BigInt(id);
+        if (companyId) {
+          const current = await db().training_plan.findUniqueOrThrow({
+            where: { plan_id: planId },
+            include: { training_plan_oap: true },
+          });
+          if (current.training_plan_oap.company_id?.toString() !== companyId) {
+            throw new ApiError({ code: "FORBIDDEN", message: "Factory users cannot delete plans created by HRD Center or other factories", status: 403 });
+          }
+        }
         await db().$transaction(async (tx) => {
           await cascadeDeleteTrainingPlans(tx, [planId]);
         });

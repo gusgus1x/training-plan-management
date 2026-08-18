@@ -25,7 +25,8 @@ export const createUpdateRollingPlanHandler = (dependencies: Dependencies = {}) 
 export const createDeleteRollingPlanHandler = (dependencies: Dependencies = {}) =>
   createProtectedRoute(async (request: NextRequest, principal, { params }: { params: Promise<{ rollingPlanId: string }> }) => {
     const { rollingPlanId } = await params;
-    const result = await (dependencies.service ?? rollingPlanService).deleteRollingPlan(rollingPlanId);
+    const companyId = principal.role === "HRD_FACTORY" ? principal.companyId : null;
+    const result = await (dependencies.service ?? rollingPlanService).deleteRollingPlan(rollingPlanId, companyId);
     return apiSuccess(result);
   }, writeOptions(dependencies.auth));
 

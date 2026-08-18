@@ -258,22 +258,31 @@ export default function TrainingRolling() {
     void loadWorkspace();
   }, []);
 
+  const isFactoryUser = user?.roleCode === "HRD_FACTORY";
+
   const oapSources = useMemo(
     () =>
       oapPlans.filter(
         (plan) =>
           plan.status !== "Cancel" &&
-          isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode),
+          isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode) &&
+          (!isFactoryUser || plan.owner === "FACTORY" || plan.ownerCompany === userCompanyCode),
       ),
-    [oapPlans, user?.roleCode, userCompanyCode],
+    [oapPlans, user?.roleCode, userCompanyCode, isFactoryUser],
   );
   const selectedOap = oapSources.find((source) => source.id === form.oapId) ?? null;
   const scopedRollingPlans = useMemo(
     () =>
-      rollingPlans.filter((plan) =>
-        isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode),
-      ),
-    [rollingPlans, user?.roleCode, userCompanyCode],
+      rollingPlans.filter((plan) => {
+        if (isFactoryUser) {
+          // Factory users see plans from their factory OR plans from CENTER (which target all companies / factory)
+          const isCenter = plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.owner === "CENTER" || plan.company === "All Companies";
+          const isOwnFactory = plan.ownerCompany === userCompanyCode || plan.company === userCompanyCode;
+          return isCenter || isOwnFactory;
+        }
+        return isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode);
+      }),
+    [rollingPlans, isFactoryUser, user?.roleCode, userCompanyCode],
   );
   const selectedMonthLabel =
     selectedMonth === "all"
@@ -336,6 +345,13 @@ export default function TrainingRolling() {
   }, [visiblePlans]);
   const selectedGroup =
     visiblePlanGroups.find((group) => group.id === selectedGroupId) ?? null;
+  const isSelectedGroupCenter = selectedGroup
+    ? (selectedGroup.plans[0]?.ownerScope === "CENTER" ||
+       selectedGroup.plans[0]?.ownerCompany === "HRD Center" ||
+       selectedGroup.plans[0]?.ownerName === "Center HRD" ||
+       selectedGroup.plans[0]?.provider === "HRD Center")
+    : false;
+  const isSelectedGroupReadOnlyForFactory = isFactoryUser && isSelectedGroupCenter;
 
   const updateOap = (value: string) => {
     setForm((current) => ({ ...current, oapId: value }));
@@ -691,17 +707,19 @@ export default function TrainingRolling() {
             </button>
             <button
               className={styles.secondaryButton}
-              disabled={!selectedGroup}
+              disabled={!selectedGroup || isSelectedGroupReadOnlyForFactory}
+              title={isSelectedGroupReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้ (ส่งผู้เข้าร่วมได้ใน Training Accept Survey)" : "Edit monthly rolling plan"}
               type="button"
-              onClick={() => selectedGroup && handleEditGroup(selectedGroup)}
+              onClick={() => selectedGroup && !isSelectedGroupReadOnlyForFactory && handleEditGroup(selectedGroup)}
             >
               Edit
             </button>
             <button
               className={styles.dangerButton}
-              disabled={!selectedGroup}
+              disabled={!selectedGroup || isSelectedGroupReadOnlyForFactory}
+              title={isSelectedGroupReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : "Delete monthly rolling plan"}
               type="button"
-              onClick={() => selectedGroup && void handleDeleteGroup(selectedGroup)}
+              onClick={() => selectedGroup && !isSelectedGroupReadOnlyForFactory && void handleDeleteGroup(selectedGroup)}
             >
               Delete
             </button>
@@ -1019,6 +1037,8 @@ export default function TrainingRolling() {
               {visiblePlanGroups.map((group) => {
                 const plan = group.plans[0];
                 const isOpen = openDetailId === group.id;
+                const isCenterGroup = plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.ownerName === "Center HRD" || plan.provider === "HRD Center";
+                const isRowReadOnlyForFactory = isFactoryUser && isCenterGroup;
                 const dates = [
                   ...new Set(group.plans.map((item) => item.trainingDate)),
                 ];
@@ -1083,8 +1103,11 @@ export default function TrainingRolling() {
                           </button>
                           <button
                             className={styles.secondaryButton}
+                            disabled={isRowReadOnlyForFactory}
+                            title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้ (ส่งผู้เข้าร่วมได้ใน Training Accept Survey)" : undefined}
                             type="button"
                             onClick={() => {
+                              if (isRowReadOnlyForFactory) return;
                               setSelectedGroupId(group.id);
                               handleEditGroup(group);
                             }}
@@ -1093,8 +1116,11 @@ export default function TrainingRolling() {
                           </button>
                           <button
                             className={styles.dangerButton}
+                            disabled={isRowReadOnlyForFactory}
+                            title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
                             type="button"
                             onClick={() => {
+                              if (isRowReadOnlyForFactory) return;
                               setSelectedGroupId(group.id);
                               void handleDeleteGroup(group);
                             }}
@@ -1103,9 +1129,10 @@ export default function TrainingRolling() {
                           </button>
                           <button
                             className={styles.primaryButton}
-                            disabled={allPublished}
+                            disabled={allPublished || isRowReadOnlyForFactory}
+                            title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถเผยแพร่ได้" : undefined}
                             type="button"
-                            onClick={() => handleConfirmGroup(group.plans)}
+                            onClick={() => !isRowReadOnlyForFactory && handleConfirmGroup(group.plans)}
                           >
                             {allPublished ? "All published" : "Publish all"}
                           </button>
@@ -1213,16 +1240,33 @@ export default function TrainingRolling() {
                                     </strong>
                                   </div>
                                   <div className={styles.sessionActions}>
-                                    <button className={styles.detailButton} type="button" onClick={() => handleEditSession(session)}>Edit</button>
+                                    <button
+                                      className={styles.detailButton}
+                                      disabled={isRowReadOnlyForFactory}
+                                      title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้" : undefined}
+                                      type="button"
+                                      onClick={() => !isRowReadOnlyForFactory && handleEditSession(session)}
+                                    >
+                                      Edit
+                                    </button>
                                     <button
                                       className={styles.primaryButton}
-                                      disabled={session.status === "Planned"}
+                                      disabled={session.status === "Planned" || isRowReadOnlyForFactory}
+                                      title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถเผยแพร่ได้" : undefined}
                                       type="button"
-                                      onClick={() => void handleConfirm(session.rollingId)}
+                                      onClick={() => !isRowReadOnlyForFactory && void handleConfirm(session.rollingId)}
                                     >
                                       {session.status === "Planned" ? "Published" : "Publish"}
                                     </button>
-                                    <button className={styles.dangerButton} type="button" onClick={() => void handleDelete(session.rollingId)}>Delete</button>
+                                    <button
+                                      className={styles.dangerButton}
+                                      disabled={isRowReadOnlyForFactory}
+                                      title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
+                                      type="button"
+                                      onClick={() => !isRowReadOnlyForFactory && void handleDelete(session.rollingId)}
+                                    >
+                                      Delete
+                                    </button>
                                   </div>
                                 </article>
                               ))}
