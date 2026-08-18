@@ -769,6 +769,23 @@ function CourseMaster() {
     if (matchedGroup && matchedGroup.code) {
       if (selectedCourse && selectedCourse.courseGroup === courseGroup && selectedCourse.courseCode) {
         nextCode = selectedCourse.courseCode;
+      } else if (isFactoryUser) {
+        // Preview only — mirrors the per-company numbering the server assigns in
+        // app/lib/courses/repository.ts's generateCourseCode. Each company has its
+        // own code space ("<company>-<group>-<seq>"), independent from the center
+        // and every other company.
+        const companyGroupCourses = courses.filter(
+          (c) => c.courseGroup === courseGroup && c.ownerCompany === userCompanyCode,
+        );
+        let maxSeq = 0;
+        for (const c of companyGroupCourses) {
+          const parts = (c.courseCode || "").split("-");
+          const num = parseInt(parts[parts.length - 1], 10);
+          if (!isNaN(num) && num > maxSeq) {
+            maxSeq = num;
+          }
+        }
+        nextCode = `${userCompanyCode}-${matchedGroup.code.trim()}-${String(maxSeq + 1).padStart(6, "0")}`;
       } else {
         const groupCourses = courses.filter((c) => c.courseGroup === courseGroup);
         let maxSeq = 0;

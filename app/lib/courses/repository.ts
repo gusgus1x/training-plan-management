@@ -19,35 +19,68 @@ const safeBigInt = (val: string | null | undefined): bigint | null => {
   }
 };
 
-const generateCourseCode = async (tx: Prisma.TransactionClient, courseGroupId: bigint) => {
-  const group = await tx.course_group.findUnique({
-    where: { course_group_id: courseGroupId },
-    select: { course_group_code: true, last_course_number: true },
-  });
-  if (!group) throw new Error("Course group not found");
-
-  const existingCourses = await tx.course.findMany({
-    where: { course_group_id: courseGroupId },
-    select: { course_code: true },
-  });
-
+const maxCourseCodeSeq = (courses: { course_code: string }[]) => {
   let maxSeq = 0;
-  for (const c of existingCourses) {
+  for (const c of courses) {
     const parts = c.course_code.split("-");
     const num = parseInt(parts[parts.length - 1], 10);
     if (!isNaN(num) && num > maxSeq) {
       maxSeq = num;
     }
   }
+  return maxSeq;
+};
 
-  const nextSeq = existingCourses.length === 0 ? 1 : Math.max(maxSeq + 1, (group.last_course_number ?? 0) + 1);
-
-  await tx.course_group.update({
+// HRD_CENTER courses keep the original "<group>-<seq>" code, numbered from the
+// group's own monotonic counter (last_course_number) so a code is never reused
+// even after the highest-numbered course is deleted.
+//
+// HRD_FACTORY courses are prefixed with the creating company's code
+// ("<company>-<group>-<seq>") and numbered independently per company, mirroring
+// how employee codes are already scoped per company_id elsewhere in this app —
+// each company gets its own code space starting at 000001, instead of sharing
+// one running number with the center and every other company.
+const generateCourseCode = async (
+  tx: Prisma.TransactionClient,
+  courseGroupId: bigint,
+  companyId: bigint | null,
+) => {
+  const group = await tx.course_group.findUnique({
     where: { course_group_id: courseGroupId },
-    data: { last_course_number: nextSeq },
+    select: { course_group_code: true, last_course_number: true },
   });
+  if (!group) throw new Error("Course group not found");
 
-  return `${group.course_group_code.trim()}-${String(nextSeq).padStart(6, "0")}`;
+  if (companyId === null) {
+    const existingCourses = await tx.course.findMany({
+      where: { course_group_id: courseGroupId },
+      select: { course_code: true },
+    });
+
+    const maxSeq = maxCourseCodeSeq(existingCourses);
+    const nextSeq = existingCourses.length === 0 ? 1 : Math.max(maxSeq + 1, (group.last_course_number ?? 0) + 1);
+
+    await tx.course_group.update({
+      where: { course_group_id: courseGroupId },
+      data: { last_course_number: nextSeq },
+    });
+
+    return `${group.course_group_code.trim()}-${String(nextSeq).padStart(6, "0")}`;
+  }
+
+  const company = await tx.company.findUnique({
+    where: { company_id: companyId },
+    select: { company_code: true },
+  });
+  if (!company) throw new Error("Company not found");
+
+  const companyCourses = await tx.course.findMany({
+    where: { course_group_id: courseGroupId, company_id: companyId },
+    select: { course_code: true },
+  });
+  const nextCompanySeq = maxCourseCodeSeq(companyCourses) + 1;
+
+  return `${company.company_code.trim()}-${group.course_group_code.trim()}-${String(nextCompanySeq).padStart(6, "0")}`;
 };
 
 export type CourseRepository = ReturnType<typeof createCourseRepository>;
@@ -167,7 +200,7 @@ export const createCourseRepository = (client?: DatabaseClient) => {
         return await db().$transaction(async (tx) => {
           // 1. Create course
           const courseGroupId = safeBigInt(input.courseGroupId) ?? BigInt(0);
-          const courseCode = await generateCourseCode(tx, courseGroupId);
+          const courseCode = await generateCourseCode(tx, courseGroupId, safeBigInt(companyId));
           const course = await tx.course.create({
             data: {
               company_id: companyId ? safeBigInt(companyId) : null,
@@ -300,13 +333,13 @@ export const createCourseRepository = (client?: DatabaseClient) => {
             const newCourseGroupId = safeBigInt(input.courseGroupId) ?? BigInt(0);
             const current = await tx.course.findUniqueOrThrow({
               where: { course_id: BigInt(id) },
-              select: { course_group_id: true },
+              select: { course_group_id: true, company_id: true },
             });
             if (newCourseGroupId !== current.course_group_id) {
               // Data Dictionary V6.2: changing a course's group requires a new system-generated
               // course_code; the old code is never reused.
               courseData.course_group_id = newCourseGroupId;
-              courseData.course_code = await generateCourseCode(tx, newCourseGroupId);
+              courseData.course_code = await generateCourseCode(tx, newCourseGroupId, current.company_id);
             }
           }
 
