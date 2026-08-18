@@ -538,64 +538,77 @@ function CourseMaster() {
   const [orgUsage, setOrgUsage] = useState<OrgHierarchyUsageRow[]>([]);
   const [positionRows, setPositionRows] = useState<PositionRecord[]>([]);
   const [levelRows, setLevelRows] = useState<LevelRecord[]>([]);
-  const functionOptions = [
-    { id: "", code: allFunctionCode, name: "All Function" },
-    ...functionRows,
-  ];
-  const divisionOptions = [
-    { id: "", code: allFunctionCode, name: "All Division" },
-    ...divisionRows,
-  ];
-  const selectedDivisionId = divisionOptions.find(
-    (option) => option.code === standardDivisionCode,
-  )?.id;
+  const selectedFunctionId = functionRows.find((row) => row.code === standardFunctionCode)?.id;
+  const selectedDivisionId = divisionRows.find((row) => row.code === standardDivisionCode)?.id;
+  const selectedDepartmentId = departmentRows.find((row) => row.code === standardDepartmentCode)?.id;
+  const selectedSectionId = sectionRows.find((row) => row.code === standardSectionCode)?.id;
+
   const selectedCompanyIds = companyRows
     .filter((row) => selectedCompanies.includes(row.code))
     .map((row) => row.id);
   const usageInSelectedCompanies = (usage: OrgHierarchyUsageRow) =>
     selectedCompanies.length === 0 ||
     (usage.companyId !== null && selectedCompanyIds.includes(usage.companyId));
-  // Cascading is data-driven (which departments/sections are actually used by active
-  // employees in the checked companies and, once picked, under the selected division), not
-  // enforced by the DB — company/division/department/section are flat lookup tables with no
-  // hierarchy FK between them. The currently selected department/section is always kept
-  // visible even if it falls outside the live usage snapshot, so an already-saved standard
-  // never appears to lose its selection.
-  const departmentOptions = [
+
+  const functionOptions = useMemo(() => [
+    { id: "", code: allFunctionCode, name: "All Function" },
+    ...functionRows.filter((row) => {
+      if (row.code === standardFunctionCode) return true;
+      return orgUsage.some((usage) => {
+        if (!usageInSelectedCompanies(usage)) return false;
+        if (usage.functionId !== row.id) return false;
+        if (standardDivisionCode !== allFunctionCode && selectedDivisionId && usage.divisionId !== selectedDivisionId) return false;
+        if (standardDepartmentCode !== allFunctionCode && selectedDepartmentId && usage.departmentId !== selectedDepartmentId) return false;
+        if (standardSectionCode !== allFunctionCode && selectedSectionId && usage.sectionId !== selectedSectionId) return false;
+        return true;
+      });
+    }),
+  ], [functionRows, orgUsage, selectedCompanies, standardFunctionCode, standardDivisionCode, standardDepartmentCode, standardSectionCode, selectedDivisionId, selectedDepartmentId, selectedSectionId]);
+
+  const divisionOptions = useMemo(() => [
+    { id: "", code: allFunctionCode, name: "All Division" },
+    ...divisionRows.filter((row) => {
+      if (row.code === standardDivisionCode) return true;
+      return orgUsage.some((usage) => {
+        if (!usageInSelectedCompanies(usage)) return false;
+        if (usage.divisionId !== row.id) return false;
+        if (standardFunctionCode !== allFunctionCode && selectedFunctionId && usage.functionId !== selectedFunctionId) return false;
+        if (standardDepartmentCode !== allFunctionCode && selectedDepartmentId && usage.departmentId !== selectedDepartmentId) return false;
+        if (standardSectionCode !== allFunctionCode && selectedSectionId && usage.sectionId !== selectedSectionId) return false;
+        return true;
+      });
+    }),
+  ], [divisionRows, orgUsage, selectedCompanies, standardDivisionCode, standardFunctionCode, standardDepartmentCode, standardSectionCode, selectedFunctionId, selectedDepartmentId, selectedSectionId]);
+
+  const departmentOptions = useMemo(() => [
     { id: "", code: allFunctionCode, name: "All Department" },
     ...departmentRows.filter((row) => {
       if (row.code === standardDepartmentCode) return true;
-      if (
-        selectedCompanies.length > 0 &&
-        !orgUsage.some((usage) => usageInSelectedCompanies(usage) && usage.departmentId === row.id)
-      ) {
-        return false;
-      }
-      if (standardDivisionCode === allFunctionCode) return true;
-      return orgUsage.some(
-        (usage) => usage.divisionId === selectedDivisionId && usage.departmentId === row.id,
-      );
+      return orgUsage.some((usage) => {
+        if (!usageInSelectedCompanies(usage)) return false;
+        if (usage.departmentId !== row.id) return false;
+        if (standardFunctionCode !== allFunctionCode && selectedFunctionId && usage.functionId !== selectedFunctionId) return false;
+        if (standardDivisionCode !== allFunctionCode && selectedDivisionId && usage.divisionId !== selectedDivisionId) return false;
+        if (standardSectionCode !== allFunctionCode && selectedSectionId && usage.sectionId !== selectedSectionId) return false;
+        return true;
+      });
     }),
-  ];
-  const selectedDepartmentId = departmentOptions.find(
-    (option) => option.code === standardDepartmentCode,
-  )?.id;
-  const sectionOptions = [
+  ], [departmentRows, orgUsage, selectedCompanies, standardDepartmentCode, standardFunctionCode, standardDivisionCode, standardSectionCode, selectedFunctionId, selectedDivisionId, selectedSectionId]);
+
+  const sectionOptions = useMemo(() => [
     { id: "", code: allFunctionCode, name: "All Section" },
     ...sectionRows.filter((row) => {
       if (row.code === standardSectionCode) return true;
-      if (
-        selectedCompanies.length > 0 &&
-        !orgUsage.some((usage) => usageInSelectedCompanies(usage) && usage.sectionId === row.id)
-      ) {
-        return false;
-      }
-      if (standardDepartmentCode === allFunctionCode) return true;
-      return orgUsage.some(
-        (usage) => usage.departmentId === selectedDepartmentId && usage.sectionId === row.id,
-      );
+      return orgUsage.some((usage) => {
+        if (!usageInSelectedCompanies(usage)) return false;
+        if (usage.sectionId !== row.id) return false;
+        if (standardFunctionCode !== allFunctionCode && selectedFunctionId && usage.functionId !== selectedFunctionId) return false;
+        if (standardDivisionCode !== allFunctionCode && selectedDivisionId && usage.divisionId !== selectedDivisionId) return false;
+        if (standardDepartmentCode !== allFunctionCode && selectedDepartmentId && usage.departmentId !== selectedDepartmentId) return false;
+        return true;
+      });
     }),
-  ];
+  ], [sectionRows, orgUsage, selectedCompanies, standardSectionCode, standardFunctionCode, standardDivisionCode, standardDepartmentCode, selectedFunctionId, selectedDivisionId, selectedDepartmentId]);
   const getFunctionDisplayName = (functionCode?: string, functionName = "") => {
     if (functionCode === allFunctionCode || functionName === allFunctionOption) {
       return "All Function";
@@ -1743,22 +1756,7 @@ function CourseMaster() {
               disabled={!isEditing}
               options={divisionOptions}
               placeholder="Search or select Division"
-              onChange={(nextCode) => {
-                setStandardDivisionCode(nextCode);
-                if (nextCode !== allFunctionCode) {
-                  const divRow = divisionRows.find((dv) => dv.code === nextCode);
-                  if (divRow) {
-                    const usage = orgUsage.find((u) => u.divisionId === divRow.id && usageInSelectedCompanies(u)) || orgUsage.find((u) => u.divisionId === divRow.id);
-                    if (usage && usage.functionId) {
-                      const fnRow = functionRows.find((f) => f.id === usage.functionId);
-                      if (fnRow) {
-                        setStandardFunctionCode(fnRow.code);
-                        setStandardFunctionName(fnRow.name);
-                      }
-                    }
-                  }
-                }
-              }}
+              onChange={(nextCode) => setStandardDivisionCode(nextCode)}
             />
           </label>
 
@@ -1769,28 +1767,7 @@ function CourseMaster() {
               disabled={!isEditing}
               options={departmentOptions}
               placeholder="Search or select Department"
-              onChange={(nextCode) => {
-                setStandardDepartmentCode(nextCode);
-                if (nextCode !== allFunctionCode) {
-                  const deptRow = departmentRows.find((d) => d.code === nextCode);
-                  if (deptRow) {
-                    const usage = orgUsage.find((u) => u.departmentId === deptRow.id && usageInSelectedCompanies(u)) || orgUsage.find((u) => u.departmentId === deptRow.id);
-                    if (usage) {
-                      if (usage.divisionId) {
-                        const divRow = divisionRows.find((dv) => dv.id === usage.divisionId);
-                        if (divRow) setStandardDivisionCode(divRow.code);
-                      }
-                      if (usage.functionId) {
-                        const fnRow = functionRows.find((f) => f.id === usage.functionId);
-                        if (fnRow) {
-                          setStandardFunctionCode(fnRow.code);
-                          setStandardFunctionName(fnRow.name);
-                        }
-                      }
-                    }
-                  }
-                }
-              }}
+              onChange={(nextCode) => setStandardDepartmentCode(nextCode)}
             />
           </label>
 
@@ -1801,32 +1778,7 @@ function CourseMaster() {
               disabled={!isEditing}
               options={sectionOptions}
               placeholder="Search or select Section"
-              onChange={(nextCode) => {
-                setStandardSectionCode(nextCode);
-                if (nextCode !== allFunctionCode) {
-                  const secRow = sectionRows.find((s) => s.code === nextCode);
-                  if (secRow) {
-                    const usage = orgUsage.find((u) => u.sectionId === secRow.id && usageInSelectedCompanies(u)) || orgUsage.find((u) => u.sectionId === secRow.id);
-                    if (usage) {
-                      if (usage.departmentId) {
-                        const deptRow = departmentRows.find((d) => d.id === usage.departmentId);
-                        if (deptRow) setStandardDepartmentCode(deptRow.code);
-                      }
-                      if (usage.divisionId) {
-                        const divRow = divisionRows.find((dv) => dv.id === usage.divisionId);
-                        if (divRow) setStandardDivisionCode(divRow.code);
-                      }
-                      if (usage.functionId) {
-                        const fnRow = functionRows.find((f) => f.id === usage.functionId);
-                        if (fnRow) {
-                          setStandardFunctionCode(fnRow.code);
-                          setStandardFunctionName(fnRow.name);
-                        }
-                      }
-                    }
-                  }
-                }
-              }}
+              onChange={(nextCode) => setStandardSectionCode(nextCode)}
             />
           </label>
         </div>
