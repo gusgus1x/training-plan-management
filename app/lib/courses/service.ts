@@ -10,11 +10,11 @@ export const createCourseService = (repository: CourseRepository = courseReposit
   async createCourse(input: CreateCourseInput, userId: string, companyId: string | null) {
     return repository.create(input, userId, companyId);
   },
-  async updateCourse(id: string, input: UpdateCourseInput, userId: string) {
-    return repository.update(id, input, userId);
+  async updateCourse(id: string, input: UpdateCourseInput, userId: string, companyId: string | null = null) {
+    return repository.update(id, input, userId, companyId);
   },
-  async deleteCourse(id: string, userId: string) {
-    return repository.delete(id);
+  async deleteCourse(id: string, userId: string, companyId: string | null = null) {
+    return repository.delete(id, companyId);
   }
 });
 

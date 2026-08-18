@@ -13,14 +13,16 @@ export const createUpdateCourseHandler = (dependencies: Dependencies = {}) =>
   createProtectedRoute(async (request: NextRequest, principal, { params }: { params: Promise<{ courseId: string }> }) => {
     const { courseId } = await params;
     const input = parseUpdateCourse(await readJsonObject(request));
-    const result = await (dependencies.service ?? courseService).updateCourse(courseId, input, principal.userId);
+    const companyId = principal.role === "HRD_FACTORY" ? principal.companyId : null;
+    const result = await (dependencies.service ?? courseService).updateCourse(courseId, input, principal.userId, companyId);
     return apiSuccess(result);
   }, writeOptions(dependencies.auth));
 
 export const createDeleteCourseHandler = (dependencies: Dependencies = {}) => 
   createProtectedRoute(async (request: NextRequest, principal, { params }: { params: Promise<{ courseId: string }> }) => {
     const { courseId } = await params;
-    const result = await (dependencies.service ?? courseService).deleteCourse(courseId, principal.userId);
+    const companyId = principal.role === "HRD_FACTORY" ? principal.companyId : null;
+    const result = await (dependencies.service ?? courseService).deleteCourse(courseId, principal.userId, companyId);
     return apiSuccess(result);
   }, writeOptions(dependencies.auth));
 

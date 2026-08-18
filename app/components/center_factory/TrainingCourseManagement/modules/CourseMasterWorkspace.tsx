@@ -511,14 +511,24 @@ function CourseMaster() {
   const userCompanyCode = profileValue(user?.companyCode);
   const owner: WorkflowOwner = user?.roleCode === "HRD_CENTER" ? "CENTER" : "FACTORY";
   const ownerCompany = owner === "CENTER" ? "HRD Center" : userCompanyCode;
+
   const scopedCourses = useMemo(
     () =>
-      courses.filter((course) =>
-        isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode),
-      ),
-    [courses, user?.roleCode, userCompanyCode],
+      courses.filter((course) => {
+        if (isFactoryUser) {
+          const isCenter = course.owner === "CENTER" || course.ownerCompany === "CENTER" || course.ownerCompany === "HRD Center" || !course.ownerCompany;
+          const isOwnFactory = course.ownerCompany === userCompanyCode;
+          return isCenter || isOwnFactory;
+        }
+        return isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode);
+      }),
+    [courses, isFactoryUser, user?.roleCode, userCompanyCode],
   );
   const selectedCourse = scopedCourses.find((course) => course.id === selectedCourseId) ?? null;
+  const isSelectedCourseCenter = selectedCourse
+    ? (selectedCourse.owner === "CENTER" || selectedCourse.ownerCompany === "CENTER" || selectedCourse.ownerCompany === "HRD Center" || !selectedCourse.ownerCompany)
+    : false;
+  const isSelectedCourseReadOnlyForFactory = isFactoryUser && isSelectedCourseCenter;
   const selectedStandard =
     standards.find(
       (standard) =>
@@ -1659,16 +1669,18 @@ function CourseMaster() {
         <button
           className={styles.secondaryButton}
           type="button"
-          onClick={handleEdit}
-          disabled={!selectedCourse}
+          onClick={() => !isSelectedCourseReadOnlyForFactory && handleEdit()}
+          disabled={!selectedCourse || isSelectedCourseReadOnlyForFactory}
+          title={isSelectedCourseReadOnlyForFactory ? "หลักสูตรของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้" : undefined}
         >
           Edit
         </button>
         <button
           className={styles.dangerButton}
           type="button"
-          onClick={handleDelete}
-          disabled={!selectedCourse}
+          onClick={() => !isSelectedCourseReadOnlyForFactory && void handleDelete()}
+          disabled={!selectedCourse || isSelectedCourseReadOnlyForFactory}
+          title={isSelectedCourseReadOnlyForFactory ? "หลักสูตรของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
         >
           Delete
         </button>
@@ -1720,6 +1732,8 @@ function CourseMaster() {
                     standard.courseId === course.id ||
                     standard.courseCode === course.courseCode,
                 );
+                const isCenterCourse = course.owner === "CENTER" || course.ownerCompany === "CENTER" || course.ownerCompany === "HRD Center" || !course.ownerCompany;
+                const isRowReadOnlyForFactory = isFactoryUser && isCenterCourse;
                 return (
                   <Fragment key={course.id}>
                     <tr
@@ -1764,14 +1778,18 @@ function CourseMaster() {
                         <button
                           className={styles.secondaryButton}
                           type="button"
-                          onClick={() => openCourseEditor(course)}
+                          disabled={isRowReadOnlyForFactory}
+                          title={isRowReadOnlyForFactory ? "หลักสูตรของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้" : undefined}
+                          onClick={() => !isRowReadOnlyForFactory && openCourseEditor(course)}
                         >
                           Edit
                         </button>
                         <button
                           className={styles.dangerButton}
                           type="button"
-                          onClick={() => void handleDeleteCourse(course)}
+                          disabled={isRowReadOnlyForFactory}
+                          title={isRowReadOnlyForFactory ? "หลักสูตรของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
+                          onClick={() => !isRowReadOnlyForFactory && void handleDeleteCourse(course)}
                         >
                           Delete
                         </button>

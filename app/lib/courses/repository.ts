@@ -1,5 +1,6 @@
 import type { PrismaClient } from "../../generated/prisma/client";
 import { Prisma } from "../../generated/prisma/client";
+import { ApiError } from "../api/errors";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
 import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
@@ -90,7 +91,10 @@ export const createCourseRepository = (client?: DatabaseClient) => {
     async list(filters: CourseListFilters, companyId: string | null) {
       const where: Prisma.courseWhereInput = {};
       if (companyId) {
-        where.company_id = BigInt(companyId);
+        where.OR = [
+          { company_id: BigInt(companyId) },
+          { company_id: null },
+        ];
       }
       if (filters.status) where.status = filters.status.toUpperCase();
       if (filters.search) where.OR = [
@@ -320,9 +324,19 @@ export const createCourseRepository = (client?: DatabaseClient) => {
       });
     },
 
-    async update(id: string, input: UpdateCourseInput, userId: string) {
+    async update(id: string, input: UpdateCourseInput, userId: string, companyId: string | null = null) {
       return withDatabaseErrorMapping(async () => {
         return await db().$transaction(async (tx) => {
+          if (companyId) {
+            const current = await tx.course.findUniqueOrThrow({
+              where: { course_id: BigInt(id) },
+              select: { company_id: true },
+            });
+            if (current.company_id?.toString() !== companyId) {
+              throw new ApiError({ code: "FORBIDDEN", message: "Factory users cannot modify courses created by HRD Center or other factories", status: 403 });
+            }
+          }
+
           // Update Course
           const courseData: any = { updated_by: safeBigInt(userId) ?? BigInt(0), updated_at: new Date() };
           if (input.courseNameTh !== undefined) {
@@ -476,10 +490,20 @@ export const createCourseRepository = (client?: DatabaseClient) => {
       });
     },
 
-    async delete(id: string) {
+    async delete(id: string, companyId: string | null = null) {
       return withDatabaseErrorMapping(async () => {
         const courseId = BigInt(id);
         return await db().$transaction(async (tx) => {
+          if (companyId) {
+            const current = await tx.course.findUniqueOrThrow({
+              where: { course_id: courseId },
+              select: { company_id: true },
+            });
+            if (current.company_id?.toString() !== companyId) {
+              throw new ApiError({ code: "FORBIDDEN", message: "Factory users cannot delete courses created by HRD Center or other factories", status: 403 });
+            }
+          }
+
           // 1. Cascade delete OAPs and rolling plans for this course first
           const oaps = await tx.training_plan_oap.findMany({
             where: { course_id: courseId },
