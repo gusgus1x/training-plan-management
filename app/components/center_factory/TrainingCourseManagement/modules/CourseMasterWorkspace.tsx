@@ -550,25 +550,125 @@ function CourseMaster() {
     selectedCompanies.length === 0 ||
     (usage.companyId !== null && selectedCompanyIds.includes(usage.companyId));
 
-  const functionOptions = useMemo(() => [
-    { id: "", code: allFunctionCode, name: "All Function" },
-    ...functionRows,
-  ], [functionRows]);
+  const functionOptions = useMemo(() => {
+    let filtered = functionRows;
+    const hasConstraint =
+      (standardDivisionCode && standardDivisionCode !== allFunctionCode) ||
+      (standardDepartmentCode && standardDepartmentCode !== allFunctionCode) ||
+      (standardSectionCode && standardSectionCode !== allFunctionCode);
 
-  const divisionOptions = useMemo(() => [
-    { id: "", code: allFunctionCode, name: "All Division" },
-    ...divisionRows,
-  ], [divisionRows]);
+    if (hasConstraint) {
+      const linkedIds = new Set(
+        orgUsage
+          .filter((usage) => {
+            if (!usageInSelectedCompanies(usage)) return false;
+            if (standardDivisionCode && standardDivisionCode !== allFunctionCode && selectedDivisionId && usage.divisionId !== selectedDivisionId) return false;
+            if (standardDepartmentCode && standardDepartmentCode !== allFunctionCode && selectedDepartmentId && usage.departmentId !== selectedDepartmentId) return false;
+            if (standardSectionCode && standardSectionCode !== allFunctionCode && selectedSectionId && usage.sectionId !== selectedSectionId) return false;
+            return true;
+          })
+          .map((u) => u.functionId)
+          .filter(Boolean),
+      );
+      filtered = functionRows.filter((row) => linkedIds.has(row.id) || row.code === standardFunctionCode);
+    }
 
-  const departmentOptions = useMemo(() => [
-    { id: "", code: allFunctionCode, name: "All Department" },
-    ...departmentRows,
-  ], [departmentRows]);
+    return [
+      { id: "", code: "", name: "Select Function Name" },
+      { id: "ALL", code: allFunctionCode, name: "All Function" },
+      ...filtered,
+    ];
+  }, [functionRows, orgUsage, selectedCompanies, standardFunctionCode, standardDivisionCode, standardDepartmentCode, standardSectionCode, selectedDivisionId, selectedDepartmentId, selectedSectionId]);
 
-  const sectionOptions = useMemo(() => [
-    { id: "", code: allFunctionCode, name: "All Section" },
-    ...sectionRows,
-  ], [sectionRows]);
+  const divisionOptions = useMemo(() => {
+    let filtered = divisionRows;
+    const hasConstraint =
+      (standardFunctionCode && standardFunctionCode !== allFunctionCode) ||
+      (standardDepartmentCode && standardDepartmentCode !== allFunctionCode) ||
+      (standardSectionCode && standardSectionCode !== allFunctionCode);
+
+    if (hasConstraint) {
+      const linkedIds = new Set(
+        orgUsage
+          .filter((usage) => {
+            if (!usageInSelectedCompanies(usage)) return false;
+            if (standardFunctionCode && standardFunctionCode !== allFunctionCode && selectedFunctionId && usage.functionId !== selectedFunctionId) return false;
+            if (standardDepartmentCode && standardDepartmentCode !== allFunctionCode && selectedDepartmentId && usage.departmentId !== selectedDepartmentId) return false;
+            if (standardSectionCode && standardSectionCode !== allFunctionCode && selectedSectionId && usage.sectionId !== selectedSectionId) return false;
+            return true;
+          })
+          .map((u) => u.divisionId)
+          .filter(Boolean),
+      );
+      filtered = divisionRows.filter((row) => linkedIds.has(row.id) || row.code === standardDivisionCode);
+    }
+
+    return [
+      { id: "", code: "", name: "Select Division" },
+      { id: "ALL", code: allFunctionCode, name: "All Division" },
+      ...filtered,
+    ];
+  }, [divisionRows, orgUsage, selectedCompanies, standardFunctionCode, standardDivisionCode, standardDepartmentCode, standardSectionCode, selectedFunctionId, selectedDepartmentId, selectedSectionId]);
+
+  const departmentOptions = useMemo(() => {
+    let filtered = departmentRows;
+    const hasConstraint =
+      (standardFunctionCode && standardFunctionCode !== allFunctionCode) ||
+      (standardDivisionCode && standardDivisionCode !== allFunctionCode) ||
+      (standardSectionCode && standardSectionCode !== allFunctionCode);
+
+    if (hasConstraint) {
+      const linkedIds = new Set(
+        orgUsage
+          .filter((usage) => {
+            if (!usageInSelectedCompanies(usage)) return false;
+            if (standardFunctionCode && standardFunctionCode !== allFunctionCode && selectedFunctionId && usage.functionId !== selectedFunctionId) return false;
+            if (standardDivisionCode && standardDivisionCode !== allFunctionCode && selectedDivisionId && usage.divisionId !== selectedDivisionId) return false;
+            if (standardSectionCode && standardSectionCode !== allFunctionCode && selectedSectionId && usage.sectionId !== selectedSectionId) return false;
+            return true;
+          })
+          .map((u) => u.departmentId)
+          .filter(Boolean),
+      );
+      filtered = departmentRows.filter((row) => linkedIds.has(row.id) || row.code === standardDepartmentCode);
+    }
+
+    return [
+      { id: "", code: "", name: "Select Department" },
+      { id: "ALL", code: allFunctionCode, name: "All Department" },
+      ...filtered,
+    ];
+  }, [departmentRows, orgUsage, selectedCompanies, standardFunctionCode, standardDivisionCode, standardDepartmentCode, standardSectionCode, selectedFunctionId, selectedDivisionId, selectedSectionId]);
+
+  const sectionOptions = useMemo(() => {
+    let filtered = sectionRows;
+    const hasConstraint =
+      (standardFunctionCode && standardFunctionCode !== allFunctionCode) ||
+      (standardDivisionCode && standardDivisionCode !== allFunctionCode) ||
+      (standardDepartmentCode && standardDepartmentCode !== allFunctionCode);
+
+    if (hasConstraint) {
+      const linkedIds = new Set(
+        orgUsage
+          .filter((usage) => {
+            if (!usageInSelectedCompanies(usage)) return false;
+            if (standardFunctionCode && standardFunctionCode !== allFunctionCode && selectedFunctionId && usage.functionId !== selectedFunctionId) return false;
+            if (standardDivisionCode && standardDivisionCode !== allFunctionCode && selectedDivisionId && usage.divisionId !== selectedDivisionId) return false;
+            if (standardDepartmentCode && standardDepartmentCode !== allFunctionCode && selectedDepartmentId && usage.departmentId !== selectedDepartmentId) return false;
+            return true;
+          })
+          .map((u) => u.sectionId)
+          .filter(Boolean),
+      );
+      filtered = sectionRows.filter((row) => linkedIds.has(row.id) || row.code === standardSectionCode);
+    }
+
+    return [
+      { id: "", code: "", name: "Select Section" },
+      { id: "ALL", code: allFunctionCode, name: "All Section" },
+      ...filtered,
+    ];
+  }, [sectionRows, orgUsage, selectedCompanies, standardFunctionCode, standardDivisionCode, standardDepartmentCode, selectedFunctionId, selectedDivisionId, selectedDepartmentId]);
   const getFunctionDisplayName = (functionCode?: string, functionName = "") => {
     if (functionCode === allFunctionCode || functionName === allFunctionOption) {
       return "All Function";
