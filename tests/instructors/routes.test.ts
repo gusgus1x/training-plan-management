@@ -16,6 +16,7 @@ const auth = (principal: AuthenticatedPrincipal) => ({
     userId: "1",
     issuedAt: 1,
     lastSeenAt: 2,
+    bootId: "test-boot-id",
   }),
   revalidate: vi.fn().mockResolvedValue(principal),
   rollToken: () => "rolled",

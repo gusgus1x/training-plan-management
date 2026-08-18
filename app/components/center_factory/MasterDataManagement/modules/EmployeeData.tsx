@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { listCompanies } from "../../../../lib/companies/client";
 import type { CompanyRecord } from "../../../../lib/companies/types";
@@ -19,6 +19,12 @@ import type {
 import { isValidThaiNationalId } from "../../../../lib/employees/nationalIdValidation";
 import { listFunctions } from "../../../../lib/functions/client";
 import type { OrganizationFunctionRecord as FunctionRecord } from "../../../../lib/functions/types";
+import { listDivisions } from "../../../../lib/divisions/client";
+import type { DivisionRecord } from "../../../../lib/divisions/types";
+import { listDepartments } from "../../../../lib/departments/client";
+import type { DepartmentRecord } from "../../../../lib/departments/types";
+import { listSections } from "../../../../lib/sections/client";
+import type { SectionRecord } from "../../../../lib/sections/types";
 import { listLevels } from "../../../../lib/levels/client";
 import type { LevelRecord } from "../../../../lib/levels/types";
 import { listPositions } from "../../../../lib/positions/client";
@@ -36,6 +42,9 @@ const blank = (companyId = ""): EmployeeInput => ({
   companyId,
   employeeCode: "",
   functionId: null,
+  divisionId: null,
+  departmentId: null,
+  sectionId: null,
   positionId: null,
   levelId: null,
   nationalId: "",
@@ -53,7 +62,47 @@ const blank = (companyId = ""): EmployeeInput => ({
 });
 
 const display = (value: string | null) => value || "-";
-const EMPLOYEE_PAGE_SIZE = 100;
+const EMPLOYEE_PAGE_SIZE = 25;
+const PAGE_WINDOW_SIZE = 5;
+
+const pageWindow = (current: number, totalPages: number) => {
+  if (totalPages <= PAGE_WINDOW_SIZE) return { start: 1, end: totalPages };
+  let start = Math.max(1, current - Math.floor(PAGE_WINDOW_SIZE / 2));
+  let end = start + PAGE_WINDOW_SIZE - 1;
+  if (end > totalPages) {
+    end = totalPages;
+    start = end - PAGE_WINDOW_SIZE + 1;
+  }
+  return { start, end };
+};
+
+const EMPLOYEE_COLUMNS = [
+  { key: "no", label: "No.", defaultWidth: 56 },
+  { key: "company", label: "Company", defaultWidth: 90 },
+  { key: "empCode", label: "Emp Code", defaultWidth: 110 },
+  { key: "idCard", label: "ID Card", defaultWidth: 130 },
+  { key: "titleTh", label: "Title(TH)", defaultWidth: 70 },
+  { key: "nameTh", label: "Name(TH)", defaultWidth: 120 },
+  { key: "surnameTh", label: "Surname(TH)", defaultWidth: 120 },
+  { key: "titleEn", label: "Title(EN)", defaultWidth: 70 },
+  { key: "nameEn", label: "Name(EN)", defaultWidth: 120 },
+  { key: "surnameEn", label: "Surname(EN)", defaultWidth: 120 },
+  { key: "birthday", label: "Birthday", defaultWidth: 100 },
+  { key: "workday", label: "Workday", defaultWidth: 100 },
+  { key: "functionCode", label: "Function Code", defaultWidth: 110 },
+  { key: "functionName", label: "Function Name", defaultWidth: 150 },
+  { key: "division", label: "Division", defaultWidth: 120 },
+  { key: "department", label: "Department", defaultWidth: 120 },
+  { key: "section", label: "Section", defaultWidth: 120 },
+  { key: "positionName", label: "Position Name", defaultWidth: 150 },
+  { key: "levelKey", label: "Level Key", defaultWidth: 90 },
+] as const;
+const MIN_COLUMN_WIDTH = 48;
+const MIN_ROW_HEIGHT = 28;
+
+type ResizeDrag =
+  | { axis: "column"; key: string; startPointer: number; startSize: number }
+  | { axis: "row"; key: string; startPointer: number; startSize: number };
 
 export default function EmployeeData() {
   const user = useAuthenticatedUser();
@@ -61,6 +110,9 @@ export default function EmployeeData() {
   const [rows, setRows] = useState<EmployeeRecord[]>([]);
   const [companies, setCompanies] = useState<CompanyRecord[]>([]);
   const [functions, setFunctions] = useState<FunctionRecord[]>([]);
+  const [divisions, setDivisions] = useState<DivisionRecord[]>([]);
+  const [departments, setDepartments] = useState<DepartmentRecord[]>([]);
+  const [sections, setSections] = useState<SectionRecord[]>([]);
   const [positions, setPositions] = useState<PositionRecord[]>([]);
   const [levels, setLevels] = useState<LevelRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -78,24 +130,106 @@ export default function EmployeeData() {
   const [revealingNationalIds, setRevealingNationalIds] = useState(false);
   const [loadingEditor, setLoadingEditor] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+  const [rowHeights, setRowHeights] = useState<Record<string, number>>({});
+  const resizeDrag = useRef<ResizeDrag | null>(null);
   const selected =
     rows.find((employee) => employee.employeeId === selectedId) ?? null;
+
+  useEffect(() => {
+    const onPointerMove = (event: PointerEvent) => {
+      const drag = resizeDrag.current;
+      if (!drag) return;
+      if (drag.axis === "column") {
+        const next = Math.max(
+          MIN_COLUMN_WIDTH,
+          drag.startSize + (event.clientX - drag.startPointer),
+        );
+        setColumnWidths((current) => ({ ...current, [drag.key]: next }));
+      } else {
+        const next = Math.max(
+          MIN_ROW_HEIGHT,
+          drag.startSize + (event.clientY - drag.startPointer),
+        );
+        setRowHeights((current) => ({ ...current, [drag.key]: next }));
+      }
+    };
+    const onPointerUp = () => {
+      resizeDrag.current = null;
+    };
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+    };
+  }, []);
+
+  const startColumnResize =
+    (key: string, defaultWidth: number) =>
+    (event: React.PointerEvent<HTMLSpanElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      resizeDrag.current = {
+        axis: "column",
+        key,
+        startPointer: event.clientX,
+        startSize: columnWidths[key] ?? defaultWidth,
+      };
+    };
+
+  const startRowResize =
+    (employeeId: string) => (event: React.PointerEvent<HTMLSpanElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const row = event.currentTarget.closest("tr");
+      resizeDrag.current = {
+        axis: "row",
+        key: employeeId,
+        startPointer: event.clientY,
+        startSize:
+          rowHeights[employeeId] ?? row?.getBoundingClientRect().height ?? 42,
+      };
+    };
+
+  const tableWidth = useMemo(
+    () =>
+      EMPLOYEE_COLUMNS.reduce(
+        (total, column) => total + (columnWidths[column.key] ?? column.defaultWidth),
+        0,
+      ),
+    [columnWidths],
+  );
 
   const load = async () => {
     setError(null);
     setRevealedNationalIds({});
     try {
-      const [employeeResult, companyResult, functionResult, positionResult, levelResult] =
-        await Promise.all([
-          listEmployees(),
-          listCompanies(),
-          listFunctions(),
-          listPositions(),
-          listLevels(),
-        ]);
+      const [
+        employeeResult,
+        companyResult,
+        functionResult,
+        divisionResult,
+        departmentResult,
+        sectionResult,
+        positionResult,
+        levelResult,
+      ] = await Promise.all([
+        listEmployees(),
+        listCompanies(),
+        listFunctions(),
+        listDivisions(),
+        listDepartments(),
+        listSections(),
+        listPositions(),
+        listLevels(),
+      ]);
       setRows(employeeResult.items);
       setCompanies(companyResult.items);
       setFunctions(functionResult.items);
+      setDivisions(divisionResult.items);
+      setDepartments(departmentResult.items);
+      setSections(sectionResult.items);
       setPositions(positionResult.items);
       setLevels(levelResult.items);
       setSelectedId((current) =>
@@ -147,6 +281,12 @@ export default function EmployeeData() {
           employee.email,
           employee.functionCode,
           employee.functionName,
+          employee.divisionCode,
+          employee.divisionName,
+          employee.departmentCode,
+          employee.departmentName,
+          employee.sectionCode,
+          employee.sectionName,
           employee.positionCode,
           employee.positionName,
           employee.levelCode,
@@ -223,6 +363,9 @@ export default function EmployeeData() {
         companyId: employee.companyId,
         employeeCode: employee.employeeCode,
         functionId: employee.functionId,
+        divisionId: employee.divisionId,
+        departmentId: employee.departmentId,
+        sectionId: employee.sectionId,
         positionId: employee.positionId,
         levelId: employee.levelId,
         nationalId,
@@ -607,6 +750,48 @@ export default function EmployeeData() {
                 </select>
               </label>
               <label>
+                Division
+                <select
+                  value={form.divisionId ?? ""}
+                  onChange={(event) => change("divisionId", event.target.value || null)}
+                >
+                  <option value="">-</option>
+                  {divisions.map((item) => (
+                    <option key={item.divisionId} value={item.divisionId}>
+                      {item.divisionCode} — {item.divisionNameEn || item.divisionNameTh}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Department
+                <select
+                  value={form.departmentId ?? ""}
+                  onChange={(event) => change("departmentId", event.target.value || null)}
+                >
+                  <option value="">-</option>
+                  {departments.map((item) => (
+                    <option key={item.departmentId} value={item.departmentId}>
+                      {item.departmentCode} — {item.departmentNameEn || item.departmentNameTh}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Section
+                <select
+                  value={form.sectionId ?? ""}
+                  onChange={(event) => change("sectionId", event.target.value || null)}
+                >
+                  <option value="">-</option>
+                  {sections.map((item) => (
+                    <option key={item.sectionId} value={item.sectionId}>
+                      {item.sectionCode} — {item.sectionNameEn || item.sectionNameTh}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
                 Position
                 <select
                   value={form.positionId ?? ""}
@@ -696,6 +881,15 @@ export default function EmployeeData() {
                   (page - 1) * EMPLOYEE_PAGE_SIZE,
                   page * EMPLOYEE_PAGE_SIZE,
                 );
+                const { start: windowStart, end: windowEnd } = pageWindow(
+                  page,
+                  totalPages,
+                );
+                const goToPage = (pageNumber: number) =>
+                  setCompanyPage((current) => ({
+                    ...current,
+                    [companyGroup.companyId]: pageNumber,
+                  }));
                 return (
                   <section
                     className={`${styles.companyGroup} ${isOpen ? styles.openGroup : ""}`}
@@ -717,25 +911,35 @@ export default function EmployeeData() {
 
                     {isOpen ? (
                       <div className={styles.tableWrap}>
-                        <table className={styles.employeeTable}>
+                        <div className={styles.tableScroll}>
+                          <table
+                            className={styles.employeeTable}
+                            style={{ width: tableWidth }}
+                          >
+                          <colgroup>
+                            {EMPLOYEE_COLUMNS.map((column) => (
+                              <col
+                                key={column.key}
+                                style={{
+                                  width: columnWidths[column.key] ?? column.defaultWidth,
+                                }}
+                              />
+                            ))}
+                          </colgroup>
                           <thead>
                             <tr>
-                              <th>No.</th>
-                              <th>Company</th>
-                              <th>Emp Code</th>
-                              <th>ID Card</th>
-                              <th>Title(TH)</th>
-                              <th>Name(TH)</th>
-                              <th>Surname(TH)</th>
-                              <th>Title(EN)</th>
-                              <th>Name(EN)</th>
-                              <th>Surname(EN)</th>
-                              <th>Birthday</th>
-                              <th>Workday</th>
-                              <th>Function Code</th>
-                              <th>Function Name</th>
-                              <th>Position Name</th>
-                              <th>Level Key</th>
+                              {EMPLOYEE_COLUMNS.map((column) => (
+                                <th key={column.key}>
+                                  {column.label}
+                                  <span
+                                    className={styles.columnResizeHandle}
+                                    onPointerDown={startColumnResize(
+                                      column.key,
+                                      column.defaultWidth,
+                                    )}
+                                  />
+                                </th>
+                              ))}
                             </tr>
                           </thead>
                           <tbody>
@@ -747,11 +951,18 @@ export default function EmployeeData() {
                                     ? styles.selectedRow
                                     : undefined
                                 }
+                                style={{ height: rowHeights[employee.employeeId] }}
                                 onClick={() => {
                                   setSelectedId(employee.employeeId);
                                 }}
                               >
-                                <td>{(page - 1) * EMPLOYEE_PAGE_SIZE + index + 1}</td>
+                                <td>
+                                  {(page - 1) * EMPLOYEE_PAGE_SIZE + index + 1}
+                                  <span
+                                    className={styles.rowResizeHandle}
+                                    onPointerDown={startRowResize(employee.employeeId)}
+                                  />
+                                </td>
                                 <td>
                                   <span className={styles.companyPill}>
                                     {employee.companyCode}
@@ -772,6 +983,9 @@ export default function EmployeeData() {
                                 <td>{display(employee.hireDate)}</td>
                                 <td>{display(employee.functionCode)}</td>
                                 <td>{display(employee.functionName)}</td>
+                                <td>{display(employee.divisionName)}</td>
+                                <td>{display(employee.departmentName)}</td>
+                                <td>{display(employee.sectionName)}</td>
                                 <td>{display(employee.positionName)}</td>
                                 <td>
                                   <span className={styles.levelPill}>
@@ -782,29 +996,66 @@ export default function EmployeeData() {
                             ))}
                           </tbody>
                         </table>
+                        </div>
                         {totalPages > 1 ? (
                           <div className={styles.pagination}>
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                              (pageNumber) => (
+                            {windowStart > 1 ? (
+                              <>
                                 <button
-                                  key={pageNumber}
                                   type="button"
-                                  className={
-                                    pageNumber === page
-                                      ? styles.paginationButtonActive
-                                      : styles.paginationButton
-                                  }
-                                  onClick={() =>
-                                    setCompanyPage((current) => ({
-                                      ...current,
-                                      [companyGroup.companyId]: pageNumber,
-                                    }))
-                                  }
+                                  className={styles.paginationButton}
+                                  aria-label="First page"
+                                  onClick={() => goToPage(1)}
                                 >
-                                  {pageNumber}
+                                  «
                                 </button>
-                              ),
-                            )}
+                                <button
+                                  type="button"
+                                  className={styles.paginationButton}
+                                  aria-label="Previous page"
+                                  onClick={() => goToPage(page - 1)}
+                                >
+                                  ‹
+                                </button>
+                              </>
+                            ) : null}
+                            {Array.from(
+                              { length: windowEnd - windowStart + 1 },
+                              (_, i) => windowStart + i,
+                            ).map((pageNumber) => (
+                              <button
+                                key={pageNumber}
+                                type="button"
+                                className={
+                                  pageNumber === page
+                                    ? styles.paginationButtonActive
+                                    : styles.paginationButton
+                                }
+                                onClick={() => goToPage(pageNumber)}
+                              >
+                                {pageNumber}
+                              </button>
+                            ))}
+                            {windowEnd < totalPages ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className={styles.paginationButton}
+                                  aria-label="Next page"
+                                  onClick={() => goToPage(page + 1)}
+                                >
+                                  ›
+                                </button>
+                                <button
+                                  type="button"
+                                  className={styles.paginationButton}
+                                  aria-label="Last page"
+                                  onClick={() => goToPage(totalPages)}
+                                >
+                                  »
+                                </button>
+                              </>
+                            ) : null}
                           </div>
                         ) : null}
                       </div>

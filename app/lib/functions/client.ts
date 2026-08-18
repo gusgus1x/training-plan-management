@@ -43,13 +43,34 @@ const jsonRequest = (method: string, body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 });
 
-export const listFunctions = async (fetcher: Fetcher = fetch) =>
-  read<{ items: OrganizationFunctionRecord[] }>(
-    await fetcher("/api/master-data/functions?page=1&pageSize=100", {
+type PagedResponse<T> = {
+  items: T[];
+  pagination: { page: number; pageSize: number; totalItems: number; totalPages: number };
+};
+
+const LIST_PAGE_SIZE = 100;
+
+// Master data lists have no server-side cap other than pageSize, and the UI always expects the
+// full set (not a paginated view) — loop pages instead of relying on everything fitting on page 1.
+export const listFunctions = async (fetcher: Fetcher = fetch) => {
+  const first = await read<PagedResponse<OrganizationFunctionRecord>>(
+    await fetcher(`/api/master-data/functions?page=1&pageSize=${LIST_PAGE_SIZE}`, {
       credentials: "include",
       cache: "no-store",
     }),
   );
+  const items = [...first.items];
+  for (let page = 2; page <= first.pagination.totalPages; page += 1) {
+    const next = await read<PagedResponse<OrganizationFunctionRecord>>(
+      await fetcher(`/api/master-data/functions?page=${page}&pageSize=${LIST_PAGE_SIZE}`, {
+        credentials: "include",
+        cache: "no-store",
+      }),
+    );
+    items.push(...next.items);
+  }
+  return { items };
+};
 
 export const createFunction = async (
   input: CreateOrganizationFunctionInput,

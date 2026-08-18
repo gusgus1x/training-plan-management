@@ -11,7 +11,7 @@ import { createCourseTypeService, type CourseTypeService } from "../../app/lib/c
 import { parseCreateCourseType } from "../../app/lib/courseTypes/validation";
 
 const principal = (role: "HRD_CENTER" | "HRD_FACTORY") => ({ userId: "1", username: "test", role }) as AuthenticatedPrincipal;
-const auth = (user: AuthenticatedPrincipal) => ({ verifyToken: () => ({ version: 1 as const, userId: "1", issuedAt: 1, lastSeenAt: 2 }), revalidate: vi.fn().mockResolvedValue(user), rollToken: () => "rolled", production: false });
+const auth = (user: AuthenticatedPrincipal) => ({ verifyToken: () => ({ version: 1 as const, userId: "1", issuedAt: 1, lastSeenAt: 2, bootId: "test-boot-id" }), revalidate: vi.fn().mockResolvedValue(user), rollToken: () => "rolled", production: false });
 const request = (path: string, method = "GET", body?: unknown) => new NextRequest(`http://localhost${path}`, { method, body: body === undefined ? undefined : JSON.stringify(body), headers: { cookie: "tpm_session=valid", ...(body === undefined ? {} : { "content-type": "application/json" }) } });
 
 describe("course classification validation", () => {

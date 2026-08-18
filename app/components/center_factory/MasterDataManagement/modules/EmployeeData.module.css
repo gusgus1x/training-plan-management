@@ -276,7 +276,13 @@
   border: 1px solid var(--ui-30-border);
   border-radius: 8px;
   background: var(--ui-60-surface);
-  overflow-x: auto;
+}
+
+/* Only the table itself scrolls (both directions); pagination lives outside
+   this element so it stays put instead of sliding off-screen with the table. */
+.tableScroll {
+  max-height: 620px;
+  overflow: auto;
 }
 
 .companyDirectory {
@@ -367,31 +373,69 @@
 }
 
 .employeeTable {
-  width: 100%;
-  min-width: 1780px;
+  table-layout: fixed;
   border-collapse: collapse;
 }
 
 .employeeTable th,
 .employeeTable td {
+  position: relative;
+  overflow: hidden;
   border-bottom: 1px solid var(--ui-30-border);
   padding: 10px 11px;
   text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   vertical-align: middle;
 }
 
 .employeeTable th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   background: var(--ui-60-surface-soft);
   color: var(--ui-30-muted);
   font-size: 0.66rem;
   font-weight: 900;
   text-transform: uppercase;
+  white-space: normal;
 }
 
 .employeeTable th:first-child,
 .employeeTable td:first-child {
-  width: 64px;
   text-align: center;
+}
+
+.columnResizeHandle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 1;
+}
+
+.columnResizeHandle:hover {
+  background: var(--ui-30-primary);
+  opacity: 0.4;
+}
+
+.rowResizeHandle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -3px;
+  height: 6px;
+  cursor: row-resize;
+  touch-action: none;
+  z-index: 1;
+}
+
+.rowResizeHandle:hover {
+  background: var(--ui-30-primary);
+  opacity: 0.4;
 }
 
 .employeeTable tbody tr {
@@ -433,6 +477,7 @@
 .pagination {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px;
   padding: 10px 14px 14px;
 }

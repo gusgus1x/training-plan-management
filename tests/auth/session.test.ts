@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { NextRequest } from "next/server";
 import { describe, expect, it, vi } from "vitest";
 import { createLoginHandler } from "../../app/api/auth/login/route";
@@ -83,6 +84,32 @@ describe("session tokens and auth cookies", () => {
     });
   });
 
+  it("rejects a well-signed token issued by a different server process (stale boot id)", () => {
+    // A restart must invalidate every previously-issued token even if the browser still holds a
+    // validly-signed cookie — construct a token the same way createSessionToken would, but with
+    // a boot id that couldn't have come from this process, and confirm it's still rejected.
+    const forgedPayload = {
+      version: 1,
+      userId: "42",
+      issuedAt: 1_000,
+      lastSeenAt: 1_000,
+      bootId: "boot-id-from-a-previous-server-process",
+    };
+    const encodedPayload = Buffer.from(JSON.stringify(forgedPayload)).toString("base64url");
+    const signature = createHmac("sha256", secret).update(encodedPayload).digest("base64url");
+    const forgedToken = `${encodedPayload}.${signature}`;
+
+    expect(verifySessionToken(forgedToken, { secret, now: 1_001 })).toBeNull();
+  });
+
+  it("accepts its own tokens across calls (stable boot id within one process)", () => {
+    const first = createSessionToken("42", { secret, now: 1_000 });
+    const second = createSessionToken("43", { secret, now: 1_000 });
+
+    expect(verifySessionToken(first, { secret, now: 1_001 })).not.toBeNull();
+    expect(verifySessionToken(second, { secret, now: 1_001 })).not.toBeNull();
+  });
+
   it("enforces idle and absolute expiry", () => {
     const idleToken = createSessionToken("42", { secret, now: 1_000 });
     expect(
@@ -129,7 +156,10 @@ describe("session tokens and auth cookies", () => {
     expect(cookie).toContain("SameSite=lax");
     expect(cookie).toContain("Secure");
     expect(cookie).toContain("Path=/");
-    expect(cookie).toContain(`Max-Age=${SESSION_IDLE_SECONDS}`);
+    // Browser-session-only cookie by design: no Max-Age/Expires, so it clears when the browser
+    // (or the computer) fully closes, rather than surviving as a persistent login.
+    expect(cookie).not.toContain("Max-Age");
+    expect(cookie).not.toContain("Expires");
     expect(cookie).not.toContain("not-returned");
   });
 
@@ -141,6 +171,7 @@ describe("session tokens and auth cookies", () => {
         userId: "42",
         issuedAt: 100,
         lastSeenAt: 500,
+        bootId: "test-boot-id",
         validatedAt: 100,
         principal,
       }),
@@ -168,6 +199,7 @@ describe("session tokens and auth cookies", () => {
         userId: "42",
         issuedAt: 100,
         lastSeenAt: 200,
+        bootId: "test-boot-id",
       }),
       revalidate,
       production: false,
@@ -192,6 +224,7 @@ describe("session tokens and auth cookies", () => {
         userId: "42",
         issuedAt: 100,
         lastSeenAt: 220,
+        bootId: "test-boot-id",
         validatedAt: 200,
         principal,
       }),
@@ -223,6 +256,7 @@ describe("session tokens and auth cookies", () => {
         userId: "42",
         issuedAt: 100,
         lastSeenAt: 500,
+        bootId: "test-boot-id",
         validatedAt: 200,
         principal,
       }),

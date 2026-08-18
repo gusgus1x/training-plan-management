@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { NextRequest, NextResponse } from "next/server";
 import {
   ROLE_CODES,
@@ -13,10 +13,28 @@ export const SESSION_REVALIDATE_SECONDS = 5 * 60;
 
 type SessionEnvironment = Record<string, string | undefined>;
 
+// A random id generated once per running server process (kept on globalThis so it survives
+// Next.js dev-mode hot reloads within the same process, matching the pattern already used for
+// the Prisma client / SQL pool singletons) and embedded in every issued session token. Restarting
+// the server produces a new id, which immediately invalidates every previously-issued token —
+// intentional: a fresh process should always require a fresh login, never resume an old session
+// just because the browser still holds a validly-signed cookie.
+type SessionProcessGlobal = typeof globalThis & {
+  __trainingPlanManagementSessionBootId?: string;
+};
+const sessionProcessGlobal = globalThis as SessionProcessGlobal;
+const getBootId = (): string => {
+  if (!sessionProcessGlobal.__trainingPlanManagementSessionBootId) {
+    sessionProcessGlobal.__trainingPlanManagementSessionBootId = randomBytes(16).toString("hex");
+  }
+  return sessionProcessGlobal.__trainingPlanManagementSessionBootId;
+};
+
 type SessionPayloadBase = {
   userId: string;
   issuedAt: number;
   lastSeenAt: number;
+  bootId: string;
 };
 
 export type SessionPayload = SessionPayloadBase & ({
@@ -110,7 +128,9 @@ const isValidPayload = (value: unknown): value is SessionPayload => {
     typeof payload.userId === "string" &&
     /^[1-9]\d*$/.test(payload.userId) &&
     Number.isInteger(payload.issuedAt) &&
-    Number.isInteger(payload.lastSeenAt);
+    Number.isInteger(payload.lastSeenAt) &&
+    typeof payload.bootId === "string" &&
+    payload.bootId.length > 0;
 
   if (!validBase) return false;
   if (payload.version === 1) return true;
@@ -136,6 +156,7 @@ export const createSessionToken = (
     userId,
     issuedAt: options.issuedAt ?? now,
     lastSeenAt: now,
+    bootId: getBootId(),
   };
   const payload: SessionPayload = options.principal
     ? {
@@ -185,6 +206,10 @@ export const verifySessionToken = (
       return null;
     }
 
+    if (parsedPayload.bootId !== getBootId()) {
+      return null;
+    }
+
     if (
       parsedPayload.issuedAt > now ||
       parsedPayload.lastSeenAt < parsedPayload.issuedAt ||
@@ -215,6 +240,9 @@ export const setSessionCookie = (
   token: string,
   production = process.env.NODE_ENV === "production",
 ) => {
+  // Deliberately no maxAge/expires: a browser-session-only cookie, so closing the browser (or
+  // restarting the computer) clears it and the next visit requires a fresh login. The idle/
+  // absolute timeouts above are still enforced server-side on every verify regardless.
   response.cookies.set({
     name: SESSION_COOKIE_NAME,
     value: token,
@@ -222,7 +250,6 @@ export const setSessionCookie = (
     sameSite: "lax",
     secure: production,
     path: "/",
-    maxAge: SESSION_IDLE_SECONDS,
   });
 };
 

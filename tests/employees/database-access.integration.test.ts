@@ -109,6 +109,7 @@ run("returns the full National ID through the protected dynamic route", async ()
         userId: "1",
         issuedAt: 100,
         lastSeenAt: 200,
+    bootId: "test-boot-id",
       }),
       revalidate: async () => center,
       rollToken: () => "rolled-token",
