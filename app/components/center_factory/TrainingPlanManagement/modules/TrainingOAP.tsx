@@ -218,6 +218,30 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     [plans, user?.roleCode, userCompanyCode],
   );
 
+  const allCompanyCodes = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
+
+  const companyColumns = useMemo(() => {
+    const userComp = userCompanyCode && userCompanyCode !== "CENTER" ? userCompanyCode : "";
+    if (userComp && allCompanyCodes.includes(userComp as any)) {
+      return [userComp, ...allCompanyCodes.filter((c) => c !== userComp)];
+    }
+    return [...allCompanyCodes];
+  }, [userCompanyCode]);
+
+  const isCompanyIncludedInOap = (plan: OapPlan, company: string) => {
+    if (plan.owner === "CENTER" || plan.ownerCompany === "HRD Center" || plan.ownerCompany === "CENTER") {
+      return true;
+    }
+    return plan.ownerCompany === company;
+  };
+
+  const isCompanyOwnerOfOap = (plan: OapPlan, company: string) => {
+    if (plan.owner === "CENTER" || plan.ownerCompany === "HRD Center") {
+      return false;
+    }
+    return plan.ownerCompany === company;
+  };
+
   const getCompanySortWeight = (plan: OapPlan) => {
     const planCompany = plan.owner === "CENTER" ? "CENTER" : plan.ownerCompany;
     const currentUserCompany = userCompanyCode || "CENTER";
@@ -714,8 +738,16 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               <tr>
                 <th>Seq.</th>
                 <th>Course Name</th>
-                <th>Company (บริษัท)</th>
                 <th>Status</th>
+                {companyColumns.map((company) => {
+                  const isUserComp = company === userCompanyCode;
+                  return (
+                    <th key={company} className={isUserComp ? styles.ownCompanyHeader : styles.companyHeader}>
+                      {company}
+                      {isUserComp ? <span className={styles.ownCompanyTag}> (ของฉัน)</span> : null}
+                    </th>
+                  );
+                })}
                 <th>Actions</th>
                 <th>Participants</th>
                 <th>Hours</th>
@@ -727,10 +759,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             <tbody>
               {visiblePlans.map((plan) => {
                 const isOpen = openDetailId === plan.id;
-                const planCompany = plan.owner === "CENTER" ? "CENTER" : plan.ownerCompany;
-                const isOwnCompany = userCompanyCode
-                  ? planCompany === userCompanyCode || (userCompanyCode === "CENTER" && plan.owner === "CENTER")
-                  : plan.owner === "CENTER";
 
                 return (
                   <Fragment key={plan.id}>
@@ -760,17 +788,32 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                         </span>
                       </td>
                       <td>
-                        <span className={`${styles.companyBadge} ${isOwnCompany ? styles.ownCompanyBadge : ""}`}>
-                          {plan.owner === "CENTER" ? "🏢 HRD Center" : `🏬 ${plan.ownerCompany}`}
-                          {isOwnCompany ? <span className={styles.ownTag}> (ของฉัน)</span> : null}
-                        </span>
-                      </td>
-                      <td>
                         <span className={`${styles.statusPill} ${styles[`status${plan.status}`]}`}>
                           <span className={styles.statusDot} />
                           {plan.status === "Planned" ? "วางแผนแล้ว" : plan.status === "Planning" ? "รอวางแผน" : plan.status === "Cancel" ? "ยกเลิก" : plan.status}
                         </span>
                       </td>
+                      {companyColumns.map((company) => {
+                        const isIncluded = isCompanyIncludedInOap(plan, company);
+                        const isOwner = isCompanyOwnerOfOap(plan, company);
+                        const isUserComp = company === userCompanyCode;
+
+                        return (
+                          <td key={company} className={`${styles.companyCell} ${isUserComp ? styles.ownCompanyCell : ""}`}>
+                            {isOwner ? (
+                              <span className={styles.ownerMark} title={`${company} เป็นเจ้าของหลักสูตร`}>
+                                🏬 Owner
+                              </span>
+                            ) : isIncluded ? (
+                              <span className={styles.activeCheckMark} title={`${company} มีการจัดอบรมหลักสูตรนี้`}>
+                                ✓
+                              </span>
+                            ) : (
+                              <span className={styles.inactiveMark}>-</span>
+                            )}
+                          </td>
+                        );
+                      })}
                       <td className={styles.actionCell} onClick={(e) => e.stopPropagation()}>
                         <div className={styles.actionButtons}>
                           <button

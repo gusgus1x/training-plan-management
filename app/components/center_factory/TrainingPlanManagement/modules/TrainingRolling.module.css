@@ -1748,11 +1748,63 @@
   font-weight: 800;
 }
 
-.ownTag {
+.ownCompanyTag {
   display: inline-block;
   margin-left: 2px;
   font-size: 0.72rem;
   font-weight: 900;
   color: #10b981;
+}
+
+.companyHeader {
+  text-align: center !important;
+  font-weight: 800;
+  min-width: 76px;
+}
+
+.ownCompanyHeader {
+  text-align: center !important;
+  font-weight: 900;
+  color: #10b981 !important;
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-bottom: 2px solid #10b981 !important;
+  min-width: 90px;
+}
+
+.companyCell {
+  text-align: center !important;
+  vertical-align: middle;
+}
+
+.ownCompanyCell {
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.ownerMark {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #10b981;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.activeCheckMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #10b981;
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.inactiveMark {
+  color: rgba(148, 163, 184, 0.35);
+  font-size: 0.9rem;
 }
 

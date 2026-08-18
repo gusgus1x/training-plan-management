@@ -326,6 +326,32 @@ export default function TrainingRolling() {
         }),
     [companyFilter, scopedRollingPlans, search, selectedMonth, selectedYear, statusFilter],
   );
+
+  const allCompanyCodes = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
+
+  const companyColumns = useMemo(() => {
+    const userComp = userCompanyCode && userCompanyCode !== "CENTER" ? userCompanyCode : "";
+    if (userComp && allCompanyCodes.includes(userComp as any)) {
+      return [userComp, ...allCompanyCodes.filter((c) => c !== userComp)];
+    }
+    return [...allCompanyCodes];
+  }, [userCompanyCode]);
+
+  const isCompanyIncludedInRolling = (plan: RollingPlan, company: string) => {
+    if (plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.company === "All Companies") {
+      return true;
+    }
+    const companies = getRollingPlanCompanies(plan);
+    return companies.includes(company) || plan.ownerCompany === company || plan.company === company;
+  };
+
+  const isCompanyOwnerOfRolling = (plan: RollingPlan, company: string) => {
+    if (plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center") {
+      return false;
+    }
+    return plan.ownerCompany === company || plan.company === company;
+  };
+
   const getCompanySortWeight = (plan: RollingPlan) => {
     const currentUserCompany = userCompanyCode || "CENTER";
     const planCompanies = getRollingPlanCompanies(plan);
