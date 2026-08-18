@@ -1291,7 +1291,7 @@ export default function TrainingAcceptSurvey() {
             <span>Target Found</span>
             <strong>{targetEmployees.length}</strong>
           </article>
-          {selectedCourse && selectedCourse.targetLevels.length > 0 && selectedCourse.targetPositions.length > 0 && (
+          {selectedCourse && (selectedCourse.targetLevels.length > 0 || levelOnlyEmployees.length > 0) && (
             <article>
               <span>Level Matches</span>
               <strong>{levelOnlyEmployees.length}</strong>
@@ -1463,8 +1463,7 @@ export default function TrainingAcceptSurvey() {
       </div>
 
       {selectedCourse &&
-      selectedCourse.targetLevels.length > 0 &&
-      selectedCourse.targetPositions.length > 0 && (
+      (selectedCourse.targetLevels.length > 0 || levelOnlyEmployees.length > 0) && (
         <section className={styles.targetPanel} style={{ marginBottom: "16px" }}>
           <div className={styles.workspaceHeader}>
             <div>
