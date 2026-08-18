@@ -203,10 +203,10 @@
   border-radius: 10px;
   background: var(--ui-60-surface-soft);
   color: var(--ui-30-ink);
-  min-height: 44px;
-  padding: 10px 14px;
+  min-height: 38px;
+  padding: 8px 12px;
   outline: none;
-  font-size: 16px;
+  font-size: 0.88rem;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
@@ -228,11 +228,11 @@
 .primaryButton,
 .secondaryButton,
 .dangerButton {
-  min-height: 44px;
+  min-height: 38px;
   border-radius: 999px;
-  padding: 10px 22px;
-  font-weight: 800;
-  font-size: 16px;
+  padding: 8px 16px;
+  font-weight: 700;
+  font-size: 0.86rem;
   cursor: pointer;
   transition: all 160ms ease;
 }
@@ -529,10 +529,10 @@
 .closeButton,
 .saveButton,
 .cancelButton {
-  min-height: 44px;
-  padding: 10px 18px;
-  font-size: 16px;
-  font-weight: 800;
+  min-height: 38px;
+  padding: 8px 16px;
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 
 .toolbar input,
@@ -543,43 +543,43 @@
 .questionGrid input,
 .questionGrid select,
 .questionGrid textarea {
-  min-height: 44px;
-  padding: 10px 14px;
-  font-size: 16px;
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 0.88rem;
 }
 
 .panelHeader {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .panelHeader h3,
 .checkSection h4 {
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .panelHeader span,
 .summaryCard span {
-  font-size: 14px;
+  font-size: 0.78rem;
   font-weight: 600;
 }
 
 .formGrid,
 .questionGrid {
-  gap: 14px;
+  gap: 10px;
 }
 
 .formGrid label,
 .questionGrid label,
 .editor label {
-  gap: 8px;
-  font-size: 16px;
-  font-weight: 800;
+  gap: 6px;
+  font-size: 0.86rem;
+  font-weight: 700;
   color: var(--ui-30-text);
 }
 
 .tableWrap {
-  padding: 12px;
+  padding: 10px;
 }
 
 .courseTable th,
@@ -587,9 +587,9 @@
 .courseGroupTable th,
 .standardTable th,
 .assessmentTable th {
-  padding: 12px 14px;
-  font-size: 14px;
-  font-weight: 800;
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
   color: var(--ui-30-muted);
 }
 
@@ -598,23 +598,23 @@
 .courseGroupTable td,
 .standardTable td,
 .assessmentTable td {
-  padding: 14px 14px;
-  font-size: 16px;
+  padding: 10px 12px;
+  font-size: 0.88rem;
   vertical-align: middle;
 }
 
 .courseTable td strong,
 .courseTypeTable td:last-child,
 .courseGroupTable td:last-child {
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 0.92rem;
+  font-weight: 700;
 }
 
 .courseTable td span,
 .questionList span,
 .questionList p,
 .emptyState {
-  font-size: 14px;
+  font-size: 0.8rem;
 }
 
 .statusPill,
@@ -1541,21 +1541,21 @@
 
 .standard_formGrid label {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   color: var(--ui-30-text);
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 0.86rem;
+  font-weight: 700;
 }
 
 .standard_checkSection {
   grid-column: 1 / -1;
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .standard_checkSection h4 {
   color: var(--ui-30-ink);
-  font-size: 18px;
+  font-size: 0.96rem;
 }
 
 .standard_checkGrid,
@@ -1575,16 +1575,16 @@
 
 .standard_checkItem {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   border: 1px solid var(--ui-30-primary-border, #cbd5e1);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--ui-60-surface, #ffffff);
-  padding: 10px 14px;
-  min-height: 44px;
+  padding: 8px 12px;
+  min-height: 38px;
   color: var(--ui-30-text, #1e293b);
-  font-size: 16px;
-  font-weight: 800;
+  font-size: 0.88rem;
+  font-weight: 700;
   box-shadow: none;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -1675,10 +1675,10 @@
 .standard_standardTable td {
   border-bottom: 1px solid var(--ui-30-border);
   background: var(--ui-60-surface);
-  padding: 14px 12px;
+  padding: 10px 12px;
   text-align: left;
   white-space: nowrap;
-  font-size: 16px;
+  font-size: 0.88rem;
 }
 
 .standard_standardTable th {
@@ -1686,8 +1686,8 @@
   top: 0;
   z-index: 1;
   color: var(--ui-30-muted);
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 0.78rem;
+  font-weight: 700;
   text-transform: uppercase;
   background: var(--ui-60-surface-soft);
 }
@@ -2681,20 +2681,20 @@
 .searchableSelectContainer {
   position: relative;
   width: 100%;
-  font-size: 16px;
+  font-size: 0.88rem;
 }
 
 .searchableSelectTrigger {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 44px;
-  padding: 8px 14px;
+  min-height: 38px;
+  padding: 7px 12px;
   border: 1px solid var(--ui-30-border, #334155);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--ui-60-surface, #1e293b);
   color: var(--ui-30-ink, #f8fafc);
-  font-size: 16px;
+  font-size: 0.88rem;
   cursor: pointer;
   user-select: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -2718,8 +2718,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 600;
-  font-size: 16px;
+  font-weight: 500;
+  font-size: 0.88rem;
 }
 
 .searchableSelectInput {
@@ -2728,13 +2728,13 @@
   background: transparent;
   color: inherit;
   font-family: inherit;
-  font-size: 16px;
+  font-size: 0.88rem;
   outline: none;
 }
 
 .searchableSelectArrow {
   margin-left: 8px;
-  font-size: 14px;
+  font-size: 0.7rem;
   opacity: 0.7;
   transition: transform 0.15s ease;
 }
@@ -2749,20 +2749,20 @@
   left: 0;
   right: 0;
   z-index: 200;
-  max-height: 260px;
+  max-height: 240px;
   overflow-y: auto;
   margin: 0;
-  padding: 6px;
+  padding: 4px;
   list-style: none;
   border: 1px solid var(--ui-30-border, #334155);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--ui-60-surface, #1e293b);
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
 }
 
 .searchableSelectItem {
-  padding: 10px 14px;
-  border-radius: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease;
 }
@@ -2779,19 +2779,19 @@
 }
 
 .itemMain {
-  font-size: 16px;
+  font-size: 0.88rem;
   font-weight: 600;
 }
 
 .itemSub {
-  font-size: 14px;
+  font-size: 0.78rem;
   color: var(--ui-30-muted, #94a3b8);
-  margin-top: 3px;
+  margin-top: 2px;
 }
 
 .searchableSelectEmpty {
-  padding: 14px;
+  padding: 12px;
   text-align: center;
-  font-size: 14px;
+  font-size: 0.8rem;
   color: var(--ui-30-muted, #94a3b8);
 }
