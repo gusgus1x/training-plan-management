@@ -34,6 +34,7 @@ export type RollingStatus = "Planning" | "Planned";
 // already reads via plan.course.code / plan.course.name, kept separate from
 // WorkflowCourse so those files don't need touching.
 export type RollingCourseDetail = {
+  id?: string;
   code: string;
   name: string;
   objective: string;
@@ -126,6 +127,7 @@ export const monthOptions = [
 export const yearOptions = ["2026", "2025", "2024"] as const;
 
 const mapCourseDetail = (course: WorkflowCourse): RollingCourseDetail => ({
+  id: course.id,
   code: course.courseCode,
   name: getCourseDisplayName(course),
   objective: course.objective,

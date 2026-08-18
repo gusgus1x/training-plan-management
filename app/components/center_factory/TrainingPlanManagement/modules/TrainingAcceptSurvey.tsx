@@ -58,6 +58,7 @@ type CourseSurvey = {
   courseType: string;
   courseGroup: string;
   objective: string;
+  targetGroup?: string;
   standardName: string;
   targetFunctionCode: string;
   targetFunctionName: string;
@@ -586,11 +587,13 @@ export default function TrainingAcceptSurvey() {
       rollingPlans
         .filter((plan) => plan.status === "Planned")
         .map((plan) => {
+          const planCourseId = plan.course?.id || "";
           const planCourseCode = (plan.course?.code || "").trim().toUpperCase();
           const planCourseName = (plan.course?.name || "").trim().toLowerCase();
 
           const standard = standards.find(
             (item) =>
+              (item.courseId && planCourseId && item.courseId === planCourseId) ||
               (item.courseCode && planCourseCode && item.courseCode.trim().toUpperCase() === planCourseCode) ||
               (item.courseId && (item.courseId === plan.id || item.courseId === plan.rollingId || item.courseId === plan.oapId)) ||
               (item.courseName && planCourseName && item.courseName.trim().toLowerCase() === planCourseName),
@@ -633,6 +636,7 @@ export default function TrainingAcceptSurvey() {
             courseType: plan.course.courseType,
             courseGroup: plan.course.courseGroup,
             objective: plan.course.objective,
+            targetGroup: plan.course.targetGroup || "",
             standardName: standard
               ? `${standard.functionName || "All Function"} target standard`
               : "No Course Standard",
@@ -850,6 +854,21 @@ export default function TrainingAcceptSurvey() {
       return { isExactMatch: false, isLevelOnlyMatch: false, isOutMatch: true };
     } else if (hasPositions) {
       if (posMatches) {
+        return { isExactMatch: true, isLevelOnlyMatch: false, isOutMatch: false };
+      }
+      return { isExactMatch: false, isLevelOnlyMatch: false, isOutMatch: true };
+    }
+
+    const targetGroupStr = (selectedCourse.targetGroup || "").trim();
+    if (targetGroupStr && !targetGroupStr.toLowerCase().includes("all") && !targetGroupStr.includes("ทุกกลุ่ม") && targetGroupStr !== "-") {
+      const cleanTg = targetGroupStr.toLowerCase();
+      const empPosNorm = normalizeTargetPosition(employee.position);
+      const empLvlNorm = (normalizeEmployeeLevel(employee.level) || employee.level || "").toLowerCase();
+
+      const tgMatchesPos = Boolean(empPosNorm && (cleanTg.includes(empPosNorm) || empPosNorm.includes(cleanTg)));
+      const tgMatchesLvl = Boolean(empLvlNorm && (cleanTg.includes(empLvlNorm) || empLvlNorm.includes(cleanTg)));
+
+      if (tgMatchesPos || tgMatchesLvl) {
         return { isExactMatch: true, isLevelOnlyMatch: false, isOutMatch: false };
       }
       return { isExactMatch: false, isLevelOnlyMatch: false, isOutMatch: true };
