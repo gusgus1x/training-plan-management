@@ -1419,6 +1419,42 @@
   }
 }
 
+.submittedPanel {
+  padding: 16px;
+  margin-bottom: 24px;
+  background: var(--ui-60-surface);
+  border: 2px solid var(--ui-10-accent, #3b82f6);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.12);
+}
+
+.saveSubmissionButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #10b981;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  transition: all 0.15s ease;
+}
+
+.saveSubmissionButton:hover:not(:disabled) {
+  background: #059669;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.saveSubmissionButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 .dropdownPagination {
   display: flex;
   align-items: center;

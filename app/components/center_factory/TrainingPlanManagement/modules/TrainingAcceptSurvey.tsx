@@ -1236,6 +1236,104 @@ export default function TrainingAcceptSurvey() {
 
       {selectedCourse ? (
         <>
+          {isFactorySubmittingToCenter ? (
+            <section className={styles.submittedPanel}>
+              <div className={styles.workspaceHeader}>
+                <div>
+                  <p className={styles.kicker}>Submitted to Center</p>
+                  <h3>พนักงานเป้าหมายที่โรงงานส่งไปยัง Center ({submittedToCenterCandidates.length} คน)</h3>
+                </div>
+                <div className={styles.participantActions}>
+                  <span>{submittedToCenterCandidates.length} submitted</span>
+                  <button
+                    className={styles.saveSubmissionButton}
+                    type="button"
+                    disabled={submittedToCenterCandidates.length === 0}
+                    onClick={async () => {
+                      await reloadEnrollments();
+                      setActionMessage(
+                        `✅ บันทึกและยืนยันรายชื่อพนักงานส่งไปยัง Center เรียบร้อยแล้ว (รวม ${submittedToCenterCandidates.length} คน)`
+                      );
+                    }}
+                  >
+                    💾 บันทึกการส่งข้อมูล (Save Submission)
+                  </button>
+                </div>
+              </div>
+              {actionMessage ? (
+                <p className={styles.savedState} role="status">
+                  {actionMessage}
+                </p>
+              ) : null}
+              <div className={styles.employeeRows}>
+                {submittedToCenterCandidates.length > 0 ? (
+                  <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
+                    <span>จัดการ</span>
+                    <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                      <span>รหัสพนักงาน</span>
+                      <span>คำนำหน้า</span>
+                      <span>ชื่อ</span>
+                      <span>นามสกุล</span>
+                      <span>บริษัท</span>
+                      <span>ส่วนงาน</span>
+                      <span>ฝ่าย</span>
+                      <span>แผนก</span>
+                      <span>ตำแหน่ง</span>
+                      <span>ระดับ</span>
+                    </div>
+                  </div>
+                ) : null}
+                {submittedToCenterCandidates.map((candidate) => {
+                  const masterEmp = masterEmployees.find(
+                    (emp) =>
+                      emp.employeeCode === candidate.employeeCode ||
+                      emp.id === candidate.employeeId,
+                  );
+                  const nameProfile = masterEmp
+                    ? getEmployeeNameProfile(masterEmp)
+                    : getEmployeeNameProfile({ name: candidate.employeeName });
+
+                  return (
+                    <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={candidate.id}>
+                      <button
+                        className={styles.removeSubmittedButton}
+                        type="button"
+                        onClick={() => void handleCancelEnrollment(candidate.id)}
+                      >
+                        Remove
+                      </button>
+                      <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.employeeCode}>{candidate.employeeCode}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.firstName}>{nameProfile.firstName}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.lastName}>{nameProfile.lastName}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.company}>{candidate.company}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.section || "-"}>
+                          {masterEmp?.section || "-"}
+                        </span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.division || "-"}>
+                          {masterEmp?.division || "-"}
+                        </span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.department || candidate.department || "-"}>
+                          {masterEmp?.department || candidate.department || "-"}
+                        </span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.position || "-"}>
+                          {candidate.position || "-"}
+                        </span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.level || "-"}>
+                          {candidate.level || "-"}
+                        </span>
+                      </div>
+                    </article>
+                  );
+                })}
+                {submittedToCenterCandidates.length === 0 ? (
+                  <div className={styles.emptyCompact}>ยังไม่มีพนักงานที่เลือกส่งไปยัง Center (กรุณาเลือกเพิ่มพนักงานจากตารางกลุ่มเป้าหมายด้านล่าง)</div>
+                ) : null}
+              </div>
+            </section>
+          ) : null}
+
       <section className={styles.coursePanel}>
         <div>
           <p className={styles.kicker}>Course detail</p>
@@ -1547,91 +1645,6 @@ export default function TrainingAcceptSurvey() {
           ) : null}
         </div>
       </section>
-
-      {isFactorySubmittingToCenter ? (
-        <section className={styles.submittedPanel}>
-          <div className={styles.workspaceHeader}>
-            <div>
-              <p className={styles.kicker}>Submitted to Center</p>
-              <h3>Factory submitted target employees</h3>
-            </div>
-            <div className={styles.participantActions}>
-              <span>{submittedToCenterCandidates.length} submitted</span>
-            </div>
-          </div>
-          {actionMessage ? (
-            <p className={styles.savedState} role="status">
-              {actionMessage}
-            </p>
-          ) : null}
-          <div className={styles.employeeRows}>
-            {submittedToCenterCandidates.length > 0 ? (
-              <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
-                <span>จัดการ</span>
-                <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
-                  <span>รหัสพนักงาน</span>
-                  <span>คำนำหน้า</span>
-                  <span>ชื่อ</span>
-                  <span>นามสกุล</span>
-                  <span>บริษัท</span>
-                  <span>ส่วนงาน</span>
-                  <span>ฝ่าย</span>
-                  <span>แผนก</span>
-                  <span>ตำแหน่ง</span>
-                  <span>ระดับ</span>
-                </div>
-              </div>
-            ) : null}
-            {submittedToCenterCandidates.map((candidate) => {
-              const masterEmp = masterEmployees.find(
-                (emp) =>
-                  emp.employeeCode === candidate.employeeCode ||
-                  emp.id === candidate.employeeId,
-              );
-              const nameProfile = masterEmp
-                ? getEmployeeNameProfile(masterEmp)
-                : getEmployeeNameProfile({ name: candidate.employeeName });
-
-              return (
-                <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={candidate.id}>
-                  <button
-                    className={styles.removeSubmittedButton}
-                    type="button"
-                    onClick={() => void handleCancelEnrollment(candidate.id)}
-                  >
-                    Remove
-                  </button>
-                  <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.employeeCode}>{candidate.employeeCode}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.firstName}>{nameProfile.firstName}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.lastName}>{nameProfile.lastName}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.company}>{candidate.company}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.section || "-"}>
-                      {masterEmp?.section || "-"}
-                    </span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.division || "-"}>
-                      {masterEmp?.division || "-"}
-                    </span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.department || candidate.department || "-"}>
-                      {masterEmp?.department || candidate.department || "-"}
-                    </span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.position || "-"}>
-                      {candidate.position || "-"}
-                    </span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.level || "-"}>
-                      {candidate.level || "-"}
-                    </span>
-                  </div>
-                </article>
-              );
-            })}
-            {submittedToCenterCandidates.length === 0 ? (
-              <div className={styles.emptyCompact}>ยังไม่มีพนักงานที่ส่งไปยัง Center</div>
-            ) : null}
-          </div>
-        </section>
-      ) : null}
 
       {canShowAcceptanceList ? (
       <section className={styles.workspace}>
