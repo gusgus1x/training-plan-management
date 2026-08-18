@@ -501,7 +501,8 @@
 }
 
 .kicker {
-  font-size: 0.68rem;
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .summaryCard,
@@ -511,13 +512,13 @@
 .formPanel,
 .editorPanel,
 .detailPanel {
-  padding: 12px;
+  padding: 16px;
 }
 
 .toolbar {
-  gap: 6px;
-  padding-bottom: 10px;
-  margin-bottom: 10px;
+  gap: 10px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
 }
 
 .toolbar button,
@@ -528,9 +529,10 @@
 .closeButton,
 .saveButton,
 .cancelButton {
-  min-height: 34px;
-  padding: 7px 11px;
-  font-size: 0.76rem;
+  min-height: 44px;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+  font-weight: 800;
 }
 
 .toolbar input,
@@ -541,39 +543,43 @@
 .questionGrid input,
 .questionGrid select,
 .questionGrid textarea {
-  min-height: 36px;
-  padding: 8px 10px;
-  font-size: 0.8rem;
+  min-height: 44px;
+  padding: 10px 14px;
+  font-size: 0.98rem;
 }
 
 .panelHeader {
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
 
 .panelHeader h3,
 .checkSection h4 {
-  font-size: 0.98rem;
+  font-size: 1.15rem;
+  font-weight: 800;
 }
 
 .panelHeader span,
 .summaryCard span {
-  font-size: 0.68rem;
+  font-size: 0.88rem;
+  font-weight: 600;
 }
 
 .formGrid,
 .questionGrid {
-  gap: 10px;
+  gap: 14px;
 }
 
 .formGrid label,
 .questionGrid label,
 .editor label {
-  gap: 5px;
-  font-size: 0.76rem;
+  gap: 8px;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--ui-30-text);
 }
 
 .tableWrap {
-  padding: 10px;
+  padding: 12px;
 }
 
 .courseTable th,
@@ -581,8 +587,10 @@
 .courseGroupTable th,
 .standardTable th,
 .assessmentTable th {
-  padding: 0 12px 4px;
-  font-size: 0.66rem;
+  padding: 12px 14px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--ui-30-muted);
 }
 
 .courseTable td,
@@ -590,43 +598,47 @@
 .courseGroupTable td,
 .standardTable td,
 .assessmentTable td {
-  padding: 10px 12px;
-  font-size: 0.8rem;
+  padding: 14px 14px;
+  font-size: 0.98rem;
+  vertical-align: middle;
 }
 
 .courseTable td strong,
 .courseTypeTable td:last-child,
 .courseGroupTable td:last-child {
-  font-size: 0.84rem;
+  font-size: 1.05rem;
+  font-weight: 800;
 }
 
 .courseTable td span,
 .questionList span,
 .questionList p,
 .emptyState {
-  font-size: 0.74rem;
+  font-size: 0.88rem;
 }
 
 .statusPill,
 .questionList b {
-  padding: 3px 8px;
-  font-size: 0.66rem;
+  padding: 5px 12px;
+  font-size: 0.85rem;
+  font-weight: 800;
 }
 
 .checkItem {
-  padding: 8px;
-  font-size: 0.76rem;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  font-weight: 800;
 }
 
 .checkMark {
-  width: 20px;
-  height: 20px;
-  font-size: 0.78rem;
+  width: 22px;
+  height: 22px;
+  font-size: 0.88rem;
 }
 
 .formActions {
-  gap: 6px;
-  margin-top: 12px;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 /* Premium dark-shell treatment */
