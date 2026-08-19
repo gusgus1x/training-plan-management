@@ -155,6 +155,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
     () =>
       rollingPlans.filter(
         (plan) =>
+          plan.dbStatus === "OPEN" &&
           plan.status === "Planned" &&
           getRollingPlanCompanies(plan).includes(employeeCompany),
       ),

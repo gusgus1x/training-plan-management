@@ -772,22 +772,66 @@ function CourseMaster() {
     [oapPlans, rollingPlans],
   );
   const isSelectedCourseLocked = selectedCourse ? usedCourseCodes.has(selectedCourse.courseCode) : false;
-  const filteredCourses = useMemo(
-    () =>
-      scopedCourses.filter((course) =>
-        [
+  const filteredCourses = useMemo(() => {
+    return scopedCourses
+      .filter((course) => {
+        // Search term filter
+        const matchesSearch = [
           course.courseCode,
           course.courseNameTh,
           course.courseNameEn,
           course.courseType,
           course.courseGroup,
         ]
-          .join(" ")
+          .join(' ')
           .toLowerCase()
-          .includes(search.toLowerCase()),
-      ),
-    [scopedCourses, search],
-  );
+          .includes(search.toLowerCase());
+        if (!matchesSearch) return false;
+        // Company filter for Center users (HRD_CENTER)
+        if (!isFactoryUser && selectedCompanies.length > 0) {
+          const companyCode = course.ownerCompany || '';
+          return selectedCompanies.includes(companyCode);
+        }
+        return true;
+      })
+      .filter((course) => {
+        // Existing search filter (redundant with above but kept for clarity)
+        return true;
+      });
+  }, [scopedCourses, search, selectedCompanies, isFactoryUser]);
+
+  const companySections = useMemo(() => {
+    const groupsMap = new Map<string, WorkflowCourse[]>();
+
+    filteredCourses.forEach((course) => {
+      const compKey =
+        course.owner === "CENTER" ||
+        course.ownerCompany === "CENTER" ||
+        course.ownerCompany === "HRD Center" ||
+        !course.ownerCompany
+          ? "HRD Center"
+          : course.ownerCompany;
+      groupsMap.set(compKey, [...(groupsMap.get(compKey) ?? []), course]);
+    });
+
+    const userCompLabel = userCompanyCode && userCompanyCode !== "CENTER" ? userCompanyCode : "";
+
+    const entries = [...groupsMap.entries()].map(([companyName, courseList]) => ({
+      companyName,
+      courses: courseList,
+      isUserCompany: userCompLabel ? companyName === userCompLabel : companyName === "HRD Center",
+    }));
+
+    return entries.sort((a, b) => {
+      if (a.isUserCompany && !b.isUserCompany) return -1;
+      if (!a.isUserCompany && b.isUserCompany) return 1;
+
+      if (a.companyName === "HRD Center") return -1;
+      if (b.companyName === "HRD Center") return 1;
+
+      return a.companyName.localeCompare(b.companyName);
+    });
+  }, [filteredCourses, userCompanyCode]);
 
   const resetStandardForm = () => {
     setStandardFunctionCode("");
@@ -1960,7 +2004,7 @@ function CourseMaster() {
           disabled={!selectedCourse || isSelectedCourseReadOnlyForFactory}
           title={isSelectedCourseReadOnlyForFactory ? "หลักสูตรของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
         >
-          Delete
+        Delete
         </button>
         <button className={styles.secondaryButton} type="button" onClick={() => setIsImportModalOpen(true)}>
           📥 Import Excel
@@ -1985,111 +2029,163 @@ function CourseMaster() {
       <section className={styles.listPanel}>
         <div className={styles.panelHeader}>
           <div>
-            <p className={styles.kicker}>Course list</p>
-            <h3>Course Master Records</h3>
+            <p className={styles.kicker}>{language === 'th' ? 'รายการหลักสูตร' : 'Course list'}</p>
+            <h3>{language === 'th' ? 'ข้อมูลหลักสูตร (Course Master)' : 'Course Master Records'}</h3>
           </div>
-          <span>{filteredCourses.length} records</span>
+          <span>{filteredCourses.length} {language === 'th' ? 'รายการ' : 'records'}</span>
         </div>
 
-        <div className={styles.tableWrap}>
-          <table className={styles.courseTable}>
-            <thead>
-              <tr>
-                <th>Course Code</th>
-                <th>Course Name</th>
-                <th>Classification</th>
-                <th>Course Standard</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredCourses.map((course) => {
-                const isOpen = openDetailCourseId === course.id && !isNewOpen;
-                const courseStandard = standards.find(
-                  (standard) =>
-                    standard.courseId === course.id ||
-                    standard.courseCode === course.courseCode,
-                );
-                const isCenterCourse = course.owner === "CENTER" || course.ownerCompany === "CENTER" || course.ownerCompany === "HRD Center" || !course.ownerCompany;
-                const isRowReadOnlyForFactory = isFactoryUser && isCenterCourse;
-                return (
-                  <Fragment key={course.id}>
-                    <tr
-                      className={course.id === selectedCourseId ? styles.selectedRow : undefined}
-                      onClick={() => setSelectedCourseId(course.id === selectedCourseId ? "" : course.id)}
-                      style={{ cursor: "pointer" }}
-                    >
-                      <td>{course.courseCode}</td>
-                      <td>
-                        <strong>{getCourseDisplayName(course)}</strong>
-                        {getCourseSecondaryName(course) ? (
-                          <span>{getCourseSecondaryName(course)}</span>
-                        ) : null}
-                      </td>
-                      <td>
-                        <strong translate="no">{course.courseType}</strong>
-                        <span>{course.courseGroup}</span>
-                      </td>
-                      <td>
-                        <strong translate={courseStandard ? "no" : undefined}>
-                          {courseStandard
-                            ? getFunctionDisplayName(
-                                courseStandard.functionCode,
-                                courseStandard.functionName,
-                              )
-                            : "Not set"}
-                        </strong>
-                        <span>
-                          {courseStandard
-                            ? `${courseStandard.positions.length} positions · ${courseStandard.levels.length} levels`
-                            : "No standard"}
-                        </span>
-                      </td>
-                      <td className={styles.actionCell} onClick={(e) => e.stopPropagation()}>
-                        <button
-                          className={styles.detailButton}
-                          type="button"
-                          onClick={() => handleShowDetails(course)}
-                        >
-                          {isOpen && !isEditing ? "Hide" : "Details"}
-                        </button>
-                        <button
-                          className={styles.secondaryButton}
-                          type="button"
-                          disabled={isRowReadOnlyForFactory}
-                          title={isRowReadOnlyForFactory ? "หลักสูตรของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้" : undefined}
-                          onClick={() => !isRowReadOnlyForFactory && openCourseEditor(course)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          className={styles.dangerButton}
-                          type="button"
-                          disabled={isRowReadOnlyForFactory}
-                          title={isRowReadOnlyForFactory ? "หลักสูตรของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
-                          onClick={() => !isRowReadOnlyForFactory && void handleDeleteCourse(course)}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                    {isOpen ? (
-                      <tr className={styles.detailRow}>
-                        <td colSpan={5}>
-                          <div className={styles.inlinePanel}>
-                            {renderCoursePanel(
-                              isEditing ? "Edit course" : getCourseDisplayName(course),
-                              isEditing ? "Editing" : "Read only",
-                            )}
-                          </div>
-                        </td>
-                      </tr>
+        {/* Company selector – only for Center users */}
+        {!isFactoryUser && (
+          <div style={{ marginBottom: '12px' }}>
+            <SearchableSelect
+              value={selectedCompanies[0] || ''}
+              options={[
+                { code: '', name: language === 'th' ? 'ทั้งหมด (All)' : 'All' },
+                ...companyRows.map((row) => ({ code: row.code, name: language === 'th' ? row.nameTh || row.name : row.nameEn || row.name })),
+              ]}
+              placeholder={language === 'th' ? 'เลือกบริษัท' : 'Select Company'}
+              onChange={(code) => {
+                setSelectedCompanies(code ? [code] : []);
+              }}
+            />
+          </div>
+        )}
+
+        <div className={styles.companySectionsContainer}>
+          {companySections.length === 0 ? (
+            <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+              {language === 'th' ? 'ไม่พบข้อมูลหลักสูตร' : 'No courses found'}
+            </div>
+          ) : (
+            companySections.map((section) => (
+              <div key={section.companyName} className={styles.companySectionBlock}>
+                <div className={`${styles.companySectionHeader} ${section.isUserCompany ? styles.ownCompanySectionHeader : ""}`}>
+                  <div className={styles.companySectionTitle}>
+                    <span className={styles.companyIcon}>{section.companyName === "HRD Center" ? "🏢" : "🏬"}</span>
+                    <h4>
+                      {section.companyName === "HRD Center"
+                        ? (language === 'th' ? "หลักสูตรส่วนกลาง (HRD Center)" : "HRD Center Courses")
+                        : (language === 'th' ? `หลักสูตรบริษัท ${section.companyName}` : `Company ${section.companyName} Courses`)}
+                    </h4>
+                    {section.isUserCompany ? (
+                      <span className={styles.ownCompanySectionTag}>
+                        {language === 'th'
+                          ? `⭐ บริษัทของฉัน (${userCompanyCode || "HRD Center"})`
+                          : `⭐ My Company (${userCompanyCode || "HRD Center"})`}
+                      </span>
                     ) : null}
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+                  </div>
+                  <span className={styles.companyCountBadge}>
+                    {section.courses.length} {language === 'th' ? 'หลักสูตร' : 'courses'}
+                  </span>
+                </div>
+
+                <div className={styles.tableWrap}>
+                  <table className={styles.courseTable}>
+                    <thead>
+                      <tr>
+                        <th>{language === 'th' ? 'รหัสหลักสูตร' : 'Course Code'}</th>
+                        <th>{language === 'th' ? 'ชื่อหลักสูตร' : 'Course Name'}</th>
+                        <th>{language === 'th' ? 'บริษัท' : 'Company'}</th>
+                        <th>{language === 'th' ? 'Classification' : 'Classification'}</th>
+                        <th>{language === 'th' ? 'Course Standard' : 'Course Standard'}</th>
+                        <th>{language === 'th' ? 'Actions' : 'Actions'}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {section.courses.map((course) => {
+                        const isOpen = openDetailCourseId === course.id && !isNewOpen;
+                        const courseStandard = standards.find(
+                          (standard) =>
+                            standard.courseId === course.id ||
+                            standard.courseCode === course.courseCode,
+                        );
+                        const isCenterCourse = course.owner === "CENTER" || course.ownerCompany === "CENTER" || course.ownerCompany === "HRD Center" || !course.ownerCompany;
+                        const isRowReadOnlyForFactory = isFactoryUser && isCenterCourse;
+                        return (
+                          <Fragment key={course.id}>
+                            <tr
+                              className={course.id === selectedCourseId ? styles.selectedRow : undefined}
+                              onClick={() => setSelectedCourseId(course.id === selectedCourseId ? "" : course.id)}
+                              style={{ cursor: "pointer" }}
+                            >
+                              <td>{course.courseCode}</td>
+                              <td>
+                                <strong>{getCourseDisplayName(course)}</strong>
+                                {getCourseSecondaryName(course) ? (
+                                  <span>{getCourseSecondaryName(course)}</span>
+                                ) : null}
+                              </td>
+                              <td>{course.ownerCompany || (language === 'th' ? 'ไม่ระบุ' : 'N/A')}</td>
+                              <td>
+                                <strong translate="no">{course.courseType}</strong>
+                                <span>{course.courseGroup}</span>
+                              </td>
+                              <td>
+                                <strong translate={courseStandard ? "no" : undefined}>
+                                  {courseStandard
+                                    ? getFunctionDisplayName(
+                                        courseStandard.functionCode,
+                                        courseStandard.functionName,
+                                      )
+                                    : "Not set"}
+                                </strong>
+                                <span>
+                                  {courseStandard
+                                    ? `${courseStandard.positions.length} positions · ${courseStandard.levels.length} levels`
+                                    : "No standard"}
+                                </span>
+                              </td>
+                              <td className={styles.actionCell} onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  className={styles.detailButton}
+                                  type="button"
+                                  onClick={() => handleShowDetails(course)}
+                                >
+                                  {isOpen && !isEditing ? "Hide" : "Details"}
+                                </button>
+                                <button
+                                  className={styles.secondaryButton}
+                                  type="button"
+                                  disabled={isRowReadOnlyForFactory}
+                                  title={isRowReadOnlyForFactory ? "หลักสูตรของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้" : undefined}
+                                  onClick={() => !isRowReadOnlyForFactory && openCourseEditor(course)}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  className={styles.dangerButton}
+                                  type="button"
+                                  disabled={isRowReadOnlyForFactory}
+                                  title={isRowReadOnlyForFactory ? "หลักสูตรของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
+                                  onClick={() => !isRowReadOnlyForFactory && void handleDeleteCourse(course)}
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                            {isOpen ? (
+                              <tr className={styles.detailRow}>
+                                <td colSpan={6}>
+                                  <div className={styles.inlinePanel}>
+                                    {renderCoursePanel(
+                                      isEditing ? "Edit course" : getCourseDisplayName(course),
+                                      isEditing ? "Editing" : "Read only",
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ) : null}
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </section>
 

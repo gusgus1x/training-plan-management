@@ -958,6 +958,50 @@
   font-weight: 800;
 }
 
+.ownCompanySectionHeader {
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.18), rgba(16, 185, 129, 0.04)) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+.companySectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.companySectionTitle h4 {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: var(--ui-30-ink, #f8fafc);
+}
+
+.companyIcon {
+  font-size: 1.2rem;
+}
+
+.ownCompanySectionTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #10b981;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.companyCountBadge {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--ui-60-surface, #1e293b);
+  border: 1px solid var(--ui-30-border, #334155);
+  color: var(--ui-30-muted, #94a3b8);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 /* Data Table Container */
 .paginatedContainer {
   display: block;

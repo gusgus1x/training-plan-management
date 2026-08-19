@@ -276,7 +276,7 @@ export default function TrainingRolling() {
         (plan) =>
           plan.status !== "Cancel" &&
           isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode) &&
-          (!isFactoryUser || plan.owner === "FACTORY" || plan.ownerCompany === userCompanyCode),
+          (!isFactoryUser || plan.owner === "CENTER" || plan.ownerCompany === "HRD Center" || plan.ownerCompany === "CENTER" || !plan.ownerCompany || plan.owner === "FACTORY" || plan.ownerCompany === userCompanyCode),
       ),
     [oapPlans, user?.roleCode, userCompanyCode, isFactoryUser],
   );

@@ -114,7 +114,14 @@ export const createTrainingRecordRepository = (client?: DatabaseClient) => {
     async list(companyId: string | null) {
       return withDatabaseErrorMapping(async () => {
         const where: Prisma.training_planWhereInput = { training_expense: { some: {} } };
-        if (companyId) where.training_plan_oap = { company_id: BigInt(companyId) };
+        if (companyId) {
+          where.training_plan_oap = {
+            OR: [
+              { company_id: BigInt(companyId) },
+              { company_id: null },
+            ],
+          };
+        }
         const rows = await db().training_plan.findMany({
           where,
           include: trainingRecordInclude,
@@ -131,7 +138,7 @@ export const createTrainingRecordRepository = (client?: DatabaseClient) => {
           where: { plan_id: id },
           include: { training_plan_oap: { select: { company_id: true } } },
         });
-        if (companyId && plan.training_plan_oap.company_id?.toString() !== companyId) {
+        if (companyId && plan.training_plan_oap.company_id !== null && plan.training_plan_oap.company_id?.toString() !== companyId) {
           throw new ApiError({ code: "FORBIDDEN", message: "This training plan belongs to a different company", status: 403 });
         }
 

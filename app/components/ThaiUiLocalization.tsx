@@ -586,7 +586,7 @@ const thaiUiDictionary: Record<string, string> = {
   "Cancel question edit": "ยกเลิกการแก้ไขคำถาม",
   Clear: "ล้าง",
   "Company data summary": "สรุปข้อมูลบริษัท",
-  "Company:": "บริษัท:",
+  "Company:": "Company:",
   "Correct Answer": "คำตอบที่ถูกต้อง",
   Course: "หลักสูตร",
   "Course Name (EN)": "ชื่อหลักสูตร (อังกฤษ)",
@@ -608,7 +608,7 @@ const thaiUiDictionary: Record<string, string> = {
   Filter: "กรอง",
   "Function scope": "ขอบเขตหน่วยงาน",
   Functions: "หน่วยงาน",
-  "Level:": "ระดับ:",
+  "Level:": "Level:",
   "Load Selected": "โหลดรายการที่เลือก",
   "Maintain company, function, position, employee, instructor, level, and mapping data for every training workflow.":
     "ดูแลข้อมูลบริษัท หน่วยงาน ตำแหน่ง พนักงาน วิทยากร ระดับ และการเชื่อมโยงสำหรับทุกขั้นตอนการอบรม",
@@ -768,7 +768,7 @@ const thaiUiDictionary: Record<string, string> = {
   "Planning Workspace": "พื้นที่จัดทำแผน",
   "Position Data module": "โมดูลข้อมูลตำแหน่ง",
   "Position Records": "รายการตำแหน่ง",
-  "Position:": "ตำแหน่ง:",
+  "Position:": "Position:",
   "Pre / Post Test and Evaluation":
     "แบบทดสอบก่อนเรียน หลังเรียน และแบบประเมิน",
   "Pre test / Post test / Evaluation":
@@ -1152,7 +1152,7 @@ const thaiUiDictionary: Record<string, string> = {
   available: "พร้อมเพิ่ม",
   "available /": "พร้อมเพิ่ม /",
   "companies selected": "บริษัทที่เลือก",
-  "Function:": "หน่วยงาน:",
+  "Function:": "Function:",
   HRD_CENTER: "HRD ส่วนกลาง",
   HRD_FACTORY: "HRD โรงงาน",
   EMPLOYEE: "พนักงาน",

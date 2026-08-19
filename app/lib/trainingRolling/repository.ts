@@ -138,7 +138,7 @@ const loadOapSummary = async (db: PrismaClient, oapPlanId: string, companyId: st
     where: { oap_plan_id: BigInt(oapPlanId) },
     include: oapSummaryInclude,
   });
-  if (companyId && oap.company_id?.toString() !== companyId) {
+  if (companyId && oap.company_id !== null && oap.company_id?.toString() !== companyId) {
     throw new ApiError({ code: "FORBIDDEN", message: "This OAP plan belongs to a different company", status: 403 });
   }
   return oap;
@@ -159,22 +159,32 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
   return {
     async list(filters: RollingPlanListFilters, companyId: string | null) {
       const where: Prisma.training_planWhereInput = {};
+      const andConditions: Prisma.training_planWhereInput[] = [];
+
       if (companyId) {
-        where.training_plan_oap = {
-          OR: [
-            { company_id: BigInt(companyId) },
-            { company_id: null },
-          ],
-        };
+        andConditions.push({
+          training_plan_oap: {
+            OR: [
+              { company_id: BigInt(companyId) },
+              { company_id: null },
+            ],
+          },
+        });
       }
-      if (filters.oapPlanId) where.oap_plan_id = BigInt(filters.oapPlanId);
-      if (filters.status) where.status = UI_STATUS_TO_DB[filters.status];
+      if (filters.oapPlanId) andConditions.push({ oap_plan_id: BigInt(filters.oapPlanId) });
+      if (filters.status) andConditions.push({ status: UI_STATUS_TO_DB[filters.status] });
       if (filters.search) {
-        where.OR = [
-          { plan_name: { contains: filters.search } },
-          { plan_code: { contains: filters.search } },
-          { venue: { contains: filters.search } },
-        ];
+        andConditions.push({
+          OR: [
+            { plan_name: { contains: filters.search } },
+            { plan_code: { contains: filters.search } },
+            { venue: { contains: filters.search } },
+          ],
+        });
+      }
+
+      if (andConditions.length > 0) {
+        where.AND = andConditions;
       }
 
       return withDatabaseErrorMapping(async () => {

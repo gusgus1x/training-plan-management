@@ -93,10 +93,7 @@ export const createCourseRepository = (client?: DatabaseClient) => {
 
       if (companyId) {
         andList.push({
-          OR: [
-            { company_id: BigInt(companyId) },
-            { company_id: null },
-          ],
+          OR: [{ company_id: BigInt(companyId) }, { company_id: null }],
         });
       }
 

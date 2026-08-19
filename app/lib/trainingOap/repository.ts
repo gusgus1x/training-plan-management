@@ -3,6 +3,7 @@ import { Prisma } from "../../generated/prisma/client";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
 import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
+import { ApiError } from "../api/errors";
 import type { WorkflowCourse } from "../trainingWorkflow";
 import type { CreateOapPlanInput, OapPlanListFilters, OapPlanStatus, UpdateOapPlanInput } from "./types";
 
@@ -117,14 +118,29 @@ export const createOapPlanRepository = (client?: DatabaseClient) => {
   return {
     async list(filters: OapPlanListFilters, companyId: string | null) {
       const where: Prisma.training_plan_oapWhereInput = {};
-      if (companyId) where.company_id = BigInt(companyId);
-      if (filters.status) where.status = UI_STATUS_TO_DB[filters.status];
+      const andConditions: Prisma.training_plan_oapWhereInput[] = [];
+
+      if (companyId) {
+        andConditions.push({
+          OR: [
+            { company_id: BigInt(companyId) },
+            { company_id: null },
+          ],
+        });
+      }
+      if (filters.status) andConditions.push({ status: UI_STATUS_TO_DB[filters.status] });
       if (filters.search) {
-        where.OR = [
-          { course_name_snapshot: { contains: filters.search } },
-          { instructor_name_text: { contains: filters.search } },
-          { provider_name_text: { contains: filters.search } },
-        ];
+        andConditions.push({
+          OR: [
+            { course_name_snapshot: { contains: filters.search } },
+            { instructor_name_text: { contains: filters.search } },
+            { provider_name_text: { contains: filters.search } },
+          ],
+        });
+      }
+
+      if (andConditions.length > 0) {
+        where.AND = andConditions;
       }
 
       return withDatabaseErrorMapping(async () => {
@@ -147,8 +163,16 @@ export const createOapPlanRepository = (client?: DatabaseClient) => {
           include: courseInclude,
         });
 
-        const baseCode = `OAP-${input.planYear}-${course.course_code}`;
-        let oapCode = baseCode;
+// Ensure the selected course belongs to the same company (or is center-owned)
+if (companyId && course.company_id !== null && course.company_id.toString() !== companyId) {
+  throw new ApiError({
+    code: "FORBIDDEN",
+    message: "Company users can only select their own or Center courses for OAP plans.",
+    status: 403,
+  });
+}
+const baseCode = `OAP-${input.planYear}-${course.course_code}`;
+let oapCode = baseCode;
         const existingOaps = await db().training_plan_oap.findMany({
           where: {
             plan_year: input.planYear,
@@ -220,6 +244,18 @@ export const createOapPlanRepository = (client?: DatabaseClient) => {
             where: { course_id: courseId },
             include: courseInclude,
           });
+        // Ensure the selected course belongs to the same company as the OAP plan (or is center-owned)
+        const existingPlan = await db().training_plan_oap.findUniqueOrThrow({
+          where: { oap_plan_id: BigInt(id) },
+          select: { company_id: true },
+        });
+        if (existingPlan.company_id && course.company_id !== null && course.company_id.toString() !== existingPlan.company_id.toString()) {
+          throw new ApiError({
+            code: "FORBIDDEN",
+            message: "Company users can only select their own or Center courses for OAP plans.",
+            status: 403,
+          });
+        }
           data.course_id = courseId;
           data.course_name_snapshot = course.course_name;
           data.course_description_snapshot = course.objective;

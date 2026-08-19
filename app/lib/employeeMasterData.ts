@@ -328,6 +328,16 @@ export const normalizeEmployeeLevel = (levelKey: string | null | undefined) => {
   const raw = String(levelKey).trim().toUpperCase();
   const clean = raw.replace(/[\s\.\-_]/g, "");
 
+  const matchCode = raw.match(/(M[1-4]|S[1-4]|O[1-5]|L[1-5]|[จบป][1-5])/i);
+  if (matchCode) {
+    const code = matchCode[1].toUpperCase();
+    return code
+      .replace(/^จ/, "M")
+      .replace(/^บ/, "S")
+      .replace(/^ป/, "O")
+      .replace(/^L/, "O");
+  }
+
   const thaiFullMatch = clean.match(/^(จัดการ|บังคับบัญชา|ปฏิบัติการ)(\d+)$/);
   if (thaiFullMatch) {
     const prefixMap: Record<string, string> = { จัดการ: "M", บังคับบัญชา: "S", ปฏิบัติการ: "O" };

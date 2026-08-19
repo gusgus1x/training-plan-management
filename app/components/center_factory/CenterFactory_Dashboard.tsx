@@ -243,42 +243,33 @@ export default function Dashboard({
           );
         }
 
-        const isOwnCompany =
-          plan.company === userCompanyCode ||
-          planCompanies.includes(userCompanyCode || "");
-
-        if (isCenterPlan) {
-          return (
-            plan.company === "All Companies" ||
-            isOwnCompany ||
-            planCompanies.length === 0 ||
-            planCompanies.includes(userCompanyCode || "")
-          );
-        }
-
-        return isOwnCompany;
+                // Factory dashboard: show all plans (including Center) – company info will be displayed in UI
+        return true;
       }),
     [isCenterDashboard, rollingPlans, selectedCompanyFilter, userCompanyCode],
   );
+
   const trainingSchedule = useMemo<DashboardTraining[]>(
     () =>
-      scopedRollingPlans.map((plan) => {
-        const isCenterPlan =
-          plan.ownerScope === "CENTER" ||
-          plan.ownerCompany === "HRD Center" ||
-          plan.provider === "HRD Center";
+      scopedRollingPlans
+        .filter((plan) => plan.status === "Planned")
+        .map((plan) => {
+          const isCenterPlan =
+            plan.ownerScope === "CENTER" ||
+            plan.ownerCompany === "HRD Center" ||
+            plan.provider === "HRD Center";
 
-        return {
-          date: plan.trainingDate,
-          course: plan.course.name,
-          shortName: plan.course.code,
-          time: `${plan.startTime} - ${plan.endTime}`,
-          room: plan.location,
-          status: plan.status === "Planned" ? "Published" : "Draft",
-          company: formatRollingPlanCompanies(plan),
-          isCenterPlan,
-        };
-      }),
+          return {
+            date: plan.trainingDate,
+            course: plan.course.name,
+            shortName: plan.course.code,
+            time: `${plan.startTime} - ${plan.endTime}`,
+            room: plan.location,
+            status: "Published",
+            company: formatRollingPlanCompanies(plan),
+            isCenterPlan,
+          };
+        }),
     [scopedRollingPlans],
   );
   const calendarYears = useMemo(
