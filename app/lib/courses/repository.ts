@@ -228,7 +228,7 @@ export const createCourseRepository = (client?: DatabaseClient) => {
               course_name: input.courseNameTh,
               course_name_normalized: normalizeCourseName(input.courseNameTh),
               course_name_en: input.courseNameEn || null,
-              description: "",
+              description: input.remark ?? input.description ?? null,
               objective: input.objective,
               learning_content: input.learningContent,
               target_group: input.targetGroup || null,
@@ -362,6 +362,9 @@ export const createCourseRepository = (client?: DatabaseClient) => {
             courseData.course_name_normalized = normalizeCourseName(input.courseNameTh);
           }
           if (input.courseNameEn !== undefined) courseData.course_name_en = input.courseNameEn || null;
+          if (input.remark !== undefined || input.description !== undefined) {
+            courseData.description = input.remark ?? input.description ?? null;
+          }
           if (input.objective !== undefined) courseData.objective = input.objective;
           if (input.learningContent !== undefined) courseData.learning_content = input.learningContent;
           if (input.targetGroup !== undefined) courseData.target_group = input.targetGroup || null;

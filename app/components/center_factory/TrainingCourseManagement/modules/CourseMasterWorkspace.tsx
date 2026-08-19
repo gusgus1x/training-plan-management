@@ -1284,6 +1284,7 @@ function CourseMaster() {
     const input = {
       courseNameTh: form.courseNameTh.trim(),
       courseNameEn: form.courseNameEn.trim(),
+      remark: form.remark.trim() || null,
       objective: form.objective,
       learningContent: form.learningContent,
       targetGroup: form.targetGroup,
@@ -1477,6 +1478,16 @@ function CourseMaster() {
           />
         </label>
         <label className={styles.fullWidth}>
+          <span className={styles.fieldLabel}>ที่มา (Background) <em>Optional</em></span>
+          <textarea
+            value={form.remark}
+            disabled={!isEditing}
+            placeholder="อธิบายที่มา หรือเหตุผลว่าทำไมถึงจัดหลักสูตรอบรมนี้ (Background / Reason for training)"
+            onChange={(event) => updateForm("remark", event.target.value)}
+          />
+          <small className={styles.fieldHint}>อธิบายที่มา ความจำเป็น หรือเหตุผลในการจัดทำหลักสูตรการอบรมนี้</small>
+        </label>
+        <label className={styles.fullWidth}>
           <span className={styles.fieldLabel}>Objective <b>*</b></span>
           <textarea
             value={form.objective}
@@ -1511,15 +1522,6 @@ function CourseMaster() {
             disabled={!isEditing}
             placeholder="Example: Lecture, workshop, demonstration, and practice"
             onChange={(event) => updateForm("methodology", event.target.value)}
-          />
-        </label>
-        <label className={styles.fullWidth}>
-          <span className={styles.fieldLabel}>Remark <em>Optional</em></span>
-          <textarea
-            value={form.remark}
-            disabled={!isEditing}
-            placeholder="Add supporting notes or special conditions."
-            onChange={(event) => updateForm("remark", event.target.value)}
           />
         </label>
         <div className={styles.linkedFormsHeader}>

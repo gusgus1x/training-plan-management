@@ -14,7 +14,9 @@ export type CreateCourseInput = {
   preTestLink: string | null;
   postTestLink: string | null;
   evaluationLink: string | null;
-  evaluationAfter30DayLink: string | null;
+  evaluationAfter30DayLink?: string | null;
+  remark?: string | null;
+  description?: string | null;
   status: "Active" | "Draft" | "Inactive";
   courseTypeId: string;
   courseGroupId: string;
