@@ -1,7 +1,7 @@
 import { config as loadEnvironment } from "dotenv";
 import sql from "mssql";
 
-loadEnvironment({ path: ".env.local", quiet: true });
+loadEnvironment({ path: ".env", quiet: true });
 
 const required = (name) => {
   const value = process.env[name]?.trim();

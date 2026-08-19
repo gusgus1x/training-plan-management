@@ -6,13 +6,14 @@
 // Safe to re-run: master rows are matched by exact (name_th, name_en) before inserting anything
 // new; existing organization_function rows not yet claimed by a real Plant pair are reused
 // in place (UPDATE) instead of left as orphaned mock rows, same as the original one-time import.
-// Join key: EmpID (matched against employee.employee_code, scoped by company via ComCode).
+// Join key: UserID (matched against employee.user_id, scoped by company via ComCode) — stable
+// across employee_code being rewritten from UserID to EmpID by update-employee-code-to-empid.mjs.
 // Does not touch position_id, level_id, or any PII field.
 // Usage: node scripts/sync-org-hierarchy-from-source.mjs [--dry-run]
 import { config as loadEnvironment } from "dotenv";
 import sql from "mssql";
 
-loadEnvironment({ path: ".env.local", quiet: true });
+loadEnvironment({ path: ".env", quiet: true });
 const required = (name) => {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required`);
@@ -43,10 +44,10 @@ const sourcePool = await sql.connect(sourceConfig);
 let sourceRows;
 try {
   const result = await sourcePool.request().query(`
-    SELECT EmpID, ComCode, Plant_TH, Plant_EN, Division_TH, Division_EN,
+    SELECT UserID, ComCode, Plant_TH, Plant_EN, Division_TH, Division_EN,
            Department_TH, Department_EN, Section_TH, Section_EN
     FROM dbo.View_EmpInfoForTrainee
-    WHERE EmpID IS NOT NULL AND LTRIM(RTRIM(EmpID)) <> ''
+    WHERE UserID IS NOT NULL AND LTRIM(RTRIM(UserID)) <> ''
   `);
   sourceRows = result.recordset;
 } finally {
@@ -78,7 +79,7 @@ const transaction = new sql.Transaction(pool);
 await transaction.begin();
 const summary = {
   updated: 0,
-  skippedBlankEmpId: 0,
+  skippedBlankUserId: 0,
   skippedUnknownCompany: 0,
   skippedNoMatchingEmployee: 0,
 };
@@ -169,20 +170,20 @@ try {
 
   const companies = (await new sql.Request(transaction).query("SELECT company_id, company_code FROM dbo.company")).recordset;
   const companyMap = new Map(companies.map((c) => [c.company_code, c.company_id]));
-  const employees = (await new sql.Request(transaction).query("SELECT employee_id, company_id, employee_code FROM dbo.employee")).recordset;
-  const employeeByKey = new Map(employees.map((e) => [`${e.company_id}|${e.employee_code}`, e.employee_id]));
+  const employees = (await new sql.Request(transaction).query("SELECT employee_id, company_id, user_id FROM dbo.employee")).recordset;
+  const employeeByKey = new Map(employees.filter((e) => e.user_id).map((e) => [`${e.company_id}|${e.user_id}`, e.employee_id]));
 
   const pairKey = (th, en) => `${trimOrNull(th) ?? ""}||${trimOrNull(en) ?? ""}`;
 
   for (const row of sourceRows) {
-    const empId = trimOrNull(row.EmpID);
-    if (!empId) { summary.skippedBlankEmpId++; continue; }
+    const userId = trimOrNull(row.UserID);
+    if (!userId) { summary.skippedBlankUserId++; continue; }
 
     const companyCode = COMCODE_TO_COMPANY_CODE[trimOrNull(row.ComCode) ?? ""];
     const companyId = companyCode ? companyMap.get(companyCode) : undefined;
     if (!companyId) { summary.skippedUnknownCompany++; continue; }
 
-    const employeeId = employeeByKey.get(`${companyId}|${empId}`);
+    const employeeId = employeeByKey.get(`${companyId}|${userId}`);
     if (!employeeId) { summary.skippedNoMatchingEmployee++; continue; }
 
     const functionId = functionLookup.get(pairKey(row.Plant_TH, row.Plant_EN)) ?? null;
@@ -209,7 +210,7 @@ try {
   if (dryRun) { await transaction.rollback(); console.log("DRY RUN — no changes committed."); }
   else { await transaction.commit(); console.log("Committed."); }
 
-  console.log(`Done. Updated: ${summary.updated}, Skipped (blank EmpID): ${summary.skippedBlankEmpId}, Skipped (unknown company): ${summary.skippedUnknownCompany}, Skipped (no matching employee): ${summary.skippedNoMatchingEmployee}.`);
+  console.log(`Done. Updated: ${summary.updated}, Skipped (blank UserID): ${summary.skippedBlankUserId}, Skipped (unknown company): ${summary.skippedUnknownCompany}, Skipped (no matching employee): ${summary.skippedNoMatchingEmployee}.`);
 } catch (error) {
   await transaction.rollback();
   throw error;

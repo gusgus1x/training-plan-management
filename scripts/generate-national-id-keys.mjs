@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 
-const path = ".env.local";
+const path = ".env";
 let content = readFileSync(path, "utf8");
 const additions = [];
 if (!/^NATIONAL_ID_HMAC_KEY=/m.test(content))

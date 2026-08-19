@@ -1436,6 +1436,15 @@ const thaiAttributeDictionary: Record<string, string> = {
   "Try changing the month, year, status, or search text.": "ลองเปลี่ยนเดือน ปี สถานะ หรือพิมพ์คำค้นหาใหม่",
   "No confirmed Training OAP": "ไม่พบแผนการฝึกอบรมประจำปี (OAP) ที่ยืนยันแล้ว",
   "Open Training OAP and click Confirm on an annual plan before creating a monthly rolling plan.": "กรุณาไปที่หน้า Training OAP และกดยืนยันแผนประจำปีอย่างน้อย 1 รายการก่อนสร้างแผนรายเดือน",
+  // --- Training OAP budget section (added 2026-08-19) ---
+  "Instructor Budget": "งบประมาณวิทยากร",
+  "Traveling Budget": "งบประมาณค่าเดินทาง",
+  "Seminar Room Budget": "งบประมาณห้องสัมมนา",
+  "Accommodation Budget": "งบประมาณที่พัก",
+  "Material Budget": "งบประมาณวัสดุ/เอกสาร",
+  "Food & Beverage Budget": "งบประมาณอาหารและเครื่องดื่ม",
+  "Total Budget": "งบประมาณรวม",
+  "Budget (THB)": "งบประมาณ (บาท)",
 };
 
 const preserveWhitespace = (source: string, translated: string) => {

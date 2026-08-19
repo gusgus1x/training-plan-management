@@ -11,7 +11,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import sql from "mssql";
 
-loadEnvironment({ path: ".env.local", quiet: true });
+loadEnvironment({ path: ".env", quiet: true });
 const required = (name) => {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required`);

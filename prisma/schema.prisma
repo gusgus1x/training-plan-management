@@ -385,6 +385,7 @@ model employee {
   division_id               BigInt?
   department_id             BigInt?
   section_id                BigInt?
+  user_id                   String?                     @unique(map: "UX_employee_user_id") @db.NVarChar(50)
   company                   company                     @relation(fields: [company_id], references: [company_id], onUpdate: NoAction, map: "FK_employee_company_company_id")
   department                department?                 @relation(fields: [department_id], references: [department_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_employee_department_department_id")
   division                  division?                   @relation(fields: [division_id], references: [division_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_employee_division_division_id")

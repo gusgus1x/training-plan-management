@@ -6,11 +6,13 @@
 // e.g. "Operator-Grinding" vs "Opertor-PD2", "สำนักงานผู้จัดการโรงงาน" in 5+ spelling variants) —
 // auto-creating master data from this text would produce a messy, duplicate-ridden position/function
 // list. Master data is curated by hand afterward, then employees backfilled.
-// Re-runnable: upserts by (company_id, employee_code).
+// Re-runnable: upserts by (company_id, user_id) — user_id is the source's stable UserID and,
+// unlike employee_code, never changes even after update-employee-code-to-empid.mjs rewrites
+// employee_code to the real EmpID. New employees get both employee_code and user_id set to UserID.
 import { config as loadEnvironment } from "dotenv";
 import sql from "mssql";
 
-loadEnvironment({ path: ".env.local", quiet: true });
+loadEnvironment({ path: ".env", quiet: true });
 const required = (name) => {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required`);
@@ -72,9 +74,9 @@ try {
   const levels = (await new sql.Request(transaction).query("SELECT level_id, level_key FROM dbo.employee_level")).recordset;
   const levelByKey = new Map(levels.map((l) => [l.level_key, l.level_id]));
 
-  const existingEmployees = (await new sql.Request(transaction).query("SELECT employee_id, company_id, employee_code FROM dbo.employee")).recordset;
-  const employeeKey = (companyId, code) => `${companyId}|${code}`;
-  const existingByKey = new Map(existingEmployees.map((e) => [employeeKey(String(e.company_id), e.employee_code), e.employee_id]));
+  const existingEmployees = (await new sql.Request(transaction).query("SELECT employee_id, company_id, employee_code, user_id FROM dbo.employee")).recordset;
+  const employeeKey = (companyId, userId) => `${companyId}|${userId}`;
+  const existingByKey = new Map(existingEmployees.filter((e) => e.user_id).map((e) => [employeeKey(String(e.company_id), e.user_id), e.employee_id]));
 
   for (const row of sourceRows) {
     const employeeCode = trimOrNull(row.UserID);
@@ -101,6 +103,7 @@ try {
     req.input("positionId", sql.BigInt, positionId ?? null);
     req.input("levelId", sql.BigInt, levelId ?? null);
     req.input("employeeCode", sql.NVarChar(50), employeeCode);
+    req.input("userId", sql.NVarChar(50), employeeCode);
     req.input("titleTh", sql.NVarChar(50), trimOrNull(row.Title_TH));
     req.input("titleEn", sql.NVarChar(50), trimOrNull(row.Title_EN));
     req.input("firstNameTh", sql.NVarChar(150), trimOrNull(row.Fname_TH) ?? "");
@@ -113,9 +116,12 @@ try {
     req.input("birthDate", sql.Date, toDateOnly(row.DOB));
 
     if (existingId) {
+      // function_id/position_id intentionally NOT in this SET list: they're curated by hand
+      // (or by sync-org-hierarchy-from-source.mjs / backfill-position-from-level.mjs) after
+      // initial import, and re-running this script must not clobber that curated data back to NULL.
       req.input("employeeId", sql.BigInt, existingId);
       await req.query(`
-        UPDATE dbo.employee SET function_id=@functionId, position_id=@positionId, level_id=@levelId,
+        UPDATE dbo.employee SET level_id=@levelId,
           title_th=@titleTh, title_en=@titleEn, first_name_th=@firstNameTh, last_name_th=@lastNameTh,
           first_name_en=@firstNameEn, last_name_en=@lastNameEn, telephone=@telephone, email=@email,
           hire_date=@hireDate, birth_date=@birthDate
@@ -123,10 +129,10 @@ try {
       summary.updated++;
     } else {
       await req.query(`
-        INSERT INTO dbo.employee(company_id, function_id, position_id, level_id, employee_code,
+        INSERT INTO dbo.employee(company_id, function_id, position_id, level_id, employee_code, user_id,
           title_th, title_en, first_name_th, last_name_th, first_name_en, last_name_en,
           telephone, email, hire_date, birth_date, employment_status)
-        VALUES(@companyId, @functionId, @positionId, @levelId, @employeeCode,
+        VALUES(@companyId, @functionId, @positionId, @levelId, @employeeCode, @userId,
           @titleTh, @titleEn, @firstNameTh, @lastNameTh, @firstNameEn, @lastNameEn,
           @telephone, @email, @hireDate, @birthDate, N'ACTIVE')`);
       summary.inserted++;
@@ -138,7 +144,7 @@ try {
 
   console.log(`Done. Inserted: ${summary.inserted}, Updated: ${summary.updated}, Skipped (unknown company): ${summary.skippedUnknownCompany}, Skipped (no employee code): ${summary.skippedNoEmployeeCode}.`);
   if (summary.levelUnmatched.size) console.warn(`EmpSubgroup values with no matching employee_level.level_key (level_id left NULL): ${[...summary.levelUnmatched].join(", ")}`);
-  console.log("National ID, function_id, and position_id were not set on any row (not available/curated yet) — see file header comment.");
+  console.log("National ID, function_id, and position_id are left NULL on newly inserted rows (not available/curated yet), and untouched on updates to existing rows — see file header comment.");
 } catch (error) {
   await transaction.rollback();
   throw error;

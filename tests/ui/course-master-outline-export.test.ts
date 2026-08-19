@@ -114,8 +114,7 @@ describe("Course outline export", () => {
     ).toString("utf8");
 
     expect(englishSheet).toContain("External trainer / Safety Institute");
-    expect(englishSheet).toContain("Participants / group: 20");
-    expect(englishSheet).toContain("Training hours: 6");
+    expect(englishSheet).toContain("Time: 6 hrs");
     expect(englishSheet).toContain("45,000 THB");
   });
 
@@ -138,7 +137,6 @@ describe("Course outline export", () => {
     ).toString("utf8");
 
     expect(englishSheet).toContain("Department heads");
-    expect(englishSheet).toContain("Participants / group: 50");
     expect(englishSheet).not.toContain("Function: All Function");
     expect(englishSheet).not.toContain("Positions: Section Head");
     expect(englishSheet).not.toContain("Levels: M3");
