@@ -61,7 +61,9 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
     company: employee.company.company_code,
     department: employee.organization_function?.function_name_en || employee.organization_function?.function_name_th || "",
     position: employee.position?.position_name_en || employee.position?.position_name_th || "",
-    level: employee.employee_level?.level_key || employee.employee_level?.level_code_en || employee.employee_level?.level_code_th || employee.employee_level?.level_name_en || employee.employee_level?.level_code || "",
+    // level_key is a Thai abbreviation (จ/บ/ป + number), not an English code despite the
+    // name — level_code ("S1"/"O1"/"M1"..."M4") is the real English code and must come first.
+    level: employee.employee_level?.level_code || employee.employee_level?.level_code_en || employee.employee_level?.level_name_en || employee.employee_level?.level_key || employee.employee_level?.level_code_th || "",
     source: row.enrollment_source as EnrollmentSource,
     status: mapStatus(row.approval_status, planOwnerIsFactory),
     targetMatchStatus: row.target_match_status as "MATCHED" | "NOT_MATCHED",
@@ -227,7 +229,7 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
           position_code_snapshot: employee.position?.position_code || null,
           position_name_snapshot: employee.position?.position_name_en || employee.position?.position_name_th || null,
           level_id_snapshot: employee.level_id,
-          level_code_snapshot: employee.employee_level?.level_key || employee.employee_level?.level_code_en || employee.employee_level?.level_code || null,
+          level_code_snapshot: employee.employee_level?.level_code || employee.employee_level?.level_code_en || employee.employee_level?.level_key || null,
           level_name_snapshot: employee.employee_level?.level_name_en || employee.employee_level?.level_name_th || null,
           target_match_status: targetMatchStatus,
           level_match_status: levelMatchStatus,
