@@ -775,6 +775,10 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                       <span>🎯 Objectives & Content</span>
                     </div>
                     <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>ที่มา (Background)</span>
+                      <span className={styles.previewFieldValue}>{selectedCourse.remark || "-"}</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>Objective</span>
                       <span className={styles.previewFieldValue}>{selectedCourse.objective || "-"}</span>
                     </div>
@@ -799,12 +803,48 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                       <span className={styles.previewFieldValue}>{selectedCourse.targetGroup || "-"}</span>
                     </div>
                     <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
-                      <span className={styles.previewFieldLabel}>Standard Target</span>
+                      <span className={styles.previewFieldLabel}>Companies</span>
+                      {selectedCourseStandard?.companies?.length ? (
+                        <span className={styles.previewBadges}>
+                          {selectedCourseStandard.companies.map((company) => (
+                            <span key={company} className={styles.previewBadge}>{company}</span>
+                          ))}
+                        </span>
+                      ) : (
+                        <span className={styles.previewFieldValue}>All Companies</span>
+                      )}
+                    </div>
+                    <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
+                      <span className={styles.previewFieldLabel}>Org Scope</span>
                       <span className={styles.previewFieldValue}>
                         {selectedCourseStandard
-                          ? `${selectedCourseStandard.functionName} (${selectedCourseStandard.positions.length} ตำแหน่ง, ${selectedCourseStandard.levels.length} ระดับ)`
+                          ? [selectedCourseStandard.functionName, selectedCourseStandard.division, selectedCourseStandard.department, selectedCourseStandard.section].filter(Boolean).join(" / ") || "All Function"
                           : "No standard defined"}
                       </span>
+                    </div>
+                    <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
+                      <span className={styles.previewFieldLabel}>Positions</span>
+                      {selectedCourseStandard?.positions.length ? (
+                        <span className={styles.previewBadges}>
+                          {selectedCourseStandard.positions.map((position) => (
+                            <span key={position} className={styles.previewBadge}>{position}</span>
+                          ))}
+                        </span>
+                      ) : (
+                        <span className={styles.previewFieldValue}>All Positions</span>
+                      )}
+                    </div>
+                    <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
+                      <span className={styles.previewFieldLabel}>Levels</span>
+                      {selectedCourseStandard?.levels.length ? (
+                        <span className={styles.previewBadges}>
+                          {selectedCourseStandard.levels.map((level) => (
+                            <span key={level} className={styles.previewBadge}>{level}</span>
+                          ))}
+                        </span>
+                      ) : (
+                        <span className={styles.previewFieldValue}>All Levels</span>
+                      )}
                     </div>
                   </div>
 
@@ -973,10 +1013,62 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                     <div><span>Course Name (EN)</span><strong>{plan.course.courseNameEn}</strong></div>
                                     <div><span>Course Type</span><strong>{plan.course.courseType}</strong></div>
                                     <div><span>Course Group</span><strong>{plan.course.courseGroup}</strong></div>
+                                    <div><span>ที่มา (Background)</span><p>{plan.course.remark || "-"}</p></div>
                                     <div><span>Objective</span><p>{plan.course.objective}</p></div>
                                     <div><span>Learning Content</span><p>{plan.course.learningContent}</p></div>
                                     <div><span>Target Group</span><p>{plan.course.targetGroup}</p></div>
                                     <div><span>Methodology</span><p>{plan.course.methodology}</p></div>
+                                    {(() => {
+                                      const std = standards.find((item) => item.courseId === plan.course.id);
+                                      return (
+                                        <>
+                                          <div>
+                                            <span>Standard Companies</span>
+                                            {std?.companies?.length ? (
+                                              <span className={styles.previewBadges}>
+                                                {std.companies.map((company) => (
+                                                  <span key={company} className={styles.previewBadge}>{company}</span>
+                                                ))}
+                                              </span>
+                                            ) : (
+                                              <strong>All Companies</strong>
+                                            )}
+                                          </div>
+                                          <div>
+                                            <span>Org Scope</span>
+                                            <strong>
+                                              {std
+                                                ? [std.functionName, std.division, std.department, std.section].filter(Boolean).join(" / ") || "All Function"
+                                                : "No standard defined"}
+                                            </strong>
+                                          </div>
+                                          <div>
+                                            <span>Standard Positions</span>
+                                            {std?.positions.length ? (
+                                              <span className={styles.previewBadges}>
+                                                {std.positions.map((position) => (
+                                                  <span key={position} className={styles.previewBadge}>{position}</span>
+                                                ))}
+                                              </span>
+                                            ) : (
+                                              <strong>All Positions</strong>
+                                            )}
+                                          </div>
+                                          <div>
+                                            <span>Standard Levels</span>
+                                            {std?.levels.length ? (
+                                              <span className={styles.previewBadges}>
+                                                {std.levels.map((level) => (
+                                                  <span key={level} className={styles.previewBadge}>{level}</span>
+                                                ))}
+                                              </span>
+                                            ) : (
+                                              <strong>All Levels</strong>
+                                            )}
+                                          </div>
+                                        </>
+                                      );
+                                    })()}
                                     <div><span>Pre test</span><strong>{plan.course.preTest}</strong></div>
                                     <div><span>Post test</span><strong>{plan.course.postTest}</strong></div>
                                     <div><span>Evaluation</span><strong>{plan.course.evaluation}</strong></div>

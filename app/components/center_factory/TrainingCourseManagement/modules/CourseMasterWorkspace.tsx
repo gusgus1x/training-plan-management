@@ -320,6 +320,7 @@ function CourseMaster() {
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [openDetailCourseId, setOpenDetailCourseId] = useState("");
   const [search, setSearch] = useState("");
+  const [listCompanyFilter, setListCompanyFilter] = useState("");
   const [standards, setStandards] = useState<CourseStandardRecord[]>([]);
   const [oapPlans, setOapPlans] = useState<OapPlanRecord[]>([]);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
@@ -787,18 +788,15 @@ function CourseMaster() {
           .toLowerCase()
           .includes(search.toLowerCase());
         if (!matchesSearch) return false;
-        // Company filter for Center users (HRD_CENTER)
-        if (!isFactoryUser && selectedCompanies.length > 0) {
+        // Company filter for Center users (HRD_CENTER) — use dedicated listCompanyFilter state
+        if (!isFactoryUser && listCompanyFilter) {
           const companyCode = course.ownerCompany || '';
-          return selectedCompanies.includes(companyCode);
+          return companyCode === listCompanyFilter;
         }
         return true;
-      })
-      .filter((course) => {
-        // Existing search filter (redundant with above but kept for clarity)
-        return true;
       });
-  }, [scopedCourses, search, selectedCompanies, isFactoryUser]);
+  }, [scopedCourses, search, listCompanyFilter, isFactoryUser]);
+
 
   const companySections = useMemo(() => {
     const groupsMap = new Map<string, WorkflowCourse[]>();
@@ -1343,7 +1341,17 @@ function CourseMaster() {
       await handleRefresh();
     } catch (error) {
       console.error("Failed to save course", error);
-      alert("Failed to save course");
+      const msg = error instanceof Error ? error.message : "";
+      // 409 duplicate name — the DB unique index is on the normalised Thai name
+      if (
+        msg.toLowerCase().includes("unique") ||
+        msg.toLowerCase().includes("conflict") ||
+        msg.toLowerCase().includes("already exists")
+      ) {
+        alert("ไม่สามารถบันทึกได้\nชื่อหลักสูตรนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบชื่อหลักสูตร (ภาษาไทย) และแก้ไขให้ไม่ซ้ำกัน");
+      } else {
+        alert(msg || "บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง");
+      }
     }
   };
 
@@ -2041,14 +2049,14 @@ function CourseMaster() {
         {!isFactoryUser && (
           <div style={{ marginBottom: '12px' }}>
             <SearchableSelect
-              value={selectedCompanies[0] || ''}
+              value={listCompanyFilter}
               options={[
                 { code: '', name: language === 'th' ? 'ทั้งหมด (All)' : 'All' },
                 ...companyRows.map((row) => ({ code: row.code, name: language === 'th' ? row.nameTh || row.name : row.nameEn || row.name })),
               ]}
               placeholder={language === 'th' ? 'เลือกบริษัท' : 'Select Company'}
               onChange={(code) => {
-                setSelectedCompanies(code ? [code] : []);
+                setListCompanyFilter(code);
               }}
             />
           </div>

@@ -6,8 +6,10 @@ import {
   isWorkflowOwner,
   type WorkflowCourse,
   type WorkflowOwner,
+  type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
 import { getCourseOutlineFileName } from "../../../../lib/courseOutlineExport";
+import { listCourses } from "../../../../lib/courses/client";
 import { listOapPlans } from "../../../../lib/trainingOap/client";
 import type { OapPlanRecord } from "../../../../lib/trainingOap/types";
 import {
@@ -48,6 +50,7 @@ export type RollingCourseDetail = {
   lifeCycleMonth: string;
   courseType: string;
   courseGroup: string;
+  remark: string;
 };
 
 // Kept structurally identical to the legacy WorkflowRollingPlan shape (see
@@ -141,6 +144,7 @@ const mapCourseDetail = (course: WorkflowCourse): RollingCourseDetail => ({
   lifeCycleMonth: course.lifeCycleMonth,
   courseType: course.courseType,
   courseGroup: course.courseGroup,
+  remark: course.remark || "",
 });
 
 const mapRecordToRollingPlan = (record: RollingPlanRecord): RollingPlan => {
@@ -236,6 +240,7 @@ export default function TrainingRolling() {
   const userCompanyCode = profileValue(user?.companyCode);
   const [oapPlans, setOapPlans] = useState<OapPlanRecord[]>([]);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
+  const [standards, setStandards] = useState<WorkflowStandard[]>([]);
   const [form, setForm] = useState<RollingForm>(createEmptyForm);
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [openDetailId, setOpenDetailId] = useState("");
@@ -251,16 +256,19 @@ export default function TrainingRolling() {
 
   const loadWorkspace = async () => {
     try {
-      const [oapData, rollingData] = await Promise.all([
+      const [oapData, rollingData, courseData] = await Promise.all([
         listOapPlans({ search: null, status: null }),
         loadWorkflowRollingPlans(),
+        listCourses({ search: "", status: null }),
       ]);
       setOapPlans(oapData.oapPlans || []);
       setRollingPlans(rollingData);
+      setStandards(courseData.standards || []);
     } catch (error) {
       console.error("Failed to load Training Rolling workspace", error);
       setOapPlans([]);
       setRollingPlans([]);
+      setStandards([]);
     }
   };
 
@@ -637,7 +645,7 @@ export default function TrainingRolling() {
       lifeCycleMonth: plan.course.lifeCycleMonth,
       courseType: plan.course.courseType,
       courseGroup: plan.course.courseGroup,
-      remark: ((plan.course as unknown as { remark?: string }).remark) || "",
+      remark: plan.course.remark || "",
       status: "Active",
       updatedAt: plan.updatedAt,
       owner: plan.owner,
@@ -664,7 +672,13 @@ export default function TrainingRolling() {
       const response = await fetch("/api/course-master/course-outline", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ course, standard: null, oapPlan, schedule, budget }),
+        body: JSON.stringify({
+          course,
+          standard: standards.find((item) => item.courseId === course.id) ?? null,
+          oapPlan,
+          schedule,
+          budget,
+        }),
       });
       const errorPayload = response.ok
         ? null
@@ -677,7 +691,7 @@ export default function TrainingRolling() {
       const downloadUrl = URL.createObjectURL(file);
       const downloadLink = document.createElement("a");
       downloadLink.href = downloadUrl;
-      downloadLink.download = getCourseOutlineFileName(course);
+      downloadLink.download = getCourseOutlineFileName(course, schedule);
       document.body.appendChild(downloadLink);
       downloadLink.click();
       downloadLink.remove();
@@ -1050,6 +1064,10 @@ export default function TrainingRolling() {
                       <span>🎯 วัตถุประสงค์และเนื้อหา (Objectives & Content)</span>
                     </div>
                     <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>ที่มา (Background)</span>
+                      <span className={styles.previewFieldValue}>{selectedOap.course.remark || "-"}</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>วัตถุประสงค์</span>
                       <span className={styles.previewFieldValue}>{selectedOap.course.objective || "-"}</span>
                     </div>
@@ -1095,6 +1113,63 @@ export default function TrainingRolling() {
                       <span className={styles.previewFieldLabel}>ขอบเขต</span>
                       <span className={styles.previewFieldValue}>{selectedOap.owner === "CENTER" ? "ทุกบริษัท (All Companies)" : selectedOap.ownerCompany}</span>
                     </div>
+                  </div>
+
+                  <div className={styles.previewCard}>
+                    <div className={styles.previewCardHeader}>
+                      <span>👥 กลุ่มเป้าหมายมาตรฐาน (Standard Target)</span>
+                    </div>
+                    {(() => {
+                      const std = standards.find((item) => item.courseId === selectedOap.course.id);
+                      return (
+                        <>
+                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
+                            <span className={styles.previewFieldLabel}>Companies</span>
+                            {std?.companies?.length ? (
+                              <span className={styles.previewBadges}>
+                                {std.companies.map((company) => (
+                                  <span key={company} className={styles.previewBadge}>{company}</span>
+                                ))}
+                              </span>
+                            ) : (
+                              <span className={styles.previewFieldValue}>All Companies</span>
+                            )}
+                          </div>
+                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
+                            <span className={styles.previewFieldLabel}>Org Scope</span>
+                            <span className={styles.previewFieldValue}>
+                              {std
+                                ? [std.functionName, std.division, std.department, std.section].filter(Boolean).join(" / ") || "All Function"
+                                : "No standard defined"}
+                            </span>
+                          </div>
+                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
+                            <span className={styles.previewFieldLabel}>Positions</span>
+                            {std?.positions.length ? (
+                              <span className={styles.previewBadges}>
+                                {std.positions.map((position) => (
+                                  <span key={position} className={styles.previewBadge}>{position}</span>
+                                ))}
+                              </span>
+                            ) : (
+                              <span className={styles.previewFieldValue}>All Positions</span>
+                            )}
+                          </div>
+                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
+                            <span className={styles.previewFieldLabel}>Levels</span>
+                            {std?.levels.length ? (
+                              <span className={styles.previewBadges}>
+                                {std.levels.map((level) => (
+                                  <span key={level} className={styles.previewBadge}>{level}</span>
+                                ))}
+                              </span>
+                            ) : (
+                              <span className={styles.previewFieldValue}>All Levels</span>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   <div className={`${styles.previewCard} ${styles.previewCardFull}`}>
@@ -1311,10 +1386,62 @@ export default function TrainingRolling() {
                                     <div><span>Course Code</span><strong>{plan.course.code}</strong></div>
                                     <div><span>Course Type</span><strong>{plan.course.courseType}</strong></div>
                                     <div><span>Course Group</span><strong>{plan.course.courseGroup}</strong></div>
+                                    <div><span>ที่มา (Background)</span><p>{plan.course.remark || "-"}</p></div>
                                     <div><span>Objective</span><p>{plan.course.objective}</p></div>
                                     <div><span>Learning Content</span><p>{plan.course.learningContent}</p></div>
                                     <div><span>Target Group</span><p>{plan.course.targetGroup}</p></div>
                                     <div><span>Methodology</span><p>{plan.course.methodology}</p></div>
+                                    {(() => {
+                                      const std = standards.find((item) => item.courseId === plan.course.id);
+                                      return (
+                                        <>
+                                          <div>
+                                            <span>Standard Companies</span>
+                                            {std?.companies?.length ? (
+                                              <span className={styles.previewBadges}>
+                                                {std.companies.map((company) => (
+                                                  <span key={company} className={styles.previewBadge}>{company}</span>
+                                                ))}
+                                              </span>
+                                            ) : (
+                                              <strong>All Companies</strong>
+                                            )}
+                                          </div>
+                                          <div>
+                                            <span>Org Scope</span>
+                                            <strong>
+                                              {std
+                                                ? [std.functionName, std.division, std.department, std.section].filter(Boolean).join(" / ") || "All Function"
+                                                : "No standard defined"}
+                                            </strong>
+                                          </div>
+                                          <div>
+                                            <span>Standard Positions</span>
+                                            {std?.positions.length ? (
+                                              <span className={styles.previewBadges}>
+                                                {std.positions.map((position) => (
+                                                  <span key={position} className={styles.previewBadge}>{position}</span>
+                                                ))}
+                                              </span>
+                                            ) : (
+                                              <strong>All Positions</strong>
+                                            )}
+                                          </div>
+                                          <div>
+                                            <span>Standard Levels</span>
+                                            {std?.levels.length ? (
+                                              <span className={styles.previewBadges}>
+                                                {std.levels.map((level) => (
+                                                  <span key={level} className={styles.previewBadge}>{level}</span>
+                                                ))}
+                                              </span>
+                                            ) : (
+                                              <strong>All Levels</strong>
+                                            )}
+                                          </div>
+                                        </>
+                                      );
+                                    })()}
                                     <div><span>Pre test</span><strong>{plan.course.preTest}</strong></div>
                                     <div><span>Post test</span><strong>{plan.course.postTest}</strong></div>
                                     <div><span>Evaluation</span><strong>{plan.course.evaluation}</strong></div>

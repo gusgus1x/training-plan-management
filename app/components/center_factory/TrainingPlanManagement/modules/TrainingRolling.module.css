@@ -742,7 +742,7 @@
   line-height: 1.35;
 }
 
-.rollingTable td span {
+.rollingTable td > span {
   display: block;
   margin-top: 2px;
   color: var(--ui-30-muted);
@@ -964,25 +964,30 @@
 .detailGrid div:nth-child(5) { grid-column: span 1; } /* Code */
 .detailGrid div:nth-child(6) { grid-column: span 1; } /* Type */
 .detailGrid div:nth-child(7) { grid-column: span 2; } /* Group */
-.detailGrid div:nth-child(8) { grid-column: span 4; } /* Objective */
-.detailGrid div:nth-child(9) { grid-column: span 4; } /* Learning Content */
-.detailGrid div:nth-child(10) { grid-column: span 2; } /* Target Group */
-.detailGrid div:nth-child(11) { grid-column: span 2; } /* Methodology */
-.detailGrid div:nth-child(12) { grid-column: span 1; } /* Pre test */
-.detailGrid div:nth-child(13) { grid-column: span 1; } /* Post test */
-.detailGrid div:nth-child(14) { grid-column: span 1; } /* Evaluation */
-.detailGrid div:nth-child(15) { grid-column: span 1; } /* Evaluation 30 Day */
-.detailGrid div:nth-child(16) { grid-column: span 1; } /* Life Cycle */
-.detailGrid div:nth-child(17) { grid-column: span 1; } /* Budget */
-.detailGrid div:nth-child(18) { grid-column: span 2; } /* Related Companies */
-.detailGrid div:nth-child(19) { grid-column: span 1; } /* Participants */
-.detailGrid div:nth-child(20) { grid-column: span 1; } /* Training Hours */
-.detailGrid div:nth-child(21) { grid-column: span 2; } /* Trainer */
-.detailGrid div:nth-child(22) { grid-column: span 2; } /* Provider */
-.detailGrid div:nth-child(23) { grid-column: span 2; } /* Owner */
-.detailGrid div:nth-child(24) { grid-column: span 2; } /* Last Updated */
+.detailGrid div:nth-child(8) { grid-column: span 4; } /* Background */
+.detailGrid div:nth-child(9) { grid-column: span 4; } /* Objective */
+.detailGrid div:nth-child(10) { grid-column: span 4; } /* Learning Content */
+.detailGrid div:nth-child(11) { grid-column: span 2; } /* Target Group */
+.detailGrid div:nth-child(12) { grid-column: span 2; } /* Methodology */
+.detailGrid div:nth-child(13) { grid-column: span 2; } /* Standard Companies */
+.detailGrid div:nth-child(14) { grid-column: span 2; } /* Org Scope */
+.detailGrid div:nth-child(15) { grid-column: span 2; } /* Standard Positions */
+.detailGrid div:nth-child(16) { grid-column: span 2; } /* Standard Levels */
+.detailGrid div:nth-child(17) { grid-column: span 1; } /* Pre test */
+.detailGrid div:nth-child(18) { grid-column: span 1; } /* Post test */
+.detailGrid div:nth-child(19) { grid-column: span 1; } /* Evaluation */
+.detailGrid div:nth-child(20) { grid-column: span 1; } /* Evaluation 30 Day */
+.detailGrid div:nth-child(21) { grid-column: span 1; } /* Life Cycle */
+.detailGrid div:nth-child(22) { grid-column: span 1; } /* Participants */
+.detailGrid div:nth-child(23) { grid-column: span 1; } /* Training Hours */
+.detailGrid div:nth-child(24) { grid-column: span 1; } /* Budget */
+.detailGrid div:nth-child(25) { grid-column: span 2; } /* Trainer */
+.detailGrid div:nth-child(26) { grid-column: span 2; } /* Provider */
+.detailGrid div:nth-child(27) { grid-column: span 2; } /* Scope (Related Companies) */
+.detailGrid div:nth-child(28) { grid-column: span 2; } /* Created By */
+.detailGrid div:nth-child(29) { grid-column: span 4; } /* Last Updated */
 
-.detailGrid span {
+.detailGrid div > span:first-child {
   display: block;
   color: var(--ui-30-muted);
   font-size: 0.7rem;

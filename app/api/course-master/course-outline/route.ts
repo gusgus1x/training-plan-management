@@ -21,6 +21,14 @@ const findTemplatePath = async () => {
   return path.join(directory, templateName);
 };
 
+// HTTP headers are ASCII-only, so a Thai course name travels in the RFC 5987
+// filename* field while filename= keeps a plain fallback for old clients.
+const buildContentDisposition = (fileName: string) => {
+  const asciiName =
+    fileName.replace(/[^\x20-\x7E]+/g, "-").replace(/"/g, "") || "course-outline.xlsx";
+  return `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+};
+
 export async function POST(request: Request) {
   try {
     const { course, standard, oapPlan, schedule, budget } =
@@ -44,7 +52,9 @@ export async function POST(request: Request) {
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="${getCourseOutlineFileName(course)}"`,
+        "Content-Disposition": buildContentDisposition(
+          getCourseOutlineFileName(course, schedule),
+        ),
         "Cache-Control": "no-store",
       },
     });

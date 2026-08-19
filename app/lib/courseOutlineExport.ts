@@ -24,12 +24,23 @@ export type CourseOutlineRequest = {
   budget?: CourseOutlineBudget | null;
 };
 
-export const getCourseOutlineFileName = (
-  course: Pick<WorkflowCourse, "courseCode">,
-) => {
-  const safeCode = course.courseCode
+// Windows/macOS reject \ / : * ? " < > | in file names; Thai letters are fine.
+const sanitizeFileNamePart = (value: string) =>
+  value
     .trim()
-    .replace(/[^a-zA-Z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return `course-outline_${safeCode || "course"}.xlsx`;
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, " ")
+    .replace(/^[-\s]+|[-\s]+$/g, "");
+
+export const getCourseOutlineFileName = (
+  course: Pick<WorkflowCourse, "courseCode" | "courseNameTh" | "courseNameEn">,
+  schedule?: CourseOutlineSchedule | null,
+) => {
+  const parts = [
+    sanitizeFileNamePart(course.courseNameTh || course.courseNameEn || ""),
+    sanitizeFileNamePart(course.courseCode || ""),
+    sanitizeFileNamePart(schedule?.date || ""),
+    sanitizeFileNamePart(schedule?.time || ""),
+  ].filter(Boolean);
+  return `${parts.join("_") || "course-outline"}.xlsx`;
 };

@@ -44,6 +44,7 @@ export const parseCreateCourse = (input: InputObject): CreateCourseInput => ({
   postTestLink: readOptionalString(input, "postTestLink", { maxLength: 2048 }),
   evaluationLink: readOptionalString(input, "evaluationLink", { maxLength: 2048 }),
   evaluationAfter30DayLink: readOptionalString(input, "evaluationAfter30DayLink", { maxLength: 2048 }),
+  remark: readOptionalString(input, "remark") || "",
   status: status(input.status, "Active"),
   courseTypeId: readRequiredString(input, "courseTypeId"),
   courseGroupId: readRequiredString(input, "courseGroupId"),
@@ -82,6 +83,7 @@ export const parseUpdateCourse = (input: InputObject): UpdateCourseInput => {
   if (hasOwn(input, "postTestLink")) update.postTestLink = readOptionalString(input, "postTestLink", { maxLength: 2048 });
   if (hasOwn(input, "evaluationLink")) update.evaluationLink = readOptionalString(input, "evaluationLink", { maxLength: 2048 });
   if (hasOwn(input, "evaluationAfter30DayLink")) update.evaluationAfter30DayLink = readOptionalString(input, "evaluationAfter30DayLink", { maxLength: 2048 });
+  if (hasOwn(input, "remark")) update.remark = readOptionalString(input, "remark") ?? undefined;
   if (hasOwn(input, "status")) update.status = status(input.status);
   if (hasOwn(input, "courseTypeId")) update.courseTypeId = readRequiredString(input, "courseTypeId");
   if (hasOwn(input, "courseGroupId")) update.courseGroupId = readRequiredString(input, "courseGroupId");

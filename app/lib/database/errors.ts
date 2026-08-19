@@ -32,9 +32,23 @@ export const translateDatabaseError = (error: unknown): ApiError | null => {
   const code = readPrismaErrorCode(error);
 
   if (code === "P2002") {
+    // Try to surface which field is duplicated from Prisma's meta.target or the driver error message
+    const meta = (error as any)?.meta;
+    const target: string = Array.isArray(meta?.target)
+      ? meta.target.join(", ")
+      : (meta?.target as string | undefined) ?? "";
+    const driverMsg: string =
+      (error as any)?.driverAdapterError?.cause?.originalMessage ?? "";
+    const isCourseName =
+      target.includes("name_normalized") ||
+      driverMsg.toLowerCase().includes("name_normalized") ||
+      driverMsg.toLowerCase().includes("ux_course_central_name_normalized") ||
+      driverMsg.toLowerCase().includes("ux_course");
     return new ApiError({
       code: "RESOURCE_CONFLICT",
-      message: "A record with the same unique value already exists",
+      message: isCourseName
+        ? "A course with the same name already exists"
+        : "A record with the same unique value already exists",
       status: 409,
     });
   }

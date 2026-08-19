@@ -85,20 +85,29 @@ describe("Course outline export", () => {
     expect(workbook.subarray(0, 2).toString("ascii")).toBe("PK");
     expect(thaiSheet).toContain("หลักสูตร ความปลอดภัยในการทำงาน (SAF-001)");
     expect(thaiSheet).toContain("เพื่อให้ผู้เข้าอบรมสามารถทำงานได้อย่างปลอดภัย");
-    expect(thaiSheet).toContain("วิธีการอบรม: Workshop");
+    expect(thaiSheet).toContain("Workshop");
+    expect(thaiSheet).not.toContain("วิธีการอบรม:");
+    expect(englishSheet).not.toContain("Methodology:");
+    expect(englishSheet).not.toContain("Evaluation:");
     expect(englishSheet).toContain("Course Workplace Safety (SAF-001)");
-    expect(englishSheet).not.toContain("Function: Production");
-    expect(englishSheet).not.toContain("Positions: Foreman, Leader");
-    expect(englishSheet).not.toContain("Levels: S2, O4");
+    expect(englishSheet).toContain("Org: Production");
+    expect(englishSheet).toContain("Positions: Foreman, Leader");
+    expect(englishSheet).toContain("Levels: S2, O4");
     expect(englishSheet).toContain("Pre-test: Safety pre-test");
     expect(() => readXlsxEntry(workbook, "xl/worksheets/sheet3.xml")).not.toThrow();
     expect(() => readXlsxEntry(workbook, "xl/drawings/drawing2.xml")).not.toThrow();
   });
 
-  it("creates a safe .xlsx filename from the course code", () => {
-    expect(getCourseOutlineFileName({ courseCode: "SAF/001" })).toBe(
-      "course-outline_SAF-001.xlsx",
-    );
+  it("names the file by course, code, and schedule", () => {
+    expect(
+      getCourseOutlineFileName(
+        { courseCode: "SAF/001", courseNameTh: "ความปลอดภัย", courseNameEn: "Safety" },
+        { date: "2026-03-15", time: "09:00 - 16:00" },
+      ),
+    ).toBe("ความปลอดภัย_SAF-001_2026-03-15_09-00 - 16-00.xlsx");
+    expect(
+      getCourseOutlineFileName({ courseCode: "SAF/001", courseNameTh: "", courseNameEn: "" }),
+    ).toBe("SAF-001.xlsx");
   });
 
   it("includes the selected Training OAP plan data", () => {
@@ -118,7 +127,7 @@ describe("Course outline export", () => {
     expect(englishSheet).toContain("45,000 THB");
   });
 
-  it("omits function, position, and level from the target group", () => {
+  it("details org scope, positions, and levels in the target group", () => {
     const longStandard: WorkflowStandard = {
       ...standard,
       functionName: "All Function",
@@ -137,11 +146,28 @@ describe("Course outline export", () => {
     ).toString("utf8");
 
     expect(englishSheet).toContain("Department heads");
-    expect(englishSheet).not.toContain("Function: All Function");
-    expect(englishSheet).not.toContain("Positions: Section Head");
-    expect(englishSheet).not.toContain("Levels: M3");
     expect(englishSheet).toContain('r="K17" s="48" t="inlineStr"');
     expect(englishSheet).toMatch(/<row[^>]*r="17"[^>]*customHeight="1"/);
+  });
+
+  it("keeps every line when the content outgrows the template rows", () => {
+    const topics = Array.from({ length: 18 }, (_, index) => `หัวข้อที่ ${index + 1}`);
+    const workbook = buildCourseOutlineWorkbook(
+      template,
+      { ...course, learningContent: topics.join("\n") },
+      standard,
+      oapPlan,
+    );
+    const thaiSheet = readXlsxEntry(
+      workbook,
+      "xl/worksheets/sheet1.xml",
+    ).toString("utf8");
+
+    for (const topic of topics) {
+      expect(thaiSheet).toContain(topic);
+    }
+    // last learning-content row grows so the stacked leftovers stay visible
+    expect(thaiSheet).toMatch(/<row[^>]*r="38"[^>]*customHeight="1"/);
   });
 
   it("places the export action in Training Rolling instead of Training OAP or Course Master", async () => {

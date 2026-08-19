@@ -201,8 +201,8 @@ export const createCourseRepository = (client?: DatabaseClient) => {
                 ? stdCourse.section.section_name_en || stdCourse.section.section_name_th
                 : "",
               companies: stdCourse.course_standard_target_company.map(c => c.company.company_code),
-              positions: stdCourse.course_standard_target_position.flatMap(p => [p.position.position_name_th, p.position.position_name_en, p.position.position_code].filter(Boolean) as string[]),
-              levels: stdCourse.course_standard_target_level.flatMap(l => [l.employee_level.level_code, l.employee_level.level_code_th, l.employee_level.level_code_en, l.employee_level.level_key].filter(Boolean) as string[]),
+              positions: stdCourse.course_standard_target_position.map(p => p.position.position_name_en || p.position.position_name_th || p.position.position_code),
+              levels: stdCourse.course_standard_target_level.map(l => l.employee_level.level_code || l.employee_level.level_code_en || l.employee_level.level_key),
               owner,
               ownerCompany,
             });
