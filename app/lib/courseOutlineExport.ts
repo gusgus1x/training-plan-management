@@ -4,10 +4,24 @@ import type {
   WorkflowStandard,
 } from "./trainingWorkflow";
 
+export type CourseOutlineBudget = {
+  speakerFee?: number | string;
+  foodFee?: number | string;
+  totalBudget?: number | string;
+};
+
+export type CourseOutlineSchedule = {
+  date?: string;
+  time?: string;
+  location?: string;
+};
+
 export type CourseOutlineRequest = {
   course: WorkflowCourse;
   standard?: WorkflowStandard | null;
   oapPlan?: WorkflowOapPlan | null;
+  schedule?: CourseOutlineSchedule | null;
+  budget?: CourseOutlineBudget | null;
 };
 
 export const getCourseOutlineFileName = (

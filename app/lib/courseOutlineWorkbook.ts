@@ -9,20 +9,35 @@ import {
   writeXlsxEntries,
 } from "./xlsxTemplate";
 
-const wrapText = (value: string, width: number) => {
+const wrapText = (value: string, width: number = 60) => {
   const lines: string[] = [];
   for (const paragraph of (value.trim() || "-").split(/\r?\n/)) {
-    let remaining = paragraph.trim();
+    const trimmed = paragraph.trim();
+    if (!trimmed) continue;
+    if (trimmed.length <= width + 15) {
+      lines.push(trimmed);
+      continue;
+    }
+    let remaining = trimmed;
     while (remaining.length > width) {
       const candidate = remaining.slice(0, width + 1);
       const spaceIndex = candidate.lastIndexOf(" ");
-      const breakAt = spaceIndex > Math.floor(width / 2) ? spaceIndex : width;
-      lines.push(remaining.slice(0, breakAt).trim());
-      remaining = remaining.slice(breakAt).trim();
+      if (spaceIndex > Math.floor(width / 3)) {
+        lines.push(remaining.slice(0, spaceIndex).trim());
+        remaining = remaining.slice(spaceIndex).trim();
+      } else {
+        if (remaining.length <= width + 15) {
+          break;
+        }
+        lines.push(remaining.slice(0, width).trim());
+        remaining = remaining.slice(width).trim();
+      }
     }
-    lines.push(remaining || "-");
+    if (remaining) {
+      lines.push(remaining);
+    }
   }
-  return lines;
+  return lines.length > 0 ? lines : ["-"];
 };
 
 const setTextBlock = (
@@ -64,8 +79,8 @@ const setRowHeight = (
     throw new Error(`Invalid course outline template: row ${rowNumber} was not found.`);
   }
   const attributes = match[1]
-    .replace(/\\s+ht=["'][^"']*["']/g, "")
-    .replace(/\\s+customHeight=["'][^"']*["']/g, "");
+    .replace(/\s+ht=["'][^"']*["']/g, "")
+    .replace(/\s+customHeight=["'][^"']*["']/g, "");
   return worksheetXml.replace(
     match[0],
     `<row${attributes} ht="${height}" customHeight="1">`,
@@ -74,17 +89,8 @@ const setRowHeight = (
 
 const buildTargetGroup = (
   course: WorkflowCourse,
-  oapPlan: WorkflowOapPlan | null | undefined,
-  language: "th" | "en",
 ) => {
-  return [
-    course.targetGroup,
-    oapPlan?.participants
-      ? `${language === "th" ? "จำนวนผู้เข้าอบรม / รุ่น" : "Participants / group"}: ${oapPlan.participants}`
-      : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
+  return (course.targetGroup || "-").trim();
 };
 
 const buildEvaluation = (course: WorkflowCourse, language: "th" | "en") => {
@@ -116,29 +122,84 @@ const buildEvaluation = (course: WorkflowCourse, language: "th" | "en") => {
     .join("\n");
 };
 
+const formatNumberStr = (val: number | string | undefined | null) => {
+  if (val === undefined || val === null || val === "") return "";
+  const num = typeof val === "number" ? val : parseFloat(String(val).replace(/,/g, ""));
+  if (isNaN(num)) return String(val);
+  return num.toLocaleString("en-US");
+};
+
+const buildBudgetContent = (
+  budgetData?: { speakerFee?: number | string; foodFee?: number | string; totalBudget?: number | string } | null,
+  oapPlan?: WorkflowOapPlan | null,
+  language: "th" | "en" = "th",
+) => {
+  const isThai = language === "th";
+  const unit = isThai ? "บาท" : "THB";
+
+  const speakerFee = budgetData?.speakerFee;
+  const foodFee = budgetData?.foodFee;
+  const total = budgetData?.totalBudget ?? oapPlan?.budget;
+
+  const speakerNum = speakerFee ? parseFloat(String(speakerFee).replace(/,/g, "")) : 0;
+  const foodNum = foodFee ? parseFloat(String(foodFee).replace(/,/g, "")) : 0;
+
+  if (speakerFee || foodFee) {
+    const sStr = speakerFee ? `${formatNumberStr(speakerFee)} ${unit}` : `- ${unit}`;
+    const fStr = foodFee ? `${formatNumberStr(foodFee)} ${unit}` : `- ${unit}`;
+    const calcTotal = (speakerNum + foodNum) || (total ? parseFloat(String(total).replace(/,/g, "")) : 0);
+    const totStr = calcTotal ? `${formatNumberStr(calcTotal)} ${unit}` : `- ${unit}`;
+
+    if (isThai) {
+      return [
+        `1. ค่าวิทยากร      ${sStr}`,
+        `2. อาหารและเบรก  ${fStr}`,
+        `-----------------------------------`,
+        `รวม/รุ่น           ${totStr}`,
+      ].join("\n");
+    }
+    return [
+      `1. Speaker Fee       ${sStr}`,
+      `2. Food & Break      ${fStr}`,
+      `-----------------------------------`,
+      `Total/Batch          ${totStr}`,
+    ].join("\n");
+  }
+
+  if (total) {
+    const totStr = `${formatNumberStr(total)} ${unit}`;
+    return isThai ? `รวม/รุ่น: ${totStr}` : `Total/Batch: ${totStr}`;
+  }
+
+  return "-";
+};
+
 const fillOutlineSheet = (
   templateXml: string,
   course: WorkflowCourse,
   oapPlan: WorkflowOapPlan | null | undefined,
   language: "th" | "en",
+  scheduleData?: { date?: string; time?: string; location?: string } | null,
+  budgetData?: { speakerFee?: number | string; foodFee?: number | string; totalBudget?: number | string } | null,
 ) => {
   const isThai = language === "th";
   const title = isThai
     ? course.courseNameTh || course.courseNameEn
     : course.courseNameEn || course.courseNameTh;
-  const background = [
-    course.remark,
-    isThai
-      ? `ประเภทหลักสูตร: ${course.courseType}   กลุ่มหลักสูตร: ${course.courseGroup}`
-      : `Course type: ${course.courseType}   Course group: ${course.courseGroup}`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+
+  // Background: Only if course.remark exists and is non-empty!
+  const hasRemark = Boolean(course.remark && course.remark.trim() !== "" && course.remark.trim() !== "-");
+  const background = hasRemark ? course.remark.trim() : "";
+
   let xml = setXlsxInlineCell(
     templateXml,
     "B7",
     `${isThai ? "หลักสูตร" : "Course"} ${title} (${course.courseCode})`,
   );
+
+  // Cell B9 is the "ที่มา" / "Background" header (Cell C9 is merged with B9)
+  xml = setXlsxInlineCell(xml, "B9", hasRemark ? (isThai ? "ที่มา" : "Background") : "");
+
   xml = setTextBlock(
     xml,
     ["B10", "B11", "B12", "B13", "B14", "B15", "B16"],
@@ -155,8 +216,8 @@ const fillOutlineSheet = (
   xml = setTextBlock(
     xml,
     ["K14", "K15", "K16", "K17"],
-    buildTargetGroup(course, oapPlan, language),
-    52,
+    buildTargetGroup(course),
+    50,
     { overflowSeparator: "\n", styleOverride: "48" },
   );
   const lastTargetCell = xml.match(
@@ -170,23 +231,20 @@ const fillOutlineSheet = (
     course.objective,
     65,
   );
-  xml = setXlsxInlineCell(xml, "K19", isThai ? "วันที่ : -" : "Date: -");
-  xml = setXlsxInlineCell(
+
+  const dateVal = scheduleData?.date || "";
+  const timeVal = scheduleData?.time || (oapPlan?.hours ? `${oapPlan.hours} ${isThai ? "ชั่วโมง" : "hrs"}` : "");
+  const locVal = scheduleData?.location || "";
+
+  xml = setXlsxInlineCell(xml, "K19", `${isThai ? "วันที่ :" : "Date:"} ${dateVal || "-"}`);
+  xml = setXlsxInlineCell(xml, "K20", `${isThai ? "เวลา :" : "Time:"} ${timeVal || "-"}`);
+  xml = setXlsxInlineCell(xml, "K21", `${isThai ? "สถานที่ :" : "Location:"} ${locVal || "-"}`);
+
+  xml = setTextBlock(
     xml,
-    "K20",
-    oapPlan?.hours
-      ? `${isThai ? "ชั่วโมงอบรม" : "Training hours"}: ${oapPlan.hours}`
-      : isThai
-        ? "เวลา : -"
-        : "Time: -",
-  );
-  xml = setXlsxInlineCell(xml, "K21", isThai ? "สถานที่ : -" : "Location: -");
-  xml = setXlsxInlineCell(
-    xml,
-    "K25",
-    oapPlan?.budget
-      ? `${Number(oapPlan.budget).toLocaleString("en-US")} THB`
-      : "-",
+    ["K25", "K26", "K27"],
+    buildBudgetContent(budgetData, oapPlan, language),
+    40,
   );
   xml = setTextBlock(
     xml,
@@ -207,6 +265,8 @@ export const buildCourseOutlineWorkbook = (
   course: WorkflowCourse,
   _standard?: WorkflowStandard | null,
   oapPlan?: WorkflowOapPlan | null,
+  schedule?: { date?: string; time?: string; location?: string } | null,
+  budget?: { speakerFee?: number | string; foodFee?: number | string; totalBudget?: number | string } | null,
 ) => {
   const entries = readXlsxEntries(template);
   for (const [sheetNumber, language] of [
@@ -225,6 +285,8 @@ export const buildCourseOutlineWorkbook = (
         course,
         oapPlan,
         language,
+        schedule,
+        budget,
       ),
       "utf8",
     );

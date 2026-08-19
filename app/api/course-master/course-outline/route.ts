@@ -23,9 +23,9 @@ const findTemplatePath = async () => {
 
 export async function POST(request: Request) {
   try {
-    const { course, standard, oapPlan } =
+    const { course, standard, oapPlan, schedule, budget } =
       (await request.json()) as CourseOutlineRequest;
-    if (!course || !course.courseCode || !course.courseNameTh) {
+    if (!course || !course.courseCode || (!course.courseNameTh && !course.courseNameEn)) {
       return NextResponse.json(
         { error: "ข้อมูล Course Master ไม่ครบถ้วน" },
         { status: 400 },
@@ -37,6 +37,8 @@ export async function POST(request: Request) {
       course,
       standard,
       oapPlan,
+      schedule,
+      budget,
     );
     return new Response(new Uint8Array(workbook), {
       headers: {

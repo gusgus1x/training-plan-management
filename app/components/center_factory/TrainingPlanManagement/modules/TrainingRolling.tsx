@@ -637,12 +637,24 @@ export default function TrainingRolling() {
       lifeCycleMonth: plan.course.lifeCycleMonth,
       courseType: plan.course.courseType,
       courseGroup: plan.course.courseGroup,
-      remark: "",
+      remark: ((plan.course as unknown as { remark?: string }).remark) || "",
       status: "Active",
       updatedAt: plan.updatedAt,
       owner: plan.owner,
       ownerCompany: plan.ownerCompany,
       createdBy: plan.ownerName,
+    };
+
+    const schedule = {
+      date: plan.trainingDate || "",
+      time: [plan.startTime, plan.endTime].filter(Boolean).join(" - ") || (plan.hours ? `${plan.hours} ชั่วโมง` : ""),
+      location: plan.location || "",
+    };
+
+    const budget = {
+      speakerFee: (plan as Record<string, unknown>).speakerFee as string | number | undefined,
+      foodFee: (plan as Record<string, unknown>).foodFee as string | number | undefined,
+      totalBudget: plan.budget,
     };
 
     setExportingPlanId(plan.rollingId);
@@ -652,7 +664,7 @@ export default function TrainingRolling() {
       const response = await fetch("/api/course-master/course-outline", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ course, standard: null, oapPlan }),
+        body: JSON.stringify({ course, standard: null, oapPlan, schedule, budget }),
       });
       const errorPayload = response.ok
         ? null
