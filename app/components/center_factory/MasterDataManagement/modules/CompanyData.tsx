@@ -9,6 +9,7 @@ import {
   updateCompany,
 } from "../../../../lib/companies/client";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useConfirm } from "../../../ConfirmDialog";
 import type {
   CompanyRecord,
   CompanyStatus,
@@ -63,6 +64,7 @@ const readableError = (error: unknown) =>
 
 export default function CompanyData() {
   const authenticatedUser = useAuthenticatedUser();
+  const confirm = useConfirm();
   const canCreateCompany = authenticatedUser?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<CompanyRecord[]>([]);
   const [search, setSearch] = useState("");
@@ -186,9 +188,11 @@ export default function CompanyData() {
     }
 
     if (
-      !window.confirm(
-        `Delete company ${selectedRecord.companyCode}? This action cannot be undone.`,
-      )
+      !(await confirm({
+        message: `Delete company ${selectedRecord.companyCode}? This action cannot be undone.`,
+        confirmLabel: "Delete",
+        danger: true,
+      }))
     ) {
       return;
     }

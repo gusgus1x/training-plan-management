@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Noto_Sans_Thai } from "next/font/google";
 import AuthGate from "./components/AuthGate";
+import ConfirmDialogHost from "./components/ConfirmDialog";
 import ThaiUiLocalization from "./components/ThaiUiLocalization";
 import { getServerSessionUser } from "./lib/auth/server-session";
 import "./globals.css";
@@ -50,6 +51,7 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col">
         <ThaiUiLocalization>
           <AuthGate user={user}>{children}</AuthGate>
+          <ConfirmDialogHost />
         </ThaiUiLocalization>
       </body>
     </html>

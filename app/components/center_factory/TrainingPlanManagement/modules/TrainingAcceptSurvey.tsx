@@ -17,6 +17,7 @@ import {
   localizeAndSortAttendanceParticipants,
 } from "../../../../lib/attendanceSheetExport";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useConfirm } from "../../../ConfirmDialog";
 import {
   getRollingPlanCompanies,
   loadWorkflowRollingPlans,
@@ -538,6 +539,7 @@ function PaginatedEmployeeGrid({
 
 export default function TrainingAcceptSurvey() {
   const user = useAuthenticatedUser();
+  const confirm = useConfirm();
   const roleMode: RoleMode = user?.roleCode === "HRD_CENTER" ? "center" : "factory";
   const userCompanyCode = companies.find((company) => company === user?.companyCode) ?? "SNF";
   const userCompanyLabel =
@@ -1058,6 +1060,7 @@ export default function TrainingAcceptSurvey() {
   };
 
   const handleReject = async (enrollmentId: string) => {
+    if (!(await confirm({ message: "Reject this candidate?", confirmLabel: "Reject", danger: true }))) return;
     try {
       await updateEnrollmentStatus(enrollmentId, { action: "reject" });
       await reloadEnrollments();
@@ -1068,6 +1071,7 @@ export default function TrainingAcceptSurvey() {
   };
 
   const handleCancelEnrollment = async (enrollmentId: string) => {
+    if (!(await confirm({ message: "Cancel this enrollment?", confirmLabel: "Cancel Enrollment", danger: true }))) return;
     try {
       await updateEnrollmentStatus(enrollmentId, { action: "cancel" });
       await reloadEnrollments();

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useConfirm } from "../../../ConfirmDialog";
 import {
   APPROVED_TRAINING_NEED_STORAGE_KEY,
   EMPLOYEE_TRAINING_REQUESTS_STORAGE_KEY,
@@ -123,6 +124,7 @@ type RequestTrainingNeedProps = {
 
 export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTrainingNeedProps) {
   const user = useAuthenticatedUser();
+  const confirm = useConfirm();
   const userCompanyCode = profileValue(user?.companyCode);
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
   const [requests, setRequests] = useState<EmployeeTrainingNeedRequest[]>([]);
@@ -417,7 +419,13 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                 <button
                   className={styles.dangerButton}
                   type="button"
-                  onClick={() => updateSelectedStatus("Rejected")}
+                  onClick={() => {
+                    void confirm({ message: "Reject this training request?", confirmLabel: "Reject", danger: true }).then(
+                      (ok) => {
+                        if (ok) updateSelectedStatus("Rejected");
+                      },
+                    );
+                  }}
                 >
                   Reject
                 </button>

@@ -20,6 +20,7 @@ import {
 } from "../../../../lib/trainingRolling/client";
 import type { RollingPlanRecord } from "../../../../lib/trainingRolling/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useConfirm } from "../../../ConfirmDialog";
 import styles from "./TrainingRolling.module.css";
 
 export const trainingRollingModule = {
@@ -249,6 +250,7 @@ export const getJobStatus = (item: { status?: RollingStatus; trainingDate: strin
 
 export default function TrainingRolling() {
   const user = useAuthenticatedUser();
+  const confirm = useConfirm();
   const userCompanyCode = profileValue(user?.companyCode);
   const [oapPlans, setOapPlans] = useState<OapPlanRecord[]>([]);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
@@ -584,7 +586,7 @@ export default function TrainingRolling() {
 
   const handleDeleteGroup = async (group: { id: string; plans: RollingPlan[] }) => {
     const courseName = group.plans[0]?.course.name || "selected plan";
-    if (!confirm(`Are you sure you want to delete all ${group.plans.length} session(s) for "${courseName}"?`)) {
+    if (!(await confirm({ message: `Are you sure you want to delete all ${group.plans.length} session(s) for "${courseName}"?`, confirmLabel: "Delete", danger: true }))) {
       return;
     }
     try {
@@ -624,7 +626,7 @@ export default function TrainingRolling() {
   };
 
   const handleDelete = async (rollingId: string) => {
-    if (!confirm("Are you sure you want to delete this session?")) {
+    if (!(await confirm({ message: "Are you sure you want to delete this session?", confirmLabel: "Delete", danger: true }))) {
       return;
     }
     try {
@@ -744,6 +746,7 @@ export default function TrainingRolling() {
   };
 
   const handleConfirm = async (rollingId: string) => {
+    if (!(await confirm({ message: "Publish this session? It will become visible and enrollable for employees.", confirmLabel: "Publish" }))) return;
     try {
       await updateRollingPlan(rollingId, { status: "Planned" });
       await loadWorkspace();
@@ -754,6 +757,7 @@ export default function TrainingRolling() {
   };
 
   const handleConfirmGroup = async (groupPlans: RollingPlan[]) => {
+    if (!(await confirm({ message: "Publish all sessions in this group? They will become visible and enrollable for employees.", confirmLabel: "Publish all" }))) return;
     try {
       for (const plan of groupPlans) {
         if (plan.status !== "Planned") {

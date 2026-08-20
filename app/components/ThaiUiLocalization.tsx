@@ -1038,6 +1038,7 @@ const thaiUiDictionary: Record<string, string> = {
   "No Evaluation": "ไม่ใช้แบบประเมิน",
   "No 30-Day Evaluation": "ไม่ใช้แบบประเมินติดตามผล 30 วัน",
   "Manual form link will be used.": "ระบบจะใช้ลิงก์แบบฟอร์มที่ใส่ไว้",
+  "Use Link": "ใช้ลิงก์",
   "Paste pre-test form link": "วางลิงก์แบบทดสอบก่อนเรียน",
   "Paste post-test form link": "วางลิงก์แบบทดสอบหลังเรียน",
   "Paste evaluation form link": "วางลิงก์แบบประเมิน",
@@ -1313,6 +1314,33 @@ const thaiUiDictionary: Record<string, string> = {
     "เปิดหน้าทดสอบโดยไม่สร้างเซสชันผู้ใช้",
   "HRD Center dashboard": "แดชบอร์ด HRD ส่วนกลาง",
   "HRD Factory dashboard": "แดชบอร์ด HRD โรงงาน",
+  // --- Training OAP budget section (added 2026-08-19) ---
+  "Instructor Budget": "งบประมาณวิทยากร",
+  "Traveling Budget": "งบประมาณค่าเดินทาง",
+  "Seminar Room Budget": "งบประมาณห้องสัมมนา",
+  "Accommodation Budget": "งบประมาณที่พัก",
+  "Material Budget": "งบประมาณวัสดุ/เอกสาร",
+  "Food & Beverage Budget": "งบประมาณอาหารและเครื่องดื่ม",
+  "Total Budget": "งบประมาณรวม",
+  "Budget (THB)": "งบประมาณ (บาท)",
+  // --- Confirmation dialog messages (added 2026-08-20) ---
+  "Reject this candidate?": "ปฏิเสธผู้สมัครคนนี้หรือไม่?",
+  "Cancel this enrollment?": "ยกเลิกการลงทะเบียนนี้หรือไม่?",
+  "Reject this training request?": "ปฏิเสธคำขออบรมนี้หรือไม่?",
+  "Publish this session? It will become visible and enrollable for employees.":
+    "เผยแพร่รอบอบรมนี้หรือไม่? พนักงานจะมองเห็นและลงทะเบียนได้ทันที",
+  "Publish all sessions in this group? They will become visible and enrollable for employees.":
+    "เผยแพร่ทุกรอบอบรมในกลุ่มนี้หรือไม่? พนักงานจะมองเห็นและลงทะเบียนได้ทันที",
+  "Publish this evaluation? It will become selectable as a live form on courses immediately.":
+    "เผยแพร่แบบประเมินนี้หรือไม่? จะสามารถเลือกใช้กับหลักสูตรได้ทันที",
+  "Publish this assessment? It will become selectable as a live pre/post-test on courses immediately.":
+    "เผยแพร่แบบทดสอบนี้หรือไม่? จะสามารถเลือกใช้เป็นแบบทดสอบก่อน/หลังเรียนกับหลักสูตรได้ทันที",
+  "Cancel this annual training plan?": "ยกเลิกแผนฝึกอบรมประจำปีนี้หรือไม่?",
+  "Are you sure you want to delete this OAP plan and all associated sessions?":
+    "ยืนยันการลบแผน OAP นี้และรอบอบรมทั้งหมดที่เกี่ยวข้องหรือไม่?",
+  "Are you sure you want to delete this session?": "ยืนยันการลบรอบอบรมนี้หรือไม่?",
+  "Cancel Enrollment": "ยกเลิกการลงทะเบียน",
+  "Cancel Registration": "ยกเลิกการลงทะเบียน",
 };
 
 const thaiAttributeDictionary: Record<string, string> = {
@@ -1436,15 +1464,6 @@ const thaiAttributeDictionary: Record<string, string> = {
   "Try changing the month, year, status, or search text.": "ลองเปลี่ยนเดือน ปี สถานะ หรือพิมพ์คำค้นหาใหม่",
   "No confirmed Training OAP": "ไม่พบแผนการฝึกอบรมประจำปี (OAP) ที่ยืนยันแล้ว",
   "Open Training OAP and click Confirm on an annual plan before creating a monthly rolling plan.": "กรุณาไปที่หน้า Training OAP และกดยืนยันแผนประจำปีอย่างน้อย 1 รายการก่อนสร้างแผนรายเดือน",
-  // --- Training OAP budget section (added 2026-08-19) ---
-  "Instructor Budget": "งบประมาณวิทยากร",
-  "Traveling Budget": "งบประมาณค่าเดินทาง",
-  "Seminar Room Budget": "งบประมาณห้องสัมมนา",
-  "Accommodation Budget": "งบประมาณที่พัก",
-  "Material Budget": "งบประมาณวัสดุ/เอกสาร",
-  "Food & Beverage Budget": "งบประมาณอาหารและเครื่องดื่ม",
-  "Total Budget": "งบประมาณรวม",
-  "Budget (THB)": "งบประมาณ (บาท)",
 };
 
 const preserveWhitespace = (source: string, translated: string) => {
@@ -1508,6 +1527,26 @@ export const translateUiText = (source: string): string => {
     [/^(\d+) dates?$/, (match) => `${match[1]} วันอบรม`],
     [/^Session (\d+)$/, (match) => `รอบอบรมที่ ${match[1]}`],
     [/^Batch (\d+)$/, (match) => `รุ่นที่ ${match[1]}`],
+    [/^Delete course type (.+)\?$/, (match) => `ลบประเภทหลักสูตร ${match[1]}?`],
+    [/^Delete course group (.+)\?$/, (match) => `ลบกลุ่มหลักสูตร ${match[1]}?`],
+    [/^Cancel registration for (.+)\?$/, (match) => `ยกเลิกการลงทะเบียนสำหรับ ${match[1]}?`],
+    [/^Delete mapping (.+)\?$/, (match) => `ลบการเชื่อมโยง ${match[1]}?`],
+    [/^Delete Division (.+)\?$/, (match) => `ลบฝ่าย ${match[1]}?`],
+    [/^Delete Department (.+)\?$/, (match) => `ลบส่วน ${match[1]}?`],
+    [/^Delete Section (.+)\?$/, (match) => `ลบแผนก ${match[1]}?`],
+    [
+      /^Delete company (.+)\? This action cannot be undone\.$/,
+      (match) => `ลบบริษัท ${match[1]}? การกระทำนี้ไม่สามารถย้อนกลับได้`,
+    ],
+    [
+      /^Are you sure you want to delete course "(.+)"\?$/,
+      (match) => `ยืนยันการลบหลักสูตร "${match[1]}" หรือไม่?`,
+    ],
+    [/^Delete "(.+)"\?$/, (match) => `ลบ "${match[1]}"?`],
+    [
+      /^Are you sure you want to delete all (\d+) session\(s\) for "(.+)"\?$/,
+      (match) => `ยืนยันการลบรอบอบรมทั้งหมด ${match[1]} รอบ สำหรับ "${match[2]}" หรือไม่?`,
+    ],
     [
       /^(\d+) companies selected$/,
       (match) => `เลือกแล้ว ${match[1]} บริษัท`,
@@ -1579,6 +1618,9 @@ export const translateUiText = (source: string): string => {
       /^Exported (\d+) evaluations? to CSV\.$/,
       (match) => `ส่งออกแบบประเมิน ${match[1]} รายการเป็น CSV แล้ว`,
     ],
+    // Generic catch-all for simple "Delete <code>?" confirm messages — keep this LAST so more
+    // specific "Delete <noun> <code>?" patterns above always match first.
+    [/^Delete (.+)\?$/, (match) => `ลบ ${match[1]}?`],
   ];
 
   for (const [pattern, translate] of countPatterns) {

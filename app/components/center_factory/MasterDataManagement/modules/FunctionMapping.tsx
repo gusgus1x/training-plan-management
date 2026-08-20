@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useConfirm } from "../../../ConfirmDialog";
 import { listCompanies } from "../../../../lib/companies/client";
 import type { CompanyRecord } from "../../../../lib/companies/types";
 import {
@@ -106,6 +107,7 @@ const display = (value: string | null) => value || "-";
 
 export default function FunctionMapping() {
   const user = useAuthenticatedUser();
+  const confirm = useConfirm();
   const isCenter = user?.roleCode === "HRD_CENTER";
 
   const [companies, setCompanies] = useState<CompanyRecord[]>([]);
@@ -428,7 +430,8 @@ export default function FunctionMapping() {
   };
 
   const remove = async (row: MappingRow) => {
-    if (isSaving || !window.confirm(`Delete mapping ${row.plantCode}?`)) return;
+    if (isSaving) return;
+    if (!(await confirm({ message: `Delete mapping ${row.plantCode}?`, confirmLabel: "Delete", danger: true }))) return;
     setIsSaving(true);
     setError(null);
     setMessage(null);

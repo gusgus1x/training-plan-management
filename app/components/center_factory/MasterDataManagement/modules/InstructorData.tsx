@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useConfirm } from "../../../ConfirmDialog";
 import {
   InstructorClientError,
   createInstructor,
@@ -62,6 +63,7 @@ const errorText = (error: unknown) =>
 
 export default function InstructorData() {
   const user = useAuthenticatedUser();
+  const confirm = useConfirm();
   const isCenter = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<InstructorRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -225,12 +227,10 @@ export default function InstructorData() {
   };
 
   const remove = async () => {
-    if (
-      !isCenter ||
-      !selected ||
-      isSaving ||
-      !window.confirm(`Delete ${selected.instructorCode}?`)
-    ) {
+    if (!isCenter || !selected || isSaving) {
+      return;
+    }
+    if (!(await confirm({ message: `Delete ${selected.instructorCode}?`, confirmLabel: "Delete", danger: true }))) {
       return;
     }
     setIsSaving(true);

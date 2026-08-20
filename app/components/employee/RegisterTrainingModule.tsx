@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext";
+import { useConfirm } from "../ConfirmDialog";
 import {
   getRollingPlanCompanies,
   loadWorkflowRollingPlans,
@@ -94,6 +95,7 @@ const courseOwnerGroups = [
 
 export default function RegisterTrainingModule() {
   const user = useAuthenticatedUser();
+  const confirm = useConfirm();
   const employeeCompany = profileValue(user?.companyCode);
   const employeeId = user?.employeeId ?? null;
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
@@ -190,6 +192,9 @@ export default function RegisterTrainingModule() {
 
     try {
       if (course.enrollmentId) {
+        if (!(await confirm({ message: `Cancel registration for ${course.title}?`, confirmLabel: "Cancel Registration", danger: true }))) {
+          return;
+        }
         await updateEnrollmentStatus(course.enrollmentId, { action: "cancel" });
       } else {
         await createEnrollment({ planId: course.rollingId, employeeId, source: "EMPLOYEE" });

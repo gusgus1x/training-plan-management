@@ -20,6 +20,7 @@ import { getLevelRank, normalizeEmployeeLevel } from "../../../../lib/employeeMa
 import { listAssessments } from "../../../../lib/assessments/client";
 import { listEvaluations } from "../../../../lib/evaluations/client";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useConfirm } from "../../../ConfirmDialog";
 import { listCourseGroups } from "../../../../lib/courseGroups/client";
 import { listCourseTypes } from "../../../../lib/courseTypes/client";
 import { listFunctions } from "../../../../lib/functions/client";
@@ -83,6 +84,17 @@ type CourseForm = {
 
 type CourseRecord = WorkflowCourse;
 type CourseStandardRecord = WorkflowStandard;
+
+type LinkModeField = "preTest" | "postTest" | "evaluation" | "evaluationAfter30Day";
+const LINK_MODE_VALUE = "__link__";
+const deriveLinkModeFields = (course: CourseRecord): Set<LinkModeField> => {
+  const fields: LinkModeField[] = [];
+  if (course.preTestLink?.trim()) fields.push("preTest");
+  if (course.postTestLink?.trim()) fields.push("postTest");
+  if (course.evaluationLink?.trim()) fields.push("evaluation");
+  if (course.evaluationAfter30DayLink?.trim()) fields.push("evaluationAfter30Day");
+  return new Set(fields);
+};
 
 type TrainingAssessmentOption = {
   id: string;
@@ -300,6 +312,7 @@ const SearchableSelect = ({
 
 function CourseMaster() {
   const user = useAuthenticatedUser();
+  const confirm = useConfirm();
   const { language } = useUiLanguage();
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
   const factoryCourseTypeAllowlist = ["IN-HOUSE", "PUBLIC", "OJT"];
@@ -316,6 +329,7 @@ function CourseMaster() {
   const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [form, setForm] = useState<CourseForm>(emptyCourseForm);
+  const [linkModeFields, setLinkModeFields] = useState<Set<LinkModeField>>(new Set());
   const [isEditing, setIsEditing] = useState(false);
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [openDetailCourseId, setOpenDetailCourseId] = useState("");
@@ -970,6 +984,11 @@ function CourseMaster() {
       [nameField]: assessment?.name ?? "",
       [`${nameField}Link`]: "",
     }));
+    setLinkModeFields((current) => {
+      const next = new Set(current);
+      next.delete(nameField);
+      return next;
+    });
   };
 
   const handleEvaluationSelection = (
@@ -985,6 +1004,24 @@ function CourseMaster() {
       [nameField]: evaluation?.name ?? "",
       [`${nameField}Link`]: "",
     }));
+    setLinkModeFields((current) => {
+      const next = new Set(current);
+      next.delete(nameField);
+      return next;
+    });
+  };
+
+  const handleSelectLinkMode = (
+    field: LinkModeField,
+    idField: "preTestId" | "postTestId" | "evaluationId" | "evaluationAfter30DayId",
+    nameField: "preTest" | "postTest" | "evaluation" | "evaluationAfter30Day",
+  ) => {
+    setForm((current) => ({
+      ...current,
+      [idField]: "",
+      [nameField]: "",
+    }));
+    setLinkModeFields((current) => new Set(current).add(field));
   };
 
   const handleFormLinkChange = (
@@ -1112,6 +1149,7 @@ function CourseMaster() {
     setSelectedCourseId("");
     setOpenDetailCourseId("");
     setForm(emptyCourseForm);
+    setLinkModeFields(new Set());
     resetStandardForm();
     setIsEditing(true);
     setIsNewOpen(true);
@@ -1121,6 +1159,7 @@ function CourseMaster() {
     void loadPublishedForms();
     setSelectedCourseId(course.id);
     setForm(buildCourseForm(course));
+    setLinkModeFields(deriveLinkModeFields(course));
     loadStandardForm(course);
     setIsEditing(true);
     setIsNewOpen(false);
@@ -1129,7 +1168,13 @@ function CourseMaster() {
 
   const handleDeleteCourse = async (course: CourseRecord) => {
     const courseName = getCourseDisplayName(course);
-    if (!confirm(`Are you sure you want to delete course "${course.courseCode} - ${courseName}"?`)) {
+    if (
+      !(await confirm({
+        message: `Are you sure you want to delete course "${course.courseCode} - ${courseName}"?`,
+        confirmLabel: "Delete",
+        danger: true,
+      }))
+    ) {
       return;
     }
 
@@ -1250,6 +1295,7 @@ function CourseMaster() {
     setIsEditing(false);
     setIsNewOpen(false);
     setForm(emptyCourseForm);
+    setLinkModeFields(new Set());
     resetStandardForm();
   };
 
@@ -1260,6 +1306,7 @@ function CourseMaster() {
     setIsNewOpen(false);
     setIsEditing(false);
     setForm(buildCourseForm(course));
+    setLinkModeFields(deriveLinkModeFields(course));
     loadStandardForm(course);
   };
 
@@ -1269,6 +1316,7 @@ function CourseMaster() {
     setIsNewOpen(false);
     setIsEditing(false);
     setForm(emptyCourseForm);
+    setLinkModeFields(new Set());
     resetStandardForm();
   };
 
@@ -1544,15 +1592,17 @@ function CourseMaster() {
         <label>
           <span className={styles.fieldLabel}>Pre Test <em>Optional</em></span>
           <select
-            value={form.preTestId}
+            value={linkModeFields.has("preTest") ? LINK_MODE_VALUE : form.preTestId}
             disabled={!isEditing}
             onChange={(event) =>
-              handleAssessmentSelection(
-                "preTestId",
-                "preTest",
-                event.target.value,
-                publishedPreTests,
-              )
+              event.target.value === LINK_MODE_VALUE
+                ? handleSelectLinkMode("preTest", "preTestId", "preTest")
+                : handleAssessmentSelection(
+                    "preTestId",
+                    "preTest",
+                    event.target.value,
+                    publishedPreTests,
+                  )
             }
           >
             <option value="">
@@ -1565,36 +1615,39 @@ function CourseMaster() {
                 [{assessment.code}] {assessment.name} ({assessment.assessmentType})
               </option>
             ))}
+            <option value={LINK_MODE_VALUE}>Use Link</option>
           </select>
-          <div className={styles.linkField}>
-            <input
-              value={form.preTestLink}
-              disabled={!isEditing}
-              placeholder="Paste pre-test form link"
-              type="url"
-              onChange={(event) =>
-                handleFormLinkChange(
-                  "preTestLink",
-                  "preTestId",
-                  "preTest",
-                  event.target.value,
-                )
-              }
-            />
-            {selectedCourseId && form.preTestLink.trim() ? (
-              <button
-                type="button"
-                className={styles.detailButton}
-                onClick={() => void handleDownloadQrCode(form.preTestLink, "pre-test")}
-              >
-                Download QR
-              </button>
-            ) : null}
-          </div>
+          {linkModeFields.has("preTest") ? (
+            <div className={styles.linkField}>
+              <input
+                value={form.preTestLink}
+                disabled={!isEditing}
+                placeholder="Paste pre-test form link"
+                type="url"
+                onChange={(event) =>
+                  handleFormLinkChange(
+                    "preTestLink",
+                    "preTestId",
+                    "preTest",
+                    event.target.value,
+                  )
+                }
+              />
+              {selectedCourseId && form.preTestLink.trim() ? (
+                <button
+                  type="button"
+                  className={styles.detailButton}
+                  onClick={() => void handleDownloadQrCode(form.preTestLink, "pre-test")}
+                >
+                  Download QR
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <small className={styles.catalogHint}>
             {selectedPreTest
               ? `${selectedPreTest.questionCount} questions · Linked course: ${selectedPreTest.courseName}`
-              : form.preTestLink
+              : linkModeFields.has("preTest")
                 ? "Manual form link will be used."
                 : `${publishedPreTests.length} published Pre Test option${publishedPreTests.length === 1 ? "" : "s"}`}
           </small>
@@ -1602,15 +1655,17 @@ function CourseMaster() {
         <label>
           <span className={styles.fieldLabel}>Post Test <em>Optional</em></span>
           <select
-            value={form.postTestId}
+            value={linkModeFields.has("postTest") ? LINK_MODE_VALUE : form.postTestId}
             disabled={!isEditing}
             onChange={(event) =>
-              handleAssessmentSelection(
-                "postTestId",
-                "postTest",
-                event.target.value,
-                publishedPostTests,
-              )
+              event.target.value === LINK_MODE_VALUE
+                ? handleSelectLinkMode("postTest", "postTestId", "postTest")
+                : handleAssessmentSelection(
+                    "postTestId",
+                    "postTest",
+                    event.target.value,
+                    publishedPostTests,
+                  )
             }
           >
             <option value="">
@@ -1623,36 +1678,39 @@ function CourseMaster() {
                 [{assessment.code}] {assessment.name} ({assessment.assessmentType})
               </option>
             ))}
+            <option value={LINK_MODE_VALUE}>Use Link</option>
           </select>
-          <div className={styles.linkField}>
-            <input
-              value={form.postTestLink}
-              disabled={!isEditing}
-              placeholder="Paste post-test form link"
-              type="url"
-              onChange={(event) =>
-                handleFormLinkChange(
-                  "postTestLink",
-                  "postTestId",
-                  "postTest",
-                  event.target.value,
-                )
-              }
-            />
-            {selectedCourseId && form.postTestLink.trim() ? (
-              <button
-                type="button"
-                className={styles.detailButton}
-                onClick={() => void handleDownloadQrCode(form.postTestLink, "post-test")}
-              >
-                Download QR
-              </button>
-            ) : null}
-          </div>
+          {linkModeFields.has("postTest") ? (
+            <div className={styles.linkField}>
+              <input
+                value={form.postTestLink}
+                disabled={!isEditing}
+                placeholder="Paste post-test form link"
+                type="url"
+                onChange={(event) =>
+                  handleFormLinkChange(
+                    "postTestLink",
+                    "postTestId",
+                    "postTest",
+                    event.target.value,
+                  )
+                }
+              />
+              {selectedCourseId && form.postTestLink.trim() ? (
+                <button
+                  type="button"
+                  className={styles.detailButton}
+                  onClick={() => void handleDownloadQrCode(form.postTestLink, "post-test")}
+                >
+                  Download QR
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <small className={styles.catalogHint}>
             {selectedPostTest
               ? `${selectedPostTest.questionCount} questions · Linked course: ${selectedPostTest.courseName}`
-              : form.postTestLink
+              : linkModeFields.has("postTest")
                 ? "Manual form link will be used."
                 : `${publishedPostTests.length} published Post Test option${publishedPostTests.length === 1 ? "" : "s"}`}
           </small>
@@ -1660,15 +1718,17 @@ function CourseMaster() {
         <label>
           <span className={styles.fieldLabel}>Evaluation After Training <em>Optional</em></span>
           <select
-            value={form.evaluationId}
+            value={linkModeFields.has("evaluation") ? LINK_MODE_VALUE : form.evaluationId}
             disabled={!isEditing}
             onChange={(event) =>
-              handleEvaluationSelection(
-                "evaluationId",
-                "evaluation",
-                event.target.value,
-                publishedCourseEvaluations,
-              )
+              event.target.value === LINK_MODE_VALUE
+                ? handleSelectLinkMode("evaluation", "evaluationId", "evaluation")
+                : handleEvaluationSelection(
+                    "evaluationId",
+                    "evaluation",
+                    event.target.value,
+                    publishedCourseEvaluations,
+                  )
             }
           >
             <option value="">
@@ -1681,36 +1741,39 @@ function CourseMaster() {
                 [{evaluation.code}] {evaluation.name}
               </option>
             ))}
+            <option value={LINK_MODE_VALUE}>Use Link</option>
           </select>
-          <div className={styles.linkField}>
-            <input
-              value={form.evaluationLink}
-              disabled={!isEditing}
-              placeholder="Paste evaluation form link"
-              type="url"
-              onChange={(event) =>
-                handleFormLinkChange(
-                  "evaluationLink",
-                  "evaluationId",
-                  "evaluation",
-                  event.target.value,
-                )
-              }
-            />
-            {selectedCourseId && form.evaluationLink.trim() ? (
-              <button
-                type="button"
-                className={styles.detailButton}
-                onClick={() => void handleDownloadQrCode(form.evaluationLink, "evaluation")}
-              >
-                Download QR
-              </button>
-            ) : null}
-          </div>
+          {linkModeFields.has("evaluation") ? (
+            <div className={styles.linkField}>
+              <input
+                value={form.evaluationLink}
+                disabled={!isEditing}
+                placeholder="Paste evaluation form link"
+                type="url"
+                onChange={(event) =>
+                  handleFormLinkChange(
+                    "evaluationLink",
+                    "evaluationId",
+                    "evaluation",
+                    event.target.value,
+                  )
+                }
+              />
+              {selectedCourseId && form.evaluationLink.trim() ? (
+                <button
+                  type="button"
+                  className={styles.detailButton}
+                  onClick={() => void handleDownloadQrCode(form.evaluationLink, "evaluation")}
+                >
+                  Download QR
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <small className={styles.catalogHint}>
             {selectedEvaluation
               ? `${selectedEvaluation.questionCount} questions · ${selectedEvaluation.respondent} · ${selectedEvaluation.scope}`
-              : form.evaluationLink
+              : linkModeFields.has("evaluation")
                 ? "Manual form link will be used."
                 : `${publishedCourseEvaluations.length} published After Training option${publishedCourseEvaluations.length === 1 ? "" : "s"}`}
           </small>
@@ -1718,16 +1781,18 @@ function CourseMaster() {
         <label>
           <span className={styles.fieldLabel}>Evaluation After 30 Days <em>Optional</em></span>
           <select
-            value={form.evaluationAfter30DayId}
+            value={linkModeFields.has("evaluationAfter30Day") ? LINK_MODE_VALUE : form.evaluationAfter30DayId}
             disabled={!isEditing}
 
             onChange={(event) =>
-              handleEvaluationSelection(
-                "evaluationAfter30DayId",
-                "evaluationAfter30Day",
-                event.target.value,
-                publishedFollowUpEvaluations,
-              )
+              event.target.value === LINK_MODE_VALUE
+                ? handleSelectLinkMode("evaluationAfter30Day", "evaluationAfter30DayId", "evaluationAfter30Day")
+                : handleEvaluationSelection(
+                    "evaluationAfter30DayId",
+                    "evaluationAfter30Day",
+                    event.target.value,
+                    publishedFollowUpEvaluations,
+                  )
             }
           >
             <option value="">
@@ -1740,38 +1805,41 @@ function CourseMaster() {
                 [{evaluation.code}] {evaluation.name}
               </option>
             ))}
+            <option value={LINK_MODE_VALUE}>Use Link</option>
           </select>
-          <div className={styles.linkField}>
-            <input
-              value={form.evaluationAfter30DayLink}
-              disabled={!isEditing}
-              placeholder="Paste 30-day evaluation form link"
-              type="url"
-              onChange={(event) =>
-                handleFormLinkChange(
-                  "evaluationAfter30DayLink",
-                  "evaluationAfter30DayId",
-                  "evaluationAfter30Day",
-                  event.target.value,
-                )
-              }
-            />
-            {selectedCourseId && form.evaluationAfter30DayLink.trim() ? (
-              <button
-                type="button"
-                className={styles.detailButton}
-                onClick={() =>
-                  void handleDownloadQrCode(form.evaluationAfter30DayLink, "evaluation-30day")
+          {linkModeFields.has("evaluationAfter30Day") ? (
+            <div className={styles.linkField}>
+              <input
+                value={form.evaluationAfter30DayLink}
+                disabled={!isEditing}
+                placeholder="Paste 30-day evaluation form link"
+                type="url"
+                onChange={(event) =>
+                  handleFormLinkChange(
+                    "evaluationAfter30DayLink",
+                    "evaluationAfter30DayId",
+                    "evaluationAfter30Day",
+                    event.target.value,
+                  )
                 }
-              >
-                Download QR
-              </button>
-            ) : null}
-          </div>
+              />
+              {selectedCourseId && form.evaluationAfter30DayLink.trim() ? (
+                <button
+                  type="button"
+                  className={styles.detailButton}
+                  onClick={() =>
+                    void handleDownloadQrCode(form.evaluationAfter30DayLink, "evaluation-30day")
+                  }
+                >
+                  Download QR
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <small className={styles.catalogHint}>
             {selectedFollowUpEvaluation
               ? `${selectedFollowUpEvaluation.questionCount} questions · ${selectedFollowUpEvaluation.respondent} · ${selectedFollowUpEvaluation.scope}`
-              : form.evaluationAfter30DayLink
+              : linkModeFields.has("evaluationAfter30Day")
                 ? "Manual form link will be used."
                 : `${publishedFollowUpEvaluations.length} published 30-Day Follow-up option${publishedFollowUpEvaluations.length === 1 ? "" : "s"}`}
           </small>

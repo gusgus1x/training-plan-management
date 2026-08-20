@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useConfirm } from "../../../ConfirmDialog";
 import {
   PositionClientError,
   createPosition,
@@ -195,6 +196,7 @@ const errorText = (error: unknown) =>
 
 export default function PositionData() {
   const user = useAuthenticatedUser();
+  const confirm = useConfirm();
   const isCenter = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<ApiPositionRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -315,12 +317,10 @@ export default function PositionData() {
   };
 
   const remove = async () => {
-    if (
-      !isCenter ||
-      !selected ||
-      isSaving ||
-      !window.confirm(`Delete ${selected.positionCode}?`)
-    ) {
+    if (!isCenter || !selected || isSaving) {
+      return;
+    }
+    if (!(await confirm({ message: `Delete ${selected.positionCode}?`, confirmLabel: "Delete", danger: true }))) {
       return;
     }
     setIsSaving(true);

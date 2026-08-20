@@ -20,6 +20,7 @@ import { listCourses } from "../../../../lib/courses/client";
 import { listOapPlans, createOapPlan, updateOapPlan, deleteOapPlan } from "../../../../lib/trainingOap/client";
 import type { OapPlanRecord } from "../../../../lib/trainingOap/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useConfirm } from "../../../ConfirmDialog";
 import styles from "./TrainingOAP.module.css";
 
 export const trainingOapModule = {
@@ -102,6 +103,7 @@ const buildRequestCourse = (request: EmployeeTrainingNeedRequest): WorkflowCours
 
 export default function TrainingOAP({ username = "Current user" }: TrainingOAPProps) {
   const user = useAuthenticatedUser();
+  const confirm = useConfirm();
   const [courses, setCourses] = useState<WorkflowCourse[]>([]);
   const [standards, setStandards] = useState<WorkflowStandard[]>([]);
   const [plans, setPlans] = useState<OapPlan[]>([]);
@@ -434,7 +436,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   };
 
   const handleDelete = async (planId: string) => {
-    if (!confirm("Are you sure you want to delete this OAP plan and all associated sessions?")) {
+    if (!(await confirm({ message: "Are you sure you want to delete this OAP plan and all associated sessions?", confirmLabel: "Delete", danger: true }))) {
       return;
     }
     try {
@@ -1109,7 +1111,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                     </div>
                                   </div>
                                   <div className={styles.formActions}>
-                                    <button className={styles.dangerButton} disabled={plan.status === "Cancel"} type="button" onClick={() => void updateStatus(plan.id, "Cancel")}>Cancel Plan</button>
+                                    <button className={styles.dangerButton} disabled={plan.status === "Cancel"} type="button" onClick={() => { void confirm({ message: "Cancel this annual training plan?", confirmLabel: "Cancel Plan", danger: true }).then((ok) => { if (ok) void updateStatus(plan.id, "Cancel"); }); }}>Cancel Plan</button>
                                     <button className={styles.secondaryButton} type="button" onClick={() => setOpenDetailId("")}>Close</button>
                                   </div>
                                 </section>

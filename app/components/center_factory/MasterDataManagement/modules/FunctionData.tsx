@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useConfirm } from "../../../ConfirmDialog";
 import {
   FunctionClientError,
   createFunction,
@@ -209,6 +210,7 @@ const Cell = ({
 
 export default function FunctionData() {
   const user = useAuthenticatedUser();
+  const confirm = useConfirm();
   const isCenter = user?.roleCode === "HRD_CENTER";
 
   // --- 1. Function State ---
@@ -571,12 +573,10 @@ export default function FunctionData() {
   };
 
   const remove = async () => {
-    if (
-      !isCenter ||
-      !selected ||
-      isSaving ||
-      !window.confirm(`Delete ${selected.functionCode}?`)
-    ) {
+    if (!isCenter || !selected || isSaving) {
+      return;
+    }
+    if (!(await confirm({ message: `Delete ${selected.functionCode}?`, confirmLabel: "Delete", danger: true }))) {
       return;
     }
     setIsSaving(true);
@@ -693,12 +693,10 @@ export default function FunctionData() {
   };
 
   const removeDivision = async () => {
-    if (
-      !isCenter ||
-      !selectedDivision ||
-      isSavingDivision ||
-      !window.confirm(`Delete Division ${selectedDivision.divisionCode}?`)
-    ) {
+    if (!isCenter || !selectedDivision || isSavingDivision) {
+      return;
+    }
+    if (!(await confirm({ message: `Delete Division ${selectedDivision.divisionCode}?`, confirmLabel: "Delete", danger: true }))) {
       return;
     }
     setIsSavingDivision(true);
@@ -801,12 +799,10 @@ export default function FunctionData() {
   };
 
   const removeDepartment = async () => {
-    if (
-      !isCenter ||
-      !selectedDepartment ||
-      isSavingDepartment ||
-      !window.confirm(`Delete Department ${selectedDepartment.departmentCode}?`)
-    ) {
+    if (!isCenter || !selectedDepartment || isSavingDepartment) {
+      return;
+    }
+    if (!(await confirm({ message: `Delete Department ${selectedDepartment.departmentCode}?`, confirmLabel: "Delete", danger: true }))) {
       return;
     }
     setIsSavingDepartment(true);
@@ -909,12 +905,10 @@ export default function FunctionData() {
   };
 
   const removeSection = async () => {
-    if (
-      !isCenter ||
-      !selectedSection ||
-      isSavingSection ||
-      !window.confirm(`Delete Section ${selectedSection.sectionCode}?`)
-    ) {
+    if (!isCenter || !selectedSection || isSavingSection) {
+      return;
+    }
+    if (!(await confirm({ message: `Delete Section ${selectedSection.sectionCode}?`, confirmLabel: "Delete", danger: true }))) {
       return;
     }
     setIsSavingSection(true);

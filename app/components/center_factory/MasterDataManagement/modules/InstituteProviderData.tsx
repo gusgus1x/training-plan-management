@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useConfirm } from "../../../ConfirmDialog";
 import {
   InstituteProviderClientError,
   createInstituteProvider,
@@ -47,6 +48,7 @@ const errorText = (error: unknown) =>
 
 export default function InstituteProviderData() {
   const user = useAuthenticatedUser();
+  const confirm = useConfirm();
   const isCenter = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<ApiInstituteProviderRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -167,12 +169,10 @@ export default function InstituteProviderData() {
   };
 
   const remove = async () => {
-    if (
-      !isCenter ||
-      !selected ||
-      isSaving ||
-      !window.confirm(`Delete ${selected.instituteProviderCode}?`)
-    ) {
+    if (!isCenter || !selected || isSaving) {
+      return;
+    }
+    if (!(await confirm({ message: `Delete ${selected.instituteProviderCode}?`, confirmLabel: "Delete", danger: true }))) {
       return;
     }
     setIsSaving(true);

@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useConfirm } from "../../../ConfirmDialog";
 import {
   createAssessment,
   createAssessmentVersion,
@@ -137,6 +138,7 @@ const statusOptions = (current?: AssessmentStatus): AssessmentStatus[] => {
 
 export default function Assessment() {
   const user = useAuthenticatedUser();
+  const confirm = useConfirm();
   const isCenter = user?.roleCode === "HRD_CENTER";
   const [items, setItems] = useState<AssessmentRecord[]>([]);
   const [companies, setCompanies] = useState<CompanyRecord[]>([]);
@@ -343,6 +345,9 @@ export default function Assessment() {
       setFeedback({ tone: "error", message: "Please correct the highlighted fields." });
       return;
     }
+    if (draft.status === "ACTIVE" && !(await confirm({ message: "Publish this assessment? It will become selectable as a live pre/post-test on courses immediately.", confirmLabel: "Publish" }))) {
+      return;
+    }
     setBusy(true);
     setFeedback(null);
     try {
@@ -374,7 +379,8 @@ export default function Assessment() {
   };
 
   const remove = async () => {
-    if (!selected?.canModify || !window.confirm(`Delete "${selected.seriesName}"?`)) return;
+    if (!selected?.canModify) return;
+    if (!(await confirm({ message: `Delete "${selected.seriesName}"?`, confirmLabel: "Delete", danger: true }))) return;
     setBusy(true);
     try {
       await deleteAssessment(selected.assessmentId);

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useConfirm } from "../../../ConfirmDialog";
 import { listCompanies } from "../../../../lib/companies/client";
 import type { CompanyRecord } from "../../../../lib/companies/types";
 import {
@@ -106,6 +107,7 @@ type ResizeDrag =
 
 export default function EmployeeData() {
   const user = useAuthenticatedUser();
+  const confirm = useConfirm();
   const center = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<EmployeeRecord[]>([]);
   const [companies, setCompanies] = useState<CompanyRecord[]>([]);
@@ -481,7 +483,8 @@ export default function EmployeeData() {
   };
 
   const remove = async () => {
-    if (saving || !selected || !confirm(`Delete ${selected.employeeCode}?`))
+    if (saving || !selected) return;
+    if (!(await confirm({ message: `Delete ${selected.employeeCode}?`, confirmLabel: "Delete", danger: true })))
       return;
     setSaving(true);
     setError(null);
