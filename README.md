@@ -14,7 +14,7 @@ npm install
 
 ```env
 DB_SERVER=
-
+DB_INSTANCE=
 DB_DATABASE=
 DB_USER=
 DB_PASSWORD=
