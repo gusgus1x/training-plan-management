@@ -23,6 +23,12 @@ export type RollingPlanRecord = {
   oapParticipants: string;
   oapHours: string;
   oapBudget: string;
+  oapBudgetInstructor: string;
+  oapBudgetTraveling: string;
+  oapBudgetSeminarRoom: string;
+  oapBudgetAccommodation: string;
+  oapBudgetMaterial: string;
+  oapBudgetFoodBeverage: string;
   oapTrainer: string;
   oapProvider: string;
   owner: WorkflowOwner;

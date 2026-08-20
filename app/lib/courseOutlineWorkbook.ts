@@ -4,13 +4,44 @@ import type {
   WorkflowStandard,
 } from "./trainingWorkflow";
 import {
+  escapeXlsxXml,
   readXlsxEntries,
   setXlsxInlineCell,
   writeXlsxEntries,
 } from "./xlsxTemplate";
 
-// One source line stays on one row; only a line too wide for the page spills
-// onto a second row, so a bullet is never fragmented across many rows.
+const formatNumberStr = (val: number | string | undefined | null) => {
+  if (val === undefined || val === null || val === "") return "";
+  const num = typeof val === "number" ? val : parseFloat(String(val).replace(/,/g, ""));
+  if (isNaN(num)) return String(val);
+  return num.toLocaleString("en-US");
+};
+
+type BudgetData = {
+  budgetInstructor?: number | string;
+  budgetTraveling?: number | string;
+  budgetSeminarRoom?: number | string;
+  budgetAccommodation?: number | string;
+  budgetMaterial?: number | string;
+  budgetFoodBeverage?: number | string;
+  totalBudget?: number | string;
+};
+
+const BUDGET_CATEGORIES: Array<{ key: keyof BudgetData; th: string; en: string }> = [
+  { key: "budgetInstructor", th: "ค่าวิทยากร", en: "Instructor Fee" },
+  { key: "budgetTraveling", th: "ค่าเดินทาง", en: "Traveling" },
+  { key: "budgetSeminarRoom", th: "ค่าห้องสัมมนา", en: "Seminar Room" },
+  { key: "budgetAccommodation", th: "ค่าที่พัก", en: "Accommodation" },
+  { key: "budgetMaterial", th: "ค่าวัสดุ/เอกสาร", en: "Material" },
+  { key: "budgetFoodBeverage", th: "อาหารและเบรก", en: "Food & Beverage" },
+];
+
+const toNumber = (value: number | string | undefined | null) => {
+  if (value === undefined || value === null || value === "") return 0;
+  const num = typeof value === "number" ? value : parseFloat(String(value).replace(/,/g, ""));
+  return isNaN(num) ? 0 : num;
+};
+
 const wrapText = (value: string, width: number = 60) => {
   const lines: string[] = [];
   for (const paragraph of (value.trim() || "-").split(/\r?\n/)) {
@@ -38,8 +69,6 @@ const setTextBlock = (
   },
 ) => {
   const wrapped = wrapText(value, width);
-  // A course with more lines than the template has rows keeps every line: the
-  // leftovers stack inside the last cell and that row grows to fit them.
   let overflowLines = 0;
   if (wrapped.length > references.length) {
     overflowLines = wrapped.length - references.length + 1;
@@ -47,63 +76,28 @@ const setTextBlock = (
       .slice(references.length - 1)
       .join(options?.overflowSeparator ?? "\n");
   }
-  const filled = references.reduce(
-    (xml, reference, index) =>
-      setXlsxInlineCell(
-        xml,
-        reference,
-        wrapped[index] ?? "",
-        options?.styleOverride,
-      ),
+  return references.reduce(
+    (xml, reference, index) => {
+      if (new RegExp(`<c\\b[^>]*\\br=['"]${reference}['"]`).test(xml)) {
+        return setXlsxInlineCell(
+          xml,
+          reference,
+          wrapped[index] ?? "",
+          options?.styleOverride,
+        );
+      }
+      return xml;
+    },
     worksheetXml,
-  );
-  if (overflowLines < 2) return filled;
-  const lastRow = Number(references[references.length - 1].replace(/\D+/g, ""));
-  return setRowHeight(filled, lastRow, Math.max(15, overflowLines * 15));
-};
-
-const setRowHeight = (
-  worksheetXml: string,
-  rowNumber: number,
-  height: number,
-) => {
-  const rowPattern = new RegExp(`<row\\b([^>]*\\br=["']${rowNumber}["'][^>]*)>`);
-  const match = worksheetXml.match(rowPattern);
-  if (!match) {
-    throw new Error(`Invalid course outline template: row ${rowNumber} was not found.`);
-  }
-  const attributes = match[1]
-    .replace(/\s+ht=["'][^"']*["']/g, "")
-    .replace(/\s+customHeight=["'][^"']*["']/g, "");
-  return worksheetXml.replace(
-    match[0],
-    `<row${attributes} ht="${height}" customHeight="1">`,
   );
 };
 
 const buildTargetGroup = (
   course: WorkflowCourse,
-  standard: WorkflowStandard | null | undefined,
-  language: "th" | "en",
+  _standard?: WorkflowStandard | null,
+  _language?: "th" | "en",
 ) => {
-  const isThai = language === "th";
-  const freeText = (course.targetGroup || "").trim();
-  if (!standard) return freeText || "-";
-
-  const orgScope = [standard.functionName, standard.division, standard.department, standard.section]
-    .filter(Boolean)
-    .join(" / ");
-  const lines = [
-    [isThai ? "บริษัท" : "Companies", standard.companies?.join(", ")],
-    [isThai ? "หน่วยงาน" : "Org", orgScope],
-    [isThai ? "ตำแหน่ง" : "Positions", standard.positions.join(", ")],
-    [isThai ? "ระดับ" : "Levels", standard.levels.join(", ")],
-  ]
-    .filter(([, value]) => value?.trim())
-    .map(([label, value]) => `${label}: ${value}`);
-
-  if (freeText) lines.unshift(freeText);
-  return lines.length > 0 ? lines.join("\n") : "-";
+  return (course.targetGroup || "").trim() || "-";
 };
 
 const buildEvaluation = (course: WorkflowCourse, language: "th" | "en") => {
@@ -119,8 +113,6 @@ const buildEvaluation = (course: WorkflowCourse, language: "th" | "en") => {
           postTest: "Post-test",
           followUp: "30-day follow-up",
         };
-  // Methodology and evaluation carry no label: the K31 section header already
-  // reads "การประเมินผล" / "Training Evaluation".
   return [
     ["", course.methodology],
     [labels.preTest, course.preTest],
@@ -128,61 +120,123 @@ const buildEvaluation = (course: WorkflowCourse, language: "th" | "en") => {
     ["", course.evaluation],
     [labels.followUp, course.evaluationAfter30Day],
   ]
-    .filter(([, value]) => value.trim())
-    .map(([label, value]) => (label ? `${label}: ${value}` : value))
+    .filter(([, value]) => Boolean(value && value.trim()))
+    .map(([label, value]) => (label ? `${label}: ${value!.trim()}` : value!.trim()))
     .join("\n");
 };
 
-const formatNumberStr = (val: number | string | undefined | null) => {
-  if (val === undefined || val === null || val === "") return "";
-  const num = typeof val === "number" ? val : parseFloat(String(val).replace(/,/g, ""));
-  if (isNaN(num)) return String(val);
-  return num.toLocaleString("en-US");
-};
-
-const buildBudgetContent = (
-  budgetData?: { speakerFee?: number | string; foodFee?: number | string; totalBudget?: number | string } | null,
+const fillBudgetMultiColumn = (
+  worksheetXml: string,
+  budgetData?: BudgetData | null,
   oapPlan?: WorkflowOapPlan | null,
   language: "th" | "en" = "th",
 ) => {
   const isThai = language === "th";
   const unit = isThai ? "บาท" : "THB";
 
-  const speakerFee = budgetData?.speakerFee;
-  const foodFee = budgetData?.foodFee;
-  const total = budgetData?.totalBudget ?? oapPlan?.budget;
+  const items = BUDGET_CATEGORIES.map((category) => ({
+    label: isThai ? category.th : category.en,
+    amount: toNumber(budgetData?.[category.key]),
+  })).filter((item) => item.amount > 0);
 
-  const speakerNum = speakerFee ? parseFloat(String(speakerFee).replace(/,/g, "")) : 0;
-  const foodNum = foodFee ? parseFloat(String(foodFee).replace(/,/g, "")) : 0;
+  const total = items.length > 0
+    ? items.reduce((sum, item) => sum + item.amount, 0)
+    : toNumber(budgetData?.totalBudget ?? oapPlan?.budget);
 
-  if (speakerFee || foodFee) {
-    const sStr = speakerFee ? `${formatNumberStr(speakerFee)} ${unit}` : `- ${unit}`;
-    const fStr = foodFee ? `${formatNumberStr(foodFee)} ${unit}` : `- ${unit}`;
-    const calcTotal = (speakerNum + foodNum) || (total ? parseFloat(String(total).replace(/,/g, "")) : 0);
-    const totStr = calcTotal ? `${formatNumberStr(calcTotal)} ${unit}` : `- ${unit}`;
+  let xml = worksheetXml;
 
-    if (isThai) {
-      return [
-        `1. ค่าวิทยากร      ${sStr}`,
-        `2. อาหารและเบรก  ${fStr}`,
-        `-----------------------------------`,
-        `รวม/รุ่น           ${totStr}`,
-      ].join("\n");
+  if (items.length > 0) {
+    items.forEach((item, index) => {
+      const row = 25 + index;
+      if (row <= 30) {
+        if (new RegExp(`<c\\b[^>]*\\br=['"]K${row}['"]`).test(xml)) {
+          xml = setXlsxInlineCell(xml, `K${row}`, `${index + 1}. ${item.label}`);
+        }
+        if (new RegExp(`<c\\b[^>]*\\br=['"]L${row}['"]`).test(xml)) {
+          xml = setXlsxInlineCell(xml, `L${row}`, "");
+        }
+        if (new RegExp(`<c\\b[^>]*\\br=['"]M${row}['"]`).test(xml)) {
+          xml = setXlsxInlineCell(xml, `M${row}`, formatNumberStr(item.amount));
+        }
+        if (new RegExp(`<c\\b[^>]*\\br=['"]N${row}['"]`).test(xml)) {
+          xml = setXlsxInlineCell(xml, `N${row}`, unit);
+        }
+      }
+    });
+
+    const totalRow = 25 + Math.min(items.length, 6);
+    const totalLabel = isThai ? "รวม/รุ่น" : "Total/Batch";
+    if (new RegExp(`<c\\b[^>]*\\br=['"]K${totalRow}['"]`).test(xml)) {
+      xml = setXlsxInlineCell(xml, `K${totalRow}`, totalLabel);
     }
-    return [
-      `1. Speaker Fee       ${sStr}`,
-      `2. Food & Break      ${fStr}`,
-      `-----------------------------------`,
-      `Total/Batch          ${totStr}`,
-    ].join("\n");
+    if (new RegExp(`<c\\b[^>]*\\br=['"]L${totalRow}['"]`).test(xml)) {
+      xml = setXlsxInlineCell(xml, `L${totalRow}`, "");
+    }
+    if (new RegExp(`<c\\b[^>]*\\br=['"]M${totalRow}['"]`).test(xml)) {
+      xml = setXlsxInlineCell(xml, `M${totalRow}`, formatNumberStr(total));
+    }
+    if (new RegExp(`<c\\b[^>]*\\br=['"]N${totalRow}['"]`).test(xml)) {
+      xml = setXlsxInlineCell(xml, `N${totalRow}`, unit);
+    }
+
+    for (let r = totalRow + 1; r <= 31; r++) {
+      if (new RegExp(`<c\\b[^>]*\\br=['"]K${r}['"]`).test(xml)) xml = setXlsxInlineCell(xml, `K${r}`, "");
+      if (new RegExp(`<c\\b[^>]*\\br=['"]L${r}['"]`).test(xml)) xml = setXlsxInlineCell(xml, `L${r}`, "");
+      if (new RegExp(`<c\\b[^>]*\\br=['"]M${r}['"]`).test(xml)) xml = setXlsxInlineCell(xml, `M${r}`, "");
+      if (new RegExp(`<c\\b[^>]*\\br=['"]N${r}['"]`).test(xml)) xml = setXlsxInlineCell(xml, `N${r}`, "");
+    }
+  } else if (total) {
+    const totalLabel = isThai ? "รวม/รุ่น" : "Total/Batch";
+    if (new RegExp(`<c\\b[^>]*\\br=['"]K25['"]`).test(xml)) xml = setXlsxInlineCell(xml, "K25", totalLabel);
+    if (new RegExp(`<c\\b[^>]*\\br=['"]L25['"]`).test(xml)) xml = setXlsxInlineCell(xml, "L25", "");
+    if (new RegExp(`<c\\b[^>]*\\br=['"]M25['"]`).test(xml)) xml = setXlsxInlineCell(xml, "M25", formatNumberStr(total));
+    if (new RegExp(`<c\\b[^>]*\\br=['"]N25['"]`).test(xml)) xml = setXlsxInlineCell(xml, "N25", unit);
+
+    for (let r = 26; r <= 31; r++) {
+      if (new RegExp(`<c\\b[^>]*\\br=['"]K${r}['"]`).test(xml)) xml = setXlsxInlineCell(xml, `K${r}`, "");
+      if (new RegExp(`<c\\b[^>]*\\br=['"]L${r}['"]`).test(xml)) xml = setXlsxInlineCell(xml, `L${r}`, "");
+      if (new RegExp(`<c\\b[^>]*\\br=['"]M${r}['"]`).test(xml)) xml = setXlsxInlineCell(xml, `M${r}`, "");
+      if (new RegExp(`<c\\b[^>]*\\br=['"]N${r}['"]`).test(xml)) xml = setXlsxInlineCell(xml, `N${r}`, "");
+    }
+  } else {
+    if (new RegExp(`<c\\b[^>]*\\br=['"]K25['"]`).test(xml)) xml = setXlsxInlineCell(xml, "K25", "-");
+    for (let r = 26; r <= 31; r++) {
+      if (new RegExp(`<c\\b[^>]*\\br=['"]K${r}['"]`).test(xml)) xml = setXlsxInlineCell(xml, `K${r}`, "");
+      if (new RegExp(`<c\\b[^>]*\\br=['"]L${r}['"]`).test(xml)) xml = setXlsxInlineCell(xml, `L${r}`, "");
+      if (new RegExp(`<c\\b[^>]*\\br=['"]M${r}['"]`).test(xml)) xml = setXlsxInlineCell(xml, `M${r}`, "");
+      if (new RegExp(`<c\\b[^>]*\\br=['"]N${r}['"]`).test(xml)) xml = setXlsxInlineCell(xml, `N${r}`, "");
+    }
   }
 
-  if (total) {
-    const totStr = `${formatNumberStr(total)} ${unit}`;
-    return isThai ? `รวม/รุ่น: ${totStr}` : `Total/Batch: ${totStr}`;
-  }
+  return xml;
+};
 
-  return "-";
+const setDrawingTextboxText = (
+  drawingXml: string,
+  fromRow: number,
+  toRow: number,
+  value: string,
+  fontSize: string = "1600",
+) => {
+  const lines = (value.trim() || "-").split(/\r?\n/);
+  const paragraphXml = lines
+    .map(
+      (line) =>
+        `<a:p><a:r><a:rPr lang="th-TH" sz="${fontSize}"><a:solidFill><a:sysClr val="windowText" lastClr="000000"/></a:solidFill><a:latin typeface="Cordia New"/><a:cs typeface="Cordia New"/></a:rPr><a:t>${escapeXlsxXml(line)}</a:t></a:r></a:p>`
+    )
+    .join("");
+
+  const anchorRegex = new RegExp(
+    `(<xdr:twoCellAnchor[^>]*>[\\s\\S]*?<xdr:from>[\\s\\S]*?<xdr:row>${fromRow}<\\/xdr:row>[\\s\\S]*?<xdr:to>[\\s\\S]*?<xdr:row>${toRow}<\\/xdr:row>[\\s\\S]*?<xdr:txBody>)[\\s\\S]*?(<\\/xdr:txBody>[\\s\\S]*?<\\/xdr:twoCellAnchor>)`
+  );
+
+  const match = drawingXml.match(anchorRegex);
+  if (!match) return drawingXml;
+
+  return drawingXml.replace(
+    match[0],
+    `${match[1]}<a:bodyPr vertOverflow="clip" horzOverflow="clip" wrap="square" rtlCol="0" anchor="t"/><a:lstStyle/>${paragraphXml}${match[2]}`
+  );
 };
 
 const fillOutlineSheet = (
@@ -192,125 +246,58 @@ const fillOutlineSheet = (
   oapPlan: WorkflowOapPlan | null | undefined,
   language: "th" | "en",
   scheduleData?: { date?: string; time?: string; location?: string } | null,
-  budgetData?: { speakerFee?: number | string; foodFee?: number | string; totalBudget?: number | string } | null,
+  budgetData?: BudgetData | null,
 ) => {
   const isThai = language === "th";
   const title = isThai
     ? course.courseNameTh || course.courseNameEn
     : course.courseNameEn || course.courseNameTh;
 
-  // Background: Only if course.remark exists and is non-empty!
-  const hasRemark = Boolean(course.remark && course.remark.trim() !== "" && course.remark.trim() !== "-");
-  const background = hasRemark ? course.remark.trim() : "";
+  let xml = templateXml;
 
-  // Determine row offset: if no background, shift up by 8 rows (B9‑B16)
-  const rowOffset = hasRemark ? 0 : -8;
-
-  let xml = setXlsxInlineCell(
-    templateXml,
-    "B7",
-    `${isThai ? "หลักสูตร" : "Course"} ${title} (${course.courseCode})`,
-  );
-
-  // Conditional background header and rows
-  if (hasRemark) {
-    xml = setXlsxInlineCell(xml, "B9", isThai ? "ที่มา" : "Background");
-    xml = setTextBlock(
+  // Course Title header at B7
+  if (new RegExp(`<c\\b[^>]*\\br=['"]B7['"]`).test(xml)) {
+    xml = setXlsxInlineCell(
       xml,
-      ["B10", "B11", "B12", "B13", "B14", "B15", "B16"],
-      background,
-      65,
+      "B7",
+      `${isThai ? "หลักสูตร" : "Course"} ${title} (${course.courseCode})`,
     );
   }
 
-  xml = setXlsxInlineCell(
-    xml,
-    "K10",
-    oapPlan
-      ? [oapPlan.trainer, oapPlan.provider].filter(Boolean).join(" / ") || "-"
-      : "-",
-  );
+  // Clear underlying cells that correspond to textboxes to avoid double text overlap
+  xml = setTextBlock(xml, ["B10", "B11", "B12", "B13", "B14", "B15", "B16"], "", 65);
+  xml = setTextBlock(xml, ["B19", "B20", "B21", "B22", "B23", "B24", "B25", "B26", "B27"], "", 65);
+  xml = setTextBlock(xml, ["B29", "B30", "B31", "B32", "B33", "B34", "B35", "B36", "B37", "B38"], "", 65);
+  xml = setTextBlock(xml, ["K14", "K15", "K16", "K17"], "", 50);
 
-  // Target group rows shift with offset
-  xml = setTextBlock(
-    xml,
-    [
-      `K${14 + rowOffset}`,
-      `K${15 + rowOffset}`,
-      `K${16 + rowOffset}`,
-      `K${17 + rowOffset}`,
-    ],
-    buildTargetGroup(course, standard, language),
-    50,
-    { overflowSeparator: "\n", styleOverride: "48" },
-  );
-  const lastTargetCell = xml.match(
-    new RegExp(`<c\\b[^>]*\\br=['\"]K${17 + rowOffset}['\"][^>]*>[\\s\\S]*?<t\\b[^>]*>([\\s\\S]*?)<\\/t>[\\s\\S]*?<\\/c>`),
-  )?.[1] ?? "";
-  const targetLineCount = Math.max(1, lastTargetCell.split("\n").length);
-  xml = setRowHeight(xml, 17 + rowOffset, Math.max(15, targetLineCount * 15));
-  xml = setTextBlock(
-    xml,
-    [
-      `B${19 + rowOffset}`,
-      `B${20 + rowOffset}`,
-      `B${21 + rowOffset}`,
-      `B${22 + rowOffset}`,
-      `B${23 + rowOffset}`,
-      `B${24 + rowOffset}`,
-      `B${25 + rowOffset}`,
-      `B${26 + rowOffset}`,
-    ],
-    course.objective,
-    65,
-  );
+  // Instructor cell K10 or C9
+  const instructor = oapPlan ? [oapPlan.trainer, oapPlan.provider].filter(Boolean).join(" / ") || "-" : "-";
+  if (new RegExp(`<c\\b[^>]*\\br=['"]K10['"]`).test(xml)) {
+    xml = setXlsxInlineCell(xml, "K10", instructor);
+  }
 
+  // Schedule cells
   const dateVal = scheduleData?.date || "";
   const timeVal = scheduleData?.time || (oapPlan?.hours ? `${oapPlan.hours} ${isThai ? "ชั่วโมง" : "hrs"}` : "");
   const locVal = scheduleData?.location || "";
 
-  xml = setXlsxInlineCell(xml, `K${19 + rowOffset}`, `${isThai ? "วันที่ :" : "Date:"} ${dateVal || "-"}`);
-  xml = setXlsxInlineCell(xml, `K${20 + rowOffset}`, `${isThai ? "เวลา :" : "Time:"} ${timeVal || "-"}`);
-  xml = setXlsxInlineCell(xml, `K${21 + rowOffset}`, `${isThai ? "สถานที่ :" : "Location:"} ${locVal || "-"}`);
+  if (new RegExp(`<c\\b[^>]*\\br=['"]K19['"]`).test(xml)) {
+    xml = setXlsxInlineCell(xml, "K19", `${isThai ? "วันที่ :" : "Date:"} ${dateVal || "-"}`);
+  }
+  if (new RegExp(`<c\\b[^>]*\\br=['"]K20['"]`).test(xml)) {
+    xml = setXlsxInlineCell(xml, "K20", `${isThai ? "เวลา :" : "Time:"} ${timeVal || "-"}`);
+  }
+  if (new RegExp(`<c\\b[^>]*\\br=['"]K21['"]`).test(xml)) {
+    xml = setXlsxInlineCell(xml, "K21", `${isThai ? "สถานที่ :" : "Location:"} ${locVal || "-"}`);
+  }
 
-  xml = setTextBlock(
-    xml,
-    [
-      `K${25 + rowOffset}`,
-      `K${26 + rowOffset}`,
-      `K${27 + rowOffset}`,
-    ],
-    buildBudgetContent(budgetData, oapPlan, language),
-    40,
-  );
-  xml = setTextBlock(
-    xml,
-    [
-      `B${29 + rowOffset}`,
-      `B${30 + rowOffset}`,
-      `B${31 + rowOffset}`,
-      `B${32 + rowOffset}`,
-      `B${33 + rowOffset}`,
-      `B${34 + rowOffset}`,
-      `B${35 + rowOffset}`,
-      `B${36 + rowOffset}`,
-      `B${37 + rowOffset}`,
-      `B${38 + rowOffset}`,
-    ],
-    course.learningContent,
-    65,
-  );
+  // Multi-column Budget in K, L, M, N
+  xml = fillBudgetMultiColumn(xml, budgetData, oapPlan, language);
+
+  // Evaluation in K33:K39
   return setTextBlock(
     xml,
-    [
-      `K${32 + rowOffset}`,
-      `K${33 + rowOffset}`,
-      `K${34 + rowOffset}`,
-      `K${35 + rowOffset}`,
-      `K${36 + rowOffset}`,
-      `K${37 + rowOffset}`,
-      `K${38 + rowOffset}`,
-    ],
+    ["K34", "K35", "K36", "K37", "K38", "K39"],
     buildEvaluation(course, language),
     32,
   );
@@ -322,7 +309,7 @@ export const buildCourseOutlineWorkbook = (
   standard?: WorkflowStandard | null,
   oapPlan?: WorkflowOapPlan | null,
   schedule?: { date?: string; time?: string; location?: string } | null,
-  budget?: { speakerFee?: number | string; foodFee?: number | string; totalBudget?: number | string } | null,
+  budget?: BudgetData | null,
 ) => {
   const entries = readXlsxEntries(template);
   for (const [sheetNumber, language] of [
@@ -347,6 +334,25 @@ export const buildCourseOutlineWorkbook = (
       ),
       "utf8",
     );
+
+    const drawingEntry = entries.find(
+      (entry) => entry.name === `xl/drawings/drawing${sheetNumber}.xml`,
+    );
+    if (drawingEntry) {
+      const hasRemark = Boolean(course.remark && course.remark.trim() !== "" && course.remark.trim() !== "-");
+      const background = hasRemark ? course.remark.trim() : "-";
+      const instructor = oapPlan ? [oapPlan.trainer, oapPlan.provider].filter(Boolean).join(" / ") || "-" : "-";
+      const targetGroup = buildTargetGroup(course, standard, language);
+
+      let drawingXml = drawingEntry.data.toString("utf8");
+      // Use sz="1600" (16pt Cordia New) for clear readable text in textboxes
+      drawingXml = setDrawingTextboxText(drawingXml, 9, 17, background, "1600");
+      drawingXml = setDrawingTextboxText(drawingXml, 18, 27, course.objective, "1600");
+      drawingXml = setDrawingTextboxText(drawingXml, 28, 38, course.learningContent, "1600");
+      drawingXml = setDrawingTextboxText(drawingXml, 13, 16, targetGroup, "1600");
+      drawingXml = setDrawingTextboxText(drawingXml, 9, 12, instructor, "1600");
+      drawingEntry.data = Buffer.from(drawingXml, "utf8");
+    }
   }
   return writeXlsxEntries(entries);
 };

@@ -210,6 +210,12 @@
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
+.formGrid textarea {
+  field-sizing: content;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
 .toolbar input:focus,
 .formGrid input:focus,
 .formGrid select:focus,

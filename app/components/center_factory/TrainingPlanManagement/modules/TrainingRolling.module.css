@@ -632,6 +632,21 @@
   }
 }
 
+.previewFieldColumn {
+  grid-template-columns: 1fr;
+  gap: 3px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 6px;
+  background: var(--ui-60-surface);
+  padding: 8px 10px;
+}
+
+.previewFieldColumn .previewFieldLabel {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .previewFieldLabel {
   color: var(--ui-30-muted);
   font-weight: 700;
@@ -641,6 +656,36 @@
   color: var(--ui-30-ink);
   font-weight: 600;
   word-break: break-word;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.previewFieldGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 20px;
+}
+
+@media (max-width: 560px) {
+  .previewFieldGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.previewFieldFull {
+  grid-column: 1 / -1;
+}
+
+.previewTotalRow {
+  border-top: 1px dashed var(--ui-30-border);
+  margin-top: 4px;
+  padding-top: 8px;
+}
+
+.previewTotalRow .previewFieldValue {
+  color: var(--ui-30-primary);
+  font-size: 0.92rem;
+  font-weight: 900;
 }
 
 .assessmentGrid {
@@ -932,85 +977,12 @@
   padding: 0;
 }
 
-.detailRow .detailPanel {
-  margin: 12px;
-}
-
-.detailGrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  padding: 16px;
-  background: var(--ui-60-surface-soft);
-  border-radius: 12px;
-}
-
-.detailGrid div {
-  border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-}
-
-/* Custom spans for Rolling details to balance grid density */
-.detailGrid div:nth-child(1) { grid-column: span 1; } /* Sequence */
-.detailGrid div:nth-child(2) { grid-column: span 1; } /* Sessions */
-.detailGrid div:nth-child(3) { grid-column: span 1; } /* Status */
-.detailGrid div:nth-child(4) { grid-column: span 1; } /* Job Status */
-.detailGrid div:nth-child(5) { grid-column: span 1; } /* Code */
-.detailGrid div:nth-child(6) { grid-column: span 1; } /* Type */
-.detailGrid div:nth-child(7) { grid-column: span 2; } /* Group */
-.detailGrid div:nth-child(8) { grid-column: span 4; } /* Background */
-.detailGrid div:nth-child(9) { grid-column: span 4; } /* Objective */
-.detailGrid div:nth-child(10) { grid-column: span 4; } /* Learning Content */
-.detailGrid div:nth-child(11) { grid-column: span 2; } /* Target Group */
-.detailGrid div:nth-child(12) { grid-column: span 2; } /* Methodology */
-.detailGrid div:nth-child(13) { grid-column: span 2; } /* Standard Companies */
-.detailGrid div:nth-child(14) { grid-column: span 2; } /* Org Scope */
-.detailGrid div:nth-child(15) { grid-column: span 2; } /* Standard Positions */
-.detailGrid div:nth-child(16) { grid-column: span 2; } /* Standard Levels */
-.detailGrid div:nth-child(17) { grid-column: span 1; } /* Pre test */
-.detailGrid div:nth-child(18) { grid-column: span 1; } /* Post test */
-.detailGrid div:nth-child(19) { grid-column: span 1; } /* Evaluation */
-.detailGrid div:nth-child(20) { grid-column: span 1; } /* Evaluation 30 Day */
-.detailGrid div:nth-child(21) { grid-column: span 1; } /* Life Cycle */
-.detailGrid div:nth-child(22) { grid-column: span 1; } /* Participants */
-.detailGrid div:nth-child(23) { grid-column: span 1; } /* Training Hours */
-.detailGrid div:nth-child(24) { grid-column: span 1; } /* Budget */
-.detailGrid div:nth-child(25) { grid-column: span 2; } /* Trainer */
-.detailGrid div:nth-child(26) { grid-column: span 2; } /* Provider */
-.detailGrid div:nth-child(27) { grid-column: span 2; } /* Scope (Related Companies) */
-.detailGrid div:nth-child(28) { grid-column: span 2; } /* Created By */
-.detailGrid div:nth-child(29) { grid-column: span 4; } /* Last Updated */
-
-.detailGrid div > span:first-child {
-  display: block;
-  color: var(--ui-30-muted);
-  font-size: 0.7rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 4px;
-}
-
-.detailGrid strong,
-.detailGrid p {
-  display: block;
-  margin: 0;
-  color: var(--ui-30-ink);
-  font-size: 0.85rem;
-  line-height: 1.45;
-  font-weight: 600;
+.rollingTable .detailRow td {
   text-align: left;
 }
 
-.detailGrid p {
-  font-weight: 500;
-  color: var(--ui-30-text);
+.detailRow .detailPanel {
+  margin: 12px;
 }
 
 .emptyState {
@@ -1045,8 +1017,7 @@
 
   .toolbar,
   .workspaceHeader,
-  .formGrid,
-  .detailGrid {
+  .formGrid {
     display: grid;
     grid-template-columns: 1fr;
   }
@@ -1057,11 +1028,7 @@
   }
 
   .formGrid label,
-  .fullField,
-  .detailGrid div:nth-child(7),
-  .detailGrid div:nth-child(8),
-  .detailGrid div:nth-child(9),
-  .detailGrid div:nth-child(10) {
+  .fullField {
     grid-column: auto;
   }
 }

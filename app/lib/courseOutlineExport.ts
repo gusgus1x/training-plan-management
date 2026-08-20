@@ -5,8 +5,12 @@ import type {
 } from "./trainingWorkflow";
 
 export type CourseOutlineBudget = {
-  speakerFee?: number | string;
-  foodFee?: number | string;
+  budgetInstructor?: number | string;
+  budgetTraveling?: number | string;
+  budgetSeminarRoom?: number | string;
+  budgetAccommodation?: number | string;
+  budgetMaterial?: number | string;
+  budgetFoodBeverage?: number | string;
   totalBudget?: number | string;
 };
 
