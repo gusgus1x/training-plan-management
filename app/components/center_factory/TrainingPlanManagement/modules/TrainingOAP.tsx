@@ -856,11 +856,11 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                     </div>
                     <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>Pre-Test</span>
-                      <span className={styles.previewFieldValue}>{selectedCourse.preTest || "None"}</span>
+                      <span className={styles.previewFieldValue}>{selectedCourse.preTest || selectedCourse.preTestLink || "None"}</span>
                     </div>
                     <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>Post-Test</span>
-                      <span className={styles.previewFieldValue}>{selectedCourse.postTest || "None"}</span>
+                      <span className={styles.previewFieldValue}>{selectedCourse.postTest || selectedCourse.postTestLink || "None"}</span>
                     </div>
                   </div>
 
@@ -870,11 +870,11 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                     </div>
                     <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>Evaluation</span>
-                      <span className={styles.previewFieldValue}>{selectedCourse.evaluation || "Standard"}</span>
+                      <span className={styles.previewFieldValue}>{selectedCourse.evaluation || selectedCourse.evaluationLink || "None"}</span>
                     </div>
                     <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>30-Day Follow-Up</span>
-                      <span className={styles.previewFieldValue}>{selectedCourse.evaluationAfter30Day || "Standard"}</span>
+                      <span className={styles.previewFieldValue}>{selectedCourse.evaluationAfter30Day || selectedCourse.evaluationAfter30DayLink || "None"}</span>
                     </div>
                   </div>
                 </div>
@@ -1086,10 +1086,10 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
                                     <div className={styles.previewCard}>
                                       <div className={styles.previewCardHeader}><span>📝 แบบทดสอบ / แบบประเมิน</span></div>
-                                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>แบบทดสอบก่อนเรียน</span><span className={styles.previewFieldValue}>{plan.course.preTest || "-"}</span></div>
-                                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>แบบทดสอบหลังเรียน</span><span className={styles.previewFieldValue}>{plan.course.postTest || "-"}</span></div>
-                                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>แบบประเมิน</span><span className={styles.previewFieldValue}>{plan.course.evaluation || "-"}</span></div>
-                                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>แบบประเมินหลัง 30 วัน</span><span className={styles.previewFieldValue}>{plan.course.evaluationAfter30Day || "-"}</span></div>
+                                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>แบบทดสอบก่อนเรียน</span><span className={styles.previewFieldValue}>{plan.course.preTest || plan.course.preTestLink || "-"}</span></div>
+                                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>แบบทดสอบหลังเรียน</span><span className={styles.previewFieldValue}>{plan.course.postTest || plan.course.postTestLink || "-"}</span></div>
+                                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>แบบประเมิน</span><span className={styles.previewFieldValue}>{plan.course.evaluation || plan.course.evaluationLink || "-"}</span></div>
+                                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>แบบประเมินหลัง 30 วัน</span><span className={styles.previewFieldValue}>{plan.course.evaluationAfter30Day || plan.course.evaluationAfter30DayLink || "-"}</span></div>
                                     </div>
 
                                     <div className={styles.previewCard}>

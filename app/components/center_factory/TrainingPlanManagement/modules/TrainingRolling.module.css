@@ -594,8 +594,10 @@
   border-radius: 8px;
   padding: 12px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
   align-content: start;
+  min-width: 0;
 }
 
 .previewCardFull {
@@ -634,6 +636,7 @@
 
 .previewFieldColumn {
   grid-template-columns: 1fr;
+  min-width: 0;
   gap: 3px;
   border: 1px solid var(--ui-30-border);
   border-radius: 6px;
@@ -655,6 +658,7 @@
 .previewFieldValue {
   color: var(--ui-30-ink);
   font-weight: 600;
+  white-space: normal;
   word-break: break-word;
   overflow-wrap: anywhere;
   min-width: 0;
@@ -975,6 +979,11 @@
 .detailRow td {
   background: var(--ui-60-surface-soft);
   padding: 0;
+  /* table-layout: auto lets a colSpan cell's preferred width be driven by unbreakable
+     content (e.g. long URLs) deep inside, bypassing every min-width:0 fix further down —
+     this forces the cell to respect the table's own column width instead. */
+  width: 100%;
+  max-width: 0;
 }
 
 .rollingTable .detailRow td {
