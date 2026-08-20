@@ -46,6 +46,8 @@ next-env.d.ts
 
 # ai skill
 
+!README.md
+*.md
 AGENTS.md
 PROJECT_CONTEXT.md
 CODEX_START_AUDIT.md
@@ -56,6 +58,7 @@ README_PACKAGE.md
 progress.md
 findings.md
 task_plan.md
+training-db-schema-audit
 
 # info files
 TrainingPlanManagement — Project & Database Handover Context.md
