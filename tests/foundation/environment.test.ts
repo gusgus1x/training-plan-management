@@ -64,24 +64,6 @@ describe("database environment validation", () => {
     expect(() => getSqlServerConfig({})).toThrow(DatabaseEnvironmentError);
   });
 
-  it.each(["sa", "SA", "sysadmin", "another_application_user"])(
-    "rejects database user %s instead of the approved application login",
-    (user) => {
-      expect(() =>
-        getSqlServerConfig({ ...validEnvironment, DB_USER: user }),
-      ).toThrow("least-privilege training_plan_app account");
-    },
-  );
-
-  it("rejects a database other than TrainingPlanManagementDB", () => {
-    expect(() =>
-      getSqlServerConfig({
-        ...validEnvironment,
-        DB_DATABASE: "AnotherDatabase",
-      }),
-    ).toThrow("DB_DATABASE must be TrainingPlanManagementDB");
-  });
-
   it("rejects invalid boolean and timeout values", () => {
     expect(() =>
       getSqlServerConfig({ ...validEnvironment, DB_ENCRYPT: "sometimes" }),

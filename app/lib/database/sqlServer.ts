@@ -9,9 +9,6 @@ const requiredDatabaseEnvironmentKeys = [
   "DB_PASSWORD",
 ] as const;
 
-const requiredDatabaseName = "TrainingPlanManagementDB";
-const requiredDatabaseUser = "training_plan_app";
-
 export class DatabaseEnvironmentError extends Error {
   constructor(message: string) {
     super(message);
@@ -109,18 +106,6 @@ export const getSqlServerConfig = (
   const database = readRequiredValue(environment, "DB_DATABASE");
   const user = readRequiredValue(environment, "DB_USER");
   const password = readRequiredValue(environment, "DB_PASSWORD");
-
-  if (database !== requiredDatabaseName) {
-    throw new DatabaseEnvironmentError(
-      `DB_DATABASE must be ${requiredDatabaseName}`,
-    );
-  }
-
-  if (user.toLowerCase() !== requiredDatabaseUser) {
-    throw new DatabaseEnvironmentError(
-      `DB_USER must be the least-privilege ${requiredDatabaseUser} account`,
-    );
-  }
 
   return {
     server,

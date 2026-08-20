@@ -5,7 +5,7 @@
 ## ติดตั้ง
 
 ```bash
-npm install
+npm install   
 ```
 
 ## ตั้งค่า Environment
@@ -14,9 +14,9 @@ npm install
 
 ```env
 DB_SERVER=
-DB_INSTANCE=
-DB_DATABASE=TrainingPlanManagementDB
-DB_USER=training_plan_app
+
+DB_DATABASE=
+DB_USER=
 DB_PASSWORD=
 
 DB_ENCRYPT=false
@@ -33,7 +33,7 @@ NATIONAL_ID_ACTIVE_KEY_VERSION=
 NATIONAL_ID_ENCRYPTION_KEY_V1=
 ```
 
-`DB_DATABASE`/`DB_USER` ต้องเป็นค่าตามตัวอย่างเท่านั้น (ถูกบังคับตรวจสอบในโค้ด)
+
 
 ## รันระบบ
 

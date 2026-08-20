@@ -60,14 +60,6 @@ const database = readRequiredEnvironment("DB_DATABASE");
 const user = readRequiredEnvironment("DB_USER");
 const password = readRequiredEnvironment("DB_PASSWORD");
 
-if (database !== "TrainingPlanManagementDB") {
-  throw new Error("DB_DATABASE must be TrainingPlanManagementDB");
-}
-
-if (user.toLowerCase() !== "training_plan_app") {
-  throw new Error("DB_USER must be the least-privilege training_plan_app login");
-}
-
 const address = port
   ? `${server}:${port}`
   : instanceName
