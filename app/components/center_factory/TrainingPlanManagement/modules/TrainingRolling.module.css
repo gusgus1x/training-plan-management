@@ -933,15 +933,16 @@
 
 .actionButtons .detailButton,
 .actionButtons .secondaryButton {
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid var(--ui-30-border, #cbd5e1) !important;
+  background: var(--ui-60-surface-soft, #f1f5f9) !important;
   color: var(--ui-30-ink) !important;
 }
 
 .actionButtons .detailButton:hover,
 .actionButtons .secondaryButton:hover {
-  border-color: rgba(255, 255, 255, 0.2) !important;
-  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: var(--ui-30-primary, #007a3d) !important;
+  background: var(--ui-60-surface, #ffffff) !important;
+  color: var(--ui-30-primary, #007a3d) !important;
 }
 
 .actionButtons .dangerButton {

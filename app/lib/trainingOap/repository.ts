@@ -56,7 +56,7 @@ const mapCourseSnapshot = (row: CourseWithRelations): WorkflowCourse => {
     postTestLink: row.post_test_link || undefined,
     evaluationLink: row.evaluation_link || undefined,
     evaluationAfter30DayLink: row.evaluation_after_30day_link || undefined,
-    lifeCycleMonth: row.validity_months?.toString() || "12",
+    lifeCycleMonth: (row.validity_months !== null && row.validity_months !== undefined && row.validity_months > 0) ? row.validity_months.toString() : "0",
     remark: row.description || "",
     status: row.status === "ACTIVE" ? "Active" : row.status === "DRAFT" ? "Draft" : "Inactive",
     courseType: row.course_type.course_type_name,
@@ -167,14 +167,14 @@ export const createOapPlanRepository = (client?: DatabaseClient) => {
           include: courseInclude,
         });
 
-// Ensure the selected course belongs to the same company (or is center-owned)
-if (companyId && course.company_id !== null && course.company_id.toString() !== companyId) {
-  throw new ApiError({
-    code: "FORBIDDEN",
-    message: "Company users can only select their own or Center courses for OAP plans.",
-    status: 403,
-  });
-}
+        // Ensure the selected course belongs to the same factory company
+        if (companyId && course.company_id?.toString() !== companyId) {
+          throw new ApiError({
+            code: "FORBIDDEN",
+            message: "Factory users can only select courses created for their own company.",
+            status: 403,
+          });
+        }
 const baseCode = `OAP-${input.planYear}-${course.course_code}`;
 let oapCode = baseCode;
         const existingOaps = await db().training_plan_oap.findMany({

@@ -21,6 +21,7 @@ import { listOapPlans, createOapPlan, updateOapPlan, deleteOapPlan } from "../..
 import type { OapPlanRecord } from "../../../../lib/trainingOap/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import styles from "./TrainingOAP.module.css";
 
 export const trainingOapModule = {
@@ -90,7 +91,7 @@ const buildRequestCourse = (request: EmployeeTrainingNeedRequest): WorkflowCours
   postTest: "",
   evaluation: "Course Evaluation",
   evaluationAfter30Day: "Follow-up evaluation",
-  lifeCycleMonth: "12",
+  lifeCycleMonth: "0",
   courseType: request.sourceCourseOwner === "Factory" ? "Factory Specific" : "Center Standard",
   courseGroup: request.company,
   remark: `Approved from request #${request.requestNo} by ${request.employeeName}`,
@@ -102,7 +103,21 @@ const buildRequestCourse = (request: EmployeeTrainingNeedRequest): WorkflowCours
 });
 
 export default function TrainingOAP({ username = "Current user" }: TrainingOAPProps) {
+  const { language } = useUiLanguage();
   const user = useAuthenticatedUser();
+
+  const getStatusLabel = (status: string) => {
+    if (language === "en") {
+      if (status === "Planned") return "Planned";
+      if (status === "Planning") return "Planning";
+      if (status === "Cancel") return "Cancelled";
+      return status;
+    }
+    if (status === "Planned") return "วางแผนแล้ว";
+    if (status === "Planning") return "รอวางแผน";
+    if (status === "Cancel") return "ยกเลิก";
+    return status;
+  };
   const confirm = useConfirm();
   const [courses, setCourses] = useState<WorkflowCourse[]>([]);
   const [standards, setStandards] = useState<WorkflowStandard[]>([]);
@@ -201,18 +216,26 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     () => new Set(standards.map((standard) => standard.courseId)),
     [standards],
   );
+  const isFactoryUser = user?.roleCode === "HRD_FACTORY";
   const courseOptions = useMemo(
     () => {
       const standardizedCourses = courses.filter(
-        (course) =>
-          standardCourseIds.has(course.id) &&
-          isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode),
+        (course) => {
+          if (!standardCourseIds.has(course.id)) return false;
+          if (isFactoryUser) {
+            return (
+              course.owner === "FACTORY" &&
+              course.ownerCompany === userCompanyCode
+            );
+          }
+          return isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode);
+        },
       );
       return approvedRequest
         ? [buildRequestCourse(approvedRequest), ...standardizedCourses]
         : standardizedCourses;
     },
-    [approvedRequest, courses, standardCourseIds, user?.roleCode, userCompanyCode],
+    [approvedRequest, courses, standardCourseIds, isFactoryUser, user?.roleCode, userCompanyCode],
   );
   const selectedCourse =
     courseOptions.find((course) => course.courseCode === form.courseCode) ?? null;
@@ -758,12 +781,12 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                       </span>
                     ) : null}
                     {selectedCourse.courseGroup ? (
-                      <span className={styles.previewBadge}>
+                      <span className={styles.previewBadge} translate="no">
                         📂 {selectedCourse.courseGroup}
                       </span>
                     ) : null}
                     <span className={styles.previewBadge}>
-                      ⏱️ {selectedCourse.lifeCycleMonth || "12"} Months
+                      ⏱️ {!selectedCourse.lifeCycleMonth || selectedCourse.lifeCycleMonth === "0" || Number(selectedCourse.lifeCycleMonth) === 0 ? "ไม่มีการหมดอายุ" : `${selectedCourse.lifeCycleMonth} Months`}
                     </span>
                     <span className={styles.previewBadge}>
                       🏢 {selectedCourse.ownerCompany || selectedCourse.owner}
@@ -952,11 +975,11 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                   : ""}
                               </span>
                             </td>
-                            <td>{plan.course.courseGroup || "-"}</td>
+                            <td translate="no">{plan.course.courseGroup || "-"}</td>
                             <td>
                               <span className={`${styles.statusPill} ${styles[`status${plan.status}`]}`}>
                                 <span className={styles.statusDot} />
-                                {plan.status === "Planned" ? "วางแผนแล้ว" : plan.status === "Planning" ? "รอวางแผน" : plan.status === "Cancel" ? "ยกเลิก" : plan.status}
+                                {getStatusLabel(plan.status)}
                               </span>
                             </td>
                             <td className={styles.actionCell} onClick={(e) => e.stopPropagation()}>
@@ -1015,7 +1038,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                     <div className={`${styles.previewCard} ${styles.previewCardFull}`}>
                                       <div className={styles.previewCardHeader}><span>📘 หลักสูตร (Course)</span></div>
                                       <div className={styles.previewFieldGrid}>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>กลุ่มหลักสูตร</span><span className={styles.previewFieldValue}>{plan.course.courseGroup || "-"}</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>กลุ่มหลักสูตร</span><span className={styles.previewFieldValue} translate="no">{plan.course.courseGroup || "-"}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>รหัสหลักสูตร</span><span className={styles.previewFieldValue}>{plan.course.courseCode}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ชื่อหลักสูตร (ไทย)</span><span className={styles.previewFieldValue}>{plan.course.courseNameTh}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ชื่อหลักสูตร (อังกฤษ)</span><span className={styles.previewFieldValue}>{plan.course.courseNameEn}</span></div>
@@ -1024,7 +1047,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewFieldFull}`}><span className={styles.previewFieldLabel}>หัวข้อการเรียนรู้</span><span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>{plan.course.learningContent}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewFieldFull}`}><span className={styles.previewFieldLabel}>วิธีการอบรม</span><span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>{plan.course.methodology}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ประเภทหลักสูตร</span><span className={styles.previewFieldValue}>{plan.course.courseType}</span></div>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>อายุหลักสูตร (เดือน)</span><span className={styles.previewFieldValue}>{plan.course.lifeCycleMonth}</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>อายุหลักสูตร (เดือน)</span><span className={styles.previewFieldValue}>{!plan.course.lifeCycleMonth || plan.course.lifeCycleMonth === "0" || Number(plan.course.lifeCycleMonth) === 0 ? "ไม่มีการหมดอายุ" : plan.course.lifeCycleMonth}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ผู้เข้าอบรม / รุ่น</span><span className={styles.previewFieldValue}>{plan.participants}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ชั่วโมงอบรม</span><span className={styles.previewFieldValue}>{plan.hours}</span></div>
                                       </div>

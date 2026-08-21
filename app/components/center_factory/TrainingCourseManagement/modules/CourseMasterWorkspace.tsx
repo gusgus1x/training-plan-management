@@ -410,7 +410,7 @@ function CourseMaster() {
         evaluation: "After Training Evaluation",
         evaluationAfter30DayId: "",
         evaluationAfter30Day: "30-Day Evaluation",
-        lifeCycleMonth: item.lifeCycleMonth || "12",
+        lifeCycleMonth: item.lifeCycleMonth !== undefined && item.lifeCycleMonth !== null && item.lifeCycleMonth !== "" ? item.lifeCycleMonth : "0",
         status: "Active",
         remark: "",
         updatedAt: new Date().toISOString().slice(0, 10),

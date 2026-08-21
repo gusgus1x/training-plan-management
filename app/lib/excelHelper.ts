@@ -168,7 +168,7 @@ export const parseCsvText = (text: string): CourseMasterImportRow[] => {
       learningContent: contentIdx >= 0 ? cells[contentIdx] || "" : "-",
       targetGroup: targetIdx >= 0 ? cells[targetIdx] || "" : "-",
       methodology: methodIdx >= 0 ? cells[methodIdx] || "" : "Lecture / Workshop",
-      lifeCycleMonth: lifeIdx >= 0 ? cells[lifeIdx] || "" : "12",
+      lifeCycleMonth: lifeIdx >= 0 ? cells[lifeIdx] || "0" : "0",
       preTest: preIdx >= 0 ? cells[preIdx] || "" : "-",
       postTest: postIdx >= 0 ? cells[postIdx] || "" : "-",
       functionCode: fnCodeIdx >= 0 ? cells[fnCodeIdx] || "" : "",

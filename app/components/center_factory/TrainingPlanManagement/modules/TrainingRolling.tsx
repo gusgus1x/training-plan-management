@@ -21,6 +21,7 @@ import {
 import type { RollingPlanRecord } from "../../../../lib/trainingRolling/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import styles from "./TrainingRolling.module.css";
 
 export const trainingRollingModule = {
@@ -274,6 +275,7 @@ export const canCancelSession = (
 };
 
 export default function TrainingRolling() {
+  const { language } = useUiLanguage();
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
   const userCompanyCode = profileValue(user?.companyCode);
@@ -322,10 +324,16 @@ export default function TrainingRolling() {
   const oapSources = useMemo(
     () =>
       oapPlans.filter(
-        (plan) =>
-          plan.status !== "Cancel" &&
-          isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode) &&
-          (!isFactoryUser || plan.owner === "CENTER" || plan.ownerCompany === "HRD Center" || plan.ownerCompany === "CENTER" || !plan.ownerCompany || plan.owner === "FACTORY" || plan.ownerCompany === userCompanyCode),
+        (plan) => {
+          if (plan.status === "Cancel") return false;
+          if (isFactoryUser) {
+            return (
+              plan.owner === "FACTORY" &&
+              plan.ownerCompany === userCompanyCode
+            );
+          }
+          return isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode);
+        },
       ),
     [oapPlans, user?.roleCode, userCompanyCode, isFactoryUser],
   );
@@ -385,6 +393,21 @@ export default function TrainingRolling() {
         }),
     [companyFilter, scopedRollingPlans, search, selectedMonth, selectedYear, statusFilter],
   );
+
+  const factoryCourseTypeAllowlist = ["IN-HOUSE", "PUBLIC", "OJT"];
+
+  const getStatusLabel = (status: string) => {
+    if (language === "en") {
+      if (status === "Planned") return "Planned";
+      if (status === "Planning") return "Planning";
+      if (status === "Cancel") return "Cancelled";
+      return status;
+    }
+    if (status === "Planned") return "วางแผนแล้ว";
+    if (status === "Planning") return "รอวางแผน";
+    if (status === "Cancel") return "ยกเลิก";
+    return status;
+  };
 
   const allCompanyCodes = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
 
@@ -998,7 +1021,7 @@ export default function TrainingRolling() {
                   {oapSources.map((source) => {
                     const tag = source.course.courseGroup || source.course.courseType;
                     return (
-                      <option key={source.id} value={source.id}>
+                      <option key={source.id} value={source.id} translate="no">
                         [{source.course.courseCode}] {getCourseDisplayName(source.course)}
                         {tag ? ` • ${tag}` : ""} (Plan: {source.participants} pax, {source.hours} hrs)
                       </option>
@@ -1147,12 +1170,12 @@ export default function TrainingRolling() {
                       </span>
                     ) : null}
                     {selectedOap.course.courseGroup ? (
-                      <span className={styles.previewBadge}>
+                      <span className={styles.previewBadge} translate="no">
                         📂 {selectedOap.course.courseGroup}
                       </span>
                     ) : null}
                     <span className={styles.previewBadge}>
-                      ⏱️ {selectedOap.course.lifeCycleMonth || "12"} Months
+                      ⏱️ {!selectedOap.course.lifeCycleMonth || selectedOap.course.lifeCycleMonth === "0" || Number(selectedOap.course.lifeCycleMonth) === 0 ? "ไม่มีการหมดอายุ" : `${selectedOap.course.lifeCycleMonth} Months`}
                     </span>
                     <span className={styles.previewBadge}>
                       🏢 {selectedOap.ownerCompany || selectedOap.owner}
@@ -1394,7 +1417,7 @@ export default function TrainingRolling() {
                       <strong>
                         <span className={`${styles.statusPill} ${styles.statusPlanning}`}>
                           <span className={styles.statusDot} />
-                          Waiting to plan
+                          {getStatusLabel("Planning")}
                         </span>
                       </strong>
                     </div>
@@ -1508,11 +1531,11 @@ export default function TrainingRolling() {
                                 </div>
                               )}
                             </td>
-                            <td>{plan.course.courseGroup || "-"}</td>
+                            <td translate="no">{plan.course.courseGroup || "-"}</td>
                             <td>
                               <span className={`${styles.statusPill} ${styles[`status${groupStatus}`]}`}>
                                 <span className={styles.statusDot} />
-                                {groupStatus === "Planned" ? "Planned" : groupStatus === "Planning" ? "Waiting to plan" : "Cancelled"}
+                                {getStatusLabel(groupStatus)}
                               </span>
                             </td>
                             <td><span className={`${styles.jobPill} ${styles[`job${groupJobStatus}`]}`}>{groupJobStatus}</span></td>
@@ -1592,14 +1615,14 @@ export default function TrainingRolling() {
                                     <div className={`${styles.previewCard} ${styles.previewCardFull}`}>
                                       <div className={styles.previewCardHeader}><span>📘 หลักสูตร (Course)</span></div>
                                       <div className={styles.previewFieldGrid}>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>กลุ่มหลักสูตร</span><span className={styles.previewFieldValue}>{plan.course.courseGroup || "-"}</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>กลุ่มหลักสูตร</span><span className={styles.previewFieldValue} translate="no">{plan.course.courseGroup || "-"}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>รหัสหลักสูตร</span><span className={styles.previewFieldValue}>{plan.course.code}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewFieldFull}`}><span className={styles.previewFieldLabel}>ที่มา (Background)</span><span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>{plan.course.remark || "-"}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewFieldFull}`}><span className={styles.previewFieldLabel}>วัตถุประสงค์การเรียนรู้</span><span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>{plan.course.objective}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewFieldFull}`}><span className={styles.previewFieldLabel}>หัวข้อการเรียนรู้</span><span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>{plan.course.learningContent}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewFieldFull}`}><span className={styles.previewFieldLabel}>วิธีการอบรม</span><span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>{plan.course.methodology}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ประเภทหลักสูตร</span><span className={styles.previewFieldValue}>{plan.course.courseType}</span></div>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>อายุหลักสูตร (เดือน)</span><span className={styles.previewFieldValue}>{plan.course.lifeCycleMonth}</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>อายุหลักสูตร (เดือน)</span><span className={styles.previewFieldValue}>{!plan.course.lifeCycleMonth || plan.course.lifeCycleMonth === "0" || Number(plan.course.lifeCycleMonth) === 0 ? "ไม่มีการหมดอายุ" : plan.course.lifeCycleMonth}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ผู้เข้าอบรม / รุ่น</span><span className={styles.previewFieldValue}>{plan.participants} ท่าน</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ชั่วโมงอบรม</span><span className={styles.previewFieldValue}>{plan.hours} ชม.</span></div>
                                       </div>
@@ -1736,7 +1759,7 @@ export default function TrainingRolling() {
                                           <strong>
                                             <span className={`${styles.statusPill} ${styles[`status${session.status}`]}`}>
                                               <span className={styles.statusDot} />
-                                              {session.status === "Planned" ? "Planned" : session.status === "Planning" ? "Waiting to plan" : "Cancelled"}
+                                              {getStatusLabel(session.status)}
                                             </span>
                                           </strong>
                                         </div>

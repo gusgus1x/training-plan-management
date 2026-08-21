@@ -1343,7 +1343,6 @@ const thaiUiDictionary: Record<string, string> = {
   "Cancel Registration": "ยกเลิกการลงทะเบียน",
 
   // --- Training Rolling: cancel published session + publish picker (added 2026-08-21) ---
-  "Waiting to plan": "รอวางแผน",
   Cancelled: "ยกเลิกแล้ว",
   "Cancel session": "ยกเลิกรอบอบรม",
   "Cancel this published session? Employees will no longer see it or be able to enrol.":
