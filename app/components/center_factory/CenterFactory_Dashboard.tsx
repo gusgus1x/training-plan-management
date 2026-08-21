@@ -136,10 +136,18 @@ export default function Dashboard({
 
   const fullEmployeeProfileItems = useMemo(() => {
     const userAny = authenticatedUser as any;
+    const isFactory = authenticatedUser?.roleCode === "HRD_FACTORY";
+    const isCenter = authenticatedUser?.roleCode === "HRD_CENTER";
+    const defaultHrdName = isFactory
+      ? `HRD ${authenticatedUser?.companyCode ?? "Factory"}`
+      : isCenter
+        ? "HRD Center"
+        : username;
+
     return [
       {
         label: isThai ? "ชื่อ-นามสกุล / Full Name" : "Full Name / ชื่อ-นามสกุล",
-        value: profileValue(authenticatedUser?.displayName ?? username),
+        value: profileValue(authenticatedUser?.displayName ?? defaultHrdName),
       },
       {
         label: isThai ? "รหัสพนักงาน / Employee Code" : "Employee Code",
@@ -155,16 +163,16 @@ export default function Dashboard({
       },
       {
         label: isThai ? "วันเริ่มงาน / Start Date" : "Start Date / วันเริ่มงาน",
-        value: profileValue(userAny?.startDate ?? "01 ม.ค. 2024"),
+        value: profileValue(userAny?.startDate),
       },
       {
         label: isThai ? "วันเกิด / Date of Birth" : "Date of Birth / วันเกิด",
-        value: profileValue(userAny?.birthDate ?? "15 ก.ย. 1992"),
+        value: profileValue(userAny?.birthDate),
       },
       {
         label: isThai ? "บริษัท / Company" : "Company / บริษัท",
         value:
-          authenticatedUser?.roleCode === "HRD_CENTER"
+          isCenter
             ? isThai ? "ทุกบริษัท (All Companies)" : "All Companies (ทุกบริษัท)"
             : profileValue(authenticatedUser?.companyName ?? authenticatedUser?.companyCode),
       },

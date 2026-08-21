@@ -702,33 +702,16 @@ export default function TrainingAcceptSurvey() {
     });
   }, [courseSurveys, roleMode, selectedCourseOwner, userCompanyCode]);
 
-  useEffect(() => {
-    if (availableCourseGroups.length > 0) {
-      const isGroupValid = availableCourseGroups.some((g) => g.id === selectedCourseGroupId);
-      if (!selectedCourseGroupId || !isGroupValid) {
-        const firstGroup = availableCourseGroups[0];
-        setSelectedCourseGroupId(firstGroup.id);
-        setSelectedCourseId(firstGroup.sessions[0]?.id ?? "");
-      }
-    } else {
-      if (selectedCourseGroupId !== "" || selectedCourseId !== "") {
-        setSelectedCourseGroupId("");
-        setSelectedCourseId("");
-      }
-    }
-  }, [availableCourseGroups, selectedCourseGroupId]);
-
   const selectedCourseGroup =
     availableCourseGroups.find(
       (group) => group.id === selectedCourseGroupId,
-    ) ??
-    availableCourseGroups[0] ??
-    null;
+    ) ?? null;
   const availableSessions = selectedCourseGroup?.sessions ?? [];
-  const selectedCourse =
-    availableSessions.find((course) => course.id === selectedCourseId) ??
-    availableSessions[0] ??
-    null;
+  const selectedCourse = selectedCourseGroup
+    ? (availableSessions.find((course) => course.id === selectedCourseId) ??
+       availableSessions[0] ??
+       null)
+    : null;
 
   useEffect(() => {
     if (!selectedCourse) {
