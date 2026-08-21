@@ -1851,3 +1851,50 @@
   font-weight: 700;
 }
 
+
+.publishBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.publishModal {
+  width: min(920px, 100%);
+  max-height: 86vh;
+  overflow-y: auto;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 12px;
+  background: var(--ui-60-surface);
+  padding: 16px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.25);
+}
+
+.publishSelectAll,
+.publishRowCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.publishSelectAll span,
+.publishRowCheck span {
+  display: inline;
+  color: var(--ui-30-ink);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: none;
+}
+
+.publishSelectAll input,
+.publishRowCheck input {
+  width: 15px;
+  height: 15px;
+  accent-color: #10b981;
+  cursor: pointer;
+}

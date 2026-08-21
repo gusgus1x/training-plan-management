@@ -29,7 +29,7 @@ export const trainingRollingModule = {
   description: "Convert annual OAP items into monthly rolling training schedules.",
 } as const;
 
-export type RollingStatus = "Planning" | "Planned";
+export type RollingStatus = "Planning" | "Planned" | "Cancel";
 
 // Matches the bespoke course-detail shape every other rolling-plan consumer
 // (TrainingAcceptSurvey, TrainingActual, TrainingRecord, ScheduleCalendar,
@@ -195,7 +195,7 @@ const mapRecordToRollingPlan = (record: RollingPlanRecord): RollingPlan => {
     endTime: record.endTime,
     company: isCentral ? "All Companies" : record.ownerCompany,
     relatedCompanies: isCentral ? [...rollingCompanyOptions] : [record.ownerCompany],
-    status: record.status === "Cancel" ? "Planning" : record.status,
+    status: record.status,
     dbStatus: record.dbStatus,
     updatedAt: record.updatedAt,
   };
@@ -214,6 +214,7 @@ export const loadWorkflowRollingPlans = async (): Promise<RollingPlan[]> => {
 type RollingSessionForm = {
   id: string;
   dbId: string | null;
+  status: RollingStatus;
   batchName: string;
   location: string;
   trainingDate: string;
@@ -230,6 +231,7 @@ type RollingForm = {
 const createEmptySession = (index = 0): RollingSessionForm => ({
   id: `session-${Date.now()}-${index}`,
   dbId: null,
+  status: "Planning",
   batchName: "",
   location: "",
   trainingDate: "",
@@ -244,7 +246,9 @@ const createEmptyForm = (): RollingForm => ({
 });
 
 export const getJobStatus = (item: { status?: RollingStatus; trainingDate: string; dbStatus?: string }) => {
-  if (item.status === "Planning") {
+  // Cancelled sessions keep reporting "Planning" here so every downstream job-status
+  // consumer behaves exactly as it did when Cancel was squashed into Planning on load.
+  if (item.status === "Planning" || item.status === "Cancel") {
     return "Planning";
   }
   if (item.dbStatus === "COMPLETED") {
@@ -254,6 +258,19 @@ export const getJobStatus = (item: { status?: RollingStatus; trainingDate: strin
   today.setHours(0, 0, 0, 0);
   const target = new Date(`${item.trainingDate}T00:00:00`);
   return target < today ? "Completed" : "Rolling";
+};
+
+// A published session can be pulled back until its training day arrives; after that the
+// session has already run, so cancelling it would rewrite history instead of a plan.
+// Only published sessions cancel — drafts are deleted outright.
+export const canCancelSession = (
+  plan: { status?: RollingStatus; trainingDate: string },
+  now: Date = new Date(),
+) => {
+  if (plan.status !== "Planned") return false;
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  return new Date(`${plan.trainingDate}T00:00:00`) >= today;
 };
 
 export default function TrainingRolling() {
@@ -275,6 +292,8 @@ export default function TrainingRolling() {
   const [exportingPlanId, setExportingPlanId] = useState("");
   const [exportMessage, setExportMessage] = useState("");
   const [deletedSessionDbIds, setDeletedSessionDbIds] = useState<string[]>([]);
+  const [publishPicker, setPublishPicker] = useState<RollingPlan[] | null>(null);
+  const [publishSelection, setPublishSelection] = useState<string[]>([]);
 
   const loadWorkspace = async () => {
     try {
@@ -580,6 +599,7 @@ export default function TrainingRolling() {
       sessions: group.plans.map((p, index) => ({
         id: p.rollingId || `session-${index}`,
         dbId: p.rollingId,
+        status: p.status,
         batchName: p.batch,
         location: p.location,
         trainingDate: p.trainingDate,
@@ -620,6 +640,7 @@ export default function TrainingRolling() {
         {
           id: plan.rollingId,
           dbId: plan.rollingId,
+          status: plan.status,
           batchName: plan.batch,
           location: plan.location,
           trainingDate: plan.trainingDate,
@@ -646,6 +667,25 @@ export default function TrainingRolling() {
     } catch (error) {
       console.error("Failed to delete Training Rolling plan", error);
       alert("Failed to delete Training Rolling plan");
+    }
+  };
+
+  const handleCancelSession = async (plan: RollingPlan) => {
+    if (
+      !(await confirm({
+        message: "Cancel this published session? Employees will no longer see it or be able to enrol.",
+        confirmLabel: "Cancel session",
+        danger: true,
+      }))
+    ) {
+      return;
+    }
+    try {
+      await updateRollingPlan(plan.rollingId, { status: "Cancel" });
+      await loadWorkspace();
+    } catch (error) {
+      console.error("Failed to cancel Training Rolling session", error);
+      alert("Failed to cancel Training Rolling session");
     }
   };
 
@@ -742,6 +782,8 @@ export default function TrainingRolling() {
     setIsNewOpen(false);
     setOpenDetailId("");
     setSelectedGroupId("");
+    setPublishPicker(null);
+    setPublishSelection([]);
     setExportMessage("");
     setSearch("");
     setSelectedYear("2026");
@@ -768,19 +810,45 @@ export default function TrainingRolling() {
     }
   };
 
-  const handleConfirmGroup = async (groupPlans: RollingPlan[]) => {
-    if (!(await confirm({ message: "Publish all sessions in this group? They will become visible and enrollable for employees.", confirmLabel: "Publish all" }))) return;
+  const publishSessions = async (plans: RollingPlan[]) => {
     try {
-      for (const plan of groupPlans) {
-        if (plan.status !== "Planned") {
-          await updateRollingPlan(plan.rollingId, { status: "Planned" });
-        }
+      for (const plan of plans) {
+        await updateRollingPlan(plan.rollingId, { status: "Planned" });
       }
+      setPublishPicker(null);
+      setPublishSelection([]);
       await loadWorkspace();
     } catch (error) {
       console.error("Failed to publish Training Rolling plans", error);
       alert("Failed to publish Training Rolling plans");
     }
+  };
+
+  // One draft left? Publishing it is unambiguous, so go straight to the confirm dialog.
+  // More than one and the user has to say which rounds go out, hence the picker.
+  const handleConfirmGroup = async (groupPlans: RollingPlan[]) => {
+    const drafts = groupPlans.filter((plan) => plan.status === "Planning");
+    if (drafts.length === 0) return;
+    if (drafts.length === 1) {
+      await handleConfirm(drafts[0].rollingId);
+      return;
+    }
+    setPublishPicker(drafts);
+    setPublishSelection(drafts.map((plan) => plan.rollingId));
+  };
+
+  const handlePublishSelected = async () => {
+    const chosen = (publishPicker ?? []).filter((plan) => publishSelection.includes(plan.rollingId));
+    if (chosen.length === 0) return;
+    if (
+      !(await confirm({
+        message: "Publish the selected sessions? They will become visible and enrollable for employees.",
+        confirmLabel: "Publish",
+      }))
+    ) {
+      return;
+    }
+    await publishSessions(chosen);
   };
 
   return (
@@ -854,6 +922,7 @@ export default function TrainingRolling() {
                   <option value="all">All status</option>
                   <option value="Planning">Planning</option>
                   <option value="Planned">Planned</option>
+                  <option value="Cancel">Cancel</option>
                 </select>
               </label>
             </div>
@@ -956,7 +1025,8 @@ export default function TrainingRolling() {
                         <strong>Session {index + 1}</strong>
                         <button
                           className={styles.removeSessionButton}
-                          disabled={!selectedOap || form.sessions.length === 1 || Boolean(session.dbId)}
+                          disabled={!selectedOap || form.sessions.length === 1 || session.status !== "Planning"}
+                          title={session.status !== "Planning" ? "Published sessions must be cancelled from the detail panel." : undefined}
                           type="button"
                           onClick={() => removeSession(session.id)}
                         >
@@ -1244,6 +1314,112 @@ export default function TrainingRolling() {
           </section>
         ) : null}
 
+        {publishPicker ? (
+          <div
+            className={styles.publishBackdrop}
+            role="presentation"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) setPublishPicker(null);
+            }}
+          >
+            <section className={styles.publishModal} aria-label="Select sessions to publish">
+              <div className={styles.panelHeader}>
+                <div>
+                  <p className={styles.kicker}>Publish sessions</p>
+                  <h3>Select sessions to publish</h3>
+                </div>
+                <button className={styles.closeButton} type="button" onClick={() => setPublishPicker(null)}>
+                  Close
+                </button>
+              </div>
+
+              <div className={styles.sessionDetailHeader}>
+                <div>
+                  <strong>Training Sessions</strong>
+                  <span>Choose specific sessions, or publish all of them.</span>
+                </div>
+                <label className={styles.publishSelectAll}>
+                  <input
+                    checked={publishSelection.length === publishPicker.length}
+                    type="checkbox"
+                    onChange={(event) =>
+                      setPublishSelection(
+                        event.target.checked ? publishPicker.map((plan) => plan.rollingId) : [],
+                      )
+                    }
+                  />
+                  <span>Select all</span>
+                  <span>({publishPicker.length})</span>
+                </label>
+              </div>
+
+              <div className={styles.sessionSummaryList}>
+                {publishPicker.map((plan, index) => (
+                  <article key={plan.rollingId}>
+                    <div>
+                      <span>Session</span>
+                      <label className={styles.publishRowCheck}>
+                        <input
+                          checked={publishSelection.includes(plan.rollingId)}
+                          type="checkbox"
+                          onChange={(event) =>
+                            setPublishSelection((current) =>
+                              event.target.checked
+                                ? [...current, plan.rollingId]
+                                : current.filter((id) => id !== plan.rollingId),
+                            )
+                          }
+                        />
+                        <strong>{index + 1}</strong>
+                      </label>
+                    </div>
+                    <div>
+                      <span>Batch</span>
+                      <strong>{plan.batch}</strong>
+                    </div>
+                    <div>
+                      <span>Training Date</span>
+                      <strong>{plan.trainingDate}</strong>
+                    </div>
+                    <div>
+                      <span>Time</span>
+                      <strong>{plan.startTime} - {plan.endTime}</strong>
+                    </div>
+                    <div>
+                      <span>Location</span>
+                      <strong>{plan.location || "-"}</strong>
+                    </div>
+                    <div>
+                      <span>Status</span>
+                      <strong>
+                        <span className={`${styles.statusPill} ${styles.statusPlanning}`}>
+                          <span className={styles.statusDot} />
+                          Waiting to plan
+                        </span>
+                      </strong>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className={styles.formActions}>
+                <button
+                  className={styles.primaryButton}
+                  disabled={publishSelection.length === 0}
+                  type="button"
+                  onClick={() => void handlePublishSelected()}
+                >
+                  <span>Publish selected</span>
+                  <span>({publishSelection.length})</span>
+                </button>
+                <button className={styles.secondaryButton} type="button" onClick={() => setPublishPicker(null)}>
+                  Cancel
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
+
         <div className={styles.companySectionsContainer}>
           {companyPlanGroups.map((section) => (
             <div key={section.companyName} className={styles.companySectionBlock}>
@@ -1266,7 +1442,6 @@ export default function TrainingRolling() {
                       <th>Status</th>
                       <th>Job Status</th>
                       <th>Actions</th>
-                      <th>Training Sessions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1275,13 +1450,15 @@ export default function TrainingRolling() {
                       const isOpen = openDetailId === group.id;
                       const isCenterGroup = plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.ownerName === "Center HRD" || plan.provider === "HRD Center";
                       const isRowReadOnlyForFactory = isFactoryUser && isCenterGroup;
-                      const dates = [
-                        ...new Set(group.plans.map((item) => item.trainingDate)),
-                      ];
-                      const allPublished = group.plans.every(
-                        (item) => item.status === "Planned",
+                      const draftPlans = group.plans.filter(
+                        (item) => item.status === "Planning",
                       );
-                      const groupStatus: RollingStatus = allPublished
+                      const allPublished = draftPlans.length === 0;
+                      const groupStatus: RollingStatus = group.plans.every(
+                        (item) => item.status === "Cancel",
+                      )
+                        ? "Cancel"
+                        : allPublished
                         ? "Planned"
                         : "Planning";
                       const allCompleted = group.plans.every(
@@ -1335,7 +1512,7 @@ export default function TrainingRolling() {
                             <td>
                               <span className={`${styles.statusPill} ${styles[`status${groupStatus}`]}`}>
                                 <span className={styles.statusDot} />
-                                {groupStatus === "Planned" ? "วางแผนแล้ว" : groupStatus === "Planning" ? "รอวางแผน" : groupStatus === "Cancel" ? "ยกเลิก" : groupStatus}
+                                {groupStatus === "Planned" ? "Planned" : groupStatus === "Planning" ? "Waiting to plan" : "Cancelled"}
                               </span>
                             </td>
                             <td><span className={`${styles.jobPill} ${styles[`job${groupJobStatus}`]}`}>{groupJobStatus}</span></td>
@@ -1377,23 +1554,22 @@ export default function TrainingRolling() {
                                   type="button"
                                   onClick={() => !isRowReadOnlyForFactory && handleConfirmGroup(group.plans)}
                                 >
-                                  {allPublished ? "All published" : "Publish all"}
+                                  {allPublished ? (
+                                    "All published"
+                                  ) : draftPlans.length > 1 ? (
+                                    <>
+                                      <span>Publish</span> <span>({draftPlans.length})</span>
+                                    </>
+                                  ) : (
+                                    "Publish"
+                                  )}
                                 </button>
                               </div>
-                            </td>
-                            <td>
-                              <strong>{group.plans.length} sessions</strong>
-                              <span>
-                                {dates.length === 1
-                                  ? dates[0]
-                                  : `${dates.length} dates`}{" "}
-                                / Batches: {group.plans.map((item) => item.batch).join(", ")}
-                              </span>
                             </td>
                           </tr>
                           {isOpen ? (
                             <tr className={styles.detailRow}>
-                              <td colSpan={7}>
+                              <td colSpan={6}>
                                 <section className={styles.detailPanel}>
                                   <div className={styles.panelHeader}>
                                     <div>
@@ -1560,14 +1736,14 @@ export default function TrainingRolling() {
                                           <strong>
                                             <span className={`${styles.statusPill} ${styles[`status${session.status}`]}`}>
                                               <span className={styles.statusDot} />
-                                              {session.status === "Planned" ? "วางแผนแล้ว" : session.status === "Planning" ? "รอวางแผน" : session.status === "Cancel" ? "ยกเลิก" : session.status}
+                                              {session.status === "Planned" ? "Planned" : session.status === "Planning" ? "Waiting to plan" : "Cancelled"}
                                             </span>
                                           </strong>
                                         </div>
                                         <div className={styles.sessionActions}>
                                           <button
                                             className={styles.detailButton}
-                                            disabled={isRowReadOnlyForFactory}
+                                            disabled={isRowReadOnlyForFactory || session.status === "Cancel"}
                                             title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้" : undefined}
                                             type="button"
                                             onClick={() => !isRowReadOnlyForFactory && handleEditSession(session)}
@@ -1576,22 +1752,42 @@ export default function TrainingRolling() {
                                           </button>
                                           <button
                                             className={styles.primaryButton}
-                                            disabled={session.status === "Planned" || isRowReadOnlyForFactory}
+                                            disabled={session.status !== "Planning" || isRowReadOnlyForFactory}
                                             title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถเผยแพร่ได้" : undefined}
                                             type="button"
                                             onClick={() => !isRowReadOnlyForFactory && void handleConfirm(session.rollingId)}
                                           >
                                             {session.status === "Planned" ? "Published" : "Publish"}
                                           </button>
-                                          <button
-                                            className={styles.dangerButton}
-                                            disabled={isRowReadOnlyForFactory}
-                                            title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
-                                            type="button"
-                                            onClick={() => !isRowReadOnlyForFactory && void handleDelete(session.rollingId)}
-                                          >
-                                            Delete
-                                          </button>
+                                          {session.status === "Planning" ? (
+                                            <button
+                                              className={styles.dangerButton}
+                                              disabled={isRowReadOnlyForFactory}
+                                              title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
+                                              type="button"
+                                              onClick={() => !isRowReadOnlyForFactory && void handleDelete(session.rollingId)}
+                                            >
+                                              Delete
+                                            </button>
+                                          ) : (
+                                            <button
+                                              className={styles.dangerButton}
+                                              disabled={isRowReadOnlyForFactory || !canCancelSession(session)}
+                                              title={
+                                                isRowReadOnlyForFactory
+                                                  ? "HRD Center sessions cannot be cancelled by a factory."
+                                                  : session.status === "Cancel"
+                                                  ? "This session has already been cancelled."
+                                                  : !canCancelSession(session)
+                                                  ? "The training date has passed, so this session can no longer be cancelled."
+                                                  : undefined
+                                              }
+                                              type="button"
+                                              onClick={() => !isRowReadOnlyForFactory && void handleCancelSession(session)}
+                                            >
+                                              {session.status === "Cancel" ? "Cancelled" : "Cancel session"}
+                                            </button>
+                                          )}
                                         </div>
                                       </article>
                                     ))}
