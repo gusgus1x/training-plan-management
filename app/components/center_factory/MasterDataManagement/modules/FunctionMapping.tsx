@@ -664,7 +664,7 @@ export default function FunctionMapping() {
                                 </span>
                               </td>
                               <td translate="no">{row.plantCode}</td>
-                              <td>{display(row.plantName)}</td>
+                              <td translate="no">{display(row.plantName)}</td>
                               <td translate="no">
                                 {row.canonicalCode} — {row.canonicalName}
                               </td>

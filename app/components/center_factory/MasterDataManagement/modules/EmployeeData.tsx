@@ -944,8 +944,8 @@ export default function EmployeeData() {
                                 </th>
                               ))}
                             </tr>
-                          </thead>
-                          <tbody>
+                          </thead>  
+                          <tbody translate="no">
                             {pageRows.map((employee, index) => (
                               <tr
                                 key={employee.employeeId}

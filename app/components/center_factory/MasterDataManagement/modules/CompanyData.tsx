@@ -403,7 +403,7 @@ export default function CompanyData() {
                 <th>Status</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody translate="no">
               {!isLoading
                 ? visibleRows.map((row, index) => (
                     <tr
