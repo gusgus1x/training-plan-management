@@ -247,18 +247,13 @@ const createEmptyForm = (): RollingForm => ({
 });
 
 export const getJobStatus = (item: { status?: RollingStatus; trainingDate: string; dbStatus?: string }) => {
-  // Cancelled sessions keep reporting "Planning" here so every downstream job-status
-  // consumer behaves exactly as it did when Cancel was squashed into Planning on load.
   if (item.status === "Planning" || item.status === "Cancel") {
     return "Planning";
   }
   if (item.dbStatus === "COMPLETED") {
     return "Completed";
   }
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(`${item.trainingDate}T00:00:00`);
-  return target < today ? "Completed" : "Rolling";
+  return "Rolling";
 };
 
 // A published session can be pulled back until its training day arrives; after that the
