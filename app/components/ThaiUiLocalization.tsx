@@ -854,7 +854,6 @@ const thaiUiDictionary: Record<string, string> = {
   Fri: "ศ.",
   Sat: "ส.",
   Sun: "อา.",
-  "Development sample data": "ข้อมูลตัวอย่างสำหรับการพัฒนา",
   "What training is available": "มีอบรมอะไรบ้าง",
   "Show monthly training details from Training Rolling data":
     "แสดงรายละเอียดการอบรมรายเดือนจากข้อมูล Training Rolling",
@@ -1347,8 +1346,6 @@ const thaiUiDictionary: Record<string, string> = {
   "Cancel session": "ยกเลิกรอบอบรม",
   "Cancel this published session? Employees will no longer see it or be able to enrol.":
     "ยกเลิกรอบอบรมที่เผยแพร่แล้วนี้หรือไม่? พนักงานจะไม่เห็นและลงทะเบียนไม่ได้อีกต่อไป",
-  "Publish the selected sessions? They will become visible and enrollable for employees.":
-    "เผยแพร่รอบอบรมที่เลือกหรือไม่? พนักงานจะมองเห็นและลงทะเบียนได้ทันที",
   "Published sessions must be cancelled from the detail panel.":
     "รอบอบรมที่เผยแพร่แล้วต้องยกเลิกจากหน้ารายละเอียด",
   "HRD Center sessions cannot be cancelled by a factory.":
@@ -1356,12 +1353,7 @@ const thaiUiDictionary: Record<string, string> = {
   "This session has already been cancelled.": "รอบอบรมนี้ถูกยกเลิกแล้ว",
   "The training date has passed, so this session can no longer be cancelled.":
     "เลยวันอบรมแล้ว จึงไม่สามารถยกเลิกรอบอบรมนี้ได้",
-  "Publish sessions": "เผยแพร่รอบอบรม",
-  "Select sessions to publish": "เลือกรอบอบรมที่ต้องการเผยแพร่",
-  "Choose specific sessions, or publish all of them.":
-    "เลือกเฉพาะรอบที่ต้องการ หรือเผยแพร่ทั้งหมด",
-  "Select all": "เลือกทั้งหมด",
-  "Publish selected": "เผยแพร่รอบที่เลือก",
+  "Date & Time": "วันเวลา",
 };
 
 const thaiAttributeDictionary: Record<string, string> = {

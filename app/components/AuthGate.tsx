@@ -193,15 +193,11 @@ export default function AuthGate({
           </p>
         ) : null}
         {children}
-        <div
-          className={
-            isDevelopmentPreview ? styles.previewBadge : styles.demoBadge
-          }
-        >
-          {isDevelopmentPreview
-            ? `MOCK UI PREVIEW · ${effectiveUser.roleCode} · No server session`
-            : "Development sample data"}
-        </div>
+        {isDevelopmentPreview ? (
+          <div className={styles.previewBadge}>
+            {`MOCK UI PREVIEW · ${effectiveUser.roleCode} · No server session`}
+          </div>
+        ) : null}
       </AuthActionsProvider>
     </AuthenticatedUserProvider>
   );

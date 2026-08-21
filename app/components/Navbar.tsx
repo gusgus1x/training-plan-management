@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import logoImage from "../photo/logo.png";
 import { profileValue, useAuthenticatedUser } from "./AuthenticatedUserContext";
 import { useUiLanguage } from "./ThaiUiLocalization";
@@ -36,6 +37,8 @@ export default function Navbar({
   const [isScrolled, setIsScrolled] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const router = useRouter();
   const settingsRef = useRef<HTMLDivElement>(null);
   const contextItemsRef = useRef<HTMLDivElement>(null);
   const { language, setLanguage } = useUiLanguage();
@@ -110,6 +113,20 @@ export default function Navbar({
     return () => window.removeEventListener("scroll", updateNavbarState);
   }, []);
 
+  // Persisted like the theme below, so the bar stays hidden across page navigations
+  // instead of springing back open on every remount.
+  useEffect(() => {
+    setIsCollapsed(localStorage.getItem("navbar-collapsed") === "1");
+  }, []);
+
+  const toggleCollapsed = () => {
+    setIsCollapsed((current) => {
+      localStorage.setItem("navbar-collapsed", current ? "0" : "1");
+      return !current;
+    });
+    setIsSettingsOpen(false);
+  };
+
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
     if (savedTheme === "light" || savedTheme === "dark") {
@@ -139,6 +156,50 @@ export default function Navbar({
     document.documentElement.classList.toggle("dark", newTheme === "dark");
     localStorage.setItem("theme", newTheme);
   };
+
+  if (isCollapsed) {
+    return (
+      <div className={styles.collapsedBar}>
+        <button
+          className={styles.collapsedButton}
+          type="button"
+          onClick={toggleCollapsed}
+          aria-label="Show navigation bar"
+          title="Show navigation bar"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+        <button
+          className={styles.collapsedButton}
+          type="button"
+          onClick={() => (onHome ? onHome() : router.push("/"))}
+          aria-label="Go to main dashboard"
+          title="Go to main dashboard"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+        </button>
+        <button
+          className={styles.collapsedButton}
+          type="button"
+          onClick={() => router.back()}
+          aria-label="Go back to the previous page"
+          title="Go back to the previous page"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <header className={`${styles.navbar} ${isScrolled ? styles.scrolledNavbar : ""}`}>
@@ -177,6 +238,18 @@ export default function Navbar({
                 </div>
               </div>
             ) : null}
+
+            <button
+              className={styles.collapseButton}
+              type="button"
+              onClick={toggleCollapsed}
+              aria-label="Hide navigation bar"
+              title="Hide navigation bar"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="18 15 12 9 6 15" />
+              </svg>
+            </button>
 
             {/* Central Unified Settings Dropdown Menu */}
             <div className={styles.settingsMenuWrapper} ref={settingsRef}>

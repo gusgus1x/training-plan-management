@@ -1,0 +1,33 @@
+.scrollTopButton {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-full, 999px);
+  background: var(--ui-60-glass, rgba(255, 255, 255, 0.92));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--ui-30-ink);
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 6px 20px -4px rgba(15, 23, 42, 0.22);
+  transition: all 0.2s ease;
+}
+
+.scrollTopButton:hover {
+  border-color: var(--ui-30-primary);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  transform: translateY(-2px);
+}
+
+.scrollTopButton svg {
+  width: 19px;
+  height: 19px;
+}

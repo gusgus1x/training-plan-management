@@ -1799,6 +1799,7 @@
 
 .companySectionHeader {
   display: flex;
+  width: 100%;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -1806,6 +1807,31 @@
   border-radius: 10px;
   background: var(--ui-60-surface-soft, rgba(255, 255, 255, 0.04));
   border: 1px solid var(--ui-30-border, rgba(255, 255, 255, 0.12));
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: background 140ms ease;
+}
+
+.companySectionHeader:hover {
+  background: var(--ui-60-surface-muted, rgba(255, 255, 255, 0.07));
+}
+
+/* Same disclosure triangle Employee Data uses, so both screens read alike. */
+.chevron {
+  width: 0;
+  height: 0;
+  flex-shrink: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 6px solid var(--ui-30-muted, #94a3b8);
+  transform-origin: 45% 50%;
+  transition: transform 140ms ease;
+}
+
+.openSection .chevron {
+  transform: rotate(90deg);
 }
 
 .ownCompanySectionHeader {
@@ -1853,49 +1879,30 @@
 }
 
 
-.publishBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
+/* Pagination copied from EmployeeData.module.css so both tables page identically. */
+.pagination {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  background: rgba(15, 23, 42, 0.55);
-}
-
-.publishModal {
-  width: min(920px, 100%);
-  max-height: 86vh;
-  overflow-y: auto;
-  border: 1px solid var(--ui-30-border);
-  border-radius: 12px;
-  background: var(--ui-60-surface);
-  padding: 16px;
-  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.25);
-}
-
-.publishSelectAll,
-.publishRowCheck {
-  display: inline-flex;
-  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px;
-  cursor: pointer;
+  padding: 10px 14px 14px;
 }
 
-.publishSelectAll span,
-.publishRowCheck span {
-  display: inline;
+.paginationButton,
+.paginationButtonActive {
+  min-width: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 6px;
+  background: var(--ui-60-surface);
   color: var(--ui-30-ink);
-  font-size: 0.72rem;
-  font-weight: 800;
-  text-transform: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
 }
 
-.publishSelectAll input,
-.publishRowCheck input {
-  width: 15px;
-  height: 15px;
-  accent-color: #10b981;
-  cursor: pointer;
+.paginationButtonActive {
+  background: var(--ui-10-accent);
+  border-color: var(--ui-10-accent);
+  color: #fff;
 }
