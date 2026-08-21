@@ -168,7 +168,7 @@ export const createCourseRepository = (client?: DatabaseClient) => {
             postTestLink: row.post_test_link || undefined,
             evaluationLink: row.evaluation_link || undefined,
             evaluationAfter30DayLink: row.evaluation_after_30day_link || undefined,
-            lifeCycleMonth: row.validity_months?.toString() || "12",
+            lifeCycleMonth: (row.validity_months !== null && row.validity_months !== undefined && row.validity_months > 0) ? row.validity_months.toString() : "0",
             remark: row.description || "",
             status: row.status === "ACTIVE" ? "Active" : row.status === "DRAFT" ? "Draft" : "Inactive",
             courseType: row.course_type.course_type_name,

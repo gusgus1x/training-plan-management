@@ -702,6 +702,22 @@ export default function TrainingAcceptSurvey() {
     });
   }, [courseSurveys, roleMode, selectedCourseOwner, userCompanyCode]);
 
+  useEffect(() => {
+    if (availableCourseGroups.length > 0) {
+      const isGroupValid = availableCourseGroups.some((g) => g.id === selectedCourseGroupId);
+      if (!selectedCourseGroupId || !isGroupValid) {
+        const firstGroup = availableCourseGroups[0];
+        setSelectedCourseGroupId(firstGroup.id);
+        setSelectedCourseId(firstGroup.sessions[0]?.id ?? "");
+      }
+    } else {
+      if (selectedCourseGroupId !== "" || selectedCourseId !== "") {
+        setSelectedCourseGroupId("");
+        setSelectedCourseId("");
+      }
+    }
+  }, [availableCourseGroups, selectedCourseGroupId]);
+
   const selectedCourseGroup =
     availableCourseGroups.find(
       (group) => group.id === selectedCourseGroupId,
@@ -1197,8 +1213,10 @@ export default function TrainingAcceptSurvey() {
             value={selectedCourseGroup?.id ?? ""}
             disabled={selectedCourseOwner === ""}
             onChange={(event) => {
-              setSelectedCourseGroupId(event.target.value);
-              setSelectedCourseId("");
+              const newGroupId = event.target.value;
+              setSelectedCourseGroupId(newGroupId);
+              const targetGroup = availableCourseGroups.find((g) => g.id === newGroupId);
+              setSelectedCourseId(targetGroup?.sessions[0]?.id ?? "");
               setActionMessage(null);
             }}
           >

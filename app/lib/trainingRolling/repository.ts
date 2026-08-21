@@ -50,7 +50,7 @@ const mapCourseSnapshot = (row: CourseWithRelations): WorkflowCourse => {
     postTestLink: row.post_test_link || undefined,
     evaluationLink: row.evaluation_link || undefined,
     evaluationAfter30DayLink: row.evaluation_after_30day_link || undefined,
-    lifeCycleMonth: row.validity_months?.toString() || "12",
+    lifeCycleMonth: (row.validity_months !== null && row.validity_months !== undefined && row.validity_months > 0) ? row.validity_months.toString() : "0",
     remark: row.description || "",
     status: row.status === "ACTIVE" ? "Active" : row.status === "DRAFT" ? "Draft" : "Inactive",
     courseType: row.course_type?.course_type_name || "",
@@ -148,8 +148,8 @@ const loadOapSummary = async (db: PrismaClient, oapPlanId: string, companyId: st
     where: { oap_plan_id: BigInt(oapPlanId) },
     include: oapSummaryInclude,
   });
-  if (companyId && oap.company_id !== null && oap.company_id?.toString() !== companyId) {
-    throw new ApiError({ code: "FORBIDDEN", message: "This OAP plan belongs to a different company", status: 403 });
+  if (companyId && oap.company_id?.toString() !== companyId) {
+    throw new ApiError({ code: "FORBIDDEN", message: "Factory users can only select OAP plans created for their own company", status: 403 });
   }
   return oap;
 };
