@@ -19,6 +19,9 @@ const forbidden = (message: string) => new ApiError({ code: "FORBIDDEN", message
 const employeeInclude = {
   company: true,
   organization_function: true,
+  section: true,
+  division: true,
+  department: true,
   position: true,
   employee_level: true,
 } satisfies Prisma.employeeInclude;
@@ -32,9 +35,12 @@ const enrollmentInclude = {
 type EnrollmentWithRelations = Prisma.training_enrollmentGetPayload<{ include: typeof enrollmentInclude }>;
 type EmployeeWithRelations = Prisma.employeeGetPayload<{ include: typeof employeeInclude }>;
 
-const employeeDisplayName = (employee: EmployeeWithRelations) =>
-  `${employee.first_name_th} ${employee.last_name_th}`.trim() ||
-  `${employee.first_name_en || ""} ${employee.last_name_en || ""}`.trim();
+const employeeDisplayName = (employee: EmployeeWithRelations) => {
+  const prefixStr = employee.title_th || employee.title_en || "";
+  const nameStr = `${employee.first_name_th} ${employee.last_name_th}`.trim() ||
+    `${employee.first_name_en || ""} ${employee.last_name_en || ""}`.trim();
+  return prefixStr ? `${prefixStr} ${nameStr}` : nameStr;
+};
 
 const mapStatus = (approvalStatus: string, planOwnerIsFactory: boolean): EnrollmentStatus => {
   switch (approvalStatus) {
@@ -58,8 +64,13 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
     employeeId: row.employee_id.toString(),
     employeeCode: employee.employee_code,
     employeeName: employeeDisplayName(employee),
+    prefix: employee.title_th || employee.title_en || "",
+    firstName: employee.first_name_th || employee.first_name_en || "",
+    lastName: employee.last_name_th || employee.last_name_en || "",
     company: employee.company.company_code,
-    department: employee.organization_function?.function_name_en || employee.organization_function?.function_name_th || "",
+    section: employee.section?.section_name_th || employee.section?.section_name_en || "",
+    division: employee.division?.division_name_th || employee.division?.division_name_en || "",
+    department: employee.organization_function?.function_name_en || employee.organization_function?.function_name_th || employee.department?.department_name_th || "",
     position: employee.position?.position_name_en || employee.position?.position_name_th || "",
     // level_key is a Thai abbreviation (จ/บ/ป + number), not an English code despite the
     // name — level_code ("S1"/"O1"/"M1"..."M4") is the real English code and must come first.

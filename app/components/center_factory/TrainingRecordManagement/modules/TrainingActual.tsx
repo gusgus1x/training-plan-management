@@ -33,10 +33,51 @@ type Attendee = {
   id: string;
   employeeCode: string;
   name: string;
-  department: string;
+  prefix: string;
+  firstName: string;
+  lastName: string;
   company?: string;
+  section?: string;
+  division?: string;
+  department: string;
+  position?: string;
+  level?: string;
   registered: boolean;
   attended: boolean;
+};
+
+const parseNameParts = (fullName: string) => {
+  const knownPrefixes = [
+    "นางสาว",
+    "นาย",
+    "นาง",
+    "Mr.",
+    "Ms.",
+    "Mrs.",
+    "Dr.",
+    "ดร.",
+  ];
+
+  let raw = (fullName || "").trim();
+  let foundPrefix = "";
+
+  for (const p of knownPrefixes) {
+    if (raw.startsWith(p)) {
+      foundPrefix = p;
+      raw = raw.slice(p.length).trim();
+      break;
+    }
+  }
+
+  const parts = raw.split(/\s+/).filter(Boolean);
+  const firstName = parts[0] || raw || "-";
+  const lastName = parts.slice(1).join(" ") || "-";
+
+  return {
+    prefix: foundPrefix || "-",
+    firstName,
+    lastName,
+  };
 };
 
 type ActualCourse = {
@@ -160,13 +201,18 @@ export default function TrainingActual() {
       isFactoryUser
         ? courses.filter(
             (course) =>
-              isCenterCourse(course) ||
-              (course.owner === "FACTORY" &&
-                (course.ownerCompany ?? course.company) === userCompanyCode),
+              course.owner === "FACTORY" &&
+              (course.ownerCompany ?? course.company) === userCompanyCode,
           )
         : courses,
     [courses, isFactoryUser, userCompanyCode],
   );
+
+  useEffect(() => {
+    if (isFactoryUser && courseOwnerFilter !== "FACTORY") {
+      setCourseOwnerFilter("FACTORY");
+    }
+  }, [isFactoryUser, courseOwnerFilter]);
   const selectedCourseOwner: CourseOwnerFilter = courseOwnerFilter;
   const ownerFilteredCourses = useMemo(
     () =>
@@ -250,6 +296,13 @@ export default function TrainingActual() {
     void reloadCostBreakdown(selectedCourse.id);
   }, [selectedCourse?.id]);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 25;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCourse?.id]);
+
   const attendees: Attendee[] = selectedCourse
     ? enrollments
         .filter((candidate) =>
@@ -257,18 +310,35 @@ export default function TrainingActual() {
             ? candidate.status === "Center Approved"
             : candidate.status === "Factory Approved",
         )
-        .map((candidate) => ({
-          id: candidate.id,
-          employeeCode: candidate.employeeCode,
-          name: candidate.employeeName,
-          department: candidate.department,
-          company: candidate.company,
-          registered: true,
-          // Present-only, matching the server's cost-breakdown counting rule (getCostBreakdown
-          // in app/lib/trainingRecord/repository.ts) — not just "has any attendance record".
-          attended: candidate.attendance?.status === "PRESENT",
-        }))
+        .map((candidate) => {
+          const nameParts = parseNameParts(candidate.employeeName);
+          return {
+            id: candidate.id,
+            employeeCode: candidate.employeeCode,
+            name: candidate.employeeName,
+            prefix: (candidate as any).prefix || nameParts.prefix,
+            firstName: (candidate as any).firstName || nameParts.firstName,
+            lastName: (candidate as any).lastName || nameParts.lastName,
+            company: candidate.company,
+            section: (candidate as any).section || "-",
+            division: (candidate as any).division || "-",
+            department: candidate.department || "-",
+            position: candidate.position || "-",
+            level: candidate.level || "-",
+            registered: true,
+            // Present-only, matching the server's cost-breakdown counting rule
+            attended: candidate.attendance?.status === "PRESENT",
+          };
+        })
     : [];
+
+  const totalPages = Math.ceil(attendees.length / PAGE_SIZE) || 1;
+  const activePage = Math.min(currentPage, totalPages);
+  const startIndex = (activePage - 1) * PAGE_SIZE;
+  const pagedAttendees = useMemo(
+    () => attendees.slice(startIndex, startIndex + PAGE_SIZE),
+    [attendees, startIndex],
+  );
 
   const actualCount = attendees.filter((attendee) => attendee.attended).length;
   const walkInCount = attendees.filter((attendee) => attendee.attended && !attendee.registered).length;
@@ -411,8 +481,8 @@ export default function TrainingActual() {
                 setSavedMessage("");
               }}
             >
-              <option value="">Select Course Owner</option>
-              <option value="CENTER">Center</option>
+              {!isFactoryUser && <option value="">Select Course Owner</option>}
+              {!isFactoryUser && <option value="CENTER">Center</option>}
               <option value="FACTORY">Factory</option>
             </select>
           </label>
@@ -528,11 +598,13 @@ export default function TrainingActual() {
 
             <div className={styles.panelHeader}>
               <div>
-                <p className={styles.kicker}>Attendance Check</p>
-                <h3>Actual Attendees</h3>
+                <p className={styles.kicker}>Attendance Checklist</p>
+                <h3>รายการเช็คชื่อเข้าร่วมอบรม</h3>
               </div>
               <div className={styles.attendanceHeaderActions}>
-                <span>{actualCount} / {attendees.length} attended</span>
+                <span className={styles.attendanceProgressBadge}>
+                  ✓ เข้าเรียน {actualCount} / {attendees.length} คน
+                </span>
                 <label className={styles.selectAllAttendance}>
                   <input
                     checked={allAttended}
@@ -540,65 +612,145 @@ export default function TrainingActual() {
                     type="checkbox"
                     onChange={() => void setAllAttendance(!allAttended)}
                   />
-                  <span>{allAttended ? "Clear all" : "Select all"}</span>
+                  <span>{allAttended ? "✕ ยกเลิกทั้งหมด" : "✓ เลือกทั้งหมด"}</span>
                 </label>
               </div>
             </div>
 
             <div className={`${styles.tableWrap} ${styles.attendanceTableWrap}`}>
-            <table className={styles.recordTable}>
-              <thead>
-                <tr>
-                  <th>Attend</th>
-                  <th>Employee</th>
-                  <th>Department</th>
-                  <th>Source</th>
-                  <th>Actual Cost</th>
-                </tr>
-              </thead>
-              <tbody>
-                {attendees.map((attendee) => (
-                  <tr key={attendee.id}>
-                    <td>
-                      <label className={styles.attendanceCheck}>
-                        <input
-                          type="checkbox"
-                          checked={attendee.attended}
-                          disabled={isSelectedCourseReadOnlyForFactory}
-                          onChange={() => void toggleAttendance(attendee.id, attendee.attended)}
-                        />
-                        <span>{attendee.attended ? "Attend" : "Absent"}</span>
-                      </label>
-                    </td>
-                    <td>
-                      <strong>{attendee.name}</strong>
-                      <span>
-                        {attendee.employeeCode}
-                        {attendee.company ? ` (${attendee.company})` : ""}
-                      </span>
-                    </td>
-                    <td>{attendee.department}</td>
-                    <td>
-                      <span className={attendee.registered ? styles.statusPill : styles.walkInPill}>
-                        {attendee.registered ? "Registered" : "Walk-in"}
-                      </span>
-                    </td>
-                    <td>
-                      {attendee.attended ? (
-                        <span className={styles.attendeeCostBadge}>
-                          THB {formatCurrency(actualCostPerPerson)}
-                        </span>
-                      ) : (
-                        <span className={styles.attendeeCostBadgeAbsent}>
-                          THB 0 (Absent)
-                        </span>
-                      )}
-                    </td>
+              <table className={styles.recordTable}>
+                <thead>
+                  <tr>
+                    <th style={{ width: "110px" }}>เข้าร่วม</th>
+                    <th>รหัสพนักงาน</th>
+                    <th>คำนำหน้า</th>
+                    <th>ชื่อ</th>
+                    <th>นามสกุล</th>
+                    <th>บริษัท</th>
+                    <th>ส่วน</th>
+                    <th>ฝ่าย</th>
+                    <th>แผนก</th>
+                    <th>ตำแหน่ง</th>
+                    <th>ระดับ</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {pagedAttendees.map((attendee) => (
+                    <tr
+                      key={attendee.id}
+                      className={attendee.attended ? styles.attendedRow : undefined}
+                    >
+                      <td className={styles.checkCell}>
+                        <label className={styles.attendanceCheckLabel}>
+                          <input
+                            type="checkbox"
+                            checked={attendee.attended}
+                            disabled={isSelectedCourseReadOnlyForFactory}
+                            onChange={() => void toggleAttendance(attendee.id, attendee.attended)}
+                          />
+                          <span
+                            className={
+                              attendee.attended
+                                ? styles.attendStatusPresent
+                                : styles.attendStatusAbsent
+                            }
+                          >
+                            {attendee.attended ? "✓ มา" : "✕ ขาด"}
+                          </span>
+                        </label>
+                      </td>
+                      <td>
+                        <span className={styles.attendeeCodePill}>{attendee.employeeCode}</span>
+                      </td>
+                      <td>
+                        <span className={styles.prefixPill}>{attendee.prefix || "-"}</span>
+                      </td>
+                      <td>
+                        <strong className={styles.attendeeFirstName}>{attendee.firstName}</strong>
+                      </td>
+                      <td>
+                        <span className={styles.attendeeLastName}>{attendee.lastName}</span>
+                      </td>
+                      <td>
+                        <span
+                          className={`${styles.companyPill} ${
+                            attendee.company === "TEP"
+                              ? styles.companyTep
+                              : attendee.company === "ATA"
+                                ? styles.companyAta
+                                : styles.companyDefault
+                          }`}
+                        >
+                          {attendee.company || "-"}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={styles.orgText}>{attendee.section || "-"}</span>
+                      </td>
+                      <td>
+                        <span className={styles.orgText}>{attendee.division || "-"}</span>
+                      </td>
+                      <td>
+                        <span className={styles.deptBadge}>{attendee.department || "-"}</span>
+                      </td>
+                      <td>
+                        <span className={styles.positionPill}>{attendee.position || "-"}</span>
+                      </td>
+                      <td>
+                        <span className={styles.levelBadge}>{attendee.level || "-"}</span>
+                      </td>
+                    </tr>
+                  ))}
+                  {pagedAttendees.length === 0 ? (
+                    <tr>
+                      <td colSpan={11} className={styles.emptyTableMessage}>
+                        ไม่พบรายชื่อพนักงานในการอบรมนี้
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+
+            {totalPages > 1 ? (
+              <div className={styles.actualPaginationBar}>
+                <span className={styles.paginationInfo}>
+                  แสดง {startIndex + 1}-{Math.min(startIndex + PAGE_SIZE, attendees.length)} จากทั้งหมด {attendees.length} คน (หน้า {activePage} จาก {totalPages})
+                </span>
+                <div className={styles.paginationNav}>
+                  <button
+                    className={styles.pageBtn}
+                    type="button"
+                    disabled={activePage === 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    title="หน้าก่อนหน้า"
+                  >
+                    ‹
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                    <button
+                      key={p}
+                      className={`${styles.pageBtn} ${p === activePage ? styles.pageBtnActive : ""}`}
+                      type="button"
+                      onClick={() => setCurrentPage(p)}
+                    >
+                      {p}
+                    </button>
+                  ))}
+
+                  <button
+                    className={styles.pageBtn}
+                    type="button"
+                    disabled={activePage === totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    title="หน้าถัดไป"
+                  >
+                    ›
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <aside className={styles.actualCostPanel} aria-label="Actual training expenses">

@@ -23,7 +23,12 @@ export type EnrollmentRecord = {
   employeeId: string;
   employeeCode: string;
   employeeName: string;
+  prefix?: string;
+  firstName?: string;
+  lastName?: string;
   company: string;
+  section?: string;
+  division?: string;
   department: string;
   position: string;
   level: string;

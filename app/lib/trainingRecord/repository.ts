@@ -86,6 +86,10 @@ const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
         enrollment.employee.organization_function?.function_name_en ||
         enrollment.employee.organization_function?.function_name_th ||
         "",
+      position:
+        (enrollment.employee as any).position?.position_name_en ||
+        (enrollment.employee as any).position?.position_name_th ||
+        "",
       company: enrollment.employee.company.company_code,
       attended: enrollment.attendance !== null,
       preTestPassed: preTest ? preTest.pass_status?.toUpperCase() === "PASS" : null,
@@ -115,12 +119,32 @@ export const createTrainingRecordRepository = (client?: DatabaseClient) => {
       return withDatabaseErrorMapping(async () => {
         const where: Prisma.training_planWhereInput = { training_expense: { some: {} } };
         if (companyId) {
-          where.training_plan_oap = {
-            OR: [
-              { company_id: BigInt(companyId) },
-              { company_id: null },
-            ],
-          };
+          where.AND = [
+            {
+              OR: [
+                {
+                  training_plan_oap: {
+                    company_id: BigInt(companyId),
+                  },
+                },
+                {
+                  training_plan_oap: {
+                    company_id: null,
+                  },
+                  training_enrollment: {
+                    some: {
+                      employee: {
+                        company_id: BigInt(companyId),
+                      },
+                      attendance: {
+                        isNot: null,
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          ];
         }
         const rows = await db().training_plan.findMany({
           where,
@@ -138,8 +162,8 @@ export const createTrainingRecordRepository = (client?: DatabaseClient) => {
           where: { plan_id: id },
           include: { training_plan_oap: { select: { company_id: true } } },
         });
-        if (companyId && plan.training_plan_oap.company_id !== null && plan.training_plan_oap.company_id?.toString() !== companyId) {
-          throw new ApiError({ code: "FORBIDDEN", message: "This training plan belongs to a different company", status: 403 });
+        if (companyId && (plan.training_plan_oap.company_id === null || plan.training_plan_oap.company_id?.toString() !== companyId)) {
+          throw new ApiError({ code: "FORBIDDEN", message: "This training plan belongs to a different company or center scope", status: 403 });
         }
 
         const rows = EXPENSE_CATEGORIES.map((category) => {

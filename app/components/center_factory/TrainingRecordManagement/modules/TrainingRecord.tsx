@@ -58,6 +58,8 @@ type CompletedCourse = {
     name: string;
     employeeCode: string;
     department: string;
+    position?: string;
+    attended?: boolean;
     prePost: "Passed" | "Failed";
     evaluation: "Done" | "Pending";
   }>;
@@ -641,6 +643,7 @@ export default function TrainingRecord() {
               name: attendee.name,
               employeeCode: attendee.employeeCode,
               department: attendee.department,
+              position: (attendee as any).position ?? "",
               prePost: attendee.postTestPassed ? "Passed" : "Failed",
               evaluation: attendee.evaluationCompleted ? "Done" : "Pending",
             })),
@@ -660,11 +663,25 @@ export default function TrainingRecord() {
   const availableCourses = useMemo(
     () =>
       isFactoryUser
-        ? courses.filter(
-            (course) =>
+        ? courses.filter((course) => {
+            const isOwnFactoryCourse =
               course.owner === "FACTORY" &&
-              (course.ownerCompany ?? course.company) === userCompanyCode,
-          )
+              (course.ownerCompany ?? course.company) === userCompanyCode;
+
+            if (isOwnFactoryCourse) {
+              return true;
+            }
+
+            const isCenterCourse = course.owner === "CENTER";
+            if (isCenterCourse) {
+              const companyAttendedCount = (course.attendees || []).filter(
+                (attendee) => attendee.company === userCompanyCode,
+              ).length;
+              return companyAttendedCount > 0;
+            }
+
+            return false;
+          })
         : courses,
     [courses, isFactoryUser, userCompanyCode],
   );
@@ -709,7 +726,9 @@ export default function TrainingRecord() {
 
   const getVisibleAttendees = (course: CompletedCourse) =>
     course.attendees.filter(
-      (attendee) => !isFactoryUser || attendee.company === userCompanyCode,
+      (attendee) =>
+        attendee.attended !== false &&
+        (!isFactoryUser || attendee.company === userCompanyCode),
     );
 
   const evaluationPercent =
@@ -1277,27 +1296,78 @@ export default function TrainingRecord() {
                     </button>
                   </summary>
 
-                  <div className={styles.companyAttendeeList}>
-                    {attendees.map((attendee) => (
-                      <article key={attendee.id}>
-                        <div>
-                          <strong>{attendee.name}</strong>
-                          <span>{attendee.employeeCode} / {attendee.department}</span>
-                        </div>
-                        <span className={styles.attendeeCostBadge}>
-                          THB {formatNumber(selectedCostPerPerson)}
-                        </span>
-                        <span className={styles.statusPill}>{attendee.prePost}</span>
-                        <span className={styles.statusPill}>{attendee.evaluation}</span>
-                        <button
-                          className={styles.detailButton}
-                          type="button"
-                          onClick={() => handleDownload(`${attendee.name} evaluation form`)}
-                        >
-                          Download Form
-                        </button>
-                      </article>
-                    ))}
+                  <div className={styles.companyAttendeeTableWrap}>
+                    <table className={styles.attendeeEmployeeTable}>
+                      <thead>
+                        <tr>
+                          <th>Employee Code</th>
+                          <th>Employee Name</th>
+                          <th>Company / Dept</th>
+                          <th>Position</th>
+                          <th>Pre / Post Test</th>
+                          <th>Evaluation Form</th>
+                          <th>Allocated Cost</th>
+                          <th className={styles.actionHeader}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {attendees.map((attendee) => (
+                          <tr key={attendee.id}>
+                            <td>
+                              <span className={styles.attendeeCodePill}>{attendee.employeeCode}</span>
+                            </td>
+                            <td>
+                              <strong className={styles.attendeeNameText}>{attendee.name}</strong>
+                            </td>
+                            <td>
+                              <div className={styles.deptCell}>
+                                <span className={styles.companyPill}>{attendee.company}</span>
+                                <span className={styles.attendeeDeptText}>{attendee.department}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <span className={styles.positionText}>{attendee.position || "-"}</span>
+                            </td>
+                            <td>
+                              <span
+                                className={`${styles.statusPill} ${
+                                  attendee.prePost === "Passed"
+                                    ? styles.statusPassed
+                                    : styles.statusFailed
+                                }`}
+                              >
+                                {attendee.prePost}
+                              </span>
+                            </td>
+                            <td>
+                              <span
+                                className={`${styles.statusPill} ${
+                                  attendee.evaluation === "Done"
+                                    ? styles.statusPassed
+                                    : styles.statusPendingevidence
+                                }`}
+                              >
+                                {attendee.evaluation}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={styles.attendeeCostBadge}>
+                                THB {formatNumber(selectedCostPerPerson)}
+                              </span>
+                            </td>
+                            <td>
+                              <button
+                                className={styles.downloadFormButton}
+                                type="button"
+                                onClick={() => handleDownload(`${attendee.name} evaluation form`)}
+                              >
+                                Download Form
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </details>
               ))}
@@ -1311,133 +1381,188 @@ export default function TrainingRecord() {
   };
 
   const renderRecordTable = (
-    title: string,
+    ownerType: "Center" | "Factory",
     records: CompletedCourse[],
     emptyMessage: string,
-  ) => (
-    <section className={styles.recordOwnerPanel} aria-label={`${title} training records`}>
-      <div className={styles.recordOwnerHeader}>
-        <div>
-          <h3>{title}</h3>
-          <span>{records.length} records</span>
+  ) => {
+    const isCenter = ownerType === "Center";
+    const displayTitle = isCenter
+      ? "Center Training Records (ส่วนกลาง)"
+      : isFactoryUser
+        ? `${userCompanyCode} Factory Training Records (${userCompanyCode})`
+        : "Factory Training Records (โรงงาน)";
+
+    const totalCategoryCost = records.reduce(
+      (total, course) => total + getActualCostTotal(course),
+      0,
+    );
+
+    return (
+      <section className={styles.recordOwnerPanel} aria-label={`${ownerType} training records`}>
+        <div className={styles.recordOwnerHeader}>
+          <div>
+            <div className={styles.ownerTitleRow}>
+              <span className={styles.ownerIconBadge}>{isCenter ? "🏢" : "🏭"}</span>
+              <h3>{displayTitle}</h3>
+            </div>
+            <span className={styles.ownerSubCount}>{records.length} completed records</span>
+          </div>
+          <div className={styles.ownerTotalCostBadge}>
+            <small>Total Spent</small>
+            <strong>THB {formatNumber(totalCategoryCost)}</strong>
+          </div>
         </div>
-        <strong>
-          THB{" "}
-          {formatNumber(
-            records.reduce((total, course) => total + getActualCostTotal(course), 0),
-          )}
-        </strong>
-      </div>
 
-      <div className={styles.recordListTableWrap}>
-        <table className={styles.recordListTable}>
-          <thead>
-            <tr>
-              <th>Course</th>
-              <th>Date / Batch</th>
-              <th>Company</th>
-              <th>Actual</th>
-              <th>Actual Cost</th>
-              <th>Evaluation</th>
-              <th>Source</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {records.length > 0 ? (
-              records.map((course) => {
-                const actualCostTotal = getActualCostTotal(course);
-                const courseCostPerPerson = getCostPerPerson(course);
-                const evaluationRate =
-                  course.evaluationTotal > 0
-                    ? Math.round(
-                        (course.evaluationCompleted / course.evaluationTotal) * 100,
-                      )
-                    : 0;
-
-                const isExpanded =
-                  selectedCourse?.id === course.id && isCourseDetailOpen;
-
-                return (
-                  <Fragment key={course.id}>
-                    <tr className={isExpanded ? styles.activeRecordRow : undefined}>
-                      <td>
-                        <strong>{course.title}</strong>
-                        <span>{course.code}</span>
-                      </td>
-                      <td>
-                        <strong>{course.date}</strong>
-                        <span>Batch {course.batch ?? "-"} / {course.time ?? "-"}</span>
-                      </td>
-                      <td>{course.company}</td>
-                      <td>
-                        {course.actualAttendees} / {course.registeredAttendees}
-                      </td>
-                      <td>
-                        <strong>THB {formatNumber(actualCostTotal)}</strong>
-                        <span className={styles.perPersonCostText}>
-                          THB {formatNumber(courseCostPerPerson)} / person
-                        </span>
-                      </td>
-                      <td>
-                        {course.evaluationCompleted} / {course.evaluationTotal}
-                        <span>{evaluationRate}% done</span>
-                      </td>
-                      <td>
-                        <span
-                          className={
-                            course.source === "UPLOAD"
-                              ? styles.uploadSourceBadge
-                              : styles.systemSourceBadge
-                          }
-                        >
-                          {course.source === "UPLOAD" ? "Upload" : "System"}
-                        </span>
-                      </td>
-                      <td>
-                        <div className={styles.recordTableActions}>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setSelectedCourseId(course.id);
-                              setIsCourseDetailOpen((current) =>
-                                selectedCourse?.id === course.id ? !current : true,
-                              );
-                              setDownloadMessage("");
-                            }}
-                          >
-                            {isExpanded ? "Hide" : "Details"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              handleExportCourseSummary(course);
-                            }}
-                          >
-                            Export
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    {isExpanded ? (
-                      <tr className={styles.inlineDetailRow}>
-                        <td colSpan={8}>{renderSelectedCourseDetail()}</td>
-                      </tr>
-                    ) : null}
-                  </Fragment>
-                );
-              })
-            ) : (
+        <div className={styles.recordListTableWrap}>
+          <table className={styles.recordListTable}>
+            <thead>
               <tr>
-                <td colSpan={8}>{emptyMessage}</td>
+                <th>Course</th>
+                <th>Date / Batch</th>
+                <th>Company / Scope</th>
+                <th>Actual Attendees</th>
+                <th>Actual Cost</th>
+                <th>Evaluation</th>
+                <th>Source</th>
+                <th className={styles.actionHeader}>Action</th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </section>
+            </thead>
+            <tbody>
+              {records.length > 0 ? (
+                records.map((course) => {
+                  const actualCostTotal = getActualCostTotal(course);
+                  const courseCostPerPerson = getCostPerPerson(course);
+                  const evaluationRate =
+                    course.evaluationTotal > 0
+                      ? Math.round(
+                          (course.evaluationCompleted / course.evaluationTotal) * 100,
+                        )
+                      : 0;
+
+                  const isExpanded =
+                    selectedCourse?.id === course.id && isCourseDetailOpen;
+
+                  const ownerTag =
+                    course.owner === "CENTER"
+                      ? "HRD Center"
+                      : `HRD ${course.ownerCompany || course.company}`;
+
+                  return (
+                    <Fragment key={course.id}>
+                      <tr className={isExpanded ? styles.activeRecordRow : undefined}>
+                        <td>
+                          <div className={styles.courseTitleCell}>
+                            <strong>{course.title}</strong>
+                            <div className={styles.courseSubMeta}>
+                              <span className={styles.codeBadge}>{course.code}</span>
+                              <span className={styles.ownerPillTag}>{ownerTag}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <strong>{course.date}</strong>
+                          <span className={styles.batchTimeText}>
+                            Batch {course.batch ?? "-"} / {course.time ?? "-"}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={styles.companyScopeText}>{course.company}</span>
+                        </td>
+                        <td>
+                          <strong className={styles.attendeeRatioText}>
+                            {course.actualAttendees} / {course.registeredAttendees}
+                          </strong>
+                          <span className={styles.ratioLabel}>attended</span>
+                        </td>
+                        <td>
+                          <strong className={styles.costAmountText}>
+                            THB {formatNumber(actualCostTotal)}
+                          </strong>
+                          <span className={styles.perPersonCostText}>
+                            THB {formatNumber(courseCostPerPerson)} / person
+                          </span>
+                        </td>
+                        <td>
+                          <div className={styles.evaluationProgressCell}>
+                            <span className={styles.evalCountText}>
+                              {course.evaluationCompleted} / {course.evaluationTotal}
+                            </span>
+                            <span
+                              className={`${styles.evalRateBadge} ${
+                                evaluationRate === 100
+                                  ? styles.evalComplete
+                                  : styles.evalPending
+                              }`}
+                            >
+                              {evaluationRate}% done
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <span
+                            className={
+                              course.source === "UPLOAD"
+                                ? styles.uploadSourceBadge
+                                : styles.systemSourceBadge
+                            }
+                          >
+                            {course.source === "UPLOAD" ? "Upload" : "System"}
+                          </span>
+                        </td>
+                        <td>
+                          <div className={styles.recordTableActions}>
+                            <button
+                              className={isExpanded ? styles.activeActionButton : styles.actionButton}
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setSelectedCourseId(course.id);
+                                setIsCourseDetailOpen((current) =>
+                                  selectedCourse?.id === course.id ? !current : true,
+                                );
+                                setDownloadMessage("");
+                              }}
+                            >
+                              {isExpanded ? "Hide Details" : "Details"}
+                            </button>
+                            <button
+                              className={styles.exportButton}
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                handleExportCourseSummary(course);
+                              }}
+                            >
+                              Export
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {isExpanded ? (
+                        <tr className={styles.inlineDetailRow}>
+                          <td colSpan={8}>{renderSelectedCourseDetail()}</td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={8} className={styles.emptyTableMessage}>
+                    {emptyMessage}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  };
+
+  const totalAllActualExpenses = availableCourses.reduce(
+    (total, course) => total + getActualCostTotal(course),
+    0,
   );
 
   return (
@@ -1449,19 +1574,68 @@ export default function TrainingRecord() {
           <p>{trainingRecordModule.description}</p>
         </div>
         <div className={styles.heroMeta}>
-          <span>{availableCourses.length} completed courses</span>
-          <span>{centerCourses.length} Center</span>
-          <span>{factoryCourses.length} Factory</span>
+          <span className={styles.metaBadge}>{availableCourses.length} completed courses</span>
+          <span className={styles.metaBadgeCenter}>{centerCourses.length} Center</span>
+          <span className={styles.metaBadgeFactory}>{factoryCourses.length} Factory</span>
         </div>
       </section>
 
+      {/* KPI Overview Summary Cards */}
+      <section className={styles.recordOverviewGrid} aria-label="Training record KPI summary">
+        <article className={styles.metricCard}>
+          <span>Completed Courses</span>
+          <strong>{availableCourses.length}</strong>
+        </article>
+        <article className={styles.metricCard}>
+          <span>Center Records</span>
+          <strong>{centerCourses.length}</strong>
+        </article>
+        <article className={styles.metricCard}>
+          <span>Factory Records</span>
+          <strong>{factoryCourses.length}</strong>
+        </article>
+        <article className={`${styles.metricCard} ${styles.metricCardPrimary}`}>
+          <span>Total Actual Expenses</span>
+          <strong>THB {formatNumber(totalAllActualExpenses)}</strong>
+        </article>
+      </section>
+
+      {/* Primary Section: Completed Course Records by Owner */}
+      <section className={styles.recordOwnerOverview} aria-label="Completed course records by owner">
+        <div className={styles.panelHeader}>
+          <div>
+            <p className={styles.kicker}>Training Record Details</p>
+            <h3>Completed records by owner</h3>
+          </div>
+          <span className={styles.scopeBadge}>
+            {isFactoryUser ? `${userCompanyCode} Factory Scope` : "All Scopes (Center & Factory)"}
+          </span>
+        </div>
+
+        <div className={styles.recordOwnerGrid}>
+          {renderRecordTable(
+            "Center",
+            centerCourses,
+            "No center completed records found.",
+          )}
+          {renderRecordTable(
+            "Factory",
+            factoryCourses,
+            isFactoryUser
+              ? `No completed records owned by ${userCompanyCode || "your company"} yet.`
+              : "No factory completed records found.",
+          )}
+        </div>
+      </section>
+
+      {/* Excel Import Tools Panel */}
       <section className={styles.importPanel} aria-label="Import completed courses from Excel">
         <div className={styles.panelHeader}>
           <div>
-            <p className={styles.kicker}>Excel Import</p>
+            <p className={styles.kicker}>Excel Tools</p>
             <h3>Import completed training records</h3>
           </div>
-          <span>{importScopeLabel}</span>
+          <span className={styles.importScopeBadge}>{importScopeLabel}</span>
         </div>
         <p className={styles.importScopeNote}>{importScopeNote}</p>
 
@@ -1503,33 +1677,6 @@ export default function TrainingRecord() {
         ) : null}
 
         {importMessage ? <p className={styles.downloadMessage}>{importMessage}</p> : null}
-      </section>
-
-      <section className={styles.recordOwnerOverview} aria-label="Completed course records by owner">
-        <div className={styles.panelHeader}>
-          <div>
-            <p className={styles.kicker}>Training Record Details</p>
-            <h3>Completed records by owner</h3>
-          </div>
-          <span>{isFactoryUser ? `${userCompanyCode} Factory` : "Center / Factory"}</span>
-        </div>
-
-        <div className={styles.recordOwnerGrid}>
-          {!isFactoryUser
-            ? renderRecordTable(
-                "Center",
-                centerCourses,
-                "No center completed records yet.",
-              )
-            : null}
-          {renderRecordTable(
-            "Factory",
-            factoryCourses,
-            isFactoryUser
-              ? `No completed records owned by ${userCompanyCode || "your company"} yet.`
-              : "No factory completed records yet.",
-          )}
-        </div>
       </section>
     </section>
   );
