@@ -272,4 +272,25 @@ describe("TrainingAcceptSurvey Target Group Matching Rules", () => {
 
     expect(matchesCourseTarget(courseWithLevelAndPosition, empTEP)).toBe(false);
   });
+
+  it("never includes Level 05 (O5) when target levels are O1, O2, O3 even if position is Staff", () => {
+    const courseO1ToO3: SelectedCourse = {
+      companies: ["ATA"],
+      targetFunctionCode: "ALL",
+      targetFunctionName: "All Function",
+      targetPositions: ["Staff", "Operator"],
+      targetLevels: ["O1", "O2", "O3"],
+    };
+
+    const empLevel05: SurveyEmployee = {
+      id: "emp-05",
+      company: "ATA",
+      departmentCode: "FNC001",
+      department: "Machining",
+      position: "Staff",
+      level: "05",
+    };
+
+    expect(matchesCourseTarget(courseO1ToO3, empLevel05)).toBe(false);
+  });
 });

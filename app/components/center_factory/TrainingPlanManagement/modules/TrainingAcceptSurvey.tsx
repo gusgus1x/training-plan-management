@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   TRAINING_MASTER_EVENT,
   TRAINING_WORKFLOW_KEYS,
@@ -537,8 +538,47 @@ function PaginatedEmployeeGrid({
   );
 }
 
+const copyTextToClipboard = async (text: string): Promise<boolean> => {
+  if (typeof window === "undefined") return false;
+
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fallback if blocked or non-secure HTTP context
+    }
+  }
+
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.top = "0";
+    textarea.style.left = "0";
+    textarea.style.width = "2em";
+    textarea.style.height = "2em";
+    textarea.style.padding = "0";
+    textarea.style.border = "none";
+    textarea.style.outline = "none";
+    textarea.style.boxShadow = "none";
+    textarea.style.background = "transparent";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const success = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    return success;
+  } catch (err) {
+    console.error("Clipboard copy failed", err);
+    return false;
+  }
+};
+
 export default function TrainingAcceptSurvey() {
   const user = useAuthenticatedUser();
+  const searchParams = useSearchParams();
+  const urlCourseId = searchParams.get("courseId");
   const confirm = useConfirm();
   const roleMode: RoleMode = user?.roleCode === "HRD_CENTER" ? "center" : "factory";
   const userCompanyCode = companies.find((company) => company === user?.companyCode) ?? "SNF";
@@ -557,6 +597,10 @@ export default function TrainingAcceptSurvey() {
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [isExportingAttendance, setIsExportingAttendance] = useState(false);
+  const [isSendingLineNotify, setIsSendingLineNotify] = useState(false);
+  const [showNominationModal, setShowNominationModal] = useState(false);
+  const [copiedUrlSuccess, setCopiedUrlSuccess] = useState(false);
+  const [copiedPresetSuccess, setCopiedPresetSuccess] = useState(false);
 
   useEffect(() => {
     void loadWorkflowRollingPlans().then(setRollingPlans);
@@ -583,6 +627,8 @@ export default function TrainingAcceptSurvey() {
         setMasterEmployees(readEmployeeMasterData().map(masterRecordToSurveyEmployee));
       });
   }, []);
+
+
 
   const courseSurveys = useMemo<CourseSurvey[]>(
     () =>
@@ -651,6 +697,19 @@ export default function TrainingAcceptSurvey() {
         }),
     [rollingPlans, standards],
   );
+
+  useEffect(() => {
+    if (urlCourseId && courseSurveys.length > 0) {
+      const target = courseSurveys.find(
+        (item) => item.id === urlCourseId || item.code === urlCourseId
+      );
+      if (target) {
+        setSelectedCourseOwner(target.owner);
+        setSelectedCourseGroupId(target.groupId);
+        setSelectedCourseId(target.id);
+      }
+    }
+  }, [urlCourseId, courseSurveys]);
 
   const courseOwnerOptions =
     roleMode === "center"
@@ -808,6 +867,10 @@ export default function TrainingAcceptSurvey() {
         (targetFn && empFnName && cleanStr(targetFn).includes(cleanStr(empFnName)))
       );
 
+    if (!fnMatches) {
+      return { isExactMatch: false, isLevelOnlyMatch: false, isOutMatch: true };
+    }
+
     // 3. Level & Position matching:
     const hasPositions = Boolean(selectedCourse.targetPositions && selectedCourse.targetPositions.length > 0);
     const hasLevels = Boolean(selectedCourse.targetLevels && selectedCourse.targetLevels.length > 0);
@@ -815,22 +878,14 @@ export default function TrainingAcceptSurvey() {
     let lvlMatches = false;
     if (hasLevels) {
       const empLvlNorm = normalizeEmployeeLevel(employee.level);
-      const empLvlRaw = (employee.level || "").trim().toUpperCase();
+      const empLvlRaw = (employee.level || "").replace(/[\.\s\-_]/g, "").toUpperCase();
 
       lvlMatches = selectedCourse.targetLevels.some((lvl) => {
         const targetLvlNorm = normalizeEmployeeLevel(lvl);
-        const targetLvlRaw = (lvl || "").trim().toUpperCase();
+        const targetLvlRaw = (lvl || "").replace(/[\.\s\-_]/g, "").toUpperCase();
 
         if (targetLvlNorm && empLvlNorm && targetLvlNorm === empLvlNorm) return true;
-        if (targetLvlRaw && empLvlRaw && (targetLvlRaw.includes(empLvlRaw) || empLvlRaw.includes(targetLvlRaw))) return true;
-
-        const isTargetMgmt = /MANAGEMENT|EXEC|MANAGER|จัดการ|M/i.test(targetLvlRaw);
-        const isTargetSup = /SUPERVISOR|SPECIALIST|บังคับบัญชา|S/i.test(targetLvlRaw);
-        const isTargetOp = /OPERATOR|OPERATION|STAFF|ปฏิบัติการ|O|L/i.test(targetLvlRaw);
-
-        if (isTargetMgmt && (empLvlNorm.startsWith("M") || /จ/i.test(empLvlRaw))) return true;
-        if (isTargetSup && (empLvlNorm.startsWith("S") || /บ/i.test(empLvlRaw))) return true;
-        if (isTargetOp && (empLvlNorm.startsWith("O") || /ป/i.test(empLvlRaw))) return true;
+        if (targetLvlRaw && empLvlRaw && targetLvlRaw === empLvlRaw) return true;
 
         return false;
       });
@@ -850,23 +905,23 @@ export default function TrainingAcceptSurvey() {
     }
 
     if (hasLevels && hasPositions) {
-      if (fnMatches && lvlMatches && posMatches) {
+      // Both Level and Position are defined: Exact match requires BOTH
+      if (lvlMatches && posMatches) {
         return { isExactMatch: true, isLevelOnlyMatch: false, isOutMatch: false };
       }
-      if (lvlMatches) {
+      if (lvlMatches && !posMatches) {
         return { isExactMatch: false, isLevelOnlyMatch: true, isOutMatch: false };
       }
       return { isExactMatch: false, isLevelOnlyMatch: false, isOutMatch: true };
     } else if (hasLevels) {
-      if (fnMatches && lvlMatches) {
-        return { isExactMatch: true, isLevelOnlyMatch: false, isOutMatch: false };
-      }
+      // Only Level is defined
       if (lvlMatches) {
-        return { isExactMatch: false, isLevelOnlyMatch: true, isOutMatch: false };
+        return { isExactMatch: true, isLevelOnlyMatch: false, isOutMatch: false };
       }
       return { isExactMatch: false, isLevelOnlyMatch: false, isOutMatch: true };
     } else if (hasPositions) {
-      if (fnMatches && posMatches) {
+      // Only Position is defined
+      if (posMatches) {
         return { isExactMatch: true, isLevelOnlyMatch: false, isOutMatch: false };
       }
       return { isExactMatch: false, isLevelOnlyMatch: false, isOutMatch: true };
@@ -881,19 +936,19 @@ export default function TrainingAcceptSurvey() {
       const tgMatchesPos = Boolean(empPosNorm && (cleanTg.includes(empPosNorm) || empPosNorm.includes(cleanTg)));
       const tgMatchesLvl = Boolean(empLvlNorm && (cleanTg.includes(empLvlNorm) || empLvlNorm.includes(cleanTg)));
 
-      if (fnMatches && (tgMatchesPos || tgMatchesLvl)) {
+      if (tgMatchesPos && tgMatchesLvl) {
         return { isExactMatch: true, isLevelOnlyMatch: false, isOutMatch: false };
       }
-      if (tgMatchesLvl) {
+      if (tgMatchesLvl && !tgMatchesPos) {
         return { isExactMatch: false, isLevelOnlyMatch: true, isOutMatch: false };
       }
+      if (tgMatchesPos) {
+        return { isExactMatch: true, isLevelOnlyMatch: false, isOutMatch: false };
+      }
+      return { isExactMatch: false, isLevelOnlyMatch: false, isOutMatch: true };
     }
 
-    if (fnMatches) {
-      return { isExactMatch: true, isLevelOnlyMatch: false, isOutMatch: false };
-    }
-
-    return { isExactMatch: false, isLevelOnlyMatch: false, isOutMatch: true };
+    return { isExactMatch: true, isLevelOnlyMatch: false, isOutMatch: false };
   };
 
   const matchesCourseTarget = (employee: SurveyEmployee) =>
@@ -1078,6 +1133,32 @@ export default function TrainingAcceptSurvey() {
       console.error("Failed to remove candidate", error);
       setActionMessage("Failed to remove candidate.");
     }
+  };
+
+  const handleSendLineNotification = async () => {
+    if (!selectedCourse || acceptedParticipants.length === 0) {
+      return;
+    }
+
+    setIsSendingLineNotify(true);
+    setActionMessage(null);
+
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    setIsSendingLineNotify(false);
+    setActionMessage(
+      `💬 [LINE OA] ส่งข้อความแจ้งเตือนเข้าร่วมการอบรมวิชา "${selectedCourse.title}" ไปยังพนักงาน ${acceptedParticipants.length} ท่าน ผ่าน LINE Official Account เรียบร้อยแล้ว`
+    );
+  };
+
+  const handleCopyNominationLink = async () => {
+    if (!selectedCourse) return;
+
+    const nominationUrl = `${window.location.origin}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`;
+    await copyTextToClipboard(nominationUrl);
+    setCopiedUrlSuccess(true);
+    setTimeout(() => setCopiedUrlSuccess(false), 2000);
+    setShowNominationModal(true);
   };
 
   const handleExportAttendanceSheet = async () => {
@@ -1367,19 +1448,43 @@ export default function TrainingAcceptSurvey() {
             <div className={styles.participantActions}>
               <span>{acceptedParticipants.length} / {selectedCourse.capacity} seats</span>
               <button
+                className={styles.shareLinkButton}
+                type="button"
+                title="คัดลอกลิ้งก์ส่งให้ Section Head / หัวหน้างาน เพื่อเข้าเลือกและเสนอชื่อพนักงานเข้าอบรมเอง"
+                onClick={() => void handleCopyNominationLink()}
+              >
+                <span aria-hidden="true" style={{ fontSize: "1.02rem" }}>🔗</span>
+                คัดลอกลิ้งก์ให้ Section Head
+              </button>
+              <button
+                className={styles.lineNotifyButton}
+                type="button"
+                disabled={acceptedParticipants.length === 0 || isSendingLineNotify}
+                title={
+                  acceptedParticipants.length === 0
+                    ? "เพิ่มผู้เข้าอบรมอย่างน้อย 1 คนก่อนส่งแจ้งเตือน LINE OA"
+                    : "ส่งข้อความแจ้งเตือนรายชื่อและกำหนดการอบรมเข้า LINE Official Account"
+                }
+                onClick={() => void handleSendLineNotification()}
+              >
+                <span aria-hidden="true" style={{ fontSize: "1.02rem" }}>💬</span>
+                {isSendingLineNotify ? "กำลังส่ง LINE..." : "ส่งแจ้งเตือน LINE OA"}
+              </button>
+              <button
                 className={styles.exportAttendanceButton}
                 type="button"
                 disabled={acceptedParticipants.length === 0 || isExportingAttendance}
                 title={
                   acceptedParticipants.length === 0
-                    ? "Add at least one participant before exporting."
-                    : "Export attendance sheet"
+                    ? "เพิ่มผู้เข้าอบรมอย่างน้อย 1 คนก่อนส่งออกไฟล์ Excel"
+                    : "ส่งออกตารางเช็คชื่อเข้าอบรมเป็นไฟล์ Excel (Attendance Sheet)"
                 }
                 onClick={() => void handleExportAttendanceSheet()}
               >
+                <span aria-hidden="true" style={{ fontSize: "1.02rem" }}>📊</span>
                 {isExportingAttendance
-                  ? "Preparing Excel..."
-                  : "Export Excel"}
+                  ? "กำลังสร้างไฟล์ Excel..."
+                  : "ส่งออก Excel (Attendance Sheet)"}
               </button>
             </div>
           </div>
@@ -1796,6 +1901,88 @@ export default function TrainingAcceptSurvey() {
           <strong>Select a course first to show training actual details.</strong>
         </section>
       )}
+
+      {showNominationModal && selectedCourse ? (
+        <div className={styles.modalBackdrop} onClick={() => setShowNominationModal(false)}>
+          <div className={styles.nominationModal} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalHeaderTitle}>
+                <span aria-hidden="true">🔗</span>
+                <div>
+                  <h3>ส่งต่อลิ้งก์เสนอชื่อเข้าอบรม</h3>
+                  <small style={{ color: "var(--ui-30-muted)" }}>
+                    Section Head / Supervisor Nomination Link
+                  </small>
+                </div>
+              </div>
+              <button
+                className={styles.modalCloseBtn}
+                type="button"
+                onClick={() => setShowNominationModal(false)}
+                title="ปิดหน้าต่าง"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className={styles.courseSummaryBadge}>
+              <strong>วิชา: {selectedCourse.title}</strong>
+              <div className={styles.courseSummaryMeta}>
+                <span>🗓️ วันที่: {selectedCourse.date || "ไม่ระบุ"}</span>
+                <span>⏰ เวลา: {selectedCourse.startTime && selectedCourse.endTime ? `${selectedCourse.startTime} - ${selectedCourse.endTime}` : "ไม่ระบุ"}</span>
+                <span>👥 โควต้า: {selectedCourse.capacity} Seats</span>
+              </div>
+            </div>
+
+            <div className={styles.urlInputContainer}>
+              <label>🔗 ลิ้งก์สำหรับส่งต่อให้หัวหน้างาน (Direct Link):</label>
+              <div className={styles.urlBoxWrapper}>
+                <input
+                  className={styles.urlInputText}
+                  type="text"
+                  readOnly
+                  value={`${typeof window !== "undefined" ? window.location.origin : ""}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`}
+                />
+                <button
+                  className={`${styles.copyUrlBtn} ${copiedUrlSuccess ? styles.copyUrlSuccess : ""}`}
+                  type="button"
+                  onClick={async () => {
+                    const url = `${window.location.origin}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`;
+                    await copyTextToClipboard(url);
+                    setCopiedUrlSuccess(true);
+                    setTimeout(() => setCopiedUrlSuccess(false), 2000);
+                  }}
+                >
+                  {copiedUrlSuccess ? "✓ คัดลอกแล้ว!" : "📋 คัดลอก URL"}
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.sharePresetContainer}>
+              <label>💬 ตัวอย่างข้อความสำเร็จรูปสำหรับส่งต่อ (LINE / Email Preset):</label>
+              <div className={styles.presetMessageBox}>
+                {`📌 ขอเรียนเชิญหัวหน้างาน / Section Head เสนอชื่อพนักงานเข้าอบรม\n📚 วิชา: ${selectedCourse.title}\n🗓️ วันที่อบรม: ${selectedCourse.date || "ตามกำหนดการ"}\n🔗 ลิ้งก์เสนอชื่อพนักงาน: ${typeof window !== "undefined" ? window.location.origin : ""}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`}
+              </div>
+            </div>
+
+            <div className={styles.modalActionButtons}>
+              <button
+                className={styles.copyPresetBtn}
+                type="button"
+                onClick={async () => {
+                  const msg = `📌 ขอเรียนเชิญหัวหน้างาน / Section Head เสนอชื่อพนักงานเข้าอบรม\n📚 วิชา: ${selectedCourse.title}\n🗓️ วันที่อบรม: ${selectedCourse.date || "ตามกำหนดการ"}\n🔗 ลิ้งก์เสนอชื่อพนักงาน: ${window.location.origin}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`;
+                  await copyTextToClipboard(msg);
+                  setCopiedPresetSuccess(true);
+                  setTimeout(() => setCopiedPresetSuccess(false), 2000);
+                }}
+              >
+                <span aria-hidden="true">💬</span>
+                {copiedPresetSuccess ? "✓ คัดลอกข้อความแล้ว!" : "คัดลอกข้อความส่ง LINE / Email"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

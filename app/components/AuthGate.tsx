@@ -97,6 +97,7 @@ export default function AuthGate({
   const [previewUser, setPreviewUser] = useState<ClientSessionUser | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutMessage, setLogoutMessage] = useState<string | null>(null);
+  const [targetReturnUrl, setTargetReturnUrl] = useState<string | null>(null);
 
   useEffect(() => {
     initializeTrainingWorkflow();
@@ -105,6 +106,8 @@ export default function AuthGate({
   const handleLogin = async (username: string, password: string) => {
     await loginWithCredentials(username, password);
     setLogoutMessage(null);
+    const dest = targetReturnUrl && targetReturnUrl !== "/login" ? targetReturnUrl : "/";
+    router.push(dest);
     router.refresh();
   };
 
@@ -137,7 +140,8 @@ export default function AuthGate({
 
     setLogoutMessage(null);
     setPreviewUser(nextPreviewUser);
-    router.push("/");
+    const dest = targetReturnUrl && targetReturnUrl !== "/login" ? targetReturnUrl : "/";
+    router.push(dest);
   };
 
   const handleLogout = async () => {
@@ -172,11 +176,16 @@ export default function AuthGate({
 
   useEffect(() => {
     if (!effectiveUser && pathname !== "/login") {
+      if (typeof window !== "undefined") {
+        const fullUrl = `${pathname}${window.location.search}`;
+        setTargetReturnUrl(fullUrl);
+      }
       router.replace("/login");
     } else if (effectiveUser && pathname === "/login") {
-      router.replace("/");
+      const dest = targetReturnUrl && targetReturnUrl !== "/login" ? targetReturnUrl : "/";
+      router.replace(dest);
     }
-  }, [effectiveUser, pathname, router]);
+  }, [effectiveUser, pathname, router, targetReturnUrl]);
 
   if (!effectiveUser) {
     return (
