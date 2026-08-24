@@ -1,4 +1,5 @@
 import { apiSuccess } from "../../../../lib/api/response";
+import { recordDeleteAudit } from "../../../../lib/audit";
 import {
   readJsonObject,
   readPositiveId,
@@ -69,11 +70,13 @@ export const createDeleteCompanyHandler = (
   dependencies: CompanyItemDependencies = {},
 ) =>
   createProtectedRoute<CompanyRouteContext>(
-    async (_request, _principal, context) => {
+    async (request, principal, context) => {
       const companyId = await readCompanyId(context);
       const company = await (
         dependencies.service ?? companyService
       ).deleteCompany(companyId);
+
+      await recordDeleteAudit(request, principal, "company", companyId);
 
       return apiSuccess({ company });
     },

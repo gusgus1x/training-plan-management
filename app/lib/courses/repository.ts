@@ -1,6 +1,7 @@
 import type { PrismaClient } from "../../generated/prisma/client";
 import { Prisma } from "../../generated/prisma/client";
 import { ApiError } from "../api/errors";
+import type { AuditActor } from "../audit";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
 import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
@@ -515,10 +516,17 @@ export const createCourseRepository = (client?: DatabaseClient) => {
       });
     },
 
-    async delete(id: string, companyId: string | null = null) {
+    async delete(id: string, companyId: string | null = null, actor?: AuditActor) {
       return withDatabaseErrorMapping(async () => {
         const courseId = BigInt(id);
         return await db().$transaction(async (tx) => {
+          // Snapshot the name while the row still exists, for the audit line.
+          const courseLabel = actor
+            ? await tx.course.findUnique({
+                where: { course_id: courseId },
+                select: { course_code: true, course_name: true },
+              })
+            : null;
           if (companyId) {
             const current = await tx.course.findUniqueOrThrow({
               where: { course_id: courseId },
@@ -544,7 +552,14 @@ export const createCourseRepository = (client?: DatabaseClient) => {
             const planIds = plans.map((p) => p.plan_id);
 
             if (planIds.length > 0) {
-              await cascadeDeleteTrainingPlans(tx, planIds);
+              await cascadeDeleteTrainingPlans(tx, planIds, actor && {
+                actor,
+                entityType: "course",
+                entityId: id,
+                entityLabel: [courseLabel?.course_code, courseLabel?.course_name]
+                  .filter(Boolean)
+                  .join(" ") || undefined,
+              });
             }
 
             await tx.training_plan_oap.deleteMany({

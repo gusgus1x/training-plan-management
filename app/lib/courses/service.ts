@@ -1,4 +1,5 @@
 import { ApiError } from "../api/errors";
+import type { AuditActor } from "../audit";
 import { courseRepository, type CourseRepository } from "./repository";
 import type { CourseListFilters, CreateCourseInput, UpdateCourseInput } from "./types";
 
@@ -13,8 +14,8 @@ export const createCourseService = (repository: CourseRepository = courseReposit
   async updateCourse(id: string, input: UpdateCourseInput, userId: string, companyId: string | null = null) {
     return repository.update(id, input, userId, companyId);
   },
-  async deleteCourse(id: string, userId: string, companyId: string | null = null) {
-    return repository.delete(id, companyId);
+  async deleteCourse(id: string, userId: string, companyId: string | null = null, actor?: AuditActor) {
+    return repository.delete(id, companyId, actor);
   }
 });
 

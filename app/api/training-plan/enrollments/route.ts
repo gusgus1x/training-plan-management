@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { ApiError } from "../../../lib/api/errors";
 import { apiSuccess } from "../../../lib/api/response";
 import { readJsonObject } from "../../../lib/api/validation";
 import { createProtectedRoute, type ProtectedRouteOptions } from "../../../lib/auth/guard";
@@ -31,6 +32,14 @@ export const createCreateEnrollmentHandler = (dependencies: Dependencies = {}) =
     if (principal.role === "EMPLOYEE") {
       requireEmployeeOwnership(principal, input.employeeId);
       input.source = "EMPLOYEE";
+    } else if (principal.role === "ADMIN") {
+      // Enrolling people is HRD work, not system administration; allRoles already excludes ADMIN,
+      // so this only fires if someone widens that list without revisiting the decision.
+      throw new ApiError({
+        code: "FORBIDDEN",
+        message: "Administrators cannot enrol participants",
+        status: 403,
+      });
     } else {
       input.source = principal.role;
     }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ApiError } from "../../../lib/api/errors";
 import { apiFailure, apiSuccess } from "../../../lib/api/response";
+import { auditRequestContext, recordAuditQuietly } from "../../../lib/audit";
 import { authenticateCredentials } from "../../../lib/auth/authentication";
 import {
   createSessionToken,
@@ -62,8 +63,13 @@ export const createLoginHandler = (
   dependencies: LoginHandlerDependencies = {},
 ) =>
   async function loginHandler(request: Request) {
+    const context = auditRequestContext(request);
+    // Captured before authentication so a failed attempt still records the name that was tried.
+    let attemptedUsername: string | null = null;
+
     try {
       const credentials = await readCredentials(request);
+      attemptedUsername = credentials.username;
       const principal = await (
         dependencies.authenticate ?? authenticateCredentials
       )(credentials.username, credentials.password);
@@ -75,9 +81,32 @@ export const createLoginHandler = (
       response.headers.set("Cache-Control", "no-store");
       setSessionCookie(response, token, dependencies.production ?? isSecureRequest(request));
 
+      await recordAuditQuietly({
+        category: "AUTH",
+        action: "LOGIN_SUCCEEDED",
+        actor: {
+          userId: principal.userId,
+          username: principal.username,
+          role: principal.role,
+        },
+        ...context,
+      });
+
       return response;
     } catch (error: unknown) {
       console.error("[Login Handler Error]", error);
+
+      await recordAuditQuietly({
+        category: "AUTH",
+        action: "LOGIN_FAILED",
+        // No userId: a failed attempt has not proven who the caller is.
+        actor: { username: attemptedUsername },
+        detail: {
+          reason: error instanceof ApiError ? error.code : "UNEXPECTED_ERROR",
+        },
+        ...context,
+      });
+
       const response = apiFailure(error);
       response.headers.set("Cache-Control", "no-store");
       return response;

@@ -1,14 +1,40 @@
 import type { Prisma } from "../generated/prisma/client";
+import { recordAudit, type AuditActor } from "./audit";
+
+export type CascadeAuditContext = {
+  actor: AuditActor;
+  /** What the user asked to delete — a course, an OAP plan, or a single rolling session. */
+  entityType: string;
+  entityId: string;
+  entityLabel?: string;
+};
 
 /**
  * Cascades deletion of one or more training plans and all related entities in strict
  * foreign-key dependency order so no constraint errors or orphaned records occur.
+ *
+ * When an audit context is supplied the row count wiped from each table is written to audit_log
+ * inside the caller's transaction, so the record either commits with the deletion or rolls back
+ * with it. Without those counts nobody can tell afterwards whether a delete removed one empty
+ * plan or a year of attendance history. See docs/admin-and-audit-log-plan.md.
  */
 export const cascadeDeleteTrainingPlans = async (
   tx: Prisma.TransactionClient,
   planIds: bigint[],
+  audit?: CascadeAuditContext,
 ): Promise<void> => {
   if (planIds.length === 0) return;
+
+  const deleted: Record<string, number> = {};
+  // Preserves the original swallow-and-continue behaviour while tallying what actually went.
+  const drop = async (
+    table: string,
+    run: Promise<{ count: number }>,
+    swallow = true,
+  ) => {
+    const result = swallow ? await run.catch(() => undefined) : await run;
+    if (result?.count) deleted[table] = (deleted[table] ?? 0) + result.count;
+  };
 
   // 1. Find all enrollment IDs for these plans
   const enrollments = await tx.training_enrollment.findMany({
@@ -40,9 +66,9 @@ export const cascadeDeleteTrainingPlans = async (
     // 4. Delete training results FIRST before assessment submissions
     // because training_result has official_pre_submission_id and official_post_submission_id
     // referencing assessment_submission.
-    await tx.training_result.deleteMany({
+    await drop("training_result", tx.training_result.deleteMany({
       where: { enrollment_id: { in: enrollmentIds } },
-    }).catch(() => undefined);
+    }));
 
     // 5. Delete assessment answers & submissions
     const assessmentSubmissions = await tx.assessment_submission.findMany({
@@ -51,12 +77,12 @@ export const cascadeDeleteTrainingPlans = async (
     });
     if (assessmentSubmissions.length > 0) {
       const submissionIds = assessmentSubmissions.map((s) => s.submission_id);
-      await tx.assessment_answer.deleteMany({
+      await drop("assessment_answer", tx.assessment_answer.deleteMany({
         where: { submission_id: { in: submissionIds } },
-      }).catch(() => undefined);
-      await tx.assessment_submission.deleteMany({
+      }));
+      await drop("assessment_submission", tx.assessment_submission.deleteMany({
         where: { submission_id: { in: submissionIds } },
-      }).catch(() => undefined);
+      }));
     }
 
     // 6. Delete evaluation answers & submissions
@@ -66,41 +92,41 @@ export const cascadeDeleteTrainingPlans = async (
     });
     if (evaluationSubmissions.length > 0) {
       const evalSubIds = evaluationSubmissions.map((s) => s.evaluation_submission_id);
-      await tx.evaluation_answer.deleteMany({
+      await drop("evaluation_answer", tx.evaluation_answer.deleteMany({
         where: { evaluation_submission_id: { in: evalSubIds } },
-      }).catch(() => undefined);
-      await tx.evaluation_submission.deleteMany({
+      }));
+      await drop("evaluation_submission", tx.evaluation_submission.deleteMany({
         where: { evaluation_submission_id: { in: evalSubIds } },
-      }).catch(() => undefined);
+      }));
     }
 
     // 7. Delete attendance
-    await tx.attendance.deleteMany({
+    await drop("attendance", tx.attendance.deleteMany({
       where: { enrollment_id: { in: enrollmentIds } },
-    });
+    }), false);
 
     // 8. Delete training enrollments
-    await tx.training_enrollment.deleteMany({
+    await drop("training_enrollment", tx.training_enrollment.deleteMany({
       where: { plan_id: { in: planIds } },
-    });
+    }), false);
   }
 
   // 9. Delete certificate import batches (if any)
   if (batchIds.length > 0) {
-    await tx.certificate_import_batch.deleteMany({
+    await drop("certificate_import_batch", tx.certificate_import_batch.deleteMany({
       where: { certificate_import_batch_id: { in: batchIds } },
-    }).catch(() => undefined);
+    }));
   }
 
   // 10. Delete training plan assessment settings
-  await tx.training_plan_assessment_setting.deleteMany({
+  await drop("training_plan_assessment_setting", tx.training_plan_assessment_setting.deleteMany({
     where: { plan_id: { in: planIds } },
-  }).catch(() => undefined);
+  }));
 
   // 11. Delete training expenses
-  await tx.training_expense.deleteMany({
+  await drop("training_expense", tx.training_expense.deleteMany({
     where: { plan_id: { in: planIds } },
-  }).catch(() => undefined);
+  }));
 
   // 12. Unlink training need requests
   await tx.training_need_request.updateMany({
@@ -109,7 +135,25 @@ export const cascadeDeleteTrainingPlans = async (
   }).catch(() => undefined);
 
   // 13. Delete the training plans
-  await tx.training_plan.deleteMany({
+  await drop("training_plan", tx.training_plan.deleteMany({
     where: { plan_id: { in: planIds } },
-  });
+  }), false);
+
+  if (audit) {
+    await recordAudit(
+      {
+        category: "DELETE",
+        action: "TRAINING_PLAN_CASCADE_DELETED",
+        actor: audit.actor,
+        entityType: audit.entityType,
+        entityId: audit.entityId,
+        entityLabel: audit.entityLabel,
+        detail: {
+          planIds: planIds.map(String),
+          deletedRows: deleted,
+        },
+      },
+      tx,
+    );
+  }
 };

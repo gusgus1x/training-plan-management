@@ -1,4 +1,5 @@
 import { apiSuccess } from "../../../../lib/api/response";
+import { recordDeleteAudit } from "../../../../lib/audit";
 import { readJsonObject, readPositiveId } from "../../../../lib/api/validation";
 import { createProtectedRoute, type ProtectedRouteOptions } from "../../../../lib/auth/guard";
 import { evaluationService, type EvaluationService } from "../../../../lib/evaluations/service";
@@ -10,8 +11,12 @@ const options = (auth?: ProtectedRouteOptions) => ({ ...auth, allowedRoles: ["HR
 const id = async (context: Context) => readPositiveId((await context.params).evaluationFormId, "evaluationFormId");
 
 export const createGetEvaluationHandler = (dependencies: Dependencies = {}) =>
-  createProtectedRoute<Context>(async (_request, principal, context) =>
-    apiSuccess({ evaluation: await (dependencies.service ?? evaluationService).getEvaluation(await id(context), principal) }), options(dependencies.auth));
+  createProtectedRoute<Context>(async (request, principal, context) => {
+      const entityId = await id(context);
+      const payload = { evaluation: await (dependencies.service ?? evaluationService).getEvaluation(entityId, principal) };
+      await recordDeleteAudit(request, principal, "evaluation", entityId);
+      return apiSuccess(payload);
+    }, options(dependencies.auth));
 
 export const createUpdateEvaluationHandler = (dependencies: Dependencies = {}) =>
   createProtectedRoute<Context>(async (request, principal, context) =>

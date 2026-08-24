@@ -1,3 +1,4 @@
+import type { AuditActor } from "../audit";
 import { oapPlanRepository, type OapPlanRepository } from "./repository";
 import type { CreateOapPlanInput, OapPlanListFilters, UpdateOapPlanInput } from "./types";
 
@@ -10,8 +11,8 @@ export const createOapPlanService = (repository: OapPlanRepository = oapPlanRepo
   async updateOapPlan(id: string, input: UpdateOapPlanInput, userId: string) {
     return repository.update(id, input, userId);
   },
-  async deleteOapPlan(id: string) {
-    return repository.delete(id);
+  async deleteOapPlan(id: string, actor?: AuditActor) {
+    return repository.delete(id, actor);
   },
 });
 
