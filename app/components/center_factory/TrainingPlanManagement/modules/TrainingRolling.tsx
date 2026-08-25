@@ -22,6 +22,7 @@ import type { RollingPlanRecord } from "../../../../lib/trainingRolling/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
+import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./TrainingRolling.module.css";
 
 export const trainingRollingModule = {
@@ -315,7 +316,10 @@ export default function TrainingRolling() {
       current.includes(key) ? current.filter((closedKey) => closedKey !== key) : [...current, key],
     );
 
+  const [isLoading, setIsLoading] = useState(true);
+
   const loadWorkspace = async () => {
+    setIsLoading(true);
     try {
       const [oapData, rollingData, courseData] = await Promise.all([
         listOapPlans({ search: null, status: null }),
@@ -330,6 +334,8 @@ export default function TrainingRolling() {
       setOapPlans([]);
       setRollingPlans([]);
       setStandards([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -856,6 +862,21 @@ export default function TrainingRolling() {
       alert("Failed to publish Training Rolling plan");
     }
   };
+
+  if (isLoading) {
+    return (
+      <section className={styles.page} aria-label="Training Rolling monthly plan">
+        <section className={styles.hero}>
+          <div>
+            <p className={styles.kicker}>{trainingRollingModule.subtitle}</p>
+            <h2>{trainingRollingModule.title}</h2>
+            <p>{trainingRollingModule.description}</p>
+          </div>
+        </section>
+        <TypewriterLoader label="กำลังโหลดข้อมูลแผนการอบรมรายเดือน (Rolling Plan)..." />
+      </section>
+    );
+  }
 
   return (
     <section className={styles.page} aria-label="Training Rolling monthly plan">

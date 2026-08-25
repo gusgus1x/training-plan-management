@@ -30,6 +30,7 @@ import { listLevels } from "../../../../lib/levels/client";
 import type { LevelRecord } from "../../../../lib/levels/types";
 import { listPositions } from "../../../../lib/positions/client";
 import type { PositionRecord } from "../../../../lib/positions/types";
+import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./EmployeeData.module.css";
 
 export const employeeDataModule = {
@@ -203,9 +204,12 @@ export default function EmployeeData() {
     [columnWidths],
   );
 
+  const [isLoading, setIsLoading] = useState(true);
+
   const load = async () => {
     setError(null);
     setRevealedNationalIds({});
+    setIsLoading(true);
     try {
       const [
         employeeResult,
@@ -253,6 +257,8 @@ export default function EmployeeData() {
           ? loadError.message
           : "Unable to load Employee Data",
       );
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -544,6 +550,21 @@ export default function EmployeeData() {
       setRevealingNationalIds(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <section className={styles.page} aria-label="Employee Data module">
+        <section className={styles.hero}>
+          <div>
+            <p className={styles.kicker}>{employeeDataModule.subtitle}</p>
+            <h2 translate="no">{employeeDataModule.title}</h2>
+            <p>{employeeDataModule.description}</p>
+          </div>
+        </section>
+        <TypewriterLoader label="กำลังโหลดข้อมูลพนักงาน..." />
+      </section>
+    );
+  }
 
   return (
     <section className={styles.page} aria-label="Employee Data module">

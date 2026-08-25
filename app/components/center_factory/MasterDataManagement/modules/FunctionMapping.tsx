@@ -53,6 +53,7 @@ import type {
 } from "../../../../lib/sections/types";
 import { listOrgHierarchyUsage } from "../../../../lib/orgHierarchy/client";
 import type { OrgHierarchyUsageRow } from "../../../../lib/orgHierarchy/types";
+import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./FunctionMapping.module.css";
 
 export const functionMappingModule = {
@@ -580,6 +581,21 @@ export default function FunctionMapping() {
       setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <section className={styles.moduleWorkspace} aria-label="Function Mapping module">
+        <section className={styles.moduleHero}>
+          <div>
+            <p className={styles.panelKicker}>{functionMappingModule.subtitle}</p>
+            <h2>{functionMappingModule.title}</h2>
+            <p>{functionMappingModule.description}</p>
+          </div>
+        </section>
+        <TypewriterLoader label="กำลังโหลดข้อมูลการเชื่อมโยงโครงสร้างองค์กร..." />
+      </section>
+    );
+  }
 
   return (
     <section className={styles.moduleWorkspace} aria-label="Function Mapping module">

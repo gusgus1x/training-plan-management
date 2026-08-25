@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   TRAINING_MASTER_EVENT,
   TRAINING_WORKFLOW_KEYS,
@@ -24,6 +23,7 @@ import {
   loadWorkflowRollingPlans,
   type RollingPlan,
 } from "./TrainingRolling";
+import TypewriterLoader from "../../../TypewriterLoader";
 import { listCourses } from "../../../../lib/courses/client";
 import { listEmployees } from "../../../../lib/employees/client";
 import type { EmployeeRecord } from "../../../../lib/employees/types";
@@ -577,8 +577,15 @@ const copyTextToClipboard = async (text: string): Promise<boolean> => {
 
 export default function TrainingAcceptSurvey() {
   const user = useAuthenticatedUser();
-  const searchParams = useSearchParams();
-  const urlCourseId = searchParams.get("courseId");
+  const [urlCourseId, setUrlCourseId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      setUrlCourseId(params.get("courseId"));
+    }
+  }, []);
+
   const confirm = useConfirm();
   const roleMode: RoleMode = user?.roleCode === "HRD_CENTER" ? "center" : "factory";
   const userCompanyCode = companies.find((company) => company === user?.companyCode) ?? "SNF";
@@ -603,29 +610,25 @@ export default function TrainingAcceptSurvey() {
   const [copiedPresetSuccess, setCopiedPresetSuccess] = useState(false);
 
   useEffect(() => {
-    void loadWorkflowRollingPlans().then(setRollingPlans);
-    void listCourses({ search: "", status: null })
-      .then((result) => setStandards(result.standards || []))
-      .catch(() => {
-        try {
-          const fallback = readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards);
-          setStandards(fallback || []);
-        } catch {
-          setStandards([]);
-        }
-      });
-    void listEmployees()
-      .then((result) => {
-        if (result.items && result.items.length > 0) {
-          setMasterEmployees(result.items.map(toSurveyEmployee));
-        } else {
-          setMasterEmployees(readEmployeeMasterData().map(masterRecordToSurveyEmployee));
-        }
-      })
-      .catch((error) => {
-        console.error("Failed to load employee master, falling back to local master data", error);
+    let active = true;
+    void Promise.all([
+      loadWorkflowRollingPlans().catch(() => []),
+      listCourses({ search: "", status: null }).catch(() => ({ standards: [] })),
+      listEmployees().catch(() => ({ items: [] })),
+      listEnrollments({ planId: null, employeeId: null }).catch(() => ({ enrollments: [] })),
+    ]).then(([plans, courseResult, empResult, enrollResult]) => {
+      if (!active) return;
+      setRollingPlans(plans);
+      setStandards(courseResult.standards || []);
+      if (empResult.items && empResult.items.length > 0) {
+        setMasterEmployees(empResult.items.map(toSurveyEmployee));
+      } else {
         setMasterEmployees(readEmployeeMasterData().map(masterRecordToSurveyEmployee));
-      });
+      }
+      setEnrollments(enrollResult.enrollments || []);
+    });
+
+    return () => { active = false; };
   }, []);
 
 
@@ -805,7 +808,7 @@ export default function TrainingAcceptSurvey() {
     selectedCourse?.owner === "factory" &&
     selectedCourse.ownerCompany === userCompanyCode;
   const hasSelectedCourse = selectedCourse !== null;
-  const canShowAcceptanceList = hasSelectedCourse;
+  const canShowAcceptanceList = hasSelectedCourse && selectedCourse?.owner === "center";
 
   const accessibleCompanies: string[] =
     roleMode === "center"
@@ -1084,6 +1087,7 @@ export default function TrainingAcceptSurvey() {
 
   const canCenterApprove = roleMode === "center";
   const canFactoryApprove = roleMode === "factory";
+  const canNominateEmployees = hasSelectedCourse;
   const targetActionLabel =
     roleMode === "factory"
       ? selectedCourse?.owner === "factory"
@@ -1241,6 +1245,8 @@ export default function TrainingAcceptSurvey() {
     }
   };
 
+  const [isTargetLoading, setIsTargetLoading] = useState(false);
+
   return (
     <section className={styles.page} aria-label="Training Accept Survey module">
       <section className={styles.hero}>
@@ -1285,8 +1291,13 @@ export default function TrainingAcceptSurvey() {
               const newGroupId = event.target.value;
               setSelectedCourseGroupId(newGroupId);
               const targetGroup = availableCourseGroups.find((g) => g.id === newGroupId);
-              setSelectedCourseId(targetGroup?.sessions[0]?.id ?? "");
+              const newSessionId = targetGroup?.sessions[0]?.id ?? "";
+              setSelectedCourseId(newSessionId);
               setActionMessage(null);
+              if (newGroupId) {
+                setIsTargetLoading(true);
+                setTimeout(() => setIsTargetLoading(false), 350);
+              }
             }}
           >
             <option value="">
@@ -1306,8 +1317,13 @@ export default function TrainingAcceptSurvey() {
             value={selectedCourse?.id ?? ""}
             disabled={!selectedCourseGroup}
             onChange={(event) => {
-              setSelectedCourseId(event.target.value);
+              const newSessionId = event.target.value;
+              setSelectedCourseId(newSessionId);
               setActionMessage(null);
+              if (newSessionId) {
+                setIsTargetLoading(true);
+                setTimeout(() => setIsTargetLoading(false), 350);
+              }
             }}
           >
             <option value="">
@@ -1336,7 +1352,7 @@ export default function TrainingAcceptSurvey() {
       </section>
 
       {selectedCourse ? (
-        <>
+        <Fragment>
           <section className={styles.coursePanel}>
         <div>
           <p className={styles.kicker}>Course detail</p>
@@ -1434,7 +1450,9 @@ export default function TrainingAcceptSurvey() {
                       })
                       .filter((l) => l && l !== "-" && l !== "บ" && l !== "จ" && l !== "ป" && l !== "S")
                   )
-                ).join(", ")
+                )
+                  .sort((a, b) => getLevelRank(b) - getLevelRank(a))
+                  .join(", ")
               : selectedCourse.targetGroup && selectedCourse.targetGroup !== "-"
                 ? selectedCourse.targetGroup
                 : "All Levels"}
@@ -1740,167 +1758,173 @@ export default function TrainingAcceptSurvey() {
           </section>
         ) : null
       ) : null}
+    </div>
 
-        <section className={styles.targetPanel}>
-          <div className={styles.workspaceHeader}>
-            <div>
-              <p className={styles.kicker}>Automatic target group</p>
-              <h3>Course Standard target employees</h3>
-            </div>
-            <span>
-              {availableTargetEmployees.length} available / {targetEmployees.length} target
-            </span>
-          </div>
-          <p className={styles.targetRuleNote}>
-            Automatically matched from position and level in Course Standard.
-          </p>
-          <div className={styles.companyGroupGrid}>
-            {targetEmployeeGroups.map((group) => {
-              const isUserCompanyCard = roleMode === "factory" && group.company === userCompanyCode;
-              return (
-                <details
-                  className={`${styles.companyGroupCard} ${isUserCompanyCard ? styles.ownCompanySectionHeader : ""}`}
-                  key={group.company}
-                  open
-                >
-                  <summary className={styles.companyGroupHeader}>
-                    <div className={styles.companySectionTitle}>
-                      <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
-                      <h4>บริษัท {group.company}</h4>
-                      {isUserCompanyCard ? (
-                        <span className={styles.ownCompanySectionTag}>
-                          ⭐ บริษัทของฉัน ({userCompanyCode})
-                        </span>
-                      ) : null}
-                    </div>
-                    <span className={styles.companyCountBadge}>
-                      {group.employees.length} available / {group.targetCount} target
-                    </span>
-                  </summary>
-                  <PaginatedEmployeeGrid
-                    employees={group.employees}
-                    targetActionLabel={targetActionLabel}
-                    onAddEmployee={handleAddEmployee}
-                    emptyMessage="ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้"
-                  />
-                </details>
-              );
-            })}
-            {availableTargetEmployees.length === 0 ? (
-              <div className={styles.emptyCompact}>
-                ไม่มีพนักงานกลุ่มเป้าหมาย Course Standard ที่เหลืออยู่
+    {isTargetLoading ? (
+          <TypewriterLoader label="กำลังประมวลผลและดึงข้อมูลกลุ่มเป้าหมาย..." />
+        ) : canNominateEmployees ? (
+          <Fragment>
+            <section className={styles.targetPanel}>
+              <div className={styles.workspaceHeader}>
+                <div>
+                  <p className={styles.kicker}>Automatic target group</p>
+                  <h3>Course Standard target employees</h3>
+                </div>
+                <span>
+                  {availableTargetEmployees.length} available / {targetEmployees.length} target
+                </span>
               </div>
-            ) : null}
-          </div>
-        </section>
-      </div>
-
-      {selectedCourse &&
-      (selectedCourse.targetLevels.length > 0 || levelOnlyEmployees.length > 0) && (
-        <section className={styles.targetPanel} style={{ marginBottom: "16px" }}>
-          <div className={styles.workspaceHeader}>
-            <div>
-              <p className={styles.kicker}>Target Level group (Other positions)</p>
-              <h3>Employees matching Target Level (Other positions)</h3>
-            </div>
-            <span>
-              {availableLevelOnlyEmployees.length} available / {levelOnlyEmployees.length} in level
-            </span>
-          </div>
-          <p className={styles.targetRuleNote}>
-            💡 พนักงานที่มี Level ตรงตามกำหนด ({selectedCourse.targetLevels.join(", ")}) แต่ตำแหน่งอยู่นอกเหนือจาก {selectedCourse.targetPositions.join(", ")}
-          </p>
-          <div className={styles.companyGroupGrid}>
-            {levelOnlyEmployeeGroups.map((group) => {
-              const isUserCompanyCard = roleMode === "factory" && group.company === userCompanyCode;
-              return (
-                <details
-                  className={`${styles.companyGroupCard} ${isUserCompanyCard ? styles.ownCompanySectionHeader : ""}`}
-                  key={group.company}
-                  open
-                >
-                  <summary className={styles.companyGroupHeader}>
-                    <div className={styles.companySectionTitle}>
-                      <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
-                      <h4>บริษัท {group.company}</h4>
-                      {isUserCompanyCard ? (
-                        <span className={styles.ownCompanySectionTag}>
-                          ⭐ บริษัทของฉัน ({userCompanyCode})
+              <p className={styles.targetRuleNote}>
+                Automatically matched from position and level in Course Standard.
+              </p>
+              <div className={styles.companyGroupGrid}>
+                {targetEmployeeGroups.map((group) => {
+                  const isUserCompanyCard = roleMode === "factory" && group.company === userCompanyCode;
+                  return (
+                    <details
+                      className={`${styles.companyGroupCard} ${isUserCompanyCard ? styles.ownCompanySectionHeader : ""}`}
+                      key={group.company}
+                      open
+                    >
+                      <summary className={styles.companyGroupHeader}>
+                        <div className={styles.companySectionTitle}>
+                          <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
+                          <h4>บริษัท {group.company}</h4>
+                          {isUserCompanyCard ? (
+                            <span className={styles.ownCompanySectionTag}>
+                              ⭐ บริษัทของฉัน ({userCompanyCode})
+                            </span>
+                          ) : null}
+                        </div>
+                        <span className={styles.companyCountBadge}>
+                          {group.employees.length} available / {group.targetCount} target
                         </span>
-                      ) : null}
-                    </div>
-                    <span className={styles.companyCountBadge}>
-                      {group.employees.length} available / {group.targetCount} in level
-                    </span>
-                  </summary>
-                  <PaginatedEmployeeGrid
-                    employees={group.employees}
-                    targetActionLabel={targetActionLabel}
-                    onAddEmployee={handleAddEmployee}
-                    emptyMessage="ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้"
-                  />
-                </details>
-              );
-            })}
-            {availableLevelOnlyEmployees.length === 0 ? (
-              <div className={styles.emptyCompact}>
-                ไม่มีพนักงานที่มี Level ตรงตามกำหนดในตำแหน่งอื่น
-              </div>
-            ) : null}
-          </div>
-        </section>
-      )}
-
-      <section className={styles.targetPanel}>
-        <div className={styles.workspaceHeader}>
-          <div>
-            <p className={styles.kicker}>Out-of-target group</p>
-            <h3>Add employees outside the target group</h3>
-          </div>
-          <span>{additionalEmployees.length} available</span>
-        </div>
-        <p className={styles.targetRuleNote}>
-          💡 เลือกบริษัทด้านล่างเพื่อดูและเพิ่มพนักงานที่ตำแหน่งหรือระดับไม่ตรงตาม Course Standard
-        </p>
-        <div className={styles.companyGroupGrid}>
-          {additionalEmployeeGroups.map((group) => {
-            const isUserCompanyCard = roleMode === "factory" && group.company === userCompanyCode;
-            return (
-              <details
-                className={`${styles.companyGroupCard} ${styles.additionalDisclosure} ${isUserCompanyCard ? styles.ownCompanySectionHeader : ""}`}
-                key={group.company}
-              >
-                <summary className={styles.companyGroupHeader}>
-                  <div className={styles.companySectionTitle}>
-                    <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
-                    <h4>บริษัท {group.company}</h4>
-                    {isUserCompanyCard ? (
-                      <span className={styles.ownCompanySectionTag}>
-                        ⭐ บริษัทของฉัน ({userCompanyCode})
-                      </span>
-                    ) : null}
+                      </summary>
+                      <PaginatedEmployeeGrid
+                        employees={group.employees}
+                        targetActionLabel={targetActionLabel}
+                        onAddEmployee={handleAddEmployee}
+                        emptyMessage="ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้"
+                      />
+                    </details>
+                  );
+                })}
+                {availableTargetEmployees.length === 0 ? (
+                  <div className={styles.emptyCompact}>
+                    ไม่มีพนักงานกลุ่มเป้าหมาย Course Standard ที่เหลืออยู่
                   </div>
-                  <span className={styles.companyCountBadge}>
-                    {group.employees.length} available
+                ) : null}
+              </div>
+            </section>
+
+            {selectedCourse &&
+            (selectedCourse.targetLevels.length > 0 || levelOnlyEmployees.length > 0) && (
+              <section className={styles.targetPanel} style={{ marginBottom: "16px" }}>
+                <div className={styles.workspaceHeader}>
+                  <div>
+                    <p className={styles.kicker}>Target Level group (Other positions)</p>
+                    <h3>Employees matching Target Level (Other positions)</h3>
+                  </div>
+                  <span>
+                    {availableLevelOnlyEmployees.length} available / {levelOnlyEmployees.length} in level
                   </span>
-                </summary>
-                <PaginatedEmployeeGrid
-                  employees={group.employees}
-                  targetActionLabel={targetActionLabel}
-                  onAddEmployee={handleAddEmployee}
-                  emptyMessage="ไม่มีพนักงานเพิ่มเติมสำหรับบริษัทนี้"
-                />
-              </details>
-            );
-          })}
-          {additionalEmployees.length === 0 ? (
-            <div className={styles.emptyCompact}>
-              ไม่มีพนักงานเพิ่มเติมที่สามารถเลือกได้
-            </div>
-          ) : null}
-        </div>
-      </section>
-        </>
+                </div>
+                <p className={styles.targetRuleNote}>
+                  💡 พนักงานที่มี Level ตรงตามกำหนด ({[...selectedCourse.targetLevels].sort((a, b) => getLevelRank(b) - getLevelRank(a)).join(", ")}) แต่ตำแหน่งอยู่นอกเหนือจาก {selectedCourse.targetPositions.join(", ")}
+                </p>
+                <div className={styles.companyGroupGrid}>
+                  {levelOnlyEmployeeGroups.map((group) => {
+                    const isUserCompanyCard = roleMode === "factory" && group.company === userCompanyCode;
+                    return (
+                      <details
+                        className={`${styles.companyGroupCard} ${isUserCompanyCard ? styles.ownCompanySectionHeader : ""}`}
+                        key={group.company}
+                        open
+                      >
+                        <summary className={styles.companyGroupHeader}>
+                          <div className={styles.companySectionTitle}>
+                            <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
+                            <h4>บริษัท {group.company}</h4>
+                            {isUserCompanyCard ? (
+                              <span className={styles.ownCompanySectionTag}>
+                                ⭐ บริษัทของฉัน ({userCompanyCode})
+                              </span>
+                            ) : null}
+                          </div>
+                          <span className={styles.companyCountBadge}>
+                            {group.employees.length} available / {group.targetCount} in level
+                          </span>
+                        </summary>
+                        <PaginatedEmployeeGrid
+                          employees={group.employees}
+                          targetActionLabel={targetActionLabel}
+                          onAddEmployee={handleAddEmployee}
+                          emptyMessage="ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้"
+                        />
+                      </details>
+                    );
+                  })}
+                  {availableLevelOnlyEmployees.length === 0 ? (
+                    <div className={styles.emptyCompact}>
+                      ไม่มีพนักงานที่มี Level ตรงตามกำหนดในตำแหน่งอื่น
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+            )}
+
+            <section className={styles.targetPanel}>
+              <div className={styles.workspaceHeader}>
+                <div>
+                  <p className={styles.kicker}>Out-of-target group</p>
+                  <h3>Add employees outside the target group</h3>
+                </div>
+                <span>{additionalEmployees.length} available</span>
+              </div>
+              <p className={styles.targetRuleNote}>
+                💡 เลือกบริษัทด้านล่างเพื่อดูและเพิ่มพนักงานที่ตำแหน่งหรือระดับไม่ตรงตาม Course Standard
+              </p>
+              <div className={styles.companyGroupGrid}>
+                {additionalEmployeeGroups.map((group) => {
+                  const isUserCompanyCard = roleMode === "factory" && group.company === userCompanyCode;
+                  return (
+                    <details
+                      className={`${styles.companyGroupCard} ${styles.additionalDisclosure} ${isUserCompanyCard ? styles.ownCompanySectionHeader : ""}`}
+                      key={group.company}
+                    >
+                      <summary className={styles.companyGroupHeader}>
+                        <div className={styles.companySectionTitle}>
+                          <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
+                          <h4>บริษัท {group.company}</h4>
+                          {isUserCompanyCard ? (
+                            <span className={styles.ownCompanySectionTag}>
+                              ⭐ บริษัทของฉัน ({userCompanyCode})
+                            </span>
+                          ) : null}
+                        </div>
+                        <span className={styles.companyCountBadge}>
+                          {group.employees.length} available
+                        </span>
+                      </summary>
+                      <PaginatedEmployeeGrid
+                        employees={group.employees}
+                        targetActionLabel={targetActionLabel}
+                        onAddEmployee={handleAddEmployee}
+                        emptyMessage="ไม่มีพนักงานเพิ่มเติมสำหรับบริษัทนี้"
+                      />
+                    </details>
+                  );
+                })}
+                {additionalEmployees.length === 0 ? (
+                  <div className={styles.emptyCompact}>
+                    ไม่มีพนักงานเพิ่มเติมที่สามารถเลือกได้
+                  </div>
+                ) : null}
+              </div>
+            </section>
+          </Fragment>
+        ) : null}
+        </Fragment>
       ) : (
         <section className={styles.selectionPrompt}>
           <strong>Select a course first to show training actual details.</strong>
