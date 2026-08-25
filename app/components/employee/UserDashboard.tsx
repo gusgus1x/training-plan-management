@@ -34,6 +34,7 @@ import {
   buildCalendarYearOptions,
   getCurrentCalendarDate,
 } from "../../lib/calendarDate";
+import TypewriterLoader from "../TypewriterLoader";
 
 type UserDashboardProps = {
   username: string;
@@ -116,25 +117,30 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [completedCourses, setCompletedCourses] = useState<WorkflowCompletedCourse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const employeeCode = profileValue(authenticatedUser?.employeeCode);
   const employeeCompany = profileValue(authenticatedUser?.companyCode);
   const employeeId = authenticatedUser?.employeeId ?? null;
 
   useEffect(() => {
-    void loadWorkflowRollingPlans().then(setRollingPlans);
-  }, []);
+    let active = true;
+    setIsLoading(true);
+    const fetchEnrollments = employeeId
+      ? listEnrollments({ planId: null, employeeId }).catch(() => ({ enrollments: [] }))
+      : Promise.resolve({ enrollments: [] });
 
-  useEffect(() => {
-    if (!employeeId) {
-      setEnrollments([]);
-      return;
-    }
-    void listEnrollments({ planId: null, employeeId })
-      .then((result) => setEnrollments(result.enrollments || []))
-      .catch((error) => {
-        console.error("Failed to load my registrations", error);
-        setEnrollments([]);
-      });
+    void Promise.all([
+      loadWorkflowRollingPlans().catch(() => []),
+      fetchEnrollments,
+    ]).then(([plans, enrollResult]) => {
+      if (!active) return;
+      setRollingPlans(plans);
+      setEnrollments(enrollResult.enrollments || []);
+    }).finally(() => {
+      if (active) setIsLoading(false);
+    });
+
+    return () => { active = false; };
   }, [employeeId]);
 
   useEffect(() => {
@@ -277,7 +283,9 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
       onHome={handleHome}
       onLogout={onLogout}
     >
-      {activeModule ? (
+      {isLoading ? (
+        <TypewriterLoader label="กำลังโหลดข้อมูลแดชบอร์ด..." />
+      ) : activeModule ? (
         <>
           {activeModule === "register" ? (
             <RegisterTrainingModule />

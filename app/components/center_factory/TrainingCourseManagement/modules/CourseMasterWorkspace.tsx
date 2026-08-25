@@ -36,6 +36,7 @@ import type { PositionRecord } from "../../../../lib/positions/types";
 import { listLevels } from "../../../../lib/levels/client";
 import type { LevelRecord } from "../../../../lib/levels/types";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
+import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./CourseMasterWorkspace.module.css";
 
 export const courseMasterWorkspaceModule = {
@@ -458,8 +459,11 @@ function CourseMaster() {
     alert(`🎉 นำเข้าข้อมูล Course Master สำเร็จจำนวน ${importedCount} รายการ!`);
   };
 
+  const [isLoadingData, setIsLoadingData] = useState(true);
+
   useEffect(() => {
     let active = true;
+    setIsLoadingData(true);
     void Promise.all([
       listCourseTypes({ status: "ACTIVE" }),
       listCourseGroups({ status: "ACTIVE" }),
@@ -525,6 +529,10 @@ function CourseMaster() {
       setOrgUsage([]);
       setPositionRows([]);
       setLevelRows([]);
+    }).finally(() => {
+      if (active) {
+        setIsLoadingData(false);
+      }
     });
     void loadPublishedForms();
     return () => { active = false; };
@@ -2176,6 +2184,21 @@ function CourseMaster() {
       </section>
     );
   };
+
+  if (isLoadingData) {
+    return (
+      <section className={styles.page} aria-label="Course Master management">
+        <section className={styles.hero}>
+          <div>
+            <p className={styles.kicker}>{courseMasterModule.subtitle}</p>
+            <h2 translate="no">{courseMasterModule.title}</h2>
+            <p>{courseMasterModule.description}</p>
+          </div>
+        </section>
+        <TypewriterLoader label="กำลังโหลดข้อมูลหลักสูตรและมาตรฐาน..." />
+      </section>
+    );
+  }
 
   return (
     <section className={styles.page} aria-label="Course Master management">

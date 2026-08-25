@@ -23,6 +23,7 @@ import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserCo
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
+import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./TrainingOAP.module.css";
 
 export const trainingOapModule = {
@@ -193,7 +194,10 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     };
   }, []);
 
+  const [isLoading, setIsLoading] = useState(true);
+
   const loadWorkspace = async () => {
+    setIsLoading(true);
     try {
       const [courseData, oapData] = await Promise.all([
         listCourses({ search: "", status: null }),
@@ -207,6 +211,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       setCourses([]);
       setStandards([]);
       setPlans([]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -534,6 +540,21 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     setSelectedPlanId("");
     setIsNewOpen(true);
   };
+
+  if (isLoading) {
+    return (
+      <section className={styles.page} aria-label="Training OAP annual plan">
+        <section className={styles.hero}>
+          <div>
+            <p className={styles.kicker}>{trainingOapModule.subtitle}</p>
+            <h2>{trainingOapModule.title}</h2>
+            <p>{trainingOapModule.description}</p>
+          </div>
+        </section>
+        <TypewriterLoader label="กำลังโหลดข้อมูลแผนการอบรมประจำปี (OAP)..." />
+      </section>
+    );
+  }
 
   return (
     <section className={styles.page} aria-label="Training OAP annual plan">

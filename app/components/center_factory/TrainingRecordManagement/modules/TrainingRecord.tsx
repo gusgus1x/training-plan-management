@@ -12,6 +12,7 @@ import {
   loadWorkflowRollingPlans,
   type RollingPlan,
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
+import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./TrainingRecord.module.css";
 
 export const trainingRecordModule = {
@@ -593,23 +594,23 @@ export default function TrainingRecord() {
   const [customDepartment, setCustomDepartment] = useState("");
   const [addAttendeeMessage, setAddAttendeeMessage] = useState("");
   const [masterEmployees, setMasterEmployees] = useState<EmployeeRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    void loadWorkflowRollingPlans().then(setRollingPlans);
-    void listEmployees()
-      .then((result) => setMasterEmployees(result.items || []))
-      .catch((error) => {
-        console.error("Failed to load employee master", error);
-        setMasterEmployees([]);
-      });
-  }, []);
+    let active = true;
+    setIsLoading(true);
+    void Promise.all([
+      loadWorkflowRollingPlans().catch(() => []),
+      listEmployees().catch(() => ({ items: [] as EmployeeRecord[] })),
+      listTrainingRecords().catch(() => ({ trainingRecords: [] as TrainingRecordSummary[] })),
+    ]).then(([plans, empResult, recordResult]) => {
+      if (!active) return;
+      setRollingPlans(plans);
+      setMasterEmployees(empResult.items || []);
 
-  useEffect(() => {
-    const percent = (count: number, total: number) => (total > 0 ? Math.round((count / total) * 100) : 0);
-
-    void listTrainingRecords().then((result) => {
-      const nextCourses = (result.trainingRecords || []).map<CompletedCourse>((record: TrainingRecordSummary) => {
-        const rollingPlan = rollingPlans.find((plan) => plan.rollingId === record.planId);
+      const percent = (count: number, total: number) => (total > 0 ? Math.round((count / total) * 100) : 0);
+      const nextCourses = (recordResult.trainingRecords || []).map<CompletedCourse>((record: TrainingRecordSummary) => {
+        const rollingPlan = plans.find((plan) => plan.rollingId === record.planId);
         const postTestPassPercent = percent(record.postTestPassCount, record.attendedCount);
 
         return {
@@ -653,8 +654,14 @@ export default function TrainingRecord() {
       });
 
       setCourses(nextCourses);
+    }).finally(() => {
+      if (active) {
+        setIsLoading(false);
+      }
     });
-  }, [rollingPlans]);
+
+    return () => { active = false; };
+  }, []);
 
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
   const userCompanyCode = profileValue(user?.companyCode);
@@ -1586,6 +1593,21 @@ export default function TrainingRecord() {
     (total, course) => total + getActualCostTotal(course),
     0,
   );
+
+  if (isLoading) {
+    return (
+      <section className={styles.page} aria-label="Training Record module">
+        <section className={styles.hero}>
+          <div>
+            <p className={styles.kicker}>{trainingRecordModule.subtitle}</p>
+            <h2>{trainingRecordModule.title}</h2>
+            <p>{trainingRecordModule.description}</p>
+          </div>
+        </section>
+        <TypewriterLoader label="กำลังโหลดข้อมูลประวัติการอบรม..." />
+      </section>
+    );
+  }
 
   return (
     <section className={styles.page} aria-label="Training Record module">
