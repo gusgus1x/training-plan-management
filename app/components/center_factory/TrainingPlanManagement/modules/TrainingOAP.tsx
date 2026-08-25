@@ -379,8 +379,19 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       return a.companyName.localeCompare(b.companyName);
     });
   }, [visiblePlans, userCompanyCode]);
+
+  const isCenterOwnedOap = (plan: OapPlan | null) => {
+    if (!plan) return false;
+    return (
+      plan.owner === "CENTER" ||
+      plan.ownerCompany === "HRD Center" ||
+      plan.course?.owner === "CENTER"
+    );
+  };
+
   const selectedPlan =
     visiblePlans.find((plan) => plan.id === selectedPlanId) ?? null;
+  const isSelectedPlanReadOnlyForFactory = isFactoryUser && isCenterOwnedOap(selectedPlan);
 
   const updateForm = (field: keyof typeof emptyForm, value: string) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -476,6 +487,10 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   };
 
   const handleEdit = (plan: OapPlan) => {
+    if (isFactoryUser && isCenterOwnedOap(plan)) {
+      toast.warning("แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้");
+      return;
+    }
     setEditingId(plan.id);
     setForm({
       courseCode: plan.course.courseCode,
@@ -496,6 +511,11 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   };
 
   const handleDelete = async (planId: string) => {
+    const targetPlan = plans.find((p) => p.id === planId);
+    if (isFactoryUser && isCenterOwnedOap(targetPlan ?? null)) {
+      toast.warning("แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้");
+      return;
+    }
     if (!(await confirm({ message: { th: "ยืนยันที่จะลบแผน OAP นี้พร้อมรุ่นการอบรมทั้งหมดหรือไม่?", en: "Confirm deleting this OAP plan and all its sessions?" }, danger: true }))) {
       return;
     }
@@ -640,10 +660,22 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             <button className={styles.primaryButton} disabled={courseOptions.length === 0} type="button" onClick={handleNew}>
               + New
             </button>
-            <button className={styles.secondaryButton} disabled={!selectedPlan} type="button" onClick={() => selectedPlan && handleEdit(selectedPlan)}>
+            <button
+              className={styles.secondaryButton}
+              disabled={!selectedPlan || isSelectedPlanReadOnlyForFactory}
+              title={isSelectedPlanReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้" : "Edit Training OAP"}
+              type="button"
+              onClick={() => selectedPlan && !isSelectedPlanReadOnlyForFactory && handleEdit(selectedPlan)}
+            >
               Edit
             </button>
-            <button className={styles.dangerButton} disabled={!selectedPlan} type="button" onClick={() => selectedPlan && void handleDelete(selectedPlan.id)}>
+            <button
+              className={styles.dangerButton}
+              disabled={!selectedPlan || isSelectedPlanReadOnlyForFactory}
+              title={isSelectedPlanReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : "Delete Training OAP"}
+              type="button"
+              onClick={() => selectedPlan && !isSelectedPlanReadOnlyForFactory && void handleDelete(selectedPlan.id)}
+            >
               Delete
             </button>
             <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>
@@ -1003,6 +1035,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                   <tbody>
                     {section.plans.map((plan, index) => {
                       const isOpen = openDetailId === plan.id;
+                      const isCenterPlan = isCenterOwnedOap(plan);
+                      const isRowReadOnlyForFactory = isFactoryUser && isCenterPlan;
                       return (
                         <Fragment key={plan.id}>
                           <tr
@@ -1052,8 +1086,11 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                 </button>
                                 <button
                                   className={`${styles.rowActionButton} ${styles.detailsAction}`}
+                                  disabled={isRowReadOnlyForFactory || plan.status === "Cancel"}
+                                  title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้" : undefined}
                                   type="button"
                                   onClick={() => {
+                                    if (isRowReadOnlyForFactory) return;
                                     setSelectedPlanId(plan.id);
                                     handleEdit(plan);
                                   }}
@@ -1062,8 +1099,11 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                 </button>
                                 <button
                                   className={`${styles.rowActionButton} ${styles.dangerAction}`}
+                                  disabled={isRowReadOnlyForFactory}
+                                  title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
                                   type="button"
                                   onClick={() => {
+                                    if (isRowReadOnlyForFactory) return;
                                     setSelectedPlanId(plan.id);
                                     void handleDelete(plan.id);
                                   }}

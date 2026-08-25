@@ -443,7 +443,9 @@ export default function TrainingRolling() {
     plan.ownerScope === "CENTER" ||
     plan.ownerCompany === "HRD Center" ||
     plan.ownerName === "Center HRD" ||
-    plan.provider === "HRD Center";
+    plan.provider === "HRD Center" ||
+    plan.owner === "CENTER" ||
+    plan.company === "All Companies";
 
   const allCompanyCodes = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
 

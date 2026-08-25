@@ -16,6 +16,7 @@ import type {
   PositionRecord as ApiPositionRecord,
   PositionStatus,
 } from "../../../../lib/positions/types";
+import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./PositionData.module.css";
 
 export type PositionRecord = {
@@ -359,6 +360,14 @@ export default function PositionData() {
     setForm(blankForm());
     void loadRows();
   };
+
+  if (isLoading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "400px", padding: "40px" }}>
+        <TypewriterLoader label="กำลังโหลดข้อมูลตำแหน่งงาน (Position Master)..." />
+      </div>
+    );
+  }
 
   return (
     <section className={styles.page} aria-label="Position Data module">

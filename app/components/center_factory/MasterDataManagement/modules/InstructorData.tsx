@@ -16,6 +16,7 @@ import type {
   InstructorRecord,
   InstructorStatus,
 } from "../../../../lib/instructors/types";
+import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./InstructorData.module.css";
 
 export const instructorDataModule = {
@@ -287,6 +288,14 @@ export default function InstructorData() {
     field: Key,
     value: InstructorForm[Key],
   ) => setForm((current) => ({ ...current, [field]: value }));
+
+  if (isLoading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "400px", padding: "40px" }}>
+        <TypewriterLoader label="กำลังโหลดข้อมูลวิทยากร (Instructor Master)..." />
+      </div>
+    );
+  }
 
   return (
     <section
