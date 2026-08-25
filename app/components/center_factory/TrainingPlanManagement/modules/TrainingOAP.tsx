@@ -17,6 +17,7 @@ import type { InstructorRecord } from "../../../../lib/instructors/types";
 import { listInstituteProviders } from "../../../../lib/instituteProviders/client";
 import type { InstituteProviderRecord } from "../../../../lib/instituteProviders/types";
 import { listCourses } from "../../../../lib/courses/client";
+import { calculateBudgetEstimate, formatBaht } from "../../../../lib/trainingBudgetEstimate";
 import { listOapPlans, createOapPlan, updateOapPlan, deleteOapPlan } from "../../../../lib/trainingOap/client";
 import type { OapPlanRecord } from "../../../../lib/trainingOap/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
@@ -495,7 +496,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   };
 
   const handleDelete = async (planId: string) => {
-    if (!(await confirm({ message: "Are you sure you want to delete this OAP plan and all associated sessions?", confirmLabel: "Delete", danger: true }))) {
+    if (!(await confirm({ message: { th: "ยืนยันที่จะลบแผน OAP นี้พร้อมรุ่นการอบรมทั้งหมดหรือไม่?", en: "Confirm deleting this OAP plan and all its sessions?" }, danger: true }))) {
       return;
     }
     try {
@@ -1186,9 +1187,34 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ผู้ให้บริการ</span><span className={styles.previewFieldValue}>{plan.providerName || "-"}</span></div>
                                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>Created By</span><span className={styles.previewFieldValue}>{plan.owner === "CENTER" ? "Center" : plan.ownerCompany}</span></div>
                                     </div>
+
+                                    {(() => {
+                                      const std = standards.find((item) => item.courseId === plan.course.id);
+                                      const companies = std?.companies ?? [];
+                                      const estimate = calculateBudgetEstimate({
+                                        totalBudget: plan.budget,
+                                        participants: plan.participants,
+                                        companyCount: companies.length,
+                                      });
+
+                                      return (
+                                        <div className={styles.previewCard}>
+                                          <div className={styles.previewCardHeader}><span>💵 ค่าใช้จ่ายประมาณการ</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
+                                            <span className={styles.previewFieldLabel}>จำนวนที่แต่ละบริษัทส่งได้</span>
+                                            <span className={styles.previewFieldValue}>
+                                              {estimate.seatsPerCompany === null ? "-" : `${estimate.seatsPerCompany} คน`}
+                                            </span>
+                                          </div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>งบประมาณรวม</span><span className={styles.previewFieldValue}>{formatBaht(estimate.totalBudget)}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ค่าใช้จ่ายประมาณการต่อคน (กรณีเต็มจำนวน)</span><span className={styles.previewFieldValue}>{formatBaht(estimate.costPerPerson)}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewTotalRow}`}><span className={styles.previewFieldLabel}>ค่าใช้จ่ายประมาณการต่อบริษัท (กรณีเต็มจำนวน)</span><span className={styles.previewFieldValue}>{formatBaht(estimate.costPerCompany)}</span></div>
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
                                   <div className={styles.formActions}>
-                                    <button className={styles.dangerButton} disabled={plan.status === "Cancel"} type="button" onClick={() => { void confirm({ message: "Cancel this annual training plan?", confirmLabel: "Cancel Plan", danger: true }).then((ok) => { if (ok) void updateStatus(plan.id, "Cancel"); }); }}>Cancel Plan</button>
+                                    <button className={styles.dangerButton} disabled={plan.status === "Cancel"} type="button" onClick={() => { void confirm({ message: { th: "ยืนยันที่จะยกเลิกแผนฝึกอบรมประจำปีนี้หรือไม่?", en: "Confirm cancelling this annual training plan?" }, danger: true }).then((ok) => { if (ok) void updateStatus(plan.id, "Cancel"); }); }}>Cancel Plan</button>
                                     <button className={styles.secondaryButton} type="button" onClick={() => setOpenDetailId("")}>Close</button>
                                   </div>
                                 </section>

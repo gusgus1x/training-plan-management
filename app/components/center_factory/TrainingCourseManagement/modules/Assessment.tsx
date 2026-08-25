@@ -353,7 +353,7 @@ export default function Assessment() {
       setFeedback({ tone: "error", message: "Please correct the highlighted fields." });
       return;
     }
-    if (draft.status === "ACTIVE" && !(await confirm({ message: "Publish this assessment? It will become selectable as a live pre/post-test on courses immediately.", confirmLabel: "Publish" }))) {
+    if (draft.status === "ACTIVE" && !(await confirm({ message: { th: "ยืนยันที่จะเผยแพร่แบบทดสอบนี้หรือไม่? เมื่อเผยแพร่แล้วจะถูกเลือกใช้เป็น Pre/Post Test ในหลักสูตรได้ทันที", en: "Confirm publishing this assessment? It becomes selectable on courses immediately." } }))) {
       return;
     }
     setBusy(true);
@@ -388,7 +388,7 @@ export default function Assessment() {
 
   const remove = async () => {
     if (!selected?.canModify) return;
-    if (!(await confirm({ message: `Delete "${selected.seriesName}"?`, confirmLabel: "Delete", danger: true }))) return;
+    if (!(await confirm({ message: { th: `ยืนยันที่จะลบแบบทดสอบ "${selected.seriesName}" หรือไม่?`, en: `Confirm deleting assessment "${selected.seriesName}"?` }, danger: true }))) return;
     setBusy(true);
     try {
       await deleteAssessment(selected.assessmentId);

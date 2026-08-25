@@ -254,7 +254,7 @@ export default function EvaluationManagement() {
 
   const handleDelete = async () => {
     if (!selected?.canModify) return;
-    if (!(await confirm({ message: `Delete "${selected.formName}"?`, confirmLabel: "Delete", danger: true }))) return;
+    if (!(await confirm({ message: { th: `ยืนยันที่จะลบแบบประเมิน "${selected.formName}" หรือไม่?`, en: `Confirm deleting evaluation "${selected.formName}"?` }, danger: true }))) return;
     setBusy(true); setFeedback(null);
     try {
       await deleteEvaluation(selected.evaluationFormId);
@@ -289,7 +289,7 @@ export default function EvaluationManagement() {
     if (draft.status === "Published" && !questions.length) nextErrors.questions = "Add at least one question before publishing.";
     if (draft.status === "Published" && !questions.some((question) => question.required)) nextErrors.questions = "Published evaluations need at least one required question.";
     if (Object.keys(nextErrors).length) { setErrors(nextErrors); setFeedback({ tone: "error", message: "Please correct the highlighted fields." }); return; }
-    if (draft.status === "Published" && !(await confirm({ message: "Publish this evaluation? It will become selectable as a live form on courses immediately.", confirmLabel: "Publish" }))) return;
+    if (draft.status === "Published" && !(await confirm({ message: { th: "ยืนยันที่จะเผยแพร่แบบประเมินนี้หรือไม่? เมื่อเผยแพร่แล้วจะถูกเลือกใช้ในหลักสูตรได้ทันที", en: "Confirm publishing this evaluation? It becomes selectable on courses immediately." } }))) return;
     setBusy(true); setFeedback(null);
     try {
       const saved = mode === "edit" && selected

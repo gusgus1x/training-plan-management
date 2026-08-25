@@ -193,7 +193,7 @@ export default function RegisterTrainingModule() {
 
     try {
       if (course.enrollmentId) {
-        if (!(await confirm({ message: `Cancel registration for ${course.title}?`, confirmLabel: "Cancel Registration", danger: true }))) {
+        if (!(await confirm({ message: { th: `ยืนยันที่จะยกเลิกการลงทะเบียนอบรม ${course.title} หรือไม่?`, en: `Confirm cancelling registration for ${course.title}?` }, danger: true }))) {
           return;
         }
         await updateEnrollmentStatus(course.enrollmentId, { action: "cancel" });

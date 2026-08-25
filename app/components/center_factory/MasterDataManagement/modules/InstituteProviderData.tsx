@@ -182,7 +182,7 @@ export default function InstituteProviderData() {
     if (!isCenter || !selected || isSaving) {
       return;
     }
-    if (!(await confirm({ message: `Delete ${selected.instituteProviderCode}?`, confirmLabel: "Delete", danger: true }))) {
+    if (!(await confirm({ message: { th: `ยืนยันที่จะลบสถาบัน / ผู้ให้บริการ ${selected.instituteProviderCode} หรือไม่?`, en: `Confirm deleting ${selected.instituteProviderCode}?` }, danger: true }))) {
       return;
     }
     setIsSaving(true);

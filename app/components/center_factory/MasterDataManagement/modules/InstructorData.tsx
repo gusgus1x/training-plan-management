@@ -238,7 +238,7 @@ export default function InstructorData() {
     if (!isCenter || !selected || isSaving) {
       return;
     }
-    if (!(await confirm({ message: `Delete ${selected.instructorCode}?`, confirmLabel: "Delete", danger: true }))) {
+    if (!(await confirm({ message: { th: `ยืนยันที่จะลบวิทยากร ${selected.instructorCode} หรือไม่?`, en: `Confirm deleting instructor ${selected.instructorCode}?` }, danger: true }))) {
       return;
     }
     setIsSaving(true);

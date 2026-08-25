@@ -1295,8 +1295,7 @@ function CourseMaster() {
     const courseName = getCourseDisplayName(course);
     if (
       !(await confirm({
-        message: `Are you sure you want to delete course "${course.courseCode} - ${courseName}"?`,
-        confirmLabel: "Delete",
+        message: { th: `ยืนยันที่จะลบหลักสูตร "${course.courseCode} - ${courseName}" หรือไม่?`, en: `Confirm deleting course "${course.courseCode} - ${courseName}"?` },
         danger: true,
       }))
     ) {

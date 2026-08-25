@@ -492,7 +492,7 @@ export default function EmployeeData() {
 
   const remove = async () => {
     if (saving || !selected) return;
-    if (!(await confirm({ message: `Delete ${selected.employeeCode}?`, confirmLabel: "Delete", danger: true })))
+    if (!(await confirm({ message: { th: `ยืนยันที่จะลบพนักงาน ${selected.employeeCode} หรือไม่?`, en: `Confirm deleting employee ${selected.employeeCode}?` }, danger: true })))
       return;
     setSaving(true);
     setError(null);

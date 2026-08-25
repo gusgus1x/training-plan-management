@@ -330,7 +330,7 @@ export default function PositionData() {
     if (!isCenter || !selected || isSaving) {
       return;
     }
-    if (!(await confirm({ message: `Delete ${selected.positionCode}?`, confirmLabel: "Delete", danger: true }))) {
+    if (!(await confirm({ message: { th: `ยืนยันที่จะลบตำแหน่ง ${selected.positionCode} หรือไม่?`, en: `Confirm deleting position ${selected.positionCode}?` }, danger: true }))) {
       return;
     }
     setIsSaving(true);

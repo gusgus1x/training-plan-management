@@ -8,7 +8,8 @@
   border: none;
   border-radius: 14px;
   box-shadow: 0 24px 48px rgba(15, 23, 42, 0.28);
-  max-width: min(420px, calc(100vw - 32px));
+  max-width: min(560px, calc(100vw - 32px));
+  min-width: min(440px, calc(100vw - 32px));
   background: var(--ui-60-surface);
   color: var(--ui-30-ink);
 }
@@ -20,21 +21,21 @@
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 24px;
+  gap: 16px;
+  padding: 32px 36px;
 }
 
 .title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 1.3rem;
   font-weight: 800;
   color: var(--ui-30-ink);
 }
 
 .message {
   margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.5;
+  font-size: 1.05rem;
+  line-height: 1.6;
   color: var(--ui-30-text);
   white-space: pre-line;
 }
@@ -42,24 +43,24 @@
 .actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 8px;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .cancelButton,
 .confirmButton,
 .dangerButton {
   display: inline-flex;
-  min-width: 72px;
-  min-height: 36px;
+  min-width: 104px;
+  min-height: 46px;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   font: inherit;
-  font-size: 0.78rem;
+  font-size: 0.95rem;
   font-weight: 900;
-  padding: 0 16px;
+  padding: 0 24px;
   white-space: nowrap;
   transition:
     background 140ms ease,

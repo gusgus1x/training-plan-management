@@ -578,7 +578,7 @@ export default function FunctionData() {
     if (!isCenter || !selected || isSaving) {
       return;
     }
-    if (!(await confirm({ message: `Delete ${selected.functionCode}?`, confirmLabel: "Delete", danger: true }))) {
+    if (!(await confirm({ message: { th: `ยืนยันที่จะลบหน่วยงาน ${selected.functionCode} หรือไม่?`, en: `Confirm deleting function ${selected.functionCode}?` }, danger: true }))) {
       return;
     }
     setIsSaving(true);
@@ -703,7 +703,7 @@ export default function FunctionData() {
     if (!isCenter || !selectedDivision || isSavingDivision) {
       return;
     }
-    if (!(await confirm({ message: `Delete Division ${selectedDivision.divisionCode}?`, confirmLabel: "Delete", danger: true }))) {
+    if (!(await confirm({ message: { th: `ยืนยันที่จะลบฝ่าย ${selectedDivision.divisionCode} หรือไม่?`, en: `Confirm deleting division ${selectedDivision.divisionCode}?` }, danger: true }))) {
       return;
     }
     setIsSavingDivision(true);
@@ -815,7 +815,7 @@ export default function FunctionData() {
     if (!isCenter || !selectedDepartment || isSavingDepartment) {
       return;
     }
-    if (!(await confirm({ message: `Delete Department ${selectedDepartment.departmentCode}?`, confirmLabel: "Delete", danger: true }))) {
+    if (!(await confirm({ message: { th: `ยืนยันที่จะลบแผนก ${selectedDepartment.departmentCode} หรือไม่?`, en: `Confirm deleting department ${selectedDepartment.departmentCode}?` }, danger: true }))) {
       return;
     }
     setIsSavingDepartment(true);
@@ -927,7 +927,7 @@ export default function FunctionData() {
     if (!isCenter || !selectedSection || isSavingSection) {
       return;
     }
-    if (!(await confirm({ message: `Delete Section ${selectedSection.sectionCode}?`, confirmLabel: "Delete", danger: true }))) {
+    if (!(await confirm({ message: { th: `ยืนยันที่จะลบส่วนงาน ${selectedSection.sectionCode} หรือไม่?`, en: `Confirm deleting section ${selectedSection.sectionCode}?` }, danger: true }))) {
       return;
     }
     setIsSavingSection(true);

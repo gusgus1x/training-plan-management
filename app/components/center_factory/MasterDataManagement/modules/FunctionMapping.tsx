@@ -556,7 +556,7 @@ export default function FunctionMapping() {
 
   const remove = async (row: MappingRow) => {
     if (isSaving) return;
-    if (!(await confirm({ message: `Delete mapping ${row.plantCode}?`, confirmLabel: "Delete", danger: true }))) return;
+    if (!(await confirm({ message: { th: `ยืนยันที่จะลบการจับคู่รหัส ${row.plantCode} หรือไม่?`, en: `Confirm deleting mapping ${row.plantCode}?` }, danger: true }))) return;
     setIsSaving(true);
     setError(null);
     try {

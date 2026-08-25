@@ -420,7 +420,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                   className={styles.dangerButton}
                   type="button"
                   onClick={() => {
-                    void confirm({ message: "Reject this training request?", confirmLabel: "Reject", danger: true }).then(
+                    void confirm({ message: { th: "ยืนยันที่จะปฏิเสธคำขออบรมนี้หรือไม่?", en: "Confirm rejecting this training request?" }, danger: true }).then(
                       (ok) => {
                         if (ok) updateSelectedStatus("Rejected");
                       },

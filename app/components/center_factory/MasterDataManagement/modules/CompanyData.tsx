@@ -190,8 +190,7 @@ export default function CompanyData() {
 
     if (
       !(await confirm({
-        message: `Delete company ${selectedRecord.companyCode}? This action cannot be undone.`,
-        confirmLabel: "Delete",
+        message: { th: `ยืนยันที่จะลบบริษัท ${selectedRecord.companyCode} หรือไม่? การลบไม่สามารถย้อนกลับได้`, en: `Confirm deleting company ${selectedRecord.companyCode}? This cannot be undone.` },
         danger: true,
       }))
     ) {

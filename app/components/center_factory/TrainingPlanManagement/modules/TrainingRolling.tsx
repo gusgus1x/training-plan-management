@@ -10,6 +10,7 @@ import {
 } from "../../../../lib/trainingWorkflow";
 import { getCourseOutlineFileName } from "../../../../lib/courseOutlineExport";
 import { listCourses } from "../../../../lib/courses/client";
+import { calculateBudgetEstimate, formatBaht } from "../../../../lib/trainingBudgetEstimate";
 import { listOapPlans } from "../../../../lib/trainingOap/client";
 import type { OapPlanRecord } from "../../../../lib/trainingOap/types";
 import {
@@ -699,7 +700,7 @@ export default function TrainingRolling() {
 
   const handleDeleteGroup = async (group: { id: string; plans: RollingPlan[] }) => {
     const courseName = group.plans[0]?.course.name || "selected plan";
-    if (!(await confirm({ message: `Are you sure you want to delete all ${group.plans.length} session(s) for "${courseName}"?`, confirmLabel: "Delete", danger: true }))) {
+    if (!(await confirm({ message: { th: `ยืนยันที่จะลบรุ่นการอบรมทั้ง ${group.plans.length} รุ่นของ "${courseName}" หรือไม่?`, en: `Confirm deleting all ${group.plans.length} session(s) for "${courseName}"?` }, danger: true }))) {
       return;
     }
     try {
@@ -743,7 +744,7 @@ export default function TrainingRolling() {
   };
 
   const handleDelete = async (rollingId: string) => {
-    if (!(await confirm({ message: "Are you sure you want to delete this session?", confirmLabel: "Delete", danger: true }))) {
+    if (!(await confirm({ message: { th: "ยืนยันที่จะลบรุ่นการอบรมนี้หรือไม่?", en: "Confirm deleting this session?" }, danger: true }))) {
       return;
     }
     try {
@@ -762,8 +763,10 @@ export default function TrainingRolling() {
   const handleCancelSession = async (plan: RollingPlan) => {
     if (
       !(await confirm({
-        message: "Cancel this published session? Employees will no longer see it or be able to enrol.",
-        confirmLabel: "Cancel session",
+        message: {
+          th: "ยืนยันที่จะยกเลิกรุ่นการอบรมที่เผยแพร่แล้วหรือไม่? พนักงานจะไม่เห็นและลงทะเบียนไม่ได้อีก",
+          en: "Confirm cancelling this published session? Employees can no longer see or enrol.",
+        },
         danger: true,
       }))
     ) {
@@ -885,7 +888,7 @@ export default function TrainingRolling() {
   };
 
   const handleConfirm = async (rollingId: string) => {
-    if (!(await confirm({ message: "Publish this session? It will become visible and enrollable for employees.", confirmLabel: "Publish" }))) return;
+    if (!(await confirm({ message: { th: "ยืนยันที่จะเผยแพร่รุ่นการอบรมนี้หรือไม่? พนักงานจะมองเห็นและลงทะเบียนได้ทันที", en: "Confirm publishing this session? Employees can see and enrol immediately." } }))) return;
     try {
       await updateRollingPlan(rollingId, { status: "Planned" });
       await loadWorkspace();
@@ -1654,6 +1657,31 @@ export default function TrainingRolling() {
                                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>วิทยากร</span><span className={styles.previewFieldValue}>{plan.trainer || "-"}</span></div>
                                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ผู้ให้บริการ</span><span className={styles.previewFieldValue}>{plan.provider || "-"}</span></div>
                                     </div>
+
+                                    {(() => {
+                                      const std = standards.find((item) => item.courseId === plan.course.id);
+                                      const companies = std?.companies ?? [];
+                                      const estimate = calculateBudgetEstimate({
+                                        totalBudget: plan.budget,
+                                        participants: plan.participants,
+                                        companyCount: companies.length,
+                                      });
+
+                                      return (
+                                        <div className={styles.previewCard}>
+                                          <div className={styles.previewCardHeader}><span>💵 ค่าใช้จ่ายประมาณการ</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
+                                            <span className={styles.previewFieldLabel}>จำนวนที่แต่ละบริษัทส่งได้</span>
+                                            <span className={styles.previewFieldValue}>
+                                              {estimate.seatsPerCompany === null ? "-" : `${estimate.seatsPerCompany} คน`}
+                                            </span>
+                                          </div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>งบประมาณรวม</span><span className={styles.previewFieldValue}>{formatBaht(estimate.totalBudget)}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ค่าใช้จ่ายประมาณการต่อคน (กรณีเต็มจำนวน)</span><span className={styles.previewFieldValue}>{formatBaht(estimate.costPerPerson)}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewTotalRow}`}><span className={styles.previewFieldLabel}>ค่าใช้จ่ายประมาณการต่อบริษัท (กรณีเต็มจำนวน)</span><span className={styles.previewFieldValue}>{formatBaht(estimate.costPerCompany)}</span></div>
+                                        </div>
+                                      );
+                                    })()}
 
                                     <div className={`${styles.previewCard} ${styles.previewCardFull}`}>
                                       <div className={styles.previewCardHeader}><span>📅 กำหนดการ / สถานะ</span></div>

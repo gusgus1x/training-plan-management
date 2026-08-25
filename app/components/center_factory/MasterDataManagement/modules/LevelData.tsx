@@ -247,7 +247,7 @@ export default function LevelData() {
   };
   const remove = async () => {
     if (!isCenter || !selected || isSaving) return;
-    if (!(await confirm({ message: `Delete ${selected.levelCode}?`, confirmLabel: "Delete", danger: true })))
+    if (!(await confirm({ message: { th: `ยืนยันที่จะลบระดับ ${selected.levelCode} หรือไม่?`, en: `Confirm deleting level ${selected.levelCode}?` }, danger: true })))
       return;
     setIsSaving(true);
     setError(null);

@@ -1,13 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useUiLanguage, type UiLanguage } from "./ThaiUiLocalization";
 import styles from "./ConfirmDialog.module.css";
 
+/**
+ * Text the DOM localizer cannot reach: these strings are built at call time (often with a
+ * record code in them), so they never match a dictionary key. Pass both languages and the
+ * dialog picks one — a plain string is still accepted for text that needs no translation.
+ */
+export type LocalizedText = string | { th: string; en: string };
+
+export const pickText = (text: LocalizedText, language: UiLanguage) =>
+  typeof text === "string" ? text : text[language];
+
 export type ConfirmOptions = {
-  title?: string;
-  message: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
+  title?: LocalizedText;
+  message: LocalizedText;
+  confirmLabel?: LocalizedText;
+  cancelLabel?: LocalizedText;
   danger?: boolean;
 };
 
@@ -53,6 +64,7 @@ const resolvePending = (result: boolean) => {
 
 export default function ConfirmDialogHost() {
   const current = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const { language } = useUiLanguage();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [displayOptions, setDisplayOptions] = useState<ConfirmOptions | null>(null);
 
@@ -83,18 +95,20 @@ export default function ConfirmDialogHost() {
     >
       {displayOptions ? (
         <div className={styles.panel}>
-          {displayOptions.title ? <h2 className={styles.title}>{displayOptions.title}</h2> : null}
-          <p className={styles.message}>{displayOptions.message}</p>
+          {displayOptions.title ? (
+            <h2 className={styles.title}>{pickText(displayOptions.title, language)}</h2>
+          ) : null}
+          <p className={styles.message}>{pickText(displayOptions.message, language)}</p>
           <div className={styles.actions}>
             <button type="button" className={styles.cancelButton} onClick={() => resolvePending(false)}>
-              {displayOptions.cancelLabel ?? "Cancel"}
+              {pickText(displayOptions.cancelLabel ?? { th: "ยกเลิก", en: "Cancel" }, language)}
             </button>
             <button
               type="button"
               className={displayOptions.danger ? styles.dangerButton : styles.confirmButton}
               onClick={() => resolvePending(true)}
             >
-              {displayOptions.confirmLabel ?? "Confirm"}
+              {pickText(displayOptions.confirmLabel ?? { th: "ยืนยัน", en: "Confirm" }, language)}
             </button>
           </div>
         </div>

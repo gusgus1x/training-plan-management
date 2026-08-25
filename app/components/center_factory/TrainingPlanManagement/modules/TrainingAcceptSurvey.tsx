@@ -1127,7 +1127,7 @@ export default function TrainingAcceptSurvey() {
   };
 
   const handleReject = async (enrollmentId: string) => {
-    if (!(await confirm({ message: "Reject this candidate?", confirmLabel: "Reject", danger: true }))) return;
+    if (!(await confirm({ message: { th: "ยืนยันที่จะปฏิเสธผู้สมัครคนนี้หรือไม่?", en: "Confirm rejecting this candidate?" }, danger: true }))) return;
     try {
       await updateEnrollmentStatus(enrollmentId, { action: "reject" });
       await reloadEnrollments();
@@ -1139,7 +1139,7 @@ export default function TrainingAcceptSurvey() {
   };
 
   const handleCancelEnrollment = async (enrollmentId: string) => {
-    if (!(await confirm({ message: "Cancel this enrollment?", confirmLabel: "Cancel Enrollment", danger: true }))) return;
+    if (!(await confirm({ message: { th: "ยืนยันที่จะยกเลิกการลงทะเบียนนี้หรือไม่?", en: "Confirm cancelling this enrollment?" }, danger: true }))) return;
     try {
       await updateEnrollmentStatus(enrollmentId, { action: "cancel" });
       await reloadEnrollments();
