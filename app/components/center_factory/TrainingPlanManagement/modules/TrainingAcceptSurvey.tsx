@@ -18,6 +18,7 @@ import {
 } from "../../../../lib/attendanceSheetExport";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useToast } from "../../../ToastHost";
 import {
   getRollingPlanCompanies,
   loadWorkflowRollingPlans,
@@ -587,6 +588,7 @@ export default function TrainingAcceptSurvey() {
   }, []);
 
   const confirm = useConfirm();
+  const toast = useToast();
   const roleMode: RoleMode = user?.roleCode === "HRD_CENTER" ? "center" : "factory";
   const userCompanyCode = companies.find((company) => company === user?.companyCode) ?? "SNF";
   const userCompanyLabel =
@@ -602,7 +604,6 @@ export default function TrainingAcceptSurvey() {
   const [standards, setStandards] = useState<WorkflowStandard[]>([]);
   const [masterEmployees, setMasterEmployees] = useState<SurveyEmployee[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [isExportingAttendance, setIsExportingAttendance] = useState(false);
   const [isSendingLineNotify, setIsSendingLineNotify] = useState(false);
   const [showNominationModal, setShowNominationModal] = useState(false);
@@ -1105,10 +1106,12 @@ export default function TrainingAcceptSurvey() {
         source: roleMode === "center" ? "HRD_CENTER" : "HRD_FACTORY",
       });
       await reloadEnrollments();
-      setActionMessage(null);
+      toast.success(
+        `เพิ่ม ${employee.name} (${employee.employeeCode}) เข้าอบรมแล้ว / Added ${employee.employeeCode} to this course`,
+      );
     } catch (error) {
       console.error("Failed to add employee", error);
-      setActionMessage("Failed to add employee.");
+      toast.error("เพิ่มพนักงานไม่สำเร็จ / Failed to add employee.");
     }
   };
 
@@ -1116,9 +1119,10 @@ export default function TrainingAcceptSurvey() {
     try {
       await updateEnrollmentStatus(enrollmentId, { action: "approve" });
       await reloadEnrollments();
+      toast.success("อนุมัติผู้เข้าอบรมแล้ว / Candidate approved");
     } catch (error) {
       console.error("Failed to approve candidate", error);
-      setActionMessage("Failed to approve candidate.");
+      toast.error("อนุมัติไม่สำเร็จ / Failed to approve candidate.");
     }
   };
 
@@ -1127,9 +1131,10 @@ export default function TrainingAcceptSurvey() {
     try {
       await updateEnrollmentStatus(enrollmentId, { action: "reject" });
       await reloadEnrollments();
+      toast.success("ปฏิเสธผู้เข้าอบรมแล้ว / Candidate rejected");
     } catch (error) {
       console.error("Failed to reject candidate", error);
-      setActionMessage("Failed to reject candidate.");
+      toast.error("ปฏิเสธไม่สำเร็จ / Failed to reject candidate.");
     }
   };
 
@@ -1138,9 +1143,10 @@ export default function TrainingAcceptSurvey() {
     try {
       await updateEnrollmentStatus(enrollmentId, { action: "cancel" });
       await reloadEnrollments();
+      toast.success("ยกเลิกการเข้าอบรมแล้ว / Enrollment cancelled");
     } catch (error) {
       console.error("Failed to remove candidate", error);
-      setActionMessage("Failed to remove candidate.");
+      toast.error("ยกเลิกไม่สำเร็จ / Failed to remove candidate.");
     }
   };
 
@@ -1150,13 +1156,12 @@ export default function TrainingAcceptSurvey() {
     }
 
     setIsSendingLineNotify(true);
-    setActionMessage(null);
 
     await new Promise((resolve) => setTimeout(resolve, 800));
 
     setIsSendingLineNotify(false);
-    setActionMessage(
-      `💬 [LINE OA] ส่งข้อความแจ้งเตือนเข้าร่วมการอบรมวิชา "${selectedCourse.title}" ไปยังพนักงาน ${acceptedParticipants.length} ท่าน ผ่าน LINE Official Account เรียบร้อยแล้ว`
+    toast.success(
+      `💬 [LINE OA] ส่งข้อความแจ้งเตือนเข้าร่วมการอบรมวิชา "${selectedCourse.title}" ไปยังพนักงาน ${acceptedParticipants.length} ท่าน ผ่าน LINE Official Account เรียบร้อยแล้ว`,
     );
   };
 
@@ -1176,7 +1181,6 @@ export default function TrainingAcceptSurvey() {
     }
 
     setIsExportingAttendance(true);
-    setActionMessage(null);
 
     try {
       const positionRows = await listPositions()
@@ -1233,12 +1237,12 @@ export default function TrainingAcceptSurvey() {
       downloadLink.click();
       downloadLink.remove();
       window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
-      setActionMessage("Attendance sheet exported from the v2 template.");
+      toast.success("ดาวน์โหลดใบเซ็นชื่อเรียบร้อย / Attendance sheet exported");
     } catch (error) {
-      setActionMessage(
+      toast.error(
         error instanceof Error
           ? error.message
-          : "Unable to export attendance sheet.",
+          : "ส่งออกใบเซ็นชื่อไม่สำเร็จ / Unable to export attendance sheet.",
       );
     } finally {
       setIsExportingAttendance(false);
@@ -1272,7 +1276,6 @@ export default function TrainingAcceptSurvey() {
               setSelectedCourseOwner(event.target.value as CourseOwnerFilter);
               setSelectedCourseGroupId("");
               setSelectedCourseId("");
-              setActionMessage(null);
             }}
           >
             <option value="">Select owner</option>
@@ -1293,7 +1296,6 @@ export default function TrainingAcceptSurvey() {
               const targetGroup = availableCourseGroups.find((g) => g.id === newGroupId);
               const newSessionId = targetGroup?.sessions[0]?.id ?? "";
               setSelectedCourseId(newSessionId);
-              setActionMessage(null);
               if (newGroupId) {
                 setIsTargetLoading(true);
                 setTimeout(() => setIsTargetLoading(false), 350);
@@ -1319,7 +1321,6 @@ export default function TrainingAcceptSurvey() {
             onChange={(event) => {
               const newSessionId = event.target.value;
               setSelectedCourseId(newSessionId);
-              setActionMessage(null);
               if (newSessionId) {
                 setIsTargetLoading(true);
                 setTimeout(() => setIsTargetLoading(false), 350);
@@ -1511,11 +1512,6 @@ export default function TrainingAcceptSurvey() {
               </button>
             </div>
           </div>
-          {actionMessage ? (
-            <p className={styles.savedState} role="status">
-              {actionMessage}
-            </p>
-          ) : null}
           <div className={styles.employeeRows}>
             {acceptedParticipants.length > 0 ? (
               <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
@@ -1672,9 +1668,10 @@ export default function TrainingAcceptSurvey() {
                   type="button"
                   disabled={submittedToCenterCandidates.length === 0}
                   onClick={async () => {
+                    const submittedCount = submittedToCenterCandidates.length;
                     await reloadEnrollments();
-                    setActionMessage(
-                      `✅ บันทึกและยืนยันส่งรายชื่อพนักงานเข้าอบรมกลางเรียบร้อยแล้ว (รวม ${submittedToCenterCandidates.length} คน)`
+                    toast.success(
+                      `บันทึกและยืนยันส่งรายชื่อพนักงานเข้าอบรมกลางเรียบร้อยแล้ว รวม ${submittedCount} คน / Submitted ${submittedCount} employee(s) to HRD Center`,
                     );
                   }}
                 >
@@ -1682,11 +1679,6 @@ export default function TrainingAcceptSurvey() {
                 </button>
               </div>
             </div>
-            {actionMessage ? (
-              <p className={styles.savedState} role="status">
-                {actionMessage}
-              </p>
-            ) : null}
             <div className={styles.employeeRows}>
               {submittedToCenterCandidates.length > 0 ? (
                 <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>

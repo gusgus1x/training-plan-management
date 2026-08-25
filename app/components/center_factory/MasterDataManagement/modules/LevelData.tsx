@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
+import { useToast } from "../../../ToastHost";
 import {
   LevelClientError,
   createLevel,
@@ -104,6 +105,7 @@ export default function LevelData() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
   const notice = useNotice();
+  const toast = useToast();
   const isCenter = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<ApiLevelRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -113,7 +115,6 @@ export default function LevelData() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const selected = rows.find((row) => row.levelId === selectedId) ?? null;
 
   const visibleRows = useMemo(() => {
@@ -209,7 +210,6 @@ export default function LevelData() {
     }
     setIsSaving(true);
     setError(null);
-    setMessage(null);
     try {
       const input: CreateLevelInput = {
         levelCodeTh: form.levelCodeTh.trim(),
@@ -238,7 +238,7 @@ export default function LevelData() {
       setSelectedId(result.level.levelId);
       setFormMode(null);
       setForm(blankForm());
-      setMessage(`${result.level.levelCode} was saved.`);
+      toast.success(`บันทึก ${result.level.levelCode} แล้ว / Saved`);
     } catch (caught: unknown) {
       setError(errorText(caught));
     } finally {
@@ -251,7 +251,6 @@ export default function LevelData() {
       return;
     setIsSaving(true);
     setError(null);
-    setMessage(null);
     try {
       const result = await deleteLevel(selected.levelId);
       const nextRows = rows.filter(
@@ -260,7 +259,7 @@ export default function LevelData() {
       setRows(nextRows);
       setSelectedId(nextRows[0]?.levelId ?? null);
       setFormMode(null);
-      setMessage(`${result.level.levelCode} was deleted.`);
+      toast.success(`ลบ ${result.level.levelCode} แล้ว / Deleted`);
       void listLevels()
         .then((refreshed) => setRows(refreshed.items))
         .catch(() => undefined);
@@ -274,7 +273,6 @@ export default function LevelData() {
   const refresh = () => {
     setFormMode(null);
     setForm(blankForm());
-    setMessage(null);
     void loadRows();
   };
 
@@ -312,7 +310,6 @@ export default function LevelData() {
         </div>
 
         {error ? <p role="alert">{error}</p> : null}
-        {message ? <p role="status">{message}</p> : null}
 
         {formMode ? (
           <section className={styles.editorPanel}>

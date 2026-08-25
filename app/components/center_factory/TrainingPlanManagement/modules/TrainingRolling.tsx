@@ -22,6 +22,7 @@ import type { RollingPlanRecord } from "../../../../lib/trainingRolling/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
+import { useToast } from "../../../ToastHost";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./TrainingRolling.module.css";
@@ -291,6 +292,7 @@ export default function TrainingRolling() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
   const notice = useNotice();
+  const toast = useToast();
   const userCompanyCode = profileValue(user?.companyCode);
   const [oapPlans, setOapPlans] = useState<OapPlanRecord[]>([]);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
@@ -305,7 +307,6 @@ export default function TrainingRolling() {
   const [statusFilter, setStatusFilter] = useState<"all" | RollingStatus>("all");
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [exportingPlanId, setExportingPlanId] = useState("");
-  const [exportMessage, setExportMessage] = useState("");
   const [deletedSessionDbIds, setDeletedSessionDbIds] = useState<string[]>([]);
   // Tracks the CLOSED sections, not the open ones, so every section — including a company
   // that only appears after a filter change — starts expanded without seeding state for it.
@@ -633,6 +634,8 @@ export default function TrainingRolling() {
     }
 
     const today = new Date().toISOString().slice(0, 10);
+    // Read before the form is reset below, otherwise the toast reports 0.
+    const sessionCount = form.sessions.length;
 
     try {
       // 1. Delete any sessions removed from the form
@@ -664,9 +667,12 @@ export default function TrainingRolling() {
       setForm(createEmptyForm());
       setIsNewOpen(false);
       await loadWorkspace();
+      toast.success(
+        `บันทึกแผน Rolling ${sessionCount} รุ่นแล้ว / Saved ${sessionCount} session(s)`,
+      );
     } catch (error) {
       console.error("Failed to save Training Rolling plan", error);
-      alert("Failed to save Training Rolling plan");
+      toast.error("บันทึกแผน Rolling ไม่สำเร็จ / Failed to save Training Rolling plan");
     }
   };
 
@@ -705,9 +711,12 @@ export default function TrainingRolling() {
         setOpenDetailId("");
       }
       await loadWorkspace();
+      toast.success(
+        `ลบแผน Rolling ${group.plans.length} รุ่นแล้ว / Deleted ${group.plans.length} session(s)`,
+      );
     } catch (error) {
       console.error("Failed to delete Training Rolling plan", error);
-      alert("Failed to delete Training Rolling plan");
+      toast.error("ลบแผน Rolling ไม่สำเร็จ / Failed to delete Training Rolling plan");
     }
   };
 
@@ -743,9 +752,10 @@ export default function TrainingRolling() {
         setOpenDetailId("");
       }
       await loadWorkspace();
+      toast.success("ลบรุ่นการอบรมแล้ว / Session deleted");
     } catch (error) {
       console.error("Failed to delete Training Rolling plan", error);
-      alert("Failed to delete Training Rolling plan");
+      toast.error("ลบรุ่นการอบรมไม่สำเร็จ / Failed to delete Training Rolling plan");
     }
   };
 
@@ -762,9 +772,10 @@ export default function TrainingRolling() {
     try {
       await updateRollingPlan(plan.rollingId, { status: "Cancel" });
       await loadWorkspace();
+      toast.success("ยกเลิกรุ่นการอบรมที่เผยแพร่แล้ว / Published session cancelled");
     } catch (error) {
       console.error("Failed to cancel Training Rolling session", error);
-      alert("Failed to cancel Training Rolling session");
+      toast.error("ยกเลิกรุ่นการอบรมไม่สำเร็จ / Failed to cancel Training Rolling session");
     }
   };
 
@@ -815,7 +826,6 @@ export default function TrainingRolling() {
     };
 
     setExportingPlanId(plan.rollingId);
-    setExportMessage("");
 
     try {
       const response = await fetch("/api/course-master/course-outline", {
@@ -845,10 +855,10 @@ export default function TrainingRolling() {
       downloadLink.click();
       downloadLink.remove();
       window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
-      setExportMessage(`Exported Course Outline: ${course.courseCode}`);
+      toast.success(`ดาวน์โหลด Course Outline ${course.courseCode} แล้ว / Course Outline exported`);
     } catch (error) {
-      setExportMessage(
-        error instanceof Error ? error.message : "Unable to export Course Outline.",
+      toast.error(
+        error instanceof Error ? error.message : "ส่งออก Course Outline ไม่สำเร็จ / Unable to export Course Outline",
       );
     } finally {
       setExportingPlanId("");
@@ -861,7 +871,6 @@ export default function TrainingRolling() {
     setIsNewOpen(false);
     setOpenDetailId("");
     setSelectedGroupId("");
-    setExportMessage("");
     setSearch("");
     setSelectedYear("2026");
     setSelectedMonth("all");
@@ -872,7 +881,6 @@ export default function TrainingRolling() {
     setForm(createEmptyForm());
     setOpenDetailId("");
     setSelectedGroupId("");
-    setExportMessage("");
     setIsNewOpen(true);
   };
 
@@ -881,9 +889,10 @@ export default function TrainingRolling() {
     try {
       await updateRollingPlan(rollingId, { status: "Planned" });
       await loadWorkspace();
+      toast.success("เผยแพร่รุ่นการอบรมแล้ว พนักงานลงทะเบียนได้ทันที / Session published");
     } catch (error) {
       console.error("Failed to publish Training Rolling plan", error);
-      alert("Failed to publish Training Rolling plan");
+      toast.error("เผยแพร่รุ่นการอบรมไม่สำเร็จ / Failed to publish Training Rolling plan");
     }
   };
 
@@ -1025,12 +1034,6 @@ export default function TrainingRolling() {
             ? `Selected: ${selectedGroup.plans[0]?.course.code} / ${selectedGroup.plans[0]?.course.name}`
             : "Click on any course row to select, Edit, Delete, Export Outline or view details."}
         </p>
-
-        {exportMessage ? (
-          <p className={styles.exportStatus} role="status">
-            {exportMessage}
-          </p>
-        ) : null}
 
         {isNewOpen ? (
           <section className={styles.formPanel}>

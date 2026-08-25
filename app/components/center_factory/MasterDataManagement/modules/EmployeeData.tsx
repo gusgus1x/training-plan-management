@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useToast } from "../../../ToastHost";
 import { listCompanies } from "../../../../lib/companies/client";
 import type { CompanyRecord } from "../../../../lib/companies/types";
 import {
@@ -109,6 +110,7 @@ type ResizeDrag =
 export default function EmployeeData() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
+  const toast = useToast();
   const center = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<EmployeeRecord[]>([]);
   const [companies, setCompanies] = useState<CompanyRecord[]>([]);
@@ -478,7 +480,7 @@ export default function EmployeeData() {
       );
       setMode(null);
       setForm(blank(center ? result.employee.companyId : user?.companyId ?? ""));
-      setMessage(`${result.employee.employeeCode} saved`);
+      toast.success(`บันทึกพนักงาน ${result.employee.employeeCode} แล้ว / Employee saved`);
     } catch (saveError) {
       setError(
         saveError instanceof Error ? saveError.message : "Unable to save Employee",

@@ -22,6 +22,7 @@ import { listEvaluations } from "../../../../lib/evaluations/client";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
+import { useToast } from "../../../ToastHost";
 import { listCourseGroups } from "../../../../lib/courseGroups/client";
 import { listCourseTypes } from "../../../../lib/courseTypes/client";
 import { listFunctions } from "../../../../lib/functions/client";
@@ -316,6 +317,7 @@ function CourseMaster() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
   const notice = useNotice();
+  const toast = useToast();
   const { language } = useUiLanguage();
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
   const factoryCourseTypeAllowlist = ["IN-HOUSE", "PUBLIC", "OJT"];
@@ -456,7 +458,7 @@ function CourseMaster() {
     setIsImportModalOpen(false);
     setImportRows([]);
     setImportFileName("");
-    alert(`🎉 นำเข้าข้อมูล Course Master สำเร็จจำนวน ${importedCount} รายการ!`);
+    toast.success(`นำเข้าข้อมูล Course Master สำเร็จ ${importedCount} รายการ / Imported ${importedCount} course(s)`);
   };
 
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -1263,7 +1265,7 @@ function CourseMaster() {
       document.body.removeChild(anchor);
     } catch (error) {
       console.error("Failed to generate QR code", error);
-      alert("Failed to generate QR code");
+      toast.error("สร้าง QR code ไม่สำเร็จ / Failed to generate QR code");
     }
   };
 
@@ -1310,9 +1312,10 @@ function CourseMaster() {
         setOpenDetailCourseId("");
       }
       await handleRefresh();
+      toast.success(`ลบหลักสูตร ${course.courseCode} แล้ว / Course deleted`);
     } catch (error) {
       console.error("Failed to delete course", error);
-      alert("Failed to delete course");
+      toast.error("ลบหลักสูตรไม่สำเร็จ / Failed to delete course");
     }
   };
 
@@ -1547,6 +1550,8 @@ function CourseMaster() {
       standardYear,
     };
 
+    const wasEditing = Boolean(selectedCourseId);
+
     try {
       if (selectedCourseId) {
         await updateCourse(selectedCourseId, input);
@@ -1555,6 +1560,11 @@ function CourseMaster() {
       }
 
       await handleRefresh();
+      toast.success(
+        wasEditing
+          ? "บันทึกการแก้ไขหลักสูตรแล้ว / Course updated"
+          : "บันทึกหลักสูตรใหม่แล้ว / Course created",
+      );
     } catch (error) {
       console.error("Failed to save course", error);
       const msg = error instanceof Error ? error.message : "";
@@ -1564,9 +1574,11 @@ function CourseMaster() {
         msg.toLowerCase().includes("conflict") ||
         msg.toLowerCase().includes("already exists")
       ) {
-        alert("ไม่สามารถบันทึกได้\nชื่อหลักสูตรนี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบชื่อหลักสูตร (ภาษาไทย) และแก้ไขให้ไม่ซ้ำกัน");
+        toast.error(
+          "ไม่สามารถบันทึกได้ ชื่อหลักสูตรนี้มีอยู่ในระบบแล้ว กรุณาแก้ชื่อหลักสูตร (ภาษาไทย) ให้ไม่ซ้ำกัน / Course name already exists",
+        );
       } else {
-        alert(msg || "บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง");
+        toast.error(msg || "บันทึกไม่สำเร็จ กรุณาลองอีกครั้ง / Failed to save course");
       }
     }
   };

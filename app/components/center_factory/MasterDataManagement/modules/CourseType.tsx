@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
+import { useToast } from "../../../ToastHost";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { createCourseType, deleteCourseType, listCourseTypes, updateCourseType } from "../../../../lib/courseTypes/client";
 import type { CourseTypeRecord, CourseTypeStatus } from "../../../../lib/courseTypes/types";
@@ -9,7 +10,7 @@ import styles from "./CourseType.module.css";
 export const courseTypeModule = { title: "Course Type", subtitle: "Course category", description: "Maintain course type master data for Course Master and training planning." } as const;
 type Mode = "idle" | "new" | "edit"; type Draft = { code: string; name: string; description: string; status: CourseTypeStatus }; const emptyDraft: Draft = { code: "", name: "", description: "", status: "ACTIVE" };
 export default function CourseType() {
-  const user = useAuthenticatedUser(); const canWrite = user?.roleCode === "HRD_CENTER"; const confirm = useConfirm(); const notice = useNotice();
+  const user = useAuthenticatedUser(); const canWrite = user?.roleCode === "HRD_CENTER"; const confirm = useConfirm(); const notice = useNotice(); const toast = useToast();
   const [items, setItems] = useState<CourseTypeRecord[]>([]); const [selectedId, setSelectedId] = useState(""); const [draft, setDraft] = useState<Draft>(emptyDraft); const [query, setQuery] = useState(""); const [mode, setMode] = useState<Mode>("idle"); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
   const selected = useMemo(() => items.find((item) => item.courseTypeId === selectedId) ?? null, [items, selectedId]);
   const filtered = useMemo(() => { const q = query.trim().toLowerCase(); return q ? items.filter((item) => `${item.code} ${item.name} ${item.status}`.toLowerCase().includes(q)) : items; }, [items, query]);
@@ -29,8 +30,8 @@ export default function CourseType() {
     if (!draft.code.trim()) missingFields.push("รหัสประเภทหลักสูตร (Course Type Code)");
     if (!draft.name.trim()) missingFields.push("ชื่อประเภทหลักสูตร (Course Type Name)");
     if (missingFields.length > 0) { await notice({ missingFields }); return; }
-    setBusy(true); setMessage(""); try { const input = { code: draft.code, name: draft.name, description: draft.description.trim() || null, status: draft.status }; if (mode === "edit" && selected) await updateCourseType(selected.courseTypeId, input); else await createCourseType(input); setMode("idle"); setDraft(emptyDraft); await load(); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to save course type"); } finally { setBusy(false); } };
-  const remove = async () => { if (!canWrite || !selected) return; if (!(await confirm({ message: `Delete course type ${selected.code}?`, confirmLabel: "Delete", danger: true }))) return; setBusy(true); setMessage(""); try { await deleteCourseType(selected.courseTypeId); setSelectedId(""); setMode("idle"); await load(); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to delete course type"); } finally { setBusy(false); } };
+    setBusy(true); setMessage(""); try { const input = { code: draft.code, name: draft.name, description: draft.description.trim() || null, status: draft.status }; if (mode === "edit" && selected) await updateCourseType(selected.courseTypeId, input); else await createCourseType(input); setMode("idle"); setDraft(emptyDraft); await load(); toast.success(`บันทึกประเภทหลักสูตร ${input.code} แล้ว / Course type saved`); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to save course type"); } finally { setBusy(false); } };
+  const remove = async () => { if (!canWrite || !selected) return; if (!(await confirm({ message: `Delete course type ${selected.code}?`, confirmLabel: "Delete", danger: true }))) return; setBusy(true); setMessage(""); try { const removedCode = selected.code; await deleteCourseType(selected.courseTypeId); setSelectedId(""); setMode("idle"); await load(); toast.success(`ลบประเภทหลักสูตร ${removedCode} แล้ว / Course type deleted`); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to delete course type"); } finally { setBusy(false); } };
   return (
     <section className={styles.page} aria-label="Course Type management">
       <section className={styles.hero}>
@@ -110,7 +111,7 @@ export default function CourseType() {
             <button
               className={styles.secondaryButton}
               type="button"
-              onClick={() => setMessage(`Export ready: ${items.length} course types`)}
+              onClick={() => toast.info(`เตรียมส่งออกประเภทหลักสูตร ${items.length} รายการ / Export ready: ${items.length} course types`)}
             >
               Export
             </button>

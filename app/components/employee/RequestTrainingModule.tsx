@@ -12,6 +12,8 @@ import {
   type EmployeeTrainingNeedRequest,
 } from "../../lib/trainingRequests";
 import { recordCourses, requestStatuses } from "./data";
+import { useNotice } from "../NoticeDialog";
+import { useToast } from "../ToastHost";
 import ModuleHeader from "./ModuleHeader";
 import styles from "./UserDashboard.module.css";
 
@@ -60,7 +62,8 @@ export default function RequestTrainingModule({
   const [selectedCourseName, setSelectedCourseName] = useState<string>(
     completedRecordCourses[0]?.course ?? "",
   );
-  const [submitMessage, setSubmitMessage] = useState("");
+  const notice = useNotice();
+  const toast = useToast();
   const [submittedRequests, setSubmittedRequests] = useState(readStoredRequests);
   const selectedCourse =
     completedRecordCourses.find((course) => course.course === selectedCourseName) ??
@@ -75,7 +78,7 @@ export default function RequestTrainingModule({
     [employeeCode, submittedRequests],
   );
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const nextRequest: EmployeeTrainingNeedRequest = {
       id: `employee-req-${Date.now()}`,
       requestNo: createTrainingNeedRequestNo(),
@@ -97,8 +100,11 @@ export default function RequestTrainingModule({
       approvedBy: "",
     };
 
-    if (!nextRequest.courseNeed || !nextRequest.reason) {
-      setSubmitMessage("Please enter Course Needed and Request Reason.");
+    const missingFields: string[] = [];
+    if (!nextRequest.courseNeed) missingFields.push("หลักสูตรที่ต้องการอบรม (Course Needed)");
+    if (!nextRequest.reason) missingFields.push("เหตุผลในการขออบรม (Request Reason)");
+    if (missingFields.length > 0) {
+      await notice({ missingFields });
       return;
     }
 
@@ -109,7 +115,7 @@ export default function RequestTrainingModule({
     );
     window.dispatchEvent(new Event("employee-training-requests-changed"));
     setSubmittedRequests(nextRequests);
-    setSubmitMessage(`${nextRequest.requestNo} submitted to HRD Center.`);
+    toast.success(`ส่งคำขอ ${nextRequest.requestNo} ไปยัง HRD ส่วนกลางแล้ว / Request submitted to HRD Center`);
   };
 
   const handleSelectCourse = (courseName: string) => {
@@ -197,10 +203,9 @@ export default function RequestTrainingModule({
               placeholder="Explain why this training is needed"
             />
           </label>
-          <button type="button" onClick={handleSubmit}>
+          <button type="button" onClick={() => void handleSubmit()}>
             Submit Training Need
           </button>
-          {submitMessage ? <p className={styles.requestSubmitMessage}>{submitMessage}</p> : null}
         </form>
 
         <div className={styles.requestPreview}>

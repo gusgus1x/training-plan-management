@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useToast } from "../../../ToastHost";
 import {
   formatRollingPlanCompanies,
   getRollingPlanCompanies,
@@ -152,6 +153,7 @@ const isCenterCourse = (course: Pick<ActualCourse, "owner" | "ownerCompany" | "c
 
 export default function TrainingActual() {
   const user = useAuthenticatedUser();
+  const toast = useToast();
   const [courses, setCourses] = useState<ActualCourse[]>([]);
   const [courseOwnerFilter, setCourseOwnerFilter] = useState<CourseOwnerFilter>("");
   const [selectedCourseGroupId, setSelectedCourseGroupId] = useState("");
@@ -382,7 +384,7 @@ export default function TrainingActual() {
       if (selectedCourse) await reloadCostBreakdown(selectedCourse.id);
     } catch (error) {
       console.error("Failed to update attendance", error);
-      setSavedMessage("Failed to update attendance.");
+      toast.error("บันทึกการเช็คชื่อไม่สำเร็จ / Failed to update attendance");
     }
   };
 
@@ -398,7 +400,7 @@ export default function TrainingActual() {
       if (selectedCourse) await reloadCostBreakdown(selectedCourse.id);
     } catch (error) {
       console.error("Failed to update attendance", error);
-      setSavedMessage("Failed to update attendance.");
+      toast.error("บันทึกการเช็คชื่อไม่สำเร็จ / Failed to update attendance");
     }
   };
 
@@ -430,12 +432,15 @@ export default function TrainingActual() {
       });
       await reloadCostBreakdown(selectedCourse.id);
 
+      // The inline line stays as a re-readable receipt with the numbers; the toast is the
+      // immediate "it worked" the user was missing.
       setSavedMessage(
         `Saved ${selectedCourse.code} with ${actualCount} actual attendees, total THB ${formatCurrency(expenseTotal)} (THB ${formatCurrency(actualCostPerPerson)}/person) at ${now}.`,
       );
+      toast.success("บันทึกข้อมูลการอบรมจริงแล้ว / Training actual saved");
     } catch (error) {
       console.error("Failed to save training expenses", error);
-      setSavedMessage("Failed to save training expenses.");
+      toast.error("บันทึกค่าใช้จ่ายไม่สำเร็จ / Failed to save training expenses");
     }
   };
 

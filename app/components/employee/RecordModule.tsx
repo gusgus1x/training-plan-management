@@ -11,6 +11,7 @@ import {
   profileValue,
   useAuthenticatedUser,
 } from "../AuthenticatedUserContext";
+import { useToast } from "../ToastHost";
 import ModuleHeader from "./ModuleHeader";
 import styles from "./UserDashboard.module.css";
 
@@ -206,8 +207,7 @@ export default function RecordModule() {
   const [query, setQuery] = useState("");
   const [selectedRecordId, setSelectedRecordId] = useState("");
   const [downloadPurpose, setDownloadPurpose] = useState<DownloadPurpose>("job_change");
-  const [exportMessage, setExportMessage] = useState("");
-  const [assessmentMessage, setAssessmentMessage] = useState("");
+  const toast = useToast();
 
   useEffect(() => {
     const syncRecords = () => {
@@ -280,15 +280,15 @@ export default function RecordModule() {
 
   const handleExportAll = () => {
     if (records.length === 0) {
-      setExportMessage("No training record available to export.");
+      toast.warning("ไม่มีประวัติการอบรมให้ส่งออก / No training record available to export");
       return;
     }
 
     const purpose = downloadPurposes[downloadPurpose];
 
     exportPersonalRecord(records, employeeName, purpose);
-    setExportMessage(
-      `Downloaded ${records.length} completed training records for ${purpose.label}.`,
+    toast.success(
+      `ดาวน์โหลดประวัติการอบรม  รายการแล้ว / Downloaded  training record(s)`,
     );
   };
 
@@ -305,7 +305,6 @@ export default function RecordModule() {
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
-            setExportMessage("");
           }}
           placeholder="Search course, provider, certificate..."
         />
@@ -313,7 +312,6 @@ export default function RecordModule() {
           value={selectedCategory}
           onChange={(event) => {
             setSelectedCategory(event.target.value as (typeof categories)[number]);
-            setExportMessage("");
           }}
         >
           {categories.map((category) => (
@@ -341,7 +339,6 @@ export default function RecordModule() {
                 name="download-purpose"
                 onChange={() => {
                   setDownloadPurpose(purposeKey);
-                  setExportMessage("");
                 }}
                 type="radio"
               />
@@ -365,7 +362,6 @@ export default function RecordModule() {
             Download All Records
           </button>
         </div>
-        {exportMessage ? <p className={styles.employeeRecordMessage}>{exportMessage}</p> : null}
       </section>
 
       <div className={styles.employeeRecordWorkspace}>
@@ -390,8 +386,6 @@ export default function RecordModule() {
                 type="button"
                 onClick={() => {
                   setSelectedRecordId(record.id);
-                  setExportMessage("");
-                  setAssessmentMessage("");
                 }}
               >
                 <time dateTime={record.completedDate}>{formatDate(record.completedDate)}</time>
@@ -524,7 +518,7 @@ export default function RecordModule() {
                       disabled={step.locked || isCompleted}
                       type="button"
                       onClick={() => {
-                        setAssessmentMessage(`${step.title} opened for ${selectedRecord.courseTitle}.`);
+                        toast.info(`เปิด ${step.title} สำหรับ ${selectedRecord.courseTitle} แล้ว / ${step.title} opened`);
                       }}
                     >
                       {buttonLabel}
@@ -534,9 +528,6 @@ export default function RecordModule() {
               })}
             </div>
 
-            {assessmentMessage ? (
-              <p className={styles.employeeRecordMessage}>{assessmentMessage}</p>
-            ) : null}
           </section>
 
         </aside>

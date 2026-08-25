@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext";
 import { recordCourses } from "./data";
+import { useNotice } from "../NoticeDialog";
+import { useToast } from "../ToastHost";
 import ModuleHeader from "./ModuleHeader";
 import styles from "./UserDashboard.module.css";
 
@@ -88,7 +90,8 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
   const [reports, setReports] = useState<EmployeeReport[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [search, setSearch] = useState("");
-  const [message, setMessage] = useState("");
+  const notice = useNotice();
+  const toast = useToast();
 
   const selectedReport = reports.find((report) => report.id === selectedId) ?? reports[0] ?? null;
   const visibleReports = useMemo(() => {
@@ -120,7 +123,6 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
   const updateRecipientType = (value: RecipientType) => {
     setRecipientType(value);
     setRecipientTarget(value === "Company" ? companyRecipients[0] : "");
-    setMessage("");
   };
 
   const handleFileChange = (files: FileList | null) => {
@@ -136,12 +138,10 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
     }));
 
     setAttachments((current) => [...current, ...nextAttachments]);
-    setMessage("");
   };
 
   const removeAttachment = (attachmentId: string) => {
     setAttachments((current) => current.filter((attachment) => attachment.id !== attachmentId));
-    setMessage("");
   };
 
   const clearComposer = () => {
@@ -152,7 +152,7 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
     setMessageBody("");
     setAttachments([]);
     setAttachmentInputKey((current) => current + 1);
-    setMessage("Composer cleared.");
+    toast.info("ล้างแบบฟอร์มแล้ว / Composer cleared");
   };
 
   const resetComposer = () => {
@@ -163,11 +163,15 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
     setMessageBody(createInitialMessage(completedHours));
     setAttachments([]);
     setAttachmentInputKey((current) => current + 1);
-    setMessage("");
   };
 
-  const createReport = (status: ReportStatus) => {
-    if (!subject.trim() || !recipientTarget.trim() || !messageBody.trim()) {
+  const createReport = async (status: ReportStatus) => {
+    const missingFields: string[] = [];
+    if (!subject.trim()) missingFields.push("หัวข้อรายงาน (Subject)");
+    if (!recipientTarget.trim()) missingFields.push("ผู้รับรายงาน (Recipient)");
+    if (!messageBody.trim()) missingFields.push("เนื้อหารายงาน (Message)");
+    if (missingFields.length > 0) {
+      await notice({ missingFields });
       return;
     }
 
@@ -197,10 +201,10 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
 
     setReports((current) => [nextReport, ...current]);
     setSelectedId(nextReport.id);
-    setMessage(
+    toast.success(
       status === "Sent"
-        ? `Sent from ${senderEmail} to ${recipientTarget}.`
-        : `${status} report saved with ${attachments.length} attachments.`,
+        ? `ส่งรายงานถึง ${recipientTarget} แล้ว / Sent to ${recipientTarget}`
+        : `บันทึกรายงานสถานะ ${status} พร้อมไฟล์แนบ ${attachments.length} ไฟล์ / ${status} report saved`,
     );
   };
 
@@ -216,7 +220,7 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
     setMessageBody(selectedReport.message);
     setAttachments(selectedReport.attachments);
     setAttachmentInputKey((current) => current + 1);
-    setMessage("Loaded selected report.");
+    toast.info("โหลดรายงานที่เลือกแล้ว / Loaded selected report");
   };
 
   return (
@@ -347,11 +351,10 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
           <div className={styles.employeeReportActions}>
             <button type="button" onClick={clearComposer}>Clear Data</button>
             <button type="button" onClick={resetComposer}>Reset</button>
-            <button type="button" onClick={() => createReport("Draft")}>Save Draft</button>
-            <button type="button" onClick={() => createReport("Ready")}>Prepare</button>
-            <button type="button" onClick={() => createReport("Sent")}>Send Report</button>
+            <button type="button" onClick={() => void createReport("Draft")}>Save Draft</button>
+            <button type="button" onClick={() => void createReport("Ready")}>Prepare</button>
+            <button type="button" onClick={() => void createReport("Sent")}>Send Report</button>
           </div>
-          {message ? <p className={styles.requestSubmitMessage}>{message}</p> : null}
         </section>
 
         <section className={styles.reportResultPanel} aria-label="Employee report preview">

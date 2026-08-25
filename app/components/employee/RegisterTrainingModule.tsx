@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext";
 import { useConfirm } from "../ConfirmDialog";
+import { useToast } from "../ToastHost";
 import {
   getRollingPlanCompanies,
   loadWorkflowRollingPlans,
@@ -101,7 +102,7 @@ export default function RegisterTrainingModule() {
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
-  const [message, setMessage] = useState("");
+  const toast = useToast();
 
   useEffect(() => {
     void loadWorkflowRollingPlans().then(setRollingPlans);
@@ -200,14 +201,14 @@ export default function RegisterTrainingModule() {
         await createEnrollment({ planId: course.rollingId, employeeId, source: "EMPLOYEE" });
       }
       await loadEnrollments();
-      setMessage(
+      toast.success(
         course.enrollmentId
-          ? `Registration cancelled for ${course.title}.`
-          : `Registered for ${course.title}.`,
+          ? `ยกเลิกการลงทะเบียน  แล้ว / Registration cancelled`
+          : `ลงทะเบียนอบรม  แล้ว / Registered`,
       );
     } catch (error) {
       console.error("Failed to update registration", error);
-      setMessage("Failed to update registration. Please try again.");
+      toast.error("อัปเดตการลงทะเบียนไม่สำเร็จ กรุณาลองอีกครั้ง / Failed to update registration");
     }
   };
 
@@ -219,7 +220,6 @@ export default function RegisterTrainingModule() {
         detail="Courses appear here after HRD confirms and publishes the monthly rolling plan."
       />
 
-      {message ? <p className={styles.formMessage}>{message}</p> : null}
 
       <div className={styles.registerWorkspace}>
         {courseOwnerGroups.map((group) => {

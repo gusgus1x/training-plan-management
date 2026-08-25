@@ -7,6 +7,7 @@ import { listTrainingRecords } from "../../../../lib/trainingRecord/client";
 import type { TrainingRecordSummary } from "../../../../lib/trainingRecord/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useNotice } from "../../../NoticeDialog";
+import { useToast } from "../../../ToastHost";
 import {
   getRollingPlanCompanies,
   loadWorkflowRollingPlans,
@@ -575,6 +576,7 @@ const expenseItems = [
 export default function TrainingRecord() {
   const user = useAuthenticatedUser();
   const notice = useNotice();
+  const toast = useToast();
   const [courses, setCourses] = useState<CompletedCourse[]>([]);
   const [selectedCourseGroupId, setSelectedCourseGroupId] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
@@ -884,6 +886,9 @@ export default function TrainingRecord() {
     setImportMessage(
       `Saved ${savedCourses.length} imported courses and ${importedRecordRows.length} record rows from ${importFileName}.`,
     );
+    toast.success(
+      `บันทึกหลักสูตรที่นำเข้า ${savedCourses.length} รายการแล้ว / Saved ${savedCourses.length} imported course(s)`,
+    );
   };
 
   const handleAddAttendee = async () => {
@@ -948,6 +953,9 @@ export default function TrainingRecord() {
     );
     setAddAttendeeMessage(
       `Added ${empName} (${empCode}) to ${selectedCourse.code} for this view — this manual addition is not saved to the server yet.`,
+    );
+    toast.warning(
+      `เพิ่ม ${empName} (${empCode}) ในหน้าจอแล้ว แต่ยังไม่ได้บันทึกลงเซิร์ฟเวอร์ / Added on screen only, not saved to the server yet`,
     );
     setSelectedEmpCode("");
     setCustomEmpCode("");

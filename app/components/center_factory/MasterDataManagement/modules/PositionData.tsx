@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
+import { useToast } from "../../../ToastHost";
 import {
   PositionClientError,
   createPosition,
@@ -199,6 +200,7 @@ export default function PositionData() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
   const notice = useNotice();
+  const toast = useToast();
   const isCenter = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<ApiPositionRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -208,7 +210,6 @@ export default function PositionData() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
 
   const selected = rows.find((row) => row.positionId === selectedId) ?? null;
   const visibleRows = useMemo(() => {
@@ -317,7 +318,7 @@ export default function PositionData() {
       setSelectedId(result.position.positionId);
       setFormMode(null);
       setForm(blankForm());
-      setMessage(`${result.position.positionCode} was saved.`);
+      toast.success(`บันทึก ${result.position.positionCode} แล้ว / Saved`);
     } catch (caught: unknown) {
       setError(errorText(caught));
     } finally {
@@ -342,7 +343,7 @@ export default function PositionData() {
       setRows(nextRows);
       setSelectedId(nextRows[0]?.positionId ?? null);
       setFormMode(null);
-      setMessage(`${result.position.positionCode} was deleted.`);
+      toast.success(`ลบ ${result.position.positionCode} แล้ว / Deleted`);
       void listPositions()
         .then((refreshed) => setRows(refreshed.items))
         .catch(() => undefined);
@@ -356,7 +357,6 @@ export default function PositionData() {
   const refresh = () => {
     setFormMode(null);
     setForm(blankForm());
-    setMessage(null);
     void loadRows();
   };
 
@@ -416,7 +416,6 @@ export default function PositionData() {
         </div>
 
         {error ? <p role="alert">{error}</p> : null}
-        {message ? <p role="status">{message}</p> : null}
 
         {formMode ? (
           <section className={styles.editorPanel}>

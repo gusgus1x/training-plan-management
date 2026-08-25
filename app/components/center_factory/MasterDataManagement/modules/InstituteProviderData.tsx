@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
+import { useToast } from "../../../ToastHost";
 import {
   InstituteProviderClientError,
   createInstituteProvider,
@@ -51,6 +52,7 @@ export default function InstituteProviderData() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
   const notice = useNotice();
+  const toast = useToast();
   const isCenter = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<ApiInstituteProviderRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -60,7 +62,6 @@ export default function InstituteProviderData() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
 
   const selected =
     rows.find((row) => row.instituteProviderId === selectedId) ?? null;
@@ -169,7 +170,7 @@ export default function InstituteProviderData() {
       setSelectedId(result.instituteProvider.instituteProviderId);
       setFormMode(null);
       setForm(blankForm());
-      setMessage(`${result.instituteProvider.instituteProviderCode} was saved.`);
+      toast.success(`บันทึก ${result.instituteProvider.instituteProviderCode} แล้ว / Saved`);
     } catch (caught: unknown) {
       setError(errorText(caught));
     } finally {
@@ -196,8 +197,8 @@ export default function InstituteProviderData() {
               : item,
           ),
         );
-        setMessage(
-          `${result.instituteProvider.instituteProviderCode} is still used by Training OAP, so it was deactivated instead of deleted.`,
+        toast.warning(
+          `${result.instituteProvider.instituteProviderCode} ยังถูกใช้งานใน Training OAP จึงเปลี่ยนเป็นสถานะ INACTIVE แทนการลบ / Still in use, deactivated instead of deleted`,
         );
       } else {
         const nextRows = rows.filter(
@@ -205,7 +206,7 @@ export default function InstituteProviderData() {
         );
         setRows(nextRows);
         setSelectedId(nextRows[0]?.instituteProviderId ?? null);
-        setMessage(`${result.instituteProvider.instituteProviderCode} was deleted.`);
+        toast.success(`ลบ ${result.instituteProvider.instituteProviderCode} แล้ว / Deleted`);
       }
       setFormMode(null);
       void listInstituteProviders()
@@ -221,7 +222,6 @@ export default function InstituteProviderData() {
   const refresh = () => {
     setFormMode(null);
     setForm(blankForm());
-    setMessage(null);
     setSearch("");
     void loadRows();
   };
@@ -287,7 +287,6 @@ export default function InstituteProviderData() {
       </section>
 
       {error ? <p role="alert">{error}</p> : null}
-      {message ? <p role="status">{message}</p> : null}
 
       {formMode ? (
         <section className={styles.formPanel}>

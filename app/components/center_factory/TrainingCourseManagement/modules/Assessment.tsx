@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useToast } from "../../../ToastHost";
 import {
   createAssessment,
   createAssessmentVersion,
@@ -151,7 +152,14 @@ export default function Assessment() {
   const [editingQuestionId, setEditingQuestionId] = useState("");
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const toast = useToast();
+  // Same call shape as the old banner state, routed to the global toast instead.
+  const setFeedback = useCallback(
+    (next: Feedback | null) => {
+      if (next) toast[next.tone](next.message);
+    },
+    [toast],
+  );
   const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   const selected = useMemo(
@@ -182,7 +190,7 @@ export default function Assessment() {
     } finally {
       setBusy(false);
     }
-  }, [isCenter]);
+  }, [isCenter, setFeedback]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
@@ -469,8 +477,7 @@ export default function Assessment() {
         <button className={styles.secondaryButton} type="button" onClick={exportCsv}>Export</button>
       </div>
       {mode !== "idle" ? renderEditor() : null}
-      {feedback ? <p className={`${styles.feedback} ${styles[`feedback${feedback.tone[0].toUpperCase()}${feedback.tone.slice(1)}`]}`} role={feedback.tone === "error" ? "alert" : "status"}>{feedback.message}</p> : null}
-      <div className={styles.tableWrap}><table className={styles.assessmentTable}><thead><tr><th>Code</th><th>Assessment Name</th><th>Scope</th><th>Purpose</th><th>Version</th><th>Pass</th><th>Questions</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+            <div className={styles.tableWrap}><table className={styles.assessmentTable}><thead><tr><th>Code</th><th>Assessment Name</th><th>Scope</th><th>Purpose</th><th>Version</th><th>Pass</th><th>Questions</th><th>Status</th><th>Actions</th></tr></thead><tbody>
         {!visible.length ? <tr><td className={styles.emptyTableCell} colSpan={9}>{busy ? "Loading assessments..." : "No assessments found."}</td></tr> : null}
         {visible.map((item) => {
           const isSelected = item.assessmentId === selectedId;

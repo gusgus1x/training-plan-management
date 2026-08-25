@@ -22,6 +22,7 @@ import type { OapPlanRecord } from "../../../../lib/trainingOap/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
+import { useToast } from "../../../ToastHost";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./TrainingOAP.module.css";
@@ -122,6 +123,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   };
   const confirm = useConfirm();
   const notice = useNotice();
+  const toast = useToast();
   const [courses, setCourses] = useState<WorkflowCourse[]>([]);
   const [standards, setStandards] = useState<WorkflowStandard[]>([]);
   const [plans, setPlans] = useState<OapPlan[]>([]);
@@ -447,6 +449,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       providerId: resolveProviderId(form.provider),
     };
 
+    const wasEditing = Boolean(editingId);
+
     try {
       if (editingId) {
         await updateOapPlan(editingId, input);
@@ -459,9 +463,14 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
       setIsNewOpen(false);
       await loadWorkspace();
+      toast.success(
+        wasEditing
+          ? "บันทึกการแก้ไขแผน OAP แล้ว / Training OAP plan updated"
+          : "บันทึกแผน OAP ใหม่แล้ว / Training OAP plan saved",
+      );
     } catch (error) {
       console.error("Failed to save Training OAP plan", error);
-      alert("Failed to save Training OAP plan");
+      toast.error("บันทึกแผน OAP ไม่สำเร็จ / Failed to save Training OAP plan");
     }
   };
 
@@ -503,9 +512,10 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
         setIsNewOpen(false);
       }
       await loadWorkspace();
+      toast.success("ลบแผน OAP แล้ว / Training OAP plan deleted");
     } catch (error) {
       console.error("Failed to delete Training OAP plan", error);
-      alert("Failed to delete Training OAP plan");
+      toast.error("ลบแผน OAP ไม่สำเร็จ / Failed to delete Training OAP plan");
     }
   };
 
@@ -513,9 +523,12 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     try {
       await updateOapPlan(planId, { status });
       await loadWorkspace();
+      toast.success(
+        `เปลี่ยนสถานะแผนเป็น ${getStatusLabel(status)} แล้ว / Plan status changed to ${status}`,
+      );
     } catch (error) {
       console.error("Failed to update Training OAP plan status", error);
-      alert("Failed to update Training OAP plan status");
+      toast.error("เปลี่ยนสถานะแผนไม่สำเร็จ / Failed to update Training OAP plan status");
     }
   };
 

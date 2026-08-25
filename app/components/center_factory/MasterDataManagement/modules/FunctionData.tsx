@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
+import { useToast } from "../../../ToastHost";
 import {
   FunctionClientError,
   createFunction,
@@ -213,6 +214,7 @@ export default function FunctionData() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
   const notice = useNotice();
+  const toast = useToast();
   const isCenter = user?.roleCode === "HRD_CENTER";
 
   // --- 1. Function State ---
@@ -233,7 +235,6 @@ export default function FunctionData() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
 
   // --- 2. Division State ---
   const [divisionRows, setDivisionRows] = useState<DivisionRecord[]>([]);
@@ -243,7 +244,6 @@ export default function FunctionData() {
   const [isLoadingDivision, setIsLoadingDivision] = useState(true);
   const [isSavingDivision, setIsSavingDivision] = useState(false);
   const [divisionError, setDivisionError] = useState<string | null>(null);
-  const [divisionMessage, setDivisionMessage] = useState<string | null>(null);
 
   // --- 3. Department State ---
   const [departmentRows, setDepartmentRows] = useState<DepartmentRecord[]>([]);
@@ -253,7 +253,6 @@ export default function FunctionData() {
   const [isLoadingDepartment, setIsLoadingDepartment] = useState(true);
   const [isSavingDepartment, setIsSavingDepartment] = useState(false);
   const [departmentError, setDepartmentError] = useState<string | null>(null);
-  const [departmentMessage, setDepartmentMessage] = useState<string | null>(null);
 
   // --- 4. Section State ---
   const [sectionRows, setSectionRows] = useState<SectionRecord[]>([]);
@@ -263,7 +262,6 @@ export default function FunctionData() {
   const [isLoadingSection, setIsLoadingSection] = useState(true);
   const [isSavingSection, setIsSavingSection] = useState(false);
   const [sectionError, setSectionError] = useState<string | null>(null);
-  const [sectionMessage, setSectionMessage] = useState<string | null>(null);
 
   // --- 5. Combined relationship-tree state ---
   const [orgHierarchyUsage, setOrgHierarchyUsage] = useState<OrgHierarchyUsageRow[]>([]);
@@ -422,7 +420,6 @@ export default function FunctionData() {
     });
     setFormMode("edit");
     setError(null);
-    setMessage(null);
   };
 
   const editDivisionRecord = (record: DivisionRecord) => {
@@ -441,7 +438,6 @@ export default function FunctionData() {
     });
     setDivisionFormMode("edit");
     setDivisionError(null);
-    setDivisionMessage(null);
   };
 
   const editDepartmentRecord = (record: DepartmentRecord) => {
@@ -460,7 +456,6 @@ export default function FunctionData() {
     });
     setDepartmentFormMode("edit");
     setDepartmentError(null);
-    setDepartmentMessage(null);
   };
 
   const editSectionRecord = (record: SectionRecord) => {
@@ -479,7 +474,6 @@ export default function FunctionData() {
     });
     setSectionFormMode("edit");
     setSectionError(null);
-    setSectionMessage(null);
   };
 
   const loadOrgHierarchyUsage = async () => {
@@ -526,7 +520,6 @@ export default function FunctionData() {
     });
     setFormMode("new");
     setError(null);
-    setMessage(null);
   };
 
   const save = async () => {
@@ -573,7 +566,7 @@ export default function FunctionData() {
       setSelectedLevel("function");
       setFormMode(null);
       setForm({ functionCode: "", functionNameTh: "", functionNameEn: "", status: "ACTIVE" });
-      setMessage(`${result.function.functionCode} was saved.`);
+      toast.success(`บันทึกหน่วยงาน ${result.function.functionCode} แล้ว / Function saved`);
     } catch (caught: unknown) {
       setError(functionErrorText(caught));
     } finally {
@@ -598,7 +591,7 @@ export default function FunctionData() {
       setRows(nextRows);
       setSelectedId(nextRows[0]?.functionId ?? null);
       setFormMode(null);
-      setMessage(`${result.function.functionCode} was deleted.`);
+      toast.success(`ลบหน่วยงาน ${result.function.functionCode} แล้ว / Function deleted`);
       void listFunctions()
         .then((refreshed) => applyRows(refreshed.items))
         .catch(() => undefined);
@@ -615,7 +608,6 @@ export default function FunctionData() {
     setDepartmentFormMode(null);
     setSectionFormMode(null);
     setForm({ functionCode: "", functionNameTh: "", functionNameEn: "", status: "ACTIVE" });
-    setMessage(null);
     void loadRows();
     void loadDivisionRows();
     void loadDepartmentRows();
@@ -653,7 +645,6 @@ export default function FunctionData() {
     });
     setDivisionFormMode("new");
     setDivisionError(null);
-    setDivisionMessage(null);
   };
 
   const saveDivision = async () => {
@@ -700,7 +691,7 @@ export default function FunctionData() {
       setSelectedLevel("division");
       setDivisionFormMode(null);
       setDivisionForm(blankForm());
-      setDivisionMessage(`${result.division.divisionCode} was saved.`);
+      toast.success(`บันทึกฝ่าย ${result.division.divisionCode} แล้ว / Division saved`);
     } catch (caught: unknown) {
       setDivisionError(divisionErrorText(caught));
     } finally {
@@ -725,7 +716,7 @@ export default function FunctionData() {
       setDivisionRows(nextRows);
       setSelectedDivisionId(nextRows[0]?.divisionId ?? null);
       setDivisionFormMode(null);
-      setDivisionMessage(`${result.division.divisionCode} was deleted.`);
+      toast.success(`ลบฝ่าย ${result.division.divisionCode} แล้ว / Division deleted`);
       void listDivisions()
         .then((refreshed) => applyDivisionRows(refreshed.items))
         .catch(() => undefined);
@@ -766,7 +757,6 @@ export default function FunctionData() {
     });
     setDepartmentFormMode("new");
     setDepartmentError(null);
-    setDepartmentMessage(null);
   };
 
   const saveDepartment = async () => {
@@ -813,7 +803,7 @@ export default function FunctionData() {
       setSelectedLevel("department");
       setDepartmentFormMode(null);
       setDepartmentForm(blankForm());
-      setDepartmentMessage(`${result.department.departmentCode} was saved.`);
+      toast.success(`บันทึกแผนก ${result.department.departmentCode} แล้ว / Department saved`);
     } catch (caught: unknown) {
       setDepartmentError(departmentErrorText(caught));
     } finally {
@@ -838,7 +828,7 @@ export default function FunctionData() {
       setDepartmentRows(nextRows);
       setSelectedDepartmentId(nextRows[0]?.departmentId ?? null);
       setDepartmentFormMode(null);
-      setDepartmentMessage(`${result.department.departmentCode} was deleted.`);
+      toast.success(`ลบแผนก ${result.department.departmentCode} แล้ว / Department deleted`);
       void listDepartments()
         .then((refreshed) => applyDepartmentRows(refreshed.items))
         .catch(() => undefined);
@@ -879,7 +869,6 @@ export default function FunctionData() {
     });
     setSectionFormMode("new");
     setSectionError(null);
-    setSectionMessage(null);
   };
 
   const saveSection = async () => {
@@ -926,7 +915,7 @@ export default function FunctionData() {
       setSelectedLevel("section");
       setSectionFormMode(null);
       setSectionForm(blankForm());
-      setSectionMessage(`${result.section.sectionCode} was saved.`);
+      toast.success(`บันทึกส่วนงาน ${result.section.sectionCode} แล้ว / Section saved`);
     } catch (caught: unknown) {
       setSectionError(sectionErrorText(caught));
     } finally {
@@ -951,7 +940,7 @@ export default function FunctionData() {
       setSectionRows(nextRows);
       setSelectedSectionId(nextRows[0]?.sectionId ?? null);
       setSectionFormMode(null);
-      setSectionMessage(`${result.section.sectionCode} was deleted.`);
+      toast.success(`ลบส่วนงาน ${result.section.sectionCode} แล้ว / Section deleted`);
       void listSections()
         .then((refreshed) => applySectionRows(refreshed.items))
         .catch(() => undefined);
@@ -1154,10 +1143,6 @@ export default function FunctionData() {
         {divisionError ? <p role="alert">{divisionError}</p> : null}
         {departmentError ? <p role="alert">{departmentError}</p> : null}
         {sectionError ? <p role="alert">{sectionError}</p> : null}
-        {message ? <p role="status">{message}</p> : null}
-        {divisionMessage ? <p role="status">{divisionMessage}</p> : null}
-        {departmentMessage ? <p role="status">{departmentMessage}</p> : null}
-        {sectionMessage ? <p role="status">{sectionMessage}</p> : null}
 
         {formMode ? (
           <section className={styles.editorPanel}>

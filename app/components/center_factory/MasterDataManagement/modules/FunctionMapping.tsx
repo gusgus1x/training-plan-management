@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useToast } from "../../../ToastHost";
 import { listCompanies } from "../../../../lib/companies/client";
 import type { CompanyRecord } from "../../../../lib/companies/types";
 import {
@@ -140,6 +141,7 @@ type MappingRow = {
 export default function FunctionMapping() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
+  const toast = useToast();
   const isCenter = user?.roleCode === "HRD_CENTER";
 
   const [companies, setCompanies] = useState<CompanyRecord[]>([]);
@@ -164,7 +166,6 @@ export default function FunctionMapping() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
 
   const load = async () => {
     setIsLoading(true);
@@ -454,7 +455,6 @@ export default function FunctionMapping() {
     setEditingRow(null);
     setMode("new");
     setError(null);
-    setMessage(null);
   };
 
   const startEdit = (row: MappingRow) => {
@@ -469,7 +469,6 @@ export default function FunctionMapping() {
     setEditingRow(row);
     setMode("edit");
     setError(null);
-    setMessage(null);
   };
 
   const change = <Key extends keyof FormState>(key: Key, value: FormState[Key]) =>
@@ -491,7 +490,6 @@ export default function FunctionMapping() {
     }
     setIsSaving(true);
     setError(null);
-    setMessage(null);
     try {
       const companyId = isCenter ? form.companyId : null;
       if (form.level === "function") {
@@ -545,7 +543,7 @@ export default function FunctionMapping() {
       }
       setMode(null);
       setEditingRow(null);
-      setMessage("Mapping saved successfully.");
+      toast.success("บันทึกการจับคู่รหัสโรงงานแล้ว / Mapping saved");
       await load();
     } catch (saveError) {
       setError(
@@ -561,7 +559,6 @@ export default function FunctionMapping() {
     if (!(await confirm({ message: `Delete mapping ${row.plantCode}?`, confirmLabel: "Delete", danger: true }))) return;
     setIsSaving(true);
     setError(null);
-    setMessage(null);
     try {
       if (row.level === "function") await deleteFunctionMapping(row.mappingId);
       else if (row.level === "division") await deleteDivisionMapping(row.mappingId);
@@ -571,7 +568,7 @@ export default function FunctionMapping() {
         setMode(null);
         setEditingRow(null);
       }
-      setMessage("Mapping deleted.");
+      toast.success("ลบการจับคู่รหัสโรงงานแล้ว / Mapping deleted");
       await load();
     } catch (deleteError) {
       setError(
@@ -668,7 +665,6 @@ export default function FunctionMapping() {
       </section>
 
       {error ? <p role="alert" style={{ color: "#d71920", fontWeight: 700 }}>{error}</p> : null}
-      {message ? <p role="status" style={{ color: "#10b981", fontWeight: 700 }}>{message}</p> : null}
 
       {mode ? (
         <section className={styles.formPanel}>

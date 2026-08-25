@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useToast } from "../../../ToastHost";
 import { listCompanies } from "../../../../lib/companies/client";
 import type { CompanyRecord } from "../../../../lib/companies/types";
 import {
@@ -136,7 +137,14 @@ export default function EvaluationManagement() {
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const toast = useToast();
+  // Same call shape as the old banner state, routed to the global toast instead.
+  const setFeedback = useCallback(
+    (next: Feedback | null) => {
+      if (next) toast[next.tone](next.message);
+    },
+    [toast],
+  );
   const [busy, setBusy] = useState(false);
 
   const selected = useMemo(() => items.find((item) => item.evaluationFormId === selectedId) ?? null, [items, selectedId]);
@@ -159,7 +167,7 @@ export default function EvaluationManagement() {
     } catch (error) {
       setFeedback({ tone: "error", message: error instanceof Error ? error.message : "Unable to load evaluations" });
     } finally { setBusy(false); }
-  }, [isFactory]);
+  }, [isFactory, setFeedback]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
@@ -338,10 +346,9 @@ export default function EvaluationManagement() {
     <div className={styles.editorActions}><button className={styles.closeButton} type="button" onClick={closeEditor}>Cancel</button><button className={styles.primaryButton} type="button" disabled={busy} onClick={() => void handleSave()}>Save evaluation</button></div>
   </section>;
 
-  const feedbackClass = feedback ? { success: styles.feedbackSuccess, error: styles.feedbackError, info: styles.feedbackInfo }[feedback.tone] : "";
   return <section className={styles.page} aria-label="Evaluation Management"><section className={styles.hero}><div><p className={styles.kicker}>{evaluationManagementModule.subtitle}</p><h2>{evaluationManagementModule.title}</h2><p>{evaluationManagementModule.description}</p></div></section><section className={styles.workspace}>
     <div className={styles.toolbar}><span className={styles.listMeta}>{visible.length} / {items.length} evaluations</span><input aria-label="Search evaluation" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, timing, respondent, scope, company, status" /><button className={styles.primaryButton} type="button" disabled={busy} onClick={handleNew}>New</button><button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canModify} onClick={handleEdit}>Edit</button><button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canDuplicate} onClick={() => void handleDuplicate()}>Duplicate</button><button className={styles.dangerButton} type="button" disabled={busy || !selected?.canModify} onClick={() => void handleDelete()}>Delete</button><button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void load()}>Refresh</button><button className={styles.secondaryButton} type="button" onClick={handleExport}>Export</button></div>
-    {mode !== "idle" ? renderEditor() : null}{feedback ? <p className={`${styles.feedback} ${feedbackClass}`} role={feedback.tone === "error" ? "alert" : "status"}>{feedback.message}</p> : null}
+    {mode !== "idle" ? renderEditor() : null}
     <div className={styles.tableWrap}><table className={styles.evaluationTable}><thead><tr><th>Code</th><th>Evaluation Name</th><th>Timing</th><th>Respondent</th><th>Scope</th><th>Questions</th><th>Status</th><th>Actions</th></tr></thead><tbody>
       {!visible.length ? <tr><td className={styles.emptyTableCell} colSpan={8}>{busy ? "Loading evaluations..." : "No evaluations yet. Select New to create the first form."}</td></tr> : null}
       {visible.map((item) => { const isSelected = item.evaluationFormId === selectedId; const isOpen = item.evaluationFormId === openDetailId; const draftQuestions = toDraftQuestions(item); const status = statusFromApi(item.status); const statusClass = status === "Published" ? styles.statusPublished : status === "Draft" ? styles.statusDraft : styles.statusInactive;

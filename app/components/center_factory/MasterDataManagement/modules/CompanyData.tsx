@@ -11,6 +11,7 @@ import {
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
+import { useToast } from "../../../ToastHost";
 import type {
   CompanyRecord,
   CompanyStatus,
@@ -67,6 +68,7 @@ export default function CompanyData() {
   const authenticatedUser = useAuthenticatedUser();
   const confirm = useConfirm();
   const notice = useNotice();
+  const toast = useToast();
   const canCreateCompany = authenticatedUser?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<CompanyRecord[]>([]);
   const [search, setSearch] = useState("");
@@ -77,7 +79,6 @@ export default function CompanyData() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
 
   const selectedRecord =
     rows.find((row) => row.companyId === selectedId) ?? null;
@@ -169,7 +170,6 @@ export default function CompanyData() {
   const handleNew = () => {
     setFormValues(createBlankForm());
     setErrorMessage(null);
-    setFeedbackMessage(null);
     setFormMode("new");
   };
 
@@ -180,7 +180,6 @@ export default function CompanyData() {
 
     setFormValues(toCompanyForm(selectedRecord));
     setErrorMessage(null);
-    setFeedbackMessage(null);
     setFormMode("edit");
   };
 
@@ -201,7 +200,6 @@ export default function CompanyData() {
 
     setIsSaving(true);
     setErrorMessage(null);
-    setFeedbackMessage(null);
 
     try {
       const result = await deleteCompany(selectedRecord.companyId);
@@ -212,7 +210,7 @@ export default function CompanyData() {
       setRows(nextRows);
       setSelectedId(nextRows[0]?.companyId ?? null);
       setFormMode(null);
-      setFeedbackMessage(`${result.company.companyCode} was deleted.`);
+      toast.success(`ลบบริษัท ${result.company.companyCode} แล้ว / Company deleted`);
       void listCompanies()
         .then((refreshed) => setRows(refreshed.items))
         .catch(() => undefined);
@@ -228,7 +226,6 @@ export default function CompanyData() {
     setSelectedCode("all");
     setFormMode(null);
     setFormValues(createBlankForm());
-    setFeedbackMessage(null);
     void loadRows(selectedId);
   };
 
@@ -256,7 +253,6 @@ export default function CompanyData() {
 
     setIsSaving(true);
     setErrorMessage(null);
-    setFeedbackMessage(null);
 
     try {
       const result =
@@ -279,9 +275,7 @@ export default function CompanyData() {
       setSelectedId(result.company.companyId);
       setFormMode(null);
       setFormValues(createBlankForm());
-      setFeedbackMessage(
-        `${result.company.companyCode} was saved successfully.`,
-      );
+      toast.success(`บันทึกบริษัท ${result.company.companyCode} แล้ว / Company saved`);
     } catch (error: unknown) {
       setErrorMessage(readableError(error));
     } finally {
@@ -375,11 +369,6 @@ export default function CompanyData() {
         {errorMessage ? (
           <p className={styles.errorMessage} role="alert">
             {errorMessage}
-          </p>
-        ) : null}
-        {feedbackMessage ? (
-          <p className={styles.feedbackMessage} role="status">
-            {feedbackMessage}
           </p>
         ) : null}
       </section>

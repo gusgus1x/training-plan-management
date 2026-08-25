@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
+import { useToast } from "../../../ToastHost";
 import {
   InstructorClientError,
   createInstructor,
@@ -66,6 +67,7 @@ export default function InstructorData() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
   const notice = useNotice();
+  const toast = useToast();
   const isCenter = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<InstructorRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -78,7 +80,6 @@ export default function InstructorData() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
 
   const selected =
     rows.find((row) => row.instructorId === selectedId) ?? null;
@@ -146,7 +147,6 @@ export default function InstructorData() {
     setForm(blankForm());
     setFormMode("new");
     setError(null);
-    setMessage(null);
   };
 
   const startEdit = () => {
@@ -156,7 +156,6 @@ export default function InstructorData() {
     setForm(toForm(instructor));
     setFormMode("edit");
     setError(null);
-    setMessage(null);
   };
 
   const save = async () => {
@@ -192,7 +191,6 @@ export default function InstructorData() {
 
     setIsSaving(true);
     setError(null);
-    setMessage(null);
     try {
       const input = {
         instructorCode: normalizedCode,
@@ -226,8 +224,8 @@ export default function InstructorData() {
       setEditingInstructorId(null);
       setFormMode(null);
       setForm(blankForm());
-      setMessage(
-        `${result.instructor.instructorCode} - ${result.instructor.firstName} ${result.instructor.lastName} was saved.`,
+      toast.success(
+        `บันทึก ${result.instructor.instructorCode} - ${result.instructor.firstName} ${result.instructor.lastName} แล้ว / Saved`,
       );
     } catch (caught: unknown) {
       setError(errorText(caught));
@@ -245,7 +243,6 @@ export default function InstructorData() {
     }
     setIsSaving(true);
     setError(null);
-    setMessage(null);
     try {
       const result = await deleteInstructor(selected.instructorId);
       if (result.outcome === "DEACTIVATED") {
@@ -256,8 +253,8 @@ export default function InstructorData() {
               : item,
           ),
         );
-        setMessage(
-          `${result.instructor.instructorCode} is in use and was changed to INACTIVE.`,
+        toast.warning(
+          `${result.instructor.instructorCode} ยังถูกใช้งานอยู่ จึงเปลี่ยนเป็นสถานะ INACTIVE แทนการลบ / Still in use, changed to INACTIVE`,
         );
       } else {
         const nextRows = rows.filter(
@@ -265,7 +262,7 @@ export default function InstructorData() {
         );
         setRows(nextRows);
         setSelectedId(nextRows[0]?.instructorId ?? null);
-        setMessage(`${result.instructor.instructorCode} was deleted.`);
+        toast.success(`ลบ ${result.instructor.instructorCode} แล้ว / Deleted`);
       }
       setEditingInstructorId(null);
       setFormMode(null);
@@ -283,7 +280,6 @@ export default function InstructorData() {
     setEditingInstructorId(null);
     setFormMode(null);
     setForm(blankForm());
-    setMessage(null);
     void loadRows();
   };
 
@@ -359,7 +355,6 @@ export default function InstructorData() {
           </button>
         </div>
         {error ? <p role="alert">{error}</p> : null}
-        {message ? <p role="status">{message}</p> : null}
       </section>
 
       {formMode ? (

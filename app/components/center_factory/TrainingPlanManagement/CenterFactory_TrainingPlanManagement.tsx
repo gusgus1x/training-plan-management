@@ -5,6 +5,7 @@ import { useAuthActions } from "../../AuthActionsContext";
 import { useAuthenticatedUser } from "../../AuthenticatedUserContext";
 import { useSectionNavigation } from "../../../lib/useSectionNavigation";
 import Navbar from "../../Navbar";
+import { useToast } from "../../ToastHost";
 import styles from "./CenterFactory_TrainingPlanManagement.module.css";
 import { planItems } from "./modules";
 
@@ -16,6 +17,7 @@ export default function TrainingPlanManagement({
   selectedSlug = null,
 }: TrainingPlanManagementProps) {
   const router = useRouter();
+  const toast = useToast();
   const { logout } = useAuthActions();
   const username = useAuthenticatedUser()?.username ?? "";
   const { selectedItem, openSection, goToGrid } = useSectionNavigation(
@@ -97,7 +99,7 @@ export default function TrainingPlanManagement({
                 type="button"
                 onClick={() => {
                   if (item.locked) {
-                    alert("🔒 ฟังก์ชันคำขอฝึกอบรม (Request Training Need) ถูกล็อกการใช้งานไว้ชั่วคราว");
+                    toast.warning("ฟังก์ชันคำขอฝึกอบรม (Request Training Need) ถูกล็อกการใช้งานไว้ชั่วคราว / This feature is temporarily locked");
                     return;
                   }
                   openSection(item);

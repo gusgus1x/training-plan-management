@@ -4,6 +4,7 @@ import AuthGate from "./components/AuthGate";
 import ConfirmDialogHost from "./components/ConfirmDialog";
 import NoticeDialogHost from "./components/NoticeDialog";
 import ScrollToTop from "./components/ScrollToTop";
+import ToastHost from "./components/ToastHost";
 import ThaiUiLocalization from "./components/ThaiUiLocalization";
 import { getServerSessionUser } from "./lib/auth/server-session";
 import "./globals.css";
@@ -55,6 +56,7 @@ export default async function RootLayout({
           <AuthGate user={user}>{children}</AuthGate>
           <ConfirmDialogHost />
           <NoticeDialogHost />
+          <ToastHost />
           <ScrollToTop />
         </ThaiUiLocalization>
       </body>
