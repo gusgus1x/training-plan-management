@@ -772,10 +772,10 @@ function CourseMaster() {
     return unique.sort((a, b) => getLevelRank(b) - getLevelRank(a));
   }, [levelRows]);
 
-  const hasPreTest = Boolean(form.preTestId || form.preTestLink.trim());
-  const hasPostTest = Boolean(form.postTestId || form.postTestLink.trim());
-  const hasEvaluation = Boolean(form.evaluationId || form.evaluationLink.trim());
-  const hasEvaluation30Day = Boolean(form.evaluationAfter30DayId || form.evaluationAfter30DayLink.trim());
+  const hasPreTest = !linkModeFields.has("preTest") || Boolean(form.preTestLink.trim());
+  const hasPostTest = !linkModeFields.has("postTest") || Boolean(form.postTestLink.trim());
+  const hasEvaluation = !linkModeFields.has("evaluation") || Boolean(form.evaluationLink.trim());
+  const hasEvaluation30Day = !linkModeFields.has("evaluationAfter30Day") || Boolean(form.evaluationAfter30DayLink.trim());
 
   const requiredCourseValues = [
     form.courseGroup,
@@ -1460,17 +1460,17 @@ function CourseMaster() {
     if (!form.targetGroup.trim()) {
       missingFields.push("• กลุ่มเป้าหมายผู้เรียน (Target Group)");
     }
-    if (!form.preTestId && !form.preTestLink.trim()) {
-      missingFields.push("• แบบทดสอบก่อนการอบรม (Pre Test)");
+    if (linkModeFields.has("preTest") && !form.preTestLink.trim()) {
+      missingFields.push("• ลิงก์แบบทดสอบก่อนการอบรม (Pre Test Link - กรุณาวาง URL ลิงก์)");
     }
-    if (!form.postTestId && !form.postTestLink.trim()) {
-      missingFields.push("• แบบทดสอบหลังการอบรม (Post Test)");
+    if (linkModeFields.has("postTest") && !form.postTestLink.trim()) {
+      missingFields.push("• ลิงก์แบบทดสอบหลังการอบรม (Post Test Link - กรุณาวาง URL ลิงก์)");
     }
-    if (!form.evaluationId && !form.evaluationLink.trim()) {
-      missingFields.push("• แบบประเมินผลหลังการอบรม (Evaluation After Training)");
+    if (linkModeFields.has("evaluation") && !form.evaluationLink.trim()) {
+      missingFields.push("• ลิงก์แบบประเมินผลหลังการอบรม (Evaluation Link - กรุณาวาง URL ลิงก์)");
     }
-    if (!form.evaluationAfter30DayId && !form.evaluationAfter30DayLink.trim()) {
-      missingFields.push("• แบบประเมินติดตามผล 30 วัน (30-Day Follow-up Evaluation)");
+    if (linkModeFields.has("evaluationAfter30Day") && !form.evaluationAfter30DayLink.trim()) {
+      missingFields.push("• ลิงก์แบบประเมินติดตามผล 30 วัน (30-Day Follow-up Evaluation Link - กรุณาวาง URL ลิงก์)");
     }
     if (selectedCompanies.length === 0) {
       missingFields.push("• บริษัทกลุ่มเป้าหมาย (Check List Company อย่างน้อย 1 บริษัท)");
@@ -1717,7 +1717,7 @@ function CourseMaster() {
           </p>
         </div>
         <label>
-          <span className={styles.fieldLabel}>Pre Test <b>*</b></span>
+          <span className={styles.fieldLabel}>Pre Test {linkModeFields.has("preTest") ? <b>*</b> : <em>Optional</em>}</span>
           <select
             value={linkModeFields.has("preTest") ? LINK_MODE_VALUE : form.preTestId}
             disabled={!isEditing}
@@ -1746,10 +1746,11 @@ function CourseMaster() {
           </select>
           {linkModeFields.has("preTest") ? (
             <div className={styles.linkField}>
+              <span className={styles.fieldLabel} style={{ width: "100%", margin: "4px 0 2px" }}>Pre Test Link <b>*</b></span>
               <input
                 value={form.preTestLink}
                 disabled={!isEditing}
-                placeholder="Paste pre-test form link"
+                placeholder="Paste pre-test form link *"
                 type="url"
                 onChange={(event) =>
                   handleFormLinkChange(
@@ -1780,7 +1781,7 @@ function CourseMaster() {
           </small>
         </label>
         <label>
-          <span className={styles.fieldLabel}>Post Test <b>*</b></span>
+          <span className={styles.fieldLabel}>Post Test {linkModeFields.has("postTest") ? <b>*</b> : <em>Optional</em>}</span>
           <select
             value={linkModeFields.has("postTest") ? LINK_MODE_VALUE : form.postTestId}
             disabled={!isEditing}
@@ -1809,10 +1810,11 @@ function CourseMaster() {
           </select>
           {linkModeFields.has("postTest") ? (
             <div className={styles.linkField}>
+              <span className={styles.fieldLabel} style={{ width: "100%", margin: "4px 0 2px" }}>Post Test Link <b>*</b></span>
               <input
                 value={form.postTestLink}
                 disabled={!isEditing}
-                placeholder="Paste post-test form link"
+                placeholder="Paste post-test form link *"
                 type="url"
                 onChange={(event) =>
                   handleFormLinkChange(
@@ -1843,7 +1845,7 @@ function CourseMaster() {
           </small>
         </label>
         <label>
-          <span className={styles.fieldLabel}>Evaluation After Training <b>*</b></span>
+          <span className={styles.fieldLabel}>Evaluation After Training {linkModeFields.has("evaluation") ? <b>*</b> : <em>Optional</em>}</span>
           <select
             value={linkModeFields.has("evaluation") ? LINK_MODE_VALUE : form.evaluationId}
             disabled={!isEditing}
@@ -1872,10 +1874,11 @@ function CourseMaster() {
           </select>
           {linkModeFields.has("evaluation") ? (
             <div className={styles.linkField}>
+              <span className={styles.fieldLabel} style={{ width: "100%", margin: "4px 0 2px" }}>Evaluation Link <b>*</b></span>
               <input
                 value={form.evaluationLink}
                 disabled={!isEditing}
-                placeholder="Paste evaluation form link"
+                placeholder="Paste evaluation form link *"
                 type="url"
                 onChange={(event) =>
                   handleFormLinkChange(
@@ -1906,7 +1909,7 @@ function CourseMaster() {
           </small>
         </label>
         <label>
-          <span className={styles.fieldLabel}>Evaluation After 30 Days <b>*</b></span>
+          <span className={styles.fieldLabel}>Evaluation After 30 Days {linkModeFields.has("evaluationAfter30Day") ? <b>*</b> : <em>Optional</em>}</span>
           <select
             value={linkModeFields.has("evaluationAfter30Day") ? LINK_MODE_VALUE : form.evaluationAfter30DayId}
             disabled={!isEditing}
@@ -1936,10 +1939,11 @@ function CourseMaster() {
           </select>
           {linkModeFields.has("evaluationAfter30Day") ? (
             <div className={styles.linkField}>
+              <span className={styles.fieldLabel} style={{ width: "100%", margin: "4px 0 2px" }}>30-Day Evaluation Link <b>*</b></span>
               <input
                 value={form.evaluationAfter30DayLink}
                 disabled={!isEditing}
-                placeholder="Paste 30-day evaluation form link"
+                placeholder="Paste 30-day evaluation form link *"
                 type="url"
                 onChange={(event) =>
                   handleFormLinkChange(
