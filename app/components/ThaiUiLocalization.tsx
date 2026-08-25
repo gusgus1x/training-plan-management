@@ -1134,6 +1134,8 @@ const thaiUiDictionary: Record<string, string> = {
     "เลือกประวัติการอบรมที่เสร็จสิ้น แล้วส่งคำขอฝึกอบรมติดตามผลไปยัง HRD ส่วนกลาง",
   "Select an existing instructor or type an external instructor name.":
     "เลือกวิทยากรที่มีอยู่ หรือพิมพ์ชื่อวิทยากรภายนอก",
+  "Select from Institute/Provider Master or enter another name":
+    "เลือกจากข้อมูลสถาบัน/ผู้ให้บริการ หรือระบุชื่ออื่น",
   "Select from Instructor Master or enter another name":
     "เลือกจากข้อมูลวิทยากร หรือระบุชื่ออื่น",
   "Select function": "เลือกหน่วยงาน",
