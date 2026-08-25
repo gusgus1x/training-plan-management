@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useNotice } from "../../../NoticeDialog";
 import {
   LevelClientError,
   createLevel,
@@ -102,6 +103,7 @@ const errorText = (error: unknown) =>
 export default function LevelData() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
+  const notice = useNotice();
   const isCenter = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<ApiLevelRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -193,6 +195,16 @@ export default function LevelData() {
     const editingLevelId = selected?.levelId ?? null;
     if (savingMode === "edit" && !editingLevelId) {
       setError("Select a Level before saving changes.");
+      return;
+    }
+    const missingFields: string[] = [];
+    if (!form.levelCodeTh.trim()) missingFields.push("รหัสระดับ ภาษาไทย (Level Code TH)");
+    if (!form.levelCodeEn.trim()) missingFields.push("รหัสระดับ ภาษาอังกฤษ (Level Code EN)");
+    if (!form.levelNameTh.trim()) missingFields.push("ชื่อระดับ ภาษาไทย (Level Name TH)");
+    if (!form.pl.trim()) missingFields.push("PL");
+    if (!form.levelKey.trim()) missingFields.push("Level Key");
+    if (missingFields.length > 0) {
+      await notice({ missingFields });
       return;
     }
     setIsSaving(true);

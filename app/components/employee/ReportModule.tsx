@@ -404,7 +404,12 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search report history"
           />
-          <button type="button" onClick={loadSelectedReport} disabled={!selectedReport}>
+          <button
+            type="button"
+            onClick={loadSelectedReport}
+            disabled={!selectedReport}
+            title={!selectedReport ? "เลือกรายงานจากรายการก่อน (Select a report from the list first)" : undefined}
+          >
             Load Selected
           </button>
         </div>

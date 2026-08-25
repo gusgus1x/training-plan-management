@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useNotice } from "../../../NoticeDialog";
 import styles from "./TrainingExpense.module.css";
 
 export const trainingExpenseModule = {
@@ -12,7 +13,15 @@ export const trainingExpenseModule = {
 const initialRows = [["OAP-001","Leadership Essentials","THB 45,000","ATFB","Approved"],["OAP-022","Safety Basics","THB 28,500","SNF","Submitted"],["OAP-014","Service Mind","THB 18,000","SATI","Draft"]] as const;
 const formFields = ["Course code","Expense type","Amount","Cost center"] as const;
 
+const fieldLabels = [
+  "รหัสหลักสูตร (Course code)",
+  "ประเภทค่าใช้จ่าย (Expense type)",
+  "จำนวนเงิน (Amount)",
+  "ศูนย์ต้นทุน (Cost center)",
+] as const;
+
 export default function TrainingExpense() {
+  const notice = useNotice();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [draftRows, setDraftRows] = useState<string[][]>([]);
@@ -30,15 +39,16 @@ export default function TrainingExpense() {
     setFormValues((current) => current.map((item, itemIndex) => itemIndex === index ? value : item));
   };
 
-  const handleAddRecord = () => {
-    const nextRow = [
-      formValues[0]?.trim() || `TRA-NEW`,
-      formValues[1]?.trim() || "New record",
-      formValues[2]?.trim() || "Pending detail",
-      formValues[3]?.trim() || "HRD Center",
-      "Draft",
-    ];
-    setDraftRows((current) => [nextRow, ...current]);
+  const handleAddRecord = async () => {
+    const values = formFields.map((_, index) => formValues[index]?.trim() ?? "");
+    const missingFields = fieldLabels.filter((_, index) => !values[index]);
+
+    if (missingFields.length > 0) {
+      await notice({ missingFields: [...missingFields] });
+      return;
+    }
+
+    setDraftRows((current) => [[...values, "Draft"], ...current]);
     setFormValues(formFields.map(() => ""));
   };
 
@@ -115,7 +125,7 @@ export default function TrainingExpense() {
             </label>
           ))}
           <div className={styles.fullWidth}>
-            <button className={styles.actionButton} type="button" onClick={handleAddRecord}>
+            <button className={styles.actionButton} type="button" onClick={() => void handleAddRecord()}>
               Add record
             </button>
           </div>

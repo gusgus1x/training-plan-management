@@ -21,6 +21,7 @@ import { listOapPlans, createOapPlan, updateOapPlan, deleteOapPlan } from "../..
 import type { OapPlanRecord } from "../../../../lib/trainingOap/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useNotice } from "../../../NoticeDialog";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import styles from "./TrainingOAP.module.css";
 
@@ -119,6 +120,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     return status;
   };
   const confirm = useConfirm();
+  const notice = useNotice();
   const [courses, setCourses] = useState<WorkflowCourse[]>([]);
   const [standards, setStandards] = useState<WorkflowStandard[]>([]);
   const [plans, setPlans] = useState<OapPlan[]>([]);
@@ -399,6 +401,25 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   };
 
   const handleSave = async () => {
+    const missingFields: string[] = [];
+
+    if (!selectedCourse) {
+      missingFields.push("หลักสูตร (Course) — เลือกหลักสูตรจากตารางก่อน");
+    }
+    if (!form.participants.trim()) {
+      missingFields.push("จำนวนผู้เข้าอบรมต่อรุ่น (Participants)");
+    }
+    if (!form.hours.trim()) {
+      missingFields.push("จำนวนชั่วโมงอบรม (Training Hours)");
+    }
+    if (!form.budget.trim()) {
+      missingFields.push("งบประมาณรวม (Total Budget)");
+    }
+
+    if (missingFields.length > 0) {
+      await notice({ missingFields });
+      return;
+    }
     if (!selectedCourse) {
       return;
     }
@@ -906,7 +927,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             <div className={styles.formActions}>
               <button
                 className={styles.primaryButton}
-                disabled={!selectedCourse || !form.participants || !form.hours || !form.budget}
                 type="button"
                 onClick={() => void handleSave()}
               >

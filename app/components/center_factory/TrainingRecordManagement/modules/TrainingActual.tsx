@@ -885,6 +885,11 @@ export default function TrainingActual() {
               className={styles.actualSaveButton}
               type="button"
               disabled={isSelectedCourseReadOnlyForFactory}
+              title={
+                isSelectedCourseReadOnlyForFactory
+                  ? "หลักสูตรของส่วนกลาง โรงงานดูได้อย่างเดียว แก้ไขไม่ได้ (Center course — read-only for factory users)"
+                  : undefined
+              }
               onClick={() => void handleSave()}
             >
               Save Training Actual

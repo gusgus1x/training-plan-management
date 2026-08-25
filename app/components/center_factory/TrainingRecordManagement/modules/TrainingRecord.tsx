@@ -6,6 +6,7 @@ import type { EmployeeRecord } from "../../../../lib/employees/types";
 import { listTrainingRecords } from "../../../../lib/trainingRecord/client";
 import type { TrainingRecordSummary } from "../../../../lib/trainingRecord/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useNotice } from "../../../NoticeDialog";
 import {
   getRollingPlanCompanies,
   loadWorkflowRollingPlans,
@@ -572,6 +573,7 @@ const expenseItems = [
 
 export default function TrainingRecord() {
   const user = useAuthenticatedUser();
+  const notice = useNotice();
   const [courses, setCourses] = useState<CompletedCourse[]>([]);
   const [selectedCourseGroupId, setSelectedCourseGroupId] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
@@ -877,12 +879,32 @@ export default function TrainingRecord() {
     );
   };
 
-  const handleAddAttendee = () => {
+  const handleAddAttendee = async () => {
+    const selectedMaster = masterEmployees.find((emp) => emp.employeeCode === selectedEmpCode);
+    const missingFields: string[] = [];
+
+    if (!selectedCourse) {
+      missingFields.push("หลักสูตร (Course) — เลือกหลักสูตรจากตารางก่อน");
+    }
+    if (!selectedMaster) {
+      // No master employee picked, so the manual code/name fields become the required pair
+      // instead of silently falling back to a generated "EMP-0001 / New Participant" row.
+      if (!customEmpCode.trim()) {
+        missingFields.push("รหัสพนักงาน (Employee Code) — เลือกจากข้อมูลพนักงาน หรือกรอกเอง");
+      }
+      if (!customEmpName.trim()) {
+        missingFields.push("ชื่อพนักงาน (Employee Name) — เลือกจากข้อมูลพนักงาน หรือกรอกเอง");
+      }
+    }
+
+    if (missingFields.length > 0) {
+      await notice({ missingFields });
+      return;
+    }
     if (!selectedCourse) {
       return;
     }
 
-    const selectedMaster = masterEmployees.find((emp) => emp.employeeCode === selectedEmpCode);
     const addSequence = selectedCourse.attendees.length + 1;
 
     const empCode =
@@ -1250,7 +1272,7 @@ export default function TrainingRecord() {
                   </label>
 
                   <div className={styles.addAttendeeActions}>
-                    <button type="button" onClick={handleAddAttendee}>
+                    <button type="button" onClick={() => void handleAddAttendee()}>
                       Save & Add Attendee
                     </button>
                   </div>

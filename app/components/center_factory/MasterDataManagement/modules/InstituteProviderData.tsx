@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useNotice } from "../../../NoticeDialog";
 import {
   InstituteProviderClientError,
   createInstituteProvider,
@@ -49,6 +50,7 @@ const errorText = (error: unknown) =>
 export default function InstituteProviderData() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
+  const notice = useNotice();
   const isCenter = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<ApiInstituteProviderRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -131,6 +133,13 @@ export default function InstituteProviderData() {
     const editingId = selected?.instituteProviderId ?? null;
     if (savingMode === "edit" && !editingId) {
       setError("Select an Institute/Provider before saving changes.");
+      return;
+    }
+    const missingFields: string[] = [];
+    if (!form.instituteProviderCode.trim()) missingFields.push("รหัสสถาบัน / ผู้ให้บริการ (Institute / Provider Code)");
+    if (!form.instituteProviderName.trim()) missingFields.push("ชื่อสถาบัน / ผู้ให้บริการ (Institute / Provider Name)");
+    if (missingFields.length > 0) {
+      await notice({ missingFields });
       return;
     }
     setIsSaving(true);

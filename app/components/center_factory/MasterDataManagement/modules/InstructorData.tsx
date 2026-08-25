@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useNotice } from "../../../NoticeDialog";
 import {
   InstructorClientError,
   createInstructor,
@@ -64,6 +65,7 @@ const errorText = (error: unknown) =>
 export default function InstructorData() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
+  const notice = useNotice();
   const isCenter = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<InstructorRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -165,6 +167,14 @@ export default function InstructorData() {
 
     if (savingMode === "edit" && !targetInstructorId) {
       setError("Select an Instructor before saving changes.");
+      return;
+    }
+    const missingFields: string[] = [];
+    if (!form.instructorCode.trim()) missingFields.push("รหัสวิทยากร (Instructor Code)");
+    if (!form.firstName.trim()) missingFields.push("ชื่อวิทยากร (First Name)");
+    if (!form.lastName.trim()) missingFields.push("นามสกุลวิทยากร (Last Name)");
+    if (missingFields.length > 0) {
+      await notice({ missingFields });
       return;
     }
     const normalizedCode = form.instructorCode.trim().toUpperCase();

@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useNotice } from "../../../NoticeDialog";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { createCourseGroup, deleteCourseGroup, listCourseGroups, updateCourseGroup } from "../../../../lib/courseGroups/client";
 import type { CourseGroupRecord, CourseGroupStatus } from "../../../../lib/courseGroups/types";
@@ -8,7 +9,7 @@ import styles from "./CourseGroup.module.css";
 export const courseGroupModule = { title: "Course Group", subtitle: "Course group", description: "Maintain course group master data for course classification and reporting." } as const;
 type Mode = "idle" | "new" | "edit"; type Draft = { code: string; name: string; status: CourseGroupStatus }; const emptyDraft: Draft = { code: "", name: "", status: "ACTIVE" };
 export default function CourseGroup() {
-  const user = useAuthenticatedUser(); const canWrite = user?.roleCode === "HRD_CENTER"; const confirm = useConfirm();
+  const user = useAuthenticatedUser(); const canWrite = user?.roleCode === "HRD_CENTER"; const confirm = useConfirm(); const notice = useNotice();
   const [items, setItems] = useState<CourseGroupRecord[]>([]); const [selectedId, setSelectedId] = useState(""); const [draft, setDraft] = useState<Draft>(emptyDraft); const [mode, setMode] = useState<Mode>("idle"); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
   const selected = useMemo(() => items.find((item) => item.courseGroupId === selectedId) ?? null, [items, selectedId]);
   const load = useCallback(async () => { setBusy(true); setMessage(""); try { const result = await listCourseGroups(); setItems(result.items); setSelectedId((current) => result.items.some((item) => item.courseGroupId === current) ? current : ""); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to load course groups"); } finally { setBusy(false); } }, []);
@@ -21,7 +22,13 @@ export default function CourseGroup() {
     });
     return () => { active = false; };
   }, []);
-  const save = async () => { if (!canWrite || !draft.code.trim() || !draft.name.trim()) return; setBusy(true); setMessage(""); try { if (mode === "edit" && selected) await updateCourseGroup(selected.courseGroupId, draft); else await createCourseGroup(draft); setMode("idle"); setDraft(emptyDraft); await load(); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to save course group"); } finally { setBusy(false); } };
+  const save = async () => {
+    if (!canWrite) return;
+    const missingFields: string[] = [];
+    if (!draft.name.trim()) missingFields.push("ชื่อกลุ่มหลักสูตร (Course Group Name)");
+    if (!draft.code.trim()) missingFields.push("รหัสกลุ่มหลักสูตร (Group ID / Code)");
+    if (missingFields.length > 0) { await notice({ missingFields }); return; }
+    setBusy(true); setMessage(""); try { if (mode === "edit" && selected) await updateCourseGroup(selected.courseGroupId, draft); else await createCourseGroup(draft); setMode("idle"); setDraft(emptyDraft); await load(); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to save course group"); } finally { setBusy(false); } };
   const remove = async () => { if (!canWrite || !selected) return; if (!(await confirm({ message: `Delete course group ${selected.code}?`, confirmLabel: "Delete", danger: true }))) return; setBusy(true); setMessage(""); try { await deleteCourseGroup(selected.courseGroupId); setSelectedId(""); setMode("idle"); await load(); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to delete course group"); } finally { setBusy(false); } };
   return (
     <section className={styles.page} aria-label="Course Group management">

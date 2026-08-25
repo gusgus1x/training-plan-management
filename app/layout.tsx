@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Noto_Sans_Thai } from "next/font/google";
 import AuthGate from "./components/AuthGate";
 import ConfirmDialogHost from "./components/ConfirmDialog";
+import NoticeDialogHost from "./components/NoticeDialog";
 import ScrollToTop from "./components/ScrollToTop";
 import ThaiUiLocalization from "./components/ThaiUiLocalization";
 import { getServerSessionUser } from "./lib/auth/server-session";
@@ -53,6 +54,7 @@ export default async function RootLayout({
         <ThaiUiLocalization>
           <AuthGate user={user}>{children}</AuthGate>
           <ConfirmDialogHost />
+          <NoticeDialogHost />
           <ScrollToTop />
         </ThaiUiLocalization>
       </body>

@@ -21,6 +21,7 @@ import {
 import type { RollingPlanRecord } from "../../../../lib/trainingRolling/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useNotice } from "../../../NoticeDialog";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import styles from "./TrainingRolling.module.css";
 
@@ -288,6 +289,7 @@ export default function TrainingRolling() {
   const { language } = useUiLanguage();
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
+  const notice = useNotice();
   const userCompanyCode = profileValue(user?.companyCode);
   const [oapPlans, setOapPlans] = useState<OapPlanRecord[]>([]);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
@@ -598,6 +600,28 @@ export default function TrainingRolling() {
   };
 
   const handleSave = async () => {
+    const missingFields: string[] = [];
+
+    if (!selectedOap) {
+      missingFields.push("แผน OAP (OAP Plan) — เลือกแผนจากตารางก่อน");
+    }
+    if (form.sessions.length === 0) {
+      missingFields.push("รุ่นการอบรม (Session) — เพิ่มอย่างน้อย 1 รุ่น");
+    }
+    form.sessions.forEach((session, index) => {
+      const label = session.batchName.trim() || `รุ่นที่ ${index + 1} (Session ${index + 1})`;
+      if (!session.location.trim()) {
+        missingFields.push(`สถานที่อบรมของ ${label} (Location)`);
+      }
+      if (!session.trainingDate) {
+        missingFields.push(`วันที่เริ่มอบรมของ ${label} (Start Date)`);
+      }
+    });
+
+    if (missingFields.length > 0) {
+      await notice({ missingFields });
+      return;
+    }
     if (!selectedOap) {
       return;
     }
@@ -1309,7 +1333,6 @@ export default function TrainingRolling() {
             <div className={styles.formActions}>
               <button
                 className={styles.primaryButton}
-                disabled={!selectedOap}
                 type="button"
                 onClick={() => void handleSave()}
               >

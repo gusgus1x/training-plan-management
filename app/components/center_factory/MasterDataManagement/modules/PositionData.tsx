@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useNotice } from "../../../NoticeDialog";
 import {
   PositionClientError,
   createPosition,
@@ -197,6 +198,7 @@ const errorText = (error: unknown) =>
 export default function PositionData() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
+  const notice = useNotice();
   const isCenter = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<ApiPositionRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -278,6 +280,13 @@ export default function PositionData() {
     const editingPositionId = selected?.positionId ?? null;
     if (savingMode === "edit" && !editingPositionId) {
       setError("Select a Position before saving changes.");
+      return;
+    }
+    const missingFields: string[] = [];
+    if (!form.positionCode.trim()) missingFields.push("รหัสตำแหน่ง (Position Code)");
+    if (!form.positionNameTh.trim()) missingFields.push("ชื่อตำแหน่ง ภาษาไทย (Position Name TH)");
+    if (missingFields.length > 0) {
+      await notice({ missingFields });
       return;
     }
     setIsSaving(true);

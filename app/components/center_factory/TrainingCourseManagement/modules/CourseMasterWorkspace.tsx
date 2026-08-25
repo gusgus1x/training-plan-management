@@ -21,6 +21,7 @@ import { listAssessments } from "../../../../lib/assessments/client";
 import { listEvaluations } from "../../../../lib/evaluations/client";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useNotice } from "../../../NoticeDialog";
 import { listCourseGroups } from "../../../../lib/courseGroups/client";
 import { listCourseTypes } from "../../../../lib/courseTypes/client";
 import { listFunctions } from "../../../../lib/functions/client";
@@ -313,6 +314,7 @@ const SearchableSelect = ({
 function CourseMaster() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
+  const notice = useNotice();
   const { language } = useUiLanguage();
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
   const factoryCourseTypeAllowlist = ["IN-HOUSE", "PUBLIC", "OJT"];
@@ -1437,49 +1439,47 @@ function CourseMaster() {
     const missingFields: string[] = [];
 
     if (!form.courseGroup.trim()) {
-      missingFields.push("• กลุ่มหลักสูตร (Course Group)");
+      missingFields.push("กลุ่มหลักสูตร (Course Group)");
     }
     if (!form.courseType.trim()) {
-      missingFields.push("• ประเภทหลักสูตร (Course Type)");
+      missingFields.push("ประเภทหลักสูตร (Course Type)");
     }
     if (!form.courseNameTh.trim()) {
-      missingFields.push("• ชื่อหลักสูตร ภาษาไทย (Course Name TH)");
+      missingFields.push("ชื่อหลักสูตร ภาษาไทย (Course Name TH)");
     }
     if (!form.courseNameEn.trim()) {
-      missingFields.push("• ชื่อหลักสูตร ภาษาอังกฤษ (Course Name EN)");
+      missingFields.push("ชื่อหลักสูตร ภาษาอังกฤษ (Course Name EN)");
     }
     if (!form.remark.trim()) {
-      missingFields.push("• ที่มา / เหตุผลในการจัดทำหลักสูตร (Background)");
+      missingFields.push("ที่มา / เหตุผลในการจัดทำหลักสูตร (Background)");
     }
     if (!form.objective.trim()) {
-      missingFields.push("• วัตถุประสงค์หลักสูตร (Objective)");
+      missingFields.push("วัตถุประสงค์หลักสูตร (Objective)");
     }
     if (!form.learningContent.trim()) {
-      missingFields.push("• เนื้อหาการเรียนรู้ (Learning Content)");
+      missingFields.push("เนื้อหาการเรียนรู้ (Learning Content)");
     }
     if (!form.targetGroup.trim()) {
-      missingFields.push("• กลุ่มเป้าหมายผู้เรียน (Target Group)");
+      missingFields.push("กลุ่มเป้าหมายผู้เรียน (Target Group)");
     }
     if (linkModeFields.has("preTest") && !form.preTestLink.trim()) {
-      missingFields.push("• ลิงก์แบบทดสอบก่อนการอบรม (Pre Test Link - กรุณาวาง URL ลิงก์)");
+      missingFields.push("ลิงก์แบบทดสอบก่อนการอบรม (Pre Test Link - กรุณาวาง URL ลิงก์)");
     }
     if (linkModeFields.has("postTest") && !form.postTestLink.trim()) {
-      missingFields.push("• ลิงก์แบบทดสอบหลังการอบรม (Post Test Link - กรุณาวาง URL ลิงก์)");
+      missingFields.push("ลิงก์แบบทดสอบหลังการอบรม (Post Test Link - กรุณาวาง URL ลิงก์)");
     }
     if (linkModeFields.has("evaluation") && !form.evaluationLink.trim()) {
-      missingFields.push("• ลิงก์แบบประเมินผลหลังการอบรม (Evaluation Link - กรุณาวาง URL ลิงก์)");
+      missingFields.push("ลิงก์แบบประเมินผลหลังการอบรม (Evaluation Link - กรุณาวาง URL ลิงก์)");
     }
     if (linkModeFields.has("evaluationAfter30Day") && !form.evaluationAfter30DayLink.trim()) {
-      missingFields.push("• ลิงก์แบบประเมินติดตามผล 30 วัน (30-Day Follow-up Evaluation Link - กรุณาวาง URL ลิงก์)");
+      missingFields.push("ลิงก์แบบประเมินติดตามผล 30 วัน (30-Day Follow-up Evaluation Link - กรุณาวาง URL ลิงก์)");
     }
     if (selectedCompanies.length === 0) {
-      missingFields.push("• บริษัทกลุ่มเป้าหมาย (Check List Company อย่างน้อย 1 บริษัท)");
+      missingFields.push("บริษัทกลุ่มเป้าหมาย (Check List Company อย่างน้อย 1 บริษัท)");
     }
 
     if (missingFields.length > 0) {
-      alert(
-        `⚠️ ไม่สามารถบันทึกได้ เนื่องจากระบุข้อมูลไม่ครบถ้วน (${missingFields.length} รายการ):\n\n${missingFields.join("\n")}`,
-      );
+      await notice({ missingFields });
       return;
     }
 

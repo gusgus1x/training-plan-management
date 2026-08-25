@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useNotice } from "../../../NoticeDialog";
 import {
   FunctionClientError,
   createFunction,
@@ -211,6 +212,7 @@ const Cell = ({
 export default function FunctionData() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
+  const notice = useNotice();
   const isCenter = user?.roleCode === "HRD_CENTER";
 
   // --- 1. Function State ---
@@ -535,6 +537,13 @@ export default function FunctionData() {
       setError("Select a Function before saving changes.");
       return;
     }
+    const missingFields: string[] = [];
+    if (!form.functionCode.trim()) missingFields.push("รหัสหน่วยงาน (Function Code)");
+    if (!form.functionNameTh.trim()) missingFields.push("ชื่อหน่วยงาน ภาษาไทย (Function Name TH)");
+    if (missingFields.length > 0) {
+      await notice({ missingFields });
+      return;
+    }
     setIsSaving(true);
     setError(null);
     try {
@@ -655,6 +664,13 @@ export default function FunctionData() {
       setDivisionError("Select a Division before saving changes.");
       return;
     }
+    const missingFields: string[] = [];
+    if (!divisionForm.code.trim()) missingFields.push("รหัสฝ่าย (Division Code)");
+    if (!divisionForm.nameTh.trim()) missingFields.push("ชื่อฝ่าย ภาษาไทย (Division Name TH)");
+    if (missingFields.length > 0) {
+      await notice({ missingFields });
+      return;
+    }
     setIsSavingDivision(true);
     setDivisionError(null);
     try {
@@ -761,6 +777,13 @@ export default function FunctionData() {
       setDepartmentError("Select a Department before saving changes.");
       return;
     }
+    const missingFields: string[] = [];
+    if (!departmentForm.code.trim()) missingFields.push("รหัสแผนก (Department Code)");
+    if (!departmentForm.nameTh.trim()) missingFields.push("ชื่อแผนก ภาษาไทย (Department Name TH)");
+    if (missingFields.length > 0) {
+      await notice({ missingFields });
+      return;
+    }
     setIsSavingDepartment(true);
     setDepartmentError(null);
     try {
@@ -865,6 +888,13 @@ export default function FunctionData() {
     const editingId = selectedSection?.sectionId ?? null;
     if (savingMode === "edit" && !editingId) {
       setSectionError("Select a Section before saving changes.");
+      return;
+    }
+    const missingFields: string[] = [];
+    if (!sectionForm.code.trim()) missingFields.push("รหัสส่วนงาน (Section Code)");
+    if (!sectionForm.nameTh.trim()) missingFields.push("ชื่อส่วนงาน ภาษาไทย (Section Name TH)");
+    if (missingFields.length > 0) {
+      await notice({ missingFields });
       return;
     }
     setIsSavingSection(true);

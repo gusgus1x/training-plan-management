@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useNotice } from "../../../NoticeDialog";
 import styles from "./TrainingResultReport.module.css";
 
 export const trainingResultReportModule = {
@@ -14,7 +15,15 @@ export const resultReportTitle = trainingResultReportModule.title;
 const initialRows = [["OAP-001","Leadership Essentials","Pre 72% / Post 88%","4.6 / 5","Closed"],["OAP-022","Safety Basics","Pre 68% / Post 91%","4.4 / 5","Closed"],["OAP-014","Service Mind","Pre 75% / Post 86%","4.7 / 5","Review"]] as const;
 const formFields = ["Course code","Period","Company","Export format"] as const;
 
+const fieldLabels = [
+  "รหัสหลักสูตร (Course code)",
+  "ช่วงเวลา (Period)",
+  "บริษัท (Company)",
+  "รูปแบบไฟล์ส่งออก (Export format)",
+] as const;
+
 export default function TrainingResultReport() {
+  const notice = useNotice();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [draftRows, setDraftRows] = useState<string[][]>([]);
@@ -32,15 +41,16 @@ export default function TrainingResultReport() {
     setFormValues((current) => current.map((item, itemIndex) => itemIndex === index ? value : item));
   };
 
-  const handleAddRecord = () => {
-    const nextRow = [
-      formValues[0]?.trim() || `KEE-NEW`,
-      formValues[1]?.trim() || "New record",
-      formValues[2]?.trim() || "Pending detail",
-      formValues[3]?.trim() || "HRD Center",
-      "Draft",
-    ];
-    setDraftRows((current) => [nextRow, ...current]);
+  const handleAddRecord = async () => {
+    const values = formFields.map((_, index) => formValues[index]?.trim() ?? "");
+    const missingFields = fieldLabels.filter((_, index) => !values[index]);
+
+    if (missingFields.length > 0) {
+      await notice({ missingFields: [...missingFields] });
+      return;
+    }
+
+    setDraftRows((current) => [[...values, "Draft"], ...current]);
     setFormValues(formFields.map(() => ""));
   };
 
@@ -117,7 +127,7 @@ export default function TrainingResultReport() {
             </label>
           ))}
           <div className={styles.fullWidth}>
-            <button className={styles.actionButton} type="button" onClick={handleAddRecord}>
+            <button className={styles.actionButton} type="button" onClick={() => void handleAddRecord()}>
               Add record
             </button>
           </div>

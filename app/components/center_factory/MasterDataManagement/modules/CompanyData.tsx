@@ -10,6 +10,7 @@ import {
 } from "../../../../lib/companies/client";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useNotice } from "../../../NoticeDialog";
 import type {
   CompanyRecord,
   CompanyStatus,
@@ -65,6 +66,7 @@ const readableError = (error: unknown) =>
 export default function CompanyData() {
   const authenticatedUser = useAuthenticatedUser();
   const confirm = useConfirm();
+  const notice = useNotice();
   const canCreateCompany = authenticatedUser?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<CompanyRecord[]>([]);
   const [search, setSearch] = useState("");
@@ -244,8 +246,11 @@ export default function CompanyData() {
 
     const input = toCreateInput(formValues);
 
-    if (!input.companyCode || !input.companyNameTh) {
-      setErrorMessage("Company code and Thai company name are required.");
+    const missingFields: string[] = [];
+    if (!input.companyCode) missingFields.push("รหัสบริษัท (Company Code)");
+    if (!input.companyNameTh) missingFields.push("ชื่อบริษัท ภาษาไทย (Company Name TH)");
+    if (missingFields.length > 0) {
+      await notice({ missingFields });
       return;
     }
 
