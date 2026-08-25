@@ -2,12 +2,16 @@ import { pathToFileURL } from "node:url";
 import mssql from "mssql";
 import { hashPassword } from "../app/lib/auth/password.ts";
 
-export const ROLE_CODE = "HRD_CENTER";
+// Roles this script can seed. Both leave employee_id and company_id NULL, which is exactly what
+// resolveActivePrincipal expects of them; EMPLOYEE and HRD_FACTORY need bindings this INSERT
+// does not set, so they are created through the admin screen instead.
+export const SEEDABLE_ROLE_CODES = ["HRD_CENTER", "ADMIN"];
+export const DEFAULT_ROLE_CODE = "HRD_CENTER";
 export const ACTIVE_STATUS = "ACTIVE";
-export const DEVELOPMENT_PASSWORD_MIN_LENGTH = 12;
+export const DEVELOPMENT_PASSWORD_MIN_LENGTH = 6;
 export const DEVELOPMENT_PASSWORD_MAX_LENGTH = 1024;
 export const DEVELOPMENT_PASSWORD_VALIDATION_MESSAGE =
-  "Development account password must be 12 to 1024 characters and match confirmation.";
+  `Development account password must be ${DEVELOPMENT_PASSWORD_MIN_LENGTH} to ${DEVELOPMENT_PASSWORD_MAX_LENGTH} characters and match confirmation.`;
 
 export const VERIFY_PROVISIONING_LOGIN_QUERY = `
   SELECT IS_SRVROLEMEMBER(N'sysadmin') AS is_sysadmin`;
@@ -64,6 +68,24 @@ const parseUsernameArgument = (argumentsList) => {
   }
 
   return username;
+};
+
+const parseRoleArgument = (argumentsList) => {
+  const roleIndex = argumentsList.indexOf("--role");
+
+  if (roleIndex < 0) {
+    return DEFAULT_ROLE_CODE;
+  }
+
+  const role = argumentsList[roleIndex + 1]?.trim().toUpperCase() ?? "";
+
+  if (!SEEDABLE_ROLE_CODES.includes(role)) {
+    throw new SeedValidationError(
+      `--role must be one of ${SEEDABLE_ROLE_CODES.join(", ")}.`,
+    );
+  }
+
+  return role;
 };
 
 const readRequiredEnvironment = (key) => {
@@ -178,6 +200,7 @@ const getConnectionConfig = (user, password) => ({
 
 export const seedDevelopmentAccount = async ({
   username,
+  roleCode = DEFAULT_ROLE_CODE,
   accountPassword,
   provisioningLogin,
   provisioningPassword,
@@ -207,7 +230,7 @@ export const seedDevelopmentAccount = async ({
 
     const roleResult = await transaction
       .request()
-      .input("roleCode", mssql.NVarChar(30), ROLE_CODE)
+      .input("roleCode", mssql.NVarChar(30), roleCode)
       .query(RESOLVE_ROLE_QUERY);
 
     if (
@@ -258,7 +281,9 @@ export const seedDevelopmentAccount = async ({
 };
 
 const main = async () => {
-  const username = parseUsernameArgument(process.argv.slice(2));
+  const argumentsList = process.argv.slice(2);
+  const username = parseUsernameArgument(argumentsList);
+  const roleCode = parseRoleArgument(argumentsList);
   let accountPassword = "";
   let accountPasswordConfirmation = "";
   let provisioningLogin = "";
@@ -284,12 +309,13 @@ const main = async () => {
 
     await seedDevelopmentAccount({
       username,
+      roleCode,
       accountPassword,
       provisioningLogin,
       provisioningPassword,
     });
 
-    process.stdout.write("Seed completed: one development account created.\n");
+    process.stdout.write(`Seed completed: one ${roleCode} account created.\n`);
   } finally {
     accountPassword = "";
     accountPasswordConfirmation = "";
