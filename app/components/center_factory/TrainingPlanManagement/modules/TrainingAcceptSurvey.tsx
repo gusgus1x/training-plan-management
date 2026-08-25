@@ -1477,7 +1477,29 @@ export default function TrainingAcceptSurvey() {
                 title="คัดลอกลิ้งก์ส่งให้ Section Head / หัวหน้างาน เพื่อเข้าเลือกและเสนอชื่อพนักงานเข้าอบรมเอง"
                 onClick={() => void handleCopyNominationLink()}
               >
-                <span aria-hidden="true" style={{ fontSize: "1.02rem" }}>🔗</span>
+                <span className={styles.folderContainer}>
+                  <svg className={styles.fileBack} viewBox="0 0 146 113" fill="none">
+                    <path d="M0 4C0 1.79 1.79 0 4 0H50.38C51.83 0 53.2 0.63 54.15 1.72L64.33 13.44C65.28 14.53 66.66 15.16 68.1 15.16H141.51C143.72 15.16 145.51 16.95 145.51 19.16V109C145.51 111.21 143.72 113 141.51 113H4C1.79 113 0 111.21 0 109V4Z" fill="url(#link_back)" />
+                    <defs>
+                      <linearGradient id="link_back" x1="0" y1="0" x2="72.9" y2="95.5" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#4f46e5" />
+                        <stop offset="1" stopColor="#3730a3" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <svg className={styles.filePage} viewBox="0 0 88 99" fill="none">
+                    <rect width="88" height="99" rx="6" fill="#ffffff" />
+                  </svg>
+                  <svg className={styles.fileFront} viewBox="0 0 160 79" fill="none">
+                    <path d="M0.29 12.25C0.13 9.38 2.41 6.97 5.28 6.97H58.19C59.57 6.97 60.93 6.56 62.08 5.79L68.98 1.18C70.13 0.41 71.48 0 72.87 0H155.46C157.87 0 159.73 2.11 159.43 4.5L150.44 75.5C150.19 77.5 148.49 79 146.47 79H7.78C5.66 79 3.91 77.34 3.79 75.22L0.29 12.25Z" fill="url(#link_front)" />
+                    <defs>
+                      <linearGradient id="link_front" x1="38.76" y1="8.71" x2="66.91" y2="82.83" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#818cf8" />
+                        <stop offset="1" stopColor="#4f46e5" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </span>
                 คัดลอกลิ้งก์ให้ Section Head
               </button>
               <button
@@ -1491,7 +1513,29 @@ export default function TrainingAcceptSurvey() {
                 }
                 onClick={() => void handleSendLineNotification()}
               >
-                <span aria-hidden="true" style={{ fontSize: "1.02rem" }}>💬</span>
+                <span className={styles.folderContainer}>
+                  <svg className={styles.fileBack} viewBox="0 0 146 113" fill="none">
+                    <path d="M0 4C0 1.79 1.79 0 4 0H50.38C51.83 0 53.2 0.63 54.15 1.72L64.33 13.44C65.28 14.53 66.66 15.16 68.1 15.16H141.51C143.72 15.16 145.51 16.95 145.51 19.16V109C145.51 111.21 143.72 113 141.51 113H4C1.79 113 0 111.21 0 109V4Z" fill="url(#line_back)" />
+                    <defs>
+                      <linearGradient id="line_back" x1="0" y1="0" x2="72.9" y2="95.5" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#059669" />
+                        <stop offset="1" stopColor="#047857" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <svg className={styles.filePage} viewBox="0 0 88 99" fill="none">
+                    <rect width="88" height="99" rx="6" fill="#ffffff" />
+                  </svg>
+                  <svg className={styles.fileFront} viewBox="0 0 160 79" fill="none">
+                    <path d="M0.29 12.25C0.13 9.38 2.41 6.97 5.28 6.97H58.19C59.57 6.97 60.93 6.56 62.08 5.79L68.98 1.18C70.13 0.41 71.48 0 72.87 0H155.46C157.87 0 159.73 2.11 159.43 4.5L150.44 75.5C150.19 77.5 148.49 79 146.47 79H7.78C5.66 79 3.91 77.34 3.79 75.22L0.29 12.25Z" fill="url(#line_front)" />
+                    <defs>
+                      <linearGradient id="line_front" x1="38.76" y1="8.71" x2="66.91" y2="82.83" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#10b981" />
+                        <stop offset="1" stopColor="#059669" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </span>
                 {isSendingLineNotify ? "กำลังส่ง LINE..." : "ส่งแจ้งเตือน LINE OA"}
               </button>
               <button
@@ -1505,7 +1549,29 @@ export default function TrainingAcceptSurvey() {
                 }
                 onClick={() => void handleExportAttendanceSheet()}
               >
-                <span aria-hidden="true" style={{ fontSize: "1.02rem" }}>📊</span>
+                <span className={styles.folderContainer}>
+                  <svg className={styles.fileBack} viewBox="0 0 146 113" fill="none">
+                    <path d="M0 4C0 1.79 1.79 0 4 0H50.38C51.83 0 53.2 0.63 54.15 1.72L64.33 13.44C65.28 14.53 66.66 15.16 68.1 15.16H141.51C143.72 15.16 145.51 16.95 145.51 19.16V109C145.51 111.21 143.72 113 141.51 113H4C1.79 113 0 111.21 0 109V4Z" fill="url(#excel_back)" />
+                    <defs>
+                      <linearGradient id="excel_back" x1="0" y1="0" x2="72.9" y2="95.5" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#107c41" />
+                        <stop offset="1" stopColor="#0d6334" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <svg className={styles.filePage} viewBox="0 0 88 99" fill="none">
+                    <rect width="88" height="99" rx="6" fill="#ffffff" />
+                  </svg>
+                  <svg className={styles.fileFront} viewBox="0 0 160 79" fill="none">
+                    <path d="M0.29 12.25C0.13 9.38 2.41 6.97 5.28 6.97H58.19C59.57 6.97 60.93 6.56 62.08 5.79L68.98 1.18C70.13 0.41 71.48 0 72.87 0H155.46C157.87 0 159.73 2.11 159.43 4.5L150.44 75.5C150.19 77.5 148.49 79 146.47 79H7.78C5.66 79 3.91 77.34 3.79 75.22L0.29 12.25Z" fill="url(#excel_front)" />
+                    <defs>
+                      <linearGradient id="excel_front" x1="38.76" y1="8.71" x2="66.91" y2="82.83" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#22c55e" />
+                        <stop offset="1" stopColor="#16a34a" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </span>
                 {isExportingAttendance
                   ? "กำลังสร้างไฟล์ Excel..."
                   : "ส่งออก Excel (Attendance Sheet)"}
@@ -1997,7 +2063,29 @@ export default function TrainingAcceptSurvey() {
                   setTimeout(() => setCopiedPresetSuccess(false), 2000);
                 }}
               >
-                <span aria-hidden="true">💬</span>
+                <span className={styles.folderContainer}>
+                  <svg className={styles.fileBack} viewBox="0 0 146 113" fill="none">
+                    <path d="M0 4C0 1.79 1.79 0 4 0H50.38C51.83 0 53.2 0.63 54.15 1.72L64.33 13.44C65.28 14.53 66.66 15.16 68.1 15.16H141.51C143.72 15.16 145.51 16.95 145.51 19.16V109C145.51 111.21 143.72 113 141.51 113H4C1.79 113 0 111.21 0 109V4Z" fill="url(#preset_back)" />
+                    <defs>
+                      <linearGradient id="preset_back" x1="0" y1="0" x2="72.9" y2="95.5" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#8f88c2" />
+                        <stop offset="1" stopColor="#5c52a2" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                  <svg className={styles.filePage} viewBox="0 0 88 99" fill="none">
+                    <rect width="88" height="99" rx="6" fill="#ffffff" />
+                  </svg>
+                  <svg className={styles.fileFront} viewBox="0 0 160 79" fill="none">
+                    <path d="M0.29 12.25C0.13 9.38 2.41 6.97 5.28 6.97H58.19C59.57 6.97 60.93 6.56 62.08 5.79L68.98 1.18C70.13 0.41 71.48 0 72.87 0H155.46C157.87 0 159.73 2.11 159.43 4.5L150.44 75.5C150.19 77.5 148.49 79 146.47 79H7.78C5.66 79 3.91 77.34 3.79 75.22L0.29 12.25Z" fill="url(#preset_front)" />
+                    <defs>
+                      <linearGradient id="preset_front" x1="38.76" y1="8.71" x2="66.91" y2="82.83" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#c3bbff" />
+                        <stop offset="1" stopColor="#51469a" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </span>
                 {copiedPresetSuccess ? "✓ คัดลอกข้อความแล้ว!" : "คัดลอกข้อความส่ง LINE / Email"}
               </button>
             </div>

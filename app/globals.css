@@ -283,50 +283,24 @@
 [data-theme="dark"] button[class*="secondary"],
 [data-theme="dark"] button[class*="Secondary"],
 [data-theme="dark"] button[class*="cancel"],
-[data-theme="dark"] button[class*="Cancel"],
-[data-theme="dark"] button[class*="close"],
-[data-theme="dark"] button[class*="Close"],
-[data-theme="dark"] button[class*="detail"],
-[data-theme="dark"] button[class*="Detail"],
-[data-theme="dark"] button[class*="today"],
-[data-theme="dark"] button[class*="export"],
-[data-theme="dark"] button[class*="refresh"],
-[data-theme="dark"] button[class*="action"],
-[data-theme="dark"] button[class*="filter"] {
-  background-color: var(--ui-60-surface-soft);
-  color: var(--ui-30-ink);
-  border-color: var(--ui-30-border);
+[data-theme="dark"] button[class*="Cancel"] {
+  border-color: #475569;
+  border-bottom-color: #1e293b;
+  color: #ffffff;
 }
 
-[data-theme="dark"] button[class*="secondary"]:hover:not(:disabled),
-[data-theme="dark"] button[class*="Secondary"]:hover:not(:disabled),
-[data-theme="dark"] button[class*="cancel"]:hover:not(:disabled),
-[data-theme="dark"] button[class*="close"]:hover:not(:disabled),
-[data-theme="dark"] button[class*="today"]:hover:not(:disabled),
-[data-theme="dark"] button[class*="export"]:hover:not(:disabled),
-[data-theme="dark"] button[class*="refresh"]:hover:not(:disabled) {
-  background-color: var(--ui-60-surface-muted);
-  border-color: var(--ui-30-primary);
-  color: var(--ui-30-ink);
+/* 3D Tactile Push-Buttons in Dark Mode */
+[data-theme="dark"] button {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-/* Danger Buttons in Dark Mode */
+/* Danger / Delete Buttons in Dark Mode */
 [data-theme="dark"] button[class*="danger"],
 [data-theme="dark"] button[class*="Danger"],
-[data-theme="dark"] button[class*="reject"],
-[data-theme="dark"] button[class*="Reject"],
 [data-theme="dark"] button[class*="delete"],
 [data-theme="dark"] button[class*="Delete"] {
-  background-color: rgba(244, 63, 94, 0.15);
-  border-color: rgba(244, 63, 94, 0.35);
-  color: #fb7185;
-}
-
-[data-theme="dark"] button[class*="danger"]:hover:not(:disabled),
-[data-theme="dark"] button[class*="reject"]:hover:not(:disabled),
-[data-theme="dark"] button[class*="delete"]:hover:not(:disabled) {
-  background-color: rgba(244, 63, 94, 0.28);
-  border-color: #f43f5e;
+  border-color: #dc2626;
+  border-bottom-color: #7f1d1d;
   color: #ffffff;
 }
 

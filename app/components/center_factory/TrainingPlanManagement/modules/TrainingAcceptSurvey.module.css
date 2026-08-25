@@ -707,20 +707,30 @@
   font-weight: 900;
   padding: 8px 14px;
   white-space: nowrap;
-  transition: all 0.2s ease;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid #0f766e;
+  border-bottom: 4px solid #064e3b;
   background: linear-gradient(135deg, #107c41 0%, #0d6334 100%);
   color: #ffffff;
   box-shadow: 0 4px 12px rgba(16, 124, 65, 0.25);
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  user-select: none;
 }
 
 .exportAttendanceButton:hover:not(:disabled) {
-  background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+  border-bottom-width: 5px;
   box-shadow: 0 6px 16px rgba(16, 124, 65, 0.38);
-  transform: translateY(-1px);
+}
+
+.exportAttendanceButton:active:not(:disabled) {
+  filter: brightness(0.92);
+  transform: translateY(2px);
+  border-bottom-width: 2px;
+  box-shadow: 0 2px 6px rgba(16, 124, 65, 0.2);
 }
 
 .lineNotifyButton {
@@ -732,20 +742,30 @@
   font-weight: 900;
   padding: 8px 14px;
   white-space: nowrap;
-  transition: all 0.2s ease;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid #05b44d;
+  border-bottom: 4px solid #047857;
   background: linear-gradient(135deg, #06C755 0%, #05a646 100%);
   color: #ffffff;
   box-shadow: 0 4px 12px rgba(6, 199, 85, 0.25);
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  user-select: none;
 }
 
 .lineNotifyButton:hover:not(:disabled) {
-  background: linear-gradient(135deg, #05b84e 0%, #04913d 100%);
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+  border-bottom-width: 5px;
   box-shadow: 0 6px 16px rgba(6, 199, 85, 0.35);
-  transform: translateY(-1px);
+}
+
+.lineNotifyButton:active:not(:disabled) {
+  filter: brightness(0.92);
+  transform: translateY(2px);
+  border-bottom-width: 2px;
+  box-shadow: 0 2px 6px rgba(6, 199, 85, 0.2);
 }
 
 .shareLinkButton {
@@ -757,20 +777,30 @@
   font-weight: 900;
   padding: 8px 14px;
   white-space: nowrap;
-  transition: all 0.2s ease;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid #4f46e5;
+  border-bottom: 4px solid #3730a3;
   background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   color: #ffffff;
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  user-select: none;
 }
 
 .shareLinkButton:hover:not(:disabled) {
-  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+  border-bottom-width: 5px;
   box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
-  transform: translateY(-1px);
+}
+
+.shareLinkButton:active:not(:disabled) {
+  filter: brightness(0.92);
+  transform: translateY(2px);
+  border-bottom-width: 2px;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.2);
 }
 
 .saveParticipantsButton:disabled,
@@ -781,6 +811,65 @@
   opacity: 0.45;
   box-shadow: none;
   transform: none;
+}
+
+.folderContainer {
+  width: 20px;
+  height: 18px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+  perspective: 100px;
+  flex-shrink: 0;
+}
+
+.fileBack {
+  z-index: 1;
+  width: 100%;
+  height: auto;
+}
+
+.filePage {
+  width: 58%;
+  height: auto;
+  position: absolute;
+  z-index: 2;
+  transition: transform 0.3s ease-out;
+  bottom: 2px;
+}
+
+.fileFront {
+  width: 100%;
+  height: auto;
+  position: absolute;
+  z-index: 3;
+  opacity: 0.95;
+  bottom: 0;
+  transform-origin: bottom;
+  transition: transform 0.3s ease-out;
+}
+
+.shareLinkButton:hover:not(:disabled) .filePage,
+.lineNotifyButton:hover:not(:disabled) .filePage,
+.exportAttendanceButton:hover:not(:disabled) .filePage,
+.copyPresetBtn:hover:not(:disabled) .filePage {
+  transform: translateY(-4px);
+}
+
+.shareLinkButton:hover:not(:disabled) .fileFront,
+.lineNotifyButton:hover:not(:disabled) .fileFront,
+.exportAttendanceButton:hover:not(:disabled) .fileFront,
+.copyPresetBtn:hover:not(:disabled) .fileFront {
+  transform: rotateX(28deg);
+}
+
+.shareLinkButton:active:not(:disabled),
+.lineNotifyButton:active:not(:disabled),
+.exportAttendanceButton:active:not(:disabled),
+.copyPresetBtn:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .savedState,
