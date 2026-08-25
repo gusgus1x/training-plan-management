@@ -17,6 +17,7 @@ import type {
   CompanyStatus,
   CreateCompanyInput,
 } from "../../../../lib/companies/types";
+import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./CompanyData.module.css";
 
 type FormMode = "new" | "edit" | null;
@@ -282,6 +283,14 @@ export default function CompanyData() {
       setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "400px", padding: "40px" }}>
+        <TypewriterLoader label="กำลังโหลดข้อมูลบริษัท (Company Master)..." />
+      </div>
+    );
+  }
 
   return (
     <section

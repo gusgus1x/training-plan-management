@@ -14,6 +14,7 @@ import {
 } from "../../../../lib/calendarDate";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
+import TypewriterLoader from "../../../TypewriterLoader";
 import type { InternalReportDraft } from "./InternalReport";
 import styles from "./ScheduleCalendar.module.css";
 
@@ -80,12 +81,18 @@ export default function ScheduleCalendar({
   const [expandedOverviewMonth, setExpandedOverviewMonth] = useState("");
   const [expandedOverviewCourse, setExpandedOverviewCourse] = useState("");
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const isCenterUser = user?.roleCode === "HRD_CENTER";
   const userCompanyCode = profileValue(user?.companyCode);
 
   const loadWorkspace = async () => {
-    setRollingPlans(await loadWorkflowRollingPlans());
+    setIsLoading(true);
+    try {
+      setRollingPlans(await loadWorkflowRollingPlans());
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -266,6 +273,14 @@ export default function ScheduleCalendar({
     setExpandedTrainingMonth("");
     setExpandedOverviewMonth(calendarToday.month);
   };
+
+  if (isLoading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "400px", padding: "40px" }}>
+        <TypewriterLoader label="กำลังโหลดข้อมูลปฏิทินแผนการอบรม (Schedule Calendar)..." />
+      </div>
+    );
+  }
 
   return (
     <section className={styles.moduleWorkspace} aria-label="Schedule calendar module">

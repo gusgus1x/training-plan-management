@@ -17,6 +17,7 @@ import type {
   LevelRecord as ApiLevelRecord,
   LevelStatus,
 } from "../../../../lib/levels/types";
+import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./LevelData.module.css";
 
 export type LevelRecord = {
@@ -275,6 +276,14 @@ export default function LevelData() {
     setForm(blankForm());
     void loadRows();
   };
+
+  if (isLoading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "400px", padding: "40px" }}>
+        <TypewriterLoader label="กำลังโหลดข้อมูลระดับพนักงาน (Level Master)..." />
+      </div>
+    );
+  }
 
   return (
     <section className={styles.page} aria-label="Level Data module">

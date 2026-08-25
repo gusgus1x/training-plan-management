@@ -609,9 +609,9 @@ export default function TrainingAcceptSurvey() {
   const [showNominationModal, setShowNominationModal] = useState(false);
   const [copiedUrlSuccess, setCopiedUrlSuccess] = useState(false);
   const [copiedPresetSuccess, setCopiedPresetSuccess] = useState(false);
-
   useEffect(() => {
     let active = true;
+    setIsTargetLoading(true);
     void Promise.all([
       loadWorkflowRollingPlans().catch(() => []),
       listCourses({ search: "", status: null }).catch(() => ({ standards: [] })),
@@ -627,6 +627,8 @@ export default function TrainingAcceptSurvey() {
         setMasterEmployees(readEmployeeMasterData().map(masterRecordToSurveyEmployee));
       }
       setEnrollments(enrollResult.enrollments || []);
+    }).finally(() => {
+      if (active) setIsTargetLoading(false);
     });
 
     return () => { active = false; };
@@ -1249,7 +1251,7 @@ export default function TrainingAcceptSurvey() {
     }
   };
 
-  const [isTargetLoading, setIsTargetLoading] = useState(false);
+  const [isTargetLoading, setIsTargetLoading] = useState(true);
 
   return (
     <section className={styles.page} aria-label="Training Accept Survey module">

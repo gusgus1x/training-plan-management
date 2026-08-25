@@ -22,6 +22,7 @@ import type {
 } from "../../../../lib/assessments/types";
 import { listCompanies } from "../../../../lib/companies/client";
 import type { CompanyRecord } from "../../../../lib/companies/types";
+import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./Assessment.module.css";
 
 export const assessmentModule = {
@@ -152,6 +153,7 @@ export default function Assessment() {
   const [editingQuestionId, setEditingQuestionId] = useState("");
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const toast = useToast();
   // Same call shape as the old banner state, routed to the global toast instead.
   const setFeedback = useCallback(
@@ -189,6 +191,7 @@ export default function Assessment() {
       setFeedback({ tone: "error", message: error instanceof Error ? error.message : "Unable to load assessments" });
     } finally {
       setBusy(false);
+      setIsLoading(false);
     }
   }, [isCenter, setFeedback]);
 
@@ -462,6 +465,14 @@ export default function Assessment() {
       </div>
     </section>
   );
+
+  if (isLoading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "400px", padding: "40px" }}>
+        <TypewriterLoader label="กำลังโหลดข้อมูลแบบทดสอบ (Assessment)..." />
+      </div>
+    );
+  }
 
   return <section className={styles.page} aria-label="Assessment management">
     <section className={styles.hero}><div><p className={styles.kicker}>{assessmentModule.subtitle}</p><h2>{assessmentModule.title}</h2><p>{assessmentModule.description}</p></div></section>

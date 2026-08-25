@@ -16,6 +16,7 @@ import type {
   InstituteProviderRecord as ApiInstituteProviderRecord,
   InstituteProviderStatus,
 } from "../../../../lib/instituteProviders/types";
+import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./InstituteProviderData.module.css";
 
 export const instituteProviderDataModule = {
@@ -225,6 +226,14 @@ export default function InstituteProviderData() {
     setSearch("");
     void loadRows();
   };
+
+  if (isLoading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "400px", padding: "40px" }}>
+        <TypewriterLoader label="กำลังโหลดข้อมูลสถาบัน/ผู้จัดอบรม (Institute / Provider)..." />
+      </div>
+    );
+  }
 
   return (
     <section

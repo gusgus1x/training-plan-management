@@ -21,6 +21,7 @@ import type {
   EvaluationTiming,
   EvaluationWriteInput,
 } from "../../../../lib/evaluations/types";
+import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./EvaluationManagement.module.css";
 
 export const evaluationManagementModule = {
@@ -146,6 +147,7 @@ export default function EvaluationManagement() {
     [toast],
   );
   const [busy, setBusy] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const selected = useMemo(() => items.find((item) => item.evaluationFormId === selectedId) ?? null, [items, selectedId]);
   const visible = useMemo(() => {
@@ -166,7 +168,10 @@ export default function EvaluationManagement() {
       setSelectedId((current) => evaluationResult.items.some((item) => item.evaluationFormId === current) ? current : "");
     } catch (error) {
       setFeedback({ tone: "error", message: error instanceof Error ? error.message : "Unable to load evaluations" });
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+      setIsLoading(false);
+    }
   }, [isFactory, setFeedback]);
 
   useEffect(() => {
@@ -345,6 +350,14 @@ export default function EvaluationManagement() {
     {errors.questions ? <p className={styles.validationMessage} role="alert">{errors.questions}</p> : null}
     <div className={styles.editorActions}><button className={styles.closeButton} type="button" onClick={closeEditor}>Cancel</button><button className={styles.primaryButton} type="button" disabled={busy} onClick={() => void handleSave()}>Save evaluation</button></div>
   </section>;
+
+  if (isLoading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "400px", padding: "40px" }}>
+        <TypewriterLoader label="กำลังโหลดข้อมูลแบบประเมิน (Evaluation)..." />
+      </div>
+    );
+  }
 
   return <section className={styles.page} aria-label="Evaluation Management"><section className={styles.hero}><div><p className={styles.kicker}>{evaluationManagementModule.subtitle}</p><h2>{evaluationManagementModule.title}</h2><p>{evaluationManagementModule.description}</p></div></section><section className={styles.workspace}>
     <div className={styles.toolbar}><span className={styles.listMeta}>{visible.length} / {items.length} evaluations</span><input aria-label="Search evaluation" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, timing, respondent, scope, company, status" /><button className={styles.primaryButton} type="button" disabled={busy} onClick={handleNew}>New</button><button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canModify} onClick={handleEdit}>Edit</button><button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canDuplicate} onClick={() => void handleDuplicate()}>Duplicate</button><button className={styles.dangerButton} type="button" disabled={busy || !selected?.canModify} onClick={() => void handleDelete()}>Delete</button><button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void load()}>Refresh</button><button className={styles.secondaryButton} type="button" onClick={handleExport}>Export</button></div>
