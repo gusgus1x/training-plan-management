@@ -187,16 +187,23 @@ export const createCourseRepository = (client?: DatabaseClient) => {
               courseId: row.course_id.toString(),
               courseCode: row.course_code,
               courseName: row.course_name,
+              functionId: stdCourse.function_id?.toString() || undefined,
+              divisionId: stdCourse.division_id?.toString() || undefined,
+              departmentId: stdCourse.department_id?.toString() || undefined,
+              sectionId: stdCourse.section_id?.toString() || undefined,
               functionCode: stdCourse.organization_function?.function_code || "",
               functionName: stdCourse.organization_function
                 ? stdCourse.organization_function.function_name_en || stdCourse.organization_function.function_name_th
                 : "All Function",
+              divisionCode: stdCourse.division?.division_code || "",
               division: stdCourse.division
                 ? stdCourse.division.division_name_en || stdCourse.division.division_name_th
                 : "",
+              departmentCode: stdCourse.department?.department_code || "",
               department: stdCourse.department
                 ? stdCourse.department.department_name_en || stdCourse.department.department_name_th
                 : "",
+              sectionCode: stdCourse.section?.section_code || "",
               section: stdCourse.section
                 ? stdCourse.section.section_name_en || stdCourse.section.section_name_th
                 : "",

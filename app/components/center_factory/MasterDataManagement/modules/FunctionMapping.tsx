@@ -51,13 +51,15 @@ import type {
   SectionMappingRecord,
   SectionRecord,
 } from "../../../../lib/sections/types";
+import { listOrgHierarchyUsage } from "../../../../lib/orgHierarchy/client";
+import type { OrgHierarchyUsageRow } from "../../../../lib/orgHierarchy/types";
 import styles from "./FunctionMapping.module.css";
 
 export const functionMappingModule = {
-  title: "Function Mapping",
-  subtitle: "Company org-unit mapping",
+  title: "Function & Organization Mapping",
+  subtitle: "Company Org-Unit Mapping Matrix",
   description:
-    "Map each company's own Function, Division, Department, and Section naming to the shared master catalog.",
+    "View and manage complete organizational mapping linking Company, Function, Division, Department, and Section master data.",
 } as const;
 
 type Level = "function" | "division" | "department" | "section";
@@ -69,20 +71,6 @@ const levelLabel: Record<Level, string> = {
   division: "Division",
   department: "Department",
   section: "Section",
-};
-
-type MappingRow = {
-  key: string;
-  level: Level;
-  mappingId: string;
-  companyId: string;
-  companyCode: string;
-  plantCode: string;
-  plantName: string;
-  canonicalId: string;
-  canonicalCode: string;
-  canonicalName: string;
-  status: MasterStatus;
 };
 
 type FormState = {
@@ -103,7 +91,50 @@ const blankForm = (level: Level, companyId: string): FormState => ({
   status: "ACTIVE",
 });
 
-const display = (value: string | null) => value || "-";
+const display = (value: string | null | undefined) => value || "-";
+
+type HierarchyRow = {
+  key: string;
+  companyId: string;
+  companyCode: string;
+  companyName: string;
+  
+  functionId: string | null;
+  functionCode: string;
+  functionName: string;
+  plantFunctionCode?: string;
+
+  divisionId: string | null;
+  divisionCode: string;
+  divisionName: string;
+  plantDivisionCode?: string;
+
+  departmentId: string | null;
+  departmentCode: string;
+  departmentName: string;
+  plantDepartmentCode?: string;
+
+  sectionId: string | null;
+  sectionCode: string;
+  sectionName: string;
+  plantSectionCode?: string;
+
+  status: MasterStatus;
+};
+
+type MappingRow = {
+  key: string;
+  level: Level;
+  mappingId: string;
+  companyId: string;
+  companyCode: string;
+  plantCode: string;
+  plantName: string;
+  canonicalId: string;
+  canonicalCode: string;
+  canonicalName: string;
+  status: MasterStatus;
+};
 
 export default function FunctionMapping() {
   const user = useAuthenticatedUser();
@@ -119,9 +150,11 @@ export default function FunctionMapping() {
   const [divisionMappings, setDivisionMappings] = useState<DivisionMappingRecord[]>([]);
   const [departmentMappings, setDepartmentMappings] = useState<DepartmentMappingRecord[]>([]);
   const [sectionMappings, setSectionMappings] = useState<SectionMappingRecord[]>([]);
+  const [orgUsage, setOrgUsage] = useState<OrgHierarchyUsageRow[]>([]);
 
-  const [openCompanies, setOpenCompanies] = useState<string[]>([]);
   const [search, setSearch] = useState("");
+  const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("ALL");
+  const [viewTab, setViewTab] = useState<"hierarchy" | "mappings">("hierarchy");
   const [mode, setMode] = useState<"new" | "edit" | null>(null);
   const [editingRow, setEditingRow] = useState<MappingRow | null>(null);
   const [form, setForm] = useState<FormState>(() =>
@@ -146,6 +179,7 @@ export default function FunctionMapping() {
         divisionMappingResult,
         departmentMappingResult,
         sectionMappingResult,
+        orgUsageResult,
       ] = await Promise.all([
         listCompanies(),
         listFunctions(),
@@ -156,6 +190,7 @@ export default function FunctionMapping() {
         listDivisionMappings(),
         listDepartmentMappings(),
         listSectionMappings(),
+        listOrgHierarchyUsage(),
       ]);
       setCompanies(companyResult.items);
       setFunctions(functionResult.items);
@@ -166,6 +201,7 @@ export default function FunctionMapping() {
       setDivisionMappings(divisionMappingResult.items);
       setDepartmentMappings(departmentMappingResult.items);
       setSectionMappings(sectionMappingResult.items);
+      setOrgUsage(orgUsageResult.items);
     } catch (loadError) {
       setError(
         loadError instanceof Error
@@ -179,10 +215,130 @@ export default function FunctionMapping() {
 
   useEffect(() => {
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const rows: MappingRow[] = useMemo(
+  // Compute unified hierarchy rows linking Company -> Function -> Division -> Department -> Section
+  const hierarchyRows: HierarchyRow[] = useMemo(() => {
+    const companyMap = new Map(companies.map((c) => [c.companyId, c]));
+    const functionMap = new Map(functions.map((f) => [f.functionId, f]));
+    const divisionMap = new Map(divisions.map((d) => [d.divisionId, d]));
+    const departmentMap = new Map(departments.map((d) => [d.departmentId, d]));
+    const sectionMap = new Map(sections.map((s) => [s.sectionId, s]));
+
+    // Maps (companyId + canonicalId) -> plantCode
+    const fnMapByComp = new Map(functionMappings.map((m) => [`${m.companyId}:${m.functionId}`, m.plantFunctionCode]));
+    const divMapByComp = new Map(divisionMappings.map((m) => [`${m.companyId}:${m.divisionId}`, m.plantDivisionCode]));
+    const depMapByComp = new Map(departmentMappings.map((m) => [`${m.companyId}:${m.departmentId}`, m.plantDepartmentCode]));
+    const secMapByComp = new Map(sectionMappings.map((m) => [`${m.companyId}:${m.sectionId}`, m.plantSectionCode]));
+
+    return orgUsage.map((usage, idx): HierarchyRow => {
+      const comp = usage.companyId ? companyMap.get(usage.companyId) : undefined;
+      const fn = usage.functionId ? functionMap.get(usage.functionId) : undefined;
+      const div = usage.divisionId ? divisionMap.get(usage.divisionId) : undefined;
+      const dep = usage.departmentId ? departmentMap.get(usage.departmentId) : undefined;
+      const sec = usage.sectionId ? sectionMap.get(usage.sectionId) : undefined;
+
+      const compId = usage.companyId || "";
+      const plantFn = usage.functionId ? fnMapByComp.get(`${compId}:${usage.functionId}`) : undefined;
+      const plantDiv = usage.divisionId ? divMapByComp.get(`${compId}:${usage.divisionId}`) : undefined;
+      const plantDep = usage.departmentId ? depMapByComp.get(`${compId}:${usage.departmentId}`) : undefined;
+      const plantSec = usage.sectionId ? secMapByComp.get(`${compId}:${usage.sectionId}`) : undefined;
+
+      return {
+        key: `h-${idx}-${compId}-${usage.functionId}-${usage.divisionId}-${usage.departmentId}-${usage.sectionId}`,
+        companyId: compId,
+        companyCode: comp?.companyCode || "GENERAL",
+        companyName: comp?.companyNameTh || comp?.companyNameEn || "General / Central",
+
+        functionId: usage.functionId,
+        functionCode: fn?.functionCode || "",
+        functionName: fn?.functionNameTh || fn?.functionNameEn || "",
+        plantFunctionCode: plantFn,
+
+        divisionId: usage.divisionId,
+        divisionCode: div?.divisionCode || "",
+        divisionName: div?.divisionNameTh || div?.divisionNameEn || "",
+        plantDivisionCode: plantDiv,
+
+        departmentId: usage.departmentId,
+        departmentCode: dep?.departmentCode || "",
+        departmentName: dep?.departmentNameTh || dep?.departmentNameEn || "",
+        plantDepartmentCode: plantDep,
+
+        sectionId: usage.sectionId,
+        sectionCode: sec?.sectionCode || "",
+        sectionName: sec?.sectionNameTh || sec?.sectionNameEn || "",
+        plantSectionCode: plantSec,
+
+        status: "ACTIVE",
+      };
+    });
+  }, [companies, functions, divisions, departments, sections, functionMappings, divisionMappings, departmentMappings, sectionMappings, orgUsage]);
+
+  const filteredHierarchyRows = useMemo(() => {
+    let rows = hierarchyRows;
+    if (selectedCompanyFilter !== "ALL") {
+      rows = rows.filter((r) => r.companyCode === selectedCompanyFilter || r.companyId === selectedCompanyFilter);
+    }
+    const query = search.trim().toLowerCase();
+    if (!query) return rows;
+    return rows.filter((r) =>
+      [
+        r.companyCode,
+        r.companyName,
+        r.functionCode,
+        r.functionName,
+        r.plantFunctionCode,
+        r.divisionCode,
+        r.divisionName,
+        r.plantDivisionCode,
+        r.departmentCode,
+        r.departmentName,
+        r.plantDepartmentCode,
+        r.sectionCode,
+        r.sectionName,
+        r.plantSectionCode,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(query),
+    );
+  }, [hierarchyRows, selectedCompanyFilter, search]);
+
+  const hierarchyCompanyGroups = useMemo(() => {
+    const companyOrder = new Map(
+      companies.map((company, index) => [company.companyId, index]),
+    );
+    const grouped = new Map<
+      string,
+      { companyId: string; companyCode: string; companyName: string; rows: HierarchyRow[] }
+    >();
+
+    for (const row of filteredHierarchyRows) {
+      const compKey = row.companyId || row.companyCode;
+      const group = grouped.get(compKey);
+      if (group) {
+        group.rows.push(row);
+      } else {
+        grouped.set(compKey, {
+          companyId: row.companyId,
+          companyCode: row.companyCode,
+          companyName: row.companyName,
+          rows: [row],
+        });
+      }
+    }
+
+    return [...grouped.values()].sort(
+      (left, right) =>
+        (companyOrder.get(left.companyId) ?? Number.MAX_SAFE_INTEGER) -
+          (companyOrder.get(right.companyId) ?? Number.MAX_SAFE_INTEGER) ||
+        left.companyCode.localeCompare(right.companyCode),
+    );
+  }, [companies, filteredHierarchyRows]);
+
+  const plantMappingRows: MappingRow[] = useMemo(
     () => [
       ...functionMappings.map((mapping): MappingRow => ({
         key: `function:${mapping.functionMappingId}`,
@@ -240,7 +396,11 @@ export default function FunctionMapping() {
     [functionMappings, divisionMappings, departmentMappings, sectionMappings],
   );
 
-  const visible = useMemo(() => {
+  const filteredPlantMappingRows = useMemo(() => {
+    let rows = plantMappingRows;
+    if (selectedCompanyFilter !== "ALL") {
+      rows = rows.filter((r) => r.companyCode === selectedCompanyFilter || r.companyId === selectedCompanyFilter);
+    }
     const query = search.trim().toLowerCase();
     if (!query) return rows;
     return rows.filter((row) =>
@@ -257,41 +417,7 @@ export default function FunctionMapping() {
         .toLowerCase()
         .includes(query),
     );
-  }, [rows, search]);
-
-  const visibleCompanyGroups = useMemo(() => {
-    const companyOrder = new Map(
-      companies.map((company, index) => [company.companyId, index]),
-    );
-    const grouped = new Map<
-      string,
-      { companyId: string; companyCode: string; rows: MappingRow[] }
-    >();
-    for (const row of visible) {
-      const group = grouped.get(row.companyId);
-      if (group) group.rows.push(row);
-      else grouped.set(row.companyId, { companyId: row.companyId, companyCode: row.companyCode, rows: [row] });
-    }
-    return [...grouped.values()]
-      .map((group) => ({
-        ...group,
-        totalRecords: rows.filter((row) => row.companyId === group.companyId).length,
-      }))
-      .sort(
-        (left, right) =>
-          (companyOrder.get(left.companyId) ?? Number.MAX_SAFE_INTEGER) -
-            (companyOrder.get(right.companyId) ?? Number.MAX_SAFE_INTEGER) ||
-          left.companyCode.localeCompare(right.companyCode),
-      );
-  }, [companies, rows, visible]);
-
-  const toggleCompany = (companyId: string) => {
-    setOpenCompanies((current) =>
-      current.includes(companyId)
-        ? current.filter((id) => id !== companyId)
-        : [...current, companyId],
-    );
-  };
+  }, [plantMappingRows, selectedCompanyFilter, search]);
 
   const canonicalOptions = useMemo(() => {
     switch (form.level) {
@@ -418,7 +544,7 @@ export default function FunctionMapping() {
       }
       setMode(null);
       setEditingRow(null);
-      setMessage("Mapping saved.");
+      setMessage("Mapping saved successfully.");
       await load();
     } catch (saveError) {
       setError(
@@ -471,8 +597,36 @@ export default function FunctionMapping() {
             aria-label="Search mappings"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search company, level, plant code, or master name"
+            placeholder="Search Company, Function, Division, Department, Section..."
           />
+          <select
+            value={selectedCompanyFilter}
+            onChange={(e) => setSelectedCompanyFilter(e.target.value)}
+            aria-label="Filter by Company"
+          >
+            <option value="ALL">🏢 All Companies</option>
+            {companies.map((c) => (
+              <option key={c.companyId} value={c.companyCode}>
+                {c.companyCode} — {c.companyNameTh || c.companyNameEn}
+              </option>
+            ))}
+          </select>
+          <div className={styles.viewToggleGroup}>
+            <button
+              type="button"
+              className={viewTab === "hierarchy" ? styles.primaryButton : styles.secondaryButton}
+              onClick={() => setViewTab("hierarchy")}
+            >
+              📊 Hierarchy Mapping Matrix
+            </button>
+            <button
+              type="button"
+              className={viewTab === "mappings" ? styles.primaryButton : styles.secondaryButton}
+              onClick={() => setViewTab("mappings")}
+            >
+              ⚙️ Plant Code Mappings ({plantMappingRows.length})
+            </button>
+          </div>
           <div className={styles.newGroup}>
             {LEVELS.map((level) => (
               <button
@@ -497,8 +651,8 @@ export default function FunctionMapping() {
         </div>
       </section>
 
-      {error ? <p role="alert">{error}</p> : null}
-      {message ? <p role="status">{message}</p> : null}
+      {error ? <p role="alert" style={{ color: "#d71920", fontWeight: 700 }}>{error}</p> : null}
+      {message ? <p role="status" style={{ color: "#10b981", fontWeight: 700 }}>{message}</p> : null}
 
       {mode ? (
         <section className={styles.formPanel}>
@@ -610,99 +764,184 @@ export default function FunctionMapping() {
         </section>
       ) : null}
 
-      <section className={styles.panel}>
-        <div className={styles.panelHeader}>
-          <div>
-            <span>Scoped Master</span>
-            <h3>Mapping Records</h3>
+      {viewTab === "hierarchy" ? (
+        <section className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <div>
+              <span>Company Organization Matrix</span>
+              <h3>Function & Organization Mapping View</h3>
+            </div>
+            <p>{filteredHierarchyRows.length} mapped combinations in {hierarchyCompanyGroups.length} companies</p>
           </div>
-          <p>{visible.length} records</p>
-        </div>
-        {visibleCompanyGroups.length > 0 ? (
-          <div className={styles.companyDirectory}>
-            {visibleCompanyGroups.map((companyGroup) => {
-              const isOpen = openCompanies.includes(companyGroup.companyId);
-              return (
+          {hierarchyCompanyGroups.length > 0 ? (
+            <div className={styles.companyDirectory}>
+              {hierarchyCompanyGroups.map((companyGroup) => (
                 <section
-                  className={`${styles.companyGroup} ${isOpen ? styles.openGroup : ""}`}
-                  key={companyGroup.companyId}
+                  className={styles.companyGroup}
+                  key={companyGroup.companyCode}
+                  style={{ marginBottom: "16px" }}
                 >
-                  <button
-                    className={styles.companyHeader}
-                    type="button"
-                    aria-expanded={isOpen}
-                    onClick={() => toggleCompany(companyGroup.companyId)}
-                  >
-                    <span className={styles.chevron} aria-hidden="true" />
+                  <div className={styles.companyHeader} style={{ cursor: "default", gridTemplateColumns: "1fr auto" }}>
                     <span>
-                      Company: <strong>{companyGroup.companyCode}</strong>
+                      🏢 Company: <strong style={{ fontSize: "1rem" }}>{companyGroup.companyCode}</strong> — {companyGroup.companyName}
                     </span>
-                    <b>({companyGroup.totalRecords})</b>
-                    <small>{companyGroup.rows.length} records in view</small>
-                  </button>
-                  {isOpen ? (
-                    <div className={styles.tableWrap}>
-                      <table className={styles.mappingTable}>
-                        <thead>
-                          <tr>
-                            <th>No.</th>
-                            <th>Level</th>
-                            <th>Plant Code</th>
-                            <th>Plant Name</th>
-                            <th>Maps to</th>
-                            <th>Status</th>
-                            <th>Actions</th>
+                    <b>({companyGroup.rows.length} records)</b>
+                  </div>
+                  <div className={styles.tableWrap}>
+                    <table className={styles.mappingTable}>
+                      <thead>
+                        <tr>
+                          <th>No.</th>
+                          <th>Function</th>
+                          <th>Division</th>
+                          <th>Department</th>
+                          <th>Section</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {companyGroup.rows.map((row, idx) => (
+                          <tr key={row.key}>
+                            <td>{idx + 1}</td>
+                            <td translate="no">
+                              {row.functionCode ? (
+                                <>
+                                  <div><strong>{row.functionCode}</strong> — {row.functionName}</div>
+                                  {row.plantFunctionCode ? (
+                                    <small style={{ color: "#10b981", fontWeight: 700 }}>Plant Code: {row.plantFunctionCode}</small>
+                                  ) : null}
+                                </>
+                              ) : (
+                                <span style={{ color: "#94a3b8" }}>-</span>
+                              )}
+                            </td>
+                            <td translate="no">
+                              {row.divisionCode ? (
+                                <>
+                                  <div><strong>{row.divisionCode}</strong> — {row.divisionName}</div>
+                                  {row.plantDivisionCode ? (
+                                    <small style={{ color: "#10b981", fontWeight: 700 }}>Plant Code: {row.plantDivisionCode}</small>
+                                  ) : null}
+                                </>
+                              ) : (
+                                <span style={{ color: "#94a3b8" }}>-</span>
+                              )}
+                            </td>
+                            <td translate="no">
+                              {row.departmentCode ? (
+                                <>
+                                  <div><strong>{row.departmentCode}</strong> — {row.departmentName}</div>
+                                  {row.plantDepartmentCode ? (
+                                    <small style={{ color: "#10b981", fontWeight: 700 }}>Plant Code: {row.plantDepartmentCode}</small>
+                                  ) : null}
+                                </>
+                              ) : (
+                                <span style={{ color: "#94a3b8" }}>-</span>
+                              )}
+                            </td>
+                            <td translate="no">
+                              {row.sectionCode ? (
+                                <>
+                                  <div><strong>{row.sectionCode}</strong> — {row.sectionName}</div>
+                                  {row.plantSectionCode ? (
+                                    <small style={{ color: "#10b981", fontWeight: 700 }}>Plant Code: {row.plantSectionCode}</small>
+                                  ) : null}
+                                </>
+                              ) : (
+                                <span style={{ color: "#94a3b8" }}>-</span>
+                              )}
+                            </td>
+                            <td>
+                              <span className={styles.statusPill}>{row.status}</span>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {companyGroup.rows.map((row, index) => (
-                            <tr key={row.key}>
-                              <td>{index + 1}</td>
-                              <td>
-                                <span className={styles.statusPill}>
-                                  {levelLabel[row.level]}
-                                </span>
-                              </td>
-                              <td translate="no">{row.plantCode}</td>
-                              <td translate="no">{display(row.plantName)}</td>
-                              <td translate="no">
-                                {row.canonicalCode} — {row.canonicalName}
-                              </td>
-                              <td>{row.status}</td>
-                              <td>
-                                <div className={styles.rowActions}>
-                                  <button
-                                    className={styles.secondaryButton}
-                                    type="button"
-                                    onClick={() => startEdit(row)}
-                                    disabled={isSaving}
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    className={styles.secondaryButton}
-                                    type="button"
-                                    onClick={() => void remove(row)}
-                                    disabled={isSaving}
-                                  >
-                                    Delete
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : null}
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </section>
-              );
-            })}
+              ))}
+            </div>
+          ) : (
+            <p style={{ padding: "20px", color: "#64748b", textAlign: "center" }}>
+              {isLoading ? "Loading mapping matrix..." : "No mapped organization data found matching your filter."}
+            </p>
+          )}
+        </section>
+      ) : (
+        <section className={styles.panel}>
+          <div className={styles.panelHeader}>
+            <div>
+              <span>Scoped Master</span>
+              <h3>Plant Code Mapping Records</h3>
+            </div>
+            <p>{filteredPlantMappingRows.length} records</p>
           </div>
-        ) : (
-          <p>{isLoading ? "Loading..." : "No mapping data found."}</p>
-        )}
-      </section>
+          <div className={styles.tableWrap}>
+            <table className={styles.mappingTable}>
+              <thead>
+                <tr>
+                  <th>No.</th>
+                  <th>Company</th>
+                  <th>Level</th>
+                  <th>Plant Code</th>
+                  <th>Plant Name</th>
+                  <th>Maps to Master</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredPlantMappingRows.length > 0 ? (
+                  filteredPlantMappingRows.map((row, index) => (
+                    <tr key={row.key}>
+                      <td>{index + 1}</td>
+                      <td translate="no"><strong>{row.companyCode}</strong></td>
+                      <td>
+                        <span className={styles.statusPill}>
+                          {levelLabel[row.level]}
+                        </span>
+                      </td>
+                      <td translate="no">{row.plantCode}</td>
+                      <td translate="no">{display(row.plantName)}</td>
+                      <td translate="no">
+                        {row.canonicalCode} — {row.canonicalName}
+                      </td>
+                      <td>{row.status}</td>
+                      <td>
+                        <div className={styles.rowActions}>
+                          <button
+                            className={styles.secondaryButton}
+                            type="button"
+                            onClick={() => startEdit(row)}
+                            disabled={isSaving}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className={styles.secondaryButton}
+                            type="button"
+                            onClick={() => void remove(row)}
+                            disabled={isSaving}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: "center", padding: "24px", color: "#64748b" }}>
+                      {isLoading ? "Loading mapping data..." : "No plant code mapping data found."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </section>
   );
 }

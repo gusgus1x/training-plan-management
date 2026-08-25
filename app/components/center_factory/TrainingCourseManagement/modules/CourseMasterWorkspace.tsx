@@ -558,21 +558,35 @@ function CourseMaster() {
   const selectedDepartmentId = departmentRows.find((row) => row.code === standardDepartmentCode)?.id;
   const selectedSectionId = sectionRows.find((row) => row.code === standardSectionCode)?.id;
 
-  const selectedCompanyIds = companyRows
-    .filter((row) => selectedCompanies.includes(row.code))
-    .map((row) => row.id);
+  const selectedCompanyIds = useMemo(
+    () => companyRows.filter((row) => selectedCompanies.includes(row.code)).map((row) => row.id),
+    [companyRows, selectedCompanies],
+  );
   const usageInSelectedCompanies = (usage: OrgHierarchyUsageRow) =>
     selectedCompanies.length === 0 ||
     (usage.companyId !== null && selectedCompanyIds.includes(usage.companyId));
 
   const functionOptions = useMemo(() => {
     let filtered = functionRows;
-    const hasConstraint =
+
+    if (selectedCompanies.length > 0) {
+      const allowedFunctionIds = new Set(
+        orgUsage
+          .filter((usage) => usageInSelectedCompanies(usage))
+          .map((u) => u.functionId)
+          .filter(Boolean),
+      );
+      filtered = filtered.filter(
+        (row) => allowedFunctionIds.has(row.id) || row.code === standardFunctionCode,
+      );
+    }
+
+    const hasOrgConstraint =
       (standardDivisionCode && standardDivisionCode !== allFunctionCode) ||
       (standardDepartmentCode && standardDepartmentCode !== allFunctionCode) ||
       (standardSectionCode && standardSectionCode !== allFunctionCode);
 
-    if (hasConstraint) {
+    if (hasOrgConstraint) {
       const linkedIds = new Set(
         orgUsage
           .filter((usage) => {
@@ -585,7 +599,7 @@ function CourseMaster() {
           .map((u) => u.functionId)
           .filter(Boolean),
       );
-      filtered = functionRows.filter((row) => linkedIds.has(row.id) || row.code === standardFunctionCode);
+      filtered = filtered.filter((row) => linkedIds.has(row.id) || row.code === standardFunctionCode);
     }
 
     return [
@@ -593,16 +607,29 @@ function CourseMaster() {
       { id: "ALL", code: allFunctionCode, name: "All Function" },
       ...filtered,
     ];
-  }, [functionRows, orgUsage, selectedCompanies, standardFunctionCode, standardDivisionCode, standardDepartmentCode, standardSectionCode, selectedDivisionId, selectedDepartmentId, selectedSectionId]);
+  }, [functionRows, orgUsage, selectedCompanies, selectedCompanyIds, standardFunctionCode, standardDivisionCode, standardDepartmentCode, standardSectionCode, selectedDivisionId, selectedDepartmentId, selectedSectionId]);
 
   const divisionOptions = useMemo(() => {
     let filtered = divisionRows;
-    const hasConstraint =
+
+    if (selectedCompanies.length > 0) {
+      const allowedDivisionIds = new Set(
+        orgUsage
+          .filter((usage) => usageInSelectedCompanies(usage))
+          .map((u) => u.divisionId)
+          .filter(Boolean),
+      );
+      filtered = filtered.filter(
+        (row) => allowedDivisionIds.has(row.id) || row.code === standardDivisionCode,
+      );
+    }
+
+    const hasOrgConstraint =
       (standardFunctionCode && standardFunctionCode !== allFunctionCode) ||
       (standardDepartmentCode && standardDepartmentCode !== allFunctionCode) ||
       (standardSectionCode && standardSectionCode !== allFunctionCode);
 
-    if (hasConstraint) {
+    if (hasOrgConstraint) {
       const linkedIds = new Set(
         orgUsage
           .filter((usage) => {
@@ -615,7 +642,7 @@ function CourseMaster() {
           .map((u) => u.divisionId)
           .filter(Boolean),
       );
-      filtered = divisionRows.filter((row) => linkedIds.has(row.id) || row.code === standardDivisionCode);
+      filtered = filtered.filter((row) => linkedIds.has(row.id) || row.code === standardDivisionCode);
     }
 
     return [
@@ -623,16 +650,29 @@ function CourseMaster() {
       { id: "ALL", code: allFunctionCode, name: "All Division" },
       ...filtered,
     ];
-  }, [divisionRows, orgUsage, selectedCompanies, standardFunctionCode, standardDivisionCode, standardDepartmentCode, standardSectionCode, selectedFunctionId, selectedDepartmentId, selectedSectionId]);
+  }, [divisionRows, orgUsage, selectedCompanies, selectedCompanyIds, standardFunctionCode, standardDivisionCode, standardDepartmentCode, standardSectionCode, selectedFunctionId, selectedDepartmentId, selectedSectionId]);
 
   const departmentOptions = useMemo(() => {
     let filtered = departmentRows;
-    const hasConstraint =
+
+    if (selectedCompanies.length > 0) {
+      const allowedDepartmentIds = new Set(
+        orgUsage
+          .filter((usage) => usageInSelectedCompanies(usage))
+          .map((u) => u.departmentId)
+          .filter(Boolean),
+      );
+      filtered = filtered.filter(
+        (row) => allowedDepartmentIds.has(row.id) || row.code === standardDepartmentCode,
+      );
+    }
+
+    const hasOrgConstraint =
       (standardFunctionCode && standardFunctionCode !== allFunctionCode) ||
       (standardDivisionCode && standardDivisionCode !== allFunctionCode) ||
       (standardSectionCode && standardSectionCode !== allFunctionCode);
 
-    if (hasConstraint) {
+    if (hasOrgConstraint) {
       const linkedIds = new Set(
         orgUsage
           .filter((usage) => {
@@ -645,7 +685,7 @@ function CourseMaster() {
           .map((u) => u.departmentId)
           .filter(Boolean),
       );
-      filtered = departmentRows.filter((row) => linkedIds.has(row.id) || row.code === standardDepartmentCode);
+      filtered = filtered.filter((row) => linkedIds.has(row.id) || row.code === standardDepartmentCode);
     }
 
     return [
@@ -653,16 +693,29 @@ function CourseMaster() {
       { id: "ALL", code: allFunctionCode, name: "All Department" },
       ...filtered,
     ];
-  }, [departmentRows, orgUsage, selectedCompanies, standardFunctionCode, standardDivisionCode, standardDepartmentCode, standardSectionCode, selectedFunctionId, selectedDivisionId, selectedSectionId]);
+  }, [departmentRows, orgUsage, selectedCompanies, selectedCompanyIds, standardFunctionCode, standardDivisionCode, standardDepartmentCode, standardSectionCode, selectedFunctionId, selectedDivisionId, selectedSectionId]);
 
   const sectionOptions = useMemo(() => {
     let filtered = sectionRows;
-    const hasConstraint =
+
+    if (selectedCompanies.length > 0) {
+      const allowedSectionIds = new Set(
+        orgUsage
+          .filter((usage) => usageInSelectedCompanies(usage))
+          .map((u) => u.sectionId)
+          .filter(Boolean),
+      );
+      filtered = filtered.filter(
+        (row) => allowedSectionIds.has(row.id) || row.code === standardSectionCode,
+      );
+    }
+
+    const hasOrgConstraint =
       (standardFunctionCode && standardFunctionCode !== allFunctionCode) ||
       (standardDivisionCode && standardDivisionCode !== allFunctionCode) ||
       (standardDepartmentCode && standardDepartmentCode !== allFunctionCode);
 
-    if (hasConstraint) {
+    if (hasOrgConstraint) {
       const linkedIds = new Set(
         orgUsage
           .filter((usage) => {
@@ -675,7 +728,7 @@ function CourseMaster() {
           .map((u) => u.sectionId)
           .filter(Boolean),
       );
-      filtered = sectionRows.filter((row) => linkedIds.has(row.id) || row.code === standardSectionCode);
+      filtered = filtered.filter((row) => linkedIds.has(row.id) || row.code === standardSectionCode);
     }
 
     return [
@@ -683,7 +736,7 @@ function CourseMaster() {
       { id: "ALL", code: allFunctionCode, name: "All Section" },
       ...filtered,
     ];
-  }, [sectionRows, orgUsage, selectedCompanies, standardFunctionCode, standardDivisionCode, standardDepartmentCode, selectedFunctionId, selectedDivisionId, selectedDepartmentId]);
+  }, [sectionRows, orgUsage, selectedCompanies, selectedCompanyIds, standardFunctionCode, standardDivisionCode, standardDepartmentCode, selectedFunctionId, selectedDivisionId, selectedDepartmentId]);
   const getFunctionDisplayName = (functionCode?: string, functionName = "") => {
     if (functionCode === allFunctionCode || functionName === allFunctionOption) {
       return "All Function";
@@ -719,21 +772,31 @@ function CourseMaster() {
     return unique.sort((a, b) => getLevelRank(b) - getLevelRank(a));
   }, [levelRows]);
 
+  const hasPreTest = Boolean(form.preTestId || form.preTestLink.trim());
+  const hasPostTest = Boolean(form.postTestId || form.postTestLink.trim());
+  const hasEvaluation = Boolean(form.evaluationId || form.evaluationLink.trim());
+  const hasEvaluation30Day = Boolean(form.evaluationAfter30DayId || form.evaluationAfter30DayLink.trim());
+
   const requiredCourseValues = [
-    form.courseNameTh,
-    form.courseNameEn,
     form.courseGroup,
     form.courseType,
+    form.courseNameTh,
+    form.courseNameEn,
+    form.remark,
     form.objective,
     form.learningContent,
     form.targetGroup,
+    hasPreTest ? "OK" : "",
+    hasPostTest ? "OK" : "",
+    hasEvaluation ? "OK" : "",
+    hasEvaluation30Day ? "OK" : "",
   ];
   const completedRequiredFields = requiredCourseValues.filter(
     (value) => value.trim().length > 0,
   ).length;
   const requiredFieldCount = requiredCourseValues.length;
   const isCourseFormReady =
-    completedRequiredFields === requiredFieldCount;
+    completedRequiredFields === requiredFieldCount && selectedCompanies.length > 0;
 
   // Any ACTIVE assessment can fill either Pre or Post Test — assessmentType is shown as a hint
   // on each option, not enforced as a hard filter, so the same published assessment can be
@@ -866,29 +929,73 @@ function CourseMaster() {
       return;
     }
 
-    const matchingFunctionOption = functionOptions.find(
-      (option) =>
-        option.code === standard.functionCode ||
-        option.name === standard.functionName,
-    );
-    setStandardFunctionCode(matchingFunctionOption?.code ?? (standard.functionCode || ""));
+    const isAllFunction = !standard.functionId && (!standard.functionCode || standard.functionCode === allFunctionCode || standard.functionName === "All Function" || standard.functionName === allFunctionOption);
+    const matchingFunctionOption = isAllFunction
+      ? { code: allFunctionCode, name: "All Function" }
+      : functionRows.find(
+          (row) =>
+            (standard.functionId && row.id === standard.functionId) ||
+            row.code === standard.functionCode ||
+            row.name === standard.functionName ||
+            row.nameTh === standard.functionName ||
+            row.nameEn === standard.functionName,
+        );
+    setStandardFunctionCode(matchingFunctionOption?.code ?? (isAllFunction ? allFunctionCode : ""));
     setStandardFunctionName(
-      getFunctionDisplayName(standard.functionCode, standard.functionName) || "",
+      isAllFunction
+        ? "All Function"
+        : getFunctionDisplayName(standard.functionCode, standard.functionName) || "",
     );
-    // Match against the raw (unfiltered) rows rather than the cascade-filtered Options —
-    // the Options list depends on the division/department state we're about to set below,
-    // so it may still reflect the previous selection at this point in the render.
-    const matchingDivisionRow = divisionRows.find((row) => row.name === standard.division);
-    setStandardDivisionCode(standard.division ? matchingDivisionRow?.code ?? "" : "");
-    const matchingDepartmentRow = departmentRows.find((row) => row.name === standard.department);
-    setStandardDepartmentCode(standard.department ? matchingDepartmentRow?.code ?? "" : "");
-    const matchingSectionRow = sectionRows.find((row) => row.name === standard.section);
-    setStandardSectionCode(standard.section ? matchingSectionRow?.code ?? "" : "");
+
+    const isAllDivision = !standard.divisionId && (!standard.divisionCode || standard.divisionCode === allFunctionCode || !standard.division || standard.division === "All Division");
+    const matchingDivisionRow = isAllDivision
+      ? { code: allFunctionCode, name: "All Division" }
+      : divisionRows.find(
+          (row) =>
+            (standard.divisionId && row.id === standard.divisionId) ||
+            (standard.divisionCode && row.code === standard.divisionCode) ||
+            row.code === standard.division ||
+            row.name === standard.division ||
+            row.nameTh === standard.division ||
+            row.nameEn === standard.division,
+        );
+    setStandardDivisionCode(matchingDivisionRow?.code ?? (isAllDivision ? allFunctionCode : ""));
+
+    const isAllDepartment = !standard.departmentId && (!standard.departmentCode || standard.departmentCode === allFunctionCode || !standard.department || standard.department === "All Department");
+    const matchingDepartmentRow = isAllDepartment
+      ? { code: allFunctionCode, name: "All Department" }
+      : departmentRows.find(
+          (row) =>
+            (standard.departmentId && row.id === standard.departmentId) ||
+            (standard.departmentCode && row.code === standard.departmentCode) ||
+            row.code === standard.department ||
+            row.name === standard.department ||
+            row.nameTh === standard.department ||
+            row.nameEn === standard.department,
+        );
+    setStandardDepartmentCode(matchingDepartmentRow?.code ?? (isAllDepartment ? allFunctionCode : ""));
+
+    const isAllSection = !standard.sectionId && (!standard.sectionCode || standard.sectionCode === allFunctionCode || !standard.section || standard.section === "All Section");
+    const matchingSectionRow = isAllSection
+      ? { code: allFunctionCode, name: "All Section" }
+      : sectionRows.find(
+          (row) =>
+            (standard.sectionId && row.id === standard.sectionId) ||
+            (standard.sectionCode && row.code === standard.sectionCode) ||
+            row.code === standard.section ||
+            row.name === standard.section ||
+            row.nameTh === standard.section ||
+            row.nameEn === standard.section,
+        );
+    setStandardSectionCode(matchingSectionRow?.code ?? (isAllSection ? allFunctionCode : ""));
+
     if (isFactoryUser && userCompanyCode) {
       setSelectedCompanies([userCompanyCode]);
     } else {
       setSelectedCompanies(
-        companyChecklist.filter((code) => standard.companies?.includes(code)),
+        standard.companies && standard.companies.length > 0
+          ? standard.companies
+          : companyChecklist.filter((code) => standard.companies?.includes(code)),
       );
     }
     setSelectedPositions(
@@ -908,6 +1015,12 @@ function CourseMaster() {
       ),
     );
   };
+
+  useEffect(() => {
+    if (selectedCourse && (isEditing || openDetailCourseId)) {
+      loadStandardForm(selectedCourse);
+    }
+  }, [selectedCourseId, standards, functionRows, divisionRows, departmentRows, sectionRows]);
 
   const toggleStandardItem = (
     value: string,
@@ -1321,7 +1434,54 @@ function CourseMaster() {
   };
 
   const handleSave = async () => {
-    if (!isCourseFormReady || selectedCompanies.length === 0) return;
+    const missingFields: string[] = [];
+
+    if (!form.courseGroup.trim()) {
+      missingFields.push("• กลุ่มหลักสูตร (Course Group)");
+    }
+    if (!form.courseType.trim()) {
+      missingFields.push("• ประเภทหลักสูตร (Course Type)");
+    }
+    if (!form.courseNameTh.trim()) {
+      missingFields.push("• ชื่อหลักสูตร ภาษาไทย (Course Name TH)");
+    }
+    if (!form.courseNameEn.trim()) {
+      missingFields.push("• ชื่อหลักสูตร ภาษาอังกฤษ (Course Name EN)");
+    }
+    if (!form.remark.trim()) {
+      missingFields.push("• ที่มา / เหตุผลในการจัดทำหลักสูตร (Background)");
+    }
+    if (!form.objective.trim()) {
+      missingFields.push("• วัตถุประสงค์หลักสูตร (Objective)");
+    }
+    if (!form.learningContent.trim()) {
+      missingFields.push("• เนื้อหาการเรียนรู้ (Learning Content)");
+    }
+    if (!form.targetGroup.trim()) {
+      missingFields.push("• กลุ่มเป้าหมายผู้เรียน (Target Group)");
+    }
+    if (!form.preTestId && !form.preTestLink.trim()) {
+      missingFields.push("• แบบทดสอบก่อนการอบรม (Pre Test)");
+    }
+    if (!form.postTestId && !form.postTestLink.trim()) {
+      missingFields.push("• แบบทดสอบหลังการอบรม (Post Test)");
+    }
+    if (!form.evaluationId && !form.evaluationLink.trim()) {
+      missingFields.push("• แบบประเมินผลหลังการอบรม (Evaluation After Training)");
+    }
+    if (!form.evaluationAfter30DayId && !form.evaluationAfter30DayLink.trim()) {
+      missingFields.push("• แบบประเมินติดตามผล 30 วัน (30-Day Follow-up Evaluation)");
+    }
+    if (selectedCompanies.length === 0) {
+      missingFields.push("• บริษัทกลุ่มเป้าหมาย (Check List Company อย่างน้อย 1 บริษัท)");
+    }
+
+    if (missingFields.length > 0) {
+      alert(
+        `⚠️ ไม่สามารถบันทึกได้ เนื่องจากระบุข้อมูลไม่ครบถ้วน (${missingFields.length} รายการ):\n\n${missingFields.join("\n")}`,
+      );
+      return;
+    }
 
     const courseTypeId = courseTypeOptions.find(t => t.name === form.courseType)?.typeId || "";
     const courseGroupId = courseGroupOptions.find(g => g.name === form.courseGroup)?.groupId || "";
@@ -1360,19 +1520,19 @@ function CourseMaster() {
       functionId:
         !standardFunctionCode || standardFunctionCode === allFunctionCode
           ? null
-          : functionOptions.find((option) => option.code === standardFunctionCode)?.id || null,
+          : functionRows.find((row) => row.code === standardFunctionCode)?.id || null,
       divisionId:
         !standardDivisionCode || standardDivisionCode === allFunctionCode
           ? null
-          : divisionOptions.find((option) => option.code === standardDivisionCode)?.id || null,
+          : divisionRows.find((row) => row.code === standardDivisionCode)?.id || null,
       departmentId:
         !standardDepartmentCode || standardDepartmentCode === allFunctionCode
           ? null
-          : departmentOptions.find((option) => option.code === standardDepartmentCode)?.id || null,
+          : departmentRows.find((row) => row.code === standardDepartmentCode)?.id || null,
       sectionId:
         !standardSectionCode || standardSectionCode === allFunctionCode
           ? null
-          : sectionOptions.find((option) => option.code === standardSectionCode)?.id || null,
+          : sectionRows.find((row) => row.code === standardSectionCode)?.id || null,
       targetCompanies: selectedCompanies,
       targetPositions: selectedPositions,
       targetLevels: selectedLevels,
@@ -1433,39 +1593,7 @@ function CourseMaster() {
 
       </div>
 
-      {isEditing ? (
-        <aside className={styles.formGuide} aria-label="Course setup guideline">
-          <div className={styles.guideHeader}>
-            <div>
-              <strong>Course setup guideline</strong>
-              <p>Complete the required fields from top to bottom before linking tests and evaluations.</p>
-            </div>
-            <span>
-              {completedRequiredFields} / {requiredFieldCount} required fields
-            </span>
-          </div>
-          <div
-            className={styles.guideProgress}
-            aria-label="Required field completion"
-            aria-valuemax={requiredFieldCount}
-            aria-valuemin={0}
-            aria-valuenow={completedRequiredFields}
-            role="progressbar"
-          >
-            <span
-              style={{
-                width: `${(completedRequiredFields / requiredFieldCount) * 100}%`,
-              }}
-            />
-          </div>
-          <ol className={styles.guideSteps}>
-            <li><b>1</b><span>Select the course group to generate the course code.</span></li>
-            <li><b>2</b><span>Enter bilingual names and describe the learning outcome.</span></li>
-            <li><b>3</b><span>Link published tests and evaluations when available.</span></li>
-          </ol>
-          <small><b>*</b> Required field</small>
-        </aside>
-      ) : null}
+
 
       <div className={styles.formGrid}>
         <label>
@@ -1519,9 +1647,8 @@ function CourseMaster() {
           <input
             value={form.courseNameTh}
             disabled={!isEditing}
-            placeholder="Example: Basic Safety Course"
+            placeholder="ตัวอย่าง: การอบรมความปลอดภัยพื้นฐาน"
             onChange={(event) => updateForm("courseNameTh", event.target.value)}
-
           />
         </label>
         <label>
@@ -1529,12 +1656,12 @@ function CourseMaster() {
           <input
             value={form.courseNameEn}
             disabled={!isEditing}
-            placeholder="Example: Safety Basics"
+            placeholder="Example: Basic Safety Course"
             onChange={(event) => updateForm("courseNameEn", event.target.value)}
           />
         </label>
         <label className={styles.fullWidth}>
-          <span className={styles.fieldLabel}>ที่มา (Background) <em>Optional</em></span>
+          <span className={styles.fieldLabel}>ที่มา (Background) <b>*</b></span>
           <textarea
             value={form.remark}
             disabled={!isEditing}
@@ -1590,7 +1717,7 @@ function CourseMaster() {
           </p>
         </div>
         <label>
-          <span className={styles.fieldLabel}>Pre Test <em>Optional</em></span>
+          <span className={styles.fieldLabel}>Pre Test <b>*</b></span>
           <select
             value={linkModeFields.has("preTest") ? LINK_MODE_VALUE : form.preTestId}
             disabled={!isEditing}
@@ -1653,7 +1780,7 @@ function CourseMaster() {
           </small>
         </label>
         <label>
-          <span className={styles.fieldLabel}>Post Test <em>Optional</em></span>
+          <span className={styles.fieldLabel}>Post Test <b>*</b></span>
           <select
             value={linkModeFields.has("postTest") ? LINK_MODE_VALUE : form.postTestId}
             disabled={!isEditing}
@@ -1716,7 +1843,7 @@ function CourseMaster() {
           </small>
         </label>
         <label>
-          <span className={styles.fieldLabel}>Evaluation After Training <em>Optional</em></span>
+          <span className={styles.fieldLabel}>Evaluation After Training <b>*</b></span>
           <select
             value={linkModeFields.has("evaluation") ? LINK_MODE_VALUE : form.evaluationId}
             disabled={!isEditing}
@@ -1779,7 +1906,7 @@ function CourseMaster() {
           </small>
         </label>
         <label>
-          <span className={styles.fieldLabel}>Evaluation After 30 Days <em>Optional</em></span>
+          <span className={styles.fieldLabel}>Evaluation After 30 Days <b>*</b></span>
           <select
             value={linkModeFields.has("evaluationAfter30Day") ? LINK_MODE_VALUE : form.evaluationAfter30DayId}
             disabled={!isEditing}

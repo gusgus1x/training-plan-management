@@ -1071,7 +1071,7 @@ export default function TrainingAcceptSurvey() {
   );
 
   const submittedToCenterCandidates = sortEmployeesDescending(
-    roleMode === "factory"
+    roleMode === "factory" && selectedCourse?.owner === "center"
       ? enrollments.filter(
           (candidate) =>
             candidate.company === userCompanyCode &&
@@ -1084,7 +1084,12 @@ export default function TrainingAcceptSurvey() {
 
   const canCenterApprove = roleMode === "center";
   const canFactoryApprove = roleMode === "factory";
-  const targetActionLabel = roleMode === "factory" ? "+ Submit" : "+ Add";
+  const targetActionLabel =
+    roleMode === "factory"
+      ? selectedCourse?.owner === "factory"
+        ? "+ Add"
+        : "+ Submit"
+      : "+ Add";
 
   const handleAddEmployee = async (employee: SurveyEmployee) => {
     if (!selectedCourse) return;
@@ -1635,7 +1640,7 @@ export default function TrainingAcceptSurvey() {
               ) : null}
             </div>
           </section>
-        ) : (
+        ) : selectedCourse?.owner === "center" ? (
           <section className={styles.submittedPanel} style={{ marginTop: "16px", marginBottom: "16px" }}>
             <div className={styles.workspaceHeader}>
               <div>
@@ -1733,7 +1738,7 @@ export default function TrainingAcceptSurvey() {
               ) : null}
             </div>
           </section>
-        )
+        ) : null
       ) : null}
 
         <section className={styles.targetPanel}>

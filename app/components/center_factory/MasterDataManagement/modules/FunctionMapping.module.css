@@ -602,6 +602,12 @@
   vertical-align: middle;
 }
 
+.viewToggleGroup {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
 @media (max-width: 760px) {
   .page,
   .moduleWorkspace {
