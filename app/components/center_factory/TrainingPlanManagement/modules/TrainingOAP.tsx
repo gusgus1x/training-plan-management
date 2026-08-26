@@ -26,6 +26,7 @@ import { useNotice } from "../../../NoticeDialog";
 import { useToast } from "../../../ToastHost";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import TypewriterLoader from "../../../TypewriterLoader";
+import SearchableSelect from "../../../SearchableSelect";
 import styles from "./TrainingOAP.module.css";
 
 export const trainingOapModule = {
@@ -228,6 +229,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     [standards],
   );
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
+  const isCenterUser = user?.roleCode === "HRD_CENTER";
   const courseOptions = useMemo(
     () => {
       const standardizedCourses = courses.filter(
@@ -239,6 +241,14 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               course.ownerCompany === userCompanyCode
             );
           }
+          if (isCenterUser) {
+            return (
+              course.owner === "CENTER" ||
+              course.ownerCompany === "CENTER" ||
+              course.ownerCompany === "HRD Center" ||
+              !course.ownerCompany
+            );
+          }
           return isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode);
         },
       );
@@ -246,7 +256,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
         ? [buildRequestCourse(approvedRequest), ...standardizedCourses]
         : standardizedCourses;
     },
-    [approvedRequest, courses, standardCourseIds, isFactoryUser, user?.roleCode, userCompanyCode],
+    [approvedRequest, courses, standardCourseIds, isFactoryUser, isCenterUser, user?.roleCode, userCompanyCode],
   );
   const selectedCourse =
     courseOptions.find((course) => course.courseCode === form.courseCode) ?? null;
@@ -712,21 +722,22 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             <div className={styles.formGrid}>
               <label className={styles.fullField}>
                 <span>Course Name <span className={styles.required}>*</span></span>
-                <select value={form.courseCode} onChange={(event) => updateForm("courseCode", event.target.value)}>
-                  <option value="">Select course first</option>
-                  {courseOptions.map((course) => {
+                <SearchableSelect
+                  options={courseOptions.map((course) => {
                     const secondaryName = getCourseSecondaryName(course);
                     const displayName = getCourseDisplayName(course);
                     const groupOrType = course.courseGroup || course.courseType;
-                    return (
-                      <option key={course.courseCode} value={course.courseCode}>
-                        [{course.courseCode}] {displayName}
-                        {secondaryName ? ` (${secondaryName})` : ""}
-                        {groupOrType ? ` • ${groupOrType}` : ""}
-                      </option>
-                    );
+                    return {
+                      value: course.courseCode,
+                      label: `[${course.courseCode}] ${displayName}`,
+                      secondaryLabel: secondaryName || undefined,
+                      badge: groupOrType || undefined,
+                    };
                   })}
-                </select>
+                  value={form.courseCode}
+                  onChange={(code) => updateForm("courseCode", code)}
+                  placeholder="🔍 พิมพ์เพื่อค้นหาหลักสูตร (รหัส/ชื่อ)... / Search course..."
+                />
               </label>
               <label>
                 <span>Participants / Group <span className={styles.required}>*</span></span>

@@ -1,0 +1,151 @@
+.container {
+  position: relative;
+  width: 100%;
+  font-family: inherit;
+}
+
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--ui-30-border, #cbd5e1);
+  border-radius: 10px;
+  background: var(--ui-60-surface-soft, #f1f5f9);
+  color: var(--ui-30-ink, #0f172a);
+  padding: 8px 36px 8px 12px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  cursor: pointer;
+}
+
+.input:focus,
+.inputOpen {
+  border-color: var(--ui-30-primary, #007a3d);
+  box-shadow: 0 0 0 3px var(--ui-focus-ring, rgba(0, 122, 61, 0.15));
+  background: var(--ui-60-surface, #ffffff);
+}
+
+.input:disabled {
+  background: var(--ui-60-surface-muted, #e2e8f0);
+  color: var(--ui-30-muted, #64748b);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.arrowIcon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 0.75rem;
+  color: var(--ui-30-muted, #64748b);
+  transition: transform 160ms ease;
+}
+
+.arrowIconOpen {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.clearButton {
+  position: absolute;
+  right: 30px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--ui-30-muted, #64748b);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 140ms ease, background 140ms ease;
+}
+
+.clearButton:hover {
+  color: var(--ui-10-accent, #d71920);
+  background: var(--ui-10-accent-soft, rgba(215, 25, 32, 0.1));
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--ui-60-surface, #ffffff);
+  border: 1px solid var(--ui-30-border, #cbd5e1);
+  border-radius: 12px;
+  box-shadow: var(--ui-shadow-lg, 0 10px 25px -5px rgba(0, 0, 0, 0.18));
+  z-index: 9999;
+  padding: 6px;
+}
+
+.noOptions {
+  padding: 12px 14px;
+  font-size: 0.84rem;
+  color: var(--ui-30-muted, #64748b);
+  text-align: center;
+  font-style: italic;
+}
+
+.optionItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.optionItem:hover,
+.optionHighlighted {
+  background: var(--ui-60-surface-soft, rgba(241, 245, 249, 0.8));
+}
+
+.optionSelected {
+  background: var(--ui-30-primary-soft, rgba(0, 122, 61, 0.1));
+  border-left: 3px solid var(--ui-30-primary, #007a3d);
+}
+
+.optionMainRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.optionLabel {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ui-30-ink, #0f172a);
+}
+
+.optionBadge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: var(--ui-30-primary-soft, rgba(0, 122, 61, 0.12));
+  color: var(--ui-30-primary, #007a3d);
+  border: 1px solid var(--ui-30-primary-border, transparent);
+  white-space: nowrap;
+}
+
+.optionSecondary {
+  font-size: 0.78rem;
+  color: var(--ui-30-muted, #64748b);
+}

@@ -182,6 +182,30 @@ export const createCourseRepository = (client?: DatabaseClient) => {
           if (row.course_standard_course.length > 0) {
             const stdCourse = row.course_standard_course[0];
             const std = stdCourse.course_standard;
+
+            const targetOrgScopes = row.course_standard_course.map(sc => ({
+              functionId: sc.function_id?.toString() || undefined,
+              divisionId: sc.division_id?.toString() || undefined,
+              departmentId: sc.department_id?.toString() || undefined,
+              sectionId: sc.section_id?.toString() || undefined,
+              functionCode: sc.organization_function?.function_code || "",
+              functionName: sc.organization_function
+                ? sc.organization_function.function_name_en || sc.organization_function.function_name_th
+                : "All Function",
+              divisionCode: sc.division?.division_code || "",
+              division: sc.division
+                ? sc.division.division_name_en || sc.division.division_name_th
+                : "",
+              departmentCode: sc.department?.department_code || "",
+              department: sc.department
+                ? sc.department.department_name_en || sc.department.department_name_th
+                : "",
+              sectionCode: sc.section?.section_code || "",
+              section: sc.section
+                ? sc.section.section_name_en || sc.section.section_name_th
+                : "",
+            }));
+
             standards.push({
               id: std.standard_id.toString(),
               courseId: row.course_id.toString(),
@@ -191,6 +215,7 @@ export const createCourseRepository = (client?: DatabaseClient) => {
               divisionId: stdCourse.division_id?.toString() || undefined,
               departmentId: stdCourse.department_id?.toString() || undefined,
               sectionId: stdCourse.section_id?.toString() || undefined,
+              targetOrgScopes,
               functionCode: stdCourse.organization_function?.function_code || "",
               functionName: stdCourse.organization_function
                 ? stdCourse.organization_function.function_name_en || stdCourse.organization_function.function_name_th
@@ -278,55 +303,42 @@ export const createCourseRepository = (client?: DatabaseClient) => {
             });
           }
 
+          // 3. Determine target org scopes
+          const scopes = (input.targetOrgScopes && input.targetOrgScopes.length > 0)
+            ? input.targetOrgScopes
+            : [{
+                functionId: input.functionId,
+                divisionId: input.divisionId,
+                departmentId: input.departmentId,
+                sectionId: input.sectionId,
+              }];
 
-          // 3. Link standard to course
-          const stdCourse = await tx.course_standard_course.create({
-            data: {
-              standard_id: standard.standard_id,
-              course_id: course.course_id,
-              function_id: safeBigInt(input.functionId),
-              division_id: safeBigInt(input.divisionId),
-              department_id: safeBigInt(input.departmentId),
-              section_id: safeBigInt(input.sectionId),
-              created_at: new Date()
-            }
-          });
-
-          // 3b. Create target companies
+          // Resolve target companies, positions, levels once
+          let targetCompRecords: { company_id: bigint }[] = [];
           if (input.targetCompanies && input.targetCompanies.length > 0) {
-            const companies = await tx.company.findMany({
-              where: { company_code: { in: input.targetCompanies } }
-            });
-            await tx.course_standard_target_company.createMany({
-              data: companies.map(c => ({
-                standard_course_id: stdCourse.standard_course_id,
-                company_id: c.company_id
-              }))
+            targetCompRecords = await tx.company.findMany({
+              where: { company_code: { in: input.targetCompanies } },
+              select: { company_id: true }
             });
           }
 
-          // 4. Create target positions
+          let targetPosRecords: { position_id: bigint }[] = [];
           if (input.targetPositions && input.targetPositions.length > 0) {
-            const positions = await tx.position.findMany({
+            targetPosRecords = await tx.position.findMany({
               where: {
                 OR: [
                   { position_name_en: { in: input.targetPositions } },
                   { position_name_th: { in: input.targetPositions } },
                   { position_code: { in: input.targetPositions } },
                 ]
-              }
-            });
-            await tx.course_standard_target_position.createMany({
-              data: positions.map(p => ({
-                standard_course_id: stdCourse.standard_course_id,
-                position_id: p.position_id
-              }))
+              },
+              select: { position_id: true }
             });
           }
 
-          // 5. Create target levels
+          let targetLvlRecords: { level_id: bigint }[] = [];
           if (input.targetLevels && input.targetLevels.length > 0) {
-            const levels = await tx.employee_level.findMany({
+            targetLvlRecords = await tx.employee_level.findMany({
               where: {
                 OR: [
                   { level_code: { in: input.targetLevels } },
@@ -334,10 +346,51 @@ export const createCourseRepository = (client?: DatabaseClient) => {
                   { level_code_th: { in: input.targetLevels } },
                   { level_code_en: { in: input.targetLevels } },
                 ]
-              }
+              },
+              select: { level_id: true }
             });
+          }
+
+          const primaryScope = scopes[0] || {
+            functionId: input.functionId,
+            divisionId: input.divisionId,
+            departmentId: input.departmentId,
+            sectionId: input.sectionId,
+          };
+
+          const stdCourse = await tx.course_standard_course.create({
+            data: {
+              standard_id: standard.standard_id,
+              course_id: course.course_id,
+              function_id: safeBigInt(primaryScope.functionId),
+              division_id: safeBigInt(primaryScope.divisionId),
+              department_id: safeBigInt(primaryScope.departmentId),
+              section_id: safeBigInt(primaryScope.sectionId),
+              created_at: new Date()
+            }
+          });
+
+          if (targetCompRecords.length > 0) {
+            await tx.course_standard_target_company.createMany({
+              data: targetCompRecords.map(c => ({
+                standard_course_id: stdCourse.standard_course_id,
+                company_id: c.company_id
+              }))
+            });
+          }
+
+          if (targetPosRecords.length > 0) {
+            await tx.course_standard_target_position.createMany({
+              data: targetPosRecords.map(p => ({
+                standard_course_id: stdCourse.standard_course_id,
+                position_id: p.position_id
+              }))
+            });
+          }
+
+          if (targetLvlRecords.length > 0) {
             await tx.course_standard_target_level.createMany({
-              data: levels.map(l => ({
+              data: targetLvlRecords.map(l => ({
                 standard_course_id: stdCourse.standard_course_id,
                 level_id: l.level_id
               }))
@@ -408,11 +461,13 @@ export const createCourseRepository = (client?: DatabaseClient) => {
           });
 
           // Handle Standard Update
-          const stdCourse = await tx.course_standard_course.findFirst({
-            where: { course_id: BigInt(id) }
+          const existingStdCourses = await tx.course_standard_course.findMany({
+            where: { course_id: BigInt(id) },
+            select: { standard_course_id: true, standard_id: true }
           });
 
-          if (stdCourse) {
+          if (existingStdCourses.length > 0) {
+            const standardId = existingStdCourses[0].standard_id;
             const standardData: any = { updated_by: safeBigInt(userId) ?? BigInt(0), updated_at: new Date() };
             if (input.standardCode !== undefined) standardData.standard_code = input.standardCode;
             if (input.standardName !== undefined) standardData.standard_name = input.standardName;
@@ -420,99 +475,111 @@ export const createCourseRepository = (client?: DatabaseClient) => {
             if (input.standardYear !== undefined) standardData.standard_year = input.standardYear;
 
             await tx.course_standard.update({
-              where: { standard_id: stdCourse.standard_id },
+              where: { standard_id: standardId },
               data: standardData
             });
 
-            if (input.functionId !== undefined) {
-              await tx.course_standard_course.update({
-                where: { standard_course_id: stdCourse.standard_course_id },
-                data: { function_id: safeBigInt(input.functionId) }
-              });
-            }
+            if (input.targetOrgScopes !== undefined || input.targetCompanies !== undefined || input.targetPositions !== undefined || input.targetLevels !== undefined || input.functionId !== undefined || input.divisionId !== undefined || input.departmentId !== undefined || input.sectionId !== undefined) {
+              const scopes = input.targetOrgScopes !== undefined
+                ? (input.targetOrgScopes.length > 0 ? input.targetOrgScopes : [{ functionId: null, divisionId: null, departmentId: null, sectionId: null }])
+                : (input.functionId !== undefined || input.divisionId !== undefined || input.departmentId !== undefined || input.sectionId !== undefined)
+                ? [{
+                    functionId: input.functionId ?? null,
+                    divisionId: input.divisionId ?? null,
+                    departmentId: input.departmentId ?? null,
+                    sectionId: input.sectionId ?? null,
+                  }]
+                : null;
 
-            if (input.divisionId !== undefined) {
-              await tx.course_standard_course.update({
-                where: { standard_course_id: stdCourse.standard_course_id },
-                data: { division_id: safeBigInt(input.divisionId) }
-              });
-            }
+              if (scopes !== null) {
+                // Delete old standard courses and children
+                const oldStdCourseIds = existingStdCourses.map(sc => sc.standard_course_id);
+                await tx.course_standard_target_company.deleteMany({ where: { standard_course_id: { in: oldStdCourseIds } } });
+                await tx.course_standard_target_position.deleteMany({ where: { standard_course_id: { in: oldStdCourseIds } } });
+                await tx.course_standard_target_level.deleteMany({ where: { standard_course_id: { in: oldStdCourseIds } } });
+                await tx.course_standard_course.deleteMany({ where: { course_id: BigInt(id) } });
 
-            if (input.departmentId !== undefined) {
-              await tx.course_standard_course.update({
-                where: { standard_course_id: stdCourse.standard_course_id },
-                data: { department_id: safeBigInt(input.departmentId) }
-              });
-            }
+                // Target companies / positions / levels to attach
+                const targetCompanies = input.targetCompanies;
+                const targetPositions = input.targetPositions;
+                const targetLevels = input.targetLevels;
 
-            if (input.sectionId !== undefined) {
-              await tx.course_standard_course.update({
-                where: { standard_course_id: stdCourse.standard_course_id },
-                data: { section_id: safeBigInt(input.sectionId) }
-              });
-            }
+                let targetCompRecords: { company_id: bigint }[] = [];
+                if (targetCompanies && targetCompanies.length > 0) {
+                  targetCompRecords = await tx.company.findMany({
+                    where: { company_code: { in: targetCompanies } },
+                    select: { company_id: true }
+                  });
+                }
 
-            if (input.targetCompanies !== undefined) {
-              await tx.course_standard_target_company.deleteMany({
-                where: { standard_course_id: stdCourse.standard_course_id }
-              });
-              if (input.targetCompanies.length > 0) {
-                const companies = await tx.company.findMany({
-                  where: { company_code: { in: input.targetCompanies } }
-                });
-                await tx.course_standard_target_company.createMany({
-                  data: companies.map(c => ({
-                    standard_course_id: stdCourse.standard_course_id,
-                    company_id: c.company_id
-                  }))
-                });
-              }
-            }
+                let targetPosRecords: { position_id: bigint }[] = [];
+                if (targetPositions && targetPositions.length > 0) {
+                  targetPosRecords = await tx.position.findMany({
+                    where: {
+                      OR: [
+                        { position_name_en: { in: targetPositions } },
+                        { position_name_th: { in: targetPositions } },
+                        { position_code: { in: targetPositions } },
+                      ]
+                    },
+                    select: { position_id: true }
+                  });
+                }
 
-            if (input.targetPositions !== undefined) {
-              await tx.course_standard_target_position.deleteMany({
-                where: { standard_course_id: stdCourse.standard_course_id }
-              });
-              if (input.targetPositions.length > 0) {
-                const positions = await tx.position.findMany({
-                  where: {
-                    OR: [
-                      { position_name_en: { in: input.targetPositions } },
-                      { position_name_th: { in: input.targetPositions } },
-                      { position_code: { in: input.targetPositions } },
-                    ]
+                let targetLvlRecords: { level_id: bigint }[] = [];
+                if (targetLevels && targetLevels.length > 0) {
+                  targetLvlRecords = await tx.employee_level.findMany({
+                    where: {
+                      OR: [
+                        { level_code: { in: targetLevels } },
+                        { level_key: { in: targetLevels } },
+                        { level_code_th: { in: targetLevels } },
+                        { level_code_en: { in: targetLevels } },
+                      ]
+                    },
+                    select: { level_id: true }
+                  });
+                }
+
+                const primaryScope = scopes[0];
+                const newStdCourse = await tx.course_standard_course.create({
+                  data: {
+                    standard_id: standardId,
+                    course_id: BigInt(id),
+                    function_id: safeBigInt(primaryScope.functionId),
+                    division_id: safeBigInt(primaryScope.divisionId),
+                    department_id: safeBigInt(primaryScope.departmentId),
+                    section_id: safeBigInt(primaryScope.sectionId),
+                    created_at: new Date()
                   }
                 });
-                await tx.course_standard_target_position.createMany({
-                  data: positions.map(p => ({
-                    standard_course_id: stdCourse.standard_course_id,
-                    position_id: p.position_id
-                  }))
-                });
-              }
-            }
 
-            if (input.targetLevels !== undefined) {
-              await tx.course_standard_target_level.deleteMany({
-                where: { standard_course_id: stdCourse.standard_course_id }
-              });
-              if (input.targetLevels.length > 0) {
-                const levels = await tx.employee_level.findMany({
-                  where: {
-                    OR: [
-                      { level_code: { in: input.targetLevels } },
-                      { level_key: { in: input.targetLevels } },
-                      { level_code_th: { in: input.targetLevels } },
-                      { level_code_en: { in: input.targetLevels } },
-                    ]
-                  }
-                });
-                await tx.course_standard_target_level.createMany({
-                  data: levels.map(l => ({
-                    standard_course_id: stdCourse.standard_course_id,
-                    level_id: l.level_id
-                  }))
-                });
+                if (targetCompRecords.length > 0) {
+                  await tx.course_standard_target_company.createMany({
+                    data: targetCompRecords.map(c => ({
+                      standard_course_id: newStdCourse.standard_course_id,
+                      company_id: c.company_id
+                    }))
+                  });
+                }
+
+                if (targetPosRecords.length > 0) {
+                  await tx.course_standard_target_position.createMany({
+                    data: targetPosRecords.map(p => ({
+                      standard_course_id: newStdCourse.standard_course_id,
+                      position_id: p.position_id
+                    }))
+                  });
+                }
+
+                if (targetLvlRecords.length > 0) {
+                  await tx.course_standard_target_level.createMany({
+                    data: targetLvlRecords.map(l => ({
+                      standard_course_id: newStdCourse.standard_course_id,
+                      level_id: l.level_id
+                    }))
+                  });
+                }
               }
             }
           }
@@ -525,7 +592,8 @@ export const createCourseRepository = (client?: DatabaseClient) => {
     async delete(id: string, companyId: string | null = null) {
       return withDatabaseErrorMapping(async () => {
         const courseId = BigInt(id);
-        return await db().$transaction(async (tx) => {
+        return await db().$transaction(
+          async (tx) => {
           if (companyId) {
             const current = await tx.course.findUniqueOrThrow({
               where: { course_id: courseId },
@@ -597,7 +665,7 @@ export const createCourseRepository = (client?: DatabaseClient) => {
           });
 
           return { courseId: id, outcome: "DELETED" as const };
-        });
+        }, { timeout: 20000 });
       });
     },
   };

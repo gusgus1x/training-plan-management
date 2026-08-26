@@ -27,6 +27,24 @@ const arrayString = (input: InputObject, field: string): string[] => {
   return value.filter(item => typeof item === "string");
 };
 
+const parseTargetOrgScopes = (input: InputObject): CreateCourseInput["targetOrgScopes"] => {
+  const value = input.targetOrgScopes;
+  if (!Array.isArray(value)) return undefined;
+  const scopes: NonNullable<CreateCourseInput["targetOrgScopes"]> = [];
+  for (const item of value) {
+    if (typeof item === "object" && item !== null) {
+      const obj = item as Record<string, unknown>;
+      scopes.push({
+        functionId: typeof obj.functionId === "string" && obj.functionId ? obj.functionId : null,
+        divisionId: typeof obj.divisionId === "string" && obj.divisionId ? obj.divisionId : null,
+        departmentId: typeof obj.departmentId === "string" && obj.departmentId ? obj.departmentId : null,
+        sectionId: typeof obj.sectionId === "string" && obj.sectionId ? obj.sectionId : null,
+      });
+    }
+  }
+  return scopes.length > 0 ? scopes : undefined;
+};
+
 export const parseCreateCourse = (input: InputObject): CreateCourseInput => ({
   courseNameTh: readRequiredString(input, "courseNameTh", { maxLength: 255 }),
   courseNameEn: readOptionalString(input, "courseNameEn", { maxLength: 255 }) || "",
@@ -55,6 +73,7 @@ export const parseCreateCourse = (input: InputObject): CreateCourseInput => ({
   divisionId: readOptionalString(input, "divisionId"),
   departmentId: readOptionalString(input, "departmentId"),
   sectionId: readOptionalString(input, "sectionId"),
+  targetOrgScopes: parseTargetOrgScopes(input),
   targetCompanies: (() => {
     const companies = arrayString(input, "targetCompanies");
     if (companies.length === 0) throw invalid("targetCompanies", "Select at least one company");
@@ -94,6 +113,7 @@ export const parseUpdateCourse = (input: InputObject): UpdateCourseInput => {
   if (hasOwn(input, "divisionId")) update.divisionId = readOptionalString(input, "divisionId");
   if (hasOwn(input, "departmentId")) update.departmentId = readOptionalString(input, "departmentId");
   if (hasOwn(input, "sectionId")) update.sectionId = readOptionalString(input, "sectionId");
+  if (hasOwn(input, "targetOrgScopes")) update.targetOrgScopes = parseTargetOrgScopes(input);
   if (hasOwn(input, "targetCompanies")) {
     const companies = arrayString(input, "targetCompanies");
     if (companies.length === 0) throw invalid("targetCompanies", "Select at least one company");

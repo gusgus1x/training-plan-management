@@ -26,6 +26,7 @@ import { useNotice } from "../../../NoticeDialog";
 import { useToast } from "../../../ToastHost";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import TypewriterLoader from "../../../TypewriterLoader";
+import SearchableSelect from "../../../SearchableSelect";
 import styles from "./TrainingRolling.module.css";
 
 export const trainingRollingModule = {
@@ -348,6 +349,7 @@ export default function TrainingRolling() {
   }, []);
 
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
+  const isCenterUser = user?.roleCode === "HRD_CENTER";
 
   const oapSources = useMemo(
     () =>
@@ -360,10 +362,18 @@ export default function TrainingRolling() {
               plan.ownerCompany === userCompanyCode
             );
           }
+          if (isCenterUser) {
+            return (
+              plan.owner === "CENTER" ||
+              plan.ownerCompany === "CENTER" ||
+              plan.ownerCompany === "HRD Center" ||
+              !plan.ownerCompany
+            );
+          }
           return isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode);
         },
       ),
-    [oapPlans, user?.roleCode, userCompanyCode, isFactoryUser],
+    [oapPlans, user?.roleCode, userCompanyCode, isFactoryUser, isCenterUser],
   );
   const selectedOap = oapSources.find((source) => source.id === form.oapId) ?? null;
   const scopedRollingPlans = useMemo(
@@ -1052,18 +1062,20 @@ export default function TrainingRolling() {
             <div className={styles.formGrid}>
               <label className={styles.fullField}>
                 <span>Course Name <span className={styles.required}>*</span></span>
-                <select value={form.oapId} onChange={(event) => updateOap(event.target.value)}>
-                  <option value="">Select course first</option>
-                  {oapSources.map((source) => {
+                <SearchableSelect
+                  options={oapSources.map((source) => {
                     const tag = source.course.courseGroup || source.course.courseType;
-                    return (
-                      <option key={source.id} value={source.id} translate="no">
-                        [{source.course.courseCode}] {getCourseDisplayName(source.course)}
-                        {tag ? ` • ${tag}` : ""} (Plan: {source.participants} pax, {source.hours} hrs)
-                      </option>
-                    );
+                    return {
+                      value: source.id,
+                      label: `[${source.course.courseCode}] ${getCourseDisplayName(source.course)}`,
+                      secondaryLabel: `แผน OAP #${source.id}: ${source.participants} คน • ${source.hours} ชม. • ${source.ownerCompany || source.owner}`,
+                      badge: tag || undefined,
+                    };
                   })}
-                </select>
+                  value={form.oapId}
+                  onChange={(oapId) => updateOap(oapId)}
+                  placeholder="🔍 พิมพ์เพื่อค้นหาหลักสูตร/แผน OAP... / Search course or OAP plan..."
+                />
               </label>
 
               <div className={`${styles.fullField} ${styles.sessionSection}`}>
