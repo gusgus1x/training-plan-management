@@ -1989,6 +1989,84 @@
   white-space: nowrap;
 }
 
+@keyframes pulseYellowDot {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.8);
+    opacity: 0.8;
+  }
+  60% {
+    transform: scale(1.25);
+    box-shadow: 0 0 0 7px rgba(234, 179, 8, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(234, 179, 8, 0);
+    opacity: 0.8;
+  }
+}
+
+@keyframes pulseBlueDot {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.8);
+    opacity: 0.8;
+  }
+  60% {
+    transform: scale(1.25);
+    box-shadow: 0 0 0 7px rgba(59, 130, 246, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    opacity: 0.8;
+  }
+}
+
+.glowingDotYellow {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #eab308;
+  box-shadow: 0 0 8px #eab308;
+  animation: pulseYellowDot 1.4s infinite ease-in-out;
+  flex-shrink: 0;
+}
+
+.glowingDotBlue {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  box-shadow: 0 0 8px #3b82f6;
+  animation: pulseBlueDot 1.4s infinite ease-in-out;
+  flex-shrink: 0;
+}
+
+.glowingDotGreen {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+  flex-shrink: 0;
+}
+
+.glowingDotRed {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+  flex-shrink: 0;
+}
+
 .addedBtn {
   opacity: 0.75;
   cursor: not-allowed !important;

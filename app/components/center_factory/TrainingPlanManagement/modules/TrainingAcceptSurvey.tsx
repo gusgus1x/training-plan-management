@@ -451,20 +451,36 @@ function PaginatedEmployeeGrid({
             let isBtnDisabled = false;
 
             if (isDraft) {
-              statusBadge = <span className={styles.badgeDraft}>🟡 ดราฟ</span>;
+              statusBadge = (
+                <span className={styles.badgeDraft}>
+                  <span className={styles.glowingDotYellow}></span> ดราฟ
+                </span>
+              );
               buttonLabel = "✓ ในดราฟแล้ว";
               isBtnDisabled = true;
             } else if (enrollment) {
               if (enrollment.status === "Pending Approval") {
-                statusBadge = <span className={styles.badgePending}>⏳ รออนุมัติ</span>;
+                statusBadge = (
+                  <span className={styles.badgePending}>
+                    <span className={styles.glowingDotBlue}></span> รออนุมัติ
+                  </span>
+                );
                 buttonLabel = "✓ รออนุมัติ";
                 isBtnDisabled = true;
               } else if (enrollment.status === "Factory Approved" || enrollment.status === "Center Approved") {
-                statusBadge = <span className={styles.badgeApproved}>🟢 อนุมัติแล้ว</span>;
+                statusBadge = (
+                  <span className={styles.badgeApproved}>
+                    <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
+                  </span>
+                );
                 buttonLabel = "✓ อนุมัติแล้ว";
                 isBtnDisabled = true;
               } else if (enrollment.status === "Rejected") {
-                statusBadge = <span className={styles.badgeRejected}>🔴 ถูกปฏิเสธ</span>;
+                statusBadge = (
+                  <span className={styles.badgeRejected}>
+                    <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
+                  </span>
+                );
                 buttonLabel = "+ เลือกใหม่";
                 isBtnDisabled = false;
               }
@@ -1817,8 +1833,8 @@ export default function TrainingAcceptSurvey() {
               </div>
               <div className={styles.participantActions}>
                 {draftSubmittedEmployees.length > 0 ? (
-                  <span style={{ color: "#eab308", fontWeight: 700, fontSize: "0.82rem" }}>
-                    🟡 {draftSubmittedEmployees.length} คนยังไม่ได้ส่ง
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#eab308", fontWeight: 700, fontSize: "0.82rem" }}>
+                    <span className={styles.glowingDotYellow}></span> {draftSubmittedEmployees.length} คนยังไม่ได้ส่ง
                   </span>
                 ) : (
                   <span>{submittedToCenterCandidates.length} submitted</span>
@@ -1865,6 +1881,7 @@ export default function TrainingAcceptSurvey() {
                   <span>จัดการ</span>
                   <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
                     <span>รหัสพนักงาน</span>
+                    <span>สถานะ</span>
                     <span>คำนำหน้า</span>
                     <span>ชื่อ</span>
                     <span>นามสกุล</span>
@@ -1907,6 +1924,27 @@ export default function TrainingAcceptSurvey() {
                     </button>
                     <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
                       <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.employeeCode}>{candidate.employeeCode}</span>
+                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
+                        {candidate.isDraft ? (
+                          <span className={styles.badgeDraft}>
+                            <span className={styles.glowingDotYellow}></span> ดราฟ
+                          </span>
+                        ) : candidate.status === "Pending Approval" ? (
+                          <span className={styles.badgePending}>
+                            <span className={styles.glowingDotBlue}></span> รออนุมัติ
+                          </span>
+                        ) : candidate.status === "Center Approved" || candidate.status === "Factory Approved" ? (
+                          <span className={styles.badgeApproved}>
+                            <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
+                          </span>
+                        ) : candidate.status === "Rejected" ? (
+                          <span className={styles.badgeRejected}>
+                            <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
+                          </span>
+                        ) : (
+                          <span>{candidate.status}</span>
+                        )}
+                      </span>
                       <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
                       <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.firstName}>{nameProfile.firstName}</span>
                       <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.lastName}>{nameProfile.lastName}</span>
