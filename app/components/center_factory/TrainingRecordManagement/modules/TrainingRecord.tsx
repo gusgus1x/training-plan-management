@@ -607,6 +607,8 @@ export default function TrainingRecord() {
   const [addAttendeeMessage, setAddAttendeeMessage] = useState("");
   const [masterEmployees, setMasterEmployees] = useState<EmployeeRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [attendeeSearchQuery, setAttendeeSearchQuery] = useState("");
+  const [selectedAttendeeCompanyFilter, setSelectedAttendeeCompanyFilter] = useState("ALL");
 
   useEffect(() => {
     let active = true;
@@ -805,6 +807,23 @@ export default function TrainingRecord() {
         ),
       )
     : [];
+
+  const filteredCourseAttendees = useMemo(() => {
+    if (!visibleCourseAttendees) return [];
+    return visibleCourseAttendees.filter((attendee) => {
+      const matchCompany =
+        selectedAttendeeCompanyFilter === "ALL" ||
+        attendee.company === selectedAttendeeCompanyFilter;
+      const query = attendeeSearchQuery.trim().toLowerCase();
+      const matchQuery =
+        !query ||
+        attendee.name.toLowerCase().includes(query) ||
+        attendee.employeeCode.toLowerCase().includes(query) ||
+        attendee.department.toLowerCase().includes(query) ||
+        (attendee.position && attendee.position.toLowerCase().includes(query));
+      return matchCompany && matchQuery;
+    });
+  }, [visibleCourseAttendees, selectedAttendeeCompanyFilter, attendeeSearchQuery]);
 
   const selectedUploadedRows = selectedCourse
     ? savedRecordRows.filter(
@@ -1525,114 +1544,167 @@ export default function TrainingRecord() {
             ) : null}
           </section>
 
-          <section className={styles.evaluationDownloadPanel}>
+          {/* Executive Actual Attendees Workspace */}
+          <section className={styles.evaluationDownloadPanel} aria-label="Actual attendees list">
             <div className={styles.panelHeader}>
               <div>
-                <p className={styles.kicker}>Actual Attendees</p>
-                <h3>Evaluation Download & Per-Person Cost</h3>
+                <p className={styles.kicker}>Confirmed Attendees Workspace</p>
+                <h3>👥 รายชื่อผู้เข้าอบรมจริง & ผลการประเมิน (Confirmed Attendees & Evaluation)</h3>
               </div>
-              <button type="button" onClick={() => handleDownload("All evaluation forms")}>
-                Download All Forms
-              </button>
+              <div className={styles.attendeeHeaderActions}>
+                <span className={styles.attendeeCountChip}>
+                  รวม {visibleCourseAttendees.length} คน ({attendeesByCompany.length} บริษัท)
+                </span>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => handleDownload("All evaluation forms")}
+                >
+                  📥 Download All Forms (ZIP)
+                </button>
+              </div>
             </div>
 
-            <div className={styles.companyAccordionList} aria-label="Actual attendees by company">
-              {attendeesByCompany.map(([company, attendees], index) => (
-                <details className={styles.companyAccordion} key={company} open={index === 0}>
-                  <summary>
-                    <div>
-                      <span>{company}</span>
-                      <strong>{attendees.length} actual attendees</strong>
-                      <span className={styles.companyAllocatedCostLabel}>
-                        Total Allocated: THB {formatNumber(attendees.length * selectedCostPerPerson)}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        handleDownload(`${company} evaluation forms`);
-                      }}
-                    >
-                      Download Company Forms
-                    </button>
-                  </summary>
+            {/* Filter Toolbar: Search & Company Filter Chips */}
+            <div className={styles.attendeeFilterToolbar}>
+              <div className={styles.companyFilterChips}>
+                <button
+                  type="button"
+                  className={
+                    selectedAttendeeCompanyFilter === "ALL"
+                      ? styles.activeFilterChip
+                      : styles.filterChip
+                  }
+                  onClick={() => setSelectedAttendeeCompanyFilter("ALL")}
+                >
+                  ทุกบริษัท ({visibleCourseAttendees.length})
+                </button>
+                {attendeesByCompany.map(([company, atts]) => (
+                  <button
+                    key={company}
+                    type="button"
+                    className={
+                      selectedAttendeeCompanyFilter === company
+                        ? styles.activeFilterChip
+                        : styles.filterChip
+                    }
+                    onClick={() => setSelectedAttendeeCompanyFilter(company)}
+                  >
+                    {company} ({atts.length})
+                  </button>
+                ))}
+              </div>
 
-                  <div className={styles.companyAttendeeTableWrap}>
-                    <table className={styles.attendeeEmployeeTable}>
-                      <thead>
-                        <tr>
-                          <th>Employee Code</th>
-                          <th>Employee Name</th>
-                          <th>Company / Dept</th>
-                          <th>Position</th>
-                          <th>Pre / Post Test</th>
-                          <th>Evaluation Form</th>
-                          <th>Allocated Cost</th>
-                          <th className={styles.actionHeader}>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {attendees.map((attendee) => (
-                          <tr key={attendee.id}>
-                            <td>
-                              <span className={styles.attendeeCodePill}>{attendee.employeeCode}</span>
-                            </td>
-                            <td>
-                              <strong className={styles.attendeeNameText}>{attendee.name}</strong>
-                            </td>
-                            <td>
-                              <div className={styles.deptCell}>
-                                <span className={styles.companyPill}>{attendee.company}</span>
-                                <span className={styles.attendeeDeptText}>{attendee.department}</span>
+              <div className={styles.attendeeSearchBox}>
+                <span className={styles.searchIcon}>🔍</span>
+                <input
+                  type="text"
+                  placeholder="ค้นหาชื่อ, รหัสพนักงาน, แผนก..."
+                  value={attendeeSearchQuery}
+                  onChange={(e) => setAttendeeSearchQuery(e.target.value)}
+                />
+                {attendeeSearchQuery ? (
+                  <button
+                    type="button"
+                    className={styles.clearSearchBtn}
+                    onClick={() => setAttendeeSearchQuery("")}
+                  >
+                    ✖
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Modern Table for Filtered Attendees */}
+            <div className={styles.attendeeTableCardWrap}>
+              {filteredCourseAttendees.length > 0 ? (
+                <table className={styles.attendeeEmployeeTable}>
+                  <thead>
+                    <tr>
+                      <th>พนักงาน (Employee)</th>
+                      <th>บริษัท & แผนก (Company / Dept)</th>
+                      <th>ตำแหน่ง (Position)</th>
+                      <th>ผล Pre / Post Test</th>
+                      <th>สถานะแบบประเมิน</th>
+                      <th>งบปันส่วนต่อคน</th>
+                      <th>จัดการ / Download</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCourseAttendees.map((attendee) => {
+                      const initials = attendee.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .substring(0, 2)
+                        .toUpperCase();
+
+                      return (
+                        <tr key={attendee.id}>
+                          <td>
+                            <div className={styles.attendeeUserCell}>
+                              <div className={styles.avatarCircle}>{initials || "EMP"}</div>
+                              <div>
+                                <strong className={styles.attendeeNameText}>{attendee.name}</strong>
+                                <span className={styles.attendeeCodeTag}>{attendee.employeeCode}</span>
                               </div>
-                            </td>
-                            <td>
-                              <span className={styles.positionText}>{attendee.position || "-"}</span>
-                            </td>
-                            <td>
-                              <span
-                                className={`${styles.statusPill} ${
-                                  attendee.prePost === "Passed"
-                                    ? styles.statusPassed
-                                    : styles.statusFailed
-                                }`}
-                              >
-                                {attendee.prePost}
-                              </span>
-                            </td>
-                            <td>
-                              <span
-                                className={`${styles.statusPill} ${
-                                  attendee.evaluation === "Done"
-                                    ? styles.statusPassed
-                                    : styles.statusPendingevidence
-                                }`}
-                              >
-                                {attendee.evaluation}
-                              </span>
-                            </td>
-                            <td>
-                              <span className={styles.attendeeCostBadge}>
-                                THB {formatNumber(selectedCostPerPerson)}
-                              </span>
-                            </td>
-                            <td>
-                              <button
-                                className={styles.downloadFormButton}
-                                type="button"
-                                onClick={() => handleDownload(`${attendee.name} evaluation form`)}
-                              >
-                                Download Form
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </details>
-              ))}
+                            </div>
+                          </td>
+                          <td>
+                            <div className={styles.deptCell}>
+                              <span className={styles.companyPillBadge}>{attendee.company}</span>
+                              <span className={styles.attendeeDeptText}>{attendee.department}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={styles.positionText}>{attendee.position || "-"}</span>
+                          </td>
+                          <td>
+                            <span
+                              className={
+                                attendee.prePost === "Passed"
+                                  ? styles.passBadge
+                                  : styles.failBadge
+                              }
+                            >
+                              {attendee.prePost === "Passed" ? "✓ ผ่านเกณฑ์" : "✕ ไม่ผ่าน"}
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              className={
+                                attendee.evaluation === "Done"
+                                  ? styles.evalDoneBadge
+                                  : styles.evalPendingBadge
+                              }
+                            >
+                              {attendee.evaluation === "Done" ? "📝 ทำแล้ว" : "⏳ รอดำเนินการ"}
+                            </span>
+                          </td>
+                          <td>
+                            <strong className={styles.attendeeCostBadge}>
+                              THB {formatNumber(selectedCostPerPerson)}
+                            </strong>
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className={styles.individualDownloadBtn}
+                              onClick={() => handleDownload(`Evaluation form for ${attendee.name}`)}
+                            >
+                              📄 Form PDF
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                <div className={styles.emptyAttendeeState}>
+                  <span>🔍 ไม่พบข้อมูลผู้เข้าอบรมตามเงื่อนไขค้นหา</span>
+                </div>
+              )}
             </div>
 
             {downloadMessage ? <p className={styles.downloadMessage}>{downloadMessage}</p> : null}

@@ -2805,6 +2805,229 @@
   font-weight: 900;
 }
 
+.attendeeHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.attendeeCountChip {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 999px;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 5px 12px;
+}
+
+.attendeeFilterToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 14px 0 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--ui-60-surface-soft);
+  border: 1px solid var(--ui-30-border);
+}
+
+.companyFilterChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.filterChip,
+.activeFilterChip {
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 140ms ease;
+  font-family: inherit;
+}
+
+.filterChip {
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-muted);
+}
+
+.filterChip:hover {
+  border-color: var(--ui-30-primary);
+  color: var(--ui-30-ink);
+}
+
+.activeFilterChip {
+  border: 1px solid var(--ui-30-primary);
+  background: var(--ui-30-primary);
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(46, 125, 50, 0.2);
+}
+
+.attendeeSearchBox {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 260px;
+}
+
+.attendeeSearchBox input {
+  width: 100%;
+  min-height: 38px;
+  padding: 6px 32px 6px 34px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 999px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font-size: 0.84rem;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 140ms ease;
+}
+
+.attendeeSearchBox input:focus {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px var(--ui-30-primary-soft);
+}
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  font-size: 0.88rem;
+  color: var(--ui-30-muted);
+  pointer-events: none;
+}
+
+.clearSearchBtn {
+  position: absolute;
+  right: 8px;
+  border: none;
+  background: transparent;
+  color: var(--ui-30-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.attendeeTableCardWrap {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 10px;
+  background: var(--ui-60-surface);
+  overflow-x: auto;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+}
+
+.attendeeUserCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatarCircle {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--ui-30-primary-soft);
+  border: 1px solid var(--ui-30-primary-border);
+  color: var(--ui-30-primary);
+  font-size: 0.76rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.attendeeCodeTag {
+  display: block;
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+.companyPillBadge {
+  display: inline-block;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 6px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 2px 7px;
+}
+
+.passBadge,
+.failBadge,
+.evalDoneBadge,
+.evalPendingBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+.passBadge {
+  border: 1px solid var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+}
+
+.failBadge {
+  border: 1px solid var(--ui-10-accent-border);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent);
+}
+
+.evalDoneBadge {
+  border: 1px solid rgba(25, 118, 210, 0.3);
+  background: rgba(25, 118, 210, 0.08);
+  color: #1976d2;
+}
+
+.evalPendingBadge {
+  border: 1px solid rgba(237, 108, 2, 0.3);
+  background: rgba(237, 108, 2, 0.08);
+  color: #ed6c02;
+}
+
+.individualDownloadBtn {
+  min-height: 32px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 0 10px;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.individualDownloadBtn:hover {
+  border-color: var(--ui-30-primary);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+}
+
+.emptyAttendeeState {
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--ui-30-muted);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
 .completedCourseHero button,
 .evaluationDownloadPanel .panelHeader button {
   min-height: 36px;
