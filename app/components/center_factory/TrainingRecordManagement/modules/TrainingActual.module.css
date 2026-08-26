@@ -26,7 +26,7 @@
 .panelKicker,
 .badge {
   margin: 0 0 6px;
-  color: #4f6f9f;
+  color: var(--ui-30-muted);
   font-size: 0.76rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -60,11 +60,14 @@
 .formGrid select,
 .formGrid textarea {
   border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--ui-60-surface);
-  padding: 10px 12px;
+  padding: 10px 14px;
   color: var(--ui-30-ink);
-  min-height: 40px;
+  font: inherit;
+  font-size: 0.94rem;
+  min-height: 42px;
+  outline: none;
 }
 
 .toolbar input {
@@ -110,8 +113,9 @@
 }
 
 .dataTable th {
-  color: #5d6c81;
-  font-size: 0.76rem;
+  color: var(--ui-30-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
   text-transform: uppercase;
   background: var(--ui-60-surface-soft);
 }
@@ -136,8 +140,8 @@
 .formGrid label {
   display: grid;
   gap: 6px;
-  color: var(--ui-30-text);
-  font-size: 0.82rem;
+  color: var(--ui-30-ink);
+  font-size: 0.92rem;
   font-weight: 700;
 }
 

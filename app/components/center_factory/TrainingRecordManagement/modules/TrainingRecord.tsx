@@ -30,6 +30,16 @@ type CompletedCourse = {
   source: "SYSTEM" | "UPLOAD";
   code: string;
   title: string;
+  titleEn?: string;
+  objective?: string;
+  learningContent?: string;
+  targetGroup?: string;
+  methodology?: string;
+  durationHours?: number | string;
+  validityMonths?: number | string;
+  courseType?: string;
+  courseGroup?: string;
+  instituteProvider?: string;
   date: string;
   batch?: string;
   time?: string;
@@ -565,12 +575,12 @@ const mapImportRowToUploadedRecord = (
 };
 
 const expenseItems = [
-  { key: "instructor", label: "Instructor" },
-  { key: "traveling", label: "Traveling" },
-  { key: "seminarRoom", label: "Seminar Room" },
-  { key: "accommodation", label: "Accommodation" },
-  { key: "material", label: "Material" },
-  { key: "foodBeverage", label: "Food & Beverage" },
+  { key: "instructor", label: "ค่าวิทยากร (Instructor)", icon: "👨‍🏫" },
+  { key: "foodBeverage", label: "ค่าอาหาร & เครื่องดื่ม (Food & Beverage)", icon: "🍱" },
+  { key: "material", label: "ค่าเอกสาร & อุปกรณ์ (Material)", icon: "📚" },
+  { key: "seminarRoom", label: "ค่าห้องอบรม & สถานที่ (Seminar Room)", icon: "🏢" },
+  { key: "traveling", label: "ค่าเดินทาง (Traveling)", icon: "🚗" },
+  { key: "accommodation", label: "ค่าที่พัก (Accommodation)", icon: "🏨" },
 ] as const;
 
 export default function TrainingRecord() {
@@ -597,6 +607,8 @@ export default function TrainingRecord() {
   const [addAttendeeMessage, setAddAttendeeMessage] = useState("");
   const [masterEmployees, setMasterEmployees] = useState<EmployeeRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [attendeeSearchQuery, setAttendeeSearchQuery] = useState("");
+  const [selectedAttendeeCompanyFilter, setSelectedAttendeeCompanyFilter] = useState("ALL");
 
   useEffect(() => {
     let active = true;
@@ -622,6 +634,16 @@ export default function TrainingRecord() {
           source: "SYSTEM",
           code: rollingPlan?.course.code ?? "",
           title: rollingPlan?.course.name ?? "",
+          titleEn: (rollingPlan?.course as any)?.courseNameEn ?? "",
+          objective: rollingPlan?.course.objective ?? "",
+          learningContent: rollingPlan?.course.learningContent ?? "",
+          targetGroup: rollingPlan?.course.targetGroup ?? "",
+          methodology: rollingPlan?.course.methodology ?? "",
+          durationHours: rollingPlan?.hours ?? (rollingPlan?.course as any)?.durationHours ?? 6,
+          validityMonths: rollingPlan?.course.lifeCycleMonth ?? 12,
+          courseType: rollingPlan?.course.courseType ?? "",
+          courseGroup: rollingPlan?.course.courseGroup ?? "",
+          instituteProvider: rollingPlan?.provider ?? (rollingPlan?.course as any)?.instituteProvider ?? "",
           date: rollingPlan?.trainingDate ?? "",
           batch: rollingPlan?.batch,
           time: rollingPlan ? `${rollingPlan.startTime} - ${rollingPlan.endTime}` : undefined,
@@ -785,6 +807,23 @@ export default function TrainingRecord() {
         ),
       )
     : [];
+
+  const filteredCourseAttendees = useMemo(() => {
+    if (!visibleCourseAttendees) return [];
+    return visibleCourseAttendees.filter((attendee) => {
+      const matchCompany =
+        selectedAttendeeCompanyFilter === "ALL" ||
+        attendee.company === selectedAttendeeCompanyFilter;
+      const query = attendeeSearchQuery.trim().toLowerCase();
+      const matchQuery =
+        !query ||
+        attendee.name.toLowerCase().includes(query) ||
+        attendee.employeeCode.toLowerCase().includes(query) ||
+        attendee.department.toLowerCase().includes(query) ||
+        (attendee.position && attendee.position.toLowerCase().includes(query));
+      return matchCompany && matchQuery;
+    });
+  }, [visibleCourseAttendees, selectedAttendeeCompanyFilter, attendeeSearchQuery]);
 
   const selectedUploadedRows = selectedCourse
     ? savedRecordRows.filter(
@@ -973,76 +1012,265 @@ export default function TrainingRecord() {
     return (
       <section className={styles.completedRecordWorkspace}>
         <div className={styles.completedCourseDetail}>
+          {/* Executive Header Banner */}
           <section className={styles.completedCourseHero}>
-            <div>
-              <p className={styles.kicker}>Course Record</p>
+            <div className={styles.heroMainInfo}>
+              <div className={styles.heroBadgeRow}>
+                <b
+                  className={
+                    selectedCourse.source === "UPLOAD"
+                      ? styles.uploadSourceBadge
+                      : styles.systemSourceBadge
+                  }
+                >
+                  {selectedCourse.source === "UPLOAD" ? "Excel Uploaded Record" : "System Verified Record"}
+                </b>
+                <span className={styles.heroOwnerTag}>
+                  Scope: {selectedCourse.owner === "CENTER" ? "Center Standard" : `${selectedCourse.ownerCompany || selectedCourse.company} Factory`}
+                </span>
+                {selectedCourse.batch ? (
+                  <span className={styles.heroBatchTag}>Batch {selectedCourse.batch}</span>
+                ) : null}
+              </div>
               <h3>{selectedCourse.title}</h3>
-              <span>
-                {selectedCourse.code} / Batch {selectedCourse.batch ?? "-"} / Training Session /{" "}
-                {selectedCourse.date} / {selectedCourse.time ?? "-"} /{" "}
-                {selectedCourse.room} / {selectedCourse.instructor}
-              </span>
+              {selectedCourse.titleEn ? (
+                <p className={styles.heroSubTitle}>{selectedCourse.titleEn}</p>
+              ) : null}
+              <div className={styles.heroCodeMeta}>
+                <span>รหัสคอร์ส: <strong>{selectedCourse.code}</strong></span>
+                <span>•</span>
+                <span>บริษัท/หน่วยงาน: <strong>{selectedCourse.company || "All Companies"}</strong></span>
+              </div>
             </div>
-            <b
-              className={
-                selectedCourse.source === "UPLOAD"
-                  ? styles.uploadSourceBadge
-                  : styles.systemSourceBadge
-              }
-            >
-              {selectedCourse.source === "UPLOAD" ? "From Upload" : "From System"}
-            </b>
-            <button type="button" onClick={() => handleExportCourseSummary()}>
-              Export Excel
-            </button>
+
+            <div className={styles.heroActions}>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => handleExportCourseSummary()}
+              >
+                📥 Export Excel Summary
+              </button>
+              <button
+                type="button"
+                className={styles.closeButton}
+                onClick={() => setIsCourseDetailOpen(false)}
+              >
+                ✖ ปิดหน้ารายละเอียด
+              </button>
+            </div>
           </section>
 
+          {/* Quick Schedule & Venue Card */}
+          <div className={styles.heroMetaCardGrid}>
+            <div className={styles.metaMiniCard}>
+              <div className={styles.metaMiniIcon}>📅</div>
+              <div>
+                <span>วันที่ & เวลาอบรม</span>
+                <strong>{selectedCourse.date || "-"} ({selectedCourse.time || "09:00 - 16:00"})</strong>
+              </div>
+            </div>
+            <div className={styles.metaMiniCard}>
+              <div className={styles.metaMiniIcon}>📍</div>
+              <div>
+                <span>สถานที่ / ห้องอบรม</span>
+                <strong>{selectedCourse.room || "-"}</strong>
+              </div>
+            </div>
+            <div className={styles.metaMiniCard}>
+              <div className={styles.metaMiniIcon}>👨‍🏫</div>
+              <div>
+                <span>วิทยากรผู้สอน</span>
+                <strong>{selectedCourse.instructor || "-"}</strong>
+              </div>
+            </div>
+            <div className={styles.metaMiniCard}>
+              <div className={styles.metaMiniIcon}>⏱️</div>
+              <div>
+                <span>ระยะเวลาอบรม & สะสมผล</span>
+                <strong>{selectedCourse.durationHours ?? 6} ชม. / สะสม {selectedCourse.validityMonths ?? 12} เดือน</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Training Course Master Details Panel */}
+          <section className={styles.courseMasterDetailPanel}>
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.kicker}>Course Master Specifications</p>
+                <h3>รายละเอียดการอบรมหลักสูตร (Training Course Master Details)</h3>
+              </div>
+              <span>Master Specs</span>
+            </div>
+
+            <div className={styles.masterSpecGrid}>
+              <article className={styles.masterSpecCard}>
+                <div className={styles.specIcon}>💡</div>
+                <div className={styles.specContent}>
+                  <span>วัตถุประสงค์ของการอบรม (Objective)</span>
+                  <p>
+                    {selectedCourse.objective ||
+                      "พัฒนาทักษะความรู้ มาตรฐานการปฏิบัติงาน และเพิ่มประสิทธิภาพในการปฏิบัติงานจริงตามเกณฑ์มาตรฐานองค์กร"}
+                  </p>
+                </div>
+              </article>
+
+              <article className={styles.masterSpecCard}>
+                <div className={styles.specIcon}>📚</div>
+                <div className={styles.specContent}>
+                  <span>เนื้อหาหลักสูตร (Learning Content)</span>
+                  <p>
+                    {selectedCourse.learningContent ||
+                      "ความรู้พื้นฐาน ขั้นตอนการทำงาน มาตรฐานความปลอดภัย และแนวทางการแก้ไขปัญหาหน้างานในสายงาน"}
+                  </p>
+                </div>
+              </article>
+
+              <article className={styles.masterSpecCard}>
+                <div className={styles.specIcon}>🎯</div>
+                <div className={styles.specContent}>
+                  <span>กลุ่มเป้าหมาย (Target Audience)</span>
+                  <p>
+                    {selectedCourse.targetGroup ||
+                      "พนักงานผู้ปฏิบัติงาน หัวหน้างาน และบุคลากรที่เกี่ยวข้องในแผนก"}
+                  </p>
+                </div>
+              </article>
+
+              <article className={styles.masterSpecCard}>
+                <div className={styles.specIcon}>🛠️</div>
+                <div className={styles.specContent}>
+                  <span>รูปแบบการอบรม (Methodology)</span>
+                  <p>
+                    {selectedCourse.methodology ||
+                      "การบรรยายเชิงปฏิบัติการ (Lecture & Workshop) พร้อมการประเมินผลหลังการอบรม"}
+                  </p>
+                </div>
+              </article>
+            </div>
+
+            <div className={styles.masterMetaChips}>
+              <div className={styles.metaChip}>
+                <span>หมวดหมู่หลักสูตร:</span>
+                <strong>{selectedCourse.courseType || "Functional Competency"}</strong>
+              </div>
+              <div className={styles.metaChip}>
+                <span>กลุ่มหลักสูตร:</span>
+                <strong>{selectedCourse.courseGroup || "มาตรฐานการปฏิบัติงาน"}</strong>
+              </div>
+              <div className={styles.metaChip}>
+                <span>สถาบัน/ผู้จัด:</span>
+                <strong>{selectedCourse.instituteProvider || "ภายในองค์กร (Internal)"}</strong>
+              </div>
+              <div className={styles.metaChip}>
+                <span>ระยะเวลา:</span>
+                <strong>{selectedCourse.durationHours ?? 6} ชั่วโมง</strong>
+              </div>
+              <div className={styles.metaChip}>
+                <span>อายุการสะสมผล:</span>
+                <strong>{selectedCourse.validityMonths ?? 12} เดือน</strong>
+              </div>
+            </div>
+          </section>
+
+          {/* Executive Actual Cost Summary & Breakdown Panel */}
           <section className={styles.costBreakdownPanel} aria-label="Actual cost breakdown">
             <div className={styles.panelHeader}>
               <div>
-                <p className={styles.kicker}>Actual Cost Summary</p>
-                <h3>Cost Breakdown & Per-Person Calculation</h3>
+                <p className={styles.kicker}>Financial Summary & Allocation</p>
+                <h3>สรุปงบประมาณค่าใช้จ่ายจริง & การปันส่วน (Actual Cost & Allocation)</h3>
               </div>
-              <span>Total: THB {formatNumber(selectedActualCost)}</span>
+              <span className={styles.totalBadge}>
+                ยอดรวมสุทธิ: <strong>THB {formatNumber(selectedActualCost)}</strong>
+              </span>
             </div>
 
+            {/* 3 Executive High-Impact Cost Cards */}
             <div className={styles.costHighlightGrid}>
               <article className={styles.costHighlightCard}>
-                <span>Total Actual Cost</span>
-                <strong>THB {formatNumber(selectedActualCost)}</strong>
+                <div className={styles.costCardHeader}>
+                  <div className={styles.costIconBox}>💰</div>
+                  <span>Total Actual Cost</span>
+                </div>
+                <strong className={styles.costValueText}>THB {formatNumber(selectedActualCost)}</strong>
+                <p className={styles.costSubText}>ค่าใช้จ่ายรวมจริงทุกหมวดรายการ</p>
               </article>
+
               <article className={styles.costHighlightCard}>
-                <span>Actual Attendees</span>
-                <strong>{selectedCourse.actualAttendees} persons</strong>
+                <div className={styles.costCardHeader}>
+                  <div className={styles.costIconBox}>👥</div>
+                  <span>Actual Attendees</span>
+                </div>
+                <strong className={styles.costValueText}>
+                  {selectedCourse.actualAttendees} <small>คน</small>
+                </strong>
+                <p className={styles.costSubText}>
+                  จากผู้ลงทะเบียน {selectedCourse.registeredAttendees} คน (เข้าเรียน{" "}
+                  {selectedCourse.registeredAttendees > 0
+                    ? Math.round(
+                        (selectedCourse.actualAttendees / selectedCourse.registeredAttendees) *
+                          100,
+                      )
+                    : 100}
+                  %)
+                </p>
               </article>
+
               <article className={`${styles.costHighlightCard} ${styles.costHighlightPrimary}`}>
-                <span>Cost / Person (Actual)</span>
-                <strong>THB {formatNumber(selectedCostPerPerson)}</strong>
+                <div className={styles.costCardHeader}>
+                  <div className={styles.costIconBox}>📊</div>
+                  <span>Cost / Person (Actual)</span>
+                </div>
+                <strong className={styles.costValueTextPrimary}>
+                  THB {formatNumber(selectedCostPerPerson)}
+                </strong>
+                <p className={styles.costSubTextPrimary}>เฉลี่ยค่าใช้จ่ายจริงต่อผู้เรียน 1 คน</p>
               </article>
             </div>
 
-            <div className={styles.panelHeader}>
+            {/* Expense Items breakdown with Icons & Progress Share */}
+            <div className={styles.panelHeader} style={{ marginTop: "20px" }}>
               <div>
-                <p className={styles.kicker}>Expense Items</p>
-                <h3>Training Cost Breakdown</h3>
+                <p className={styles.kicker}>Itemized Expenses</p>
+                <h3>แจกแจงหมวดหมู่ค่าใช้จ่ายจริง (Cost Breakdown Items)</h3>
               </div>
             </div>
 
             <div className={styles.costBreakdownGrid}>
-              {expenseItems.map((item) => (
-                <article key={item.key}>
-                  <span>{item.label}</span>
-                  <strong>THB {formatNumber(selectedCourse.actualCost[item.key])}</strong>
-                </article>
-              ))}
+              {expenseItems.map((item) => {
+                const amount = selectedCourse.actualCost[item.key] || 0;
+                const percentShare =
+                  selectedActualCost > 0 ? Math.round((amount / selectedActualCost) * 100) : 0;
+                return (
+                  <article key={item.key} className={styles.expenseItemCard}>
+                    <div className={styles.expenseItemTop}>
+                      <span className={styles.expenseIcon}>{item.icon}</span>
+                      <div className={styles.expenseInfo}>
+                        <span className={styles.expenseLabel}>{item.label}</span>
+                        <strong className={styles.expenseAmount}>
+                          THB {formatNumber(amount)}
+                        </strong>
+                      </div>
+                    </div>
+                    <div className={styles.expenseProgressWrap}>
+                      <div
+                        className={styles.expenseProgressBar}
+                        style={{ width: `${percentShare}%` }}
+                      />
+                    </div>
+                    <span className={styles.expenseShareTag}>{percentShare}% ของงบรวม</span>
+                  </article>
+                );
+              })}
             </div>
 
+            {/* Company Cost Allocation Table */}
             {selectedCompanyCostBreakdown.length > 0 ? (
               <div className={styles.companyCostAllocationBox}>
                 <div className={styles.panelHeader}>
                   <div>
                     <p className={styles.kicker}>Company Cost Allocation</p>
-                    <h3>Actual Cost Shared by Company</h3>
+                    <h3>การปันส่วนค่าใช้จ่ายจริงตามบริษัท (Actual Cost Shared by Company)</h3>
                   </div>
                 </div>
 
@@ -1050,20 +1278,36 @@ export default function TrainingRecord() {
                   <table className={styles.companyCostTable}>
                     <thead>
                       <tr>
-                        <th>Company</th>
-                        <th>Actual Attendees</th>
-                        <th>Share %</th>
-                        <th>Allocated Actual Cost</th>
+                        <th>บริษัท (Company)</th>
+                        <th>ผู้เข้าอบรมจริง</th>
+                        <th>สัดส่วน (Share %)</th>
+                        <th>งบปันส่วนค่าใช้จ่ายจริง (Allocated Actual Cost)</th>
                       </tr>
                     </thead>
                     <tbody>
                       {selectedCompanyCostBreakdown.map((item) => (
                         <tr key={item.company}>
-                          <td><strong>{item.company}</strong></td>
-                          <td>{item.count} persons</td>
-                          <td>{item.percentage}%</td>
                           <td>
-                            <strong>THB {formatNumber(item.totalCost)}</strong>
+                            <strong className={styles.companyBadgePill}>{item.company}</strong>
+                          </td>
+                          <td>
+                            <strong>{item.count}</strong> คน
+                          </td>
+                          <td>
+                            <div className={styles.sharePercentCell}>
+                              <div className={styles.sharePercentBarWrap}>
+                                <div
+                                  className={styles.sharePercentBar}
+                                  style={{ width: `${item.percentage}%` }}
+                                />
+                              </div>
+                              <span>{item.percentage}%</span>
+                            </div>
+                          </td>
+                          <td>
+                            <strong className={styles.allocatedCostText}>
+                              THB {formatNumber(item.totalCost)}
+                            </strong>
                           </td>
                         </tr>
                       ))}
@@ -1300,114 +1544,167 @@ export default function TrainingRecord() {
             ) : null}
           </section>
 
-          <section className={styles.evaluationDownloadPanel}>
+          {/* Executive Actual Attendees Workspace */}
+          <section className={styles.evaluationDownloadPanel} aria-label="Actual attendees list">
             <div className={styles.panelHeader}>
               <div>
-                <p className={styles.kicker}>Actual Attendees</p>
-                <h3>Evaluation Download & Per-Person Cost</h3>
+                <p className={styles.kicker}>Confirmed Attendees Workspace</p>
+                <h3>👥 รายชื่อผู้เข้าอบรมจริง & ผลการประเมิน (Confirmed Attendees & Evaluation)</h3>
               </div>
-              <button type="button" onClick={() => handleDownload("All evaluation forms")}>
-                Download All Forms
-              </button>
+              <div className={styles.attendeeHeaderActions}>
+                <span className={styles.attendeeCountChip}>
+                  รวม {visibleCourseAttendees.length} คน ({attendeesByCompany.length} บริษัท)
+                </span>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => handleDownload("All evaluation forms")}
+                >
+                  📥 Download All Forms (ZIP)
+                </button>
+              </div>
             </div>
 
-            <div className={styles.companyAccordionList} aria-label="Actual attendees by company">
-              {attendeesByCompany.map(([company, attendees], index) => (
-                <details className={styles.companyAccordion} key={company} open={index === 0}>
-                  <summary>
-                    <div>
-                      <span>{company}</span>
-                      <strong>{attendees.length} actual attendees</strong>
-                      <span className={styles.companyAllocatedCostLabel}>
-                        Total Allocated: THB {formatNumber(attendees.length * selectedCostPerPerson)}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.preventDefault();
-                        handleDownload(`${company} evaluation forms`);
-                      }}
-                    >
-                      Download Company Forms
-                    </button>
-                  </summary>
+            {/* Filter Toolbar: Search & Company Filter Chips */}
+            <div className={styles.attendeeFilterToolbar}>
+              <div className={styles.companyFilterChips}>
+                <button
+                  type="button"
+                  className={
+                    selectedAttendeeCompanyFilter === "ALL"
+                      ? styles.activeFilterChip
+                      : styles.filterChip
+                  }
+                  onClick={() => setSelectedAttendeeCompanyFilter("ALL")}
+                >
+                  ทุกบริษัท ({visibleCourseAttendees.length})
+                </button>
+                {attendeesByCompany.map(([company, atts]) => (
+                  <button
+                    key={company}
+                    type="button"
+                    className={
+                      selectedAttendeeCompanyFilter === company
+                        ? styles.activeFilterChip
+                        : styles.filterChip
+                    }
+                    onClick={() => setSelectedAttendeeCompanyFilter(company)}
+                  >
+                    {company} ({atts.length})
+                  </button>
+                ))}
+              </div>
 
-                  <div className={styles.companyAttendeeTableWrap}>
-                    <table className={styles.attendeeEmployeeTable}>
-                      <thead>
-                        <tr>
-                          <th>Employee Code</th>
-                          <th>Employee Name</th>
-                          <th>Company / Dept</th>
-                          <th>Position</th>
-                          <th>Pre / Post Test</th>
-                          <th>Evaluation Form</th>
-                          <th>Allocated Cost</th>
-                          <th className={styles.actionHeader}>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {attendees.map((attendee) => (
-                          <tr key={attendee.id}>
-                            <td>
-                              <span className={styles.attendeeCodePill}>{attendee.employeeCode}</span>
-                            </td>
-                            <td>
-                              <strong className={styles.attendeeNameText}>{attendee.name}</strong>
-                            </td>
-                            <td>
-                              <div className={styles.deptCell}>
-                                <span className={styles.companyPill}>{attendee.company}</span>
-                                <span className={styles.attendeeDeptText}>{attendee.department}</span>
+              <div className={styles.attendeeSearchBox}>
+                <span className={styles.searchIcon}>🔍</span>
+                <input
+                  type="text"
+                  placeholder="ค้นหาชื่อ, รหัสพนักงาน, แผนก..."
+                  value={attendeeSearchQuery}
+                  onChange={(e) => setAttendeeSearchQuery(e.target.value)}
+                />
+                {attendeeSearchQuery ? (
+                  <button
+                    type="button"
+                    className={styles.clearSearchBtn}
+                    onClick={() => setAttendeeSearchQuery("")}
+                  >
+                    ✖
+                  </button>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Modern Table for Filtered Attendees */}
+            <div className={styles.attendeeTableCardWrap}>
+              {filteredCourseAttendees.length > 0 ? (
+                <table className={styles.attendeeEmployeeTable}>
+                  <thead>
+                    <tr>
+                      <th>พนักงาน (Employee)</th>
+                      <th>บริษัท & แผนก (Company / Dept)</th>
+                      <th>ตำแหน่ง (Position)</th>
+                      <th>ผล Pre / Post Test</th>
+                      <th>สถานะแบบประเมิน</th>
+                      <th>งบปันส่วนต่อคน</th>
+                      <th>จัดการ / Download</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCourseAttendees.map((attendee) => {
+                      const initials = attendee.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .substring(0, 2)
+                        .toUpperCase();
+
+                      return (
+                        <tr key={attendee.id}>
+                          <td>
+                            <div className={styles.attendeeUserCell}>
+                              <div className={styles.avatarCircle}>{initials || "EMP"}</div>
+                              <div>
+                                <strong className={styles.attendeeNameText}>{attendee.name}</strong>
+                                <span className={styles.attendeeCodeTag}>{attendee.employeeCode}</span>
                               </div>
-                            </td>
-                            <td>
-                              <span className={styles.positionText}>{attendee.position || "-"}</span>
-                            </td>
-                            <td>
-                              <span
-                                className={`${styles.statusPill} ${
-                                  attendee.prePost === "Passed"
-                                    ? styles.statusPassed
-                                    : styles.statusFailed
-                                }`}
-                              >
-                                {attendee.prePost}
-                              </span>
-                            </td>
-                            <td>
-                              <span
-                                className={`${styles.statusPill} ${
-                                  attendee.evaluation === "Done"
-                                    ? styles.statusPassed
-                                    : styles.statusPendingevidence
-                                }`}
-                              >
-                                {attendee.evaluation}
-                              </span>
-                            </td>
-                            <td>
-                              <span className={styles.attendeeCostBadge}>
-                                THB {formatNumber(selectedCostPerPerson)}
-                              </span>
-                            </td>
-                            <td>
-                              <button
-                                className={styles.downloadFormButton}
-                                type="button"
-                                onClick={() => handleDownload(`${attendee.name} evaluation form`)}
-                              >
-                                Download Form
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </details>
-              ))}
+                            </div>
+                          </td>
+                          <td>
+                            <div className={styles.deptCell}>
+                              <span className={styles.companyPillBadge}>{attendee.company}</span>
+                              <span className={styles.attendeeDeptText}>{attendee.department}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={styles.positionText}>{attendee.position || "-"}</span>
+                          </td>
+                          <td>
+                            <span
+                              className={
+                                attendee.prePost === "Passed"
+                                  ? styles.passBadge
+                                  : styles.failBadge
+                              }
+                            >
+                              {attendee.prePost === "Passed" ? "✓ ผ่านเกณฑ์" : "✕ ไม่ผ่าน"}
+                            </span>
+                          </td>
+                          <td>
+                            <span
+                              className={
+                                attendee.evaluation === "Done"
+                                  ? styles.evalDoneBadge
+                                  : styles.evalPendingBadge
+                              }
+                            >
+                              {attendee.evaluation === "Done" ? "📝 ทำแล้ว" : "⏳ รอดำเนินการ"}
+                            </span>
+                          </td>
+                          <td>
+                            <strong className={styles.attendeeCostBadge}>
+                              THB {formatNumber(selectedCostPerPerson)}
+                            </strong>
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className={styles.individualDownloadBtn}
+                              onClick={() => handleDownload(`Evaluation form for ${attendee.name}`)}
+                            >
+                              📄 Form PDF
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (
+                <div className={styles.emptyAttendeeState}>
+                  <span>🔍 ไม่พบข้อมูลผู้เข้าอบรมตามเงื่อนไขค้นหา</span>
+                </div>
+              )}
             </div>
 
             {downloadMessage ? <p className={styles.downloadMessage}>{downloadMessage}</p> : null}

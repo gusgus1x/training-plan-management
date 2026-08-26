@@ -49,16 +49,17 @@ describe("OAP Plan & Rolling Plan Multi-User Verification Test", () => {
       // -----------------------------------------------------------------------
       // STEP 1: HRD_CENTER Creates Center Course -> OAP Plan -> Rolling Plan
       // -----------------------------------------------------------------------
+      const centerRandom = Math.random().toString(36).substring(2, 10).toUpperCase();
       const centerCourseInput = parseCreateCourse({
         courseGroupId: courseGroup!.course_group_id.toString(),
         courseTypeId: courseType!.course_type_id.toString(),
-        courseNameTh: `หลักสูตรส่วนกลาง OAP-TEST ${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        courseNameEn: `Center Course OAP-TEST ${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        courseNameTh: `CenterOapTh_${centerRandom}`,
+        courseNameEn: `CenterOapEn_${centerRandom}`,
         durationHours: 6,
         objective: "วัตถุประสงค์หลักสูตร OAP ส่วนกลาง",
         targetGroup: "พนักงานส่วนกลาง",
-        standardCode: `STD-OAP-CTR-${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        standardName: `มาตรฐาน OAP ส่วนกลาง ${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        standardCode: `STD_CTR_${centerRandom}`,
+        standardName: `StdCtr_${centerRandom}`,
         targetCompanies: allCompanyIds,
         status: "Active"
       });
@@ -79,19 +80,13 @@ describe("OAP Plan & Rolling Plan Multi-User Verification Test", () => {
       const centerOapPlan = await oapPlanService.createOapPlan(centerOapInput, userId, null);
       createdOapPlanIds.push(centerOapPlan.id);
 
-      console.log(`----------------------------------------------------------------`);
-      console.log(`✅ [HRD_CENTER] Created OAP Plan Successfully:`);
-      console.log(`   OAP Plan ID   : ${centerOapPlan.id}`);
-      console.log(`   Course Code   : ${centerCourse.courseCode}`);
-      console.log(`   Owner Scope   : ${centerOapPlan.owner} (${centerOapPlan.ownerCompany})`);
-
       // Create Center Rolling Plan
       const centerRollingInput = parseCreateRollingPlan({
         oapPlanId: centerOapPlan.id,
-        batchName: "รุ่นที่ 1 (ส่วนกลาง)",
+        batchName: "B01",
         venue: "ห้องประชุมใหญ่ Center",
-        trainingDate: "2026-09-15",
-        endDate: "2026-09-15",
+        trainingDate: "2026-10-15",
+        endDate: "2026-10-15",
         startTime: "09:00",
         endTime: "16:00",
         status: "Planned"
@@ -99,9 +94,14 @@ describe("OAP Plan & Rolling Plan Multi-User Verification Test", () => {
       const centerRollingPlan = await rollingPlanService.createRollingPlan(centerRollingInput, userId, null);
       createdRollingPlanIds.push(centerRollingPlan.id);
 
-      console.log(`✅ [HRD_CENTER] Created Rolling Plan Successfully:`);
-      console.log(`   Rolling Plan Code : ${centerRollingPlan.planCode}`);
-      console.log(`   Rolling Plan ID   : ${centerRollingPlan.id}`);
+      console.log(`\n----------------------------------------------------------------`);
+      console.log(`✅ [HRD_CENTER] Created OAP Plan:`);
+      console.log(`   OAP Plan ID : ${centerOapPlan.id}`);
+      console.log(`   Course Code : ${centerCourse.courseCode}`);
+      console.log(`   Company     : All Companies (Center Scope)`);
+      console.log(`✅ [HRD_CENTER] Created Rolling Plan:`);
+      console.log(`   Rolling Code : ${centerRollingPlan.planCode}`);
+      console.log(`   Rolling ID   : ${centerRollingPlan.id}`);
       console.log(`   Batch Name        : ${centerRollingPlan.batchName}`);
       console.log(`----------------------------------------------------------------\n`);
 
@@ -113,18 +113,19 @@ describe("OAP Plan & Rolling Plan Multi-User Verification Test", () => {
       // -----------------------------------------------------------------------
       for (const company of companies) {
         const companyId = company.company_id.toString();
+        const factoryRandom = Math.random().toString(36).substring(2, 10).toUpperCase();
 
         // 2a. Create Factory Course
         const factoryCourseInput = parseCreateCourse({
           courseGroupId: courseGroup!.course_group_id.toString(),
           courseTypeId: courseType!.course_type_id.toString(),
-          courseNameTh: `หลักสูตรโรงงาน ${company.company_code} OAP ${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-          courseNameEn: `Factory Course ${company.company_code} OAP ${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          courseNameTh: `FacOapTh_${company.company_code}_${factoryRandom}`,
+          courseNameEn: `FacOapEn_${company.company_code}_${factoryRandom}`,
           durationHours: 4,
           objective: `วัตถุประสงค์ OAP ของ ${company.company_code}`,
           targetGroup: `พนักงาน ${company.company_code}`,
-          standardCode: `STD-${company.company_code}-OAP-${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-          standardName: `มาตรฐาน OAP ${company.company_code} ${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          standardCode: `STD_${company.company_code}_${factoryRandom}`,
+          standardName: `StdFac_${company.company_code}_${factoryRandom}`,
           targetCompanies: [companyId],
           status: "Active"
         });
