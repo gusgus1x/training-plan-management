@@ -844,9 +844,11 @@ export default function TrainingAcceptSurvey() {
     setDraftSubmittedEmployees([]);
     if (!selectedCourse) {
       setEnrollments([]);
+      setIsTargetLoading(false);
       return;
     }
     let active = true;
+    setIsTargetLoading(true);
     listEnrollments({ planId: selectedCourse.id, employeeId: null, employeeUserId: null })
       .then((result) => {
         if (active) setEnrollments(result.enrollments || []);
@@ -854,6 +856,11 @@ export default function TrainingAcceptSurvey() {
       .catch((error) => {
         console.error("Failed to load candidates", error);
         if (active) setEnrollments([]);
+      })
+      .finally(() => {
+        if (active) {
+          setTimeout(() => setIsTargetLoading(false), 300);
+        }
       });
     return () => {
       active = false;
@@ -1360,7 +1367,7 @@ export default function TrainingAcceptSurvey() {
     }
   };
 
-  const [isTargetLoading, setIsTargetLoading] = useState(true);
+  const [isTargetLoading, setIsTargetLoading] = useState(false);
 
   return (
     <section className={styles.page} aria-label="Training Accept Survey module">
