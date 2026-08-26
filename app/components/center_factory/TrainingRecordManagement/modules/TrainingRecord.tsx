@@ -575,12 +575,12 @@ const mapImportRowToUploadedRecord = (
 };
 
 const expenseItems = [
-  { key: "instructor", label: "Instructor" },
-  { key: "traveling", label: "Traveling" },
-  { key: "seminarRoom", label: "Seminar Room" },
-  { key: "accommodation", label: "Accommodation" },
-  { key: "material", label: "Material" },
-  { key: "foodBeverage", label: "Food & Beverage" },
+  { key: "instructor", label: "ค่าวิทยากร (Instructor)", icon: "👨‍🏫" },
+  { key: "foodBeverage", label: "ค่าอาหาร & เครื่องดื่ม (Food & Beverage)", icon: "🍱" },
+  { key: "material", label: "ค่าเอกสาร & อุปกรณ์ (Material)", icon: "📚" },
+  { key: "seminarRoom", label: "ค่าห้องอบรม & สถานที่ (Seminar Room)", icon: "🏢" },
+  { key: "traveling", label: "ค่าเดินทาง (Traveling)", icon: "🚗" },
+  { key: "accommodation", label: "ค่าที่พัก (Accommodation)", icon: "🏨" },
 ] as const;
 
 export default function TrainingRecord() {
@@ -1154,52 +1154,104 @@ export default function TrainingRecord() {
             </div>
           </section>
 
+          {/* Executive Actual Cost Summary & Breakdown Panel */}
           <section className={styles.costBreakdownPanel} aria-label="Actual cost breakdown">
             <div className={styles.panelHeader}>
               <div>
-                <p className={styles.kicker}>Actual Cost Summary</p>
-                <h3>Cost Breakdown & Per-Person Calculation</h3>
+                <p className={styles.kicker}>Financial Summary & Allocation</p>
+                <h3>สรุปงบประมาณค่าใช้จ่ายจริง & การปันส่วน (Actual Cost & Allocation)</h3>
               </div>
-              <span>Total: THB {formatNumber(selectedActualCost)}</span>
+              <span className={styles.totalBadge}>
+                ยอดรวมสุทธิ: <strong>THB {formatNumber(selectedActualCost)}</strong>
+              </span>
             </div>
 
+            {/* 3 Executive High-Impact Cost Cards */}
             <div className={styles.costHighlightGrid}>
               <article className={styles.costHighlightCard}>
-                <span>Total Actual Cost</span>
-                <strong>THB {formatNumber(selectedActualCost)}</strong>
+                <div className={styles.costCardHeader}>
+                  <div className={styles.costIconBox}>💰</div>
+                  <span>Total Actual Cost</span>
+                </div>
+                <strong className={styles.costValueText}>THB {formatNumber(selectedActualCost)}</strong>
+                <p className={styles.costSubText}>ค่าใช้จ่ายรวมจริงทุกหมวดรายการ</p>
               </article>
+
               <article className={styles.costHighlightCard}>
-                <span>Actual Attendees</span>
-                <strong>{selectedCourse.actualAttendees} persons</strong>
+                <div className={styles.costCardHeader}>
+                  <div className={styles.costIconBox}>👥</div>
+                  <span>Actual Attendees</span>
+                </div>
+                <strong className={styles.costValueText}>
+                  {selectedCourse.actualAttendees} <small>คน</small>
+                </strong>
+                <p className={styles.costSubText}>
+                  จากผู้ลงทะเบียน {selectedCourse.registeredAttendees} คน (เข้าเรียน{" "}
+                  {selectedCourse.registeredAttendees > 0
+                    ? Math.round(
+                        (selectedCourse.actualAttendees / selectedCourse.registeredAttendees) *
+                          100,
+                      )
+                    : 100}
+                  %)
+                </p>
               </article>
+
               <article className={`${styles.costHighlightCard} ${styles.costHighlightPrimary}`}>
-                <span>Cost / Person (Actual)</span>
-                <strong>THB {formatNumber(selectedCostPerPerson)}</strong>
+                <div className={styles.costCardHeader}>
+                  <div className={styles.costIconBox}>📊</div>
+                  <span>Cost / Person (Actual)</span>
+                </div>
+                <strong className={styles.costValueTextPrimary}>
+                  THB {formatNumber(selectedCostPerPerson)}
+                </strong>
+                <p className={styles.costSubTextPrimary}>เฉลี่ยค่าใช้จ่ายจริงต่อผู้เรียน 1 คน</p>
               </article>
             </div>
 
-            <div className={styles.panelHeader}>
+            {/* Expense Items breakdown with Icons & Progress Share */}
+            <div className={styles.panelHeader} style={{ marginTop: "20px" }}>
               <div>
-                <p className={styles.kicker}>Expense Items</p>
-                <h3>Training Cost Breakdown</h3>
+                <p className={styles.kicker}>Itemized Expenses</p>
+                <h3>แจกแจงหมวดหมู่ค่าใช้จ่ายจริง (Cost Breakdown Items)</h3>
               </div>
             </div>
 
             <div className={styles.costBreakdownGrid}>
-              {expenseItems.map((item) => (
-                <article key={item.key}>
-                  <span>{item.label}</span>
-                  <strong>THB {formatNumber(selectedCourse.actualCost[item.key])}</strong>
-                </article>
-              ))}
+              {expenseItems.map((item) => {
+                const amount = selectedCourse.actualCost[item.key] || 0;
+                const percentShare =
+                  selectedActualCost > 0 ? Math.round((amount / selectedActualCost) * 100) : 0;
+                return (
+                  <article key={item.key} className={styles.expenseItemCard}>
+                    <div className={styles.expenseItemTop}>
+                      <span className={styles.expenseIcon}>{item.icon}</span>
+                      <div className={styles.expenseInfo}>
+                        <span className={styles.expenseLabel}>{item.label}</span>
+                        <strong className={styles.expenseAmount}>
+                          THB {formatNumber(amount)}
+                        </strong>
+                      </div>
+                    </div>
+                    <div className={styles.expenseProgressWrap}>
+                      <div
+                        className={styles.expenseProgressBar}
+                        style={{ width: `${percentShare}%` }}
+                      />
+                    </div>
+                    <span className={styles.expenseShareTag}>{percentShare}% ของงบรวม</span>
+                  </article>
+                );
+              })}
             </div>
 
+            {/* Company Cost Allocation Table */}
             {selectedCompanyCostBreakdown.length > 0 ? (
               <div className={styles.companyCostAllocationBox}>
                 <div className={styles.panelHeader}>
                   <div>
                     <p className={styles.kicker}>Company Cost Allocation</p>
-                    <h3>Actual Cost Shared by Company</h3>
+                    <h3>การปันส่วนค่าใช้จ่ายจริงตามบริษัท (Actual Cost Shared by Company)</h3>
                   </div>
                 </div>
 
@@ -1207,20 +1259,36 @@ export default function TrainingRecord() {
                   <table className={styles.companyCostTable}>
                     <thead>
                       <tr>
-                        <th>Company</th>
-                        <th>Actual Attendees</th>
-                        <th>Share %</th>
-                        <th>Allocated Actual Cost</th>
+                        <th>บริษัท (Company)</th>
+                        <th>ผู้เข้าอบรมจริง</th>
+                        <th>สัดส่วน (Share %)</th>
+                        <th>งบปันส่วนค่าใช้จ่ายจริง (Allocated Actual Cost)</th>
                       </tr>
                     </thead>
                     <tbody>
                       {selectedCompanyCostBreakdown.map((item) => (
                         <tr key={item.company}>
-                          <td><strong>{item.company}</strong></td>
-                          <td>{item.count} persons</td>
-                          <td>{item.percentage}%</td>
                           <td>
-                            <strong>THB {formatNumber(item.totalCost)}</strong>
+                            <strong className={styles.companyBadgePill}>{item.company}</strong>
+                          </td>
+                          <td>
+                            <strong>{item.count}</strong> คน
+                          </td>
+                          <td>
+                            <div className={styles.sharePercentCell}>
+                              <div className={styles.sharePercentBarWrap}>
+                                <div
+                                  className={styles.sharePercentBar}
+                                  style={{ width: `${item.percentage}%` }}
+                                />
+                              </div>
+                              <span>{item.percentage}%</span>
+                            </div>
+                          </td>
+                          <td>
+                            <strong className={styles.allocatedCostText}>
+                              THB {formatNumber(item.totalCost)}
+                            </strong>
                           </td>
                         </tr>
                       ))}

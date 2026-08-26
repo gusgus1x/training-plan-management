@@ -2545,6 +2545,266 @@
   font-weight: 800;
 }
 
+.totalBadge {
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 999px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 6px 14px;
+}
+
+.totalBadge strong {
+  font-weight: 900;
+  font-size: 0.92rem;
+}
+
+.costHighlightGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+@media (max-width: 880px) {
+  .costHighlightGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.costHighlightCard {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 12px;
+  background: var(--ui-60-surface-soft);
+  padding: 16px 18px;
+  transition: all 160ms ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.costHighlightCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--ui-30-primary-border);
+}
+
+.costHighlightPrimary {
+  border-color: var(--ui-30-primary);
+  background: linear-gradient(135deg, var(--ui-60-surface) 0%, var(--ui-30-primary-soft) 100%);
+  box-shadow: 0 8px 24px rgba(46, 125, 50, 0.08);
+}
+
+.costCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.costIconBox {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+}
+
+.costCardHeader span {
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.costValueText {
+  display: block;
+  color: var(--ui-30-ink);
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.costValueText small {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--ui-30-muted);
+}
+
+.costValueTextPrimary {
+  display: block;
+  color: var(--ui-30-primary);
+  font-size: 1.45rem;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.costSubText {
+  margin: 6px 0 0;
+  color: var(--ui-30-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.costSubTextPrimary {
+  margin: 6px 0 0;
+  color: var(--ui-30-primary);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.costBreakdownGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+@media (max-width: 900px) {
+  .costBreakdownGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .costBreakdownGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.expenseItemCard {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 10px;
+  background: var(--ui-60-surface);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 140ms ease;
+}
+
+.expenseItemCard:hover {
+  border-color: var(--ui-30-primary);
+  transform: translateY(-1px);
+}
+
+.expenseItemTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.expenseIcon {
+  font-size: 1.3rem;
+  line-height: 1;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.expenseInfo {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.expenseLabel {
+  display: block;
+  color: var(--ui-30-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.expenseAmount {
+  display: block;
+  color: var(--ui-30-ink);
+  font-size: 0.95rem;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+.expenseProgressWrap {
+  height: 5px;
+  width: 100%;
+  border-radius: 999px;
+  background: var(--ui-60-surface-soft);
+  overflow: hidden;
+}
+
+.expenseProgressBar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ui-30-primary);
+  transition: width 300ms ease;
+}
+
+.expenseShareTag {
+  align-self: flex-end;
+  color: var(--ui-30-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.companyCostAllocationBox {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ui-30-border);
+}
+
+.companyBadgePill {
+  display: inline-block;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 6px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 3px 10px;
+}
+
+.sharePercentCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sharePercentBarWrap {
+  flex: 1 1 auto;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ui-60-surface-soft);
+  overflow: hidden;
+}
+
+.sharePercentBar {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--ui-30-primary);
+}
+
+.sharePercentCell span {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--ui-30-ink);
+  min-width: 36px;
+}
+
+.allocatedCostText {
+  color: var(--ui-30-ink);
+  font-size: 0.94rem;
+  font-weight: 900;
+}
+
 .completedCourseHero button,
 .evaluationDownloadPanel .panelHeader button {
   min-height: 36px;
