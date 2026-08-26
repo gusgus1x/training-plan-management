@@ -3003,21 +3003,25 @@
 
 .individualDownloadBtn {
   min-height: 32px;
-  border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
-  background: var(--ui-60-surface-soft);
-  color: var(--ui-30-ink);
-  font-size: 0.74rem;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 999px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  font-size: 0.76rem;
   font-weight: 800;
-  padding: 0 10px;
+  padding: 0 12px;
   cursor: pointer;
+  white-space: nowrap;
   transition: all 140ms ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .individualDownloadBtn:hover {
   border-color: var(--ui-30-primary);
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary);
+  background: var(--ui-30-primary);
+  color: #ffffff;
 }
 
 .emptyAttendeeState {
@@ -3362,13 +3366,13 @@
 
 .attendeeCostBadge {
   display: inline-block;
-  border: 1px solid var(--ui-30-primary-border);
+  border: 1px solid var(--ui-30-border);
   border-radius: 999px;
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary);
-  font-size: 0.72rem;
-  font-weight: 900;
-  padding: 3px 9px;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 4px 10px;
   white-space: nowrap;
 }
 
