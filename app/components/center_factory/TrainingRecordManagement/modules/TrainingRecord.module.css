@@ -2987,36 +2987,80 @@
 .evalPendingBadge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  border-radius: 999px;
-  font-size: 0.74rem;
+  gap: 6px;
+  border-radius: 6px;
+  font-size: 0.76rem;
   font-weight: 800;
-  padding: 3px 10px;
+  padding: 4px 10px;
   white-space: nowrap;
+  transition: all 140ms ease;
 }
 
 .passBadge {
-  border: 1px solid var(--ui-30-primary-border);
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+[data-theme="dark"] .passBadge {
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
 }
 
 .failBadge {
-  border: 1px solid var(--ui-10-accent-border);
-  background: var(--ui-10-accent-soft);
-  color: var(--ui-10-accent);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+[data-theme="dark"] .failBadge {
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
 }
 
 .evalDoneBadge {
-  border: 1px solid rgba(25, 118, 210, 0.3);
-  background: rgba(25, 118, 210, 0.08);
-  color: #1976d2;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+
+[data-theme="dark"] .evalDoneBadge {
+  border-color: rgba(96, 165, 250, 0.4);
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
 }
 
 .evalPendingBadge {
-  border: 1px solid rgba(237, 108, 2, 0.3);
-  background: rgba(237, 108, 2, 0.08);
-  color: #ed6c02;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+[data-theme="dark"] .evalPendingBadge {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.glowingDotGreen,
+.glowingDotBlue {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.glowingDotGreen {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+}
+
+.glowingDotBlue {
+  background: #3b82f6;
+  box-shadow: 0 0 8px #3b82f6;
 }
 
 .individualDownloadBtn {

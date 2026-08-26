@@ -1667,7 +1667,15 @@ export default function TrainingRecord() {
                                   : styles.failBadge
                               }
                             >
-                              {attendee.prePost === "Passed" ? "✓ ผ่านเกณฑ์" : "✕ ไม่ผ่าน"}
+                              {attendee.prePost === "Passed" ? (
+                                <>
+                                  <span className={styles.glowingDotGreen} /> ผ่านเกณฑ์
+                                </>
+                              ) : (
+                                <>
+                                  <span>✕</span> ไม่ผ่าน
+                                </>
+                              )}
                             </span>
                           </td>
                           <td>
@@ -1678,7 +1686,15 @@ export default function TrainingRecord() {
                                   : styles.evalPendingBadge
                               }
                             >
-                              {attendee.evaluation === "Done" ? "📝 ทำแล้ว" : "⏳ รอดำเนินการ"}
+                              {attendee.evaluation === "Done" ? (
+                                <>
+                                  <span className={styles.glowingDotBlue} /> ทำแล้ว
+                                </>
+                              ) : (
+                                <>
+                                  <span>⏳</span> รอดำเนินการ
+                                </>
+                              )}
                             </span>
                           </td>
                           <td>
