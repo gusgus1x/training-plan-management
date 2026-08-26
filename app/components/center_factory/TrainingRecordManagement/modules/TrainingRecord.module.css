@@ -1815,45 +1815,63 @@
 }
 
 .actionButton,
-.activeActionButton,
 .exportButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   min-height: 32px;
-  border-radius: 8px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid #005c2e;
+  border-bottom: 3px solid #004221;
+  background: linear-gradient(135deg, #007a3d 0%, #005c2e 100%);
+  color: #ffffff !important;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
   cursor: pointer;
-  font: inherit;
-  font-size: 0.74rem;
-  font-weight: 900;
-  padding: 5px 12px;
+  box-shadow: 0 2px 8px rgba(0, 122, 61, 0.2);
+  user-select: none;
   transition: all 140ms ease;
+  white-space: nowrap;
 }
 
-.actionButton {
-  border: 1px solid var(--ui-30-border);
-  background: var(--ui-60-surface);
-  color: var(--ui-30-ink);
+.actionButton:hover:not(:disabled),
+.exportButton:hover:not(:disabled) {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+  border-bottom-width: 4px;
+  box-shadow: 0 4px 12px rgba(0, 122, 61, 0.3);
 }
 
-.actionButton:hover {
-  border-color: var(--ui-30-primary);
-  color: var(--ui-30-primary);
-  background: var(--ui-30-primary-soft);
+.actionButton:active:not(:disabled),
+.exportButton:active:not(:disabled) {
+  filter: brightness(0.92);
+  transform: translateY(1px);
+  border-bottom-width: 1px;
 }
 
 .activeActionButton {
-  border: 1px solid var(--ui-30-primary);
-  background: var(--ui-30-primary);
-  color: #ffffff;
-}
-
-.exportButton {
-  border: 1px solid var(--ui-30-border);
-  background: var(--ui-60-surface-soft);
-  color: var(--ui-30-muted);
-}
-
-.exportButton:hover {
-  border-color: #8aa4cc;
-  color: var(--ui-30-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid #475569;
+  border-bottom: 3px solid #334155;
+  background: linear-gradient(135deg, #475569 0%, #334155 100%);
+  color: #ffffff !important;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(71, 85, 105, 0.2);
+  user-select: none;
+  transition: all 140ms ease;
+  white-space: nowrap;
 }
 
 .emptyTableMessage {
@@ -3450,21 +3468,31 @@
 }
 
 .addAttendeePanel .panelHeader button {
-  min-height: 32px;
-  border: 1px solid var(--ui-30-primary);
-  border-radius: 999px;
-  background: var(--ui-30-primary);
-  color: #ffffff;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.76rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 1px solid #005c2e;
+  border-bottom: 4px solid #004221;
+  background: linear-gradient(135deg, #007a3d 0%, #005c2e 100%);
+  color: #ffffff !important;
+  font-family: inherit;
+  font-size: 0.82rem;
   font-weight: 800;
-  padding: 0 14px;
-  transition: all 150ms ease;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 122, 61, 0.25);
+  user-select: none;
+  transition: all 140ms ease;
 }
 
-.addAttendeePanel .panelHeader button:hover {
-  background: var(--ui-30-primary-strong);
+.addAttendeePanel .panelHeader button:hover:not(:disabled) {
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+  border-bottom-width: 5px;
+  box-shadow: 0 6px 16px rgba(0, 122, 61, 0.38);
 }
 
 .addAttendeeWorkspace {
@@ -3515,21 +3543,31 @@
 }
 
 .addAttendeeActions button {
-  min-height: 36px;
-  border: 1px solid var(--ui-30-primary);
-  border-radius: var(--ui-radius-sm);
-  background: var(--ui-30-primary);
-  color: #ffffff;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 20px;
+  border-radius: 8px;
+  border: 1px solid #005c2e;
+  border-bottom: 4px solid #004221;
+  background: linear-gradient(135deg, #007a3d 0%, #005c2e 100%);
+  color: #ffffff !important;
+  font-family: inherit;
+  font-size: 0.88rem;
   font-weight: 800;
-  padding: 0 18px;
-  transition: all 150ms ease;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 122, 61, 0.25);
+  user-select: none;
+  transition: all 140ms ease;
 }
 
-.addAttendeeActions button:hover {
-  background: var(--ui-30-primary-strong);
+.addAttendeeActions button:hover:not(:disabled) {
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+  border-bottom-width: 5px;
+  box-shadow: 0 6px 16px rgba(0, 122, 61, 0.38);
 }
 
 @media (max-width: 640px) {
