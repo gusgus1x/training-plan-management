@@ -692,6 +692,52 @@
   opacity: 1;
 }
 
+.expenseInputCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.expenseLabelHeader {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--ui-30-ink);
+}
+
+.expenseInputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.currencyPrefix {
+  position: absolute;
+  left: 10px;
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  pointer-events: none;
+}
+
+.expenseInputWrap input {
+  padding-left: 42px !important;
+}
+
+.heroBadgeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.courseMetaSubtext {
+  display: block;
+  margin-top: 6px;
+  color: var(--ui-30-text);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .actualCourseSelect select:focus,
 .actualCostGrid input:focus {
   border-color: var(--ui-30-primary);
@@ -952,6 +998,27 @@
   color: var(--ui-30-ink);
   font-size: 0.82rem;
   font-weight: 800;
+}
+
+.attendanceChecklistWorkspace {
+  margin-top: 18px;
+  border-top: 1px solid var(--ui-30-border);
+  padding-top: 18px;
+}
+
+.orgCell,
+.posCell,
+.deptCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.orgSubText,
+.attendeeDeptText {
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
 }
 
 .positionPill {
@@ -1815,45 +1882,63 @@
 }
 
 .actionButton,
-.activeActionButton,
 .exportButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   min-height: 32px;
-  border-radius: 8px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid #005c2e;
+  border-bottom: 3px solid #004221;
+  background: linear-gradient(135deg, #007a3d 0%, #005c2e 100%);
+  color: #ffffff !important;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
   cursor: pointer;
-  font: inherit;
-  font-size: 0.74rem;
-  font-weight: 900;
-  padding: 5px 12px;
+  box-shadow: 0 2px 8px rgba(0, 122, 61, 0.2);
+  user-select: none;
   transition: all 140ms ease;
+  white-space: nowrap;
 }
 
-.actionButton {
-  border: 1px solid var(--ui-30-border);
-  background: var(--ui-60-surface);
-  color: var(--ui-30-ink);
+.actionButton:hover:not(:disabled),
+.exportButton:hover:not(:disabled) {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+  border-bottom-width: 4px;
+  box-shadow: 0 4px 12px rgba(0, 122, 61, 0.3);
 }
 
-.actionButton:hover {
-  border-color: var(--ui-30-primary);
-  color: var(--ui-30-primary);
-  background: var(--ui-30-primary-soft);
+.actionButton:active:not(:disabled),
+.exportButton:active:not(:disabled) {
+  filter: brightness(0.92);
+  transform: translateY(1px);
+  border-bottom-width: 1px;
 }
 
 .activeActionButton {
-  border: 1px solid var(--ui-30-primary);
-  background: var(--ui-30-primary);
-  color: #ffffff;
-}
-
-.exportButton {
-  border: 1px solid var(--ui-30-border);
-  background: var(--ui-60-surface-soft);
-  color: var(--ui-30-muted);
-}
-
-.exportButton:hover {
-  border-color: #8aa4cc;
-  color: var(--ui-30-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid #475569;
+  border-bottom: 3px solid #334155;
+  background: linear-gradient(135deg, #475569 0%, #334155 100%);
+  color: #ffffff !important;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(71, 85, 105, 0.2);
+  user-select: none;
+  transition: all 140ms ease;
+  white-space: nowrap;
 }
 
 .emptyTableMessage {
@@ -2969,36 +3054,156 @@
 .evalPendingBadge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  border-radius: 999px;
-  font-size: 0.74rem;
+  gap: 6px;
+  border-radius: 6px;
+  font-size: 0.76rem;
   font-weight: 800;
-  padding: 3px 10px;
+  padding: 4px 10px;
   white-space: nowrap;
+  transition: all 140ms ease;
 }
 
 .passBadge {
-  border: 1px solid var(--ui-30-primary-border);
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+[data-theme="dark"] .passBadge {
+  border-color: rgba(52, 211, 153, 0.4);
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
 }
 
 .failBadge {
-  border: 1px solid var(--ui-10-accent-border);
-  background: var(--ui-10-accent-soft);
-  color: var(--ui-10-accent);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+[data-theme="dark"] .failBadge {
+  border-color: rgba(248, 113, 113, 0.4);
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
 }
 
 .evalDoneBadge {
-  border: 1px solid rgba(25, 118, 210, 0.3);
-  background: rgba(25, 118, 210, 0.08);
-  color: #1976d2;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
+}
+
+[data-theme="dark"] .evalDoneBadge {
+  border-color: rgba(96, 165, 250, 0.4);
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
 }
 
 .evalPendingBadge {
-  border: 1px solid rgba(237, 108, 2, 0.3);
-  background: rgba(237, 108, 2, 0.08);
-  color: #ed6c02;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+[data-theme="dark"] .evalPendingBadge {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+@keyframes pulseGlowGreen {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.75);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 7px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+@keyframes pulseGlowBlue {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.75);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 7px rgba(59, 130, 246, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+@keyframes pulseGlowAmber {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.75);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 7px rgba(245, 158, 11, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+@keyframes pulseGlowRed {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.75);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 7px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.glowingDotGreen,
+.glowingDotBlue,
+.glowingDotAmber,
+.glowingDotRed {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.glowingDotGreen {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulseGlowGreen 1.8s infinite ease-in-out;
+}
+
+.glowingDotBlue {
+  background: #3b82f6;
+  box-shadow: 0 0 8px #3b82f6;
+  animation: pulseGlowBlue 1.8s infinite ease-in-out;
+}
+
+.glowingDotAmber {
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+  animation: pulseGlowAmber 1.8s infinite ease-in-out;
+}
+
+.glowingDotRed {
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+  animation: pulseGlowRed 1.8s infinite ease-in-out;
 }
 
 .individualDownloadBtn {
@@ -3450,21 +3655,31 @@
 }
 
 .addAttendeePanel .panelHeader button {
-  min-height: 32px;
-  border: 1px solid var(--ui-30-primary);
-  border-radius: 999px;
-  background: var(--ui-30-primary);
-  color: #ffffff;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.76rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: 1px solid #005c2e;
+  border-bottom: 4px solid #004221;
+  background: linear-gradient(135deg, #007a3d 0%, #005c2e 100%);
+  color: #ffffff !important;
+  font-family: inherit;
+  font-size: 0.82rem;
   font-weight: 800;
-  padding: 0 14px;
-  transition: all 150ms ease;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 122, 61, 0.25);
+  user-select: none;
+  transition: all 140ms ease;
 }
 
-.addAttendeePanel .panelHeader button:hover {
-  background: var(--ui-30-primary-strong);
+.addAttendeePanel .panelHeader button:hover:not(:disabled) {
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+  border-bottom-width: 5px;
+  box-shadow: 0 6px 16px rgba(0, 122, 61, 0.38);
 }
 
 .addAttendeeWorkspace {
@@ -3515,21 +3730,31 @@
 }
 
 .addAttendeeActions button {
-  min-height: 36px;
-  border: 1px solid var(--ui-30-primary);
-  border-radius: var(--ui-radius-sm);
-  background: var(--ui-30-primary);
-  color: #ffffff;
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 20px;
+  border-radius: 8px;
+  border: 1px solid #005c2e;
+  border-bottom: 4px solid #004221;
+  background: linear-gradient(135deg, #007a3d 0%, #005c2e 100%);
+  color: #ffffff !important;
+  font-family: inherit;
+  font-size: 0.88rem;
   font-weight: 800;
-  padding: 0 18px;
-  transition: all 150ms ease;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 122, 61, 0.25);
+  user-select: none;
+  transition: all 140ms ease;
 }
 
-.addAttendeeActions button:hover {
-  background: var(--ui-30-primary-strong);
+.addAttendeeActions button:hover:not(:disabled) {
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+  border-bottom-width: 5px;
+  box-shadow: 0 6px 16px rgba(0, 122, 61, 0.38);
 }
 
 @media (max-width: 640px) {
@@ -3633,28 +3858,40 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid rgba(0, 122, 61, 0.25);
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
-  background: #f0fdf4;
-  color: #047857;
-  font-size: 0.72rem;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  font-size: 0.78rem;
   font-weight: 800;
-  padding: 3px 8px;
+  padding: 4px 10px;
   white-space: nowrap;
+}
+
+[data-theme="dark"] .attendeeCostBadge {
+  background: rgba(46, 125, 50, 0.25);
+  border-color: rgba(76, 175, 80, 0.5);
+  color: #81c784;
 }
 
 .attendeeCostBadgeAbsent {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid rgba(148, 163, 184, 0.3);
+  border: 1px solid var(--ui-30-border);
   border-radius: 999px;
-  background: #f8fafc;
-  color: #64748b;
-  font-size: 0.72rem;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 4px 10px;
   white-space: nowrap;
+}
+
+[data-theme="dark"] .attendeeCostBadgeAbsent {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
 }
 
 .perPersonCostText {
@@ -3749,5 +3986,34 @@
   font-size: 0.74rem;
   color: var(--ui-30-primary-strong);
   font-weight: 800;
+}
+
+.companyBreakdownHeader {
+  margin-bottom: 6px;
+}
+
+.companyBreakdownHeader h4 {
+  margin: 2px 0 0;
+  font-size: 0.84rem;
+  font-weight: 900;
+  color: var(--ui-30-ink);
+}
+
+.companyPresentCount {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--ui-30-ink);
+}
+
+.sharePercentText {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--ui-30-muted);
+}
+
+.companyTotalRow td {
+  background: var(--ui-60-surface-soft);
+  font-weight: 900;
+  color: var(--ui-30-ink);
 }
 

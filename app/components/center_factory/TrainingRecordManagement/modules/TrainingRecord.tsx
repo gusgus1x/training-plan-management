@@ -1632,18 +1632,10 @@ export default function TrainingRecord() {
                   </thead>
                   <tbody>
                     {filteredCourseAttendees.map((attendee) => {
-                      const initials = attendee.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .substring(0, 2)
-                        .toUpperCase();
-
                       return (
                         <tr key={attendee.id}>
                           <td>
                             <div className={styles.attendeeUserCell}>
-                              <div className={styles.avatarCircle}>{initials || "EMP"}</div>
                               <div>
                                 <strong className={styles.attendeeNameText}>{attendee.name}</strong>
                                 <span className={styles.attendeeCodeTag}>{attendee.employeeCode}</span>
@@ -1667,7 +1659,15 @@ export default function TrainingRecord() {
                                   : styles.failBadge
                               }
                             >
-                              {attendee.prePost === "Passed" ? "✓ ผ่านเกณฑ์" : "✕ ไม่ผ่าน"}
+                              {attendee.prePost === "Passed" ? (
+                                <>
+                                  <span className={styles.glowingDotGreen} /> ผ่านเกณฑ์
+                                </>
+                              ) : (
+                                <>
+                                  <span className={styles.glowingDotRed} /> ไม่ผ่าน
+                                </>
+                              )}
                             </span>
                           </td>
                           <td>
@@ -1678,7 +1678,15 @@ export default function TrainingRecord() {
                                   : styles.evalPendingBadge
                               }
                             >
-                              {attendee.evaluation === "Done" ? "📝 ทำแล้ว" : "⏳ รอดำเนินการ"}
+                              {attendee.evaluation === "Done" ? (
+                                <>
+                                  <span className={styles.glowingDotBlue} /> ทำแล้ว
+                                </>
+                              ) : (
+                                <>
+                                  <span className={styles.glowingDotAmber} /> รอดำเนินการ
+                                </>
+                              )}
                             </span>
                           </td>
                           <td>
