@@ -11,8 +11,6 @@
 .coursePanel,
 .participantPanel,
 .targetPanel,
-.submittedPanel,
-.draftPanel,
 .workspace {
   border: 1px solid var(--ui-30-border);
   border-radius: 14px;
@@ -23,9 +21,13 @@
 
 .draftPanel {
   border: 1px solid rgba(234, 179, 8, 0.35);
-  background: rgba(234, 179, 8, 0.03);
+  border-radius: 14px;
+  background: var(--ui-60-surface);
+  box-shadow: 0 4px 20px -2px rgba(234, 179, 8, 0.06);
+  padding: 22px 24px 22px 28px;
   position: relative;
   overflow: hidden;
+  transition: all 0.2s ease;
 }
 
 .draftPanel::before {
@@ -34,6 +36,40 @@
   inset: 0 auto 0 0;
   width: 5px;
   background: linear-gradient(180deg, #eab308 0%, #ca8a04 100%);
+}
+
+.submittedPanel {
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  border-radius: 14px;
+  background: var(--ui-60-surface);
+  box-shadow: 0 4px 20px -2px rgba(59, 130, 246, 0.06);
+  padding: 22px 24px 22px 28px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.submittedPanel::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+}
+
+.emptyDraftBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 20px;
+  border: 1.5px dashed rgba(234, 179, 8, 0.3);
+  border-radius: 12px;
+  background: rgba(234, 179, 8, 0.02);
+  color: var(--ui-30-muted);
+  font-size: 0.86rem;
+  font-weight: 500;
+  text-align: center;
+  margin-top: 12px;
 }
 
 .hero {
@@ -1298,13 +1334,13 @@
 
 .participantEmployeeHeader,
 .participantEmployeeRow {
-  grid-template-columns: 76px 1fr;
+  grid-template-columns: 105px 1fr;
   gap: 14px;
 }
 
 .targetListHeader,
 .targetListRow {
-  grid-template-columns: 76px 1fr;
+  grid-template-columns: 105px 1fr;
   gap: 14px;
 }
 
@@ -1314,15 +1350,16 @@
   align-items: center;
   gap: 14px;
   grid-template-columns:
-    120px
-    55px
+    115px
+    110px
+    65px
     125px
     135px
     65px
-    420px
-    450px
-    450px
-    260px
+    240px
+    240px
+    240px
+    220px
     65px;
 }
 
@@ -1337,8 +1374,8 @@
   line-height: 1.4;
 }
 
-.targetEmployeeHeader .targetEmployeeLine span:nth-child(5),
-.targetEmployeeHeader .targetEmployeeLine span:nth-child(10) {
+.targetEmployeeHeader .targetEmployeeLine span:nth-child(6),
+.targetEmployeeHeader .targetEmployeeLine span:nth-child(11) {
   text-align: center;
 }
 
@@ -1365,26 +1402,26 @@
   color: #ffffff !important;
 }
 
-.targetEmployeeCell:nth-child(3),
-.targetEmployeeCell:nth-child(4) {
+.targetEmployeeCell:nth-child(4),
+.targetEmployeeCell:nth-child(5) {
   color: var(--ui-30-ink);
   font-weight: 600;
   font-size: 0.86rem;
 }
 
-:global([data-theme="dark"]) .targetEmployeeCell:nth-child(3),
 :global([data-theme="dark"]) .targetEmployeeCell:nth-child(4),
-:global(.dark) .targetEmployeeCell:nth-child(3),
-:global(.dark) .targetEmployeeCell:nth-child(4) {
+:global([data-theme="dark"]) .targetEmployeeCell:nth-child(5),
+:global(.dark) .targetEmployeeCell:nth-child(4),
+:global(.dark) .targetEmployeeCell:nth-child(5) {
   color: #ffffff;
 }
 
-.targetEmployeeCell:nth-child(5) {
+.targetEmployeeCell:nth-child(6) {
   text-align: center;
   font-weight: 700;
 }
 
-.targetEmployeeCell:nth-child(10) {
+.targetEmployeeCell:nth-child(11) {
   text-align: center;
   font-weight: 700;
   font-family: var(--font-mono, monospace);
@@ -1436,18 +1473,45 @@
 }
 
 .removeSubmittedButton {
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
   cursor: pointer;
   justify-self: start;
-  transition: all 0.2s ease;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: all 0.15s ease;
 }
 
 .removeSubmittedButton:hover {
-  border-color: #f59e0b;
-  background: rgba(245, 158, 11, 0.25);
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.6);
   color: #ffffff;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
+}
+
+.removeDraftButton {
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  background: rgba(234, 179, 8, 0.1);
+  color: #eab308;
+  cursor: pointer;
+  justify-self: start;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.removeDraftButton:hover {
+  background: rgba(234, 179, 8, 0.25);
+  border-color: rgba(234, 179, 8, 0.6);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(234, 179, 8, 0.25);
 }
 
 /* Dropdown Search Box & Pagination */

@@ -1894,7 +1894,7 @@ export default function TrainingAcceptSurvey() {
                   return (
                     <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={`draft-${emp.id}`}>
                       <button
-                        className={styles.removeSubmittedButton}
+                        className={styles.removeDraftButton}
                         type="button"
                         onClick={() => {
                           setDraftSubmittedEmployees((prev) => prev.filter((e) => e.id !== emp.id));
@@ -1924,8 +1924,8 @@ export default function TrainingAcceptSurvey() {
                   );
                 })}
                 {draftSubmittedEmployees.length === 0 ? (
-                  <div className={styles.emptyCompact}>
-                    ยังไม่มีพนักงานในดราฟ (กรุณากดเลือกพนักงานจากตารางกลุ่มเป้าหมายด้านล่างเพื่อเตรียมส่งเข้าอบรมกลาง)
+                  <div className={styles.emptyDraftBox}>
+                    📋 ยังไม่มีพนักงานในดราฟ (กรุณากดเลือกพนักงานจากตารางกลุ่มเป้าหมายด้านล่างเพื่อเตรียมส่งเข้าอบรมกลาง)
                   </div>
                 ) : null}
               </div>
