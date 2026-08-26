@@ -1,0 +1,27 @@
+test: stop the new suites writing to the production database on every run
+
+Nine suites already gate themselves behind RUN_DATABASE_MUTATION_TESTS and are
+skipped by default - that is what the skipped count in every run has always
+been. The three suites added recently missed the gate, so a plain `npm test`
+created and deleted real courses, OAP plans and Rolling plans on the live
+server. That, not test isolation in the abstract, is what made them race each
+other, leave rows behind and pass or fail depending on the run.
+
+They now use the same gate. The default run no longer touches the database and
+finishes in about nine seconds; with the gate open all three pass.
+
+vitest.config.ts serialises test files only while that gate is open, since the
+suites contend for rows that are unique by construction - a central course
+standard may exist once per year. Serialising everything unconditionally cost
+the ordinary run three times its duration for no benefit.
+
+Also fixes seven type errors in those files: list calls passed {} where the
+filter types require every field, and one cleanup passed null as a user id.
+A failed assertion in the multi-target suite used to skip its cleanup entirely,
+so one failure poisoned every later run; that path is now in a finally.
+
+The prisma schema is refreshed from the live server in the same commit: 84
+column defaults and 10 filtered unique indexes it always had but the checked-in
+schema never recorded. The generated client comes out byte-identical.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

@@ -1,11 +1,16 @@
 import { config as loadEnvironment } from "dotenv";
 import { describe, expect, it } from "vitest";
 
+// These suites create and delete real rows, so they follow the same gate as the other
+// database-mutation tests: skipped unless RUN_DATABASE_MUTATION_TESTS=1 is set.
+const databaseMutationTest =
+  process.env.RUN_DATABASE_MUTATION_TESTS === "1" ? it : it.skip;
+
 loadEnvironment({ path: ".env", quiet: true });
 loadEnvironment({ path: ".env.local", quiet: true });
 
 describe("Multi-user Course Creation Verification Test", () => {
-  it("tests course creation for HRD_CENTER and HRD_FACTORY for each company", async () => {
+  databaseMutationTest("tests course creation for HRD_CENTER and HRD_FACTORY for each company", async () => {
     const { getPrismaClient } = await import("../app/lib/database/prisma");
     const { courseService } = await import("../app/lib/courses/service");
     const { parseCreateCourse } = await import("../app/lib/courses/validation");
@@ -101,7 +106,7 @@ describe("Multi-user Course Creation Verification Test", () => {
         createdCourseIds.push(factoryCourse.courseId);
 
         // 4. Verify scope isolation: HRD_FACTORY of this company lists courses
-        const companyCoursesList = await courseService.listCourses({}, company.company_id.toString());
+        const companyCoursesList = await courseService.listCourses({ search: null, status: null }, company.company_id.toString());
         const companyCourseCodes = companyCoursesList.courses.map(c => c.courseCode);
         
         // Factory MUST see Center course AND its own company course
@@ -110,7 +115,7 @@ describe("Multi-user Course Creation Verification Test", () => {
       }
 
       // 5. Verify Center lists courses (Center sees all created courses)
-      const centerCoursesList = await courseService.listCourses({}, null);
+      const centerCoursesList = await courseService.listCourses({ search: null, status: null }, null);
       const allCourseCodes = centerCoursesList.courses.map(c => c.courseCode);
       expect(allCourseCodes).toContain(centerCourse.courseCode);
 

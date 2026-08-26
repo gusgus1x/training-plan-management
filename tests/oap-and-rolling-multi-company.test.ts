@@ -1,11 +1,16 @@
 import { config as loadEnvironment } from "dotenv";
 import { describe, expect, it } from "vitest";
 
+// These suites create and delete real rows, so they follow the same gate as the other
+// database-mutation tests: skipped unless RUN_DATABASE_MUTATION_TESTS=1 is set.
+const databaseMutationTest =
+  process.env.RUN_DATABASE_MUTATION_TESTS === "1" ? it : it.skip;
+
 loadEnvironment({ path: ".env", quiet: true });
 loadEnvironment({ path: ".env.local", quiet: true });
 
 describe("OAP Plan & Rolling Plan Multi-User Verification Test", () => {
-  it("tests OAP Plan and Rolling Plan creation for HRD_CENTER and HRD_FACTORY for each company", async () => {
+  databaseMutationTest("tests OAP Plan and Rolling Plan creation for HRD_CENTER and HRD_FACTORY for each company", async () => {
     const { getPrismaClient } = await import("../app/lib/database/prisma");
     const { courseService } = await import("../app/lib/courses/service");
     const { parseCreateCourse } = await import("../app/lib/courses/validation");
@@ -172,21 +177,21 @@ describe("OAP Plan & Rolling Plan Multi-User Verification Test", () => {
         // STEP 3: Verify Listing & Scope Isolation
         // -----------------------------------------------------------------------
         // Factory lists OAP plans for its company
-        const factoryOapList = await oapPlanService.listOapPlans({}, companyId);
+        const factoryOapList = await oapPlanService.listOapPlans({ search: null, status: null }, companyId);
         const factoryOapIds = factoryOapList.map(p => p.id);
         expect(factoryOapIds).toContain(centerOapPlan.id);
         expect(factoryOapIds).toContain(factoryOapPlan.id);
 
         // Factory lists Rolling plans for its company
-        const factoryRollingList = await rollingPlanService.listRollingPlans({}, companyId);
+        const factoryRollingList = await rollingPlanService.listRollingPlans({ search: null, status: null, oapPlanId: null }, companyId);
         const factoryRollingCodes = factoryRollingList.map(p => p.planCode);
         expect(factoryRollingCodes).toContain(centerRollingPlan.planCode);
         expect(factoryRollingCodes).toContain(factoryRollingPlan.planCode);
       }
 
       // Center lists all OAP & Rolling plans
-      const centerOapList = await oapPlanService.listOapPlans({}, null);
-      const centerRollingList = await rollingPlanService.listRollingPlans({}, null);
+      const centerOapList = await oapPlanService.listOapPlans({ search: null, status: null }, null);
+      const centerRollingList = await rollingPlanService.listRollingPlans({ search: null, status: null, oapPlanId: null }, null);
       expect(centerOapList.map(p => p.id)).toContain(centerOapPlan.id);
       expect(centerRollingList.map(p => p.planCode)).toContain(centerRollingPlan.planCode);
 

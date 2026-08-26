@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../app/generated/prisma"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -10,11 +11,11 @@ datasource db {
 model announcement {
   announcement_id BigInt       @id(map: "PK_announcement") @default(autoincrement())
   company_id      BigInt?
-  target_role     String       @db.NVarChar(30)
+  target_role     String       @default("N'ALL'", map: "DF_announcement_target_role") @db.NVarChar(30)
   title           String       @db.NVarChar(255)
   content         String       @db.NVarChar(Max)
-  publish_at      DateTime
-  status          String       @db.NVarChar(20)
+  publish_at      DateTime     @default(dbgenerated("sysdatetime()"), map: "DF_announcement_publish_at")
+  status          String       @default("N'PUBLISHED'", map: "DF_announcement_status") @db.NVarChar(20)
   created_by      BigInt
   company         company?     @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_announcement_company_company_id")
   user_account    user_account @relation(fields: [created_by], references: [user_id], onUpdate: NoAction, map: "FK_announcement_user_account_created_by")
@@ -29,11 +30,11 @@ model assessment {
   version_no                                                         Int
   version_note                                                       String?                 @db.NVarChar(500)
   instructions                                                       String?
-  passing_score_percent                                              Decimal                 @db.Decimal(5, 2)
+  passing_score_percent                                              Decimal                 @default(0, map: "DF_assessment_passing_score_percent") @db.Decimal(5, 2)
   time_limit_minutes                                                 Int?
-  status                                                             String                  @db.VarChar(10)
+  status                                                             String                  @default("DRAFT", map: "DF_assessment_status") @db.VarChar(10)
   created_by                                                         BigInt
-  created_at                                                         DateTime
+  created_at                                                         DateTime                @default(dbgenerated("sysdatetime()"), map: "DF_assessment_created_at")
   updated_by                                                         BigInt?
   updated_at                                                         DateTime?
   assessment_series                                                  assessment_series       @relation(fields: [assessment_series_id], references: [assessment_series_id], onUpdate: NoAction, map: "FK_V6F034_assessment_assessment_series_id")
@@ -57,7 +58,7 @@ model assessment_answer {
   answer_text           String?               @db.NVarChar(Max)
   is_correct            Boolean?
   score_awarded         Decimal?              @db.Decimal(8, 2)
-  review_status         String                @db.VarChar(20)
+  review_status         String                @default("NOT_REQUIRED", map: "DF_assessment_answer_review_status") @db.VarChar(20)
   review_comment        String?
   reviewed_by           BigInt?
   reviewed_at           DateTime?
@@ -72,8 +73,8 @@ model assessment_choice {
   question_id         BigInt
   choice_order        Int
   choice_text         String
-  is_correct          Boolean
-  option_score        Decimal             @db.Decimal(8, 2)
+  is_correct          Boolean             @default(false, map: "DF_assessment_choice_is_correct")
+  option_score        Decimal             @default(0.00, map: "DF_assessment_choice_option_score") @db.Decimal(8, 2)
   assessment_answer   assessment_answer[]
   assessment_question assessment_question @relation(fields: [question_id], references: [question_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_V6F038_assessment_choice_question_id")
 
@@ -86,8 +87,8 @@ model assessment_question {
   question_order    Int
   question_text     String              @db.NVarChar(Max)
   question_type     String              @db.VarChar(30)
-  question_score    Decimal             @db.Decimal(8, 2)
-  is_required       Boolean
+  question_score    Decimal             @default(1.00, map: "DF_assessment_question_question_score") @db.Decimal(8, 2)
+  is_required       Boolean             @default(true, map: "DF_assessment_question_is_required")
   assessment_answer assessment_answer[]
   assessment_choice assessment_choice[]
   assessment        assessment          @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_V6F037_assessment_question_assessment_id")
@@ -102,9 +103,9 @@ model assessment_series {
   series_name                                             String        @db.NVarChar(255)
   series_name_normalized                                  String        @unique(map: "UX_RC2_assessment_series_series_name_normalized") @db.NVarChar(255)
   purpose                                                 String        @db.VarChar(20)
-  last_version_no                                         Int
+  last_version_no                                         Int           @default(0, map: "DF_assessment_series_last_version_no")
   created_by                                              BigInt
-  created_at                                              DateTime
+  created_at                                              DateTime      @default(dbgenerated("sysdatetime()"), map: "DF_assessment_series_created_at")
   updated_by                                              BigInt?
   updated_at                                              DateTime?
   assessment                                              assessment[]
@@ -119,13 +120,13 @@ model assessment_submission {
   assessment_id                                                                      BigInt
   assessment_stage                                                                   String              @db.VarChar(20)
   attempt_no                                                                         Int
-  started_at                                                                         DateTime
+  started_at                                                                         DateTime            @default(dbgenerated("sysdatetime()"), map: "DF_assessment_submission_started_at")
   submitted_at                                                                       DateTime?
   score                                                                              Decimal?            @db.Decimal(10, 2)
-  pass_status                                                                        String              @db.VarChar(20)
-  status                                                                             String              @db.VarChar(20)
-  grading_status                                                                     String              @db.VarChar(20)
-  publication_status                                                                 String              @db.VarChar(20)
+  pass_status                                                                        String              @default("PENDING", map: "DF_assessment_submission_pass_status") @db.VarChar(20)
+  status                                                                             String              @default("IN_PROGRESS", map: "DF_assessment_submission_status") @db.VarChar(20)
+  grading_status                                                                     String              @default("PENDING_REVIEW", map: "DF_assessment_submission_grading_status") @db.VarChar(20)
+  publication_status                                                                 String              @default("UNPUBLISHED", map: "DF_assessment_submission_publication_status") @db.VarChar(20)
   published_by                                                                       BigInt?
   published_at                                                                       DateTime?
   reopened_by                                                                        BigInt?
@@ -149,7 +150,7 @@ model attendance {
   check_out_at        DateTime?
   attendance_status   String              @db.NVarChar(20)
   recorded_by         BigInt?
-  attendance_method   String              @db.NVarChar(20)
+  attendance_method   String              @default("N'QR'", map: "DF_attendance_attendance_method") @db.NVarChar(20)
   remark              String?             @db.NVarChar(500)
   user_account        user_account?       @relation(fields: [recorded_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_attendance_user_account_recorded_by")
   training_enrollment training_enrollment @relation(fields: [enrollment_id], references: [enrollment_id], onUpdate: NoAction, map: "FK_V6F064_attendance_enrollment_id")
@@ -161,17 +162,17 @@ model certificate_import_batch {
   certificate_import_batch_id                                      BigInt                      @id(map: "PK_certificate_import_batch") @default(autoincrement())
   plan_id                                                          BigInt
   import_batch_code                                                String                      @unique(map: "UQ_certificate_import_batch_code") @db.NVarChar(50)
-  total_file_count                                                 Int
-  matched_file_count                                               Int
-  failed_file_count                                                Int
-  pending_file_count                                               Int
-  import_status                                                    String                      @db.NVarChar(30)
+  total_file_count                                                 Int                         @default(0, map: "DF_certificate_import_batch_total_file_count")
+  matched_file_count                                               Int                         @default(0, map: "DF_certificate_import_batch_matched_file_count")
+  failed_file_count                                                Int                         @default(0, map: "DF_certificate_import_batch_failed_file_count")
+  pending_file_count                                               Int                         @default(0, map: "DF_certificate_import_batch_pending_file_count")
+  import_status                                                    String                      @default("N'UPLOADED'", map: "DF_certificate_import_batch_import_status") @db.NVarChar(30)
   imported_by                                                      BigInt
-  imported_at                                                      DateTime
+  imported_at                                                      DateTime                    @default(dbgenerated("sysdatetime()"), map: "DF_certificate_import_batch_imported_at")
   confirmed_by                                                     BigInt?
   confirmed_at                                                     DateTime?
   remark                                                           String?                     @db.NVarChar(500)
-  created_at                                                       DateTime
+  created_at                                                       DateTime                    @default(dbgenerated("sysdatetime()"), map: "DF_certificate_import_batch_created_at")
   updated_at                                                       DateTime?
   user_account_certificate_import_batch_confirmed_byTouser_account user_account?               @relation("certificate_import_batch_confirmed_byTouser_account", fields: [confirmed_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_certificate_import_batch_confirmed_by_user_account")
   user_account_certificate_import_batch_imported_byTouser_account  user_account                @relation("certificate_import_batch_imported_byTouser_account", fields: [imported_by], references: [user_id], onUpdate: NoAction, map: "FK_certificate_import_batch_imported_by_user_account")
@@ -187,7 +188,7 @@ model company {
   company_name_th                String                           @db.NVarChar(255)
   company_name_en                String?                          @db.NVarChar(255)
   remark                         String?                          @db.NVarChar(500)
-  status                         String                           @db.NVarChar(20)
+  status                         String                           @default("N'ACTIVE'", map: "DF_company_status") @db.NVarChar(20)
   announcement                   announcement[]
   assessment_series              assessment_series[]
   company_department_mapping     company_department_mapping[]
@@ -211,7 +212,7 @@ model company_function_mapping {
   plant_function_code   String                @db.NVarChar(50)
   plant_function_name   String                @db.NVarChar(255)
   function_id           BigInt
-  status                String                @db.NVarChar(20)
+  status                String                @default("N'ACTIVE'", map: "DF_company_function_mapping_status") @db.NVarChar(20)
   company               company               @relation(fields: [company_id], references: [company_id], onUpdate: NoAction, map: "FK_company_function_mapping_company_company_id")
   organization_function organization_function @relation(fields: [function_id], references: [function_id], onUpdate: NoAction, map: "FK_company_function_mapping_organization_function_function_id")
 
@@ -226,7 +227,7 @@ model course {
   course_group_id                                  BigInt
   course_code                                      String                   @unique(map: "UX_RC2_course_course_code") @db.VarChar(20)
   course_name                                      String                   @db.NVarChar(255)
-  course_name_normalized                           String                   @unique(map: "UX_course_central_name_normalized") @db.NVarChar(255)
+  course_name_normalized                           String                   @unique(map: "UX_course_central_name_normalized", where: raw("([company_id] IS NULL)")) @db.NVarChar(255)
   description                                      String?
   objective                                        String?                  @db.NVarChar(Max)
   learning_content                                 String?                  @db.NVarChar(Max)
@@ -235,9 +236,9 @@ model course {
   pre_assessment_id                                BigInt?
   post_assessment_id                               BigInt?
   evaluation_form_id                               BigInt?
-  status                                           String                   @db.VarChar(10)
+  status                                           String                   @default("ACTIVE", map: "DF_course_status") @db.VarChar(10)
   created_by                                       BigInt
-  created_at                                       DateTime
+  created_at                                       DateTime                 @default(dbgenerated("sysdatetime()"), map: "DF_course_created_at")
   updated_by                                       BigInt?
   updated_at                                       DateTime?
   course_name_en                                   String?                  @db.NVarChar(255)
@@ -261,17 +262,17 @@ model course {
   training_need_request                            training_need_request[]
   training_plan_oap                                training_plan_oap[]
 
-  @@unique([company_id, course_name_normalized], map: "UX_course_company_name_normalized")
+  @@unique([company_id, course_name_normalized], map: "UX_course_company_name_normalized", where: raw("([company_id] IS NOT NULL)"))
 }
 
 model course_group {
   course_group_id                                    BigInt        @id(map: "PK_course_group") @default(autoincrement())
   course_group_code                                  String        @unique(map: "UX_RC2_course_group_course_group_code") @db.Char(2)
   course_group_name                                  String        @unique(map: "UX_RC2_course_group_course_group_name") @db.NVarChar(255)
-  last_course_number                                 Int
-  status                                             String        @db.VarChar(10)
+  last_course_number                                 Int           @default(0, map: "DF_course_group_last_course_number")
+  status                                             String        @default("ACTIVE", map: "DF_course_group_status") @db.VarChar(10)
   created_by                                         BigInt
-  created_at                                         DateTime
+  created_at                                         DateTime      @default(dbgenerated("sysdatetime()"), map: "DF_course_group_created_at")
   updated_by                                         BigInt?
   updated_at                                         DateTime?
   course_group_name_normalized                       String        @unique(map: "UX_RC2_course_group_course_group_name_normalized") @db.NVarChar(255)
@@ -283,13 +284,13 @@ model course_group {
 model course_standard {
   standard_id                                           BigInt                   @id(map: "PK_course_standard") @default(autoincrement())
   company_id                                            BigInt?
-  standard_year                                         Int                      @unique(map: "UX_course_standard_central_year") @db.SmallInt
+  standard_year                                         Int                      @unique(map: "UX_course_standard_central_year", where: raw("([company_id] IS NULL)")) @db.SmallInt
   standard_code                                         String                   @unique(map: "UX_RC2_course_standard_standard_code") @db.NVarChar(50)
   standard_name                                         String                   @db.NVarChar(255)
   description                                           String?
-  status                                                String                   @db.VarChar(10)
+  status                                                String                   @default("ACTIVE", map: "DF_course_standard_status") @db.VarChar(10)
   created_by                                            BigInt
-  created_at                                            DateTime
+  created_at                                            DateTime                 @default(dbgenerated("sysdatetime()"), map: "DF_course_standard_created_at")
   updated_at                                            DateTime?
   updated_by                                            BigInt?
   company                                               company?                 @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F022_course_standard_company_id")
@@ -297,14 +298,14 @@ model course_standard {
   user_account_course_standard_updated_byTouser_account user_account?            @relation("course_standard_updated_byTouser_account", fields: [updated_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F024_course_standard_updated_by")
   course_standard_course                                course_standard_course[]
 
-  @@unique([company_id, standard_year], map: "UX_course_standard_company_year")
+  @@unique([company_id, standard_year], map: "UX_course_standard_company_year", where: raw("([company_id] IS NOT NULL)"))
 }
 
 model course_standard_course {
   standard_course_id              BigInt                            @id(map: "PK_course_standard_course") @default(autoincrement())
   standard_id                     BigInt
   course_id                       BigInt
-  created_at                      DateTime
+  created_at                      DateTime                          @default(dbgenerated("sysdatetime()"), map: "DF_course_standard_course_created_at")
   function_id                     BigInt?
   division_id                     BigInt?
   department_id                   BigInt?
@@ -349,10 +350,10 @@ model course_type {
   course_type_name                                  String        @db.NVarChar(150)
   course_type_name_normalized                       String        @unique(map: "UX_RC2_course_type_course_type_name_normalized") @db.NVarChar(150)
   description                                       String?       @db.NVarChar(500)
-  status                                            String        @db.VarChar(10)
-  has_been_used                                     Boolean
+  status                                            String        @default("ACTIVE", map: "DF_course_type_status") @db.VarChar(10)
+  has_been_used                                     Boolean       @default(false, map: "DF_course_type_has_been_used")
   created_by                                        BigInt
-  created_at                                        DateTime
+  created_at                                        DateTime      @default(dbgenerated("sysdatetime()"), map: "DF_course_type_created_at")
   updated_by                                        BigInt?
   updated_at                                        DateTime?
   course                                            course[]
@@ -367,7 +368,7 @@ model employee {
   position_id               BigInt?
   level_id                  BigInt?
   employee_code             String                      @db.NVarChar(50)
-  national_id_hash          String?                     @unique(map: "UX_employee_national_id_hash") @db.Char(64)
+  national_id_hash          String?                     @unique(map: "UX_employee_national_id_hash", where: raw("([national_id_hash] IS NOT NULL)")) @db.Char(64)
   birth_date                DateTime?                   @db.Date
   title_th                  String?                     @db.NVarChar(50)
   title_en                  String?                     @db.NVarChar(50)
@@ -378,14 +379,14 @@ model employee {
   telephone                 String?                     @db.NVarChar(30)
   email                     String?                     @db.NVarChar(255)
   hire_date                 DateTime?                   @db.Date
-  employment_status         String                      @db.NVarChar(20)
+  employment_status         String                      @default("N'ACTIVE'", map: "DF_employee_employment_status") @db.NVarChar(20)
   national_id_encrypted     Bytes?                      @db.VarBinary(256)
   national_id_last4         String?                     @db.Char(4)
   national_id_key_version   Int?                        @db.SmallInt
   division_id               BigInt?
   department_id             BigInt?
   section_id                BigInt?
-  user_id                   String?                     @unique(map: "UX_employee_user_id") @db.NVarChar(50)
+  user_id                   String?                     @unique(map: "UX_employee_user_id", where: raw("([user_id] IS NOT NULL)")) @db.NVarChar(50)
   company                   company                     @relation(fields: [company_id], references: [company_id], onUpdate: NoAction, map: "FK_employee_company_company_id")
   department                department?                 @relation(fields: [department_id], references: [department_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_employee_department_department_id")
   division                  division?                   @relation(fields: [division_id], references: [division_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_employee_division_division_id")
@@ -447,7 +448,7 @@ model employee_level {
   level_name_th                String                         @db.NVarChar(255)
   level_name_en                String?                        @db.NVarChar(255)
   pl                           String?                        @db.NVarChar(30)
-  status                       String                         @db.NVarChar(20)
+  status                       String                         @default("N'ACTIVE'", map: "DF_employee_level_status") @db.NVarChar(20)
   level_code_th                String                         @db.NVarChar(30)
   level_code_en                String                         @db.NVarChar(30)
   level_key                    String                         @unique(map: "UQ_employee_level_level_key") @db.NVarChar(30)
@@ -479,13 +480,13 @@ model evaluation_form {
   form_code             String                  @unique(map: "UQ_evaluation_form_form_code") @db.NVarChar(50)
   form_name             String                  @db.NVarChar(255)
   description           String?                 @db.NVarChar(Max)
-  status                String                  @db.NVarChar(20)
+  status                String                  @default("N'DRAFT'", map: "DF_evaluation_form_status") @db.NVarChar(20)
   created_by            BigInt
-  created_at            DateTime
+  created_at            DateTime                @default(dbgenerated("sysdatetime()"), map: "DF_evaluation_form_created_at")
   updated_at            DateTime?
-  timing                String                  @db.NVarChar(30)
-  respondent_type       String                  @db.NVarChar(20)
-  is_anonymous          Boolean
+  timing                String                  @default("N'AFTER_TRAINING'", map: "DF_evaluation_form_timing") @db.NVarChar(30)
+  respondent_type       String                  @default("N'EMPLOYEE'", map: "DF_evaluation_form_respondent_type") @db.NVarChar(20)
+  is_anonymous          Boolean                 @default(true, map: "DF_evaluation_form_is_anonymous")
   course_after_30day    course[]                @relation("CourseEvaluationFormAfter30Day")
   course                course[]                @relation("CourseEvaluationForm")
   company               company?                @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_evaluation_form_company_company_id")
@@ -516,7 +517,7 @@ model evaluation_question {
   question_order         Int
   question_text          String              @db.NVarChar(Max)
   question_type          String              @db.NVarChar(30)
-  is_required            Boolean
+  is_required            Boolean             @default(true, map: "DF_evaluation_question_is_required")
   section_name           String?             @db.NVarChar(150)
   evaluation_answer      evaluation_answer[]
   evaluation_option      evaluation_option[]
@@ -529,7 +530,7 @@ model evaluation_submission {
   evaluation_submission_id BigInt              @id(map: "PK_evaluation_submission") @default(autoincrement())
   evaluation_form_id       BigInt
   enrollment_id            BigInt
-  status                   String              @db.NVarChar(20)
+  status                   String              @default("N'IN_PROGRESS'", map: "DF_evaluation_submission_status") @db.NVarChar(20)
   started_at               DateTime?
   submitted_at             DateTime?
   evaluation_answer        evaluation_answer[]
@@ -549,7 +550,7 @@ model instructor {
   email             String?             @db.NVarChar(255)
   education         String?             @db.NVarChar(500)
   organization_name String?             @db.NVarChar(255)
-  status            String              @db.NVarChar(20)
+  status            String              @default("N'ACTIVE'", map: "DF_instructor_status") @db.NVarChar(20)
   training_plan_oap training_plan_oap[]
 }
 
@@ -560,8 +561,8 @@ model notification {
   message         String
   related_type    String?      @db.NVarChar(50)
   related_id      BigInt?
-  is_read         Boolean
-  created_at      DateTime
+  is_read         Boolean      @default(false, map: "DF_notification_is_read")
+  created_at      DateTime     @default(dbgenerated("sysdatetime()"), map: "DF_notification_created_at")
   user_account    user_account @relation(fields: [user_id], references: [user_id], onUpdate: NoAction, map: "FK_notification_user_account_user_id")
 
   @@index([user_id], map: "IX_notification_user_id")
@@ -573,7 +574,7 @@ model organization_function {
   function_code            String                     @unique(map: "UQ_organization_function_function_code") @db.NVarChar(30)
   function_name_th         String                     @db.NVarChar(255)
   function_name_en         String?                    @db.NVarChar(255)
-  status                   String                     @db.NVarChar(20)
+  status                   String                     @default("N'ACTIVE'", map: "DF_organization_function_status") @db.NVarChar(20)
   company_function_mapping company_function_mapping[]
   course_standard_course   course_standard_course[]
   employee                 employee[]
@@ -586,7 +587,7 @@ model position {
   position_code                   String                            @unique(map: "UQ_position_position_code") @db.NVarChar(30)
   position_name_th                String                            @db.NVarChar(255)
   position_name_en                String?                           @db.NVarChar(255)
-  status                          String                            @db.NVarChar(20)
+  status                          String                            @default("N'ACTIVE'", map: "DF_position_status") @db.NVarChar(20)
   remark                          String?                           @db.NVarChar(500)
   course_standard_target_position course_standard_target_position[]
   employee                        employee[]
@@ -598,31 +599,31 @@ model role {
   role_code    String         @unique(map: "UQ_role_role_code") @db.NVarChar(30)
   role_name    String         @db.NVarChar(100)
   description  String?        @db.NVarChar(500)
-  status       String         @db.NVarChar(20)
+  status       String         @default("N'ACTIVE'", map: "DF_role_status") @db.NVarChar(20)
   user_account user_account[]
 }
 
 model training_certificate_file {
   certificate_file_id         BigInt                   @id(map: "PK_training_certificate_file") @default(autoincrement())
   certificate_import_batch_id BigInt
-  training_result_id          BigInt?                  @unique(map: "UX_training_certificate_file_active_result")
+  training_result_id          BigInt?                  @unique(map: "UX_training_certificate_file_active_result", where: raw("([training_result_id] IS NOT NULL AND [status]=N'ACTIVE')"))
   enrollment_id               BigInt?
   employee_id                 BigInt?
   original_file_name_masked   String                   @db.NVarChar(255)
   stored_file_name            String                   @unique(map: "UQ_training_certificate_file_stored_file_name") @db.NVarChar(255)
   storage_path                String                   @db.NVarChar(500)
-  file_mime_type              String                   @db.NVarChar(100)
+  file_mime_type              String                   @default("N'application/pdf'", map: "DF_training_certificate_file_file_mime_type") @db.NVarChar(100)
   file_size_bytes             BigInt
   file_sha256                 String                   @db.Char(64)
-  mapping_method              String                   @db.NVarChar(30)
+  mapping_method              String                   @default("N'NATIONAL_ID_FILENAME'", map: "DF_training_certificate_file_mapping_method") @db.NVarChar(30)
   mapping_key_hash            String?                  @db.Char(64)
   mapping_key_last4           String?                  @db.Char(4)
-  mapping_status              String                   @db.NVarChar(30)
+  mapping_status              String                   @default("N'PENDING'", map: "DF_training_certificate_file_mapping_status") @db.NVarChar(30)
   verified_by                 BigInt?
   verified_at                 DateTime?
-  status                      String                   @db.NVarChar(20)
+  status                      String                   @default("N'ACTIVE'", map: "DF_training_certificate_file_status") @db.NVarChar(20)
   remark                      String?                  @db.NVarChar(500)
-  created_at                  DateTime
+  created_at                  DateTime                 @default(dbgenerated("sysdatetime()"), map: "DF_training_certificate_file_created_at")
   updated_at                  DateTime?
   certificate_import_batch    certificate_import_batch @relation(fields: [certificate_import_batch_id], references: [certificate_import_batch_id], onUpdate: NoAction, map: "FK_training_certificate_file_certificate_import_batch")
   employee                    employee?                @relation(fields: [employee_id], references: [employee_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_certificate_file_employee")
@@ -640,7 +641,7 @@ model training_enrollment {
   plan_id                   BigInt
   employee_id               BigInt
   enrollment_source         String                      @db.VarChar(20)
-  approval_status           String                      @db.VarChar(20)
+  approval_status           String                      @default("PENDING", map: "DF_training_enrollment_approval_status") @db.VarChar(20)
   waitlisted_at             DateTime?
   queue_override_reason     String?
   standard_course_id        BigInt?
@@ -651,9 +652,9 @@ model training_enrollment {
   level_code_snapshot       String?                     @db.NVarChar(30)
   level_name_snapshot       String?                     @db.NVarChar(255)
   target_match_status       String                      @db.VarChar(20)
-  level_match_status        String                      @db.VarChar(20)
-  target_checked_at         DateTime
-  enrolled_at               DateTime
+  level_match_status        String                      @default("NOT_REQUIRED", map: "DF_training_enrollment_level_match_status") @db.VarChar(20)
+  target_checked_at         DateTime                    @default(dbgenerated("sysdatetime()"), map: "DF_training_enrollment_target_checked_at")
+  enrolled_at               DateTime                    @default(dbgenerated("sysdatetime()"), map: "DF_training_enrollment_enrolled_at")
   approved_by               BigInt?
   approved_at               DateTime?
   reject_reason             String?
@@ -676,10 +677,10 @@ model training_expense {
   expense_id       BigInt        @id(map: "PK_training_expense") @default(autoincrement())
   plan_id          BigInt
   expense_category String        @db.NVarChar(100)
-  amount           Decimal       @db.Decimal(14, 2)
+  amount           Decimal       @default(0, map: "DF_training_expense_amount") @db.Decimal(14, 2)
   description      String?
   recorded_by      BigInt
-  created_at       DateTime
+  created_at       DateTime      @default(dbgenerated("sysdatetime()"), map: "DF_training_expense_created_at")
   user_account     user_account  @relation(fields: [recorded_by], references: [user_id], onUpdate: NoAction, map: "FK_training_expense_user_account_recorded_by")
   training_plan    training_plan @relation(fields: [plan_id], references: [plan_id], onUpdate: NoAction, map: "FK_V6F066_training_expense_plan_id")
 
@@ -697,8 +698,8 @@ model training_need_request {
   request_reason           String
   preferred_start_date     DateTime?              @db.Date
   preferred_end_date       DateTime?              @db.Date
-  status                   String                 @db.NVarChar(20)
-  requested_at             DateTime
+  status                   String                 @default("N'PENDING'", map: "DF_training_need_request_status") @db.NVarChar(20)
+  requested_at             DateTime               @default(dbgenerated("sysdatetime()"), map: "DF_training_need_request_requested_at")
   reviewed_by              BigInt?
   reviewed_at              DateTime?
   rejection_reason         String?
@@ -727,14 +728,14 @@ model training_plan {
   end_datetime                                        DateTime
   venue                                               String?                            @db.NVarChar(500)
   capacity                                            Int
-  capacity_control_mode                               String                             @db.VarChar(20)
+  capacity_control_mode                               String                             @default("HARD_LIMIT", map: "DF_training_plan_capacity_control_mode") @db.VarChar(20)
   registration_start_at                               DateTime?
   registration_end_at                                 DateTime?
-  qr_code_token                                       String?                            @unique(map: "UX_RC2_training_plan_qr_code_token_not_null") @db.NVarChar(255)
-  allow_walk_in                                       Boolean
-  status                                              String                             @db.VarChar(20)
+  qr_code_token                                       String?                            @unique(map: "UX_RC2_training_plan_qr_code_token_not_null", where: raw("([qr_code_token] IS NOT NULL)")) @db.NVarChar(255)
+  allow_walk_in                                       Boolean                            @default(false, map: "DF_training_plan_allow_walk_in")
+  status                                              String                             @default("DRAFT", map: "DF_training_plan_status") @db.VarChar(20)
   created_by                                          BigInt
-  created_at                                          DateTime
+  created_at                                          DateTime                           @default(dbgenerated("sysdatetime()"), map: "DF_training_plan_created_at")
   updated_at                                          DateTime?
   updated_by                                          BigInt?
   certificate_import_batch                            certificate_import_batch[]
@@ -756,10 +757,10 @@ model training_plan_assessment_setting {
   open_at                                                                DateTime
   close_at                                                               DateTime
   max_attempts                                                           Int?
-  stop_on_pass                                                           Boolean
-  score_selection_policy                                                 String        @db.VarChar(20)
+  stop_on_pass                                                           Boolean       @default(false, map: "DF_training_plan_assessment_setting_stop_on_pass")
+  score_selection_policy                                                 String        @default("BEST_SCORE", map: "DF_training_plan_assessment_setting_score_selection_policy") @db.VarChar(20)
   created_by                                                             BigInt
-  created_at                                                             DateTime
+  created_at                                                             DateTime      @default(dbgenerated("sysdatetime()"), map: "DF_training_plan_assessment_setting_created_at")
   updated_at                                                             DateTime?
   updated_by                                                             BigInt?
   user_account_training_plan_assessment_setting_created_byTouser_account user_account  @relation("training_plan_assessment_setting_created_byTouser_account", fields: [created_by], references: [user_id], onUpdate: NoAction, map: "FK_V6F050_training_plan_assessment_setting_created_by")
@@ -782,16 +783,16 @@ model training_plan_oap {
   evaluation_form_id                                          BigInt?
   planned_duration_hours                                      Int
   default_participant_count                                   Int
-  total_planned_budget                                        Decimal             @db.Decimal(14, 2)
+  total_planned_budget                                        Decimal             @default(0.00, map: "DF_training_plan_oap_total_planned_budget") @db.Decimal(14, 2)
   instructor_id                                               BigInt?
   instructor_name_text                                        String?             @db.NVarChar(255)
   provider_name_text                                          String?             @db.NVarChar(255)
   default_venue                                               String?             @db.NVarChar(500)
-  enrollment_mode                                             String              @db.VarChar(20)
-  allow_non_target                                            Boolean
-  status                                                      String              @db.VarChar(20)
+  enrollment_mode                                             String              @default("BOTH", map: "DF_training_plan_oap_enrollment_mode") @db.VarChar(20)
+  allow_non_target                                            Boolean             @default(false, map: "DF_training_plan_oap_allow_non_target")
+  status                                                      String              @default("DRAFT", map: "DF_training_plan_oap_status") @db.VarChar(20)
   created_by                                                  BigInt
-  created_at                                                  DateTime
+  created_at                                                  DateTime            @default(dbgenerated("sysdatetime()"), map: "DF_training_plan_oap_created_at")
   updated_by                                                  BigInt?
   updated_at                                                  DateTime?
   provider_id                                                 BigInt?
@@ -825,8 +826,8 @@ model training_record_request {
   request_reason                                                 String?
   date_from                                                      DateTime?              @db.Date
   date_to                                                        DateTime?              @db.Date
-  status                                                         String                 @db.NVarChar(20)
-  requested_at                                                   DateTime
+  status                                                         String                 @default("N'PENDING'", map: "DF_training_record_request_status") @db.NVarChar(20)
+  requested_at                                                   DateTime               @default(dbgenerated("sysdatetime()"), map: "DF_training_record_request_requested_at")
   reviewed_by                                                    BigInt?
   reviewed_at                                                    DateTime?
   rejection_reason                                               String?
@@ -854,10 +855,10 @@ model training_result {
   pre_score                                                                                Decimal?                   @db.Decimal(10, 2)
   official_post_submission_id                                                              BigInt?
   post_score                                                                               Decimal?                   @db.Decimal(10, 2)
-  completion_status                                                                        String                     @db.VarChar(20)
+  completion_status                                                                        String                     @default("PENDING", map: "DF_training_result_completion_status") @db.VarChar(20)
   completed_at                                                                             DateTime?
   valid_until                                                                              DateTime?                  @db.Date
-  certificate_no                                                                           String?                    @unique(map: "UX_RC2_training_result_certificate_no_not_null") @db.NVarChar(100)
+  certificate_no                                                                           String?                    @unique(map: "UX_RC2_training_result_certificate_no_not_null", where: raw("([certificate_no] IS NOT NULL)")) @db.NVarChar(100)
   training_certificate_file                                                                training_certificate_file?
   training_enrollment                                                                      training_enrollment        @relation(fields: [enrollment_id], references: [enrollment_id], onUpdate: NoAction, map: "FK_V6F076_training_result_enrollment_id")
   assessment_submission_training_result_official_post_submission_idToassessment_submission assessment_submission?     @relation("training_result_official_post_submission_idToassessment_submission", fields: [official_post_submission_id], references: [submission_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F077_training_result_official_post_submission_id")
@@ -871,10 +872,10 @@ model user_account {
   company_id                                                                                 BigInt?
   username                                                                                   String                             @unique(map: "UQ_user_account_username") @db.NVarChar(100)
   password_hash                                                                              String                             @db.NVarChar(255)
-  email                                                                                      String?                            @unique(map: "UX_user_account_email") @db.NVarChar(255)
-  status                                                                                     String                             @db.NVarChar(20)
+  email                                                                                      String?                            @unique(map: "UX_user_account_email", where: raw("([email] IS NOT NULL)")) @db.NVarChar(255)
+  status                                                                                     String                             @default("N'ACTIVE'", map: "DF_user_account_status") @db.NVarChar(20)
   last_login_at                                                                              DateTime?
-  created_at                                                                                 DateTime
+  created_at                                                                                 DateTime                           @default(dbgenerated("sysdatetime()"), map: "DF_user_account_created_at")
   announcement                                                                               announcement[]
   assessment_assessment_created_byTouser_account                                             assessment[]                       @relation("assessment_created_byTouser_account")
   assessment_assessment_updated_byTouser_account                                             assessment[]                       @relation("assessment_updated_byTouser_account")

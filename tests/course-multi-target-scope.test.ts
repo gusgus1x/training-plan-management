@@ -1,6 +1,11 @@
 import { config as loadEnvironment } from "dotenv";
 import { describe, expect, it } from "vitest";
 
+// These suites create and delete real rows, so they follow the same gate as the other
+// database-mutation tests: skipped unless RUN_DATABASE_MUTATION_TESTS=1 is set.
+const databaseMutationTest =
+  process.env.RUN_DATABASE_MUTATION_TESTS === "1" ? it : it.skip;
+
 loadEnvironment({ path: ".env", quiet: true });
 loadEnvironment({ path: ".env.local", quiet: true });
 import { courseService } from "../app/lib/courses/service";
@@ -8,7 +13,7 @@ import { computeTargetMatch } from "../app/lib/trainingEnrollment/repository";
 import { getPrismaClient } from "../app/lib/database/prisma";
 
 describe("Multi-Target Scope in Course Master & Target Match Engine", () => {
-  it("should create a course with multiple target org scopes and list them properly", async () => {
+  databaseMutationTest("should create a course with multiple target org scopes and list them properly", async () => {
     const db = getPrismaClient();
     // 1. Fetch valid course type, course group, companies, and org units
     const courseTypes = await db.course_type.findMany({ take: 1 });
@@ -36,6 +41,9 @@ describe("Multi-Target Scope in Course Master & Target Match Engine", () => {
 
     // 2. Create course with 2 target org scopes
     const uniqueName = `Multi-Target Test Course ${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    let createdCourseId: string | null = null;
+
+    try {
     const result = await courseService.createCourse(
       {
         courseNameTh: uniqueName,
@@ -74,6 +82,7 @@ describe("Multi-Target Scope in Course Master & Target Match Engine", () => {
     );
 
     expect(result.courseId).toBeDefined();
+    createdCourseId = result.courseId;
 
     // 3. List courses and verify standards have multi targetOrgScopes
     const list = await courseService.listCourses({ search: uniqueName, status: null }, null);
@@ -100,7 +109,14 @@ describe("Multi-Target Scope in Course Master & Target Match Engine", () => {
     const matchScope1 = await computeTargetMatch(db, BigInt(result.courseId), mockEmployeeScope1 as any);
     expect(matchScope1.targetMatchStatus).toBe("MATCHED");
 
-    // Clean up
-    await courseService.deleteCourse(result.courseId, null);
+    } finally {
+      // A failed assertion used to leave this row behind, and the central course standard
+      // is unique per year — so one failure made every later run fail too.
+      if (createdCourseId) {
+        await courseService
+          .deleteCourse(createdCourseId, validUser!.user_id.toString(), null)
+          .catch((error) => console.error(`Cleanup warning: ${String(error)}`));
+      }
+    }
   });
 });
