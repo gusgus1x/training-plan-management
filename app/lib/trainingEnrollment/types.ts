@@ -51,8 +51,6 @@ export type CreateEnrollmentInput = {
   /** Durable employee business key. Preferred; falls back to employeeId when absent. */
   employeeUserId: string | null;
   source: EnrollmentSource;
-  autoApprove?: boolean;
-  markAttended?: boolean;
 };
 
 export type EnrollmentAction = "approve" | "reject" | "cancel";

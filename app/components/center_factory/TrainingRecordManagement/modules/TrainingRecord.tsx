@@ -13,7 +13,6 @@ import {
   loadWorkflowRollingPlans,
   type RollingPlan,
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
-import { createEnrollment } from "../../../../lib/trainingEnrollment/client";
 import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./TrainingRecord.module.css";
 
@@ -611,13 +610,15 @@ export default function TrainingRecord() {
   const [attendeeSearchQuery, setAttendeeSearchQuery] = useState("");
   const [selectedAttendeeCompanyFilter, setSelectedAttendeeCompanyFilter] = useState("ALL");
 
-  const reloadTrainingRecords = async () => {
-    try {
-      const [plans, empResult, recordResult] = await Promise.all([
-        loadWorkflowRollingPlans().catch(() => []),
-        listEmployees().catch(() => ({ items: [] as EmployeeRecord[] })),
-        listTrainingRecords().catch(() => ({ trainingRecords: [] as TrainingRecordSummary[] })),
-      ]);
+  useEffect(() => {
+    let active = true;
+    setIsLoading(true);
+    void Promise.all([
+      loadWorkflowRollingPlans().catch(() => []),
+      listEmployees().catch(() => ({ items: [] as EmployeeRecord[] })),
+      listTrainingRecords().catch(() => ({ trainingRecords: [] as TrainingRecordSummary[] })),
+    ]).then(([plans, empResult, recordResult]) => {
+      if (!active) return;
       setRollingPlans(plans);
       setMasterEmployees(empResult.items || []);
 
@@ -677,15 +678,7 @@ export default function TrainingRecord() {
       });
 
       setCourses(nextCourses);
-    } catch (err) {
-      console.error("Failed to reload training records", err);
-    }
-  };
-
-  useEffect(() => {
-    let active = true;
-    setIsLoading(true);
-    reloadTrainingRecords().finally(() => {
+    }).finally(() => {
       if (active) {
         setIsLoading(false);
       }
@@ -714,7 +707,10 @@ export default function TrainingRecord() {
 
             const isCenterCourse = course.owner === "CENTER";
             if (isCenterCourse) {
-              return true;
+              const companyAttendedCount = (course.attendees || []).filter(
+                (attendee) => attendee.company === userCompanyCode,
+              ).length;
+              return companyAttendedCount > 0;
             }
 
             return false;
@@ -935,53 +931,77 @@ export default function TrainingRecord() {
   };
 
   const handleAddAttendee = async () => {
-    const selectedMaster =
-      masterEmployees.find((emp) => emp.employeeCode === selectedEmpCode) ||
-      masterEmployees.find(
-        (emp) =>
-          emp.employeeCode.toLowerCase() === customEmpCode.trim().toLowerCase(),
-      );
+    const selectedMaster = masterEmployees.find((emp) => emp.employeeCode === selectedEmpCode);
+    const missingFields: string[] = [];
 
     if (!selectedCourse) {
-      await notice({ missingFields: ["หลักสูตร (Course) — เลือกหลักสูตรจากตารางก่อน"] });
-      return;
+      missingFields.push("หลักสูตร (Course) — เลือกหลักสูตรจากตารางก่อน");
     }
-
     if (!selectedMaster) {
-      await notice({
-        missingFields: [
-          "พนักงาน (Employee) — กรุณาเลือกรหัสพนักงานจากรายชื่อระบบ Master Data",
-        ],
-      });
+      // No master employee picked, so the manual code/name fields become the required pair
+      // instead of silently falling back to a generated "EMP-0001 / New Participant" row.
+      if (!customEmpCode.trim()) {
+        missingFields.push("รหัสพนักงาน (Employee Code) — เลือกจากข้อมูลพนักงาน หรือกรอกเอง");
+      }
+      if (!customEmpName.trim()) {
+        missingFields.push("ชื่อพนักงาน (Employee Name) — เลือกจากข้อมูลพนักงาน หรือกรอกเอง");
+      }
+    }
+
+    if (missingFields.length > 0) {
+      await notice({ missingFields });
+      return;
+    }
+    if (!selectedCourse) {
       return;
     }
 
-    try {
-      await createEnrollment({
-        planId: selectedCourse.id,
-        employeeId: selectedMaster.employeeId,
-        employeeUserId: selectedMaster.userId || null,
-        source: isFactoryUser ? "HRD_FACTORY" : "HRD_CENTER",
-        autoApprove: true,
-        markAttended: true,
-      });
+    const addSequence = selectedCourse.attendees.length + 1;
 
-      await reloadTrainingRecords();
+    const empCode =
+      selectedMaster?.employeeCode ||
+      customEmpCode.trim() ||
+      `EMP-${String(addSequence).padStart(4, "0")}`;
+    const empName = selectedMaster
+      ? `${selectedMaster.titleEn || ""} ${selectedMaster.firstNameEn || selectedMaster.firstNameTh} ${selectedMaster.lastNameEn || selectedMaster.lastNameTh}`.trim()
+      : customEmpName.trim() || "New Participant";
+    const company = selectedMaster?.companyCode || customCompany.trim() || selectedCourse.company || "SNF";
+    const department = selectedMaster?.functionName || customDepartment.trim() || "General";
 
-      const empName = `${selectedMaster.titleEn || ""} ${selectedMaster.firstNameEn || selectedMaster.firstNameTh} ${selectedMaster.lastNameEn || selectedMaster.lastNameTh}`.trim();
-      toast.success(
-        `บันทึกเพิ่ม ${empName} (${selectedMaster.employeeCode}) เข้าอบรมเรียบร้อยแล้ว / Attendee saved successfully`,
-      );
-      setSelectedEmpCode("");
-      setCustomEmpCode("");
-      setCustomEmpName("");
-      setCustomDepartment("");
-      setCustomCompany("");
-      setIsAddingAttendee(false);
-    } catch (error) {
-      console.error("Failed to add attendee to training record", error);
-      toast.error("เกิดข้อผิดพลาดในการเพิ่มผู้เข้าร่วม / Failed to add attendee");
-    }
+    const newAttendeeObj: CompletedCourse["attendees"][number] = {
+      id: `att-add-${selectedCourse.id}-${empCode}-${addSequence}`,
+      company,
+      employeeCode: empCode,
+      name: empName,
+      department,
+      prePost: "Failed",
+      evaluation: "Pending",
+    };
+
+    setCourses((current) =>
+      current.map((course) =>
+        course.id === selectedCourse.id
+          ? {
+              ...course,
+              actualAttendees: course.actualAttendees + 1,
+              registeredAttendees: course.registeredAttendees + 1,
+              attendees: [...course.attendees, newAttendeeObj],
+            }
+          : course,
+      ),
+    );
+    setAddAttendeeMessage(
+      `Added ${empName} (${empCode}) to ${selectedCourse.code} for this view — this manual addition is not saved to the server yet.`,
+    );
+    toast.warning(
+      `เพิ่ม ${empName} (${empCode}) ในหน้าจอแล้ว แต่ยังไม่ได้บันทึกลงเซิร์ฟเวอร์ / Added on screen only, not saved to the server yet`,
+    );
+    setSelectedEmpCode("");
+    setCustomEmpCode("");
+    setCustomEmpName("");
+    setCustomDepartment("");
+    setCustomCompany("");
+    setIsAddingAttendee(false);
   };
 
   const renderSelectedCourseDetail = () => {
