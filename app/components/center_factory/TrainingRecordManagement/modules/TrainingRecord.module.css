@@ -3988,3 +3988,32 @@
   font-weight: 800;
 }
 
+.companyBreakdownHeader {
+  margin-bottom: 6px;
+}
+
+.companyBreakdownHeader h4 {
+  margin: 2px 0 0;
+  font-size: 0.84rem;
+  font-weight: 900;
+  color: var(--ui-30-ink);
+}
+
+.companyPresentCount {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--ui-30-ink);
+}
+
+.sharePercentText {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--ui-30-muted);
+}
+
+.companyTotalRow td {
+  background: var(--ui-60-surface-soft);
+  font-weight: 900;
+  color: var(--ui-30-ink);
+}
+

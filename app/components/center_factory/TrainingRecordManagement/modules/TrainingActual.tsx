@@ -955,30 +955,70 @@ export default function TrainingActual() {
 
             {companyCostBreakdown.length > 0 ? (
               <div className={styles.actualCompanyBreakdownBox}>
-                <p className={styles.kicker}>
-                  {isSelectedCourseReadOnlyForFactory || (isFactoryUser && isSelectedCourseCenter)
-                    ? "งบปันส่วนบริษัท (Company Allocation)"
-                    : "การปันส่วนงบประมาณตามบริษัท"}
-                </p>
-                <div className={styles.actualCompanyList}>
-                  {companyCostBreakdown.map((item) => (
-                    <div key={item.companyCode} className={styles.actualCompanyRow}>
-                      <div>
-                        <strong>{item.companyCode}</strong>
-                        <span>เข้าเรียน {item.presentCount} คน</span>
-                      </div>
-                      <strong>THB {formatCurrency(item.allocatedCost)}</strong>
-                    </div>
-                  ))}
-                  {isFactoryUser && isSelectedCourseCenter ? (
-                    <div className={styles.actualCompanyRow}>
-                      <div>
-                        <strong>รวมทุกบริษัท (All Companies)</strong>
-                        <span>เข้าเรียน {costBreakdown?.presentCount ?? 0} คน</span>
-                      </div>
-                      <strong>THB {formatCurrency(savedActualTotal)}</strong>
-                    </div>
-                  ) : null}
+                <div className={styles.companyBreakdownHeader}>
+                  <p className={styles.kicker}>Company Cost Share</p>
+                  <h4>
+                    {isSelectedCourseReadOnlyForFactory || (isFactoryUser && isSelectedCourseCenter)
+                      ? "งบปันส่วนบริษัทของคุณ (Your Company Allocation)"
+                      : "การปันส่วนงบประมาณตามบริษัท"}
+                  </h4>
+                </div>
+
+                <div className={styles.companyCostTableWrap}>
+                  <table className={styles.companyCostTable}>
+                    <thead>
+                      <tr>
+                        <th>บริษัท</th>
+                        <th>ผู้เข้าเรียน</th>
+                        <th>สัดส่วน %</th>
+                        <th style={{ textAlign: "right" }}>งบปันส่วน (THB)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {companyCostBreakdown.map((item) => {
+                        const totalPresent = costBreakdown?.presentCount || actualCount || 1;
+                        const pct = Math.round((item.presentCount / totalPresent) * 100);
+                        return (
+                          <tr key={item.companyCode}>
+                            <td>
+                              <span className={styles.companyBadgePill}>{item.companyCode}</span>
+                            </td>
+                            <td>
+                              <span className={styles.companyPresentCount}>🟢 {item.presentCount} คน</span>
+                            </td>
+                            <td>
+                              <div className={styles.sharePercentCell}>
+                                <div className={styles.sharePercentBarWrap}>
+                                  <div
+                                    className={styles.sharePercentBar}
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                                <span className={styles.sharePercentText}>{pct}%</span>
+                              </div>
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              <strong className={styles.allocatedCostText}>
+                                THB {formatCurrency(item.allocatedCost)}
+                              </strong>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {isFactoryUser && isSelectedCourseCenter ? (
+                        <tr className={styles.companyTotalRow}>
+                          <td colSpan={3}>
+                            <strong>รวมทุกบริษัท (All Companies Total)</strong>
+                          </td>
+                          <td style={{ textAlign: "right" }}>
+                            <strong className={styles.allocatedCostText}>
+                              THB {formatCurrency(savedActualTotal)}
+                            </strong>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             ) : null}
