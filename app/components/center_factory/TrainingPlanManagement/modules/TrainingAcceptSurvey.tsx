@@ -1756,92 +1756,126 @@ export default function TrainingAcceptSurvey() {
 
       {canShowAcceptanceList ? (
         roleMode === "center" ? (
-          <section className={styles.workspace} style={{ marginTop: "16px", marginBottom: "16px" }}>
+          <section className={styles.approvalPanel} style={{ marginTop: "16px", marginBottom: "16px" }}>
             <div className={styles.workspaceHeader}>
               <div>
-                <p className={styles.kicker}>Candidate approval</p>
-                <h3>Employee acceptance list</h3>
+                <p className={styles.kicker} style={{ color: "#818cf8" }}>Candidate Approval (Center Mode)</p>
+                <h3>รายการพนักงานส่งจากโรงงานรอการอนุมัติเข้าอบรม ({visibleCandidates.length} คน)</h3>
               </div>
-              <span>{visibleCandidates.length} shown / {approvalQueue.length} waiting</span>
+              <div className={styles.participantActions}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#818cf8", fontWeight: 700, fontSize: "0.82rem" }}>
+                  <span className={styles.glowingDotBlue}></span> รออนุมัติ {approvalQueue.length} คน
+                </span>
+                <button
+                  className={styles.batchApproveBtn}
+                  type="button"
+                  disabled={approvalQueue.length === 0}
+                  onClick={async () => {
+                    if (approvalQueue.length === 0) return;
+                    try {
+                      for (const candidate of approvalQueue) {
+                        await updateEnrollmentStatus(candidate.id, { action: "approve" });
+                      }
+                      await reloadEnrollments();
+                      toast.success(`อนุมัติพนักงานทั้งหมด ${approvalQueue.length} คนเรียบร้อยแล้ว / Batch approved ${approvalQueue.length} candidates`);
+                    } catch (err) {
+                      console.error("Failed batch approve", err);
+                      toast.error("เกิดข้อผิดพลาดในการอนุมัติทั้งหมด / Failed to batch approve");
+                    }
+                  }}
+                >
+                  ✓ อนุมัติทั้งหมด ({approvalQueue.length})
+                </button>
+              </div>
             </div>
 
-            <div className={styles.tableWrap}>
-              <table className={styles.dataTable}>
-                <thead>
-                  <tr>
-                    <th>Employee</th>
-                    <th>Company</th>
-                    <th>Position / Level</th>
-                    <th>Match</th>
-                    <th>Source</th>
-                    <th>Status</th>
-                    <th>Remark</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleCandidates.map((candidate) => {
-                    const canApprove = candidate.status === "Pending Approval";
+            <div className={styles.employeeRows}>
+              {visibleCandidates.length > 0 ? (
+                <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
+                  <span>จัดการ</span>
+                  <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                    <span>รหัสพนักงาน</span>
+                    <span>สถานะ</span>
+                    <span>คำนำหน้า</span>
+                    <span>ชื่อ</span>
+                    <span>นามสกุล</span>
+                    <span>บริษัท</span>
+                    <span>ส่วนงาน</span>
+                    <span>ฝ่าย</span>
+                    <span>แผนก</span>
+                    <span>ตำแหน่ง</span>
+                    <span>ระดับ</span>
+                  </div>
+                </div>
+              ) : null}
+              {visibleCandidates.map((candidate) => {
+                const masterEmp = masterEmployees.find(
+                  (emp) =>
+                    emp.employeeCode === candidate.employeeCode ||
+                    emp.id === candidate.employeeId,
+                );
+                const nameProfile = masterEmp
+                  ? getEmployeeNameProfile(masterEmp)
+                  : getEmployeeNameProfile({ name: candidate.employeeName });
 
-                    return (
-                      <tr key={candidate.id}>
-                        <td>
-                          <strong>{candidate.employeeName}</strong>
-                          <span>{candidate.employeeCode} / {candidate.department}</span>
-                        </td>
-                        <td>{candidate.company}</td>
-                        <td>{candidate.position} / {candidate.level}</td>
-                        <td>
-                          <span className={candidate.targetMatchStatus === "MATCHED" ? styles.matchPill : styles.manualPill}>
-                            {candidate.targetMatchStatus === "MATCHED" ? "Position + Level" : "Manual add"}
+                const canApprove = candidate.status === "Pending Approval";
+                const canReject = candidate.status !== "Rejected";
+
+                return (
+                  <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={candidate.id}>
+                    <div className={styles.actionCellBtns}>
+                      <button
+                        className={styles.approveCandidateBtn}
+                        type="button"
+                        disabled={!canApprove}
+                        onClick={() => void handleApprove(candidate.id)}
+                      >
+                        ✓ อนุมัติ
+                      </button>
+                      <button
+                        className={styles.rejectCandidateBtn}
+                        type="button"
+                        disabled={!canReject}
+                        onClick={() => void handleReject(candidate.id)}
+                      >
+                        ✕ ปฏิเสธ
+                      </button>
+                    </div>
+                    <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.employeeCode}>{candidate.employeeCode}</span>
+                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
+                        {candidate.status === "Pending Approval" ? (
+                          <span className={styles.badgePending}>
+                            <span className={styles.glowingDotBlue}></span> รออนุมัติ
                           </span>
-                        </td>
-                        <td><span className={`${styles.sourcePill} ${sourceClass[candidate.source]}`}>{sourceLabel[candidate.source]}</span></td>
-                        <td>
-                          {candidate.status === "Pending Approval" ? (
-                            <span className={styles.badgePending}>
-                              <span className={styles.glowingDotBlue}></span> รออนุมัติ
-                            </span>
-                          ) : candidate.status === "Center Approved" || candidate.status === "Factory Approved" ? (
-                            <span className={styles.badgeApproved}>
-                              <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
-                            </span>
-                          ) : candidate.status === "Rejected" ? (
-                            <span className={styles.badgeRejected}>
-                              <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
-                            </span>
-                          ) : (
-                            <span className={`${styles.statusPill} ${statusClass[candidate.status]}`}>{candidate.status}</span>
-                          )}
-                        </td>
-                        <td>{candidate.remark}</td>
-                        <td className={styles.actionCell}>
-                          <button
-                            className={styles.approveButton}
-                            disabled={!canApprove}
-                            type="button"
-                            onClick={() => void handleApprove(candidate.id)}
-                          >
-                            ✓ อนุมัติ
-                          </button>
-                          <button
-                            className={styles.rejectButton}
-                            disabled={candidate.status === "Rejected"}
-                            type="button"
-                            onClick={() => void handleReject(candidate.id)}
-                          >
-                            ✕ ปฏิเสธ
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        ) : candidate.status === "Center Approved" || candidate.status === "Factory Approved" ? (
+                          <span className={styles.badgeApproved}>
+                            <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
+                          </span>
+                        ) : candidate.status === "Rejected" ? (
+                          <span className={styles.badgeRejected}>
+                            <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
+                          </span>
+                        ) : (
+                          <span>{candidate.status}</span>
+                        )}
+                      </span>
+                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
+                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.firstName}>{nameProfile.firstName}</span>
+                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.lastName}>{nameProfile.lastName}</span>
+                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.company}>{candidate.company}</span>
+                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.section || "-"}>{masterEmp?.section || "-"}</span>
+                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.division || "-"}>{masterEmp?.division || "-"}</span>
+                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.department || candidate.department || "-"}>{masterEmp?.department || candidate.department || "-"}</span>
+                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.position || "-"}>{candidate.position || "-"}</span>
+                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.level || "-"}>{candidate.level || "-"}</span>
+                    </div>
+                  </article>
+                );
+              })}
               {visibleCandidates.length === 0 ? (
-                <div className={styles.emptyState}>
-                  <strong>No factory submissions</strong>
-                  <span>Factory submitted employees will appear here before they become training participants.</span>
+                <div className={styles.emptyDraftBox}>
+                  📋 ไม่มีรายการส่งพนักงานจากโรงงานที่รออนุมัติในขณะนี้
                 </div>
               ) : null}
             </div>
