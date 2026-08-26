@@ -1,5 +1,8 @@
-// Phase 20 Stage 2 verification: does every child row that points at an employee by the old
-// surrogate id also point at the same employee by the durable business key?
+// Phase 20 verification: does every child row still resolve to a real employee?
+//
+// Before Stage 8 this compared the two parallel links row by row. The surrogate column is gone
+// now, so what is left to prove is that the surviving link is complete and points at something:
+// a value with no matching employee would be an orphan the foreign key should have prevented.
 //
 // Counts and constraint metadata only — never row values.
 // Usage: node scripts/check-employee-user-id-links.mjs
@@ -14,12 +17,14 @@ const required = (name) => {
   return value;
 };
 
+// The two nullable ones are optional links by design: a certificate file need not belong to an
+// employee, and an account need not be tied to a person yet.
 const TABLES = [
-  "training_enrollment",
-  "training_need_request",
-  "training_record_request",
-  "training_certificate_file",
-  "user_account",
+  { name: "training_enrollment", linkRequired: true },
+  { name: "training_need_request", linkRequired: true },
+  { name: "training_record_request", linkRequired: true },
+  { name: "training_certificate_file", linkRequired: false },
+  { name: "user_account", linkRequired: false },
 ];
 
 const run = async () => {
@@ -40,42 +45,43 @@ const run = async () => {
     const blockers = [];
     console.log("child table links to employee.user_id\n");
 
-    for (const table of TABLES) {
+    for (const { name, linkRequired } of TABLES) {
       const one = async (query) => (await pool.request().query(query)).recordset[0].n;
 
-      const rows = await one(`SELECT COUNT(*) AS n FROM dbo.${table}`);
-      const withOldKey = await one(
-        `SELECT COUNT(*) AS n FROM dbo.${table} WHERE employee_id IS NOT NULL`,
+      const rows = await one(`SELECT COUNT(*) AS n FROM dbo.${name}`);
+      const linked = await one(
+        `SELECT COUNT(*) AS n FROM dbo.${name} WHERE employee_user_id IS NOT NULL`,
       );
-      const withNewKey = await one(
-        `SELECT COUNT(*) AS n FROM dbo.${table} WHERE employee_user_id IS NOT NULL`,
-      );
-      // The pair must agree for every row, not merely match in total.
-      const disagreeing = await one(`
+      const orphaned = await one(`
         SELECT COUNT(*) AS n
-        FROM dbo.${table} AS t
-        LEFT JOIN dbo.employee AS e ON e.employee_id = t.employee_id
-        WHERE t.employee_id IS NOT NULL
-          AND (t.employee_user_id IS NULL OR t.employee_user_id <> e.user_id)`);
-      const foreignKey = await one(`
-        SELECT COUNT(*) AS n FROM sys.foreign_keys
-        WHERE name = N'FK_${table}_employee_user_id'`);
+        FROM dbo.${name} AS t
+        LEFT JOIN dbo.employee AS e ON e.user_id = t.employee_user_id
+        WHERE t.employee_user_id IS NOT NULL AND e.user_id IS NULL`);
+      const foreignKey = await one(
+        `SELECT COUNT(*) AS n FROM sys.foreign_keys WHERE name = N'FK_${name}_employee_user_id'`,
+      );
+      const surrogateGone = await one(`
+        SELECT COUNT(*) AS n FROM sys.columns
+        WHERE object_id = OBJECT_ID(N'dbo.${name}') AND name = N'employee_id'`);
 
       console.log(
-        `  ${table.padEnd(26)} rows=${String(rows).padStart(5)}` +
-          ` old=${String(withOldKey).padStart(5)}` +
-          ` new=${String(withNewKey).padStart(5)}` +
-          ` mismatched=${String(disagreeing).padStart(4)}` +
-          ` fk=${foreignKey ? "yes" : "NO"}`,
+        `  ${name.padEnd(26)} rows=${String(rows).padStart(5)}` +
+          ` linked=${String(linked).padStart(5)}` +
+          ` orphaned=${String(orphaned).padStart(4)}` +
+          ` fk=${foreignKey ? "yes" : "NO"}` +
+          ` old_column=${surrogateGone ? "STILL THERE" : "dropped"}`,
       );
 
-      if (disagreeing > 0) blockers.push(`${table}: ${disagreeing} rows disagree between the two keys`);
-      if (foreignKey === 0) blockers.push(`${table}: foreign key on employee_user_id is missing`);
+      if (orphaned > 0) blockers.push(`${name}: ${orphaned} rows point at an employee that does not exist`);
+      if (foreignKey === 0) blockers.push(`${name}: foreign key on employee_user_id is missing`);
+      if (linkRequired && linked !== rows) {
+        blockers.push(`${name}: ${rows - linked} rows have no employee link but the link is required`);
+      }
     }
 
     console.log("");
     if (blockers.length === 0) {
-      console.log("VERDICT: LINKED — both keys agree on every row and every foreign key is in place.");
+      console.log("VERDICT: LINKED — every row resolves to a real employee and every foreign key is in place.");
     } else {
       console.log("VERDICT: NOT LINKED");
       for (const blocker of blockers) console.log(`  - ${blocker}`);

@@ -33,6 +33,6 @@ export const employeeRepository={
   async update(id:string,i:EmployeeInput,p:any){return withDatabaseErrorMapping(async()=>map(await getPrismaClient().employee.update({where:{employee_id:BigInt(id)},data:data(i,p),include})))},
   async delete(id:string){return withDatabaseErrorMapping(async()=>map(await getPrismaClient().employee.delete({where:{employee_id:BigInt(id)},include})))},
   async bundle(id:string){return getPrismaClient().employee.findUnique({where:{employee_id:BigInt(id)},select:{employee_id:true,company_id:true,national_id_encrypted:true,national_id_key_version:true}})},
-  async factoryTrainingAccess(employeeId:string,companyId:string){const count=await getPrismaClient().training_enrollment.count({where:{employee_id:BigInt(employeeId),approval_status:"APPROVED",training_plan:{user_account_training_plan_created_byTouser_account:{company_id:BigInt(companyId),role:{role_code:"HRD_FACTORY"}}}}});return count>0},
+  async factoryTrainingAccess(employeeId:string,companyId:string){const count=await getPrismaClient().training_enrollment.count({where:{employee:{employee_id:BigInt(employeeId)},approval_status:"APPROVED",training_plan:{user_account_training_plan_created_byTouser_account:{company_id:BigInt(companyId),role:{role_code:"HRD_FACTORY"}}}}});return count>0},
 };
 export type EmployeeRepository=typeof employeeRepository;

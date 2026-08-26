@@ -77,7 +77,7 @@ const AUTHENTICATION_COLUMNS = `
     ua.status AS account_status,
     r.role_code,
     r.status AS role_status,
-    ua.employee_id,
+    e.employee_id,
     e.user_id AS employee_user_id,
     e.employment_status AS employee_status,
     e.company_id AS employee_company_id,
@@ -108,11 +108,8 @@ const AUTHENTICATION_COLUMNS = `
 const AUTHENTICATION_JOINS = `
   FROM dbo.user_account AS ua
   INNER JOIN dbo.role AS r ON r.role_id = ua.role_id
-  -- Phase 20 Stage 4: prefer the durable business key, fall back to the surrogate id while both
-  -- links run in parallel. An account linked either way still resolves to its employee.
-  LEFT JOIN dbo.employee AS e
-    ON (ua.employee_user_id IS NOT NULL AND e.user_id = ua.employee_user_id)
-    OR (ua.employee_user_id IS NULL AND e.employee_id = ua.employee_id)
+  -- user_account.employee_id was dropped in Phase 20 Stage 8; employee_user_id is the only link.
+  LEFT JOIN dbo.employee AS e ON e.user_id = ua.employee_user_id
   LEFT JOIN dbo.company AS ec ON ec.company_id = e.company_id
   LEFT JOIN dbo.company AS ac ON ac.company_id = ua.company_id
   LEFT JOIN dbo.organization_function AS f ON f.function_id = e.function_id

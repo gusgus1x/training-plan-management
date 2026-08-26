@@ -83,7 +83,7 @@ describe("Database Cascade Deletion Live Integration Tests", () => {
       const enrollment = await prisma.training_enrollment.create({
         data: {
           plan_id: plan.plan_id,
-          employee_id: employee.employee_id,
+          employee_user_id: employee.user_id,
           enrollment_source: "HRD_CENTER",
           approval_status: "APPROVED",
           target_match_status: "MATCHED",
@@ -217,7 +217,7 @@ describe("Database Cascade Deletion Live Integration Tests", () => {
       const enrollment1 = await prisma.training_enrollment.create({
         data: {
           plan_id: plan1.plan_id,
-          employee_id: employee.employee_id,
+          employee_user_id: employee.user_id,
           enrollment_source: "HRD_CENTER",
           approval_status: "APPROVED",
           target_match_status: "MATCHED",
@@ -366,7 +366,7 @@ describe("Database Cascade Deletion Live Integration Tests", () => {
       const enrollment = await prisma.training_enrollment.create({
         data: {
           plan_id: plan.plan_id,
-          employee_id: employee.employee_id,
+          employee_user_id: employee.user_id,
           enrollment_source: "HRD_CENTER",
           approval_status: "APPROVED",
           target_match_status: "MATCHED",

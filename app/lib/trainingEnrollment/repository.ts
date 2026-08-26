@@ -61,7 +61,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
   return {
     id: row.enrollment_id.toString(),
     planId: row.plan_id.toString(),
-    employeeId: row.employee_id.toString(),
+    employeeId: employee.employee_id.toString(),
     // Carried through so the layers above can move to the durable key without another query.
     employeeUserId: row.employee_user_id ?? employee.user_id ?? null,
     employeeCode: employee.employee_code,
@@ -213,7 +213,7 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
       if (filters.planId) where.plan_id = BigInt(filters.planId);
       // The durable key wins when the caller supplies it; employee_id remains the legacy filter.
       if (filters.employeeUserId) where.employee_user_id = filters.employeeUserId;
-      else if (filters.employeeId) where.employee_id = BigInt(filters.employeeId);
+      else if (filters.employeeId) where.employee = { employee_id: BigInt(filters.employeeId) };
       if (companyId) {
         // A factory HRD needs visibility into both directions: enrollments under a plan
         // their own company owns (any employee), and their own employees' enrollments
@@ -242,7 +242,6 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
         const employee = input.employeeUserId
           ? await db().employee.findUniqueOrThrow({ where: { user_id: input.employeeUserId }, include: employeeInclude })
           : await db().employee.findUniqueOrThrow({ where: { employee_id: BigInt(input.employeeId) }, include: employeeInclude });
-        const employeeId = employee.employee_id;
 
         if (role === "HRD_FACTORY") {
           assertFactoryScopeForEnrollment(planCompanyId, employee.company_id, companyId);
@@ -255,9 +254,7 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
 
         const data: Prisma.training_enrollmentUncheckedCreateInput = {
           plan_id: planId,
-          employee_id: employeeId,
-          // Both employee links are written while the two keys run in parallel (Phase 20 Stage 2).
-          // Writing only the old one would let new rows drift out of step with the new column.
+          // employee_id is gone from this table (Phase 20 Stage 8); the durable key is the link.
           employee_user_id: employee.user_id,
           enrollment_source: input.source,
           approval_status: autoApprove ? "APPROVED" : "PENDING",
@@ -277,7 +274,7 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
         };
 
         const existing = await db().training_enrollment.findUnique({
-          where: { plan_id_employee_id: { plan_id: planId, employee_id: employeeId } },
+          where: { plan_id_employee_user_id: { plan_id: planId, employee_user_id: employee.user_id } },
         });
 
         const saved = existing
@@ -319,7 +316,7 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
             current.employee_user_id === requesterEmployeeUserId;
           const ownsBySurrogateKey =
             requesterEmployeeId !== null &&
-            current.employee_id.toString() === requesterEmployeeId;
+            current.employee.employee_id.toString() === requesterEmployeeId;
 
           if (action !== "cancel" || (!ownsByDurableKey && !ownsBySurrogateKey)) {
             throw forbidden("You can only withdraw your own registration");
