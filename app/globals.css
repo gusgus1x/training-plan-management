@@ -357,6 +357,13 @@ select,
 textarea {
   width: 100%;
   min-height: 42px;
+  font-size: 0.94rem;
+  padding: 10px 14px;
+}
+
+label {
+  font-size: 0.92rem;
+  font-weight: 700;
 }
 
 textarea {

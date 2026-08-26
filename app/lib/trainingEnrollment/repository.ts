@@ -102,7 +102,7 @@ export const computeTargetMatch = async (
   courseId: bigint,
   employee: EmployeeWithRelations,
 ) => {
-  const standard = await db.course_standard_course.findFirst({
+  const standards = await db.course_standard_course.findMany({
     where: { course_id: courseId },
     include: {
       course_standard_target_position: true,
@@ -111,55 +111,71 @@ export const computeTargetMatch = async (
     },
   });
 
-  if (!standard) {
+  if (standards.length === 0) {
     return { targetMatchStatus: "NOT_MATCHED" as const, levelMatchStatus: "NOT_REQUIRED" as const, standardCourseId: null as bigint | null };
   }
 
-  const hasLevels = standard.course_standard_target_level.length > 0;
-  const hasPositions = standard.course_standard_target_position.length > 0;
+  let matchedStandardId: bigint | null = null;
+  let overallTargetMatched = false;
+  let overallHasLevels = false;
+  let overallLevelMatched = false;
 
-  const isLevelMatched =
-    hasLevels &&
-    employee.level_id !== null &&
-    standard.course_standard_target_level.some((row) => row.level_id === employee.level_id);
+  for (const standard of standards) {
+    const hasLevels = standard.course_standard_target_level.length > 0;
+    const hasPositions = standard.course_standard_target_position.length > 0;
 
-  const isPositionMatched =
-    hasPositions &&
-    employee.position_id !== null &&
-    standard.course_standard_target_position.some((row) => row.position_id === employee.position_id);
+    if (hasLevels) overallHasLevels = true;
 
-  let posLevelMatch = true;
-  if (hasLevels && hasPositions) {
-    // Level is primary and both level & position must match when both are specified
-    posLevelMatch = isLevelMatched && isPositionMatched;
-  } else if (hasLevels) {
-    // Level is primary, not caring about position
-    posLevelMatch = isLevelMatched;
-  } else if (hasPositions) {
-    posLevelMatch = isPositionMatched;
+    const isLevelMatched =
+      hasLevels &&
+      employee.level_id !== null &&
+      standard.course_standard_target_level.some((row) => row.level_id === employee.level_id);
+
+    if (isLevelMatched) overallLevelMatched = true;
+
+    const isPositionMatched =
+      hasPositions &&
+      employee.position_id !== null &&
+      standard.course_standard_target_position.some((row) => row.position_id === employee.position_id);
+
+    let posLevelMatch = true;
+    if (hasLevels && hasPositions) {
+      posLevelMatch = isLevelMatched && isPositionMatched;
+    } else if (hasLevels) {
+      posLevelMatch = isLevelMatched;
+    } else if (hasPositions) {
+      posLevelMatch = isPositionMatched;
+    }
+
+    const orgMatch =
+      (standard.function_id === null || standard.function_id === employee.function_id) &&
+      (standard.division_id === null || standard.division_id === employee.division_id) &&
+      (standard.department_id === null || standard.department_id === employee.department_id) &&
+      (standard.section_id === null || standard.section_id === employee.section_id);
+
+    const companyMatch =
+      standard.course_standard_target_company.length === 0 ||
+      standard.course_standard_target_company.some((row) => row.company_id === employee.company_id);
+
+    if (orgMatch && companyMatch && posLevelMatch) {
+      overallTargetMatched = true;
+      matchedStandardId = standard.standard_course_id;
+      break;
+    }
   }
 
-  const orgMatch =
-    (standard.function_id === null || standard.function_id === employee.function_id) &&
-    (standard.division_id === null || standard.division_id === employee.division_id) &&
-    (standard.department_id === null || standard.department_id === employee.department_id) &&
-    (standard.section_id === null || standard.section_id === employee.section_id);
+  const targetMatchStatus = overallTargetMatched ? ("MATCHED" as const) : ("NOT_MATCHED" as const);
+  const levelMatchStatus = !overallHasLevels
+    ? ("NOT_REQUIRED" as const)
+    : overallLevelMatched
+      ? ("MATCHED" as const)
+      : ("NOT_MATCHED" as const);
 
-  const companyMatch =
-    standard.course_standard_target_company.length === 0 ||
-    standard.course_standard_target_company.some((row) => row.company_id === employee.company_id);
-
-  const targetMatchStatus =
-    orgMatch && companyMatch && posLevelMatch ? ("MATCHED" as const) : ("NOT_MATCHED" as const);
-
-  const levelMatchStatus =
-    !hasLevels
-      ? ("NOT_REQUIRED" as const)
-      : isLevelMatched
-        ? ("MATCHED" as const)
-        : ("NOT_MATCHED" as const);
-
-  return { targetMatchStatus, levelMatchStatus, standardCourseId: standard.standard_course_id };
+  return {
+    targetMatchStatus,
+    levelMatchStatus,
+    standardCourseId: matchedStandardId ?? standards[0].standard_course_id,
+  };
 };
 
 const loadPlanScope = async (db: DatabaseClient, planId: bigint) => {

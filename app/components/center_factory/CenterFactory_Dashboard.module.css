@@ -636,48 +636,57 @@
 .fullCalendarBtn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 30px;
-  padding: 0 12px;
-  border-radius: var(--ui-radius-md);
-  border: 1px solid var(--ui-30-primary-border);
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary-strong);
-  font-size: 0.74rem;
-  font-weight: 900;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid #005c2e;
+  border-bottom: 4px solid #004221;
+  background: linear-gradient(135deg, #007a3d 0%, #005c2e 100%);
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 122, 61, 0.25);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
 }
 
 .fullCalendarBtn:hover {
-  background: var(--ui-30-primary);
-  color: #ffffff;
-  border-color: var(--ui-30-primary);
-  box-shadow: 0 3px 10px rgba(0, 122, 61, 0.25);
-  transform: translateY(-1px);
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+  border-bottom-width: 5px;
+  box-shadow: 0 6px 16px rgba(0, 122, 61, 0.38);
+}
+
+.fullCalendarBtn:active {
+  filter: brightness(0.92);
+  transform: translateY(2px);
+  border-bottom-width: 2px;
+  box-shadow: 0 2px 6px rgba(0, 122, 61, 0.2);
 }
 
 .monthNavGroup {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--ui-60-surface-soft);
+  border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-lg);
-  padding: 2px;
+  padding: 3px;
 }
 
 .monthNavBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border: none;
   border-radius: var(--ui-radius-md);
   background: transparent;
-  color: #e2e8f0;
+  color: var(--ui-30-ink);
   font-size: 1.25rem;
   font-weight: 700;
   cursor: pointer;
@@ -686,46 +695,59 @@
 }
 
 .monthNavBtn:hover {
-  background: rgba(16, 185, 129, 0.25);
-  color: #34d399;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
 }
 
 .badgeDot {
   display: inline-block;
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--ui-30-primary);
   box-shadow: 0 0 8px var(--ui-30-primary);
   margin-right: 6px;
 }
 
+.courseCountBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  font-size: 0.9rem;
+  font-weight: 800;
+  border: 1px solid var(--ui-30-primary-border);
+}
+
 .calendarFilters {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 .calendarFilters label {
   display: grid;
-  gap: 4px;
+  gap: 6px;
   border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--ui-60-surface-soft);
-  padding: 6px;
+  padding: 8px 12px;
 }
 
 .filterItem {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .filterTitle {
-  color: var(--ui-30-muted);
-  font-size: 0.72rem;
-  font-weight: 800;
+  color: var(--ui-30-ink);
+  font-size: 0.9rem;
+  font-weight: 700;
   white-space: nowrap;
 }
 
@@ -737,17 +759,17 @@
 }
 
 .filterSelect {
-  height: 32px;
+  height: 42px;
   width: 100%;
   min-width: 100px;
   border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-md);
-  background: var(--ui-60-surface-soft);
+  border-radius: 10px;
+  background: var(--ui-60-surface);
   color: var(--ui-30-ink);
   font: inherit;
-  font-size: 0.78rem;
-  font-weight: 800;
-  padding: 0 24px 0 10px;
+  font-size: 0.94rem;
+  font-weight: 600;
+  padding: 0 28px 0 12px;
   cursor: pointer;
   outline: none;
   white-space: nowrap;

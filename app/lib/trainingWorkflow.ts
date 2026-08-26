@@ -62,6 +62,20 @@ export type WorkflowStandard = {
   divisionId?: string;
   departmentId?: string;
   sectionId?: string;
+  targetOrgScopes?: Array<{
+    functionId?: string | null;
+    divisionId?: string | null;
+    departmentId?: string | null;
+    sectionId?: string | null;
+    functionCode?: string;
+    functionName?: string;
+    divisionCode?: string;
+    division?: string;
+    departmentCode?: string;
+    department?: string;
+    sectionCode?: string;
+    section?: string;
+  }>;
   functionCode?: string;
   functionName: string;
   divisionCode?: string;

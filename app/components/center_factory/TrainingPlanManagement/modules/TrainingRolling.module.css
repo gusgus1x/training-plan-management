@@ -449,24 +449,22 @@
   display: grid;
   grid-column: span 2;
   gap: 6px;
-  color: var(--ui-30-text);
-  font-size: 0.76rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  color: var(--ui-30-ink);
+  font-size: 0.92rem;
+  font-weight: 700;
 }
 
 .formGrid input,
 .formGrid select {
   width: 100%;
   min-height: 42px;
-  padding: 9px 14px;
+  padding: 10px 14px;
   border: 1.5px solid var(--ui-30-border);
   border-radius: 10px;
   background: var(--ui-60-surface-soft, rgba(255, 255, 255, 0.05));
   color: var(--ui-30-ink);
-  font-size: 0.88rem;
-  font-weight: 600;
+  font-size: 0.94rem;
+  font-weight: 500;
   outline: none;
   box-sizing: border-box;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);

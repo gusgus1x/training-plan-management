@@ -1,3 +1,10 @@
+export type TargetOrgScope = {
+  functionId?: string | null;
+  divisionId?: string | null;
+  departmentId?: string | null;
+  sectionId?: string | null;
+};
+
 export type CreateCourseInput = {
   courseNameTh: string;
   courseNameEn: string;
@@ -27,6 +34,7 @@ export type CreateCourseInput = {
   divisionId: string | null;
   departmentId: string | null;
   sectionId: string | null;
+  targetOrgScopes?: TargetOrgScope[];
   targetCompanies: string[];
   targetPositions: string[];
   targetLevels: string[];

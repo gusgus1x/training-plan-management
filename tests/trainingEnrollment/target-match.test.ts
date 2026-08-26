@@ -17,6 +17,7 @@ const dbWithStandard = (standard: any) =>
   ({
     course_standard_course: {
       findFirst: vi.fn().mockResolvedValue(standard),
+      findMany: vi.fn().mockResolvedValue(standard ? [standard] : []),
     },
   }) as any;
 

@@ -544,6 +544,9 @@ function CourseMaster() {
     void listOapPlans({ search: null, status: null }).then((result) => setOapPlans(result.oapPlans || []));
     void loadWorkflowRollingPlans().then(setRollingPlans);
   }, []);
+  const [targetOrgScopes, setTargetOrgScopes] = useState<
+    Array<{ id: string; functionCode: string; divisionCode: string; departmentCode: string; sectionCode: string }>
+  >([{ id: "1", functionCode: "", divisionCode: "", departmentCode: "", sectionCode: "" }]);
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
@@ -926,6 +929,7 @@ function CourseMaster() {
     setStandardDivisionCode("");
     setStandardDepartmentCode("");
     setStandardSectionCode("");
+    setTargetOrgScopes([{ id: "1", functionCode: "", divisionCode: "", departmentCode: "", sectionCode: "" }]);
     setSelectedCompanies(isFactoryUser && userCompanyCode ? [userCompanyCode] : []);
     setSelectedPositions([]);
     setSelectedLevels([]);
@@ -941,65 +945,89 @@ function CourseMaster() {
       return;
     }
 
-    const isAllFunction = !standard.functionId && (!standard.functionCode || standard.functionCode === allFunctionCode || standard.functionName === "All Function" || standard.functionName === allFunctionOption);
-    const matchingFunctionOption = isAllFunction
-      ? { code: allFunctionCode, name: "All Function" }
-      : functionRows.find(
-          (row) =>
-            (standard.functionId && row.id === standard.functionId) ||
-            row.code === standard.functionCode ||
-            row.name === standard.functionName ||
-            row.nameTh === standard.functionName ||
-            row.nameEn === standard.functionName,
-        );
-    setStandardFunctionCode(matchingFunctionOption?.code ?? (isAllFunction ? allFunctionCode : ""));
-    setStandardFunctionName(
-      isAllFunction
-        ? "All Function"
-        : getFunctionDisplayName(standard.functionCode, standard.functionName) || "",
-    );
+    const rawScopes = (standard.targetOrgScopes && standard.targetOrgScopes.length > 0)
+      ? standard.targetOrgScopes
+      : [{
+          functionId: standard.functionId,
+          divisionId: standard.divisionId,
+          departmentId: standard.departmentId,
+          sectionId: standard.sectionId,
+          functionCode: standard.functionCode,
+          functionName: standard.functionName,
+          divisionCode: standard.divisionCode,
+          division: standard.division,
+          departmentCode: standard.departmentCode,
+          department: standard.department,
+          sectionCode: standard.sectionCode,
+          section: standard.section,
+        }];
 
-    const isAllDivision = !standard.divisionId && (!standard.divisionCode || standard.divisionCode === allFunctionCode || !standard.division || standard.division === "All Division");
-    const matchingDivisionRow = isAllDivision
-      ? { code: allFunctionCode, name: "All Division" }
-      : divisionRows.find(
-          (row) =>
-            (standard.divisionId && row.id === standard.divisionId) ||
-            (standard.divisionCode && row.code === standard.divisionCode) ||
-            row.code === standard.division ||
-            row.name === standard.division ||
-            row.nameTh === standard.division ||
-            row.nameEn === standard.division,
-        );
-    setStandardDivisionCode(matchingDivisionRow?.code ?? (isAllDivision ? allFunctionCode : ""));
+    const loadedScopes = rawScopes.map((scope, index) => {
+      const isAllFunction = !scope.functionId && (!scope.functionCode || scope.functionCode === allFunctionCode || scope.functionName === "All Function" || scope.functionName === allFunctionOption);
+      const matchingFunctionOption = isAllFunction
+        ? { code: allFunctionCode, name: "All Function" }
+        : functionRows.find(
+            (row) =>
+              (scope.functionId && row.id === scope.functionId) ||
+              row.code === scope.functionCode ||
+              row.name === scope.functionName ||
+              row.nameTh === scope.functionName ||
+              row.nameEn === scope.functionName,
+          );
 
-    const isAllDepartment = !standard.departmentId && (!standard.departmentCode || standard.departmentCode === allFunctionCode || !standard.department || standard.department === "All Department");
-    const matchingDepartmentRow = isAllDepartment
-      ? { code: allFunctionCode, name: "All Department" }
-      : departmentRows.find(
-          (row) =>
-            (standard.departmentId && row.id === standard.departmentId) ||
-            (standard.departmentCode && row.code === standard.departmentCode) ||
-            row.code === standard.department ||
-            row.name === standard.department ||
-            row.nameTh === standard.department ||
-            row.nameEn === standard.department,
-        );
-    setStandardDepartmentCode(matchingDepartmentRow?.code ?? (isAllDepartment ? allFunctionCode : ""));
+      const isAllDivision = !scope.divisionId && (!scope.divisionCode || scope.divisionCode === allFunctionCode || !scope.division || scope.division === "All Division");
+      const matchingDivisionRow = isAllDivision
+        ? { code: allFunctionCode, name: "All Division" }
+        : divisionRows.find(
+            (row) =>
+              (scope.divisionId && row.id === scope.divisionId) ||
+              (scope.divisionCode && row.code === scope.divisionCode) ||
+              row.code === scope.division ||
+              row.name === scope.division ||
+              row.nameTh === scope.division ||
+              row.nameEn === scope.division,
+          );
 
-    const isAllSection = !standard.sectionId && (!standard.sectionCode || standard.sectionCode === allFunctionCode || !standard.section || standard.section === "All Section");
-    const matchingSectionRow = isAllSection
-      ? { code: allFunctionCode, name: "All Section" }
-      : sectionRows.find(
-          (row) =>
-            (standard.sectionId && row.id === standard.sectionId) ||
-            (standard.sectionCode && row.code === standard.sectionCode) ||
-            row.code === standard.section ||
-            row.name === standard.section ||
-            row.nameTh === standard.section ||
-            row.nameEn === standard.section,
-        );
-    setStandardSectionCode(matchingSectionRow?.code ?? (isAllSection ? allFunctionCode : ""));
+      const isAllDepartment = !scope.departmentId && (!scope.departmentCode || scope.departmentCode === allFunctionCode || !scope.department || scope.department === "All Department");
+      const matchingDepartmentRow = isAllDepartment
+        ? { code: allFunctionCode, name: "All Department" }
+        : departmentRows.find(
+            (row) =>
+              (scope.departmentId && row.id === scope.departmentId) ||
+              (scope.departmentCode && row.code === scope.departmentCode) ||
+              row.code === scope.department ||
+              row.name === scope.department ||
+              row.nameTh === scope.department ||
+              row.nameEn === scope.department,
+          );
+
+      const isAllSection = !scope.sectionId && (!scope.sectionCode || scope.sectionCode === allFunctionCode || !scope.section || scope.section === "All Section");
+      const matchingSectionRow = isAllSection
+        ? { code: allFunctionCode, name: "All Section" }
+        : sectionRows.find(
+            (row) =>
+              (scope.sectionId && row.id === scope.sectionId) ||
+              (scope.sectionCode && row.code === scope.sectionCode) ||
+              row.code === scope.section ||
+              row.name === scope.section ||
+              row.nameTh === scope.section ||
+              row.nameEn === scope.section,
+          );
+
+      return {
+        id: String(index + 1),
+        functionCode: matchingFunctionOption?.code ?? (isAllFunction ? allFunctionCode : ""),
+        divisionCode: matchingDivisionRow?.code ?? (isAllDivision ? allFunctionCode : ""),
+        departmentCode: matchingDepartmentRow?.code ?? (isAllDepartment ? allFunctionCode : ""),
+        sectionCode: matchingSectionRow?.code ?? (isAllSection ? allFunctionCode : ""),
+      };
+    });
+
+    setTargetOrgScopes(loadedScopes.length > 0 ? loadedScopes : [{ id: "1", functionCode: "", divisionCode: "", departmentCode: "", sectionCode: "" }]);
+    setStandardFunctionCode(loadedScopes[0]?.functionCode ?? "");
+    setStandardDivisionCode(loadedScopes[0]?.divisionCode ?? "");
+    setStandardDepartmentCode(loadedScopes[0]?.departmentCode ?? "");
+    setStandardSectionCode(loadedScopes[0]?.sectionCode ?? "");
 
     if (isFactoryUser && userCompanyCode) {
       setSelectedCompanies([userCompanyCode]);
@@ -1543,6 +1571,24 @@ function CourseMaster() {
         !standardSectionCode || standardSectionCode === allFunctionCode
           ? null
           : sectionRows.find((row) => row.code === standardSectionCode)?.id || null,
+      targetOrgScopes: targetOrgScopes.map((scope) => ({
+        functionId:
+          !scope.functionCode || scope.functionCode === allFunctionCode
+            ? null
+            : functionRows.find((row) => row.code === scope.functionCode)?.id || null,
+        divisionId:
+          !scope.divisionCode || scope.divisionCode === allFunctionCode
+            ? null
+            : divisionRows.find((row) => row.code === scope.divisionCode)?.id || null,
+        departmentId:
+          !scope.departmentCode || scope.departmentCode === allFunctionCode
+            ? null
+            : departmentRows.find((row) => row.code === scope.departmentCode)?.id || null,
+        sectionId:
+          !scope.sectionCode || scope.sectionCode === allFunctionCode
+            ? null
+            : sectionRows.find((row) => row.code === scope.sectionCode)?.id || null,
+      })),
       targetCompanies: selectedCompanies,
       targetPositions: selectedPositions,
       targetLevels: selectedLevels,
@@ -2062,56 +2108,131 @@ function CourseMaster() {
           </div>
         </div>
 
-        <div className={styles.standard_formGrid}>
-          <label>
-            <span className={styles.fieldLabel} translate="no">Function Name</span>
-            <SearchableSelect
-              value={standardFunctionCode}
-              disabled={!isEditing}
-              options={functionOptions}
-              placeholder="Search or select Function"
-              onChange={(nextCode) => {
-                setStandardFunctionCode(nextCode);
-                setStandardFunctionName(
-                  functionOptions.find((option) => option.code === nextCode)
-                    ?.name ?? "",
-                );
+        <div style={{ marginTop: "16px", marginBottom: "16px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+            <h4 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "var(--ui-30-ink)" }}>กลุ่มเป้าหมาย (Function, Division, Department, Section)</h4>
+            {isEditing ? (
+              <button
+                className={styles.primaryButton}
+                style={{ minHeight: "32px", padding: "4px 14px", fontSize: "0.82rem" }}
+                type="button"
+                onClick={() =>
+                  setTargetOrgScopes((prev) => [
+                    ...prev,
+                    { id: Date.now().toString(), functionCode: "", divisionCode: "", departmentCode: "", sectionCode: "" },
+                  ])
+                }
+              >
+                + เพิ่มกลุ่มเป้าหมาย (+ Add Target Scope)
+              </button>
+            ) : null}
+          </div>
+
+          {targetOrgScopes.map((scopeRow, index) => (
+            <div
+              key={scopeRow.id}
+              style={{
+                marginBottom: "12px",
+                padding: "14px",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                borderRadius: "8px",
+                backgroundColor: "rgba(255, 255, 255, 0.02)",
               }}
-            />
-          </label>
+            >
+              {targetOrgScopes.length > 1 ? (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                  <span style={{ fontSize: "13px", fontWeight: 600, opacity: 0.85 }}>
+                    กลุ่มเป้าหมายที่ {index + 1}
+                  </span>
+                  {isEditing ? (
+                    <button
+                      className={styles.dangerButton}
+                      style={{ padding: "2px 8px", fontSize: "12px" }}
+                      type="button"
+                      onClick={() =>
+                        setTargetOrgScopes((prev) =>
+                          prev.length > 1 ? prev.filter((r) => r.id !== scopeRow.id) : prev,
+                        )
+                      }
+                    >
+                      🗑️ ลบ (Delete)
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
 
-          <label>
-            <span className={styles.fieldLabel} translate="no">Division</span>
-            <SearchableSelect
-              value={standardDivisionCode}
-              disabled={!isEditing}
-              options={divisionOptions}
-              placeholder="Search or select Division"
-              onChange={(nextCode) => setStandardDivisionCode(nextCode)}
-            />
-          </label>
+              <div className={styles.standard_formGrid}>
+                <label>
+                  <span className={styles.fieldLabel} translate="no">Function Name</span>
+                  <SearchableSelect
+                    value={scopeRow.functionCode}
+                    disabled={!isEditing}
+                    options={functionOptions}
+                    placeholder="Search or select Function"
+                    onChange={(nextCode) => {
+                      setTargetOrgScopes((prev) =>
+                        prev.map((r) => (r.id === scopeRow.id ? { ...r, functionCode: nextCode } : r)),
+                      );
+                      if (index === 0) {
+                        setStandardFunctionCode(nextCode);
+                        setStandardFunctionName(
+                          functionOptions.find((option) => option.code === nextCode)?.name ?? "",
+                        );
+                      }
+                    }}
+                  />
+                </label>
 
-          <label>
-            <span className={styles.fieldLabel} translate="no">Department</span>
-            <SearchableSelect
-              value={standardDepartmentCode}
-              disabled={!isEditing}
-              options={departmentOptions}
-              placeholder="Search or select Department"
-              onChange={(nextCode) => setStandardDepartmentCode(nextCode)}
-            />
-          </label>
+                <label>
+                  <span className={styles.fieldLabel} translate="no">Division</span>
+                  <SearchableSelect
+                    value={scopeRow.divisionCode}
+                    disabled={!isEditing}
+                    options={divisionOptions}
+                    placeholder="Search or select Division"
+                    onChange={(nextCode) => {
+                      setTargetOrgScopes((prev) =>
+                        prev.map((r) => (r.id === scopeRow.id ? { ...r, divisionCode: nextCode } : r)),
+                      );
+                      if (index === 0) setStandardDivisionCode(nextCode);
+                    }}
+                  />
+                </label>
 
-          <label>
-            <span className={styles.fieldLabel} translate="no">Section</span>
-            <SearchableSelect
-              value={standardSectionCode}
-              disabled={!isEditing}
-              options={sectionOptions}
-              placeholder="Search or select Section"
-              onChange={(nextCode) => setStandardSectionCode(nextCode)}
-            />
-          </label>
+                <label>
+                  <span className={styles.fieldLabel} translate="no">Department</span>
+                  <SearchableSelect
+                    value={scopeRow.departmentCode}
+                    disabled={!isEditing}
+                    options={departmentOptions}
+                    placeholder="Search or select Department"
+                    onChange={(nextCode) => {
+                      setTargetOrgScopes((prev) =>
+                        prev.map((r) => (r.id === scopeRow.id ? { ...r, departmentCode: nextCode } : r)),
+                      );
+                      if (index === 0) setStandardDepartmentCode(nextCode);
+                    }}
+                  />
+                </label>
+
+                <label>
+                  <span className={styles.fieldLabel} translate="no">Section</span>
+                  <SearchableSelect
+                    value={scopeRow.sectionCode}
+                    disabled={!isEditing}
+                    options={sectionOptions}
+                    placeholder="Search or select Section"
+                    onChange={(nextCode) => {
+                      setTargetOrgScopes((prev) =>
+                        prev.map((r) => (r.id === scopeRow.id ? { ...r, sectionCode: nextCode } : r)),
+                      );
+                      if (index === 0) setStandardSectionCode(nextCode);
+                    }}
+                  />
+                </label>
+              </div>
+            </div>
+          ))}
         </div>
 
         <div className={styles.standard_checkSection}>

@@ -103,10 +103,26 @@ export default function AuthGate({
     initializeTrainingWorkflow();
   }, []);
 
+  const getSanitizedDestination = (targetUrl: string | null): string => {
+    if (!targetUrl || typeof targetUrl !== "string") return "/";
+    if (targetUrl === "/login" || !targetUrl.startsWith("/")) return "/";
+    const path = targetUrl.split("?")[0];
+    const validBasePaths = [
+      "/",
+      "/master-data",
+      "/training-course",
+      "/training-plan",
+      "/training-record",
+      "/report",
+    ];
+    const isValid = validBasePaths.some((base) => path === base || path.startsWith(`${base}/`));
+    return isValid ? targetUrl : "/";
+  };
+
   const handleLogin = async (username: string, password: string) => {
     await loginWithCredentials(username, password);
     setLogoutMessage(null);
-    const dest = targetReturnUrl && targetReturnUrl !== "/login" ? targetReturnUrl : "/";
+    const dest = getSanitizedDestination(targetReturnUrl);
     router.push(dest);
     router.refresh();
   };
@@ -140,7 +156,7 @@ export default function AuthGate({
 
     setLogoutMessage(null);
     setPreviewUser(nextPreviewUser);
-    const dest = targetReturnUrl && targetReturnUrl !== "/login" ? targetReturnUrl : "/";
+    const dest = getSanitizedDestination(targetReturnUrl);
     router.push(dest);
   };
 
@@ -182,7 +198,7 @@ export default function AuthGate({
       }
       router.replace("/login");
     } else if (effectiveUser && pathname === "/login") {
-      const dest = targetReturnUrl && targetReturnUrl !== "/login" ? targetReturnUrl : "/";
+      const dest = getSanitizedDestination(targetReturnUrl);
       router.replace(dest);
     }
   }, [effectiveUser, pathname, router, targetReturnUrl]);
