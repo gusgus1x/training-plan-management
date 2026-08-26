@@ -849,6 +849,10 @@ export default function EmployeeData() {
                   </span>
                 </span>
                 <select
+                  // A stored title is data, not interface text. Without this the localizer
+                  // rewrites the options themselves, so "Mr." renders as "นาย" and the list shows
+                  // นาย twice while the English titles disappear.
+                  translate="no"
                   value={form.titleTh ?? "นาย"}
                   onChange={(event) => {
                     const titleTh = event.target.value;
@@ -884,6 +888,7 @@ export default function EmployeeData() {
               <label>
                 Title EN
                 <select
+                  translate="no"
                   value={form.titleEn ?? ""}
                   onChange={(event) => change("titleEn", event.target.value || null)}
                 >
