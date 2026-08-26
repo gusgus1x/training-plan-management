@@ -627,7 +627,7 @@ export const createCourseRepository = (client?: DatabaseClient) => {
             });
           }
 
-          // 2. Unlink standard_course_id from any remaining enrollments and delete standard course targets
+          // 2. Cascade delete remaining enrollments and standard course targets for this course
           const stdCourses = await tx.course_standard_course.findMany({
             where: { course_id: courseId },
             select: { standard_course_id: true, standard_id: true },
@@ -635,10 +635,18 @@ export const createCourseRepository = (client?: DatabaseClient) => {
           const stdCourseIds = stdCourses.map((sc) => sc.standard_course_id);
 
           if (stdCourseIds.length > 0) {
-            await tx.training_enrollment.updateMany({
+            const orphanEnrollments = await tx.training_enrollment.findMany({
               where: { standard_course_id: { in: stdCourseIds } },
-              data: { standard_course_id: null },
+              select: { enrollment_id: true },
             });
+            const orphanEnrollIds = orphanEnrollments.map((e) => e.enrollment_id);
+            if (orphanEnrollIds.length > 0) {
+              await tx.training_result.deleteMany({ where: { enrollment_id: { in: orphanEnrollIds } } }).catch(() => undefined);
+              await tx.attendance.deleteMany({ where: { enrollment_id: { in: orphanEnrollIds } } }).catch(() => undefined);
+              await tx.evaluation_submission.deleteMany({ where: { enrollment_id: { in: orphanEnrollIds } } }).catch(() => undefined);
+              await tx.assessment_submission.deleteMany({ where: { enrollment_id: { in: orphanEnrollIds } } }).catch(() => undefined);
+              await tx.training_enrollment.deleteMany({ where: { enrollment_id: { in: orphanEnrollIds } } });
+            }
             await tx.course_standard_target_company.deleteMany({
               where: { standard_course_id: { in: stdCourseIds } },
             });

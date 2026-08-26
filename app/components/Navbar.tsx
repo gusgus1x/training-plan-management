@@ -46,17 +46,43 @@ export default function Navbar({
   const displayUsername = user?.username ?? username;
   const displayLevelRaw = user?.roleCode ?? userLevel;
   const displayLevel =
+    language === "th"
+      ? displayLevelRaw === "HRD_CENTER"
+        ? "HRD ส่วนกลาง"
+        : displayLevelRaw === "HRD_FACTORY"
+          ? "HRD โรงงาน"
+          : displayLevelRaw === "EMPLOYEE"
+            ? "พนักงาน"
+            : displayLevelRaw.replace(/_/g, " ")
+      : displayLevelRaw === "HRD_CENTER"
+        ? "HRD Center"
+        : displayLevelRaw === "HRD_FACTORY"
+          ? "HRD Factory"
+          : displayLevelRaw === "EMPLOYEE"
+            ? "Employee"
+            : displayLevelRaw.replace(/_/g, " ");
+
+  const roleClass =
     displayLevelRaw === "HRD_CENTER"
-      ? "HRD Center"
+      ? styles.centerRoleBadge
       : displayLevelRaw === "HRD_FACTORY"
-        ? "HRD Factory"
-        : displayLevelRaw === "EMPLOYEE"
-          ? "Employee"
-          : displayLevelRaw.replace(/_/g, " ");
+        ? styles.factoryRoleBadge
+        : styles.employeeRoleBadge;
+
+  const avatarClass =
+    displayLevelRaw === "HRD_CENTER"
+      ? styles.centerAvatar
+      : displayLevelRaw === "HRD_FACTORY"
+        ? styles.factoryAvatar
+        : styles.employeeAvatar;
+
   const displayCompany =
     user?.roleCode === "HRD_CENTER"
-      ? "All Companies"
+      ? language === "th"
+        ? "ทุกบริษัทในเครือ (All Companies)"
+        : "All Companies"
       : profileValue(user?.companyName ?? user?.companyCode ?? company);
+
   const avatar =
     user?.roleCode === "EMPLOYEE"
       ? "EU"
@@ -223,16 +249,20 @@ export default function Navbar({
               <div className={styles.userArea}>
                 <div className={styles.userInfo}>
                   <div className={styles.avatarWrapper}>
-                    <div className={styles.avatar} aria-hidden="true">{avatar}</div>
+                    <div className={`${styles.avatar} ${avatarClass}`} aria-hidden="true">
+                      {avatar}
+                    </div>
                     <span className={styles.onlineBadge} title="Active Session" />
                   </div>
                   <div className={styles.userDetails}>
                     <div className={styles.userRow}>
                       <span className={styles.userValue}>{displayUsername}</span>
-                      <span className={styles.roleBadge}>{displayLevel}</span>
+                      <span className={`${styles.roleBadge} ${roleClass}`}>{displayLevel}</span>
                     </div>
                     <div className={styles.userSubRow}>
-                      <span className={styles.companyValue}>{displayCompany}</span>
+                      <span className={styles.companyValue} title={displayCompany}>
+                        {displayCompany}
+                      </span>
                     </div>
                   </div>
                 </div>

@@ -323,6 +323,17 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
           }
         }
 
+        if (action === "cancel") {
+          await db().$transaction(async (tx) => {
+            await tx.training_result.deleteMany({ where: { enrollment_id: enrollmentId } }).catch(() => undefined);
+            await tx.attendance.deleteMany({ where: { enrollment_id: enrollmentId } }).catch(() => undefined);
+            await tx.evaluation_submission.deleteMany({ where: { enrollment_id: enrollmentId } }).catch(() => undefined);
+            await tx.assessment_submission.deleteMany({ where: { enrollment_id: enrollmentId } }).catch(() => undefined);
+            await tx.training_enrollment.delete({ where: { enrollment_id: enrollmentId } });
+          });
+          return mapEnrollment({ ...current, approval_status: "CANCELLED" });
+        }
+
         const data: Prisma.training_enrollmentUncheckedUpdateInput = {};
         if (action === "approve") {
           data.approval_status = "APPROVED";
@@ -334,10 +345,6 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
           data.approved_by = BigInt(userId);
           data.approved_at = new Date();
           data.reject_reason = reason || null;
-        } else {
-          data.approval_status = "CANCELLED";
-          data.approved_by = BigInt(userId);
-          data.approved_at = new Date();
         }
 
         const updated = await db().training_enrollment.update({ where: { enrollment_id: enrollmentId }, data, include: enrollmentInclude });

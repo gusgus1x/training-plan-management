@@ -313,6 +313,8 @@ type PaginatedEmployeeGridProps = {
   onAddEmployee: (employee: SurveyEmployee) => void | Promise<void>;
   emptyMessage?: string;
   pageSize?: number;
+  enrollments?: EnrollmentRecord[];
+  draftSubmittedEmployees?: SurveyEmployee[];
 };
 
 function PaginatedEmployeeGrid({
@@ -321,6 +323,8 @@ function PaginatedEmployeeGrid({
   onAddEmployee,
   emptyMessage = "ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้",
   pageSize = 25,
+  enrollments = [],
+  draftSubmittedEmployees = [],
 }: PaginatedEmployeeGridProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -420,6 +424,7 @@ function PaginatedEmployeeGrid({
             <span>จัดการ</span>
             <div className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}>
               <span>รหัสพนักงาน</span>
+              <span>สถานะ</span>
               <span>คำนำหน้า</span>
               <span>ชื่อ</span>
               <span>นามสกุล</span>
@@ -434,17 +439,73 @@ function PaginatedEmployeeGrid({
           {pageEmployees.map((employee) => {
             const nameProfile = getEmployeeNameProfile(employee);
 
+            const isDraft = draftSubmittedEmployees.some(
+              (emp) => emp.id === employee.id || emp.employeeCode === employee.employeeCode,
+            );
+            const enrollment = enrollments.find(
+              (c) =>
+                (c.employeeCode === employee.employeeCode || c.employeeId === employee.id) &&
+                c.status !== "Rejected" &&
+                c.status !== "Cancelled",
+            ) || enrollments.find(
+              (c) => c.employeeCode === employee.employeeCode || c.employeeId === employee.id,
+            );
+
+            let statusBadge = <span className={styles.badgeNone}>⚪ ยังไม่ลงทะเบียน</span>;
+            let buttonLabel = targetActionLabel;
+            let isBtnDisabled = false;
+
+            if (isDraft) {
+              statusBadge = (
+                <span className={styles.badgeDraft}>
+                  <span className={styles.glowingDotYellow}></span> ดราฟ
+                </span>
+              );
+              buttonLabel = "✓ ในดราฟแล้ว";
+              isBtnDisabled = true;
+            } else if (enrollment) {
+              if (enrollment.status === "Pending Approval") {
+                statusBadge = (
+                  <span className={styles.badgePending}>
+                    <span className={styles.glowingDotBlue}></span> รออนุมัติ
+                  </span>
+                );
+                buttonLabel = "✓ รออนุมัติ";
+                isBtnDisabled = true;
+              } else if (enrollment.status === "Factory Approved" || enrollment.status === "Center Approved") {
+                statusBadge = (
+                  <span className={styles.badgeApproved}>
+                    <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
+                  </span>
+                );
+                buttonLabel = "✓ อนุมัติแล้ว";
+                isBtnDisabled = true;
+              } else if (enrollment.status === "Rejected") {
+                statusBadge = (
+                  <span className={styles.badgeRejected}>
+                    <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
+                  </span>
+                );
+                buttonLabel = "+ เลือกใหม่";
+                isBtnDisabled = false;
+              }
+            }
+
             return (
               <article className={`${styles.employeeRow} ${styles.targetListRow}`} key={employee.id}>
                 <button
-                  className={styles.addTargetButton}
+                  className={`${styles.addTargetButton} ${isBtnDisabled ? styles.addedBtn : ""}`}
                   type="button"
+                  disabled={isBtnDisabled}
                   onClick={() => void onAddEmployee(employee)}
                 >
-                  {targetActionLabel}
+                  {buttonLabel}
                 </button>
                 <div className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}>
                   <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`} title={employee.employeeCode}>{employee.employeeCode}</span>
+                  <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>
+                    {statusBadge}
+                  </span>
                   <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
                   <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`} title={nameProfile.firstName}>{nameProfile.firstName}</span>
                   <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`} title={nameProfile.lastName}>{nameProfile.lastName}</span>
@@ -604,6 +665,7 @@ export default function TrainingAcceptSurvey() {
   const [standards, setStandards] = useState<WorkflowStandard[]>([]);
   const [masterEmployees, setMasterEmployees] = useState<SurveyEmployee[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
+  const [draftSubmittedEmployees, setDraftSubmittedEmployees] = useState<SurveyEmployee[]>([]);
   const [isExportingAttendance, setIsExportingAttendance] = useState(false);
   const [isSendingLineNotify, setIsSendingLineNotify] = useState(false);
   const [showNominationModal, setShowNominationModal] = useState(false);
@@ -720,28 +782,28 @@ export default function TrainingAcceptSurvey() {
   const courseOwnerOptions =
     roleMode === "center"
       ? [
-          { value: "center" as const, label: "Center" },
-          { value: "factory" as const, label: "Factory" },
-        ]
+        { value: "center" as const, label: "Center" },
+        { value: "factory" as const, label: "Factory" },
+      ]
       : [
-          { value: "factory" as const, label: "Factory" },
-          { value: "center" as const, label: "Center" },
-        ];
+        { value: "factory" as const, label: "Factory" },
+        { value: "center" as const, label: "Center" },
+      ];
   const availableCourseGroups = useMemo<CourseSurveyGroup[]>(() => {
     const ownerFilteredSessions =
       selectedCourseOwner === ""
         ? []
         : roleMode === "center"
           ? courseSurveys.filter(
-              (course) => course.owner === selectedCourseOwner,
-            )
+            (course) => course.owner === selectedCourseOwner,
+          )
           : courseSurveys.filter((course) =>
-              selectedCourseOwner === "factory"
-                ? course.owner === "factory" &&
-                  course.ownerCompany === userCompanyCode
-                : course.owner === "center" &&
-                  course.companies.includes(userCompanyCode),
-            );
+            selectedCourseOwner === "factory"
+              ? course.owner === "factory" &&
+              course.ownerCompany === userCompanyCode
+              : course.owner === "center" &&
+              course.companies.includes(userCompanyCode),
+          );
     const groups = new Map<string, CourseSurvey[]>();
 
     ownerFilteredSessions.forEach((session) => {
@@ -774,16 +836,19 @@ export default function TrainingAcceptSurvey() {
   const availableSessions = selectedCourseGroup?.sessions ?? [];
   const selectedCourse = selectedCourseGroup
     ? (availableSessions.find((course) => course.id === selectedCourseId) ??
-       availableSessions[0] ??
-       null)
+      availableSessions[0] ??
+      null)
     : null;
 
   useEffect(() => {
+    setDraftSubmittedEmployees([]);
     if (!selectedCourse) {
       setEnrollments([]);
+      setIsTargetLoading(false);
       return;
     }
     let active = true;
+    setIsTargetLoading(true);
     listEnrollments({ planId: selectedCourse.id, employeeId: null, employeeUserId: null })
       .then((result) => {
         if (active) setEnrollments(result.enrollments || []);
@@ -791,6 +856,11 @@ export default function TrainingAcceptSurvey() {
       .catch((error) => {
         console.error("Failed to load candidates", error);
         if (active) setEnrollments([]);
+      })
+      .finally(() => {
+        if (active) {
+          setTimeout(() => setIsTargetLoading(false), 300);
+        }
       });
     return () => {
       active = false;
@@ -816,8 +886,8 @@ export default function TrainingAcceptSurvey() {
   const accessibleCompanies: string[] =
     roleMode === "center"
       ? (selectedCourse?.companies && selectedCourse.companies.length > 0
-          ? selectedCourse.companies
-          : ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"])
+        ? selectedCourse.companies
+        : ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"])
       : [userCompanyCode];
 
   const normalizeTargetPosition = (position: string) => {
@@ -1009,17 +1079,14 @@ export default function TrainingAcceptSurvey() {
   const targetEmployeeGroups = accessibleCompanies
     .map((company) => {
       const emps = sortEmployeesDescending(
-        availableTargetEmployees.filter(
+        targetEmployees.filter(
           (employee) => employee.company === company,
         ),
-      );
-      const totalTargetEmps = targetEmployees.filter(
-        (employee) => employee.company === company,
       );
       return {
         company,
         employees: emps,
-        targetCount: totalTargetEmps.length,
+        targetCount: emps.length,
       };
     })
     .filter((group) => group.employees.length > 0);
@@ -1027,17 +1094,14 @@ export default function TrainingAcceptSurvey() {
   const levelOnlyEmployeeGroups = accessibleCompanies
     .map((company) => {
       const emps = sortEmployeesDescending(
-        availableLevelOnlyEmployees.filter(
+        levelOnlyEmployees.filter(
           (employee) => employee.company === company,
         ),
-      );
-      const totalLevelEmps = levelOnlyEmployees.filter(
-        (employee) => employee.company === company,
       );
       return {
         company,
         employees: emps,
-        targetCount: totalLevelEmps.length,
+        targetCount: emps.length,
       };
     })
     .filter((group) => group.employees.length > 0);
@@ -1045,8 +1109,11 @@ export default function TrainingAcceptSurvey() {
   const additionalEmployeeGroups = accessibleCompanies
     .map((company) => {
       const emps = sortEmployeesDescending(
-        additionalEmployees.filter(
-          (employee) => employee.company === company,
+        masterEmployees.filter(
+          (employee) =>
+            accessibleCompanies.includes(employee.company) &&
+            checkEmployeeTargetStatus(employee).isOutMatch &&
+            employee.company === company,
         ),
       );
       return {
@@ -1059,18 +1126,18 @@ export default function TrainingAcceptSurvey() {
   const visibleCandidates =
     roleMode === "center"
       ? enrollments.filter(
-          (candidate) =>
-            candidate.status !== "Center Approved" &&
-            candidate.status !== "Rejected" &&
-            candidate.status !== "Cancelled",
-        )
+        (candidate) =>
+          candidate.status !== "Center Approved" &&
+          candidate.status !== "Rejected" &&
+          candidate.status !== "Cancelled",
+      )
       : enrollments.filter(
-          (candidate) =>
-            candidate.company === userCompanyCode &&
-            candidate.status !== "Factory Approved" &&
-            candidate.status !== "Center Approved" &&
-            candidate.status !== "Cancelled",
-        );
+        (candidate) =>
+          candidate.company === userCompanyCode &&
+          candidate.status !== "Factory Approved" &&
+          candidate.status !== "Center Approved" &&
+          candidate.status !== "Cancelled",
+      );
 
   const approvalQueue = sortEmployeesDescending(
     visibleCandidates.filter((candidate) => candidate.status === "Pending Approval"),
@@ -1078,13 +1145,40 @@ export default function TrainingAcceptSurvey() {
 
   const submittedToCenterCandidates = sortEmployeesDescending(
     roleMode === "factory" && selectedCourse?.owner === "center"
-      ? enrollments.filter(
-          (candidate) =>
-            candidate.company === userCompanyCode &&
-            candidate.status !== "Center Approved" &&
-            candidate.status !== "Cancelled" &&
-            candidate.status !== "Rejected",
-        )
+      ? [
+        ...enrollments
+          .filter(
+            (candidate) =>
+              candidate.company === userCompanyCode &&
+              candidate.status !== "Center Approved" &&
+              candidate.status !== "Cancelled" &&
+              candidate.status !== "Rejected",
+          )
+          .map((c) => ({
+            id: c.id,
+            employeeId: c.employeeId,
+            employeeCode: c.employeeCode,
+            employeeName: c.employeeName,
+            company: c.company,
+            department: c.department,
+            position: c.position,
+            level: c.level,
+            status: c.status,
+            isDraft: false,
+          })),
+        ...draftSubmittedEmployees.map((emp) => ({
+          id: `draft-${emp.id}`,
+          employeeId: emp.id,
+          employeeCode: emp.employeeCode,
+          employeeName: emp.name,
+          company: emp.company,
+          department: emp.department,
+          position: emp.position,
+          level: emp.level,
+          status: "Draft",
+          isDraft: true,
+        })),
+      ]
       : [],
   );
 
@@ -1100,6 +1194,27 @@ export default function TrainingAcceptSurvey() {
 
   const handleAddEmployee = async (employee: SurveyEmployee) => {
     if (!selectedCourse) return;
+
+    if (roleMode === "factory" && selectedCourse?.owner === "center") {
+      const isAlreadyDraft = draftSubmittedEmployees.some(
+        (emp) => emp.id === employee.id || emp.employeeCode === employee.employeeCode,
+      );
+      const isAlreadyEnrolled = enrollments.some(
+        (candidate) =>
+          (candidate.employeeCode === employee.employeeCode || candidate.employeeId === employee.id) &&
+          candidate.status !== "Rejected" &&
+          candidate.status !== "Cancelled",
+      );
+      if (isAlreadyDraft || isAlreadyEnrolled) {
+        toast.info(`พนักงาน ${employee.employeeCode} อยู่ในรายการแล้ว`);
+        return;
+      }
+      setDraftSubmittedEmployees((prev) => [...prev, employee]);
+      toast.success(
+        `เพิ่ม ${employee.name} (${employee.employeeCode}) ในรายการเตรียมส่งแล้ว (กรุณากด "บันทึกและยืนยัน" ด้านบนเพื่อส่งให้ส่วนกลาง)`,
+      );
+      return;
+    }
 
     try {
       await createEnrollment({
@@ -1252,7 +1367,7 @@ export default function TrainingAcceptSurvey() {
     }
   };
 
-  const [isTargetLoading, setIsTargetLoading] = useState(true);
+  const [isTargetLoading, setIsTargetLoading] = useState(false);
 
   return (
     <section className={styles.page} aria-label="Training Accept Survey module">
@@ -1265,636 +1380,761 @@ export default function TrainingAcceptSurvey() {
       </section>
 
       <section className={styles.controlPanel} aria-label="Survey controls">
-        <div className={styles.accessCard}>
-          <span>Current access</span>
-          <strong>{roleMode === "center" ? "Center functions" : "Factory functions"}</strong>
-          <small>{userCompanyLabel}</small>
+        {/* TOP TIER: ACCESS & SCOPE STATUS BAR */}
+        <div className={styles.controlHeaderBar}>
+          <div className={styles.accessBadge}>
+            <span className={roleMode === "center" ? styles.glowingDotBlue : styles.glowingDotGreen}></span>
+            <span>สิทธิ์การใช้งานปัจจุบัน:</span>
+            <strong>{roleMode === "center" ? "HRD Center Functions" : `HRD Factory Functions (${userCompanyCode})`}</strong>
+            <span style={{ opacity: 0.7, fontWeight: 500 }}>— {userCompanyLabel}</span>
+          </div>
+          <div className={styles.scopeBadge}>
+            <span>🎯 ขอบเขตการทำงาน:</span>
+            <strong>
+              {!selectedCourse
+                ? "กรุณาเลือกหลักสูตรด้านล่างเพื่อเริ่มต้นจัดการรายชื่อ"
+                : roleMode === "center"
+                  ? "ดูภาพรวมพนักงานทุกบริษัท / อนุมัติรายชื่อที่โรงงานส่งมา"
+                  : isFactoryOwnedByUser
+                    ? `จัดการผู้เข้าร่วมอบรมสำหรับหลักสูตรของโรงงาน ${userCompanyCode}`
+                    : `ส่งรายชื่อพนักงาน ${userCompanyCode} เข้าอบรมกลางกับ Center`}
+            </strong>
+          </div>
         </div>
 
-        <label>
-          Course owner
-          <select
-            value={selectedCourseOwner}
-            onChange={(event) => {
-              setSelectedCourseOwner(event.target.value as CourseOwnerFilter);
-              setSelectedCourseGroupId("");
-              setSelectedCourseId("");
-            }}
-          >
-            <option value="">Select owner</option>
-            {courseOwnerOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </label>
+        {/* BOTTOM TIER: 3-STEP SELECTION GRID */}
+        <div className={styles.controlGrid}>
+          <div className={styles.controlStepLabel}>
+            <div className={styles.controlStepTitle}>
+              <span>1️⃣</span>
+              <span>ผู้ดูแลหลักสูตร (Course Owner)</span>
+            </div>
+            <select
+              className={styles.controlSelect}
+              value={selectedCourseOwner}
+              onChange={(event) => {
+                setSelectedCourseOwner(event.target.value as CourseOwnerFilter);
+                setSelectedCourseGroupId("");
+                setSelectedCourseId("");
+              }}
+            >
+              <option value="">เลือกผู้ดูแลหลักสูตร</option>
+              {courseOwnerOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
 
-        <label>
-          Published Rolling Course
-          <select
-            value={selectedCourseGroup?.id ?? ""}
-            disabled={selectedCourseOwner === ""}
-            onChange={(event) => {
-              const newGroupId = event.target.value;
-              setSelectedCourseGroupId(newGroupId);
-              const targetGroup = availableCourseGroups.find((g) => g.id === newGroupId);
-              const newSessionId = targetGroup?.sessions[0]?.id ?? "";
-              setSelectedCourseId(newSessionId);
-              if (newGroupId) {
-                setIsTargetLoading(true);
-                setTimeout(() => setIsTargetLoading(false), 350);
-              }
-            }}
-          >
-            <option value="">
-              {selectedCourseOwner === "" ? "Select owner first" : "Select course"}
-            </option>
-            {availableCourseGroups.map((group) => (
-              <option key={group.id} value={group.id}>
-                [{group.code}] {group.title} / {group.sessions.length} sessions
+          <div className={styles.controlStepLabel}>
+            <div className={styles.controlStepTitle}>
+              <span>2️⃣</span>
+              <span>หลักสูตรรายเดือนที่เผยแพร่แล้ว (Published Course)</span>
+            </div>
+            <select
+              className={styles.controlSelect}
+              value={selectedCourseGroup?.id ?? ""}
+              disabled={selectedCourseOwner === ""}
+              onChange={(event) => {
+                const newGroupId = event.target.value;
+                setSelectedCourseGroupId(newGroupId);
+                setSelectedCourseId("");
+              }}
+            >
+              <option value="">
+                {selectedCourseOwner === "" ? "⚡ กรุณาเลือกผู้ดูแลหลักสูตรก่อน" : "เลือกหลักสูตร"}
               </option>
-            ))}
-          </select>
-        </label>
+              {availableCourseGroups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  [{group.code}] {group.title} ({group.sessions.length} รอบ)
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <label>
-          Training Session
-          <select
-            value={selectedCourse?.id ?? ""}
-            disabled={!selectedCourseGroup}
-            onChange={(event) => {
-              const newSessionId = event.target.value;
-              setSelectedCourseId(newSessionId);
-              if (newSessionId) {
-                setIsTargetLoading(true);
-                setTimeout(() => setIsTargetLoading(false), 350);
-              }
-            }}
-          >
-            <option value="">
-              {selectedCourseGroup ? "Select training session" : "Select course first"}
-            </option>
-            {availableSessions.map((session) => (
-              <option key={session.id} value={session.id}>
-                {session.batch ?? "-"} / {session.date} / {session.startTime ?? "-"}-{session.endTime ?? "-"} / {session.location ?? "-"}
+          <div className={styles.controlStepLabel}>
+            <div className={styles.controlStepTitle}>
+              <span>3️⃣</span>
+              <span>รอบการอบรม (Training Session)</span>
+            </div>
+            <select
+              className={styles.controlSelect}
+              value={selectedCourseId}
+              disabled={!selectedCourseGroup}
+              onChange={(event) => {
+                const newSessionId = event.target.value;
+                setSelectedCourseId(newSessionId);
+              }}
+            >
+              <option value="">
+                {selectedCourseGroup ? "เลือกรอบการอบรม" : "⚡ กรุณาเลือกหลักสูตรก่อน"}
               </option>
-            ))}
-          </select>
-        </label>
-
-        <div className={styles.scopeCard}>
-          <span>Function scope</span>
-          <strong>
-            {!selectedCourse
-              ? "Select a course to open this survey"
-              : roleMode === "center"
-                ? "View all companies / approve factory submissions"
-                : isFactoryOwnedByUser
-                  ? `Add participants for ${userCompanyCode} factory courses`
-                  : `Submit ${userCompanyCode} employees to Center`}
-          </strong>
+              {availableSessions.map((session) => (
+                <option key={session.id} value={session.id}>
+                  รอบ {session.batch ?? "1"} / {session.date} / {session.startTime ?? "-"}-{session.endTime ?? "-"} / {session.location ?? "-"}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </section>
 
       {selectedCourse ? (
         <Fragment>
           <section className={styles.coursePanel}>
-        <div>
-          <p className={styles.kicker}>Course detail</p>
-          <h3>{selectedCourse.title}</h3>
-          <p>{selectedCourse.objective}</p>
-        </div>
-        <div className={styles.standardGrid}>
-          <article>
-            <span>Course Code</span>
-            <strong>{selectedCourse.code}</strong>
-          </article>
-          <article>
-            <span>Owner</span>
-            <strong>{selectedCourse.owner === "center" ? "Center" : selectedCourse.ownerCompany}</strong>
-          </article>
-          <article>
-            <span>Training Date</span>
-            <strong>{selectedCourse.date}</strong>
-          </article>
-          <article>
-            <span>Batch</span>
-            <strong>{selectedCourse.batch ?? "-"}</strong>
-          </article>
-          <article>
-            <span>Time</span>
-            <strong>{selectedCourse.startTime ?? "-"} - {selectedCourse.endTime ?? "-"}</strong>
-          </article>
-          <article>
-            <span>Location</span>
-            <strong>{selectedCourse.location ?? "-"}</strong>
-          </article>
-          <article>
-            <span>Capacity</span>
-            <strong>{selectedCourse.capacity}</strong>
-          </article>
-          <article>
-            <span>Accepted</span>
-            <strong>{acceptedParticipants.length}</strong>
-          </article>
-          <article>
-            <span>Course Type</span>
-            <strong>{selectedCourse.courseType}</strong>
-          </article>
-          <article>
-            <span>Course Group</span>
-            <strong>{selectedCourse.courseGroup}</strong>
-          </article>
-          <article>
-            <span>Course Standard</span>
-            <strong>{selectedCourse.standardName}</strong>
-          </article>
-          <article>
-            <span>Target Found</span>
-            <strong>{targetEmployees.length}</strong>
-          </article>
-          {selectedCourse && (selectedCourse.targetLevels.length > 0 || levelOnlyEmployees.length > 0) && (
-            <article>
-              <span>Level Matches</span>
-              <strong>{levelOnlyEmployees.length}</strong>
-            </article>
-          )}
-        </div>
-        <div className={styles.ruleRow}>
-          <span>Function: {selectedCourse.targetFunctionName || "ALL FUNCTION"}</span>
-          <span>
-            Position:{" "}
-            {selectedCourse.targetPositions.length > 0
-              ? Array.from(
-                  new Set(
-                    selectedCourse.targetPositions.map((p) => {
-                      const cleanP = p.trim();
-                      if (cleanP === "ผู้จัดการแผนก") return "SECTION HEAD";
-                      if (cleanP === "ผู้จัดการฝ่าย") return "GENERAL MANAGER";
-                      if (cleanP === "วิศวกร") return "ENGINEER";
-                      if (cleanP === "เจ้าหน้าที่") return "OFFICER";
-                      if (cleanP === "หัวหน้างาน") return "SUPERVISOR";
-                      if (cleanP === "พนักงานปฏิบัติการ") return "OPERATOR";
-                      return cleanP;
-                    })
-                  )
-                ).join(", ")
-              : selectedCourse.targetGroup && selectedCourse.targetGroup !== "-"
-                ? selectedCourse.targetGroup
-                : "All Positions"}
-          </span>
-          <span>
-            Level:{" "}
-            {selectedCourse.targetLevels.length > 0
-              ? Array.from(
-                  new Set(
-                    selectedCourse.targetLevels
-                      .map((l) => {
-                        const norm = normalizeEmployeeLevel(l);
-                        return norm || l.trim();
-                      })
-                      .filter((l) => l && l !== "-" && l !== "บ" && l !== "จ" && l !== "ป" && l !== "S")
-                  )
-                )
-                  .sort((a, b) => getLevelRank(b) - getLevelRank(a))
-                  .join(", ")
-              : selectedCourse.targetGroup && selectedCourse.targetGroup !== "-"
-                ? selectedCourse.targetGroup
-                : "All Levels"}
-          </span>
-          <span>Company: {selectedCourse.companies.length > 0 ? selectedCourse.companies.join(", ") : "All Companies"}</span>
-        </div>
-      </section>
-
-      <div className={styles.surveySplit}>
-        <section className={styles.participantPanel}>
-          <div className={styles.workspaceHeader}>
             <div>
-              <p className={styles.kicker}>Training participants</p>
-              <h3>Course participant list</h3>
+              <p className={styles.kicker}>Course detail</p>
+              <h3>{selectedCourse.title}</h3>
+              <p>{selectedCourse.objective}</p>
             </div>
-            <div className={styles.participantActions}>
-              <span>{acceptedParticipants.length} / {selectedCourse.capacity} seats</span>
-              <button
-                className={styles.shareLinkButton}
-                type="button"
-                title="คัดลอกลิ้งก์ส่งให้ Section Head / หัวหน้างาน เพื่อเข้าเลือกและเสนอชื่อพนักงานเข้าอบรมเอง"
-                onClick={() => void handleCopyNominationLink()}
-              >
-                <span className={styles.folderContainer}>
-                  <svg className={styles.fileBack} viewBox="0 0 146 113" fill="none">
-                    <path d="M0 4C0 1.79 1.79 0 4 0H50.38C51.83 0 53.2 0.63 54.15 1.72L64.33 13.44C65.28 14.53 66.66 15.16 68.1 15.16H141.51C143.72 15.16 145.51 16.95 145.51 19.16V109C145.51 111.21 143.72 113 141.51 113H4C1.79 113 0 111.21 0 109V4Z" fill="url(#link_back)" />
-                    <defs>
-                      <linearGradient id="link_back" x1="0" y1="0" x2="72.9" y2="95.5" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#4f46e5" />
-                        <stop offset="1" stopColor="#3730a3" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                  <svg className={styles.filePage} viewBox="0 0 88 99" fill="none">
-                    <rect width="88" height="99" rx="6" fill="#ffffff" />
-                  </svg>
-                  <svg className={styles.fileFront} viewBox="0 0 160 79" fill="none">
-                    <path d="M0.29 12.25C0.13 9.38 2.41 6.97 5.28 6.97H58.19C59.57 6.97 60.93 6.56 62.08 5.79L68.98 1.18C70.13 0.41 71.48 0 72.87 0H155.46C157.87 0 159.73 2.11 159.43 4.5L150.44 75.5C150.19 77.5 148.49 79 146.47 79H7.78C5.66 79 3.91 77.34 3.79 75.22L0.29 12.25Z" fill="url(#link_front)" />
-                    <defs>
-                      <linearGradient id="link_front" x1="38.76" y1="8.71" x2="66.91" y2="82.83" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#818cf8" />
-                        <stop offset="1" stopColor="#4f46e5" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                </span>
-                คัดลอกลิ้งก์ให้ Section Head
-              </button>
-              <button
-                className={styles.lineNotifyButton}
-                type="button"
-                disabled={acceptedParticipants.length === 0 || isSendingLineNotify}
-                title={
-                  acceptedParticipants.length === 0
-                    ? "เพิ่มผู้เข้าอบรมอย่างน้อย 1 คนก่อนส่งแจ้งเตือน LINE OA"
-                    : "ส่งข้อความแจ้งเตือนรายชื่อและกำหนดการอบรมเข้า LINE Official Account"
-                }
-                onClick={() => void handleSendLineNotification()}
-              >
-                <span className={styles.folderContainer}>
-                  <svg className={styles.fileBack} viewBox="0 0 146 113" fill="none">
-                    <path d="M0 4C0 1.79 1.79 0 4 0H50.38C51.83 0 53.2 0.63 54.15 1.72L64.33 13.44C65.28 14.53 66.66 15.16 68.1 15.16H141.51C143.72 15.16 145.51 16.95 145.51 19.16V109C145.51 111.21 143.72 113 141.51 113H4C1.79 113 0 111.21 0 109V4Z" fill="url(#line_back)" />
-                    <defs>
-                      <linearGradient id="line_back" x1="0" y1="0" x2="72.9" y2="95.5" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#059669" />
-                        <stop offset="1" stopColor="#047857" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                  <svg className={styles.filePage} viewBox="0 0 88 99" fill="none">
-                    <rect width="88" height="99" rx="6" fill="#ffffff" />
-                  </svg>
-                  <svg className={styles.fileFront} viewBox="0 0 160 79" fill="none">
-                    <path d="M0.29 12.25C0.13 9.38 2.41 6.97 5.28 6.97H58.19C59.57 6.97 60.93 6.56 62.08 5.79L68.98 1.18C70.13 0.41 71.48 0 72.87 0H155.46C157.87 0 159.73 2.11 159.43 4.5L150.44 75.5C150.19 77.5 148.49 79 146.47 79H7.78C5.66 79 3.91 77.34 3.79 75.22L0.29 12.25Z" fill="url(#line_front)" />
-                    <defs>
-                      <linearGradient id="line_front" x1="38.76" y1="8.71" x2="66.91" y2="82.83" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#10b981" />
-                        <stop offset="1" stopColor="#059669" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                </span>
-                {isSendingLineNotify ? "กำลังส่ง LINE..." : "ส่งแจ้งเตือน LINE OA"}
-              </button>
-              <button
-                className={styles.exportAttendanceButton}
-                type="button"
-                disabled={acceptedParticipants.length === 0 || isExportingAttendance}
-                title={
-                  acceptedParticipants.length === 0
-                    ? "เพิ่มผู้เข้าอบรมอย่างน้อย 1 คนก่อนส่งออกไฟล์ Excel"
-                    : "ส่งออกตารางเช็คชื่อเข้าอบรมเป็นไฟล์ Excel (Attendance Sheet)"
-                }
-                onClick={() => void handleExportAttendanceSheet()}
-              >
-                <span className={styles.folderContainer}>
-                  <svg className={styles.fileBack} viewBox="0 0 146 113" fill="none">
-                    <path d="M0 4C0 1.79 1.79 0 4 0H50.38C51.83 0 53.2 0.63 54.15 1.72L64.33 13.44C65.28 14.53 66.66 15.16 68.1 15.16H141.51C143.72 15.16 145.51 16.95 145.51 19.16V109C145.51 111.21 143.72 113 141.51 113H4C1.79 113 0 111.21 0 109V4Z" fill="url(#excel_back)" />
-                    <defs>
-                      <linearGradient id="excel_back" x1="0" y1="0" x2="72.9" y2="95.5" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#107c41" />
-                        <stop offset="1" stopColor="#0d6334" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                  <svg className={styles.filePage} viewBox="0 0 88 99" fill="none">
-                    <rect width="88" height="99" rx="6" fill="#ffffff" />
-                  </svg>
-                  <svg className={styles.fileFront} viewBox="0 0 160 79" fill="none">
-                    <path d="M0.29 12.25C0.13 9.38 2.41 6.97 5.28 6.97H58.19C59.57 6.97 60.93 6.56 62.08 5.79L68.98 1.18C70.13 0.41 71.48 0 72.87 0H155.46C157.87 0 159.73 2.11 159.43 4.5L150.44 75.5C150.19 77.5 148.49 79 146.47 79H7.78C5.66 79 3.91 77.34 3.79 75.22L0.29 12.25Z" fill="url(#excel_front)" />
-                    <defs>
-                      <linearGradient id="excel_front" x1="38.76" y1="8.71" x2="66.91" y2="82.83" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#22c55e" />
-                        <stop offset="1" stopColor="#16a34a" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                </span>
-                {isExportingAttendance
-                  ? "กำลังสร้างไฟล์ Excel..."
-                  : "ส่งออก Excel (Attendance Sheet)"}
-              </button>
-            </div>
-          </div>
-          <div className={styles.employeeRows}>
-            {acceptedParticipants.length > 0 ? (
-              <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
-                <span>จัดการ</span>
-                <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
-                  <span>รหัสพนักงาน</span>
-                  <span>คำนำหน้า</span>
-                  <span>ชื่อ</span>
-                  <span>นามสกุล</span>
-                  <span>บริษัท</span>
-                  <span>ส่วนงาน</span>
-                  <span>ฝ่าย</span>
-                  <span>แผนก</span>
-                  <span>ตำแหน่ง</span>
-                  <span>ระดับ</span>
-                </div>
-              </div>
-            ) : null}
-            {acceptedParticipants.map((participant) => {
-              const masterEmp = masterEmployees.find(
-                (emp) =>
-                  emp.employeeCode === participant.employeeCode ||
-                  emp.id === participant.employeeId,
-              );
-              const nameProfile = getEmployeeNameProfile(masterEmp || { name: participant.employeeName });
-
-              return (
-                <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={participant.id}>
-                  <button
-                    className={styles.withdrawButton}
-                    type="button"
-                    onClick={() => void handleCancelEnrollment(participant.id)}
-                  >
-                    Withdraw
-                  </button>
-                  <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={participant.employeeCode}>{participant.employeeCode}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.firstName}>{nameProfile.firstName}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.lastName}>{nameProfile.lastName}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={participant.company}>{participant.company}</span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.section || "-"}>
-                      {masterEmp?.section || "-"}
-                    </span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.division || "-"}>
-                      {masterEmp?.division || "-"}
-                    </span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.department || participant.department || "-"}>
-                      {masterEmp?.department || participant.department || "-"}
-                    </span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={participant.position || "-"}>
-                      {participant.position || "-"}
-                    </span>
-                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={participant.level || "-"}>
-                      {participant.level || "-"}
-                    </span>
-                  </div>
+            <div className={styles.standardGrid}>
+              <article>
+                <span>Course Code</span>
+                <strong>{selectedCourse.code}</strong>
+              </article>
+              <article>
+                <span>Owner</span>
+                <strong>{selectedCourse.owner === "center" ? "Center" : selectedCourse.ownerCompany}</strong>
+              </article>
+              <article>
+                <span>Training Date</span>
+                <strong>{selectedCourse.date}</strong>
+              </article>
+              <article>
+                <span>Batch</span>
+                <strong>{selectedCourse.batch ?? "-"}</strong>
+              </article>
+              <article>
+                <span>Time</span>
+                <strong>{selectedCourse.startTime ?? "-"} - {selectedCourse.endTime ?? "-"}</strong>
+              </article>
+              <article>
+                <span>Location</span>
+                <strong>{selectedCourse.location ?? "-"}</strong>
+              </article>
+              <article>
+                <span>Capacity</span>
+                <strong>{selectedCourse.capacity}</strong>
+              </article>
+              <article>
+                <span>Accepted</span>
+                <strong>{acceptedParticipants.length}</strong>
+              </article>
+              <article>
+                <span>Course Type</span>
+                <strong>{selectedCourse.courseType}</strong>
+              </article>
+              <article>
+                <span>Course Group</span>
+                <strong>{selectedCourse.courseGroup}</strong>
+              </article>
+              <article>
+                <span>Course Standard</span>
+                <strong>{selectedCourse.standardName}</strong>
+              </article>
+              <article>
+                <span>Target Found</span>
+                <strong>{targetEmployees.length}</strong>
+              </article>
+              {selectedCourse && (selectedCourse.targetLevels.length > 0 || levelOnlyEmployees.length > 0) && (
+                <article>
+                  <span>Level Matches</span>
+                  <strong>{levelOnlyEmployees.length}</strong>
                 </article>
-              );
-            })}
-            {acceptedParticipants.length === 0 ? (
-              <div className={styles.emptyCompact}>ยังไม่มีผู้เข้าร่วมที่ผ่านการอนุมัติ</div>
-            ) : null}
-          </div>
-        </section>
-
-      {canShowAcceptanceList ? (
-        roleMode === "center" ? (
-          <section className={styles.workspace} style={{ marginTop: "16px", marginBottom: "16px" }}>
-            <div className={styles.workspaceHeader}>
-              <div>
-                <p className={styles.kicker}>Candidate approval</p>
-                <h3>Employee acceptance list</h3>
-              </div>
-              <span>{visibleCandidates.length} shown / {approvalQueue.length} waiting</span>
+              )}
             </div>
-
-            <div className={styles.tableWrap}>
-              <table className={styles.dataTable}>
-                <thead>
-                  <tr>
-                    <th>Employee</th>
-                    <th>Company</th>
-                    <th>Position / Level</th>
-                    <th>Match</th>
-                    <th>Source</th>
-                    <th>Status</th>
-                    <th>Remark</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleCandidates.map((candidate) => {
-                    const canApprove = candidate.status === "Pending Approval";
-
-                    return (
-                      <tr key={candidate.id}>
-                        <td>
-                          <strong>{candidate.employeeName}</strong>
-                          <span>{candidate.employeeCode} / {candidate.department}</span>
-                        </td>
-                        <td>{candidate.company}</td>
-                        <td>{candidate.position} / {candidate.level}</td>
-                        <td>
-                          <span className={candidate.targetMatchStatus === "MATCHED" ? styles.matchPill : styles.manualPill}>
-                            {candidate.targetMatchStatus === "MATCHED" ? "Position + Level" : "Manual add"}
-                          </span>
-                        </td>
-                        <td><span className={`${styles.sourcePill} ${sourceClass[candidate.source]}`}>{sourceLabel[candidate.source]}</span></td>
-                        <td><span className={`${styles.statusPill} ${statusClass[candidate.status]}`}>{candidate.status}</span></td>
-                        <td>{candidate.remark}</td>
-                        <td className={styles.actionCell}>
-                          <button
-                            className={styles.approveButton}
-                            disabled={!canApprove}
-                            type="button"
-                            onClick={() => void handleApprove(candidate.id)}
-                          >
-                            Approve
-                          </button>
-                          <button
-                            className={styles.rejectButton}
-                            disabled={candidate.status === "Rejected"}
-                            type="button"
-                            onClick={() => void handleReject(candidate.id)}
-                          >
-                            Reject
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {visibleCandidates.length === 0 ? (
-                <div className={styles.emptyState}>
-                  <strong>No factory submissions</strong>
-                  <span>Factory submitted employees will appear here before they become training participants.</span>
-                </div>
-              ) : null}
+            <div className={styles.ruleRow}>
+              <span>Function: {selectedCourse.targetFunctionName || "ALL FUNCTION"}</span>
+              <span>
+                Position:{" "}
+                {selectedCourse.targetPositions.length > 0
+                  ? Array.from(
+                    new Set(
+                      selectedCourse.targetPositions.map((p) => {
+                        const cleanP = p.trim();
+                        if (cleanP === "ผู้จัดการแผนก") return "SECTION HEAD";
+                        if (cleanP === "ผู้จัดการฝ่าย") return "GENERAL MANAGER";
+                        if (cleanP === "วิศวกร") return "ENGINEER";
+                        if (cleanP === "เจ้าหน้าที่") return "OFFICER";
+                        if (cleanP === "หัวหน้างาน") return "SUPERVISOR";
+                        if (cleanP === "พนักงานปฏิบัติการ") return "OPERATOR";
+                        return cleanP;
+                      })
+                    )
+                  ).join(", ")
+                  : selectedCourse.targetGroup && selectedCourse.targetGroup !== "-"
+                    ? selectedCourse.targetGroup
+                    : "All Positions"}
+              </span>
+              <span>
+                Level:{" "}
+                {selectedCourse.targetLevels.length > 0
+                  ? Array.from(
+                    new Set(
+                      selectedCourse.targetLevels
+                        .map((l) => {
+                          const norm = normalizeEmployeeLevel(l);
+                          return norm || l.trim();
+                        })
+                        .filter((l) => l && l !== "-" && l !== "บ" && l !== "จ" && l !== "ป" && l !== "S")
+                    )
+                  )
+                    .sort((a, b) => getLevelRank(b) - getLevelRank(a))
+                    .join(", ")
+                  : selectedCourse.targetGroup && selectedCourse.targetGroup !== "-"
+                    ? selectedCourse.targetGroup
+                    : "All Levels"}
+              </span>
+              <span>Company: {selectedCourse.companies.length > 0 ? selectedCourse.companies.join(", ") : "All Companies"}</span>
             </div>
           </section>
-        ) : selectedCourse?.owner === "center" ? (
-          <section className={styles.submittedPanel} style={{ marginTop: "16px", marginBottom: "16px" }}>
-            <div className={styles.workspaceHeader}>
-              <div>
-                <p className={styles.kicker}>Submitted to Center</p>
-                <h3>รายการส่งคนเข้าอบรมกลาง ({submittedToCenterCandidates.length} คน)</h3>
-              </div>
-              <div className={styles.participantActions}>
-                <span>{submittedToCenterCandidates.length} submitted</span>
-                <button
-                  className={styles.saveSubmissionButton}
-                  type="button"
-                  disabled={submittedToCenterCandidates.length === 0}
-                  onClick={async () => {
-                    const submittedCount = submittedToCenterCandidates.length;
-                    await reloadEnrollments();
-                    toast.success(
-                      `บันทึกและยืนยันส่งรายชื่อพนักงานเข้าอบรมกลางเรียบร้อยแล้ว รวม ${submittedCount} คน / Submitted ${submittedCount} employee(s) to HRD Center`,
-                    );
-                  }}
-                >
-                  💾 บันทึกและยืนยันส่งรายชื่อเข้าอบรมกลาง
-                </button>
-              </div>
-            </div>
-            <div className={styles.employeeRows}>
-              {submittedToCenterCandidates.length > 0 ? (
-                <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
-                  <span>จัดการ</span>
-                  <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
-                    <span>รหัสพนักงาน</span>
-                    <span>คำนำหน้า</span>
-                    <span>ชื่อ</span>
-                    <span>นามสกุล</span>
-                    <span>บริษัท</span>
-                    <span>ส่วนงาน</span>
-                    <span>ฝ่าย</span>
-                    <span>แผนก</span>
-                    <span>ตำแหน่ง</span>
-                    <span>ระดับ</span>
-                  </div>
-                </div>
-              ) : null}
-              {submittedToCenterCandidates.map((candidate) => {
-                const masterEmp = masterEmployees.find(
-                  (emp) =>
-                    emp.employeeCode === candidate.employeeCode ||
-                    emp.id === candidate.employeeId,
-                );
-                const nameProfile = masterEmp
-                  ? getEmployeeNameProfile(masterEmp)
-                  : getEmployeeNameProfile({ name: candidate.employeeName });
 
-                return (
-                  <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={candidate.id}>
-                    <button
-                      className={styles.removeSubmittedButton}
-                      type="button"
-                      onClick={() => void handleCancelEnrollment(candidate.id)}
-                    >
-                      Remove
-                    </button>
-                    <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.employeeCode}>{candidate.employeeCode}</span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.firstName}>{nameProfile.firstName}</span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.lastName}>{nameProfile.lastName}</span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.company}>{candidate.company}</span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.section || "-"}>
-                        {masterEmp?.section || "-"}
-                      </span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.division || "-"}>
-                        {masterEmp?.division || "-"}
-                      </span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.department || candidate.department || "-"}>
-                        {masterEmp?.department || candidate.department || "-"}
-                      </span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.position || "-"}>
-                        {candidate.position || "-"}
-                      </span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.level || "-"}>
-                        {candidate.level || "-"}
-                      </span>
-                    </div>
-                  </article>
-                );
-              })}
-              {submittedToCenterCandidates.length === 0 ? (
-                <div className={styles.emptyCompact}>
-                  ยังไม่มีพนักงานที่เลือกส่งไปยัง Center (กรุณากดเลือกพนักงานจากตารางกลุ่มเป้าหมายด้านล่าง)
-                </div>
-              ) : null}
-            </div>
-          </section>
-        ) : null
-      ) : null}
-    </div>
-
-    {isTargetLoading ? (
-          <TypewriterLoader label="กำลังประมวลผลและดึงข้อมูลกลุ่มเป้าหมาย..." />
-        ) : canNominateEmployees ? (
-          <Fragment>
-            <section className={styles.targetPanel}>
+          <div className={styles.surveySplit}>
+            <section className={styles.participantPanel}>
               <div className={styles.workspaceHeader}>
                 <div>
-                  <p className={styles.kicker}>Automatic target group</p>
-                  <h3>Course Standard target employees</h3>
+                  <p className={styles.kicker}>Training participants</p>
+                  <h3>Course participant list</h3>
                 </div>
-                <span>
-                  {availableTargetEmployees.length} available / {targetEmployees.length} target
-                </span>
+                <div className={styles.participantActions}>
+                  <span>{acceptedParticipants.length} / {selectedCourse.capacity} seats</span>
+                  <button
+                    className={styles.shareLinkButton}
+                    type="button"
+                    title="คัดลอกลิ้งก์ส่งให้ Section Head / หัวหน้างาน เพื่อเข้าเลือกและเสนอชื่อพนักงานเข้าอบรมเอง"
+                    onClick={() => void handleCopyNominationLink()}
+                  >
+                    <span className={styles.folderContainer}>
+                      <svg className={styles.fileBack} viewBox="0 0 146 113" fill="none">
+                        <path d="M0 4C0 1.79 1.79 0 4 0H50.38C51.83 0 53.2 0.63 54.15 1.72L64.33 13.44C65.28 14.53 66.66 15.16 68.1 15.16H141.51C143.72 15.16 145.51 16.95 145.51 19.16V109C145.51 111.21 143.72 113 141.51 113H4C1.79 113 0 111.21 0 109V4Z" fill="url(#link_back)" />
+                        <defs>
+                          <linearGradient id="link_back" x1="0" y1="0" x2="72.9" y2="95.5" gradientUnits="userSpaceOnUse">
+                            <stop stopColor="#4f46e5" />
+                            <stop offset="1" stopColor="#3730a3" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <svg className={styles.filePage} viewBox="0 0 88 99" fill="none">
+                        <rect width="88" height="99" rx="6" fill="#ffffff" />
+                      </svg>
+                      <svg className={styles.fileFront} viewBox="0 0 160 79" fill="none">
+                        <path d="M0.29 12.25C0.13 9.38 2.41 6.97 5.28 6.97H58.19C59.57 6.97 60.93 6.56 62.08 5.79L68.98 1.18C70.13 0.41 71.48 0 72.87 0H155.46C157.87 0 159.73 2.11 159.43 4.5L150.44 75.5C150.19 77.5 148.49 79 146.47 79H7.78C5.66 79 3.91 77.34 3.79 75.22L0.29 12.25Z" fill="url(#link_front)" />
+                        <defs>
+                          <linearGradient id="link_front" x1="38.76" y1="8.71" x2="66.91" y2="82.83" gradientUnits="userSpaceOnUse">
+                            <stop stopColor="#818cf8" />
+                            <stop offset="1" stopColor="#4f46e5" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                    </span>
+                    คัดลอกลิ้งก์ให้ Section Head
+                  </button>
+                  <button
+                    className={styles.lineNotifyButton}
+                    type="button"
+                    disabled={acceptedParticipants.length === 0 || isSendingLineNotify}
+                    title={
+                      acceptedParticipants.length === 0
+                        ? "เพิ่มผู้เข้าอบรมอย่างน้อย 1 คนก่อนส่งแจ้งเตือน LINE OA"
+                        : "ส่งข้อความแจ้งเตือนรายชื่อและกำหนดการอบรมเข้า LINE Official Account"
+                    }
+                    onClick={() => void handleSendLineNotification()}
+                  >
+                    <span className={styles.folderContainer}>
+                      <svg className={styles.fileBack} viewBox="0 0 146 113" fill="none">
+                        <path d="M0 4C0 1.79 1.79 0 4 0H50.38C51.83 0 53.2 0.63 54.15 1.72L64.33 13.44C65.28 14.53 66.66 15.16 68.1 15.16H141.51C143.72 15.16 145.51 16.95 145.51 19.16V109C145.51 111.21 143.72 113 141.51 113H4C1.79 113 0 111.21 0 109V4Z" fill="url(#line_back)" />
+                        <defs>
+                          <linearGradient id="line_back" x1="0" y1="0" x2="72.9" y2="95.5" gradientUnits="userSpaceOnUse">
+                            <stop stopColor="#059669" />
+                            <stop offset="1" stopColor="#047857" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <svg className={styles.filePage} viewBox="0 0 88 99" fill="none">
+                        <rect width="88" height="99" rx="6" fill="#ffffff" />
+                      </svg>
+                      <svg className={styles.fileFront} viewBox="0 0 160 79" fill="none">
+                        <path d="M0.29 12.25C0.13 9.38 2.41 6.97 5.28 6.97H58.19C59.57 6.97 60.93 6.56 62.08 5.79L68.98 1.18C70.13 0.41 71.48 0 72.87 0H155.46C157.87 0 159.73 2.11 159.43 4.5L150.44 75.5C150.19 77.5 148.49 79 146.47 79H7.78C5.66 79 3.91 77.34 3.79 75.22L0.29 12.25Z" fill="url(#line_front)" />
+                        <defs>
+                          <linearGradient id="line_front" x1="38.76" y1="8.71" x2="66.91" y2="82.83" gradientUnits="userSpaceOnUse">
+                            <stop stopColor="#10b981" />
+                            <stop offset="1" stopColor="#059669" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                    </span>
+                    {isSendingLineNotify ? "กำลังส่ง LINE..." : "ส่งแจ้งเตือน LINE OA"}
+                  </button>
+                  <button
+                    className={styles.exportAttendanceButton}
+                    type="button"
+                    disabled={acceptedParticipants.length === 0 || isExportingAttendance}
+                    title={
+                      acceptedParticipants.length === 0
+                        ? "เพิ่มผู้เข้าอบรมอย่างน้อย 1 คนก่อนส่งออกไฟล์ Excel"
+                        : "ส่งออกตารางเช็คชื่อเข้าอบรมเป็นไฟล์ Excel (Attendance Sheet)"
+                    }
+                    onClick={() => void handleExportAttendanceSheet()}
+                  >
+                    <span className={styles.folderContainer}>
+                      <svg className={styles.fileBack} viewBox="0 0 146 113" fill="none">
+                        <path d="M0 4C0 1.79 1.79 0 4 0H50.38C51.83 0 53.2 0.63 54.15 1.72L64.33 13.44C65.28 14.53 66.66 15.16 68.1 15.16H141.51C143.72 15.16 145.51 16.95 145.51 19.16V109C145.51 111.21 143.72 113 141.51 113H4C1.79 113 0 111.21 0 109V4Z" fill="url(#excel_back)" />
+                        <defs>
+                          <linearGradient id="excel_back" x1="0" y1="0" x2="72.9" y2="95.5" gradientUnits="userSpaceOnUse">
+                            <stop stopColor="#107c41" />
+                            <stop offset="1" stopColor="#0d6334" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      <svg className={styles.filePage} viewBox="0 0 88 99" fill="none">
+                        <rect width="88" height="99" rx="6" fill="#ffffff" />
+                      </svg>
+                      <svg className={styles.fileFront} viewBox="0 0 160 79" fill="none">
+                        <path d="M0.29 12.25C0.13 9.38 2.41 6.97 5.28 6.97H58.19C59.57 6.97 60.93 6.56 62.08 5.79L68.98 1.18C70.13 0.41 71.48 0 72.87 0H155.46C157.87 0 159.73 2.11 159.43 4.5L150.44 75.5C150.19 77.5 148.49 79 146.47 79H7.78C5.66 79 3.91 77.34 3.79 75.22L0.29 12.25Z" fill="url(#excel_front)" />
+                        <defs>
+                          <linearGradient id="excel_front" x1="38.76" y1="8.71" x2="66.91" y2="82.83" gradientUnits="userSpaceOnUse">
+                            <stop stopColor="#22c55e" />
+                            <stop offset="1" stopColor="#16a34a" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                    </span>
+                    {isExportingAttendance
+                      ? "กำลังสร้างไฟล์ Excel..."
+                      : "ส่งออก Excel (Attendance Sheet)"}
+                  </button>
+                </div>
               </div>
-              <p className={styles.targetRuleNote}>
-                Automatically matched from position and level in Course Standard.
-              </p>
-              <div className={styles.companyGroupGrid}>
-                {targetEmployeeGroups.map((group) => {
-                  const isUserCompanyCard = roleMode === "factory" && group.company === userCompanyCode;
+              <div className={styles.employeeRows}>
+                {acceptedParticipants.length > 0 ? (
+                  <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
+                    <span>จัดการ</span>
+                    <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                      <span>รหัสพนักงาน</span>
+                      <span>สถานะ</span>
+                      <span>คำนำหน้า</span>
+                      <span>ชื่อ</span>
+                      <span>นามสกุล</span>
+                      <span>บริษัท</span>
+                      <span>ส่วนงาน</span>
+                      <span>ฝ่าย</span>
+                      <span>แผนก</span>
+                      <span>ตำแหน่ง</span>
+                      <span>ระดับ</span>
+                    </div>
+                  </div>
+                ) : null}
+                {acceptedParticipants.map((participant) => {
+                  const masterEmp = masterEmployees.find(
+                    (emp) =>
+                      emp.employeeCode === participant.employeeCode ||
+                      emp.id === participant.employeeId,
+                  );
+                  const nameProfile = getEmployeeNameProfile(masterEmp || { name: participant.employeeName });
+
                   return (
-                    <details
-                      className={`${styles.companyGroupCard} ${isUserCompanyCard ? styles.ownCompanySectionHeader : ""}`}
-                      key={group.company}
-                      open
-                    >
-                      <summary className={styles.companyGroupHeader}>
-                        <div className={styles.companySectionTitle}>
-                          <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
-                          <h4>บริษัท {group.company}</h4>
-                          {isUserCompanyCard ? (
-                            <span className={styles.ownCompanySectionTag}>
-                              ⭐ บริษัทของฉัน ({userCompanyCode})
-                            </span>
-                          ) : null}
-                        </div>
-                        <span className={styles.companyCountBadge}>
-                          {group.employees.length} available / {group.targetCount} target
+                    <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={participant.id}>
+                      <button
+                        className={styles.withdrawButton}
+                        type="button"
+                        onClick={() => void handleCancelEnrollment(participant.id)}
+                      >
+                        ถอดรายชื่อ
+                      </button>
+                      <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={participant.employeeCode}>{participant.employeeCode}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
+                          <span className={styles.badgeApproved}>
+                            <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
+                          </span>
                         </span>
-                      </summary>
-                      <PaginatedEmployeeGrid
-                        employees={group.employees}
-                        targetActionLabel={targetActionLabel}
-                        onAddEmployee={handleAddEmployee}
-                        emptyMessage="ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้"
-                      />
-                    </details>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.firstName}>{nameProfile.firstName}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.lastName}>{nameProfile.lastName}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={participant.company}>{participant.company}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.section || "-"}>
+                          {masterEmp?.section || "-"}
+                        </span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.division || "-"}>
+                          {masterEmp?.division || "-"}
+                        </span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.department || participant.department || "-"}>
+                          {masterEmp?.department || participant.department || "-"}
+                        </span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={participant.position || "-"}>
+                          {participant.position || "-"}
+                        </span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={participant.level || "-"}>
+                          {participant.level || "-"}
+                        </span>
+                      </div>
+                    </article>
                   );
                 })}
-                {availableTargetEmployees.length === 0 ? (
-                  <div className={styles.emptyCompact}>
-                    ไม่มีพนักงานกลุ่มเป้าหมาย Course Standard ที่เหลืออยู่
-                  </div>
+                {acceptedParticipants.length === 0 ? (
+                  <div className={styles.emptyCompact}>ยังไม่มีผู้เข้าร่วมที่ผ่านการอนุมัติ</div>
                 ) : null}
               </div>
             </section>
 
-            {selectedCourse &&
-            (selectedCourse.targetLevels.length > 0 || levelOnlyEmployees.length > 0) && (
-              <section className={styles.targetPanel} style={{ marginBottom: "16px" }}>
+            {canShowAcceptanceList ? (
+              roleMode === "center" ? (
+                <section className={styles.approvalPanel} style={{ marginTop: "16px", marginBottom: "16px" }}>
+                  <div className={styles.workspaceHeader}>
+                    <div>
+                      <p className={styles.kicker} style={{ color: "#818cf8" }}>Candidate Approval (Center Mode)</p>
+                      <h3>รายการพนักงานส่งจากโรงงานรอการอนุมัติเข้าอบรม ({visibleCandidates.length} คน)</h3>
+                    </div>
+                    <div className={styles.participantActions}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#818cf8", fontWeight: 700, fontSize: "0.82rem" }}>
+                        <span className={styles.glowingDotBlue}></span> รออนุมัติ {approvalQueue.length} คน
+                      </span>
+                      <button
+                        className={styles.batchApproveBtn}
+                        type="button"
+                        disabled={approvalQueue.length === 0}
+                        onClick={async () => {
+                          if (approvalQueue.length === 0) return;
+                          try {
+                            for (const candidate of approvalQueue) {
+                              await updateEnrollmentStatus(candidate.id, { action: "approve" });
+                            }
+                            await reloadEnrollments();
+                            toast.success(`อนุมัติพนักงานทั้งหมด ${approvalQueue.length} คนเรียบร้อยแล้ว / Batch approved ${approvalQueue.length} candidates`);
+                          } catch (err) {
+                            console.error("Failed batch approve", err);
+                            toast.error("เกิดข้อผิดพลาดในการอนุมัติทั้งหมด / Failed to batch approve");
+                          }
+                        }}
+                      >
+                        ✓ อนุมัติทั้งหมด ({approvalQueue.length})
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className={styles.employeeRows}>
+                    {visibleCandidates.length > 0 ? (
+                      <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
+                        <span>จัดการ</span>
+                        <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                          <span>รหัสพนักงาน</span>
+                          <span>สถานะ</span>
+                          <span>คำนำหน้า</span>
+                          <span>ชื่อ</span>
+                          <span>นามสกุล</span>
+                          <span>บริษัท</span>
+                          <span>ส่วนงาน</span>
+                          <span>ฝ่าย</span>
+                          <span>แผนก</span>
+                          <span>ตำแหน่ง</span>
+                          <span>ระดับ</span>
+                        </div>
+                      </div>
+                    ) : null}
+                    {visibleCandidates.map((candidate) => {
+                      const masterEmp = masterEmployees.find(
+                        (emp) =>
+                          emp.employeeCode === candidate.employeeCode ||
+                          emp.id === candidate.employeeId,
+                      );
+                      const nameProfile = masterEmp
+                        ? getEmployeeNameProfile(masterEmp)
+                        : getEmployeeNameProfile({ name: candidate.employeeName });
+
+                      const canApprove = candidate.status === "Pending Approval";
+                      const canReject = candidate.status !== "Rejected";
+
+                      return (
+                        <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={candidate.id}>
+                          <div className={styles.actionCellBtns}>
+                            <button
+                              className={styles.approveCandidateBtn}
+                              type="button"
+                              disabled={!canApprove}
+                              onClick={() => void handleApprove(candidate.id)}
+                            >
+                              ✓ อนุมัติ
+                            </button>
+                            <button
+                              className={styles.rejectCandidateBtn}
+                              type="button"
+                              disabled={!canReject}
+                              onClick={() => void handleReject(candidate.id)}
+                            >
+                              ✕ ปฏิเสธ
+                            </button>
+                          </div>
+                          <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.employeeCode}>{candidate.employeeCode}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
+                              {candidate.status === "Pending Approval" ? (
+                                <span className={styles.badgePending}>
+                                  <span className={styles.glowingDotBlue}></span> รออนุมัติ
+                                </span>
+                              ) : candidate.status === "Center Approved" || candidate.status === "Factory Approved" ? (
+                                <span className={styles.badgeApproved}>
+                                  <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
+                                </span>
+                              ) : candidate.status === "Rejected" ? (
+                                <span className={styles.badgeRejected}>
+                                  <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
+                                </span>
+                              ) : (
+                                <span>{candidate.status}</span>
+                              )}
+                            </span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.firstName}>{nameProfile.firstName}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.lastName}>{nameProfile.lastName}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.company}>{candidate.company}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.section || "-"}>{masterEmp?.section || "-"}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.division || "-"}>{masterEmp?.division || "-"}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.department || candidate.department || "-"}>{masterEmp?.department || candidate.department || "-"}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.position || "-"}>{candidate.position || "-"}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.level || "-"}>{candidate.level || "-"}</span>
+                          </div>
+                        </article>
+                      );
+                    })}
+                    {visibleCandidates.length === 0 ? (
+                      <div className={styles.emptyDraftBox}>
+                        📋 ไม่มีรายการส่งพนักงานจากโรงงานที่รออนุมัติในขณะนี้
+                      </div>
+                    ) : null}
+                  </div>
+                </section>
+              ) : selectedCourse?.owner === "center" ? (
+                <>
+                  {/* PANEL 1: DRAFT UNSAVED SUBMISSIONS */}
+                  <section className={styles.draftPanel} style={{ marginTop: "16px", marginBottom: "16px" }}>
+                    <div className={styles.workspaceHeader}>
+                      <div>
+                        <p className={styles.kicker} style={{ color: "#eab308" }}>Draft Submissions (Unsaved)</p>
+                        <h3>รายการเตรียมส่งคนเข้าอบรมกลาง ({draftSubmittedEmployees.length} คน)</h3>
+                      </div>
+                      <div className={styles.participantActions}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#eab308", fontWeight: 700, fontSize: "0.82rem" }}>
+                          <span className={styles.glowingDotYellow}></span> {draftSubmittedEmployees.length} คนรอส่ง
+                        </span>
+                        <button
+                          className={styles.saveSubmissionButton}
+                          type="button"
+                          disabled={draftSubmittedEmployees.length === 0}
+                          onClick={async () => {
+                            if (!selectedCourse) return;
+                            if (draftSubmittedEmployees.length === 0) return;
+                            try {
+                              for (const emp of draftSubmittedEmployees) {
+                                await createEnrollment({
+                                  planId: selectedCourse.id,
+                                  employeeId: emp.id,
+                                  employeeUserId: null,
+                                  source: "HRD_FACTORY",
+                                });
+                              }
+                              const submittedCount = draftSubmittedEmployees.length;
+                              setDraftSubmittedEmployees([]);
+                              await reloadEnrollments();
+                              toast.success(
+                                `บันทึกและยืนยันส่งรายชื่อพนักงานเข้าอบรมกลางเรียบร้อยแล้ว รวม ${submittedCount} คน / Submitted ${submittedCount} employee(s) to HRD Center`,
+                              );
+                            } catch (error) {
+                              console.error("Failed to submit candidates to center", error);
+                              toast.error("เกิดข้อผิดพลาดในการบันทึก / Failed to submit candidates to center");
+                            }
+                          }}
+                        >
+                          💾 บันทึกและยืนยันส่งรายชื่อเข้าอบรมกลาง ({draftSubmittedEmployees.length})
+                        </button>
+                      </div>
+                    </div>
+                    <div className={styles.employeeRows}>
+                      {draftSubmittedEmployees.length > 0 ? (
+                        <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
+                          <span>จัดการ</span>
+                          <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                            <span>รหัสพนักงาน</span>
+                            <span>สถานะ</span>
+                            <span>คำนำหน้า</span>
+                            <span>ชื่อ</span>
+                            <span>นามสกุล</span>
+                            <span>บริษัท</span>
+                            <span>ส่วนงาน</span>
+                            <span>ฝ่าย</span>
+                            <span>แผนก</span>
+                            <span>ตำแหน่ง</span>
+                            <span>ระดับ</span>
+                          </div>
+                        </div>
+                      ) : null}
+                      {draftSubmittedEmployees.map((emp) => {
+                        const nameProfile = getEmployeeNameProfile(emp);
+
+                        return (
+                          <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={`draft-${emp.id}`}>
+                            <button
+                              className={styles.removeDraftButton}
+                              type="button"
+                              onClick={() => {
+                                setDraftSubmittedEmployees((prev) => prev.filter((e) => e.id !== emp.id));
+                                toast.info(`นำ ${emp.employeeCode} ออกจากรายการเตรียมส่งแล้ว`);
+                              }}
+                            >
+                              นำออก (Draft)
+                            </button>
+                            <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                              <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={emp.employeeCode}>{emp.employeeCode}</span>
+                              <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
+                                <span className={styles.badgeDraft}>
+                                  <span className={styles.glowingDotYellow}></span> ดราฟ (ยังไม่บันทึก)
+                                </span>
+                              </span>
+                              <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
+                              <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.firstName}>{nameProfile.firstName}</span>
+                              <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.lastName}>{nameProfile.lastName}</span>
+                              <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={emp.company}>{emp.company}</span>
+                              <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={emp.section || "-"}>{emp.section || "-"}</span>
+                              <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={emp.division || "-"}>{emp.division || "-"}</span>
+                              <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={emp.department || "-"}>{emp.department || "-"}</span>
+                              <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={emp.position || "-"}>{emp.position || "-"}</span>
+                              <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={emp.level || "-"}>{emp.level || "-"}</span>
+                            </div>
+                          </article>
+                        );
+                      })}
+                      {draftSubmittedEmployees.length === 0 ? (
+                        <div className={styles.emptyDraftBox}>
+                          📋 ยังไม่มีพนักงานในดราฟ (กรุณากดเลือกพนักงานจากตารางกลุ่มเป้าหมายด้านล่างเพื่อเตรียมส่งเข้าอบรมกลาง)
+                        </div>
+                      ) : null}
+                    </div>
+                  </section>
+
+                  {/* PANEL 2: OFFICIAL SUBMITTED TO CENTER CANDIDATES */}
+                  {(() => {
+                    const savedCandidates = enrollments.filter(
+                      (candidate) =>
+                        candidate.company === userCompanyCode &&
+                        candidate.status !== "Center Approved" &&
+                        candidate.status !== "Cancelled" &&
+                        candidate.status !== "Rejected",
+                    );
+
+                    return (
+                      <section className={styles.submittedPanel} style={{ marginTop: "16px", marginBottom: "16px" }}>
+                        <div className={styles.workspaceHeader}>
+                          <div>
+                            <p className={styles.kicker}>Submitted to Center (Saved)</p>
+                            <h3>รายการส่งคนเข้าอบรมกลางแล้ว ({savedCandidates.length} คน)</h3>
+                          </div>
+                          <div className={styles.participantActions}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#60a5fa", fontWeight: 700, fontSize: "0.82rem" }}>
+                              <span className={styles.glowingDotBlue}></span> {savedCandidates.length} คนส่งแล้ว
+                            </span>
+                          </div>
+                        </div>
+                        <div className={styles.employeeRows}>
+                          {savedCandidates.length > 0 ? (
+                            <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
+                              <span>จัดการ</span>
+                              <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                                <span>รหัสพนักงาน</span>
+                                <span>สถานะ</span>
+                                <span>คำนำหน้า</span>
+                                <span>ชื่อ</span>
+                                <span>นามสกุล</span>
+                                <span>บริษัท</span>
+                                <span>ส่วนงาน</span>
+                                <span>ฝ่าย</span>
+                                <span>แผนก</span>
+                                <span>ตำแหน่ง</span>
+                                <span>ระดับ</span>
+                              </div>
+                            </div>
+                          ) : null}
+                          {savedCandidates.map((candidate) => {
+                            const masterEmp = masterEmployees.find(
+                              (emp) =>
+                                emp.employeeCode === candidate.employeeCode ||
+                                emp.id === candidate.employeeId,
+                            );
+                            const nameProfile = masterEmp
+                              ? getEmployeeNameProfile(masterEmp)
+                              : getEmployeeNameProfile({ name: candidate.employeeName });
+
+                            return (
+                              <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={candidate.id}>
+                                <button
+                                  className={styles.removeSubmittedButton}
+                                  type="button"
+                                  onClick={() => void handleCancelEnrollment(candidate.id)}
+                                >
+                                  ยกเลิกการส่ง
+                                </button>
+                                <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.employeeCode}>{candidate.employeeCode}</span>
+                                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
+                                    {candidate.status === "Pending Approval" ? (
+                                      <span className={styles.badgePending}>
+                                        <span className={styles.glowingDotBlue}></span> รออนุมัติ
+                                      </span>
+                                    ) : candidate.status === "Center Approved" || candidate.status === "Factory Approved" ? (
+                                      <span className={styles.badgeApproved}>
+                                        <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
+                                      </span>
+                                    ) : candidate.status === "Rejected" ? (
+                                      <span className={styles.badgeRejected}>
+                                        <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
+                                      </span>
+                                    ) : (
+                                      <span>{candidate.status}</span>
+                                    )}
+                                  </span>
+                                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
+                                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.firstName}>{nameProfile.firstName}</span>
+                                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.lastName}>{nameProfile.lastName}</span>
+                                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.company}>{candidate.company}</span>
+                                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.section || "-"}>{masterEmp?.section || "-"}</span>
+                                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.division || "-"}>{masterEmp?.division || "-"}</span>
+                                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.department || candidate.department || "-"}>{masterEmp?.department || candidate.department || "-"}</span>
+                                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.position || "-"}>{candidate.position || "-"}</span>
+                                  <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.level || "-"}>{candidate.level || "-"}</span>
+                                </div>
+                              </article>
+                            );
+                          })}
+                          {savedCandidates.length === 0 ? (
+                            <div className={styles.emptyCompact}>
+                              ยังไม่มีพนักงานที่บันทึกส่งไปยัง Center แล้ว
+                            </div>
+                          ) : null}
+                        </div>
+                      </section>
+                    );
+                  })()}
+                </>
+              ) : null
+            ) : null}
+          </div>
+
+          {isTargetLoading ? (
+            <TypewriterLoader label="กำลังประมวลผลและดึงข้อมูลกลุ่มเป้าหมาย..." />
+          ) : canNominateEmployees ? (
+            <Fragment>
+              <section className={styles.targetPanel}>
                 <div className={styles.workspaceHeader}>
                   <div>
-                    <p className={styles.kicker}>Target Level group (Other positions)</p>
-                    <h3>Employees matching Target Level (Other positions)</h3>
+                    <p className={styles.kicker}>Automatic target group</p>
+                    <h3>Course Standard target employees</h3>
                   </div>
                   <span>
-                    {availableLevelOnlyEmployees.length} available / {levelOnlyEmployees.length} in level
+                    {availableTargetEmployees.length} available / {targetEmployees.length} target
                   </span>
                 </div>
                 <p className={styles.targetRuleNote}>
-                  💡 พนักงานที่มี Level ตรงตามกำหนด ({[...selectedCourse.targetLevels].sort((a, b) => getLevelRank(b) - getLevelRank(a)).join(", ")}) แต่ตำแหน่งอยู่นอกเหนือจาก {selectedCourse.targetPositions.join(", ")}
+                  Automatically matched from position and level in Course Standard.
                 </p>
                 <div className={styles.companyGroupGrid}>
-                  {levelOnlyEmployeeGroups.map((group) => {
+                  {targetEmployeeGroups.map((group) => {
                     const isUserCompanyCard = roleMode === "factory" && group.company === userCompanyCode;
                     return (
                       <details
@@ -1913,7 +2153,7 @@ export default function TrainingAcceptSurvey() {
                             ) : null}
                           </div>
                           <span className={styles.companyCountBadge}>
-                            {group.employees.length} available / {group.targetCount} in level
+                            {group.employees.length} available / {group.targetCount} target
                           </span>
                         </summary>
                         <PaginatedEmployeeGrid
@@ -1921,70 +2161,131 @@ export default function TrainingAcceptSurvey() {
                           targetActionLabel={targetActionLabel}
                           onAddEmployee={handleAddEmployee}
                           emptyMessage="ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้"
+                          enrollments={enrollments}
+                          draftSubmittedEmployees={draftSubmittedEmployees}
                         />
                       </details>
                     );
                   })}
-                  {availableLevelOnlyEmployees.length === 0 ? (
+                  {availableTargetEmployees.length === 0 ? (
                     <div className={styles.emptyCompact}>
-                      ไม่มีพนักงานที่มี Level ตรงตามกำหนดในตำแหน่งอื่น
+                      ไม่มีพนักงานกลุ่มเป้าหมาย Course Standard ที่เหลืออยู่
                     </div>
                   ) : null}
                 </div>
               </section>
-            )}
 
-            <section className={styles.targetPanel}>
-              <div className={styles.workspaceHeader}>
-                <div>
-                  <p className={styles.kicker}>Out-of-target group</p>
-                  <h3>Add employees outside the target group</h3>
-                </div>
-                <span>{additionalEmployees.length} available</span>
-              </div>
-              <p className={styles.targetRuleNote}>
-                💡 เลือกบริษัทด้านล่างเพื่อดูและเพิ่มพนักงานที่ตำแหน่งหรือระดับไม่ตรงตาม Course Standard
-              </p>
-              <div className={styles.companyGroupGrid}>
-                {additionalEmployeeGroups.map((group) => {
-                  const isUserCompanyCard = roleMode === "factory" && group.company === userCompanyCode;
-                  return (
-                    <details
-                      className={`${styles.companyGroupCard} ${styles.additionalDisclosure} ${isUserCompanyCard ? styles.ownCompanySectionHeader : ""}`}
-                      key={group.company}
-                    >
-                      <summary className={styles.companyGroupHeader}>
-                        <div className={styles.companySectionTitle}>
-                          <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
-                          <h4>บริษัท {group.company}</h4>
-                          {isUserCompanyCard ? (
-                            <span className={styles.ownCompanySectionTag}>
-                              ⭐ บริษัทของฉัน ({userCompanyCode})
-                            </span>
-                          ) : null}
+              {selectedCourse &&
+                (selectedCourse.targetLevels.length > 0 || levelOnlyEmployees.length > 0) && (
+                  <section className={styles.targetPanel} style={{ marginBottom: "16px" }}>
+                    <div className={styles.workspaceHeader}>
+                      <div>
+                        <p className={styles.kicker}>Target Level group (Other positions)</p>
+                        <h3>Employees matching Target Level (Other positions)</h3>
+                      </div>
+                      <span>
+                        {availableLevelOnlyEmployees.length} available / {levelOnlyEmployees.length} in level
+                      </span>
+                    </div>
+                    <p className={styles.targetRuleNote}>
+                      💡 พนักงานที่มี Level ตรงตามกำหนด ({[...selectedCourse.targetLevels].sort((a, b) => getLevelRank(b) - getLevelRank(a)).join(", ")}) แต่ตำแหน่งอยู่นอกเหนือจาก {selectedCourse.targetPositions.join(", ")}
+                    </p>
+                    <div className={styles.companyGroupGrid}>
+                      {levelOnlyEmployeeGroups.map((group) => {
+                        const isUserCompanyCard = roleMode === "factory" && group.company === userCompanyCode;
+                        return (
+                          <details
+                            className={`${styles.companyGroupCard} ${isUserCompanyCard ? styles.ownCompanySectionHeader : ""}`}
+                            key={group.company}
+                            open
+                          >
+                            <summary className={styles.companyGroupHeader}>
+                              <div className={styles.companySectionTitle}>
+                                <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
+                                <h4>บริษัท {group.company}</h4>
+                                {isUserCompanyCard ? (
+                                  <span className={styles.ownCompanySectionTag}>
+                                    ⭐ บริษัทของฉัน ({userCompanyCode})
+                                  </span>
+                                ) : null}
+                              </div>
+                              <span className={styles.companyCountBadge}>
+                                {group.employees.length} available / {group.targetCount} in level
+                              </span>
+                            </summary>
+                            <PaginatedEmployeeGrid
+                              employees={group.employees}
+                              targetActionLabel={targetActionLabel}
+                              onAddEmployee={handleAddEmployee}
+                              emptyMessage="ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้"
+                              enrollments={enrollments}
+                              draftSubmittedEmployees={draftSubmittedEmployees}
+                            />
+                          </details>
+                        );
+                      })}
+                      {availableLevelOnlyEmployees.length === 0 ? (
+                        <div className={styles.emptyCompact}>
+                          ไม่มีพนักงานที่มี Level ตรงตามกำหนดในตำแหน่งอื่น
                         </div>
-                        <span className={styles.companyCountBadge}>
-                          {group.employees.length} available
-                        </span>
-                      </summary>
-                      <PaginatedEmployeeGrid
-                        employees={group.employees}
-                        targetActionLabel={targetActionLabel}
-                        onAddEmployee={handleAddEmployee}
-                        emptyMessage="ไม่มีพนักงานเพิ่มเติมสำหรับบริษัทนี้"
-                      />
-                    </details>
-                  );
-                })}
-                {additionalEmployees.length === 0 ? (
-                  <div className={styles.emptyCompact}>
-                    ไม่มีพนักงานเพิ่มเติมที่สามารถเลือกได้
+                      ) : null}
+                    </div>
+                  </section>
+                )}
+
+              <section className={styles.targetPanel}>
+                <div className={styles.workspaceHeader}>
+                  <div>
+                    <p className={styles.kicker}>Out-of-target group</p>
+                    <h3>Add employees outside the target group</h3>
                   </div>
-                ) : null}
-              </div>
-            </section>
-          </Fragment>
-        ) : null}
+                  <span>{additionalEmployees.length} available</span>
+                </div>
+                <p className={styles.targetRuleNote}>
+                  💡 เลือกบริษัทด้านล่างเพื่อดูและเพิ่มพนักงานที่ตำแหน่งหรือระดับไม่ตรงตาม Course Standard
+                </p>
+                <div className={styles.companyGroupGrid}>
+                  {additionalEmployeeGroups.map((group) => {
+                    const isUserCompanyCard = roleMode === "factory" && group.company === userCompanyCode;
+                    return (
+                      <details
+                        className={`${styles.companyGroupCard} ${styles.additionalDisclosure} ${isUserCompanyCard ? styles.ownCompanySectionHeader : ""}`}
+                        key={group.company}
+                      >
+                        <summary className={styles.companyGroupHeader}>
+                          <div className={styles.companySectionTitle}>
+                            <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
+                            <h4>บริษัท {group.company}</h4>
+                            {isUserCompanyCard ? (
+                              <span className={styles.ownCompanySectionTag}>
+                                ⭐ บริษัทของฉัน ({userCompanyCode})
+                              </span>
+                            ) : null}
+                          </div>
+                          <span className={styles.companyCountBadge}>
+                            {group.employees.length} available
+                          </span>
+                        </summary>
+                        <PaginatedEmployeeGrid
+                          employees={group.employees}
+                          targetActionLabel={targetActionLabel}
+                          onAddEmployee={handleAddEmployee}
+                          emptyMessage="ไม่มีพนักงานเพิ่มเติมสำหรับบริษัทนี้"
+                          enrollments={enrollments}
+                          draftSubmittedEmployees={draftSubmittedEmployees}
+                        />
+                      </details>
+                    );
+                  })}
+                  {additionalEmployees.length === 0 ? (
+                    <div className={styles.emptyCompact}>
+                      ไม่มีพนักงานเพิ่มเติมที่สามารถเลือกได้
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+            </Fragment>
+          ) : null}
         </Fragment>
       ) : (
         <section className={styles.selectionPrompt}>

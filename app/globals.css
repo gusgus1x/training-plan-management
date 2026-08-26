@@ -194,6 +194,35 @@
   color: #fcd34d !important;
 }
 
+/* Special Workflow Panel Overrides in Dark Mode */
+[data-theme="dark"] div[class*="draftPanel"],
+[data-theme="dark"] section[class*="draftPanel"] {
+  background: rgba(245, 158, 11, 0.08) !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+[data-theme="dark"] div[class*="submittedPanel"],
+[data-theme="dark"] section[class*="submittedPanel"] {
+  background: rgba(59, 130, 246, 0.08) !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
+}
+
+[data-theme="dark"] div[class*="approvalPanel"],
+[data-theme="dark"] section[class*="approvalPanel"] {
+  background: rgba(16, 185, 129, 0.08) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+[data-theme="dark"] div[class*="emptyDraftBox"] {
+  background: rgba(245, 158, 11, 0.08) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  color: #fcd34d !important;
+}
+
+[data-theme="dark"] div[class*="emptyDraftBox"] strong {
+  color: #fbbf24 !important;
+}
+
 /* Text Contrast Fixes in Dark Mode */
 [data-theme="dark"] h1,
 [data-theme="dark"] h2,

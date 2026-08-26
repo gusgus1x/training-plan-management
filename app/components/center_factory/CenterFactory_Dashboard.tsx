@@ -146,34 +146,34 @@ export default function Dashboard({
 
     return [
       {
-        label: isThai ? "ชื่อ-นามสกุล / Full Name" : "Full Name / ชื่อ-นามสกุล",
+        label: isThai ? "ชื่อ-นามสกุล" : "Full Name",
         value: profileValue(authenticatedUser?.displayName ?? defaultHrdName),
       },
       {
-        label: isThai ? "รหัสพนักงาน / Employee Code" : "Employee Code",
-        value: profileValue(authenticatedUser?.employeeCode),
+        label: isThai ? "รหัสพนักงาน" : "Employee Code",
+        value: authenticatedUser?.employeeCode ? authenticatedUser.employeeCode : "HRD Account",
       },
       {
-        label: isThai ? "ตำแหน่ง / Position" : "Position / ตำแหน่ง",
+        label: isThai ? "ตำแหน่ง" : "Position",
         value: profileValue(authenticatedUser?.positionName),
       },
       {
-        label: isThai ? "หน่วยงาน / Department" : "Department / หน่วยงาน",
+        label: isThai ? "หน่วยงาน / แผนก" : "Department",
         value: profileValue(authenticatedUser?.functionName),
       },
       {
-        label: isThai ? "วันเริ่มงาน / Start Date" : "Start Date / วันเริ่มงาน",
-        value: profileValue(userAny?.startDate),
+        label: isThai ? "วันเริ่มงาน" : "Start Date",
+        value: userAny?.startDate ? userAny.startDate : (isThai ? "ไม่ระบุ" : "Not specified"),
       },
       {
-        label: isThai ? "วันเกิด / Date of Birth" : "Date of Birth / วันเกิด",
-        value: profileValue(userAny?.birthDate),
+        label: isThai ? "วันเกิด" : "Date of Birth",
+        value: userAny?.birthDate ? userAny.birthDate : (isThai ? "ไม่ระบุ" : "Not specified"),
       },
       {
-        label: isThai ? "บริษัท / Company" : "Company / บริษัท",
+        label: isThai ? "บริษัท" : "Company",
         value:
           isCenter
-            ? isThai ? "ทุกบริษัท (All Companies)" : "All Companies (ทุกบริษัท)"
+            ? isThai ? "ทุกบริษัท (All Companies)" : "All Companies"
             : profileValue(authenticatedUser?.companyName ?? authenticatedUser?.companyCode),
       },
     ];
@@ -472,16 +472,22 @@ export default function Dashboard({
             <div className={styles.profileMetaBox}>
               <div className={styles.profileTagRow}>
                 <span className={styles.userRoleTag}>
-                  {authenticatedUser?.roleCode?.replace("_", " ") ?? "USER"}
+                  {authenticatedUser?.roleCode === "HRD_CENTER"
+                    ? "HRD CENTER"
+                    : authenticatedUser?.roleCode === "HRD_FACTORY"
+                      ? "HRD FACTORY"
+                      : "EMPLOYEE"}
                 </span>
                 <span className={styles.onlineBadge}>
                   <span className={styles.onlineDot} aria-hidden="true" />
-                  Online
+                  {isThai ? "ออนไลน์" : "Online"}
                 </span>
               </div>
               <strong className={styles.profileName}>{username}</strong>
               <p className={styles.profileSubText}>
-                {profileValue(authenticatedUser?.positionName)}
+                {authenticatedUser?.roleCode === "HRD_CENTER"
+                  ? (isThai ? "ผู้ดูแลระบบฝึกอบรมกลาง (HRD Center)" : "HRD Center Administrator")
+                  : (authenticatedUser?.positionName || (isThai ? "ผู้ดูแลระบบโรงงาน (HRD Factory)" : "HRD Factory Admin"))}
               </p>
             </div>
           </div>
