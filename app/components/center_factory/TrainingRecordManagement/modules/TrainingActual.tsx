@@ -170,6 +170,17 @@ export default function TrainingActual() {
   const [selectedCourseGroupId, setSelectedCourseGroupId] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
+  const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
+  const [savedSummaryData, setSavedSummaryData] = useState<{
+    courseCode: string;
+    courseTitle: string;
+    batch: string;
+    date: string;
+    actualCount: number;
+    totalCost: number;
+    costPerPerson: number;
+    savedTime: string;
+  } | null>(null);
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
   const userCompanyCode = profileValue(user?.companyCode);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
@@ -481,8 +492,18 @@ export default function TrainingActual() {
       });
       await reloadCostBreakdown(selectedCourse.id);
 
-      // The inline line stays as a re-readable receipt with the numbers; the toast is the
-      // immediate "it worked" the user was missing.
+      setSavedSummaryData({
+        courseCode: selectedCourse.code,
+        courseTitle: selectedCourse.title,
+        batch: selectedCourse.batch ?? "1",
+        date: selectedCourse.date,
+        actualCount,
+        totalCost: expenseTotal,
+        costPerPerson: actualCostPerPerson,
+        savedTime: now,
+      });
+      setShowSaveSuccessModal(true);
+
       setSavedMessage(
         `Saved ${selectedCourse.code} with ${actualCount} actual attendees, total THB ${formatCurrency(expenseTotal)} (THB ${formatCurrency(actualCostPerPerson)}/person) at ${now}.`,
       );
@@ -1074,9 +1095,67 @@ export default function TrainingActual() {
         </section>
       ) : (
         <section className={styles.emptyState} aria-label="No selected actual course">
-          Select a course first to show training actual details.
+          กรุณาเลือกหลักสูตรก่อนเพื่อบันทึกและแสดงข้อมูลการอบรมจริง (Select a course first to show training actual details)
         </section>
       )}
+
+      {/* Save Success Dialog Modal */}
+      {showSaveSuccessModal && savedSummaryData ? (
+        <div className={styles.successModalBackdrop} onClick={() => setShowSaveSuccessModal(false)}>
+          <div
+            className={styles.successModalCard}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className={styles.successIconRing}>
+              <span className={styles.checkIconEmoji}>✓</span>
+            </div>
+
+            <div className={styles.successModalHeader}>
+              <h3>บันทึกข้อมูลการอบรมจริงสำเร็จ!</h3>
+              <p>ระบบทำการบันทึกยอดผู้เข้าอบรมจริงและค่าใช้จ่ายเรียบร้อยแล้ว</p>
+            </div>
+
+            <div className={styles.successCourseCard}>
+              <div className={styles.successCourseCodeBadge}>[{savedSummaryData.courseCode}]</div>
+              <div className={styles.successCourseTitle}>{savedSummaryData.courseTitle}</div>
+              <div className={styles.successCourseMeta}>
+                Batch <strong>{savedSummaryData.batch}</strong> • วันที่ <strong>{savedSummaryData.date}</strong>
+              </div>
+            </div>
+
+            <div className={styles.savedMetricGrid}>
+              <div className={styles.savedMetricCard}>
+                <span>🟢 ผู้เข้าเรียนจริง</span>
+                <strong>{savedSummaryData.actualCount} คน</strong>
+              </div>
+              <div className={styles.savedMetricCard}>
+                <span>💰 รวมค่าใช้จ่ายจริง</span>
+                <strong>THB {formatCurrency(savedSummaryData.totalCost)}</strong>
+              </div>
+              <div className={styles.savedMetricCard}>
+                <span>📊 เฉลี่ยงบ / คน</span>
+                <strong>THB {formatCurrency(savedSummaryData.costPerPerson)}</strong>
+              </div>
+            </div>
+
+            <div className={styles.savedTimestamp}>
+              ⏰ บันทึกเมื่อ: {savedSummaryData.savedTime}
+            </div>
+
+            <div className={styles.successModalActions}>
+              <button
+                type="button"
+                className={styles.primaryButton}
+                onClick={() => setShowSaveSuccessModal(false)}
+              >
+                ✓ ตกลง (Done)
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

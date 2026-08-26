@@ -4017,3 +4017,186 @@
   color: var(--ui-30-ink);
 }
 
+/* Executive Save Success Modal Dialog */
+.successModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
+  animation: fadeInModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 16px;
+}
+
+@keyframes fadeInModal {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.successModalCard {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 16px;
+  background: var(--ui-60-surface);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  padding: 28px 24px 24px;
+  text-align: center;
+}
+
+.successIconRing {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.14);
+  border: 2px solid rgba(16, 185, 129, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.25);
+}
+
+.checkIconEmoji {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #10b981;
+}
+
+.successModalHeader h3 {
+  margin: 0 0 6px;
+  color: var(--ui-30-ink);
+  font-size: 1.22rem;
+  font-weight: 900;
+}
+
+.successModalHeader p {
+  margin: 0 0 16px;
+  color: var(--ui-30-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.successCourseCard {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 10px;
+  background: var(--ui-60-surface-soft);
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.successCourseCodeBadge {
+  display: inline-block;
+  color: var(--ui-30-primary);
+  font-size: 0.74rem;
+  font-weight: 900;
+  margin-bottom: 2px;
+}
+
+.successCourseTitle {
+  color: var(--ui-30-ink);
+  font-size: 0.92rem;
+  font-weight: 900;
+  line-height: 1.3;
+}
+
+.successCourseMeta {
+  margin-top: 4px;
+  color: var(--ui-30-text);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.savedMetricGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.savedMetricCard {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  padding: 8px 6px;
+}
+
+.savedMetricCard span {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: var(--ui-30-muted);
+}
+
+.savedMetricCard strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.82rem;
+  font-weight: 900;
+  color: var(--ui-30-ink);
+}
+
+.savedTimestamp {
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.successModalActions {
+  display: flex;
+  justify-content: center;
+}
+
+.successModalActions button {
+  min-width: 140px;
+  padding: 10px 24px;
+  font-size: 0.9rem;
+}
+
+/* Dark Theme Contrast Overrides for Executive Modal & Allocation Table */
+[data-theme="dark"] .successModalCard {
+  background: var(--ui-60-surface);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .successCourseCard {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .successCourseCodeBadge {
+  color: #81c784;
+}
+
+[data-theme="dark"] .savedMetricCard {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .currencyPrefix {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .companyCostTable th {
+  background: rgba(255, 255, 255, 0.06);
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .companyTotalRow td {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
