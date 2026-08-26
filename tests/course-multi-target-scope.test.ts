@@ -34,8 +34,8 @@ describe("Multi-Target Scope in Course Master & Target Match Engine", () => {
     const validUser = await db.user_account.findFirst({ where: { status: "ACTIVE" } });
     expect(validUser).toBeDefined();
 
-    const salt = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    const uniqueName = `Multi-Target Test Course ${salt}`;
+    const randomCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+    const uniqueName = `TargetScope_${randomCode}`;
     let createdCourseId: string | null = null;
 
     try {
@@ -43,7 +43,7 @@ describe("Multi-Target Scope in Course Master & Target Match Engine", () => {
       const result = await courseService.createCourse(
         {
           courseNameTh: uniqueName,
-          courseNameEn: `Multi Target Test ${salt} EN`,
+          courseNameEn: `TargetScope EN ${randomCode}`,
           objective: "Test objective",
           learningContent: "Test content",
           targetGroup: "Test target group",
@@ -61,7 +61,7 @@ describe("Multi-Target Scope in Course Master & Target Match Engine", () => {
           status: "Active",
           courseTypeId: courseTypes[0].course_type_id.toString(),
           courseGroupId: courseGroups[0].course_group_id.toString(),
-          standardCode: `STD-MULTI-${salt}`,
+          standardCode: `STD_${randomCode}`,
           standardName: uniqueName,
           functionId: scope1.functionId,
           divisionId: null,

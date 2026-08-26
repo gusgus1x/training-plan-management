@@ -30,6 +30,16 @@ type CompletedCourse = {
   source: "SYSTEM" | "UPLOAD";
   code: string;
   title: string;
+  titleEn?: string;
+  objective?: string;
+  learningContent?: string;
+  targetGroup?: string;
+  methodology?: string;
+  durationHours?: number | string;
+  validityMonths?: number | string;
+  courseType?: string;
+  courseGroup?: string;
+  instituteProvider?: string;
   date: string;
   batch?: string;
   time?: string;
@@ -622,6 +632,16 @@ export default function TrainingRecord() {
           source: "SYSTEM",
           code: rollingPlan?.course.code ?? "",
           title: rollingPlan?.course.name ?? "",
+          titleEn: (rollingPlan?.course as any)?.courseNameEn ?? "",
+          objective: rollingPlan?.course.objective ?? "",
+          learningContent: rollingPlan?.course.learningContent ?? "",
+          targetGroup: rollingPlan?.course.targetGroup ?? "",
+          methodology: rollingPlan?.course.methodology ?? "",
+          durationHours: rollingPlan?.hours ?? (rollingPlan?.course as any)?.durationHours ?? 6,
+          validityMonths: rollingPlan?.course.lifeCycleMonth ?? 12,
+          courseType: rollingPlan?.course.courseType ?? "",
+          courseGroup: rollingPlan?.course.courseGroup ?? "",
+          instituteProvider: rollingPlan?.provider ?? (rollingPlan?.course as any)?.instituteProvider ?? "",
           date: rollingPlan?.trainingDate ?? "",
           batch: rollingPlan?.batch,
           time: rollingPlan ? `${rollingPlan.startTime} - ${rollingPlan.endTime}` : undefined,
@@ -973,28 +993,165 @@ export default function TrainingRecord() {
     return (
       <section className={styles.completedRecordWorkspace}>
         <div className={styles.completedCourseDetail}>
+          {/* Executive Header Banner */}
           <section className={styles.completedCourseHero}>
-            <div>
-              <p className={styles.kicker}>Course Record</p>
+            <div className={styles.heroMainInfo}>
+              <div className={styles.heroBadgeRow}>
+                <b
+                  className={
+                    selectedCourse.source === "UPLOAD"
+                      ? styles.uploadSourceBadge
+                      : styles.systemSourceBadge
+                  }
+                >
+                  {selectedCourse.source === "UPLOAD" ? "Excel Uploaded Record" : "System Verified Record"}
+                </b>
+                <span className={styles.heroOwnerTag}>
+                  Scope: {selectedCourse.owner === "CENTER" ? "Center Standard" : `${selectedCourse.ownerCompany || selectedCourse.company} Factory`}
+                </span>
+                {selectedCourse.batch ? (
+                  <span className={styles.heroBatchTag}>Batch {selectedCourse.batch}</span>
+                ) : null}
+              </div>
               <h3>{selectedCourse.title}</h3>
-              <span>
-                {selectedCourse.code} / Batch {selectedCourse.batch ?? "-"} / Training Session /{" "}
-                {selectedCourse.date} / {selectedCourse.time ?? "-"} /{" "}
-                {selectedCourse.room} / {selectedCourse.instructor}
-              </span>
+              {selectedCourse.titleEn ? (
+                <p className={styles.heroSubTitle}>{selectedCourse.titleEn}</p>
+              ) : null}
+              <div className={styles.heroCodeMeta}>
+                <span>รหัสคอร์ส: <strong>{selectedCourse.code}</strong></span>
+                <span>•</span>
+                <span>บริษัท/หน่วยงาน: <strong>{selectedCourse.company || "All Companies"}</strong></span>
+              </div>
             </div>
-            <b
-              className={
-                selectedCourse.source === "UPLOAD"
-                  ? styles.uploadSourceBadge
-                  : styles.systemSourceBadge
-              }
-            >
-              {selectedCourse.source === "UPLOAD" ? "From Upload" : "From System"}
-            </b>
-            <button type="button" onClick={() => handleExportCourseSummary()}>
-              Export Excel
-            </button>
+
+            <div className={styles.heroActions}>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => handleExportCourseSummary()}
+              >
+                📥 Export Excel Summary
+              </button>
+              <button
+                type="button"
+                className={styles.closeButton}
+                onClick={() => setIsCourseDetailOpen(false)}
+              >
+                ✖ ปิดหน้ารายละเอียด
+              </button>
+            </div>
+          </section>
+
+          {/* Quick Schedule & Venue Card */}
+          <div className={styles.heroMetaCardGrid}>
+            <div className={styles.metaMiniCard}>
+              <div className={styles.metaMiniIcon}>📅</div>
+              <div>
+                <span>วันที่ & เวลาอบรม</span>
+                <strong>{selectedCourse.date || "-"} ({selectedCourse.time || "09:00 - 16:00"})</strong>
+              </div>
+            </div>
+            <div className={styles.metaMiniCard}>
+              <div className={styles.metaMiniIcon}>📍</div>
+              <div>
+                <span>สถานที่ / ห้องอบรม</span>
+                <strong>{selectedCourse.room || "-"}</strong>
+              </div>
+            </div>
+            <div className={styles.metaMiniCard}>
+              <div className={styles.metaMiniIcon}>👨‍🏫</div>
+              <div>
+                <span>วิทยากรผู้สอน</span>
+                <strong>{selectedCourse.instructor || "-"}</strong>
+              </div>
+            </div>
+            <div className={styles.metaMiniCard}>
+              <div className={styles.metaMiniIcon}>⏱️</div>
+              <div>
+                <span>ระยะเวลาอบรม & สะสมผล</span>
+                <strong>{selectedCourse.durationHours ?? 6} ชม. / สะสม {selectedCourse.validityMonths ?? 12} เดือน</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Training Course Master Details Panel */}
+          <section className={styles.courseMasterDetailPanel}>
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.kicker}>Course Master Specifications</p>
+                <h3>รายละเอียดการอบรมหลักสูตร (Training Course Master Details)</h3>
+              </div>
+              <span>Master Specs</span>
+            </div>
+
+            <div className={styles.masterSpecGrid}>
+              <article className={styles.masterSpecCard}>
+                <div className={styles.specIcon}>💡</div>
+                <div className={styles.specContent}>
+                  <span>วัตถุประสงค์ของการอบรม (Objective)</span>
+                  <p>
+                    {selectedCourse.objective ||
+                      "พัฒนาทักษะความรู้ มาตรฐานการปฏิบัติงาน และเพิ่มประสิทธิภาพในการปฏิบัติงานจริงตามเกณฑ์มาตรฐานองค์กร"}
+                  </p>
+                </div>
+              </article>
+
+              <article className={styles.masterSpecCard}>
+                <div className={styles.specIcon}>📚</div>
+                <div className={styles.specContent}>
+                  <span>เนื้อหาหลักสูตร (Learning Content)</span>
+                  <p>
+                    {selectedCourse.learningContent ||
+                      "ความรู้พื้นฐาน ขั้นตอนการทำงาน มาตรฐานความปลอดภัย และแนวทางการแก้ไขปัญหาหน้างานในสายงาน"}
+                  </p>
+                </div>
+              </article>
+
+              <article className={styles.masterSpecCard}>
+                <div className={styles.specIcon}>🎯</div>
+                <div className={styles.specContent}>
+                  <span>กลุ่มเป้าหมาย (Target Audience)</span>
+                  <p>
+                    {selectedCourse.targetGroup ||
+                      "พนักงานผู้ปฏิบัติงาน หัวหน้างาน และบุคลากรที่เกี่ยวข้องในแผนก"}
+                  </p>
+                </div>
+              </article>
+
+              <article className={styles.masterSpecCard}>
+                <div className={styles.specIcon}>🛠️</div>
+                <div className={styles.specContent}>
+                  <span>รูปแบบการอบรม (Methodology)</span>
+                  <p>
+                    {selectedCourse.methodology ||
+                      "การบรรยายเชิงปฏิบัติการ (Lecture & Workshop) พร้อมการประเมินผลหลังการอบรม"}
+                  </p>
+                </div>
+              </article>
+            </div>
+
+            <div className={styles.masterMetaChips}>
+              <div className={styles.metaChip}>
+                <span>หมวดหมู่หลักสูตร:</span>
+                <strong>{selectedCourse.courseType || "Functional Competency"}</strong>
+              </div>
+              <div className={styles.metaChip}>
+                <span>กลุ่มหลักสูตร:</span>
+                <strong>{selectedCourse.courseGroup || "มาตรฐานการปฏิบัติงาน"}</strong>
+              </div>
+              <div className={styles.metaChip}>
+                <span>สถาบัน/ผู้จัด:</span>
+                <strong>{selectedCourse.instituteProvider || "ภายในองค์กร (Internal)"}</strong>
+              </div>
+              <div className={styles.metaChip}>
+                <span>ระยะเวลา:</span>
+                <strong>{selectedCourse.durationHours ?? 6} ชั่วโมง</strong>
+              </div>
+              <div className={styles.metaChip}>
+                <span>อายุการสะสมผล:</span>
+                <strong>{selectedCourse.validityMonths ?? 12} เดือน</strong>
+              </div>
+            </div>
           </section>
 
           <section className={styles.costBreakdownPanel} aria-label="Actual cost breakdown">
