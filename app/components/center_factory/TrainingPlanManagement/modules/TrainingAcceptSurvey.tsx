@@ -1825,27 +1825,25 @@ export default function TrainingAcceptSurvey() {
             </div>
           </section>
         ) : selectedCourse?.owner === "center" ? (
-          <section className={styles.submittedPanel} style={{ marginTop: "16px", marginBottom: "16px" }}>
-            <div className={styles.workspaceHeader}>
-              <div>
-                <p className={styles.kicker}>Submitted to Center</p>
-                <h3>รายการส่งคนเข้าอบรมกลาง ({submittedToCenterCandidates.length} คน)</h3>
-              </div>
-              <div className={styles.participantActions}>
-                {draftSubmittedEmployees.length > 0 ? (
+          <>
+            {/* PANEL 1: DRAFT UNSAVED SUBMISSIONS */}
+            <section className={styles.draftPanel} style={{ marginTop: "16px", marginBottom: "16px" }}>
+              <div className={styles.workspaceHeader}>
+                <div>
+                  <p className={styles.kicker} style={{ color: "#eab308" }}>Draft Submissions (Unsaved)</p>
+                  <h3>รายการเตรียมส่งคนเข้าอบรมกลาง ({draftSubmittedEmployees.length} คน)</h3>
+                </div>
+                <div className={styles.participantActions}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#eab308", fontWeight: 700, fontSize: "0.82rem" }}>
-                    <span className={styles.glowingDotYellow}></span> {draftSubmittedEmployees.length} คนยังไม่ได้ส่ง
+                    <span className={styles.glowingDotYellow}></span> {draftSubmittedEmployees.length} คนรอส่ง
                   </span>
-                ) : (
-                  <span>{submittedToCenterCandidates.length} submitted</span>
-                )}
-                <button
-                  className={styles.saveSubmissionButton}
-                  type="button"
-                  disabled={submittedToCenterCandidates.length === 0}
-                  onClick={async () => {
-                    if (!selectedCourse) return;
-                    if (draftSubmittedEmployees.length > 0) {
+                  <button
+                    className={styles.saveSubmissionButton}
+                    type="button"
+                    disabled={draftSubmittedEmployees.length === 0}
+                    onClick={async () => {
+                      if (!selectedCourse) return;
+                      if (draftSubmittedEmployees.length === 0) return;
                       try {
                         for (const emp of draftSubmittedEmployees) {
                           await createEnrollment({
@@ -1865,116 +1863,177 @@ export default function TrainingAcceptSurvey() {
                         console.error("Failed to submit candidates to center", error);
                         toast.error("เกิดข้อผิดพลาดในการบันทึก / Failed to submit candidates to center");
                       }
-                    } else {
-                      await reloadEnrollments();
-                      toast.success("บันทึกและยืนยันส่งรายชื่อพนักงานเข้าอบรมกลางเรียบร้อยแล้ว / Saved successfully");
-                    }
-                  }}
-                >
-                  💾 บันทึกและยืนยันส่งรายชื่อเข้าอบรมกลาง
-                </button>
-              </div>
-            </div>
-            <div className={styles.employeeRows}>
-              {submittedToCenterCandidates.length > 0 ? (
-                <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
-                  <span>จัดการ</span>
-                  <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
-                    <span>รหัสพนักงาน</span>
-                    <span>สถานะ</span>
-                    <span>คำนำหน้า</span>
-                    <span>ชื่อ</span>
-                    <span>นามสกุล</span>
-                    <span>บริษัท</span>
-                    <span>ส่วนงาน</span>
-                    <span>ฝ่าย</span>
-                    <span>แผนก</span>
-                    <span>ตำแหน่ง</span>
-                    <span>ระดับ</span>
-                  </div>
+                    }}
+                  >
+                    💾 บันทึกและยืนยันส่งรายชื่อเข้าอบรมกลาง ({draftSubmittedEmployees.length})
+                  </button>
                 </div>
-              ) : null}
-              {submittedToCenterCandidates.map((candidate) => {
-                const masterEmp = masterEmployees.find(
-                  (emp) =>
-                    emp.employeeCode === candidate.employeeCode ||
-                    emp.id === candidate.employeeId,
-                );
-                const nameProfile = masterEmp
-                  ? getEmployeeNameProfile(masterEmp)
-                  : getEmployeeNameProfile({ name: candidate.employeeName });
-
-                return (
-                  <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={candidate.id}>
-                    <button
-                      className={styles.removeSubmittedButton}
-                      type="button"
-                      onClick={() => {
-                        if (candidate.isDraft) {
-                          setDraftSubmittedEmployees((prev) =>
-                            prev.filter((emp) => emp.id !== candidate.employeeId),
-                          );
-                          toast.info(`นำ ${candidate.employeeCode} ออกจากรายการเตรียมส่งแล้ว`);
-                        } else {
-                          void handleCancelEnrollment(candidate.id);
-                        }
-                      }}
-                    >
-                      นำออก
-                    </button>
+              </div>
+              <div className={styles.employeeRows}>
+                {draftSubmittedEmployees.length > 0 ? (
+                  <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
+                    <span>จัดการ</span>
                     <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.employeeCode}>{candidate.employeeCode}</span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
-                        {candidate.isDraft ? (
+                      <span>รหัสพนักงาน</span>
+                      <span>สถานะ</span>
+                      <span>คำนำหน้า</span>
+                      <span>ชื่อ</span>
+                      <span>นามสกุล</span>
+                      <span>บริษัท</span>
+                      <span>ส่วนงาน</span>
+                      <span>ฝ่าย</span>
+                      <span>แผนก</span>
+                      <span>ตำแหน่ง</span>
+                      <span>ระดับ</span>
+                    </div>
+                  </div>
+                ) : null}
+                {draftSubmittedEmployees.map((emp) => {
+                  const nameProfile = getEmployeeNameProfile(emp);
+
+                  return (
+                    <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={`draft-${emp.id}`}>
+                      <button
+                        className={styles.removeSubmittedButton}
+                        type="button"
+                        onClick={() => {
+                          setDraftSubmittedEmployees((prev) => prev.filter((e) => e.id !== emp.id));
+                          toast.info(`นำ ${emp.employeeCode} ออกจากรายการเตรียมส่งแล้ว`);
+                        }}
+                      >
+                        นำออก (Draft)
+                      </button>
+                      <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={emp.employeeCode}>{emp.employeeCode}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
                           <span className={styles.badgeDraft}>
-                            <span className={styles.glowingDotYellow}></span> ดราฟ
+                            <span className={styles.glowingDotYellow}></span> ดราฟ (ยังไม่บันทึก)
                           </span>
-                        ) : candidate.status === "Pending Approval" ? (
-                          <span className={styles.badgePending}>
-                            <span className={styles.glowingDotBlue}></span> รออนุมัติ
-                          </span>
-                        ) : candidate.status === "Center Approved" || candidate.status === "Factory Approved" ? (
-                          <span className={styles.badgeApproved}>
-                            <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
-                          </span>
-                        ) : candidate.status === "Rejected" ? (
-                          <span className={styles.badgeRejected}>
-                            <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
-                          </span>
-                        ) : (
-                          <span>{candidate.status}</span>
-                        )}
-                      </span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.firstName}>{nameProfile.firstName}</span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.lastName}>{nameProfile.lastName}</span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.company}>{candidate.company}</span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.section || "-"}>
-                        {masterEmp?.section || "-"}
-                      </span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.division || "-"}>
-                        {masterEmp?.division || "-"}
-                      </span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.department || candidate.department || "-"}>
-                        {masterEmp?.department || candidate.department || "-"}
-                      </span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.position || "-"}>
-                        {candidate.position || "-"}
-                      </span>
-                      <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.level || "-"}>
-                        {candidate.level || "-"}
+                        </span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.firstName}>{nameProfile.firstName}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.lastName}>{nameProfile.lastName}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={emp.company}>{emp.company}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={emp.section || "-"}>{emp.section || "-"}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={emp.division || "-"}>{emp.division || "-"}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={emp.department || "-"}>{emp.department || "-"}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={emp.position || "-"}>{emp.position || "-"}</span>
+                        <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={emp.level || "-"}>{emp.level || "-"}</span>
+                      </div>
+                    </article>
+                  );
+                })}
+                {draftSubmittedEmployees.length === 0 ? (
+                  <div className={styles.emptyCompact}>
+                    ยังไม่มีพนักงานในดราฟ (กรุณากดเลือกพนักงานจากตารางกลุ่มเป้าหมายด้านล่างเพื่อเตรียมส่งเข้าอบรมกลาง)
+                  </div>
+                ) : null}
+              </div>
+            </section>
+
+            {/* PANEL 2: OFFICIAL SUBMITTED TO CENTER CANDIDATES */}
+            {(() => {
+              const savedCandidates = enrollments.filter(
+                (candidate) =>
+                  candidate.company === userCompanyCode &&
+                  candidate.status !== "Center Approved" &&
+                  candidate.status !== "Cancelled" &&
+                  candidate.status !== "Rejected",
+              );
+
+              return (
+                <section className={styles.submittedPanel} style={{ marginTop: "16px", marginBottom: "16px" }}>
+                  <div className={styles.workspaceHeader}>
+                    <div>
+                      <p className={styles.kicker}>Submitted to Center (Saved)</p>
+                      <h3>รายการส่งคนเข้าอบรมกลางแล้ว ({savedCandidates.length} คน)</h3>
+                    </div>
+                    <div className={styles.participantActions}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#60a5fa", fontWeight: 700, fontSize: "0.82rem" }}>
+                        <span className={styles.glowingDotBlue}></span> {savedCandidates.length} คนส่งแล้ว
                       </span>
                     </div>
-                  </article>
-                );
-              })}
-              {submittedToCenterCandidates.length === 0 ? (
-                <div className={styles.emptyCompact}>
-                  ยังไม่มีพนักงานที่เลือกส่งไปยัง Center (กรุณากดเลือกพนักงานจากตารางกลุ่มเป้าหมายด้านล่าง)
-                </div>
-              ) : null}
-            </div>
-          </section>
+                  </div>
+                  <div className={styles.employeeRows}>
+                    {savedCandidates.length > 0 ? (
+                      <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
+                        <span>จัดการ</span>
+                        <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                          <span>รหัสพนักงาน</span>
+                          <span>สถานะ</span>
+                          <span>คำนำหน้า</span>
+                          <span>ชื่อ</span>
+                          <span>นามสกุล</span>
+                          <span>บริษัท</span>
+                          <span>ส่วนงาน</span>
+                          <span>ฝ่าย</span>
+                          <span>แผนก</span>
+                          <span>ตำแหน่ง</span>
+                          <span>ระดับ</span>
+                        </div>
+                      </div>
+                    ) : null}
+                    {savedCandidates.map((candidate) => {
+                      const masterEmp = masterEmployees.find(
+                        (emp) =>
+                          emp.employeeCode === candidate.employeeCode ||
+                          emp.id === candidate.employeeId,
+                      );
+                      const nameProfile = masterEmp
+                        ? getEmployeeNameProfile(masterEmp)
+                        : getEmployeeNameProfile({ name: candidate.employeeName });
+
+                      return (
+                        <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={candidate.id}>
+                          <button
+                            className={styles.removeSubmittedButton}
+                            type="button"
+                            onClick={() => void handleCancelEnrollment(candidate.id)}
+                          >
+                            ยกเลิกการส่ง
+                          </button>
+                          <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.employeeCode}>{candidate.employeeCode}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
+                              {candidate.status === "Pending Approval" ? (
+                                <span className={styles.badgePending}>
+                                  <span className={styles.glowingDotBlue}></span> รออนุมัติ
+                                </span>
+                              ) : candidate.status === "Center Approved" || candidate.status === "Factory Approved" ? (
+                                <span className={styles.badgeApproved}>
+                                  <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
+                                </span>
+                              ) : candidate.status === "Rejected" ? (
+                                <span className={styles.badgeRejected}>
+                                  <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
+                                </span>
+                              ) : (
+                                <span>{candidate.status}</span>
+                              )}
+                            </span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.firstName}>{nameProfile.firstName}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.lastName}>{nameProfile.lastName}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.company}>{candidate.company}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.section || "-"}>{masterEmp?.section || "-"}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.division || "-"}>{masterEmp?.division || "-"}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.department || candidate.department || "-"}>{masterEmp?.department || candidate.department || "-"}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.position || "-"}>{candidate.position || "-"}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.level || "-"}>{candidate.level || "-"}</span>
+                          </div>
+                        </article>
+                      );
+                    })}
+                    {savedCandidates.length === 0 ? (
+                      <div className={styles.emptyCompact}>
+                        ยังไม่มีพนักงานที่บันทึกส่งไปยัง Center แล้ว
+                      </div>
+                    ) : null}
+                  </div>
+                </section>
+              );
+            })()}
+          </>
         ) : null
       ) : null}
     </div>

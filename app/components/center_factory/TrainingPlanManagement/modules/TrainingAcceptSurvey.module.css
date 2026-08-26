@@ -12,12 +12,28 @@
 .participantPanel,
 .targetPanel,
 .submittedPanel,
+.draftPanel,
 .workspace {
   border: 1px solid var(--ui-30-border);
   border-radius: 14px;
   background: var(--ui-60-surface);
   box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
   transition: all 0.2s ease;
+}
+
+.draftPanel {
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  background: rgba(234, 179, 8, 0.03);
+  position: relative;
+  overflow: hidden;
+}
+
+.draftPanel::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: linear-gradient(180deg, #eab308 0%, #ca8a04 100%);
 }
 
 .hero {
