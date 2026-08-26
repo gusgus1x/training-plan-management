@@ -604,6 +604,7 @@ export default function TrainingAcceptSurvey() {
   const [standards, setStandards] = useState<WorkflowStandard[]>([]);
   const [masterEmployees, setMasterEmployees] = useState<SurveyEmployee[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
+  const [draftSubmittedEmployees, setDraftSubmittedEmployees] = useState<SurveyEmployee[]>([]);
   const [isExportingAttendance, setIsExportingAttendance] = useState(false);
   const [isSendingLineNotify, setIsSendingLineNotify] = useState(false);
   const [showNominationModal, setShowNominationModal] = useState(false);
@@ -779,6 +780,7 @@ export default function TrainingAcceptSurvey() {
     : null;
 
   useEffect(() => {
+    setDraftSubmittedEmployees([]);
     if (!selectedCourse) {
       setEnrollments([]);
       return;
@@ -1078,13 +1080,40 @@ export default function TrainingAcceptSurvey() {
 
   const submittedToCenterCandidates = sortEmployeesDescending(
     roleMode === "factory" && selectedCourse?.owner === "center"
-      ? enrollments.filter(
-          (candidate) =>
-            candidate.company === userCompanyCode &&
-            candidate.status !== "Center Approved" &&
-            candidate.status !== "Cancelled" &&
-            candidate.status !== "Rejected",
-        )
+      ? [
+          ...enrollments
+            .filter(
+              (candidate) =>
+                candidate.company === userCompanyCode &&
+                candidate.status !== "Center Approved" &&
+                candidate.status !== "Cancelled" &&
+                candidate.status !== "Rejected",
+            )
+            .map((c) => ({
+              id: c.id,
+              employeeId: c.employeeId,
+              employeeCode: c.employeeCode,
+              employeeName: c.employeeName,
+              company: c.company,
+              department: c.department,
+              position: c.position,
+              level: c.level,
+              status: c.status,
+              isDraft: false,
+            })),
+          ...draftSubmittedEmployees.map((emp) => ({
+            id: `draft-${emp.id}`,
+            employeeId: emp.id,
+            employeeCode: emp.employeeCode,
+            employeeName: emp.name,
+            company: emp.company,
+            department: emp.department,
+            position: emp.position,
+            level: emp.level,
+            status: "Draft",
+            isDraft: true,
+          })),
+        ]
       : [],
   );
 
@@ -1100,6 +1129,25 @@ export default function TrainingAcceptSurvey() {
 
   const handleAddEmployee = async (employee: SurveyEmployee) => {
     if (!selectedCourse) return;
+
+    if (roleMode === "factory" && selectedCourse?.owner === "center") {
+      const isAlreadyDraft = draftSubmittedEmployees.some(
+        (emp) => emp.id === employee.id || emp.employeeCode === employee.employeeCode,
+      );
+      const isAlreadyEnrolled = enrollments.some(
+        (candidate) =>
+          candidate.employeeCode === employee.employeeCode || candidate.employeeId === employee.id,
+      );
+      if (isAlreadyDraft || isAlreadyEnrolled) {
+        toast.info(`พนักงาน ${employee.employeeCode} อยู่ในรายการแล้ว`);
+        return;
+      }
+      setDraftSubmittedEmployees((prev) => [...prev, employee]);
+      toast.success(
+        `เพิ่ม ${employee.name} (${employee.employeeCode}) ในรายการเตรียมส่งแล้ว (กรุณากด "บันทึกและยืนยัน" ด้านบนเพื่อส่งให้ส่วนกลาง)`,
+      );
+      return;
+    }
 
     try {
       await createEnrollment({
@@ -1731,17 +1779,43 @@ export default function TrainingAcceptSurvey() {
                 <h3>รายการส่งคนเข้าอบรมกลาง ({submittedToCenterCandidates.length} คน)</h3>
               </div>
               <div className={styles.participantActions}>
-                <span>{submittedToCenterCandidates.length} submitted</span>
+                {draftSubmittedEmployees.length > 0 ? (
+                  <span style={{ color: "#eab308", fontWeight: 700, fontSize: "0.82rem" }}>
+                    🟡 {draftSubmittedEmployees.length} คนยังไม่ได้ส่ง
+                  </span>
+                ) : (
+                  <span>{submittedToCenterCandidates.length} submitted</span>
+                )}
                 <button
                   className={styles.saveSubmissionButton}
                   type="button"
                   disabled={submittedToCenterCandidates.length === 0}
                   onClick={async () => {
-                    const submittedCount = submittedToCenterCandidates.length;
-                    await reloadEnrollments();
-                    toast.success(
-                      `บันทึกและยืนยันส่งรายชื่อพนักงานเข้าอบรมกลางเรียบร้อยแล้ว รวม ${submittedCount} คน / Submitted ${submittedCount} employee(s) to HRD Center`,
-                    );
+                    if (!selectedCourse) return;
+                    if (draftSubmittedEmployees.length > 0) {
+                      try {
+                        for (const emp of draftSubmittedEmployees) {
+                          await createEnrollment({
+                            planId: selectedCourse.id,
+                            employeeId: emp.id,
+                            employeeUserId: null,
+                            source: "HRD_FACTORY",
+                          });
+                        }
+                        const submittedCount = draftSubmittedEmployees.length;
+                        setDraftSubmittedEmployees([]);
+                        await reloadEnrollments();
+                        toast.success(
+                          `บันทึกและยืนยันส่งรายชื่อพนักงานเข้าอบรมกลางเรียบร้อยแล้ว รวม ${submittedCount} คน / Submitted ${submittedCount} employee(s) to HRD Center`,
+                        );
+                      } catch (error) {
+                        console.error("Failed to submit candidates to center", error);
+                        toast.error("เกิดข้อผิดพลาดในการบันทึก / Failed to submit candidates to center");
+                      }
+                    } else {
+                      await reloadEnrollments();
+                      toast.success("บันทึกและยืนยันส่งรายชื่อพนักงานเข้าอบรมกลางเรียบร้อยแล้ว / Saved successfully");
+                    }
                   }}
                 >
                   💾 บันทึกและยืนยันส่งรายชื่อเข้าอบรมกลาง
@@ -1781,9 +1855,18 @@ export default function TrainingAcceptSurvey() {
                     <button
                       className={styles.removeSubmittedButton}
                       type="button"
-                      onClick={() => void handleCancelEnrollment(candidate.id)}
+                      onClick={() => {
+                        if (candidate.isDraft) {
+                          setDraftSubmittedEmployees((prev) =>
+                            prev.filter((emp) => emp.id !== candidate.employeeId),
+                          );
+                          toast.info(`นำ ${candidate.employeeCode} ออกจากรายการเตรียมส่งแล้ว`);
+                        } else {
+                          void handleCancelEnrollment(candidate.id);
+                        }
+                      }}
                     >
-                      Remove
+                      นำออก
                     </button>
                     <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
                       <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.employeeCode}>{candidate.employeeCode}</span>
