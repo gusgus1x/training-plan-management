@@ -334,12 +334,50 @@ export default function TrainingActual() {
         })
     : [];
 
-  const totalPages = Math.ceil(attendees.length / PAGE_SIZE) || 1;
+  const [attendanceSearchQuery, setAttendanceSearchQuery] = useState("");
+  const [attendanceCompanyFilter, setAttendanceCompanyFilter] = useState("ALL");
+  const [attendanceStatusFilter, setAttendanceStatusFilter] = useState<"ALL" | "PRESENT" | "ABSENT">("ALL");
+
+  const filteredAttendees = useMemo(() => {
+    return attendees.filter((attendee) => {
+      if (
+        attendanceCompanyFilter !== "ALL" &&
+        attendee.company !== attendanceCompanyFilter
+      ) {
+        return false;
+      }
+      if (attendanceStatusFilter === "PRESENT" && !attendee.attended) {
+        return false;
+      }
+      if (attendanceStatusFilter === "ABSENT" && attendee.attended) {
+        return false;
+      }
+      if (attendanceSearchQuery.trim()) {
+        const query = attendanceSearchQuery.toLowerCase().trim();
+        const matchesCode = (attendee.employeeCode || "").toLowerCase().includes(query);
+        const matchesName = (attendee.name || `${attendee.firstName} ${attendee.lastName}`).toLowerCase().includes(query);
+        const matchesDept = (attendee.department || "").toLowerCase().includes(query);
+        const matchesPos = (attendee.position || "").toLowerCase().includes(query);
+        return matchesCode || matchesName || matchesDept || matchesPos;
+      }
+      return true;
+    });
+  }, [attendees, attendanceCompanyFilter, attendanceStatusFilter, attendanceSearchQuery]);
+
+  const attendeeCompanyList = useMemo(() => {
+    const companies = new Set<string>();
+    attendees.forEach((att) => {
+      if (att.company) companies.add(att.company);
+    });
+    return Array.from(companies).sort();
+  }, [attendees]);
+
+  const totalPages = Math.ceil(filteredAttendees.length / PAGE_SIZE) || 1;
   const activePage = Math.min(currentPage, totalPages);
   const startIndex = (activePage - 1) * PAGE_SIZE;
   const pagedAttendees = useMemo(
-    () => attendees.slice(startIndex, startIndex + PAGE_SIZE),
-    [attendees, startIndex],
+    () => filteredAttendees.slice(startIndex, startIndex + PAGE_SIZE),
+    [filteredAttendees, startIndex],
   );
 
   const actualCount = attendees.filter((attendee) => attendee.attended).length;
@@ -601,120 +639,181 @@ export default function TrainingActual() {
               </div>
             ) : null}
 
-            <div className={styles.panelHeader}>
-              <div>
-                <p className={styles.kicker}>Attendance Checklist</p>
-                <h3>รายการเช็คชื่อเข้าร่วมอบรม</h3>
-              </div>
-              <div className={styles.attendanceHeaderActions}>
-                <span className={styles.attendanceProgressBadge}>
-                  ✓ เข้าเรียน {actualCount} / {attendees.length} คน
-                </span>
-                <label className={styles.selectAllAttendance}>
-                  <input
-                    checked={allAttended}
+            {/* Executive Attendance Checklist Workspace */}
+            <div className={styles.attendanceChecklistWorkspace}>
+              <div className={styles.panelHeader}>
+                <div>
+                  <p className={styles.kicker}>Attendance Checklist</p>
+                  <h3>รายการเช็คชื่อเข้าร่วมอบรม</h3>
+                </div>
+                <div className={styles.attendanceHeaderActions}>
+                  <span className={styles.attendanceProgressBadge}>
+                    <span className={styles.glowingDotGreen} /> เข้าเรียน {actualCount} / {attendees.length} คน ({attendees.length ? Math.round((actualCount / attendees.length) * 100) : 0}%)
+                  </span>
+                  <button
+                    type="button"
+                    className={allAttended ? styles.activeActionButton : styles.actionButton}
                     disabled={attendees.length === 0 || isSelectedCourseReadOnlyForFactory}
-                    type="checkbox"
-                    onChange={() => void setAllAttendance(!allAttended)}
-                  />
-                  <span>{allAttended ? "✕ ยกเลิกทั้งหมด" : "✓ เลือกทั้งหมด"}</span>
-                </label>
+                    onClick={() => void setAllAttendance(!allAttended)}
+                  >
+                    {allAttended ? "✕ ยกเลิกเช็คชื่อทั้งหมด" : "✓ เลือกเช็คชื่อทั้งหมด"}
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <div className={`${styles.tableWrap} ${styles.attendanceTableWrap}`}>
-              <table className={styles.recordTable}>
-                <thead>
-                  <tr>
-                    <th style={{ width: "110px" }}>เข้าร่วม</th>
-                    <th>รหัสพนักงาน</th>
-                    <th>คำนำหน้า</th>
-                    <th>ชื่อ</th>
-                    <th>นามสกุล</th>
-                    <th>บริษัท</th>
-                    <th>ส่วน</th>
-                    <th>ฝ่าย</th>
-                    <th>แผนก</th>
-                    <th>ตำแหน่ง</th>
-                    <th>ระดับ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagedAttendees.map((attendee) => (
-                    <tr
-                      key={attendee.id}
-                      className={attendee.attended ? styles.attendedRow : undefined}
+              {/* Attendance Toolbar: Company Filters, Status Filters, & Real-Time Search */}
+              <div className={styles.attendeeFilterToolbar}>
+                <div className={styles.companyFilterChips}>
+                  <button
+                    type="button"
+                    className={attendanceCompanyFilter === "ALL" ? styles.activeFilterChip : styles.filterChip}
+                    onClick={() => setAttendanceCompanyFilter("ALL")}
+                  >
+                    ทุกบริษัท ({attendees.length})
+                  </button>
+                  {attendeeCompanyList.map((comp) => {
+                    const count = attendees.filter((a) => a.company === comp).length;
+                    return (
+                      <button
+                        key={comp}
+                        type="button"
+                        className={attendanceCompanyFilter === comp ? styles.activeFilterChip : styles.filterChip}
+                        onClick={() => setAttendanceCompanyFilter(comp)}
+                      >
+                        {comp} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className={styles.companyFilterChips}>
+                  <button
+                    type="button"
+                    className={attendanceStatusFilter === "ALL" ? styles.activeFilterChip : styles.filterChip}
+                    onClick={() => setAttendanceStatusFilter("ALL")}
+                  >
+                    ทั้งหมด
+                  </button>
+                  <button
+                    type="button"
+                    className={attendanceStatusFilter === "PRESENT" ? styles.activeFilterChip : styles.filterChip}
+                    onClick={() => setAttendanceStatusFilter("PRESENT")}
+                  >
+                    🟢 มาเรียน ({actualCount})
+                  </button>
+                  <button
+                    type="button"
+                    className={attendanceStatusFilter === "ABSENT" ? styles.activeFilterChip : styles.filterChip}
+                    onClick={() => setAttendanceStatusFilter("ABSENT")}
+                  >
+                    🔴 ขาดเรียน ({absentCount})
+                  </button>
+                </div>
+
+                <div className={styles.attendeeSearchBox}>
+                  <span className={styles.searchIcon}>🔍</span>
+                  <input
+                    type="text"
+                    placeholder="ค้นหาชื่อ, รหัสพนักงาน, แผนก..."
+                    value={attendanceSearchQuery}
+                    onChange={(e) => setAttendanceSearchQuery(e.target.value)}
+                  />
+                  {attendanceSearchQuery ? (
+                    <button
+                      type="button"
+                      className={styles.clearSearchBtn}
+                      onClick={() => setAttendanceSearchQuery("")}
                     >
-                      <td className={styles.checkCell}>
-                        <label className={styles.attendanceCheckLabel}>
-                          <input
-                            type="checkbox"
-                            checked={attendee.attended}
-                            disabled={isSelectedCourseReadOnlyForFactory}
-                            onChange={() => void toggleAttendance(attendee.id, attendee.attended)}
-                          />
-                          <span
-                            className={
-                              attendee.attended
-                                ? styles.attendStatusPresent
-                                : styles.attendStatusAbsent
-                            }
-                          >
-                            {attendee.attended ? "✓ มา" : "✕ ขาด"}
-                          </span>
-                        </label>
-                      </td>
-                      <td>
-                        <span className={styles.attendeeCodePill}>{attendee.employeeCode}</span>
-                      </td>
-                      <td>
-                        <span className={styles.prefixPill}>{attendee.prefix || "-"}</span>
-                      </td>
-                      <td>
-                        <strong className={styles.attendeeFirstName}>{attendee.firstName}</strong>
-                      </td>
-                      <td>
-                        <span className={styles.attendeeLastName}>{attendee.lastName}</span>
-                      </td>
-                      <td>
-                        <span
-                          className={`${styles.companyPill} ${
-                            attendee.company === "TEP"
-                              ? styles.companyTep
-                              : attendee.company === "ATA"
-                                ? styles.companyAta
-                                : styles.companyDefault
-                          }`}
-                        >
-                          {attendee.company || "-"}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={styles.orgText}>{attendee.section || "-"}</span>
-                      </td>
-                      <td>
-                        <span className={styles.orgText}>{attendee.division || "-"}</span>
-                      </td>
-                      <td>
-                        <span className={styles.deptBadge}>{attendee.department || "-"}</span>
-                      </td>
-                      <td>
-                        <span className={styles.positionPill}>{attendee.position || "-"}</span>
-                      </td>
-                      <td>
-                        <span className={styles.levelBadge}>{attendee.level || "-"}</span>
-                      </td>
-                    </tr>
-                  ))}
-                  {pagedAttendees.length === 0 ? (
-                    <tr>
-                      <td colSpan={11} className={styles.emptyTableMessage}>
-                        ไม่พบรายชื่อพนักงานในการอบรมนี้
-                      </td>
-                    </tr>
+                      ✕
+                    </button>
                   ) : null}
-                </tbody>
-              </table>
+                </div>
+              </div>
+
+              {/* Attendance Table */}
+              <div className={`${styles.tableWrap} ${styles.attendanceTableWrap}`}>
+                <table className={styles.recordTable}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: "135px" }}>เข้าร่วม</th>
+                      <th>ข้อมูลพนักงาน</th>
+                      <th>บริษัท / แผนก</th>
+                      <th>ส่วน / ฝ่าย</th>
+                      <th>ตำแหน่ง / ระดับ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagedAttendees.map((attendee) => (
+                      <tr
+                        key={attendee.id}
+                        className={attendee.attended ? styles.attendedRow : undefined}
+                      >
+                        <td className={styles.checkCell}>
+                          <label className={styles.attendanceCheckLabel}>
+                            <input
+                              type="checkbox"
+                              checked={attendee.attended}
+                              disabled={isSelectedCourseReadOnlyForFactory}
+                              onChange={() => void toggleAttendance(attendee.id, attendee.attended)}
+                            />
+                            <span
+                              className={
+                                attendee.attended
+                                  ? styles.passBadge
+                                  : styles.failBadge
+                              }
+                            >
+                              {attendee.attended ? (
+                                <>
+                                  <span className={styles.glowingDotGreen} /> มาเรียน
+                                </>
+                              ) : (
+                                <>
+                                  <span className={styles.glowingDotRed} /> ขาดเรียน
+                                </>
+                              )}
+                            </span>
+                          </label>
+                        </td>
+                        <td>
+                          <div>
+                            <strong className={styles.attendeeFirstName}>
+                              {attendee.prefix !== "-" ? `${attendee.prefix} ` : ""}
+                              {attendee.firstName} {attendee.lastName}
+                            </strong>
+                            <span className={styles.attendeeCodeTag}>{attendee.employeeCode}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className={styles.deptCell}>
+                            <span className={styles.companyPillBadge}>{attendee.company || "-"}</span>
+                            <span className={styles.attendeeDeptText}>{attendee.department || "-"}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className={styles.orgCell}>
+                            <span className={styles.orgText}>{attendee.section || "-"}</span>
+                            <span className={styles.orgSubText}>{attendee.division || "-"}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className={styles.posCell}>
+                            <span className={styles.positionText}>{attendee.position || "-"}</span>
+                            <span className={styles.levelBadge}>{attendee.level || "-"}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {pagedAttendees.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className={styles.emptyTableMessage}>
+                          🔍 ไม่พบรายชื่อพนักงานในการอบรมตามเงื่อนไขค้นหา
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {totalPages > 1 ? (

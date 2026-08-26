@@ -954,6 +954,27 @@
   font-weight: 800;
 }
 
+.attendanceChecklistWorkspace {
+  margin-top: 18px;
+  border-top: 1px solid var(--ui-30-border);
+  padding-top: 18px;
+}
+
+.orgCell,
+.posCell,
+.deptCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.orgSubText,
+.attendeeDeptText {
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
 .positionPill {
   display: inline-block;
   border: 1px solid var(--ui-30-border);
