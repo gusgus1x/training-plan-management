@@ -1373,93 +1373,111 @@ export default function TrainingAcceptSurvey() {
       </section>
 
       <section className={styles.controlPanel} aria-label="Survey controls">
-        <div className={styles.accessCard}>
-          <span>Current access</span>
-          <strong>{roleMode === "center" ? "Center functions" : "Factory functions"}</strong>
-          <small>{userCompanyLabel}</small>
+        {/* TOP TIER: ACCESS & SCOPE STATUS BAR */}
+        <div className={styles.controlHeaderBar}>
+          <div className={styles.accessBadge}>
+            <span className={roleMode === "center" ? styles.glowingDotBlue : styles.glowingDotGreen}></span>
+            <span>สิทธิ์การใช้งานปัจจุบัน:</span>
+            <strong>{roleMode === "center" ? "HRD Center Functions" : `HRD Factory Functions (${userCompanyCode})`}</strong>
+            <span style={{ opacity: 0.7, fontWeight: 500 }}>— {userCompanyLabel}</span>
+          </div>
+          <div className={styles.scopeBadge}>
+            <span>🎯 ขอบเขตการทำงาน:</span>
+            <strong>
+              {!selectedCourse
+                ? "กรุณาเลือกหลักสูตรด้านล่างเพื่อเริ่มต้นจัดการรายชื่อ"
+                : roleMode === "center"
+                  ? "ดูภาพรวมพนักงานทุกบริษัท / อนุมัติรายชื่อที่โรงงานส่งมา"
+                  : isFactoryOwnedByUser
+                    ? `จัดการผู้เข้าร่วมอบรมสำหรับหลักสูตรของโรงงาน ${userCompanyCode}`
+                    : `ส่งรายชื่อพนักงาน ${userCompanyCode} เข้าอบรมกลางกับ Center`}
+            </strong>
+          </div>
         </div>
 
-        <label>
-          Course owner
-          <select
-            value={selectedCourseOwner}
-            onChange={(event) => {
-              setSelectedCourseOwner(event.target.value as CourseOwnerFilter);
-              setSelectedCourseGroupId("");
-              setSelectedCourseId("");
-            }}
-          >
-            <option value="">Select owner</option>
-            {courseOwnerOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </label>
+        {/* BOTTOM TIER: 3-STEP SELECTION GRID */}
+        <div className={styles.controlGrid}>
+          <div className={styles.controlStepLabel}>
+            <div className={styles.controlStepTitle}>
+              <span>1️⃣</span>
+              <span>ผู้ดูแลหลักสูตร (Course Owner)</span>
+            </div>
+            <select
+              className={styles.controlSelect}
+              value={selectedCourseOwner}
+              onChange={(event) => {
+                setSelectedCourseOwner(event.target.value as CourseOwnerFilter);
+                setSelectedCourseGroupId("");
+                setSelectedCourseId("");
+              }}
+            >
+              <option value="">เลือกผู้ดูแลหลักสูตร</option>
+              {courseOwnerOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
 
-        <label>
-          Published Rolling Course
-          <select
-            value={selectedCourseGroup?.id ?? ""}
-            disabled={selectedCourseOwner === ""}
-            onChange={(event) => {
-              const newGroupId = event.target.value;
-              setSelectedCourseGroupId(newGroupId);
-              const targetGroup = availableCourseGroups.find((g) => g.id === newGroupId);
-              const newSessionId = targetGroup?.sessions[0]?.id ?? "";
-              setSelectedCourseId(newSessionId);
-              if (newGroupId) {
-                setIsTargetLoading(true);
-                setTimeout(() => setIsTargetLoading(false), 350);
-              }
-            }}
-          >
-            <option value="">
-              {selectedCourseOwner === "" ? "Select owner first" : "Select course"}
-            </option>
-            {availableCourseGroups.map((group) => (
-              <option key={group.id} value={group.id}>
-                [{group.code}] {group.title} / {group.sessions.length} sessions
+          <div className={styles.controlStepLabel}>
+            <div className={styles.controlStepTitle}>
+              <span>2️⃣</span>
+              <span>หลักสูตรรายเดือนที่เผยแพร่แล้ว (Published Course)</span>
+            </div>
+            <select
+              className={styles.controlSelect}
+              value={selectedCourseGroup?.id ?? ""}
+              disabled={selectedCourseOwner === ""}
+              onChange={(event) => {
+                const newGroupId = event.target.value;
+                setSelectedCourseGroupId(newGroupId);
+                const targetGroup = availableCourseGroups.find((g) => g.id === newGroupId);
+                const newSessionId = targetGroup?.sessions[0]?.id ?? "";
+                setSelectedCourseId(newSessionId);
+                if (newGroupId) {
+                  setIsTargetLoading(true);
+                  setTimeout(() => setIsTargetLoading(false), 350);
+                }
+              }}
+            >
+              <option value="">
+                {selectedCourseOwner === "" ? "⚡ กรุณาเลือกผู้ดูแลหลักสูตรก่อน" : "เลือกหลักสูตร"}
               </option>
-            ))}
-          </select>
-        </label>
+              {availableCourseGroups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  [{group.code}] {group.title} ({group.sessions.length} รอบ)
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <label>
-          Training Session
-          <select
-            value={selectedCourse?.id ?? ""}
-            disabled={!selectedCourseGroup}
-            onChange={(event) => {
-              const newSessionId = event.target.value;
-              setSelectedCourseId(newSessionId);
-              if (newSessionId) {
-                setIsTargetLoading(true);
-                setTimeout(() => setIsTargetLoading(false), 350);
-              }
-            }}
-          >
-            <option value="">
-              {selectedCourseGroup ? "Select training session" : "Select course first"}
-            </option>
-            {availableSessions.map((session) => (
-              <option key={session.id} value={session.id}>
-                {session.batch ?? "-"} / {session.date} / {session.startTime ?? "-"}-{session.endTime ?? "-"} / {session.location ?? "-"}
+          <div className={styles.controlStepLabel}>
+            <div className={styles.controlStepTitle}>
+              <span>3️⃣</span>
+              <span>รอบการอบรม (Training Session)</span>
+            </div>
+            <select
+              className={styles.controlSelect}
+              value={selectedCourse?.id ?? ""}
+              disabled={!selectedCourseGroup}
+              onChange={(event) => {
+                const newSessionId = event.target.value;
+                setSelectedCourseId(newSessionId);
+                if (newSessionId) {
+                  setIsTargetLoading(true);
+                  setTimeout(() => setIsTargetLoading(false), 350);
+                }
+              }}
+            >
+              <option value="">
+                {selectedCourseGroup ? "เลือกรอบการอบรม" : "⚡ กรุณาเลือกหลักสูตรก่อน"}
               </option>
-            ))}
-          </select>
-        </label>
-
-        <div className={styles.scopeCard}>
-          <span>Function scope</span>
-          <strong>
-            {!selectedCourse
-              ? "Select a course to open this survey"
-              : roleMode === "center"
-                ? "View all companies / approve factory submissions"
-                : isFactoryOwnedByUser
-                  ? `Add participants for ${userCompanyCode} factory courses`
-                  : `Submit ${userCompanyCode} employees to Center`}
-          </strong>
+              {availableSessions.map((session) => (
+                <option key={session.id} value={session.id}>
+                  รอบ {session.batch ?? "1"} / {session.date} / {session.startTime ?? "-"}-{session.endTime ?? "-"} / {session.location ?? "-"}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </section>
 

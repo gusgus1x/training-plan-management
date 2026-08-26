@@ -151,17 +151,99 @@
 
 /* Control Panel Bar */
 .controlPanel {
-  display: grid;
-  grid-template-columns:
-    minmax(180px, 0.85fr)
-    minmax(140px, 0.65fr)
-    minmax(220px, 1.15fr)
-    minmax(270px, 1.35fr);
-  gap: 12px;
-  align-items: end;
-  padding: 16px 18px;
-  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 24px;
+  margin-bottom: 20px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 14px;
   background: var(--ui-60-surface);
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+}
+
+.controlHeaderBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.accessBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.08);
+  color: #4ade80;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.scopeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  background: rgba(99, 102, 241, 0.08);
+  color: #a5b4fc;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.controlGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1.6fr;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.controlStepLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.controlStepTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ui-30-ink);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.controlSelect {
+  width: 100%;
+  height: 44px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 10px;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
+  font-size: 0.86rem;
+  font-weight: 600;
+  padding: 0 14px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.controlSelect:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.controlSelect:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .controlPanel label,
