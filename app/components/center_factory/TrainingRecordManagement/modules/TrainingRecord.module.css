@@ -3044,6 +3044,36 @@
   color: #fbbf24;
 }
 
+@keyframes pulseGlowGreen {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.75);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 7px rgba(16, 185, 129, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+@keyframes pulseGlowBlue {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.75);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 7px rgba(59, 130, 246, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
 .glowingDotGreen,
 .glowingDotBlue {
   display: inline-block;
@@ -3056,11 +3086,13 @@
 .glowingDotGreen {
   background: #10b981;
   box-shadow: 0 0 8px #10b981;
+  animation: pulseGlowGreen 1.8s infinite ease-in-out;
 }
 
 .glowingDotBlue {
   background: #3b82f6;
   box-shadow: 0 0 8px #3b82f6;
+  animation: pulseGlowBlue 1.8s infinite ease-in-out;
 }
 
 .individualDownloadBtn {
