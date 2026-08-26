@@ -28,11 +28,30 @@ export const employeeRepository={
   async findById(id:string){const r=await getPrismaClient().employee.findUnique({where:{employee_id:BigInt(id)},include});return r?map(r):null},
   async findCompany(id:string){return getPrismaClient().company.findUnique({where:{company_id:BigInt(id)},select:{company_id:true}})},
   async referencesExist(i:EmployeeInput){const db=getPrismaClient();const [company,fn,div,dept,sec,pos,lvl]=await Promise.all([db.company.findUnique({where:{company_id:BigInt(i.companyId)}}),i.functionId?db.organization_function.findUnique({where:{function_id:BigInt(i.functionId)}}):true,i.divisionId?db.division.findUnique({where:{division_id:BigInt(i.divisionId)}}):true,i.departmentId?db.department.findUnique({where:{department_id:BigInt(i.departmentId)}}):true,i.sectionId?db.section.findUnique({where:{section_id:BigInt(i.sectionId)}}):true,i.positionId?db.position.findUnique({where:{position_id:BigInt(i.positionId)}}):true,i.levelId?db.employee_level.findUnique({where:{level_id:BigInt(i.levelId)}}):true]);return Boolean(company&&fn&&div&&dept&&sec&&pos&&lvl)},
-  async conflict(companyId:string,code:string,hash:string,exclude?:string){return getPrismaClient().employee.findFirst({where:{OR:[{company_id:BigInt(companyId),employee_code:code},{national_id_hash:hash}],...(exclude?{NOT:{employee_id:BigInt(exclude)}}:{})},select:{employee_id:true}})},
+  async conflict(companyId:string,code:string|null,hash:string,exclude?:string){return getPrismaClient().employee.findFirst({where:{OR:[...(code?[{company_id:BigInt(companyId),employee_code:code}]:[]),{national_id_hash:hash}],...(exclude?{NOT:{employee_id:BigInt(exclude)}}:{})},select:{employee_id:true}})},
   async create(i:EmployeeInput,p:any){return withDatabaseErrorMapping(async()=>map(await getPrismaClient().employee.create({data:data(i,p),include})))},
   async update(id:string,i:EmployeeInput,p:any){return withDatabaseErrorMapping(async()=>map(await getPrismaClient().employee.update({where:{employee_id:BigInt(id)},data:data(i,p),include})))},
   async delete(id:string){return withDatabaseErrorMapping(async()=>map(await getPrismaClient().employee.delete({where:{employee_id:BigInt(id)},include})))},
   async bundle(id:string){return getPrismaClient().employee.findUnique({where:{employee_id:BigInt(id)},select:{employee_id:true,company_id:true,national_id_encrypted:true,national_id_key_version:true}})},
   async factoryTrainingAccess(employeeId:string,companyId:string){const count=await getPrismaClient().training_enrollment.count({where:{employee:{employee_id:BigInt(employeeId)},approval_status:"APPROVED",training_plan:{user_account_training_plan_created_byTouser_account:{company_id:BigInt(companyId),role:{role_code:"HRD_FACTORY"}}}}});return count>0},
+  // The employee code is "<company prefix>-<six digits>", a shape inherited from the source HR
+  // system rather than something this app invents. The prefix therefore is not configuration to
+  // store — it is already in the data, one per company. Read it back rather than keeping a second
+  // copy that can drift. Codes that do not match the shape (the eleven that arrived without a
+  // real code) are excluded, so they cannot become the answer for their company.
+  async codePrefixes(){
+    const rows=await getPrismaClient().$queryRaw<Array<{company_id:bigint;prefix:string;n:bigint}>>`
+      SELECT company_id, LEFT(employee_code, 4) AS prefix, COUNT(*) AS n
+      FROM dbo.employee
+      WHERE employee_code LIKE '[0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]'
+      GROUP BY company_id, LEFT(employee_code, 4)`;
+    const best=new Map<string,{prefix:string;n:bigint}>();
+    for(const row of rows){
+      const key=row.company_id.toString();
+      const current=best.get(key);
+      if(!current||row.n>current.n)best.set(key,{prefix:row.prefix,n:row.n});
+    }
+    return Object.fromEntries([...best].map(([companyId,{prefix}])=>[companyId,prefix]));
+  },
 };
 export type EmployeeRepository=typeof employeeRepository;

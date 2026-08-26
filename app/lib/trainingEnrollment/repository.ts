@@ -64,7 +64,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
     employeeId: employee.employee_id.toString(),
     // Carried through so the layers above can move to the durable key without another query.
     employeeUserId: row.employee_user_id ?? employee.user_id ?? null,
-    employeeCode: employee.employee_code,
+    employeeCode: employee.employee_code ?? "",
     employeeName: employeeDisplayName(employee),
     prefix: employee.title_th || employee.title_en || "",
     firstName: employee.first_name_th || employee.first_name_en || "",

@@ -1472,7 +1472,7 @@ export default function TrainingRecord() {
                         );
 
                         if (master) {
-                          setCustomEmpCode(master.employeeCode);
+                          setCustomEmpCode(master.employeeCode ?? "");
                           setCustomEmpName(
                             `${master.titleEn || ""} ${
                               master.firstNameEn || master.firstNameTh
@@ -1485,7 +1485,7 @@ export default function TrainingRecord() {
                     >
                       <option value="">Select Employee (Optional)</option>
                       {masterEmployees.map((employee) => (
-                        <option key={employee.employeeId} value={employee.employeeCode}>
+                        <option key={employee.employeeId} value={employee.employeeCode ?? ""}>
                           {employee.employeeCode} / {employee.firstNameEn || employee.firstNameTh}{" "}
                           {employee.lastNameEn || employee.lastNameTh} / {employee.companyCode} /{" "}
                           {employee.functionName}

@@ -9,7 +9,11 @@ const optionalId=(o:InputObject,k:string)=>{const v=o[k];return v===null||v===un
 const date=(o:InputObject,k:string)=>{const v=readOptionalString(o,k,{maxLength:10});if(v&&!/^\d{4}-\d{2}-\d{2}$/.test(v))throw invalid(k,"Use YYYY-MM-DD");return v};
 const status=(v:unknown,fallback?:EmploymentStatus):EmploymentStatus=>{if(v===undefined&&fallback)return fallback;if(typeof v!=="string"||!["ACTIVE","INACTIVE"].includes(v.toUpperCase()))throw invalid("employmentStatus","Status must be ACTIVE or INACTIVE");return v.toUpperCase() as EmploymentStatus};
 const national=(o:InputObject)=>{const v=readRequiredString(o,"nationalId",{maxLength:13});if(!isValidThaiNationalId(v))throw invalid("nationalId","National ID must contain exactly 13 digits");return v};
-const thaiTitle=(o:InputObject)=>{const v=readRequiredString(o,"titleTh",{maxLength:50});if(!["นาย","นาง","นางสาว"].includes(v))throw invalid("titleTh","Title TH must be นาย, นาง, or นางสาว");return v};
+// Foreign staff have no Thai name, so their record legitimately carries an English title here —
+// 23 employees are in that state. Rejecting those blocked every edit to them, including ones that
+// never touched the title.
+const TITLE_TH_VALUES=["นาย","นาง","นางสาว","Mr.","Mrs.","Miss"];
+const thaiTitle=(o:InputObject)=>{const v=readRequiredString(o,"titleTh",{maxLength:50});if(!TITLE_TH_VALUES.includes(v))throw invalid("titleTh","Title TH must be one of นาย, นาง, นางสาว, Mr., Mrs., Missย, นาง, or นางสาว");return v};
 export const parseCreateEmployee=(o:InputObject):EmployeeInput=>({
   companyId:readPositiveId(o.companyId,"companyId"),employeeCode:readRequiredString(o,"employeeCode",{maxLength:50}).toUpperCase(),userId:readRequiredString(o,"userId",{maxLength:50}),
   functionId:optionalId(o,"functionId"),divisionId:optionalId(o,"divisionId"),departmentId:optionalId(o,"departmentId"),sectionId:optionalId(o,"sectionId"),

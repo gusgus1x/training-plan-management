@@ -278,15 +278,34 @@
 .formGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  /* Row gap is wider than the column gap so a hint under a field has somewhere to sit. */
+  column-gap: 10px;
+  row-gap: 14px;
+  align-items: start;
 }
 
 .formGrid label {
   display: grid;
+  /* Every cell in a row is as tall as the tallest one. Without this the rows inside a short
+     label stretch to fill that height and its input drifts down away from its neighbours —
+     one field carrying a hint underneath was enough to misalign the whole row. */
+  align-content: start;
   gap: 5px;
   color: var(--ui-30-text);
   font-size: 0.76rem;
   font-weight: 900;
+}
+
+/* Hint text under a field. It still adds height to its own cell, but align-content above keeps
+   the label and input pinned to the top, so a hint no longer moves its neighbours' inputs. */
+.formGrid label small {
+  color: var(--ui-30-muted);
+  /* Small enough to read as a note rather than a second label — the field name above it is
+     0.76rem, so the hint stays clearly subordinate at a glance. */
+  font-size: 0.62rem;
+  font-weight: 500;
+  line-height: 1.3;
+  margin-top: -1px;
 }
 
 .formActions {
@@ -560,4 +579,75 @@
     grid-column: 2 / -1;
     justify-self: start;
   }
+}
+
+/* Field name plus its info marker on one line. */
+.fieldLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* Hover-only explanation of a field's rules, using the native title tooltip — no library, and it
+   reaches keyboard users through the same attribute. Deliberately quiet: it must not compete with
+   the field name it sits beside. */
+.fieldInfo {
+  display: inline-flex;
+  width: 13px;
+  height: 13px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 999px;
+  color: var(--ui-30-muted);
+  cursor: help;
+  font-size: 0.58rem;
+  font-style: italic;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.fieldInfo:hover {
+  border-color: var(--ui-30-primary);
+  color: var(--ui-30-primary);
+}
+
+/* The company half of an employee code sits inside the same box as the digits, so the two read as
+   one field even though only the right-hand side is editable. */
+.codeInput {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+}
+
+.codeInput input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.codeInput input:focus {
+  box-shadow: none;
+}
+
+.codeInput:focus-within {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
+}
+
+.codePrefix {
+  display: inline-flex;
+  align-items: center;
+  border-right: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  font-size: 0.8rem;
+  font-weight: 900;
+  padding: 0 9px;
+  white-space: nowrap;
 }

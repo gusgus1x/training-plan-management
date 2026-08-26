@@ -1001,6 +1001,11 @@ const thaiUiDictionary: Record<string, string> = {
   "ATTG Training plan management": "ระบบจัดการแผนฝึกอบรม ATTG",
   Email: "อีเมล",
   "Employee Code": "รหัสพนักงาน",
+  "User ID": "รหัสผู้ใช้",
+  "Six digits, e.g. 000162": "ตัวเลข 6 หลัก เช่น 000162",
+  "This code predates the current format and is left unchanged.":
+    "รหัสนี้เป็นรูปแบบเดิม ระบบจะไม่แก้ไขให้",
+  "Requires the UserID from the HR system": "จำเป็นต้องใช้ รหัสผู้ใช้จากระบบ HR",
   "Course setup guideline": "แนวทางการสร้างหลักสูตร",
   "Complete the required fields from top to bottom before linking tests and evaluations.":
     "กรอกช่องที่จำเป็นจากบนลงล่างให้ครบ ก่อนเชื่อมแบบทดสอบและแบบประเมิน",
@@ -1443,6 +1448,17 @@ const thaiAttributeDictionary: Record<string, string> = {
     "ค้นหารหัสหลักสูตร ชื่อหลักสูตร หรือหน่วยงาน",
   "Search course code, name, type, group":
     "ค้นหารหัส ชื่อ ประเภท หรือกลุ่มหลักสูตร",
+  "UserID from the HR system": "รหัสผู้ใช้จากระบบ HR",
+  "Sets the company part of the employee code automatically.":
+    "กำหนดคำนำหน้ารหัสพนักงานตามบริษัทให้อัตโนมัติ",
+  "Must match the HR system, must be unique, and cannot be changed later.":
+    "ต้องตรงกับระบบ HR ห้ามซ้ำ และแก้ไขภายหลังไม่ได้",
+  "Six digits. The company part is filled in from the selected company, and a shorter number is padded with leading zeros.":
+    "ตัวเลข 6 หลัก ส่วนคำนำหน้ามาจากบริษัทที่เลือก และถ้าใส่ไม่ครบระบบจะเติม 0 ข้างหน้าให้",
+  "Exactly 13 digits. Stored encrypted and shown masked afterwards.":
+    "ต้องครบ 13 หลัก ระบบเก็บแบบเข้ารหัสและแสดงเป็นตัวปิดบัง",
+  "Thai titles for local staff; the English ones are used for foreign staff whose record carries no Thai name.":
+    "คำนำหน้าไทยสำหรับพนักงานไทย ส่วนภาษาอังกฤษใช้กับพนักงานต่างชาติที่ไม่มีชื่อภาษาไทย",
   "Search course code, name, batch, location, status...":
     "ค้นหารหัสหลักสูตร ชื่อ รุ่น สถานที่ หรือสถานะ...",
   "Optional label, e.g. batch 1 or Supervisor batch":

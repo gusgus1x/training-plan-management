@@ -80,7 +80,7 @@ const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
     return {
       enrollmentId: enrollment.enrollment_id.toString(),
       employeeId: enrollment.employee.employee_id.toString(),
-      employeeCode: enrollment.employee.employee_code,
+      employeeCode: enrollment.employee.employee_code ?? "",
       name: employeeDisplayName(enrollment.employee),
       department:
         enrollment.employee.organization_function?.function_name_en ||

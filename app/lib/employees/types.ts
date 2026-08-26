@@ -1,6 +1,6 @@
 export type EmploymentStatus = "ACTIVE" | "INACTIVE";
 export type EmployeeRecord = {
-  employeeId: string; companyId: string; companyCode: string; employeeCode: string; userId: string;
+  employeeId: string; companyId: string; companyCode: string; employeeCode: string | null; userId: string;
   functionId: string | null; functionCode: string | null; functionName: string | null;
   divisionId: string | null; divisionCode: string | null; divisionName: string | null;
   departmentId: string | null; departmentCode: string | null; departmentName: string | null;
@@ -13,7 +13,7 @@ export type EmployeeRecord = {
   employmentStatus: EmploymentStatus; nationalIdMasked: string;
 };
 export type EmployeeInput = {
-  companyId: string; employeeCode: string; userId: string; functionId: string | null;
+  companyId: string; employeeCode: string | null; userId: string; functionId: string | null;
   divisionId: string | null; departmentId: string | null; sectionId: string | null;
   positionId: string | null; levelId: string | null; nationalId: string;
   titleTh: string | null; titleEn: string | null; firstNameTh: string; lastNameTh: string;

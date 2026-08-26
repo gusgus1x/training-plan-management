@@ -1,0 +1,31 @@
+feat(employee): split the employee code, and stop inventing one where none exists
+
+Eleven employees arrived from the source system with no employee code, so their
+UserID was copied into the column purely to satisfy NOT NULL. That left a value
+that reads like a staff number and is not one.
+
+Migration 30 lets the column say "no code yet". Dropping NOT NULL was not
+enough on its own: the old UNIQUE constraint counts NULLs as equal, so it would
+still have allowed a single unset employee per company, and five of the eleven
+are at ATFB. A filtered unique index solves it the way migration 26 already
+solved it for user_id. The eleven are identified by three signals at once - no
+separator, the 8-character shape of a UserID, and a value equal to that
+employee's own user_id - and the migration rolls back if more rows than
+expected match.
+
+The form now edits the code as the two halves it actually has. The company
+prefix is read back from the codes that already exist rather than stored a
+second time where it could drift, and a short number is padded on leaving the
+field rather than while typing, which would fight the caret. A code that
+predates the shape is shown read-only: reformatting it would silently change an
+identifier nobody asked to change.
+
+Both title fields are dropdowns and the English one follows the Thai. This also
+fixes a real block: 23 foreign employees legitimately carry an English title in
+title_th because they have no Thai name, and validation rejected those, so
+every edit to them failed - including edits that never touched the title.
+
+Small info markers on the five fields with rules worth stating carry those
+rules in a native tooltip, in both languages.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

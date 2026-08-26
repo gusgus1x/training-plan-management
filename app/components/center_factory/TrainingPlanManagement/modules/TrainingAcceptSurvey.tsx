@@ -138,8 +138,8 @@ const toSurveyEmployee = (employee: EmployeeRecord): SurveyEmployee => {
 
   return {
     id: employee.employeeId,
-    employeeCode: employee.employeeCode,
-    name: thaiName || engName || employee.employeeCode,
+    employeeCode: employee.employeeCode ?? "",
+    name: thaiName || engName || employee.employeeCode || "-",
     nameTh: thaiName,
     nameEn: engName,
     company: employee.companyCode,

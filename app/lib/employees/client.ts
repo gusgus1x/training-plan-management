@@ -19,3 +19,13 @@ export const createEmployee=async(i:EmployeeInput)=>read<{employee:EmployeeRecor
 export const updateEmployee=async(id:string,i:UpdateEmployeeInput)=>read<{employee:EmployeeRecord}>(await fetch(`/api/master-data/employees/${id}`,json("PATCH",i)));
 export const deleteEmployee=async(id:string)=>read<{employee:EmployeeRecord}>(await fetch(`/api/master-data/employees/${id}`,{method:"DELETE",credentials:"include"}));
 export const revealEmployeeNationalId=async(id:string)=>read<{nationalId:string}>(await fetch(`/api/master-data/employee-national-ids/${id}`,{credentials:"include",cache:"no-store"}));
+
+/** company_id -> the four-digit prefix that company's employee codes carry. */
+export const listEmployeeCodePrefixes = async (): Promise<Record<string, string>> => {
+  const response = await fetch("/api/master-data/employee-code-prefixes", {
+    credentials: "same-origin",
+  });
+  const body = await response.json();
+  if (!response.ok || !body?.ok) return {};
+  return body.data?.prefixes ?? {};
+};

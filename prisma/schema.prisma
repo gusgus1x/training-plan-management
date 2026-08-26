@@ -367,7 +367,7 @@ model employee {
   function_id                                                                    BigInt?
   position_id                                                                    BigInt?
   level_id                                                                       BigInt?
-  employee_code                                                                  String                      @db.NVarChar(50)
+  employee_code                                                                  String?                     @db.NVarChar(50)
   national_id_hash                                                               String?                     @unique(map: "UX_employee_national_id_hash", where: raw("([national_id_hash] IS NOT NULL)")) @db.Char(64)
   birth_date                                                                     DateTime?                   @db.Date
   title_th                                                                       String?                     @db.NVarChar(50)
@@ -400,7 +400,7 @@ model employee {
   training_record_request_training_record_request_employee_user_idToemployee     training_record_request[]   @relation("training_record_request_employee_user_idToemployee")
   user_account_user_account_employee_user_idToemployee                           user_account[]              @relation("user_account_employee_user_idToemployee")
 
-  @@unique([company_id, employee_code], map: "UQ_employee_company_id_employee_code")
+  @@unique([company_id, employee_code], map: "UX_employee_company_employee_code", where: raw("([employee_code] IS NOT NULL)"))
   @@index([function_id], map: "IX_employee_function_id")
   @@index([level_id], map: "IX_employee_level_id")
   @@index([position_id], map: "IX_employee_position_id")
@@ -604,32 +604,32 @@ model role {
 }
 
 model training_certificate_file {
-  certificate_file_id                                           BigInt                   @id(map: "PK_training_certificate_file") @default(autoincrement())
-  certificate_import_batch_id                                   BigInt
-  training_result_id                                            BigInt?                  @unique(map: "UX_training_certificate_file_active_result", where: raw("([training_result_id] IS NOT NULL AND [status]=N'ACTIVE')"))
-  enrollment_id                                                 BigInt?
-  original_file_name_masked                                     String                   @db.NVarChar(255)
-  stored_file_name                                              String                   @unique(map: "UQ_training_certificate_file_stored_file_name") @db.NVarChar(255)
-  storage_path                                                  String                   @db.NVarChar(500)
-  file_mime_type                                                String                   @default("N'application/pdf'", map: "DF_training_certificate_file_file_mime_type") @db.NVarChar(100)
-  file_size_bytes                                               BigInt
-  file_sha256                                                   String                   @db.Char(64)
-  mapping_method                                                String                   @default("N'NATIONAL_ID_FILENAME'", map: "DF_training_certificate_file_mapping_method") @db.NVarChar(30)
-  mapping_key_hash                                              String?                  @db.Char(64)
-  mapping_key_last4                                             String?                  @db.Char(4)
-  mapping_status                                                String                   @default("N'PENDING'", map: "DF_training_certificate_file_mapping_status") @db.NVarChar(30)
-  verified_by                                                   BigInt?
-  verified_at                                                   DateTime?
-  status                                                        String                   @default("N'ACTIVE'", map: "DF_training_certificate_file_status") @db.NVarChar(20)
-  remark                                                        String?                  @db.NVarChar(500)
-  created_at                                                    DateTime                 @default(dbgenerated("sysdatetime()"), map: "DF_training_certificate_file_created_at")
-  updated_at                                                    DateTime?
-  employee_user_id                                              String?                  @db.NVarChar(50)
-  certificate_import_batch                                      certificate_import_batch @relation(fields: [certificate_import_batch_id], references: [certificate_import_batch_id], onUpdate: NoAction, map: "FK_training_certificate_file_certificate_import_batch")
-  employee employee?                @relation("training_certificate_file_employee_user_idToemployee", fields: [employee_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_certificate_file_employee_user_id")
-  training_enrollment                                           training_enrollment?     @relation(fields: [enrollment_id], references: [enrollment_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_certificate_file_training_enrollment")
-  training_result                                               training_result?         @relation(fields: [training_result_id], references: [result_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_certificate_file_training_result")
-  user_account                                                  user_account?            @relation(fields: [verified_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_certificate_file_verified_by_user_account")
+  certificate_file_id         BigInt                   @id(map: "PK_training_certificate_file") @default(autoincrement())
+  certificate_import_batch_id BigInt
+  training_result_id          BigInt?                  @unique(map: "UX_training_certificate_file_active_result", where: raw("([training_result_id] IS NOT NULL AND [status]=N'ACTIVE')"))
+  enrollment_id               BigInt?
+  original_file_name_masked   String                   @db.NVarChar(255)
+  stored_file_name            String                   @unique(map: "UQ_training_certificate_file_stored_file_name") @db.NVarChar(255)
+  storage_path                String                   @db.NVarChar(500)
+  file_mime_type              String                   @default("N'application/pdf'", map: "DF_training_certificate_file_file_mime_type") @db.NVarChar(100)
+  file_size_bytes             BigInt
+  file_sha256                 String                   @db.Char(64)
+  mapping_method              String                   @default("N'NATIONAL_ID_FILENAME'", map: "DF_training_certificate_file_mapping_method") @db.NVarChar(30)
+  mapping_key_hash            String?                  @db.Char(64)
+  mapping_key_last4           String?                  @db.Char(4)
+  mapping_status              String                   @default("N'PENDING'", map: "DF_training_certificate_file_mapping_status") @db.NVarChar(30)
+  verified_by                 BigInt?
+  verified_at                 DateTime?
+  status                      String                   @default("N'ACTIVE'", map: "DF_training_certificate_file_status") @db.NVarChar(20)
+  remark                      String?                  @db.NVarChar(500)
+  created_at                  DateTime                 @default(dbgenerated("sysdatetime()"), map: "DF_training_certificate_file_created_at")
+  updated_at                  DateTime?
+  employee_user_id            String?                  @db.NVarChar(50)
+  certificate_import_batch    certificate_import_batch @relation(fields: [certificate_import_batch_id], references: [certificate_import_batch_id], onUpdate: NoAction, map: "FK_training_certificate_file_certificate_import_batch")
+  employee                    employee?                @relation("training_certificate_file_employee_user_idToemployee", fields: [employee_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_certificate_file_employee_user_id")
+  training_enrollment         training_enrollment?     @relation(fields: [enrollment_id], references: [enrollment_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_certificate_file_training_enrollment")
+  training_result             training_result?         @relation(fields: [training_result_id], references: [result_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_certificate_file_training_result")
+  user_account                user_account?            @relation(fields: [verified_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_certificate_file_verified_by_user_account")
 
   @@index([certificate_import_batch_id], map: "IX_training_certificate_file_batch_id")
   @@index([mapping_status, status], map: "IX_training_certificate_file_mapping_status")
@@ -637,38 +637,38 @@ model training_certificate_file {
 }
 
 model training_enrollment {
-  enrollment_id                                           BigInt                      @id(map: "PK_training_enrollment") @default(autoincrement())
-  plan_id                                                 BigInt
-  enrollment_source                                       String                      @db.VarChar(20)
-  approval_status                                         String                      @default("PENDING", map: "DF_training_enrollment_approval_status") @db.VarChar(20)
-  waitlisted_at                                           DateTime?
-  queue_override_reason                                   String?
-  standard_course_id                                      BigInt?
-  position_id_snapshot                                    BigInt?
-  position_code_snapshot                                  String?                     @db.NVarChar(30)
-  position_name_snapshot                                  String?                     @db.NVarChar(255)
-  level_id_snapshot                                       BigInt?
-  level_code_snapshot                                     String?                     @db.NVarChar(30)
-  level_name_snapshot                                     String?                     @db.NVarChar(255)
-  target_match_status                                     String                      @db.VarChar(20)
-  level_match_status                                      String                      @default("NOT_REQUIRED", map: "DF_training_enrollment_level_match_status") @db.VarChar(20)
-  target_checked_at                                       DateTime                    @default(dbgenerated("sysdatetime()"), map: "DF_training_enrollment_target_checked_at")
-  enrolled_at                                             DateTime                    @default(dbgenerated("sysdatetime()"), map: "DF_training_enrollment_enrolled_at")
-  approved_by                                             BigInt?
-  approved_at                                             DateTime?
-  reject_reason                                           String?
-  employee_user_id                                        String                      @db.NVarChar(50)
-  assessment_submission                                   assessment_submission[]
-  attendance                                              attendance?
-  evaluation_submission                                   evaluation_submission[]
-  training_certificate_file                               training_certificate_file[]
-  employee employee                    @relation("training_enrollment_employee_user_idToemployee", fields: [employee_user_id], references: [user_id], onUpdate: NoAction, map: "FK_training_enrollment_employee_user_id")
-  user_account                                            user_account?               @relation(fields: [approved_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F058_training_enrollment_approved_by")
-  employee_level                                          employee_level?             @relation(fields: [level_id_snapshot], references: [level_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F060_training_enrollment_level_id_snapshot")
-  training_plan                                           training_plan               @relation(fields: [plan_id], references: [plan_id], onUpdate: NoAction, map: "FK_V6F061_training_enrollment_plan_id")
-  position                                                position?                   @relation(fields: [position_id_snapshot], references: [position_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F062_training_enrollment_position_id_snapshot")
-  course_standard_course                                  course_standard_course?     @relation(fields: [standard_course_id], references: [standard_course_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F063_training_enrollment_standard_course_id")
-  training_result                                         training_result?
+  enrollment_id             BigInt                      @id(map: "PK_training_enrollment") @default(autoincrement())
+  plan_id                   BigInt
+  enrollment_source         String                      @db.VarChar(20)
+  approval_status           String                      @default("PENDING", map: "DF_training_enrollment_approval_status") @db.VarChar(20)
+  waitlisted_at             DateTime?
+  queue_override_reason     String?
+  standard_course_id        BigInt?
+  position_id_snapshot      BigInt?
+  position_code_snapshot    String?                     @db.NVarChar(30)
+  position_name_snapshot    String?                     @db.NVarChar(255)
+  level_id_snapshot         BigInt?
+  level_code_snapshot       String?                     @db.NVarChar(30)
+  level_name_snapshot       String?                     @db.NVarChar(255)
+  target_match_status       String                      @db.VarChar(20)
+  level_match_status        String                      @default("NOT_REQUIRED", map: "DF_training_enrollment_level_match_status") @db.VarChar(20)
+  target_checked_at         DateTime                    @default(dbgenerated("sysdatetime()"), map: "DF_training_enrollment_target_checked_at")
+  enrolled_at               DateTime                    @default(dbgenerated("sysdatetime()"), map: "DF_training_enrollment_enrolled_at")
+  approved_by               BigInt?
+  approved_at               DateTime?
+  reject_reason             String?
+  employee_user_id          String                      @db.NVarChar(50)
+  assessment_submission     assessment_submission[]
+  attendance                attendance?
+  evaluation_submission     evaluation_submission[]
+  training_certificate_file training_certificate_file[]
+  employee                  employee                    @relation("training_enrollment_employee_user_idToemployee", fields: [employee_user_id], references: [user_id], onUpdate: NoAction, map: "FK_training_enrollment_employee_user_id")
+  user_account              user_account?               @relation(fields: [approved_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F058_training_enrollment_approved_by")
+  employee_level            employee_level?             @relation(fields: [level_id_snapshot], references: [level_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F060_training_enrollment_level_id_snapshot")
+  training_plan             training_plan               @relation(fields: [plan_id], references: [plan_id], onUpdate: NoAction, map: "FK_V6F061_training_enrollment_plan_id")
+  position                  position?                   @relation(fields: [position_id_snapshot], references: [position_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F062_training_enrollment_position_id_snapshot")
+  course_standard_course    course_standard_course?     @relation(fields: [standard_course_id], references: [standard_course_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F063_training_enrollment_standard_course_id")
+  training_result           training_result?
 
   @@unique([plan_id, employee_user_id], map: "UQ_training_enrollment_plan_employee_user")
   @@index([employee_user_id], map: "IX_training_enrollment_employee_user_id")
@@ -690,32 +690,32 @@ model training_expense {
 }
 
 model training_need_request {
-  training_need_request_id                                  BigInt                 @id(map: "PK_training_need_request") @default(autoincrement())
-  request_no                                                String                 @unique(map: "UX_RC2_training_need_request_request_no") @db.NVarChar(50)
-  company_id                                                BigInt
-  function_id                                               BigInt?
-  requested_course_name                                     String?                @db.NVarChar(255)
-  request_reason                                            String
-  preferred_start_date                                      DateTime?              @db.Date
-  preferred_end_date                                        DateTime?              @db.Date
-  status                                                    String                 @default("N'PENDING'", map: "DF_training_need_request_status") @db.NVarChar(20)
-  requested_at                                              DateTime               @default(dbgenerated("sysdatetime()"), map: "DF_training_need_request_requested_at")
-  reviewed_by                                               BigInt?
-  reviewed_at                                               DateTime?
-  rejection_reason                                          String?
-  training_plan_id                                          BigInt?
-  planned_at                                                DateTime?
-  review_note                                               String?
-  course_id                                                 BigInt?
-  course_code_snapshot                                      String?                @db.VarChar(20)
-  course_name_snapshot                                      String?                @db.NVarChar(255)
-  employee_user_id                                          String                 @db.NVarChar(50)
-  employee employee               @relation("training_need_request_employee_user_idToemployee", fields: [employee_user_id], references: [user_id], onUpdate: NoAction, map: "FK_training_need_request_employee_user_id")
-  company                                                   company                @relation(fields: [company_id], references: [company_id], onUpdate: NoAction, map: "FK_V6F053_training_need_request_company_id")
-  organization_function                                     organization_function? @relation(fields: [function_id], references: [function_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F055_training_need_request_function_id")
-  user_account                                              user_account?          @relation(fields: [reviewed_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F056_training_need_request_reviewed_by")
-  training_plan                                             training_plan?         @relation(fields: [training_plan_id], references: [plan_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F057_training_need_request_training_plan_id")
-  course                                                    course?                @relation(fields: [course_id], references: [course_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F096_training_need_request_course_id")
+  training_need_request_id BigInt                 @id(map: "PK_training_need_request") @default(autoincrement())
+  request_no               String                 @unique(map: "UX_RC2_training_need_request_request_no") @db.NVarChar(50)
+  company_id               BigInt
+  function_id              BigInt?
+  requested_course_name    String?                @db.NVarChar(255)
+  request_reason           String
+  preferred_start_date     DateTime?              @db.Date
+  preferred_end_date       DateTime?              @db.Date
+  status                   String                 @default("N'PENDING'", map: "DF_training_need_request_status") @db.NVarChar(20)
+  requested_at             DateTime               @default(dbgenerated("sysdatetime()"), map: "DF_training_need_request_requested_at")
+  reviewed_by              BigInt?
+  reviewed_at              DateTime?
+  rejection_reason         String?
+  training_plan_id         BigInt?
+  planned_at               DateTime?
+  review_note              String?
+  course_id                BigInt?
+  course_code_snapshot     String?                @db.VarChar(20)
+  course_name_snapshot     String?                @db.NVarChar(255)
+  employee_user_id         String                 @db.NVarChar(50)
+  employee                 employee               @relation("training_need_request_employee_user_idToemployee", fields: [employee_user_id], references: [user_id], onUpdate: NoAction, map: "FK_training_need_request_employee_user_id")
+  company                  company                @relation(fields: [company_id], references: [company_id], onUpdate: NoAction, map: "FK_V6F053_training_need_request_company_id")
+  organization_function    organization_function? @relation(fields: [function_id], references: [function_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F055_training_need_request_function_id")
+  user_account             user_account?          @relation(fields: [reviewed_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F056_training_need_request_reviewed_by")
+  training_plan            training_plan?         @relation(fields: [training_plan_id], references: [plan_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F057_training_need_request_training_plan_id")
+  course                   course?                @relation(fields: [course_id], references: [course_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F096_training_need_request_course_id")
 
   @@index([employee_user_id], map: "IX_training_need_request_employee_user_id")
 }
@@ -838,7 +838,7 @@ model training_record_request {
   completed_at                                                   DateTime?
   employee_user_id                                               String                 @db.NVarChar(50)
   company                                                        company                @relation(fields: [company_id], references: [company_id], onUpdate: NoAction, map: "FK_training_record_request_company_company_id")
-  employee    employee               @relation("training_record_request_employee_user_idToemployee", fields: [employee_user_id], references: [user_id], onUpdate: NoAction, map: "FK_training_record_request_employee_user_id")
+  employee                                                       employee               @relation("training_record_request_employee_user_idToemployee", fields: [employee_user_id], references: [user_id], onUpdate: NoAction, map: "FK_training_record_request_employee_user_id")
   organization_function                                          organization_function? @relation(fields: [function_id], references: [function_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_record_request_organization_function_function_id")
   user_account_training_record_request_exported_byTouser_account user_account?          @relation("training_record_request_exported_byTouser_account", fields: [exported_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_record_request_user_account_exported_by")
   user_account_training_record_request_reviewed_byTouser_account user_account?          @relation("training_record_request_reviewed_byTouser_account", fields: [reviewed_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_record_request_user_account_reviewed_by")
@@ -913,7 +913,7 @@ model user_account {
   training_record_request_training_record_request_exported_byTouser_account                  training_record_request[]          @relation("training_record_request_exported_byTouser_account")
   training_record_request_training_record_request_reviewed_byTouser_account                  training_record_request[]          @relation("training_record_request_reviewed_byTouser_account")
   company                                                                                    company?                           @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_account_company_company_id")
-  employee                                           employee?                          @relation("user_account_employee_user_idToemployee", fields: [employee_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_account_employee_user_id")
+  employee                                                                                   employee?                          @relation("user_account_employee_user_idToemployee", fields: [employee_user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_user_account_employee_user_id")
   role                                                                                       role                               @relation(fields: [role_id], references: [role_id], onUpdate: NoAction, map: "FK_user_account_role_role_id")
 
   @@index([company_id], map: "IX_user_account_company_id")

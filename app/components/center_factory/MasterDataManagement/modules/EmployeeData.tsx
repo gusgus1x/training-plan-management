@@ -11,6 +11,7 @@ import {
   createEmployee,
   deleteEmployee,
   EmployeeClientError,
+  listEmployeeCodePrefixes,
   listEmployees,
   revealEmployeeNationalId,
   updateEmployee,
@@ -67,6 +68,44 @@ const blank = (companyId = ""): EmployeeInput => ({
 });
 
 const display = (value: string | null) => value || "-";
+
+// An employee code is "<four-digit company prefix>-<six digits>". The form edits the two halves
+// separately: the prefix follows the chosen company and the user only types the staff number.
+export const EMPLOYEE_CODE_DIGITS = 6;
+const STANDARD_CODE = /^(\d{4})-(\d{6})$/;
+
+export const splitEmployeeCode = (code: string | null) => {
+  const match = STANDARD_CODE.exec(code ?? "");
+  return match ? { prefix: match[1], digits: match[2] } : null;
+};
+
+/** A code that predates the current shape is left exactly as it is rather than reformatted. */
+export const isLegacyEmployeeCode = (code: string | null) =>
+  Boolean(code) && splitEmployeeCode(code) === null;
+
+export const padEmployeeCodeDigits = (digits: string) => {
+  const cleaned = digits.replace(/\D/g, "").slice(0, EMPLOYEE_CODE_DIGITS);
+  return cleaned ? cleaned.padStart(EMPLOYEE_CODE_DIGITS, "0") : "";
+};
+
+export const joinEmployeeCode = (prefix: string, digits: string) => {
+  const padded = padEmployeeCodeDigits(digits);
+  if (!padded) return null;
+  return prefix ? `${prefix}-${padded}` : padded;
+};
+// Both sets are what the data actually holds: foreign staff carry an English title in title_th
+// because they have no Thai name, and the English form is "Miss", not "Ms.".
+const TITLE_TH_OPTIONS = ["นาย", "นาง", "นางสาว", "Mr.", "Mrs.", "Miss"] as const;
+const TITLE_EN_OPTIONS = ["Mr.", "Mrs.", "Miss"] as const;
+const TITLE_TH_TO_EN: Record<string, string> = {
+  นาย: "Mr.",
+  นาง: "Mrs.",
+  นางสาว: "Miss",
+  "Mr.": "Mr.",
+  "Mrs.": "Mrs.",
+  Miss: "Miss",
+};
+
 const EMPLOYEE_PAGE_SIZE = 25;
 const PAGE_WINDOW_SIZE = 5;
 
@@ -123,6 +162,9 @@ export default function EmployeeData() {
   const [sections, setSections] = useState<SectionRecord[]>([]);
   const [positions, setPositions] = useState<PositionRecord[]>([]);
   const [levels, setLevels] = useState<LevelRecord[]>([]);
+  const [codePrefixes, setCodePrefixes] = useState<Record<string, string>>({});
+  // The digits half is edited on its own; form.employeeCode is rebuilt from it and the prefix.
+  const [employeeCodeDigits, setEmployeeCodeDigits] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [openCompanies, setOpenCompanies] = useState<string[]>([]);
   const [companyPage, setCompanyPage] = useState<Record<string, number>>({});
@@ -143,6 +185,15 @@ export default function EmployeeData() {
   const resizeDrag = useRef<ResizeDrag | null>(null);
   const selected =
     rows.find((employee) => employee.employeeId === selectedId) ?? null;
+
+  const employeeCodePrefix = codePrefixes[form.companyId] ?? "";
+  const legacyEmployeeCode = isLegacyEmployeeCode(form.employeeCode);
+  // Derived, never mirrored into state: a legacy code is kept verbatim, anything else is rebuilt
+  // from the company prefix and the digits the user typed.
+  const effectiveEmployeeCode = legacyEmployeeCode
+    ? form.employeeCode
+    : joinEmployeeCode(employeeCodePrefix, employeeCodeDigits);
+
 
   useEffect(() => {
     const onPointerMove = (event: PointerEvent) => {
@@ -235,6 +286,8 @@ export default function EmployeeData() {
         listPositions(),
         listLevels(),
       ]);
+      // Derived from existing codes, so it needs no user upkeep and cannot drift from the data.
+      void listEmployeeCodePrefixes().then(setCodePrefixes);
       setRows(employeeResult.items);
       setCompanies(companyResult.items);
       setFunctions(functionResult.items);
@@ -372,6 +425,7 @@ export default function EmployeeData() {
     setMessage(null);
     const openEditor = (nationalId: string) => {
       setRevealedNationalIds({});
+      setEmployeeCodeDigits(splitEmployeeCode(employee.employeeCode)?.digits ?? "");
       setForm({
         companyId: employee.companyId,
         employeeCode: employee.employeeCode,
@@ -441,7 +495,7 @@ export default function EmployeeData() {
       return;
     }
     const missingFields: string[] = [];
-    if (!form.employeeCode.trim()) missingFields.push("รหัสพนักงาน (Employee Code)");
+    if (!effectiveEmployeeCode?.trim()) missingFields.push("รหัสพนักงาน (Employee Code)");
     // user_id is the business key training records hang off — it cannot be filled in later.
     if (!form.userId.trim()) missingFields.push("รหัสผู้ใช้จากระบบ HR ต้นทาง (User ID)");
     if (missingFields.length > 0) {
@@ -464,7 +518,7 @@ export default function EmployeeData() {
     setError(null);
     setMessage(null);
     try {
-      const payload = { ...form, nationalId };
+      const payload = { ...form, employeeCode: effectiveEmployeeCode, nationalId };
       const { nationalId: submittedNationalId, ...withoutNationalId } = payload;
       const result =
         savingMode === "edit" && editingEmployeeId
@@ -492,6 +546,7 @@ export default function EmployeeData() {
           : [...current, result.employee.companyId],
       );
       setMode(null);
+      setEmployeeCodeDigits("");
       setForm(blank(center ? result.employee.companyId : user?.companyId ?? ""));
       toast.success(`บันทึกพนักงาน ${result.employee.employeeCode} แล้ว / Employee saved`);
     } catch (saveError) {
@@ -536,6 +591,7 @@ export default function EmployeeData() {
 
   const refresh = () => {
     setMode(null);
+    setEmployeeCodeDigits("");
     setForm(blank(center ? (companies[0]?.companyId ?? "") : (user?.companyId ?? "")));
     setMessage(null);
     void load();
@@ -673,7 +729,16 @@ export default function EmployeeData() {
           <section className={styles.editorPanel}>
             <div className={styles.formGrid}>
               <label>
-                Company
+                <span className={styles.fieldLabel}>
+                  Company
+                  <span
+                    className={styles.fieldInfo}
+                    title="Sets the company part of the employee code automatically."
+                    aria-hidden="true"
+                  >
+                    i
+                  </span>
+                </span>
                 <select
                   disabled={!center}
                   value={form.companyId}
@@ -687,25 +752,74 @@ export default function EmployeeData() {
                 </select>
               </label>
               <label>
-                Employee Code
-                <input
-                  value={form.employeeCode}
-                  onChange={(event) => change("employeeCode", event.target.value)}
-                />
-              </label>
-              <label>
-                User ID
+                <span className={styles.fieldLabel}>
+                  User ID
+                  <span
+                    className={styles.fieldInfo}
+                    title="Must match the HR system, must be unique, and cannot be changed later."
+                    aria-hidden="true"
+                  >
+                    i
+                  </span>
+                </span>
                 <input
                   value={form.userId}
                   onChange={(event) => change("userId", event.target.value)}
-                  placeholder="Stable UserID from the HR source system"
+                  placeholder="UserID from the HR system"
                 />
-                <small>
-                  รหัสผู้ใช้จากระบบ HR ต้นทาง — ห้ามซ้ำ และไม่เปลี่ยนแม้รหัสพนักงานจะถูกแก้
-                </small>
+                <small>Requires the UserID from the HR system</small>
               </label>
               <label>
-                National ID (13 digits)
+                <span className={styles.fieldLabel}>
+                  Employee Code
+                  <span
+                    className={styles.fieldInfo}
+                    title="Six digits. The company part is filled in from the selected company, and a shorter number is padded with leading zeros."
+                    aria-hidden="true"
+                  >
+                    i
+                  </span>
+                </span>
+                {legacyEmployeeCode ? (
+                  <>
+                    <input value={form.employeeCode ?? ""} readOnly />
+                    <small>This code predates the current format and is left unchanged.</small>
+                  </>
+                ) : (
+                  <>
+                    <span className={styles.codeInput}>
+                      <span className={styles.codePrefix}>
+                        {employeeCodePrefix ? `${employeeCodePrefix}-` : "—"}
+                      </span>
+                      <input
+                        inputMode="numeric"
+                        maxLength={EMPLOYEE_CODE_DIGITS}
+                        value={employeeCodeDigits}
+                        onChange={(event) =>
+                          setEmployeeCodeDigits(
+                            event.target.value.replace(/\D/g, "").slice(0, EMPLOYEE_CODE_DIGITS),
+                          )
+                        }
+                        // Padded on leaving the field, not while typing — otherwise the caret
+                        // fights the user after every keystroke.
+                        onBlur={() => setEmployeeCodeDigits(padEmployeeCodeDigits(employeeCodeDigits))}
+                      />
+                    </span>
+                    <small>Six digits, e.g. 000162</small>
+                  </>
+                )}
+              </label>
+              <label>
+                <span className={styles.fieldLabel}>
+                  National ID (13 digits)
+                  <span
+                    className={styles.fieldInfo}
+                    title="Exactly 13 digits. Stored encrypted and shown masked afterwards."
+                    aria-hidden="true"
+                  >
+                    i
+                  </span>
+                </span>
                 <input
                   inputMode="numeric"
                   maxLength={13}
@@ -724,14 +838,33 @@ export default function EmployeeData() {
                 </small>
               </label>
               <label>
-                Title TH
+                <span className={styles.fieldLabel}>
+                  Title TH
+                  <span
+                    className={styles.fieldInfo}
+                    title="Thai titles for local staff; the English ones are used for foreign staff whose record carries no Thai name."
+                    aria-hidden="true"
+                  >
+                    i
+                  </span>
+                </span>
                 <select
                   value={form.titleTh ?? "นาย"}
-                  onChange={(event) => change("titleTh", event.target.value)}
+                  onChange={(event) => {
+                    const titleTh = event.target.value;
+                    // Picking a title fills the English one in to match, still editable after.
+                    setForm((current) => ({
+                      ...current,
+                      titleTh,
+                      titleEn: TITLE_TH_TO_EN[titleTh] ?? current.titleEn,
+                    }));
+                  }}
                 >
-                  <option value="นาย">นาย</option>
-                  <option value="นาง">นาง</option>
-                  <option value="นางสาว">นางสาว</option>
+                  {TITLE_TH_OPTIONS.map((title) => (
+                    <option key={title} value={title}>
+                      {title}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label>
@@ -750,10 +883,17 @@ export default function EmployeeData() {
               </label>
               <label>
                 Title EN
-                <input
+                <select
                   value={form.titleEn ?? ""}
                   onChange={(event) => change("titleEn", event.target.value || null)}
-                />
+                >
+                  <option value="">-</option>
+                  {TITLE_EN_OPTIONS.map((title) => (
+                    <option key={title} value={title}>
+                      {title}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label>
                 First Name EN
