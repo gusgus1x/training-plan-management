@@ -1673,7 +1673,7 @@ export default function TrainingRecord() {
                                 </>
                               ) : (
                                 <>
-                                  <span>✕</span> ไม่ผ่าน
+                                  <span className={styles.glowingDotRed} /> ไม่ผ่าน
                                 </>
                               )}
                             </span>
@@ -1692,7 +1692,7 @@ export default function TrainingRecord() {
                                 </>
                               ) : (
                                 <>
-                                  <span>⏳</span> รอดำเนินการ
+                                  <span className={styles.glowingDotAmber} /> รอดำเนินการ
                                 </>
                               )}
                             </span>
