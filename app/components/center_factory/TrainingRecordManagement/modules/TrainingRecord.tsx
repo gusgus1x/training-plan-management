@@ -1447,102 +1447,116 @@ export default function TrainingRecord() {
             </article>
           </section>
 
-          <section className={styles.addAttendeePanel} aria-label="Add attendee to recorded course">
-            <div className={styles.panelHeader}>
-              <div>
-                <p className={styles.kicker}>Post-Record Registration</p>
-                <h3>Add Attendee</h3>
+          {!isFactoryUser || selectedCourse.owner !== "CENTER" ? (
+            <section className={styles.addAttendeePanel} aria-label="Add attendee to recorded course">
+              <div className={styles.panelHeader}>
+                <div>
+                  <p className={styles.kicker}>Post-Record Registration</p>
+                  <h3>Add Attendee</h3>
+                </div>
+                <button type="button" onClick={() => setIsAddingAttendee(!isAddingAttendee)}>
+                  {isAddingAttendee ? "Cancel" : "+ Add Attendee"}
+                </button>
               </div>
-              <button type="button" onClick={() => setIsAddingAttendee(!isAddingAttendee)}>
-                {isAddingAttendee ? "Cancel" : "+ Add Attendee"}
-              </button>
-            </div>
 
-            {isAddingAttendee ? (
-              <div className={styles.addAttendeeWorkspace}>
-                <div className={styles.addAttendeeControls}>
-                  <label>
-                    Select Employee from Master Data
-                    <select
-                      value={selectedEmpCode}
-                      onChange={(event) => {
-                        setSelectedEmpCode(event.target.value);
-                        const master = masterEmployees.find(
-                          (employee) => employee.employeeCode === event.target.value,
-                        );
-
-                        if (master) {
-                          setCustomEmpCode(master.employeeCode);
-                          setCustomEmpName(
-                            `${master.titleEn || ""} ${
-                              master.firstNameEn || master.firstNameTh
-                            } ${master.lastNameEn || master.lastNameTh}`.trim(),
+              {isAddingAttendee ? (
+                <div className={styles.addAttendeeWorkspace}>
+                  <div className={styles.addAttendeeControls}>
+                    <label>
+                      Select Employee from Master Data
+                      <select
+                        value={selectedEmpCode}
+                        onChange={(event) => {
+                          setSelectedEmpCode(event.target.value);
+                          const master = masterEmployees.find(
+                            (employee) => employee.employeeCode === event.target.value,
                           );
-                          setCustomCompany(master.companyCode);
-                          setCustomDepartment(master.functionName || "");
-                        }
-                      }}
-                    >
-                      <option value="">Select Employee (Optional)</option>
-                      {masterEmployees.map((employee) => (
-                        <option key={employee.employeeId} value={employee.employeeCode}>
-                          {employee.employeeCode} / {employee.firstNameEn || employee.firstNameTh}{" "}
-                          {employee.lastNameEn || employee.lastNameTh} / {employee.companyCode} /{" "}
-                          {employee.functionName}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
 
-                  <label>
-                    Employee Code
-                    <input
-                      value={customEmpCode}
-                      onChange={(event) => setCustomEmpCode(event.target.value)}
-                      placeholder="e.g. ATA-1001"
-                    />
-                  </label>
+                          if (master) {
+                            setCustomEmpCode(master.employeeCode);
+                            setCustomEmpName(
+                              `${master.titleEn || ""} ${
+                                master.firstNameEn || master.firstNameTh
+                              } ${master.lastNameEn || master.lastNameTh}`.trim(),
+                            );
+                            setCustomCompany(master.companyCode);
+                            setCustomDepartment(master.functionName || "");
+                          }
+                        }}
+                      >
+                        <option value="">Select Employee (Optional)</option>
+                        {masterEmployees.map((employee) => (
+                          <option key={employee.employeeId} value={employee.employeeCode}>
+                            {employee.employeeCode} / {employee.firstNameEn || employee.firstNameTh}{" "}
+                            {employee.lastNameEn || employee.lastNameTh} / {employee.companyCode} /{" "}
+                            {employee.functionName}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-                  <label>
-                    Full Name
-                    <input
-                      value={customEmpName}
-                      onChange={(event) => setCustomEmpName(event.target.value)}
-                      placeholder="e.g. Mr. Somchai Promjai"
-                    />
-                  </label>
+                    <label>
+                      Employee Code
+                      <input
+                        value={customEmpCode}
+                        onChange={(event) => setCustomEmpCode(event.target.value)}
+                        placeholder="e.g. ATA-1001"
+                      />
+                    </label>
 
-                  <label>
-                    Company
-                    <input
-                      value={customCompany}
-                      onChange={(event) => setCustomCompany(event.target.value)}
-                      placeholder="e.g. ATA / SNF"
-                    />
-                  </label>
+                    <label>
+                      Full Name
+                      <input
+                        value={customEmpName}
+                        onChange={(event) => setCustomEmpName(event.target.value)}
+                        placeholder="e.g. Mr. Somchai Promjai"
+                      />
+                    </label>
 
-                  <label>
-                    Department / Function
-                    <input
-                      value={customDepartment}
-                      onChange={(event) => setCustomDepartment(event.target.value)}
-                      placeholder="e.g. Production"
-                    />
-                  </label>
+                    <label>
+                      Company
+                      <input
+                        value={customCompany}
+                        onChange={(event) => setCustomCompany(event.target.value)}
+                        placeholder="e.g. ATA / SNF"
+                      />
+                    </label>
 
-                  <div className={styles.addAttendeeActions}>
-                    <button type="button" onClick={() => void handleAddAttendee()}>
-                      Save & Add Attendee
-                    </button>
+                    <label>
+                      Department / Function
+                      <input
+                        value={customDepartment}
+                        onChange={(event) => setCustomDepartment(event.target.value)}
+                        placeholder="e.g. Production"
+                      />
+                    </label>
+
+                    <div className={styles.addAttendeeActions}>
+                      <button type="button" onClick={() => void handleAddAttendee()}>
+                        Save & Add Attendee
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
 
-            {addAttendeeMessage ? (
-              <p className={styles.downloadMessage}>{addAttendeeMessage}</p>
-            ) : null}
-          </section>
+              {addAttendeeMessage ? (
+                <p className={styles.downloadMessage}>{addAttendeeMessage}</p>
+              ) : null}
+            </section>
+          ) : (
+            <section className={styles.addAttendeePanel} style={{ opacity: 0.85, background: "rgba(241, 245, 249, 0.6)", border: "1px dashed #cbd5e1" }}>
+              <div className={styles.panelHeader}>
+                <div>
+                  <p className={styles.kicker}>Center Training Record Scope</p>
+                  <h3 style={{ color: "#475569" }}>🔒 หลักสูตรของส่วนกลาง (Center Training Record)</h3>
+                </div>
+                <span style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: 500 }}>
+                  ไม่อนุญาตให้โรงงานเพิ่มผู้เข้าร่วมในหลักสูตรของ Center ย้อนหลัง / Only HRD Center can manage attendees for Center records
+                </span>
+              </div>
+            </section>
+          )}
 
           {/* Executive Actual Attendees Workspace */}
           <section className={styles.evaluationDownloadPanel} aria-label="Actual attendees list">
