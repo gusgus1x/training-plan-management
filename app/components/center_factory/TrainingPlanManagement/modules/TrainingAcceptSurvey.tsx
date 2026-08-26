@@ -443,6 +443,11 @@ function PaginatedEmployeeGrid({
               (emp) => emp.id === employee.id || emp.employeeCode === employee.employeeCode,
             );
             const enrollment = enrollments.find(
+              (c) =>
+                (c.employeeCode === employee.employeeCode || c.employeeId === employee.id) &&
+                c.status !== "Rejected" &&
+                c.status !== "Cancelled",
+            ) || enrollments.find(
               (c) => c.employeeCode === employee.employeeCode || c.employeeId === employee.id,
             );
 
@@ -1189,7 +1194,9 @@ export default function TrainingAcceptSurvey() {
       );
       const isAlreadyEnrolled = enrollments.some(
         (candidate) =>
-          candidate.employeeCode === employee.employeeCode || candidate.employeeId === employee.id,
+          (candidate.employeeCode === employee.employeeCode || candidate.employeeId === employee.id) &&
+          candidate.status !== "Rejected" &&
+          candidate.status !== "Cancelled",
       );
       if (isAlreadyDraft || isAlreadyEnrolled) {
         toast.info(`พนักงาน ${employee.employeeCode} อยู่ในรายการแล้ว`);
