@@ -1097,7 +1097,7 @@ export default function TrainingRolling() {
                           <span>Batch <span className={styles.required}>*</span></span>
                           <input
                             disabled={!selectedOap}
-                            placeholder="Optional label, e.g. Supervisor batch"
+                            placeholder="Optional label, e.g. batch 1 or Supervisor batch"
                             value={session.batchName}
                             onChange={(event) =>
                               updateSession(session.id, "batchName", event.target.value)

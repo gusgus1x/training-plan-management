@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useToast } from "../../../ToastHost";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import {
   formatRollingPlanCompanies,
   getRollingPlanCompanies,
@@ -154,6 +155,7 @@ const isCenterCourse = (course: Pick<ActualCourse, "owner" | "ownerCompany" | "c
 export default function TrainingActual() {
   const user = useAuthenticatedUser();
   const toast = useToast();
+  const { language } = useUiLanguage();
   const [courses, setCourses] = useState<ActualCourse[]>([]);
   const [courseOwnerFilter, setCourseOwnerFilter] = useState<CourseOwnerFilter>("");
   const [selectedCourseGroupId, setSelectedCourseGroupId] = useState("");
@@ -830,7 +832,15 @@ export default function TrainingActual() {
                 <strong>THB {formatCurrency(actualCostPerPerson)}</strong>
               </div>
               <small>
-                Calculated from THB {formatCurrency(savedActualTotal)} ÷ {costBreakdown?.presentCount ?? 0} present attendee{(costBreakdown?.presentCount ?? 0) === 1 ? "" : "s"}
+                {(() => {
+                  // Built at call time with the totals in it, so the DOM localizer can never
+                  // match it against a dictionary key — pick the language here instead.
+                  const present = costBreakdown?.presentCount ?? 0;
+                  const total = formatCurrency(savedActualTotal);
+                  return language === "th"
+                    ? `คำนวณจาก THB ${total} ÷ ผู้เข้าอบรมที่มาจริง ${present} คน`
+                    : `Calculated from THB ${total} ÷ ${present} present attendee${present === 1 ? "" : "s"}`;
+                })()}
               </small>
             </div>
 

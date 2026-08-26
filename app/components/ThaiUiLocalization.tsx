@@ -985,6 +985,13 @@ const thaiUiDictionary: Record<string, string> = {
   Material: "ค่าวัสดุ",
   "Seminar Room": "ค่าห้องสัมมนา",
   Traveling: "ค่าเดินทาง",
+  Category: "รายการ",
+  "Course total (all companies)": "รวมทั้งหลักสูตร (ทุกบริษัท)",
+  Variance: "ส่วนต่าง",
+  "Actual (saved)": "ใช้จ่ายจริง (บันทึกแล้ว)",
+  "Total Actual Cost (unsaved draft)": "ค่าใช้จ่ายจริงรวม (ฉบับร่าง ยังไม่บันทึก)",
+  "Cost / Person (Actual)": "ค่าใช้จ่ายต่อคน (จริง)",
+  "Cost / Person (Actual, saved)": "ค่าใช้จ่ายต่อคน (จริง บันทึกแล้ว)",
   "Job application / transfer": "สมัครงาน / โอนย้ายงาน",
   "Resignation document": "เอกสารลาออก",
   "Use this file as a complete training record for resignation documents.":
@@ -1436,6 +1443,10 @@ const thaiAttributeDictionary: Record<string, string> = {
     "ค้นหารหัสหลักสูตร ชื่อหลักสูตร หรือหน่วยงาน",
   "Search course code, name, type, group":
     "ค้นหารหัส ชื่อ ประเภท หรือกลุ่มหลักสูตร",
+  "Search course code, name, batch, location, status...":
+    "ค้นหารหัสหลักสูตร ชื่อ รุ่น สถานที่ หรือสถานะ...",
+  "Optional label, e.g. batch 1 or Supervisor batch":
+    "ป้ายกำกับรุ่น เช่น 1 หรือ รุ่นหัวหน้างาน 1",
   "Search course standard": "ค้นหามาตรฐานหลักสูตร",
   "Search course type": "ค้นหาประเภทหลักสูตร",
   "Search course, provider, certificate...":
