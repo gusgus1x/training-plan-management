@@ -250,7 +250,7 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
         const { targetMatchStatus, levelMatchStatus, standardCourseId } = await computeTargetMatch(db(), courseId, employee);
 
         const isOwnFactoryPlan = planCompanyId !== null && companyId !== null && planCompanyId.toString() === companyId;
-        const autoApprove = role === "HRD_CENTER" || (role === "HRD_FACTORY" && isOwnFactoryPlan);
+        const autoApprove = input.autoApprove ?? (role === "HRD_CENTER" || (role === "HRD_FACTORY" && isOwnFactoryPlan));
 
         const data: Prisma.training_enrollmentUncheckedCreateInput = {
           plan_id: planId,
@@ -281,7 +281,30 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
           ? await db().training_enrollment.update({ where: { enrollment_id: existing.enrollment_id }, data, include: enrollmentInclude })
           : await db().training_enrollment.create({ data, include: enrollmentInclude });
 
-        return mapEnrollment(saved);
+        if (input.markAttended) {
+          await db().attendance.upsert({
+            where: { enrollment_id: saved.enrollment_id },
+            create: {
+              enrollment_id: saved.enrollment_id,
+              attendance_status: "PRESENT",
+              attendance_method: "MANUAL",
+              check_in_at: new Date(),
+              recorded_by: BigInt(userId),
+            },
+            update: {
+              attendance_status: "PRESENT",
+              check_in_at: new Date(),
+              recorded_by: BigInt(userId),
+            },
+          });
+        }
+
+        const refreshed = await db().training_enrollment.findUniqueOrThrow({
+          where: { enrollment_id: saved.enrollment_id },
+          include: enrollmentInclude,
+        });
+
+        return mapEnrollment(refreshed);
       });
     },
 
