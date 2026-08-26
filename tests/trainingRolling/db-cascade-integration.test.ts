@@ -1,11 +1,16 @@
 import { config as loadEnvironment } from "dotenv";
 import { describe, expect, it } from "vitest";
 
+// Creates and deletes real rows, so it follows the same gate as the other database-mutation
+// tests: skipped unless RUN_DATABASE_MUTATION_TESTS=1 is set.
+const databaseMutationTest =
+  process.env.RUN_DATABASE_MUTATION_TESTS === "1" ? it : it.skip;
+
 loadEnvironment({ path: ".env", quiet: true });
 loadEnvironment({ path: ".env.local", quiet: true });
 
 describe("Database Cascade Deletion Live Integration Tests", () => {
-  it("verifies rollingPlanRepository.delete() removes training plan and cascading records from database", async () => {
+  databaseMutationTest("verifies rollingPlanRepository.delete() removes training plan and cascading records from database", async () => {
     const { getPrismaClient, resetPrismaClient } = await import(
       "../../app/lib/database/prisma"
     );

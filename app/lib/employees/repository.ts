@@ -5,7 +5,7 @@ import { withDatabaseErrorMapping } from "../database/errors";
 import { maskNationalId } from "./nationalId";
 import type { EmployeeInput, EmployeeListFilters, EmployeeRecord } from "./types";
 
-const map=(r:any):EmployeeRecord=>({employeeId:String(r.employee_id),companyId:String(r.company_id),companyCode:r.company.company_code,employeeCode:r.employee_code,
+const map=(r:any):EmployeeRecord=>({employeeId:String(r.employee_id),userId:r.user_id,companyId:String(r.company_id),companyCode:r.company.company_code,employeeCode:r.employee_code,
   functionId:r.function_id?String(r.function_id):null,functionCode:r.organization_function?.function_code??null,functionName:r.organization_function?.function_name_en??r.organization_function?.function_name_th??null,
   divisionId:r.division_id?String(r.division_id):null,divisionCode:r.division?.division_code??null,divisionName:r.division?.division_name_en??r.division?.division_name_th??null,
   departmentId:r.department_id?String(r.department_id):null,departmentCode:r.department?.department_code??null,departmentName:r.department?.department_name_en??r.department?.department_name_th??null,
@@ -18,7 +18,7 @@ const map=(r:any):EmployeeRecord=>({employeeId:String(r.employee_id),companyId:S
 
 const include={company:true,organization_function:true,division:true,department:true,section:true,position:true,employee_level:true} as const;
 const data=(i:EmployeeInput,p:{hash:string;encrypted:Buffer;last4:string;keyVersion:number})=>({company_id:BigInt(i.companyId),function_id:i.functionId?BigInt(i.functionId):null,division_id:i.divisionId?BigInt(i.divisionId):null,department_id:i.departmentId?BigInt(i.departmentId):null,section_id:i.sectionId?BigInt(i.sectionId):null,position_id:i.positionId?BigInt(i.positionId):null,level_id:i.levelId?BigInt(i.levelId):null,
-  employee_code:i.employeeCode,national_id_hash:p.hash,national_id_encrypted:Uint8Array.from(p.encrypted),national_id_last4:p.last4,national_id_key_version:p.keyVersion,
+  employee_code:i.employeeCode,user_id:i.userId.trim(),national_id_hash:p.hash,national_id_encrypted:Uint8Array.from(p.encrypted),national_id_last4:p.last4,national_id_key_version:p.keyVersion,
   birth_date:i.birthDate?new Date(`${i.birthDate}T00:00:00Z`):null,hire_date:i.hireDate?new Date(`${i.hireDate}T00:00:00Z`):null,title_th:i.titleTh,title_en:i.titleEn,
   first_name_th:i.firstNameTh,last_name_th:i.lastNameTh,first_name_en:i.firstNameEn,last_name_en:i.lastNameEn,telephone:i.telephone,email:i.email,employment_status:i.employmentStatus});
 

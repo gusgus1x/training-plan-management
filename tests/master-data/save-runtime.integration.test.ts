@@ -24,6 +24,7 @@ run(
   "updates all API-backed Master Data through a real HRD_CENTER session",
   async () => {
     loadEnvironment({ path: ".env.local", quiet: true });
+    loadEnvironment({ path: ".env", quiet: true });
     const { getPrismaClient, resetPrismaClient } = await import(
       "../../app/lib/database/prisma"
     );

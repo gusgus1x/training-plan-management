@@ -102,6 +102,7 @@ export const resolveActivePrincipal = (
       username: account.username,
       role: account.roleCode,
       employeeId: account.employeeId,
+      employeeUserId: account.employeeUserId,
       companyId: account.employeeCompanyId,
       ...buildProfile(account),
     };
@@ -120,6 +121,7 @@ export const resolveActivePrincipal = (
       username: account.username,
       role: account.roleCode,
       employeeId: account.employeeId,
+      employeeUserId: account.employeeUserId,
       companyId: account.accountCompanyId,
       ...buildProfile(account),
     };
@@ -130,6 +132,7 @@ export const resolveActivePrincipal = (
     username: account.username,
     role: account.roleCode,
     employeeId: null,
+    employeeUserId: null,
     companyId: null,
     ...buildProfile(account),
   };

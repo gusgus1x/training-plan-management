@@ -114,7 +114,7 @@ export default function RegisterTrainingModule() {
       return;
     }
     try {
-      const result = await listEnrollments({ planId: null, employeeId });
+      const result = await listEnrollments({ planId: null, employeeId, employeeUserId: null });
       setEnrollments(result.enrollments || []);
     } catch (error) {
       console.error("Failed to load my registrations", error);
@@ -198,7 +198,7 @@ export default function RegisterTrainingModule() {
         }
         await updateEnrollmentStatus(course.enrollmentId, { action: "cancel" });
       } else {
-        await createEnrollment({ planId: course.rollingId, employeeId, source: "EMPLOYEE" });
+        await createEnrollment({ planId: course.rollingId, employeeId, employeeUserId: null, source: "EMPLOYEE" });
       }
       await loadEnrollments();
       toast.success(

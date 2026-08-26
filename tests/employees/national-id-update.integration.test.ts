@@ -49,6 +49,7 @@ run(
   "changes and re-encrypts a National ID through an HRD_CENTER session",
   async () => {
     loadEnvironment({ path: ".env.local", quiet: true });
+    loadEnvironment({ path: ".env", quiet: true });
     const { getPrismaClient, resetPrismaClient } = await import(
       "../../app/lib/database/prisma"
     );
@@ -144,6 +145,7 @@ run(
   "saves Employee 1 with the same payload sent by the Edit form",
   async () => {
     loadEnvironment({ path: ".env.local", quiet: true });
+    loadEnvironment({ path: ".env", quiet: true });
     const { getPrismaClient, resetPrismaClient } = await import(
       "../../app/lib/database/prisma"
     );

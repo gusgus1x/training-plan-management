@@ -11,6 +11,7 @@ const principal: AuthenticatedPrincipal = {
   role: "HRD_CENTER",
   companyId: null,
   employeeId: null,
+  employeeUserId: null,
   email: null,
   employeeCode: null,
   displayName: null,
@@ -27,9 +28,11 @@ const principal: AuthenticatedPrincipal = {
 
 const current: EmployeeRecord = {
   employeeId: "1",
+
   companyId: "1",
   companyCode: "CENTER",
   employeeCode: "CENTER-001",
+  userId: "CENTER-001-UID",
   functionId: null,
   functionCode: null,
   functionName: null,

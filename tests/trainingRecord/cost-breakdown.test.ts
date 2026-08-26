@@ -8,6 +8,7 @@ const centerPrincipal: AuthenticatedPrincipal = {
   role: "HRD_CENTER",
   companyId: null,
   employeeId: null,
+  employeeUserId: null,
   email: null,
   employeeCode: null,
   displayName: null,

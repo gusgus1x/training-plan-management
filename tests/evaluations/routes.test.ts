@@ -17,6 +17,7 @@ const center: AuthenticatedPrincipal = {
   username: "center.test",
   role: "HRD_CENTER",
   employeeId: null,
+  employeeUserId: null,
   companyId: null,
   email: null,
   employeeCode: null,
@@ -47,6 +48,7 @@ const employee: AuthenticatedPrincipal = {
   username: "employee.test",
   role: "EMPLOYEE",
   employeeId: "10",
+  employeeUserId: "USER-10",
 };
 
 const evaluation = {

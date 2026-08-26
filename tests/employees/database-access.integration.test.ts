@@ -20,6 +20,7 @@ const principal = (
   role,
   companyId,
   employeeId,
+  employeeUserId: employeeId ? `USER-${employeeId}` : null,
   email: null,
   employeeCode: null,
   displayName: null,
@@ -36,6 +37,7 @@ const principal = (
 
 run("reveals every encrypted National ID through center access", async () => {
   loadEnvironment({ path: ".env.local", quiet: true });
+    loadEnvironment({ path: ".env", quiet: true });
   const { employeeService } = await import("../../app/lib/employees/service");
   const { getPrismaClient, resetPrismaClient } = await import(
     "../../app/lib/database/prisma"
@@ -62,6 +64,7 @@ run("reveals every encrypted National ID through center access", async () => {
 
 run("enforces employee and factory reveal scope", async () => {
   loadEnvironment({ path: ".env.local", quiet: true });
+    loadEnvironment({ path: ".env", quiet: true });
   const { employeeService } = await import("../../app/lib/employees/service");
   const { getPrismaClient, resetPrismaClient } = await import(
     "../../app/lib/database/prisma"
@@ -95,6 +98,7 @@ run("enforces employee and factory reveal scope", async () => {
 
 run("returns the full National ID through the protected dynamic route", async () => {
   loadEnvironment({ path: ".env.local", quiet: true });
+    loadEnvironment({ path: ".env", quiet: true });
   const { getPrismaClient, resetPrismaClient } = await import(
     "../../app/lib/database/prisma"
   );

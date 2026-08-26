@@ -616,7 +616,7 @@ export default function TrainingAcceptSurvey() {
       loadWorkflowRollingPlans().catch(() => []),
       listCourses({ search: "", status: null }).catch(() => ({ standards: [] })),
       listEmployees().catch(() => ({ items: [] })),
-      listEnrollments({ planId: null, employeeId: null }).catch(() => ({ enrollments: [] })),
+      listEnrollments({ planId: null, employeeId: null, employeeUserId: null }).catch(() => ({ enrollments: [] })),
     ]).then(([plans, courseResult, empResult, enrollResult]) => {
       if (!active) return;
       setRollingPlans(plans);
@@ -784,7 +784,7 @@ export default function TrainingAcceptSurvey() {
       return;
     }
     let active = true;
-    listEnrollments({ planId: selectedCourse.id, employeeId: null })
+    listEnrollments({ planId: selectedCourse.id, employeeId: null, employeeUserId: null })
       .then((result) => {
         if (active) setEnrollments(result.enrollments || []);
       })
@@ -800,7 +800,7 @@ export default function TrainingAcceptSurvey() {
   const reloadEnrollments = async () => {
     if (!selectedCourse) return;
     try {
-      const result = await listEnrollments({ planId: selectedCourse.id, employeeId: null });
+      const result = await listEnrollments({ planId: selectedCourse.id, employeeId: null, employeeUserId: null });
       setEnrollments(result.enrollments || []);
     } catch (error) {
       console.error("Failed to reload candidates", error);
@@ -1105,6 +1105,7 @@ export default function TrainingAcceptSurvey() {
       await createEnrollment({
         planId: selectedCourse.id,
         employeeId: employee.id,
+        employeeUserId: null,
         source: roleMode === "center" ? "HRD_CENTER" : "HRD_FACTORY",
       });
       await reloadEnrollments();

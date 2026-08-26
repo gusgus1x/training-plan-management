@@ -264,7 +264,7 @@ export default function TrainingActual() {
       return;
     }
     let active = true;
-    listEnrollments({ planId: selectedCourse.id, employeeId: null })
+    listEnrollments({ planId: selectedCourse.id, employeeId: null, employeeUserId: null })
       .then((result) => {
         if (active) setEnrollments(result.enrollments || []);
       })
@@ -371,7 +371,7 @@ export default function TrainingActual() {
   const reloadEnrollments = async () => {
     if (!selectedCourse) return;
     try {
-      const result = await listEnrollments({ planId: selectedCourse.id, employeeId: null });
+      const result = await listEnrollments({ planId: selectedCourse.id, employeeId: null, employeeUserId: null });
       setEnrollments(result.enrollments || []);
     } catch (error) {
       console.error("Failed to reload attendees", error);

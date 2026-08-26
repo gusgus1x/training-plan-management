@@ -11,6 +11,7 @@ databaseMutationTest(
   "performs Instructor CRUD through the application login",
   async () => {
     loadEnvironment({ path: ".env.local", quiet: true });
+    loadEnvironment({ path: ".env", quiet: true });
     const { getPrismaClient, resetPrismaClient } = await import(
       "../../app/lib/database/prisma"
     );
@@ -54,6 +55,7 @@ databaseMutationTest(
   "updates Instructor with the full Edit-form payload through a real HRD_CENTER session",
   async () => {
     loadEnvironment({ path: ".env.local", quiet: true });
+    loadEnvironment({ path: ".env", quiet: true });
     const { getPrismaClient, resetPrismaClient } = await import(
       "../../app/lib/database/prisma"
     );

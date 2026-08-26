@@ -21,6 +21,7 @@ const principal: AuthenticatedPrincipal = {
   username: "factory.test",
   role: "HRD_FACTORY",
   employeeId: null,
+  employeeUserId: null,
   companyId: "7",
   email: "factory.test@example.invalid",
   employeeCode: "DEV-FACTORY-001",

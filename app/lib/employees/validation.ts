@@ -11,7 +11,7 @@ const status=(v:unknown,fallback?:EmploymentStatus):EmploymentStatus=>{if(v===un
 const national=(o:InputObject)=>{const v=readRequiredString(o,"nationalId",{maxLength:13});if(!isValidThaiNationalId(v))throw invalid("nationalId","National ID must contain exactly 13 digits");return v};
 const thaiTitle=(o:InputObject)=>{const v=readRequiredString(o,"titleTh",{maxLength:50});if(!["นาย","นาง","นางสาว"].includes(v))throw invalid("titleTh","Title TH must be นาย, นาง, or นางสาว");return v};
 export const parseCreateEmployee=(o:InputObject):EmployeeInput=>({
-  companyId:readPositiveId(o.companyId,"companyId"),employeeCode:readRequiredString(o,"employeeCode",{maxLength:50}).toUpperCase(),
+  companyId:readPositiveId(o.companyId,"companyId"),employeeCode:readRequiredString(o,"employeeCode",{maxLength:50}).toUpperCase(),userId:readRequiredString(o,"userId",{maxLength:50}),
   functionId:optionalId(o,"functionId"),divisionId:optionalId(o,"divisionId"),departmentId:optionalId(o,"departmentId"),sectionId:optionalId(o,"sectionId"),
   positionId:optionalId(o,"positionId"),levelId:optionalId(o,"levelId"),nationalId:national(o),
   titleTh:thaiTitle(o),titleEn:readOptionalString(o,"titleEn",{maxLength:50}),
@@ -20,7 +20,7 @@ export const parseCreateEmployee=(o:InputObject):EmployeeInput=>({
   birthDate:date(o,"birthDate"),hireDate:date(o,"hireDate"),telephone:readOptionalString(o,"telephone",{maxLength:30}),
   email:readOptionalString(o,"email",{maxLength:255}),employmentStatus:status(o.employmentStatus,"ACTIVE")});
 export const parseUpdateEmployee=(o:InputObject):UpdateEmployeeInput=>{const u:UpdateEmployeeInput={};
-  if(own(o,"companyId"))u.companyId=readPositiveId(o.companyId,"companyId");if(own(o,"employeeCode"))u.employeeCode=readRequiredString(o,"employeeCode",{maxLength:50}).toUpperCase();
+  if(own(o,"companyId"))u.companyId=readPositiveId(o.companyId,"companyId");if(own(o,"employeeCode"))u.employeeCode=readRequiredString(o,"employeeCode",{maxLength:50}).toUpperCase();if(own(o,"userId"))u.userId=readRequiredString(o,"userId",{maxLength:50});
   for(const k of ["functionId","divisionId","departmentId","sectionId","positionId","levelId"] as const)if(own(o,k))u[k]=optionalId(o,k);if(own(o,"nationalId"))u.nationalId=national(o);
   if(own(o,"titleTh"))u.titleTh=thaiTitle(o);for(const k of ["titleEn","firstNameEn","lastNameEn","telephone","email"] as const)if(own(o,k))u[k]=readOptionalString(o,k,{maxLength:k==="telephone"?30:k.startsWith("title")?50:k==="email"?255:150});
   for(const k of ["firstNameTh","lastNameTh"] as const)if(own(o,k))u[k]=readRequiredString(o,k,{maxLength:150});

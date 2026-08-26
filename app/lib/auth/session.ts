@@ -84,6 +84,7 @@ const sign = (encodedPayload: string, secret: string) =>
 
 const nullablePrincipalFields = [
   "employeeId",
+  "employeeUserId",
   "companyId",
   "email",
   "employeeCode",

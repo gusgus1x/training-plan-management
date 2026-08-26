@@ -27,6 +27,7 @@ const center: AuthenticatedPrincipal = {
   username: "center.test",
   role: "HRD_CENTER",
   employeeId: null,
+  employeeUserId: null,
   companyId: null,
   email: null,
   employeeCode: null,

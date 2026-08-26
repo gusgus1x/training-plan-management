@@ -10,6 +10,7 @@ export type AuthenticationAccount = {
   roleCode: string;
   roleStatus: string;
   employeeId: string | null;
+  employeeUserId: string | null;
   employeeStatus: string | null;
   employeeCompanyId: string | null;
   employeeCompanyStatus: string | null;
@@ -41,6 +42,7 @@ export type AuthenticatedPrincipal = {
   userId: string;
   username: string;
   role: RoleCode;
+  employeeUserId: string | null;
   employeeId: string | null;
   companyId: string | null;
   email: string | null;

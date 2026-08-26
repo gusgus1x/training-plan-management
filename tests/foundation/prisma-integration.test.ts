@@ -8,6 +8,7 @@ databaseTest(
   "connects through the Prisma SQL Server adapter without mutating data",
   async () => {
     loadEnvironment({ path: ".env.local", quiet: true });
+    loadEnvironment({ path: ".env", quiet: true });
     const { getPrismaClient, resetPrismaClient } = await import(
       "../../app/lib/database/prisma"
     );

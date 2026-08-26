@@ -126,7 +126,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
     let active = true;
     setIsLoading(true);
     const fetchEnrollments = employeeId
-      ? listEnrollments({ planId: null, employeeId }).catch(() => ({ enrollments: [] }))
+      ? listEnrollments({ planId: null, employeeId, employeeUserId: null }).catch(() => ({ enrollments: [] }))
       : Promise.resolve({ enrollments: [] });
 
     void Promise.all([

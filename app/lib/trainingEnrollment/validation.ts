@@ -19,11 +19,21 @@ const action = (value: unknown): EnrollmentAction => {
   return value as EnrollmentAction;
 };
 
-export const parseCreateEnrollment = (input: InputObject): CreateEnrollmentInput => ({
-  planId: readRequiredString(input, "planId"),
-  employeeId: readRequiredString(input, "employeeId"),
-  source: source(input.source),
-});
+// Both employee keys are accepted while Phase 20 runs them in parallel, but the caller must say
+// which one it is sending. Guessing from the value is not an option: every user_id in the database
+// is an 8-digit number, so a sniffing rule would rest on employee_id never reaching 8 digits —
+// a silent assumption on an authorization-relevant identifier.
+export const parseCreateEnrollment = (input: InputObject): CreateEnrollmentInput => {
+  const employeeUserId = readOptionalString(input, "employeeUserId");
+
+  return {
+    planId: readRequiredString(input, "planId"),
+    // employeeId stays required so no existing caller breaks during the parallel window.
+    employeeId: readRequiredString(input, "employeeId"),
+    employeeUserId: employeeUserId || null,
+    source: source(input.source),
+  };
+};
 
 export const parseUpdateEnrollment = (input: InputObject): UpdateEnrollmentInput => ({
   action: action(input.action),
@@ -40,4 +50,5 @@ export const parseSetAttendance = (input: InputObject): SetAttendanceInput => {
 export const parseEnrollmentListFilters = (params: URLSearchParams): EnrollmentListFilters => ({
   planId: params.get("planId")?.trim() || null,
   employeeId: params.get("employeeId")?.trim() || null,
+  employeeUserId: params.get("employeeUserId")?.trim() || null,
 });

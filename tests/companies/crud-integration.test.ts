@@ -8,6 +8,7 @@ databaseMutationTest(
   "creates, updates, and deletes an unreferenced company through the app login",
   async () => {
     loadEnvironment({ path: ".env.local", quiet: true });
+    loadEnvironment({ path: ".env", quiet: true });
     const { getPrismaClient, resetPrismaClient } = await import(
       "../../app/lib/database/prisma"
     );

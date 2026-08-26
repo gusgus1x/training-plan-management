@@ -16,6 +16,7 @@ const activeEmployeeAccount = (
   roleCode: "EMPLOYEE",
   roleStatus: "ACTIVE",
   employeeId: "101",
+  employeeUserId: "USER-101",
   employeeStatus: "ACTIVE",
   employeeCompanyId: "10",
   employeeCompanyStatus: "ACTIVE",

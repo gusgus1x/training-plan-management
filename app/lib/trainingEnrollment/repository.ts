@@ -62,6 +62,8 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
     id: row.enrollment_id.toString(),
     planId: row.plan_id.toString(),
     employeeId: row.employee_id.toString(),
+    // Carried through so the layers above can move to the durable key without another query.
+    employeeUserId: row.employee_user_id ?? employee.user_id ?? null,
     employeeCode: employee.employee_code,
     employeeName: employeeDisplayName(employee),
     prefix: employee.title_th || employee.title_en || "",
@@ -209,7 +211,9 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
     async list(filters: EnrollmentListFilters, companyId: string | null) {
       const where: Prisma.training_enrollmentWhereInput = {};
       if (filters.planId) where.plan_id = BigInt(filters.planId);
-      if (filters.employeeId) where.employee_id = BigInt(filters.employeeId);
+      // The durable key wins when the caller supplies it; employee_id remains the legacy filter.
+      if (filters.employeeUserId) where.employee_user_id = filters.employeeUserId;
+      else if (filters.employeeId) where.employee_id = BigInt(filters.employeeId);
       if (companyId) {
         // A factory HRD needs visibility into both directions: enrollments under a plan
         // their own company owns (any employee), and their own employees' enrollments
@@ -233,9 +237,12 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
     async create(input: CreateEnrollmentInput, userId: string, role: string, companyId: string | null) {
       return withDatabaseErrorMapping(async () => {
         const planId = BigInt(input.planId);
-        const employeeId = BigInt(input.employeeId);
         const { courseId, companyId: planCompanyId } = await loadPlanScope(db(), planId);
-        const employee = await db().employee.findUniqueOrThrow({ where: { employee_id: employeeId }, include: employeeInclude });
+        // Resolve by the durable key when the caller sent one, otherwise by the surrogate id.
+        const employee = input.employeeUserId
+          ? await db().employee.findUniqueOrThrow({ where: { user_id: input.employeeUserId }, include: employeeInclude })
+          : await db().employee.findUniqueOrThrow({ where: { employee_id: BigInt(input.employeeId) }, include: employeeInclude });
+        const employeeId = employee.employee_id;
 
         if (role === "HRD_FACTORY") {
           assertFactoryScopeForEnrollment(planCompanyId, employee.company_id, companyId);
@@ -249,6 +256,9 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
         const data: Prisma.training_enrollmentUncheckedCreateInput = {
           plan_id: planId,
           employee_id: employeeId,
+          // Both employee links are written while the two keys run in parallel (Phase 20 Stage 2).
+          // Writing only the old one would let new rows drift out of step with the new column.
+          employee_user_id: employee.user_id,
           enrollment_source: input.source,
           approval_status: autoApprove ? "APPROVED" : "PENDING",
           standard_course_id: standardCourseId,
@@ -286,6 +296,7 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
       role: string,
       companyId: string | null,
       requesterEmployeeId: string | null,
+      requesterEmployeeUserId: string | null,
     ) {
       return withDatabaseErrorMapping(async () => {
         const enrollmentId = BigInt(id);
@@ -301,7 +312,16 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
             companyId,
           );
         } else if (role === "EMPLOYEE") {
-          if (action !== "cancel" || requesterEmployeeId === null || current.employee_id.toString() !== requesterEmployeeId) {
+          // Same rule as requireEmployeeOwnership: either key may prove it, neither may be assumed.
+          const ownsByDurableKey =
+            requesterEmployeeUserId !== null &&
+            current.employee_user_id !== null &&
+            current.employee_user_id === requesterEmployeeUserId;
+          const ownsBySurrogateKey =
+            requesterEmployeeId !== null &&
+            current.employee_id.toString() === requesterEmployeeId;
+
+          if (action !== "cancel" || (!ownsByDurableKey && !ownsBySurrogateKey)) {
             throw forbidden("You can only withdraw your own registration");
           }
         }

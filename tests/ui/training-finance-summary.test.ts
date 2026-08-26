@@ -136,6 +136,7 @@ describe("training finance summary", () => {
         id: `enrollment-${index}`,
         planId: centerPlan.rollingId,
         employeeId: `employee-${index}`,
+        employeeUserId: `user-${index}`,
         employeeCode: id,
         employeeName: id,
         company,

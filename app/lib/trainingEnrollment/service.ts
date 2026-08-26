@@ -15,8 +15,9 @@ export const createEnrollmentService = (repository: EnrollmentRepository = enrol
     role: string,
     companyId: string | null,
     requesterEmployeeId: string | null,
+    requesterEmployeeUserId: string | null,
   ) {
-    return repository.updateStatus(id, action, reason, userId, role, companyId, requesterEmployeeId);
+    return repository.updateStatus(id, action, reason, userId, role, companyId, requesterEmployeeId, requesterEmployeeUserId);
   },
   async setAttendance(id: string, attended: boolean, userId: string, role: string, companyId: string | null) {
     return repository.setAttendance(id, attended, userId, role, companyId);

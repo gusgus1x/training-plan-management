@@ -8,6 +8,7 @@ const run = process.env.RUN_DATABASE_MUTATION_TESTS === "1" ? it : it.skip;
 
 run("creates, reads, updates, and deletes an Assessment through the least-privilege app login", async () => {
   loadEnvironment({ path: ".env.local", quiet: true });
+    loadEnvironment({ path: ".env", quiet: true });
   const [{ createAssessmentRepository }, { getPrismaClient, resetPrismaClient }] = await Promise.all([
     import("../../app/lib/assessments/repository"),
     import("../../app/lib/database/prisma"),

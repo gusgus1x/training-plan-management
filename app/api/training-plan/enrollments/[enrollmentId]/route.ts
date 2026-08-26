@@ -21,6 +21,7 @@ export const createUpdateEnrollmentHandler = (dependencies: Dependencies = {}) =
       principal.role,
       principal.role === "HRD_FACTORY" ? principal.companyId : null,
       principal.employeeId,
+      principal.employeeUserId,
     );
     return apiSuccess({ enrollment });
   }, options(dependencies.auth));

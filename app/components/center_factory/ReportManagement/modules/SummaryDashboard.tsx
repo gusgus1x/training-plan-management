@@ -87,7 +87,7 @@ export default function SummaryDashboard() {
 
   useEffect(() => {
     void loadWorkflowRollingPlans().then(setRollingPlans);
-    void listEnrollments({ planId: null, employeeId: null })
+    void listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
       .then((result) => setEnrollments(result.enrollments || []))
       .catch((error) => {
         console.error("Failed to load enrollments", error);

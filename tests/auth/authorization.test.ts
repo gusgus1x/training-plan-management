@@ -11,6 +11,7 @@ const employee: AuthenticatedPrincipal = {
   username: "employee.test",
   role: "EMPLOYEE",
   employeeId: "101",
+  employeeUserId: "USER-101",
   companyId: "10",
   email: null,
   employeeCode: "DEV-EMP-001",
@@ -31,6 +32,7 @@ const factory: AuthenticatedPrincipal = {
   username: "factory.test",
   role: "HRD_FACTORY",
   employeeId: null,
+  employeeUserId: null,
   companyId: "10",
   email: null,
   employeeCode: "DEV-HRD-001",
@@ -51,6 +53,7 @@ const center: AuthenticatedPrincipal = {
   username: "center.test",
   role: "HRD_CENTER",
   employeeId: null,
+  employeeUserId: null,
   companyId: null,
   email: null,
   employeeCode: null,
@@ -80,6 +83,34 @@ describe("authorization foundation", () => {
     expect(() => requireEmployeeOwnership(factory, "101")).toThrow(
       "Access denied",
     );
+  });
+
+  it("accepts the durable user key while both employee keys are live", () => {
+    // Matching on the durable key alone is enough, even when the surrogate id disagrees —
+    // that is the case a re-import of employee data produces.
+    expect(() =>
+      requireEmployeeOwnership(employee, "999", "USER-101"),
+    ).not.toThrow();
+    expect(() =>
+      requireEmployeeOwnership(employee, "999", "USER-999"),
+    ).toThrow("Access denied");
+  });
+
+  it("refuses an employee account that is not linked to anyone", () => {
+    // Every account is in this state today: user_account.employee_id is deliberately NULL until
+    // real people are linked to logins. An unlinked account must prove nothing, not everything.
+    const unlinked: AuthenticatedPrincipal = {
+      ...employee,
+      employeeId: null,
+      employeeUserId: null,
+    };
+
+    expect(() => requireEmployeeOwnership(unlinked, "101")).toThrow(
+      "Access denied",
+    );
+    expect(() =>
+      requireEmployeeOwnership(unlinked, "101", "USER-101"),
+    ).toThrow("Access denied");
   });
 
   it("denies HRD_FACTORY cross-company access", () => {

@@ -21,6 +21,7 @@ export type EnrollmentRecord = {
   id: string;
   planId: string;
   employeeId: string;
+  employeeUserId: string | null;
   employeeCode: string;
   employeeName: string;
   prefix?: string;
@@ -45,7 +46,10 @@ export type EnrollmentRecord = {
 
 export type CreateEnrollmentInput = {
   planId: string;
+  /** Surrogate employee id. Legacy during Phase 20; employeeUserId is preferred. */
   employeeId: string;
+  /** Durable employee business key. Preferred; falls back to employeeId when absent. */
+  employeeUserId: string | null;
   source: EnrollmentSource;
 };
 
@@ -63,4 +67,5 @@ export type SetAttendanceInput = {
 export type EnrollmentListFilters = {
   planId: string | null;
   employeeId: string | null;
+  employeeUserId: string | null;
 };

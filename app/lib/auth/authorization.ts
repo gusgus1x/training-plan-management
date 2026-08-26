@@ -17,15 +17,30 @@ export const requireRole = (
   }
 };
 
+/**
+ * Both employee keys are live during Phase 20, so ownership may be proven by either — but only by
+ * a key the principal actually carries. An account with no employee link proves nothing and is
+ * refused, which is the case for every account today: `user_account.employee_id` is deliberately
+ * left NULL until real people are linked to logins.
+ */
 export const requireEmployeeOwnership = (
   principal: AuthenticatedPrincipal,
   employeeId: string,
+  employeeUserId?: string | null,
 ) => {
-  if (
-    principal.role !== "EMPLOYEE" ||
-    principal.employeeId === null ||
-    principal.employeeId !== employeeId
-  ) {
+  if (principal.role !== "EMPLOYEE") {
+    throw forbidden();
+  }
+
+  const matchesDurableKey =
+    principal.employeeUserId !== null &&
+    employeeUserId != null &&
+    principal.employeeUserId === employeeUserId;
+
+  const matchesSurrogateKey =
+    principal.employeeId !== null && principal.employeeId === employeeId;
+
+  if (!matchesDurableKey && !matchesSurrogateKey) {
     throw forbidden();
   }
 };

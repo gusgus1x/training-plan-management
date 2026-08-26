@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useNotice } from "../../../NoticeDialog";
 import { useToast } from "../../../ToastHost";
 import { listCompanies } from "../../../../lib/companies/client";
 import type { CompanyRecord } from "../../../../lib/companies/types";
@@ -44,6 +45,7 @@ export const employeeDataModule = {
 const blank = (companyId = ""): EmployeeInput => ({
   companyId,
   employeeCode: "",
+  userId: "",
   functionId: null,
   divisionId: null,
   departmentId: null,
@@ -110,6 +112,7 @@ type ResizeDrag =
 export default function EmployeeData() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
+  const notice = useNotice();
   const toast = useToast();
   const center = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<EmployeeRecord[]>([]);
@@ -372,6 +375,7 @@ export default function EmployeeData() {
       setForm({
         companyId: employee.companyId,
         employeeCode: employee.employeeCode,
+        userId: employee.userId,
         functionId: employee.functionId,
         divisionId: employee.divisionId,
         departmentId: employee.departmentId,
@@ -436,6 +440,15 @@ export default function EmployeeData() {
       setError("Select an Employee before saving changes.");
       return;
     }
+    const missingFields: string[] = [];
+    if (!form.employeeCode.trim()) missingFields.push("รหัสพนักงาน (Employee Code)");
+    // user_id is the business key training records hang off — it cannot be filled in later.
+    if (!form.userId.trim()) missingFields.push("รหัสผู้ใช้จากระบบ HR ต้นทาง (User ID)");
+    if (missingFields.length > 0) {
+      await notice({ missingFields });
+      return;
+    }
+
     const nationalId = form.nationalId.trim();
     const requiresNationalId =
       savingMode === "new" || selected?.nationalIdMasked === "*************";
@@ -679,6 +692,17 @@ export default function EmployeeData() {
                   value={form.employeeCode}
                   onChange={(event) => change("employeeCode", event.target.value)}
                 />
+              </label>
+              <label>
+                User ID
+                <input
+                  value={form.userId}
+                  onChange={(event) => change("userId", event.target.value)}
+                  placeholder="Stable UserID from the HR source system"
+                />
+                <small>
+                  รหัสผู้ใช้จากระบบ HR ต้นทาง — ห้ามซ้ำ และไม่เปลี่ยนแม้รหัสพนักงานจะถูกแก้
+                </small>
               </label>
               <label>
                 National ID (13 digits)
