@@ -692,6 +692,52 @@
   opacity: 1;
 }
 
+.expenseInputCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.expenseLabelHeader {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--ui-30-ink);
+}
+
+.expenseInputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.currencyPrefix {
+  position: absolute;
+  left: 10px;
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  pointer-events: none;
+}
+
+.expenseInputWrap input {
+  padding-left: 42px !important;
+}
+
+.heroBadgeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.courseMetaSubtext {
+  display: block;
+  margin-top: 6px;
+  color: var(--ui-30-text);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .actualCourseSelect select:focus,
 .actualCostGrid input:focus {
   border-color: var(--ui-30-primary);

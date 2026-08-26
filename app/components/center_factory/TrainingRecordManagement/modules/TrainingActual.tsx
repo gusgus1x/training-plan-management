@@ -113,13 +113,22 @@ type CourseOwner = ActualCourse["owner"];
 type CourseOwnerFilter = CourseOwner | "";
 
 const expenseFields: Array<{ key: ExpenseKey; label: string }> = [
-  { key: "instructor", label: "Instructor" },
-  { key: "traveling", label: "Traveling" },
-  { key: "seminarRoom", label: "Seminar Room" },
-  { key: "accommodation", label: "Accommodation" },
-  { key: "material", label: "Material" },
-  { key: "foodBeverage", label: "Food & Beverage" },
+  { key: "instructor", label: "ค่าวิทยากร / ค่าอบรม" },
+  { key: "traveling", label: "ค่าเดินทาง" },
+  { key: "seminarRoom", label: "ค่าสถานที่ / ห้องสัมมนา" },
+  { key: "accommodation", label: "ค่าที่พัก" },
+  { key: "material", label: "ค่าวัดผล / เอกสารประกอบ" },
+  { key: "foodBeverage", label: "ค่าอาหารและเครื่องดื่ม" },
 ];
+
+const expenseIcons: Record<ExpenseKey, string> = {
+  instructor: "👨‍🏫",
+  traveling: "🚗",
+  seminarRoom: "🏢",
+  accommodation: "🏨",
+  material: "📚",
+  foodBeverage: "🍱",
+};
 
 const emptyExpenses: Record<ExpenseKey, string> = {
   instructor: "",
@@ -508,13 +517,14 @@ export default function TrainingActual() {
         </div>
       </section>
 
+      {/* Course Picker Panel */}
       <section
         className={`${styles.actualCoursePickerPanel} ${styles.actualSelectorFirstPanel}`}
         aria-label="Select training actual course"
       >
         <div className={styles.courseSelectorControls}>
           <label className={styles.actualCourseSelect}>
-            Course Owner
+            <span>Step 1 — สิทธิ์หลักสูตร (Owner)</span>
             <select
               value={selectedCourseOwner}
               onChange={(event) => {
@@ -524,13 +534,14 @@ export default function TrainingActual() {
                 setSavedMessage("");
               }}
             >
-              {!isFactoryUser && <option value="">Select Course Owner</option>}
-              {!isFactoryUser && <option value="CENTER">Center</option>}
-              <option value="FACTORY">Factory</option>
+              {!isFactoryUser && <option value="">เลือกสิทธิ์ผู้จัด (Center / Factory)</option>}
+              {!isFactoryUser && <option value="CENTER">🏢 Center Standard (ส่วนกลาง)</option>}
+              <option value="FACTORY">🏭 Factory (โรงงาน {userCompanyCode || ""})</option>
             </select>
           </label>
+
           <label className={styles.actualCourseSelect}>
-            Course
+            <span>Step 2 — เลือกหลักสูตร (Course)</span>
             <select
               disabled={!selectedCourseOwner}
               value={selectedCourseGroupId}
@@ -542,22 +553,21 @@ export default function TrainingActual() {
             >
               <option value="">
                 {!selectedCourseOwner
-                  ? "Select course owner first"
+                  ? "กรุณาเลือกผู้จัดหลักสูตรก่อน"
                   : availableCourseGroups.length > 0
-                    ? "Select actual course"
-                    : `No ${selectedCourseOwner.toLowerCase()} course available`}
+                    ? "เลือกหลักสูตรที่ต้องการเช็คชื่อและคำนวณเงิน"
+                    : `ไม่พบหลักสูตรในสิทธิ์ ${selectedCourseOwner}`}
               </option>
               {availableCourseGroups.map((group) => (
                 <option key={group.id} value={group.id}>
-                  {group.code} / {group.title} / THB{" "}
-                  {formatCurrency(parseMoney(group.sessions[0]?.budget))} /{" "}
-                  {group.sessions.length} sessions
+                  [{group.code}] {group.title} — งบประมาณ THB {formatCurrency(parseMoney(group.sessions[0]?.budget))} ({group.sessions.length} รอบอบรม)
                 </option>
               ))}
             </select>
           </label>
+
           <label className={styles.actualCourseSelect}>
-            Training Session
+            <span>Step 3 — รอบการอบรม (Training Session)</span>
             <select
               disabled={!selectedCourseGroup}
               value={selectedCourseId}
@@ -567,63 +577,65 @@ export default function TrainingActual() {
               }}
             >
               <option value="">
-                {selectedCourseGroup ? "Select training session" : "Select course first"}
+                {selectedCourseGroup ? "เลือกรอบการอบรมที่ดำเนินการแล้ว" : "กรุณาเลือกหลักสูตรก่อน"}
               </option>
               {availableSessions.map((session) => (
                 <option key={session.id} value={session.id}>
-                  {session.batch ?? "-"} / {session.date} / {session.time} / {session.room}
+                  Batch {session.batch ?? "1"} / วันที่ {session.date} ({session.time}) / ห้อง {session.room}
                 </option>
               ))}
             </select>
           </label>
-        </div>
-
-        <div>
-          <p className={styles.kicker}>Course Owner</p>
-          <h3>Select owner first</h3>
-          <span>Choose an owner first, then select a course to record actual attendance and training expenses.</span>
         </div>
       </section>
 
       {selectedCourse ? (
         <section className={styles.actualWorkspace}>
           <div className={styles.actualMainPanel}>
+            {/* Executive Course Detail Header Banner */}
             <div className={styles.actualCompactHeader}>
               <div>
-                <p className={styles.kicker}>Course Selection</p>
+                <div className={styles.heroBadgeRow}>
+                  <b className={selectedCourse.owner === "CENTER" ? styles.systemSourceBadge : styles.uploadSourceBadge}>
+                    {selectedCourse.owner === "CENTER" ? "🏢 Center Standard" : `🏭 ${selectedCourse.ownerCompany ?? selectedCourse.company} Scope`}
+                  </b>
+                  <span className={styles.totalBadge}>
+                    Batch <strong>{selectedCourse.batch ?? "1"}</strong>
+                  </span>
+                </div>
                 <h3>{selectedCourse.title}</h3>
-                <span>
-                  {selectedCourse.code} / Batch {selectedCourse.batch ?? "-"} / {selectedCourse.company} / {selectedCourse.date} / {selectedCourse.time}
+                <span className={styles.courseMetaSubtext}>
+                  📌 รหัสหลักสูตร: <strong>{selectedCourse.code}</strong> | 🏢 บริษัท: <strong>{selectedCourse.company}</strong> | 📅 วันที่: <strong>{selectedCourse.date}</strong> ({selectedCourse.time})
                 </span>
               </div>
 
               <div className={styles.actualMiniStats}>
                 <article>
-                  <span>Room</span>
+                  <span>📍 สถานที่ / ห้อง</span>
                   <strong>{selectedCourse.room}</strong>
                 </article>
                 <article>
-                  <span>Instructor</span>
+                  <span>👨‍🏫 วิทยากร</span>
                   <strong>{selectedCourse.instructor}</strong>
                 </article>
                 <article className={styles.actualBudgetStat}>
-                  <span>Planned Budget</span>
+                  <span>💰 Planned Budget</span>
                   <strong>THB {formatCurrency(plannedBudget)}</strong>
                 </article>
                 <article>
-                  <span>Registered</span>
-                  <strong>{registeredCount}</strong>
-                </article>
-                <article>
-                  <span>Actual</span>
-                  <strong>{actualCount}</strong>
-                </article>
-                <article>
-                  <span>Absent</span>
-                  <strong>{absentCount}</strong>
+                  <span>👥 ลงทะเบียน</span>
+                  <strong>{registeredCount} คน</strong>
                 </article>
                 <article className={styles.actualBudgetStat}>
-                  <span>Cost / Person (Actual)</span>
+                  <span>🟢 เข้าเรียนจริง</span>
+                  <strong>{actualCount} คน</strong>
+                </article>
+                <article>
+                  <span>🔴 ขาดเรียน</span>
+                  <strong>{absentCount} คน</strong>
+                </article>
+                <article className={styles.actualBudgetStat}>
+                  <span>📊 Cost / Person (Actual)</span>
                   <strong>THB {formatCurrency(actualCostPerPerson)}</strong>
                 </article>
               </div>
@@ -857,42 +869,50 @@ export default function TrainingActual() {
             ) : null}
           </div>
 
+          {/* Executive Expense Calculation Sidebar */}
           <aside className={styles.actualCostPanel} aria-label="Actual training expenses">
             <div className={styles.actualCostHeader}>
               <div>
-                <p className={styles.kicker}>Actual Cost</p>
-                <h3>Training Expenses</h3>
-                <span>Record the real cost used for this course.</span>
+                <p className={styles.kicker}>Expense Calculation</p>
+                <h3>ทดสอบระบบคำนวณเงิน</h3>
+                <span>บันทึกและทดสอบค่าใช้จ่ายจริงที่เกิดขึ้นในการอบรม</span>
               </div>
             </div>
 
             <div className={styles.actualCostGrid}>
               {expenseFields.map((field) => (
-                <label key={field.key}>
-                  {field.label}
-                  <input
-                    inputMode="decimal"
-                    disabled={isSelectedCourseReadOnlyForFactory}
-                    value={expenses[field.key]}
-                    onChange={(event) => updateExpense(field.key, event.target.value)}
-                  />
+                <label key={field.key} className={styles.expenseInputCard}>
+                  <div className={styles.expenseLabelHeader}>
+                    <span>{expenseIcons[field.key]} {field.label}</span>
+                  </div>
+                  <div className={styles.expenseInputWrap}>
+                    <span className={styles.currencyPrefix}>THB</span>
+                    <input
+                      inputMode="decimal"
+                      disabled={isSelectedCourseReadOnlyForFactory}
+                      placeholder="0"
+                      value={expenses[field.key]}
+                      onChange={(event) => updateExpense(field.key, event.target.value)}
+                    />
+                  </div>
                 </label>
               ))}
             </div>
 
             <div className={styles.actualTotalBox}>
-              <span>Total Actual Cost (unsaved draft)</span>
+              <span>รวมค่าใช้จ่ายจริง (Draft Unsaved)</span>
               <strong>THB {formatCurrency(expenseTotal)}</strong>
             </div>
 
+            {/* Variance Analysis Table */}
             <div className={`${styles.tableWrap}`}>
               <table className={styles.recordTable}>
                 <thead>
                   <tr>
-                    <th>Category</th>
-                    <th>Planned</th>
-                    <th>Actual (saved)</th>
-                    <th>Variance</th>
+                    <th>หมวดหมู่</th>
+                    <th>งบประมาณ (Planned)</th>
+                    <th>จ่ายจริง (Saved)</th>
+                    <th>ส่วนต่าง (Variance)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -902,21 +922,21 @@ export default function TrainingActual() {
                     const variance = planned - actual;
                     return (
                       <tr key={field.key}>
-                        <td>{field.label}</td>
+                        <td>{expenseIcons[field.key]} {field.label}</td>
                         <td>THB {formatCurrency(planned)}</td>
                         <td>THB {formatCurrency(actual)}</td>
                         <td className={variance < 0 ? styles.actualBudgetOverrun : undefined}>
-                          THB {formatCurrency(variance)}
+                          {variance >= 0 ? `+THB ${formatCurrency(variance)}` : `-THB ${formatCurrency(Math.abs(variance))}`}
                         </td>
                       </tr>
                     );
                   })}
                   <tr>
-                    <td><strong>Total</strong></td>
+                    <td><strong>รวมทั้งหมด (Total)</strong></td>
                     <td><strong>THB {formatCurrency(plannedBudget)}</strong></td>
                     <td><strong>THB {formatCurrency(savedActualTotal)}</strong></td>
                     <td className={remainingBudget < 0 ? styles.actualBudgetOverrun : undefined}>
-                      <strong>THB {formatCurrency(remainingBudget)}</strong>
+                      <strong>{remainingBudget >= 0 ? `+THB ${formatCurrency(remainingBudget)}` : `-THB ${formatCurrency(Math.abs(remainingBudget))}`}</strong>
                     </td>
                   </tr>
                 </tbody>
@@ -925,11 +945,11 @@ export default function TrainingActual() {
 
             <div className={styles.actualCostPerPersonSummary}>
               <div>
-                <span>Cost / Person (Actual, saved)</span>
+                <span>เฉลี่ยงบ/คน (Cost / Person)</span>
                 <strong>THB {formatCurrency(actualCostPerPerson)}</strong>
               </div>
               <small>
-                Calculated from THB {formatCurrency(savedActualTotal)} ÷ {costBreakdown?.presentCount ?? 0} present attendee{(costBreakdown?.presentCount ?? 0) === 1 ? "" : "s"}
+                คำนวณจาก THB {formatCurrency(savedActualTotal)} ÷ ผู้เข้าอบรมจริง {costBreakdown?.presentCount ?? 0} คน
               </small>
             </div>
 
@@ -937,15 +957,15 @@ export default function TrainingActual() {
               <div className={styles.actualCompanyBreakdownBox}>
                 <p className={styles.kicker}>
                   {isSelectedCourseReadOnlyForFactory || (isFactoryUser && isSelectedCourseCenter)
-                    ? "Company Cost Allocation (your company)"
-                    : "Company Cost Allocation"}
+                    ? "งบปันส่วนบริษัท (Company Allocation)"
+                    : "การปันส่วนงบประมาณตามบริษัท"}
                 </p>
                 <div className={styles.actualCompanyList}>
                   {companyCostBreakdown.map((item) => (
                     <div key={item.companyCode} className={styles.actualCompanyRow}>
                       <div>
                         <strong>{item.companyCode}</strong>
-                        <span>{item.presentCount} present</span>
+                        <span>เข้าเรียน {item.presentCount} คน</span>
                       </div>
                       <strong>THB {formatCurrency(item.allocatedCost)}</strong>
                     </div>
@@ -953,8 +973,8 @@ export default function TrainingActual() {
                   {isFactoryUser && isSelectedCourseCenter ? (
                     <div className={styles.actualCompanyRow}>
                       <div>
-                        <strong>Course total (all companies)</strong>
-                        <span>{costBreakdown?.presentCount ?? 0} present</span>
+                        <strong>รวมทุกบริษัท (All Companies)</strong>
+                        <span>เข้าเรียน {costBreakdown?.presentCount ?? 0} คน</span>
                       </div>
                       <strong>THB {formatCurrency(savedActualTotal)}</strong>
                     </div>
@@ -965,7 +985,7 @@ export default function TrainingActual() {
 
             <div className={styles.actualBudgetSummary}>
               <div>
-                <span>Planned Budget</span>
+                <span>งบประมาณที่วางแผนไว้</span>
                 <strong>THB {formatCurrency(plannedBudget)}</strong>
               </div>
               <div
@@ -973,7 +993,7 @@ export default function TrainingActual() {
                   remainingBudget < 0 ? styles.actualBudgetOverrun : undefined
                 }
               >
-                <span>Remaining Budget</span>
+                <span>งบประมาณคงเหลือ</span>
                 <strong>THB {formatCurrency(remainingBudget)}</strong>
               </div>
               <p
@@ -981,7 +1001,7 @@ export default function TrainingActual() {
                   remainingBudget < 0 ? styles.actualBudgetOverrun : undefined
                 }
               >
-                {budgetStatus}
+                {remainingBudget >= 0 ? "🟢 อยู่ในงบประมาณ (Within budget)" : "🔴 เกินงบประมาณ (Over budget)"}
               </p>
             </div>
 
@@ -996,7 +1016,7 @@ export default function TrainingActual() {
               }
               onClick={() => void handleSave()}
             >
-              Save Training Actual
+              💾 บันทึกข้อมูลการอบรม & คำนวณเงิน
             </button>
 
             {savedMessage ? <p className={styles.actualSavedMessage}>{savedMessage}</p> : null}
