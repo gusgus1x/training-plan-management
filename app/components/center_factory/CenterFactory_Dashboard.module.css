@@ -405,10 +405,14 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 18px;
+  gap: 16px;
+  padding: 20px;
   height: fit-content;
   align-self: start;
+  border-radius: var(--ui-radius-xl, 16px);
+  background: var(--ui-60-glass, rgba(255, 255, 255, 0.95));
+  border: 1px solid var(--ui-30-border, rgba(226, 232, 240, 0.8));
+  box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.08);
 }
 
 .employeePanel::before {
@@ -416,8 +420,8 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: var(--ui-30-primary);
-  box-shadow: 0 0 10px rgba(0, 122, 61, 0.35);
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
   pointer-events: none;
 }
 
@@ -425,30 +429,30 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  padding-bottom: 12px;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--ui-30-border);
 }
 
 .photoBox {
   display: grid;
-  width: 46px;
-  height: 46px;
+  width: 52px;
+  height: 52px;
   place-items: center;
-  border: 1px solid var(--ui-30-primary-border);
-  border-radius: var(--ui-radius-lg);
-  background: linear-gradient(135deg, var(--ui-30-primary) 0%, var(--ui-30-primary-strong) 100%);
+  border-radius: 50%;
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  border: 2px solid #ffffff;
   color: #ffffff;
-  font-size: 1.05rem;
+  font-size: 1.15rem;
   font-weight: 900;
   letter-spacing: 0.05em;
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 122, 61, 0.2);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
 }
 
 .profileMetaBox {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
   min-width: 0;
   flex-grow: 1;
 }
@@ -462,21 +466,21 @@
 .userRoleTag {
   display: inline-flex;
   align-items: center;
-  font-size: 0.62rem;
+  font-size: 0.65rem;
   font-weight: 900;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--ui-30-primary);
-  background: var(--ui-30-primary-soft);
-  border: 1px solid var(--ui-30-primary-border);
-  border-radius: 4px;
-  padding: 1px 6px;
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 9999px;
+  padding: 2px 8px;
 }
 
 .profileName {
   overflow: hidden;
-  color: var(--ui-30-ink);
-  font-size: 1.1rem;
+  color: var(--ui-30-ink, #0f172a);
+  font-size: 1.25rem;
   font-weight: 900;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -486,8 +490,8 @@
 .profileSubText {
   margin: 0;
   overflow: hidden;
-  color: var(--ui-30-muted);
-  font-size: 0.76rem;
+  color: var(--ui-30-muted, #64748b);
+  font-size: 0.78rem;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -497,13 +501,13 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border: 1px solid var(--ui-30-primary-border);
-  border-radius: 999px;
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary);
+  border: 1px solid #a7f3d0;
+  border-radius: 9999px;
+  background: #ecfdf5;
+  color: #047857;
   font-size: 0.68rem;
   font-weight: 900;
-  padding: 3px 8px;
+  padding: 2px 8px;
   line-height: 1;
 }
 
@@ -531,41 +535,45 @@
 .employeeDetailsGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .detailCard {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 8px 10px;
-  border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-md);
-  background: var(--ui-60-surface-soft);
-  transition: all 0.15s ease;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-30-border, rgba(226, 232, 240, 0.8));
+  border-radius: var(--ui-radius-lg, 12px);
+  background: var(--ui-60-surface-soft, rgba(248, 250, 252, 0.8));
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .detailCard:first-child {
   grid-column: span 2;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(248, 250, 252, 0.85) 100%);
+  border-color: rgba(16, 185, 129, 0.25);
 }
 
 .detailCard:hover {
-  border-color: var(--ui-30-primary-border);
-  background: var(--ui-60-surface);
+  border-color: var(--ui-30-primary, #059669);
+  background: var(--ui-60-surface, #ffffff);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+  transform: translateY(-1px);
 }
 
 .detailLabel {
-  color: var(--ui-30-muted);
-  font-size: 0.64rem;
+  color: var(--ui-30-muted, #64748b);
+  font-size: 0.65rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 
 .detailValue {
   overflow: hidden;
-  color: var(--ui-30-ink);
-  font-size: 0.8rem;
+  color: var(--ui-30-ink, #0f172a);
+  font-size: 0.85rem;
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -574,10 +582,11 @@
 .kpiSummaryBar {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-lg);
-  background: var(--ui-60-surface-soft);
-  padding: 10px 6px;
+  border: 1px solid var(--ui-30-border, rgba(226, 232, 240, 0.8));
+  border-radius: var(--ui-radius-xl, 14px);
+  background: var(--ui-60-surface-soft, rgba(248, 250, 252, 0.8));
+  padding: 12px 6px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
 .kpiCol {
@@ -585,7 +594,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
   padding: 0 4px;
   border-right: 1px solid var(--ui-30-border);
 }
@@ -595,8 +604,8 @@
 }
 
 .kpiLabel {
-  color: var(--ui-30-muted);
-  font-size: 0.64rem;
+  color: var(--ui-30-muted, #64748b);
+  font-size: 0.65rem;
   font-weight: 800;
   text-transform: uppercase;
   white-space: nowrap;
@@ -605,19 +614,19 @@
 .kpiValueRow {
   display: flex;
   align-items: baseline;
-  gap: 3px;
+  gap: 4px;
 }
 
 .kpiValue {
-  color: var(--ui-30-primary);
-  font-size: 1.15rem;
+  color: var(--ui-30-primary, #059669);
+  font-size: 1.25rem;
   font-weight: 900;
   line-height: 1;
 }
 
 .kpiHelper {
-  color: var(--ui-30-muted);
-  font-size: 0.68rem;
+  color: var(--ui-30-muted, #64748b);
+  font-size: 0.7rem;
   font-weight: 700;
 }
 
