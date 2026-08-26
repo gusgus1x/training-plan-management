@@ -1688,6 +1688,7 @@ export default function TrainingAcceptSurvey() {
                 <span>จัดการ</span>
                 <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
                   <span>รหัสพนักงาน</span>
+                  <span>สถานะ</span>
                   <span>คำนำหน้า</span>
                   <span>ชื่อ</span>
                   <span>นามสกุล</span>
@@ -1715,10 +1716,15 @@ export default function TrainingAcceptSurvey() {
                     type="button"
                     onClick={() => void handleCancelEnrollment(participant.id)}
                   >
-                    Withdraw
+                    ถอดรายชื่อ
                   </button>
                   <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={participant.employeeCode}>{participant.employeeCode}</span>
+                    <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
+                      <span className={styles.badgeApproved}>
+                        <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
+                      </span>
+                    </span>
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.firstName}>{nameProfile.firstName}</span>
                     <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.lastName}>{nameProfile.lastName}</span>
@@ -1791,7 +1797,23 @@ export default function TrainingAcceptSurvey() {
                           </span>
                         </td>
                         <td><span className={`${styles.sourcePill} ${sourceClass[candidate.source]}`}>{sourceLabel[candidate.source]}</span></td>
-                        <td><span className={`${styles.statusPill} ${statusClass[candidate.status]}`}>{candidate.status}</span></td>
+                        <td>
+                          {candidate.status === "Pending Approval" ? (
+                            <span className={styles.badgePending}>
+                              <span className={styles.glowingDotBlue}></span> รออนุมัติ
+                            </span>
+                          ) : candidate.status === "Center Approved" || candidate.status === "Factory Approved" ? (
+                            <span className={styles.badgeApproved}>
+                              <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
+                            </span>
+                          ) : candidate.status === "Rejected" ? (
+                            <span className={styles.badgeRejected}>
+                              <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
+                            </span>
+                          ) : (
+                            <span className={`${styles.statusPill} ${statusClass[candidate.status]}`}>{candidate.status}</span>
+                          )}
+                        </td>
                         <td>{candidate.remark}</td>
                         <td className={styles.actionCell}>
                           <button
@@ -1800,7 +1822,7 @@ export default function TrainingAcceptSurvey() {
                             type="button"
                             onClick={() => void handleApprove(candidate.id)}
                           >
-                            Approve
+                            ✓ อนุมัติ
                           </button>
                           <button
                             className={styles.rejectButton}
@@ -1808,7 +1830,7 @@ export default function TrainingAcceptSurvey() {
                             type="button"
                             onClick={() => void handleReject(candidate.id)}
                           >
-                            Reject
+                            ✕ ปฏิเสธ
                           </button>
                         </td>
                       </tr>
