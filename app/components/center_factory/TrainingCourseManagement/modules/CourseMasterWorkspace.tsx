@@ -573,21 +573,31 @@ function CourseMaster() {
   const selectedDepartmentId = departmentRows.find((row) => row.code === standardDepartmentCode)?.id;
   const selectedSectionId = sectionRows.find((row) => row.code === standardSectionCode)?.id;
 
-  const selectedCompanyIds = useMemo(
-    () => companyRows.filter((row) => selectedCompanies.includes(row.code)).map((row) => row.id),
-    [companyRows, selectedCompanies],
+  const userCompanyCode = profileValue(user?.companyCode);
+
+  const activeCompanyCodes = useMemo(() => {
+    if (isFactoryUser && userCompanyCode) {
+      return [userCompanyCode];
+    }
+    return selectedCompanies;
+  }, [isFactoryUser, userCompanyCode, selectedCompanies]);
+
+  const activeCompanyIds = useMemo(
+    () => companyRows.filter((row) => activeCompanyCodes.includes(row.code)).map((row) => row.id),
+    [companyRows, activeCompanyCodes],
   );
-  const usageInSelectedCompanies = (usage: OrgHierarchyUsageRow) =>
-    selectedCompanies.length === 0 ||
-    (usage.companyId !== null && selectedCompanyIds.includes(usage.companyId));
+
+  const usageInActiveCompanies = (usage: OrgHierarchyUsageRow) =>
+    activeCompanyCodes.length === 0 ||
+    (usage.companyId !== null && activeCompanyIds.includes(usage.companyId));
 
   const functionOptions = useMemo(() => {
     let filtered = functionRows;
 
-    if (selectedCompanies.length > 0) {
+    if (activeCompanyCodes.length > 0) {
       const allowedFunctionIds = new Set(
         orgUsage
-          .filter((usage) => usageInSelectedCompanies(usage))
+          .filter((usage) => usageInActiveCompanies(usage))
           .map((u) => u.functionId)
           .filter(Boolean),
       );
@@ -601,15 +611,15 @@ function CourseMaster() {
       { id: "ALL", code: allFunctionCode, name: "All Function" },
       ...filtered,
     ];
-  }, [functionRows, orgUsage, selectedCompanies, selectedCompanyIds, standardFunctionCode]);
+  }, [functionRows, orgUsage, activeCompanyCodes, activeCompanyIds, standardFunctionCode]);
 
   const divisionOptions = useMemo(() => {
     let filtered = divisionRows;
 
-    if (selectedCompanies.length > 0) {
+    if (activeCompanyCodes.length > 0) {
       const allowedDivisionIds = new Set(
         orgUsage
-          .filter((usage) => usageInSelectedCompanies(usage))
+          .filter((usage) => usageInActiveCompanies(usage))
           .map((u) => u.divisionId)
           .filter(Boolean),
       );
@@ -623,15 +633,15 @@ function CourseMaster() {
       { id: "ALL", code: allFunctionCode, name: "All Division" },
       ...filtered,
     ];
-  }, [divisionRows, orgUsage, selectedCompanies, selectedCompanyIds, standardDivisionCode]);
+  }, [divisionRows, orgUsage, activeCompanyCodes, activeCompanyIds, standardDivisionCode]);
 
   const departmentOptions = useMemo(() => {
     let filtered = departmentRows;
 
-    if (selectedCompanies.length > 0) {
+    if (activeCompanyCodes.length > 0) {
       const allowedDepartmentIds = new Set(
         orgUsage
-          .filter((usage) => usageInSelectedCompanies(usage))
+          .filter((usage) => usageInActiveCompanies(usage))
           .map((u) => u.departmentId)
           .filter(Boolean),
       );
@@ -645,15 +655,15 @@ function CourseMaster() {
       { id: "ALL", code: allFunctionCode, name: "All Department" },
       ...filtered,
     ];
-  }, [departmentRows, orgUsage, selectedCompanies, selectedCompanyIds, standardDepartmentCode]);
+  }, [departmentRows, orgUsage, activeCompanyCodes, activeCompanyIds, standardDepartmentCode]);
 
   const sectionOptions = useMemo(() => {
     let filtered = sectionRows;
 
-    if (selectedCompanies.length > 0) {
+    if (activeCompanyCodes.length > 0) {
       const allowedSectionIds = new Set(
         orgUsage
-          .filter((usage) => usageInSelectedCompanies(usage))
+          .filter((usage) => usageInActiveCompanies(usage))
           .map((u) => u.sectionId)
           .filter(Boolean),
       );
@@ -667,7 +677,7 @@ function CourseMaster() {
       { id: "ALL", code: allFunctionCode, name: "All Section" },
       ...filtered,
     ];
-  }, [sectionRows, orgUsage, selectedCompanies, selectedCompanyIds, standardSectionCode]);
+  }, [sectionRows, orgUsage, activeCompanyCodes, activeCompanyIds, standardSectionCode]);
   const getFunctionDisplayName = (functionCode?: string, functionName = "") => {
     if (functionCode === allFunctionCode || functionName === allFunctionOption) {
       return "All Function";
@@ -683,7 +693,6 @@ function CourseMaster() {
 
     return matchingFunction ? matchingFunction.name : functionName;
   };
-  const userCompanyCode = profileValue(user?.companyCode);
   const owner: WorkflowOwner = user?.roleCode === "HRD_CENTER" ? "CENTER" : "FACTORY";
   const ownerCompany = owner === "CENTER" ? "HRD Center" : userCompanyCode;
 
