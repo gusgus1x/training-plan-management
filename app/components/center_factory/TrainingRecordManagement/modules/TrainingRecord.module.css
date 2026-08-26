@@ -134,14 +134,14 @@
 .formGrid input,
 .formGrid select,
 .formGrid textarea {
-  min-height: 36px;
+  min-height: 42px;
   border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--ui-60-surface);
   color: var(--ui-30-ink);
   font: inherit;
-  font-size: 0.8rem;
-  padding: 8px 10px;
+  font-size: 0.94rem;
+  padding: 10px 14px;
   outline: none;
 }
 
@@ -158,8 +158,8 @@
 .formGrid select:disabled,
 .formGrid textarea:disabled {
   background: var(--ui-60-surface-soft);
-  color: #43526a;
-  opacity: 1;
+  color: var(--ui-30-muted);
+  opacity: 0.85;
 }
 
 .primaryButton,
@@ -365,9 +365,9 @@
 .formGrid label {
   display: grid;
   gap: 5px;
-  color: var(--ui-30-text);
-  font-size: 0.76rem;
-  font-weight: 900;
+  color: var(--ui-30-ink);
+  font-size: 0.92rem;
+  font-weight: 700;
 }
 
 .formGrid textarea {
@@ -2767,21 +2767,21 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
-  color: var(--ui-30-muted);
-  font-size: 0.72rem;
-  font-weight: 800;
+  color: var(--ui-30-ink);
+  font-size: 0.92rem;
+  font-weight: 700;
 }
 
 .addAttendeeControls select,
 .addAttendeeControls input {
-  height: 36px;
+  min-height: 42px;
   border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-sm);
-  background: #ffffff;
+  border-radius: 10px;
+  background: var(--ui-60-surface);
   color: var(--ui-30-ink);
   font: inherit;
-  font-size: 0.82rem;
-  padding: 0 10px;
+  font-size: 0.94rem;
+  padding: 10px 14px;
 }
 
 .addAttendeeControls select:focus,

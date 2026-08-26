@@ -34,73 +34,80 @@ describe("Multi-Target Scope in Course Master & Target Match Engine", () => {
     const validUser = await db.user_account.findFirst({ where: { status: "ACTIVE" } });
     expect(validUser).toBeDefined();
 
-    // 2. Create course with 2 target org scopes
-    const uniqueName = `Multi-Target Test Course ${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    const result = await courseService.createCourse(
-      {
-        courseNameTh: uniqueName,
-        courseNameEn: `${uniqueName} EN`,
-        objective: "Test objective",
-        learningContent: "Test content",
-        targetGroup: "Test target group",
-        methodology: "Lecture",
-        durationHours: 2,
-        validityMonths: 12,
-        preAssessmentId: null,
-        postAssessmentId: null,
-        evaluationFormId: null,
-        evaluationFormAfter30DayId: null,
-        preTestLink: null,
-        postTestLink: null,
-        evaluationLink: null,
-        evaluationAfter30DayLink: null,
-        status: "Active",
-        courseTypeId: courseTypes[0].course_type_id.toString(),
-        courseGroupId: courseGroups[0].course_group_id.toString(),
-        standardCode: `STD-MULTI-${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        standardName: uniqueName,
-        functionId: scope1.functionId,
-        divisionId: null,
-        departmentId: scope1.departmentId,
-        sectionId: null,
-        targetOrgScopes: [scope1, scope2],
-        targetCompanies,
-        targetPositions: [],
-        targetLevels: [],
-        standardYear: new Date().getFullYear(),
-      },
-      validUser!.user_id.toString(), // valid userId
-      null, // Center scope
-    );
+    const salt = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const uniqueName = `Multi-Target Test Course ${salt}`;
+    let createdCourseId: string | null = null;
 
-    expect(result.courseId).toBeDefined();
+    try {
+      // 2. Create course with 2 target org scopes
+      const result = await courseService.createCourse(
+        {
+          courseNameTh: uniqueName,
+          courseNameEn: `Multi Target Test ${salt} EN`,
+          objective: "Test objective",
+          learningContent: "Test content",
+          targetGroup: "Test target group",
+          methodology: "Lecture",
+          durationHours: 2,
+          validityMonths: 12,
+          preAssessmentId: null,
+          postAssessmentId: null,
+          evaluationFormId: null,
+          evaluationFormAfter30DayId: null,
+          preTestLink: null,
+          postTestLink: null,
+          evaluationLink: null,
+          evaluationAfter30DayLink: null,
+          status: "Active",
+          courseTypeId: courseTypes[0].course_type_id.toString(),
+          courseGroupId: courseGroups[0].course_group_id.toString(),
+          standardCode: `STD-MULTI-${salt}`,
+          standardName: uniqueName,
+          functionId: scope1.functionId,
+          divisionId: null,
+          departmentId: scope1.departmentId,
+          sectionId: null,
+          targetOrgScopes: [scope1, scope2],
+          targetCompanies,
+          targetPositions: [],
+          targetLevels: [],
+          standardYear: new Date().getFullYear(),
+        },
+        validUser!.user_id.toString(), // valid userId
+        null, // Center scope
+      );
 
-    // 3. List courses and verify standards have multi targetOrgScopes
-    const list = await courseService.listCourses({ search: uniqueName, status: null }, null);
-    const createdCourse = list.courses.find((c) => c.id === result.courseId);
-    expect(createdCourse).toBeDefined();
+      expect(result.courseId).toBeDefined();
+      createdCourseId = result.courseId;
 
-    const createdStandard = list.standards.find((s) => s.courseId === result.courseId);
-    expect(createdStandard).toBeDefined();
-    expect(createdStandard?.targetOrgScopes).toBeDefined();
-    expect(createdStandard?.targetOrgScopes?.length).toBeGreaterThanOrEqual(1);
+      // 3. List courses and verify standards have multi targetOrgScopes
+      const list = await courseService.listCourses({ search: uniqueName, status: null }, null);
+      const createdCourse = list.courses.find((c) => c.id === result.courseId);
+      expect(createdCourse).toBeDefined();
 
-    // 4. Test Target Match Engine with employee in Scope 1
-    const mockEmployeeScope1 = {
-      employee_id: BigInt(99901),
-      company_id: companies[0].company_id,
-      function_id: scope1.functionId ? BigInt(scope1.functionId) : null,
-      division_id: null,
-      department_id: scope1.departmentId ? BigInt(scope1.departmentId) : null,
-      section_id: null,
-      position_id: null,
-      level_id: null,
-    };
+      const createdStandard = list.standards.find((s) => s.courseId === result.courseId);
+      expect(createdStandard).toBeDefined();
+      expect(createdStandard?.targetOrgScopes).toBeDefined();
+      expect(createdStandard?.targetOrgScopes?.length).toBeGreaterThanOrEqual(1);
 
-    const matchScope1 = await computeTargetMatch(db, BigInt(result.courseId), mockEmployeeScope1 as any);
-    expect(matchScope1.targetMatchStatus).toBe("MATCHED");
+      // 4. Test Target Match Engine with employee in Scope 1
+      const mockEmployeeScope1 = {
+        employee_id: BigInt(99901),
+        company_id: companies[0].company_id,
+        function_id: scope1.functionId ? BigInt(scope1.functionId) : null,
+        division_id: null,
+        department_id: scope1.departmentId ? BigInt(scope1.departmentId) : null,
+        section_id: null,
+        position_id: null,
+        level_id: null,
+      };
 
-    // Clean up
-    await courseService.deleteCourse(result.courseId, null);
+      const matchScope1 = await computeTargetMatch(db, BigInt(result.courseId), mockEmployeeScope1 as any);
+      expect(matchScope1.targetMatchStatus).toBe("MATCHED");
+    } finally {
+      if (createdCourseId) {
+        await courseService.deleteCourse(createdCourseId, null).catch(() => {});
+      }
+    }
   });
 });
