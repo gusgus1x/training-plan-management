@@ -313,6 +313,8 @@ type PaginatedEmployeeGridProps = {
   onAddEmployee: (employee: SurveyEmployee) => void | Promise<void>;
   emptyMessage?: string;
   pageSize?: number;
+  enrollments?: EnrollmentRecord[];
+  draftSubmittedEmployees?: SurveyEmployee[];
 };
 
 function PaginatedEmployeeGrid({
@@ -321,6 +323,8 @@ function PaginatedEmployeeGrid({
   onAddEmployee,
   emptyMessage = "ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้",
   pageSize = 25,
+  enrollments = [],
+  draftSubmittedEmployees = [],
 }: PaginatedEmployeeGridProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -420,6 +424,7 @@ function PaginatedEmployeeGrid({
             <span>จัดการ</span>
             <div className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}>
               <span>รหัสพนักงาน</span>
+              <span>สถานะ</span>
               <span>คำนำหน้า</span>
               <span>ชื่อ</span>
               <span>นามสกุล</span>
@@ -434,17 +439,52 @@ function PaginatedEmployeeGrid({
           {pageEmployees.map((employee) => {
             const nameProfile = getEmployeeNameProfile(employee);
 
+            const isDraft = draftSubmittedEmployees.some(
+              (emp) => emp.id === employee.id || emp.employeeCode === employee.employeeCode,
+            );
+            const enrollment = enrollments.find(
+              (c) => c.employeeCode === employee.employeeCode || c.employeeId === employee.id,
+            );
+
+            let statusBadge = <span className={styles.badgeNone}>⚪ ยังไม่ลงทะเบียน</span>;
+            let buttonLabel = targetActionLabel;
+            let isBtnDisabled = false;
+
+            if (isDraft) {
+              statusBadge = <span className={styles.badgeDraft}>🟡 ดราฟ</span>;
+              buttonLabel = "✓ ในดราฟแล้ว";
+              isBtnDisabled = true;
+            } else if (enrollment) {
+              if (enrollment.status === "Pending Approval") {
+                statusBadge = <span className={styles.badgePending}>⏳ รออนุมัติ</span>;
+                buttonLabel = "✓ รออนุมัติ";
+                isBtnDisabled = true;
+              } else if (enrollment.status === "Factory Approved" || enrollment.status === "Center Approved") {
+                statusBadge = <span className={styles.badgeApproved}>🟢 อนุมัติแล้ว</span>;
+                buttonLabel = "✓ อนุมัติแล้ว";
+                isBtnDisabled = true;
+              } else if (enrollment.status === "Rejected") {
+                statusBadge = <span className={styles.badgeRejected}>🔴 ถูกปฏิเสธ</span>;
+                buttonLabel = "+ เลือกใหม่";
+                isBtnDisabled = false;
+              }
+            }
+
             return (
               <article className={`${styles.employeeRow} ${styles.targetListRow}`} key={employee.id}>
                 <button
-                  className={styles.addTargetButton}
+                  className={`${styles.addTargetButton} ${isBtnDisabled ? styles.addedBtn : ""}`}
                   type="button"
+                  disabled={isBtnDisabled}
                   onClick={() => void onAddEmployee(employee)}
                 >
-                  {targetActionLabel}
+                  {buttonLabel}
                 </button>
                 <div className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}>
                   <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`} title={employee.employeeCode}>{employee.employeeCode}</span>
+                  <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`}>
+                    {statusBadge}
+                  </span>
                   <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
                   <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`} title={nameProfile.firstName}>{nameProfile.firstName}</span>
                   <span className={`${styles.targetEmployeeCell} ${styles.targetListCell}`} title={nameProfile.lastName}>{nameProfile.lastName}</span>
@@ -1011,17 +1051,14 @@ export default function TrainingAcceptSurvey() {
   const targetEmployeeGroups = accessibleCompanies
     .map((company) => {
       const emps = sortEmployeesDescending(
-        availableTargetEmployees.filter(
+        targetEmployees.filter(
           (employee) => employee.company === company,
         ),
-      );
-      const totalTargetEmps = targetEmployees.filter(
-        (employee) => employee.company === company,
       );
       return {
         company,
         employees: emps,
-        targetCount: totalTargetEmps.length,
+        targetCount: emps.length,
       };
     })
     .filter((group) => group.employees.length > 0);
@@ -1029,17 +1066,14 @@ export default function TrainingAcceptSurvey() {
   const levelOnlyEmployeeGroups = accessibleCompanies
     .map((company) => {
       const emps = sortEmployeesDescending(
-        availableLevelOnlyEmployees.filter(
+        levelOnlyEmployees.filter(
           (employee) => employee.company === company,
         ),
-      );
-      const totalLevelEmps = levelOnlyEmployees.filter(
-        (employee) => employee.company === company,
       );
       return {
         company,
         employees: emps,
-        targetCount: totalLevelEmps.length,
+        targetCount: emps.length,
       };
     })
     .filter((group) => group.employees.length > 0);
@@ -1047,8 +1081,11 @@ export default function TrainingAcceptSurvey() {
   const additionalEmployeeGroups = accessibleCompanies
     .map((company) => {
       const emps = sortEmployeesDescending(
-        additionalEmployees.filter(
-          (employee) => employee.company === company,
+        masterEmployees.filter(
+          (employee) =>
+            accessibleCompanies.includes(employee.company) &&
+            checkEmployeeTargetStatus(employee).isOutMatch &&
+            employee.company === company,
         ),
       );
       return {
@@ -1949,6 +1986,8 @@ export default function TrainingAcceptSurvey() {
                         targetActionLabel={targetActionLabel}
                         onAddEmployee={handleAddEmployee}
                         emptyMessage="ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้"
+                        enrollments={enrollments}
+                        draftSubmittedEmployees={draftSubmittedEmployees}
                       />
                     </details>
                   );
@@ -2004,6 +2043,8 @@ export default function TrainingAcceptSurvey() {
                           targetActionLabel={targetActionLabel}
                           onAddEmployee={handleAddEmployee}
                           emptyMessage="ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้"
+                          enrollments={enrollments}
+                          draftSubmittedEmployees={draftSubmittedEmployees}
                         />
                       </details>
                     );
@@ -2055,6 +2096,8 @@ export default function TrainingAcceptSurvey() {
                         targetActionLabel={targetActionLabel}
                         onAddEmployee={handleAddEmployee}
                         emptyMessage="ไม่มีพนักงานเพิ่มเติมสำหรับบริษัทนี้"
+                        enrollments={enrollments}
+                        draftSubmittedEmployees={draftSubmittedEmployees}
                       />
                     </details>
                   );
