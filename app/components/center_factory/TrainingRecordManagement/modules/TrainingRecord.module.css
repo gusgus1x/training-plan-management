@@ -3671,28 +3671,40 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid rgba(0, 122, 61, 0.25);
+  border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
-  background: #f0fdf4;
-  color: #047857;
-  font-size: 0.72rem;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  font-size: 0.78rem;
   font-weight: 800;
-  padding: 3px 8px;
+  padding: 4px 10px;
   white-space: nowrap;
+}
+
+[data-theme="dark"] .attendeeCostBadge {
+  background: rgba(46, 125, 50, 0.25);
+  border-color: rgba(76, 175, 80, 0.5);
+  color: #81c784;
 }
 
 .attendeeCostBadgeAbsent {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 1px solid rgba(148, 163, 184, 0.3);
+  border: 1px solid var(--ui-30-border);
   border-radius: 999px;
-  background: #f8fafc;
-  color: #64748b;
-  font-size: 0.72rem;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 4px 10px;
   white-space: nowrap;
+}
+
+[data-theme="dark"] .attendeeCostBadgeAbsent {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
 }
 
 .perPersonCostText {
