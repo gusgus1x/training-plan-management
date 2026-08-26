@@ -1437,13 +1437,7 @@ export default function TrainingAcceptSurvey() {
               onChange={(event) => {
                 const newGroupId = event.target.value;
                 setSelectedCourseGroupId(newGroupId);
-                const targetGroup = availableCourseGroups.find((g) => g.id === newGroupId);
-                const newSessionId = targetGroup?.sessions[0]?.id ?? "";
-                setSelectedCourseId(newSessionId);
-                if (newGroupId) {
-                  setIsTargetLoading(true);
-                  setTimeout(() => setIsTargetLoading(false), 350);
-                }
+                setSelectedCourseId("");
               }}
             >
               <option value="">
@@ -1464,15 +1458,11 @@ export default function TrainingAcceptSurvey() {
             </div>
             <select
               className={styles.controlSelect}
-              value={selectedCourse?.id ?? ""}
+              value={selectedCourseId}
               disabled={!selectedCourseGroup}
               onChange={(event) => {
                 const newSessionId = event.target.value;
                 setSelectedCourseId(newSessionId);
-                if (newSessionId) {
-                  setIsTargetLoading(true);
-                  setTimeout(() => setIsTargetLoading(false), 350);
-                }
               }}
             >
               <option value="">
