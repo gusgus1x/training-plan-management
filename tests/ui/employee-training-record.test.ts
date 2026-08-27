@@ -5,7 +5,14 @@ import type { EnrollmentRecord } from "../../app/lib/trainingEnrollment/types";
 const enrollment = (overrides: Partial<EnrollmentRecord> = {}): EnrollmentRecord => ({
   id: "1",
   planId: "10",
+  result: null,
   plan: {
+    assessment: {
+      preTest: { mode: "NONE", link: null },
+      postTest: { mode: "NONE", link: null },
+      evaluation: { mode: "NONE", link: null },
+      evaluationAfter30Day: { mode: "NONE", link: null },
+    },
     planCode: "PLAN-001",
     planName: "Quality Control Basics batch 1",
     batchName: "Batch 1",

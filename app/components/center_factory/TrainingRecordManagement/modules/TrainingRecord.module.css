@@ -4200,3 +4200,155 @@
   color: #f8fafc;
 }
 
+
+/* ── Training result entry ────────────────────────────────────────────────
+ * Nothing wrote a training_result before this panel existed, so there was no
+ * place in the product to say whether anyone passed. */
+
+.actualResultsPanel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
+  margin-bottom: 14px;
+  padding: 14px 16px;
+}
+
+.actualResultsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--ui-30-border);
+  padding-bottom: 10px;
+}
+
+.actualResultsHeader span {
+  display: block;
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.actualResultsHeader strong {
+  color: var(--ui-30-ink);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.actualResultsHeader small {
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.actualResultsEmpty {
+  border: 1px dashed var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 18px 14px;
+  text-align: center;
+}
+
+.actualResultsRows {
+  display: grid;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+/* Wraps rather than tracks fixed columns. A six-column grid needed ~770px, which does not fit the
+ * main column at any realistic window size, and the panel's overflow:hidden ancestor silently
+ * clipped the certificate and expiry fields off the right edge. */
+.actualResultRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  padding: 10px 12px;
+}
+
+/* The name takes its own line so the five inputs below it always start from the left edge. */
+.actualResultWho {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.actualResultWho strong {
+  display: block;
+  color: var(--ui-30-ink);
+  font-size: 0.86rem;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actualResultWho small {
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.actualResultRow label {
+  display: grid;
+  flex: 1 1 92px;
+  min-width: 0;
+  gap: 3px;
+  color: var(--ui-30-muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* The two score boxes never need to grow; the certificate number is the one that benefits. */
+.actualResultRow label:nth-of-type(1),
+.actualResultRow label:nth-of-type(2) {
+  flex: 0 1 78px;
+}
+
+.actualResultRow label:nth-of-type(4) {
+  flex: 2 1 140px;
+}
+
+.actualResultRow input,
+.actualResultRow select {
+  min-height: 34px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 6px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 5px 8px;
+}
+
+.actualResultSaved {
+  flex: 1 1 100%;
+  color: var(--ui-30-primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.actualResultsNote {
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 8px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.45;
+  padding: 8px 12px;
+}

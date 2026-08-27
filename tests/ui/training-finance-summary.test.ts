@@ -135,7 +135,14 @@ describe("training finance summary", () => {
       ([id, company], index): EnrollmentRecord => ({
         id: `enrollment-${index}`,
         planId: centerPlan.rollingId,
+        result: null,
         plan: {
+          assessment: {
+            preTest: { mode: "NONE", link: null },
+            postTest: { mode: "NONE", link: null },
+            evaluation: { mode: "NONE", link: null },
+            evaluationAfter30Day: { mode: "NONE", link: null },
+          },
           planCode: "PLAN-001",
           planName: "Center course",
           batchName: "Batch 1",

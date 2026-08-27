@@ -4,7 +4,11 @@ import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "reac
 import { listEmployees } from "../../../../lib/employees/client";
 import type { EmployeeRecord } from "../../../../lib/employees/types";
 import { listTrainingRecords } from "../../../../lib/trainingRecord/client";
-import type { TrainingRecordSummary } from "../../../../lib/trainingRecord/types";
+import { EXPENSE_ITEMS } from "../../../../lib/trainingRecord/types";
+import type {
+  TrainingRecordAttendee,
+  TrainingRecordSummary,
+} from "../../../../lib/trainingRecord/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useNotice } from "../../../NoticeDialog";
 import { useToast } from "../../../ToastHost";
@@ -73,7 +77,9 @@ type CompletedCourse = {
     department: string;
     position?: string;
     attended?: boolean;
-    prePost: "Passed" | "Failed";
+    /** "Pending" is a real third state: nobody has decided yet. Folding it into "Failed"
+     *  marked every ungraded attendee as having failed. */
+    prePost: "Passed" | "Failed" | "Pending";
     evaluation: "Done" | "Pending";
   }>;
 };
@@ -107,239 +113,23 @@ type UploadedTrainingRecord = {
   logDate: string;
 };
 
-const initialCompletedCourses: CompletedCourse[] = [
-  {
-    id: "course-001",
-    source: "SYSTEM",
-    code: "SAFE-2026-08",
-    title: "Safety & Compliance Basics",
-    date: "21 Aug 2026",
-    company: "SNF",
-    owner: "FACTORY",
-    room: "Auditorium",
-    instructor: "Safety Team",
-    actualAttendees: 39,
-    registeredAttendees: 42,
-    actualCost: {
-      accommodation: 0,
-      foodBeverage: 4200,
-      instructor: 12000,
-      material: 2400,
-      seminarRoom: 3500,
-      traveling: 1800,
-    },
-    prePostPassPercent: 87,
-    postTestPassPercent: 87,
-    preTestPassPercent: 42,
-    evaluationCompleted: 35,
-    evaluationTotal: 39,
-    averageScore: 91,
-    attendees: [
-      { id: "a1", company: "SNF", name: "Narin Chaiya", employeeCode: "HRD-001", department: "Production", prePost: "Passed", evaluation: "Done" },
-      { id: "a2", company: "SNF", name: "Maliwan S.", employeeCode: "HRD-014", department: "Quality", prePost: "Passed", evaluation: "Done" },
-      { id: "a3", company: "SNF", name: "Kittipong R.", employeeCode: "SNF-5621", department: "Maintenance", prePost: "Failed", evaluation: "Pending" },
-    ],
-  },
-  {
-    id: "course-002",
-    source: "SYSTEM",
-    code: "PDPA-2026-07",
-    title: "Data Privacy Awareness",
-    date: "15 Jul 2026",
-    company: "All Companies",
-    owner: "CENTER",
-    room: "Online",
-    instructor: "IT Governance",
-    actualAttendees: 58,
-    registeredAttendees: 60,
-    actualCost: {
-      accommodation: 0,
-      foodBeverage: 0,
-      instructor: 8500,
-      material: 1200,
-      seminarRoom: 0,
-      traveling: 0,
-    },
-    prePostPassPercent: 94,
-    postTestPassPercent: 94,
-    preTestPassPercent: 48,
-    evaluationCompleted: 54,
-    evaluationTotal: 58,
-    averageScore: 96,
-    attendees: [
-      { id: "b1", company: "ATA", name: "Suda K.", employeeCode: "HRD-003", department: "Human Resources", prePost: "Passed", evaluation: "Done" },
-      { id: "b2", company: "SNF", name: "Anucha P.", employeeCode: "HRD-019", department: "IT", prePost: "Passed", evaluation: "Done" },
-      { id: "b3", company: "ATFB", name: "Pimchanok T.", employeeCode: "HRD-028", department: "Sales", prePost: "Passed", evaluation: "Pending" },
-    ],
-  },
-  {
-    id: "course-003",
-    source: "SYSTEM",
-    code: "SERV-2026-09",
-    title: "Service Mind for Frontline",
-    date: "8 Sep 2026",
-    company: "ATFB",
-    owner: "FACTORY",
-    room: "Training Room B",
-    instructor: "Maliwan P.",
-    actualAttendees: 24,
-    registeredAttendees: 26,
-    actualCost: {
-      accommodation: 3800,
-      foodBeverage: 6400,
-      instructor: 15000,
-      material: 3100,
-      seminarRoom: 5000,
-      traveling: 2500,
-    },
-    prePostPassPercent: 79,
-    postTestPassPercent: 79,
-    preTestPassPercent: 36,
-    evaluationCompleted: 18,
-    evaluationTotal: 24,
-    averageScore: 88,
-    attendees: [
-      { id: "c1", company: "ATFB", name: "Thanawat M.", employeeCode: "HRD-033", department: "Customer Service", prePost: "Passed", evaluation: "Done" },
-      { id: "c2", company: "ATFB", name: "Pimchanok T.", employeeCode: "HRD-028", department: "Sales", prePost: "Passed", evaluation: "Done" },
-      { id: "c3", company: "NIC", name: "Chaiwat N.", employeeCode: "HRD-041", department: "Frontline", prePost: "Failed", evaluation: "Pending" },
-    ],
-  },
-];
-
-const initialUploadedTrainingRecords: UploadedTrainingRecord[] = [
-  {
-    id: "uploaded-snf-safe-001",
-    no: "1",
-    year: "2026",
-    month: "08",
-    company: "SNF",
-    recordNo: "REC-SNF-2026-001",
-    empCode: "SNF-5401",
-    idCard: "1101700000001",
-    titleTh: "นาย",
-    nameTh: "นรินทร์",
-    surnameTh: "ไชยา",
-    courseCode: "SAFE-2026-08",
-    courseName: "Safety & Compliance Basics",
-    groupNo: "1",
-    instructor: "Safety Team",
-    institute: "ATTG Safety Academy",
-    trainingPlace: "Auditorium",
-    trainingHour: "3",
-    startDate: "21 Aug 2026",
-    endDate: "21 Aug 2026",
-    expensePerPerson: "612",
-    functionTh: "ฝ่ายผลิต",
-    functionEn: "Production",
-    logDate: "22 Aug 2026",
-  },
-  {
-    id: "uploaded-snf-safe-002",
-    no: "2",
-    year: "2026",
-    month: "08",
-    company: "SNF",
-    recordNo: "REC-SNF-2026-002",
-    empCode: "SNF-5520",
-    idCard: "1101700000002",
-    titleTh: "นางสาว",
-    nameTh: "มะลิวัลย์",
-    surnameTh: "สุขใจ",
-    courseCode: "SAFE-2026-08",
-    courseName: "Safety & Compliance Basics",
-    groupNo: "1",
-    instructor: "Safety Team",
-    institute: "ATTG Safety Academy",
-    trainingPlace: "Auditorium",
-    trainingHour: "3",
-    startDate: "21 Aug 2026",
-    endDate: "21 Aug 2026",
-    expensePerPerson: "612",
-    functionTh: "ฝ่ายคุณภาพ",
-    functionEn: "Quality",
-    logDate: "22 Aug 2026",
-  },
-  {
-    id: "uploaded-snf-safe-003",
-    no: "3",
-    year: "2026",
-    month: "08",
-    company: "SNF",
-    recordNo: "REC-SNF-2026-003",
-    empCode: "SNF-5621",
-    idCard: "1101700000003",
-    titleTh: "นาย",
-    nameTh: "กิตติพงษ์",
-    surnameTh: "รุ่งเรือง",
-    courseCode: "SAFE-2026-08",
-    courseName: "Safety & Compliance Basics",
-    groupNo: "1",
-    instructor: "Safety Team",
-    institute: "ATTG Safety Academy",
-    trainingPlace: "Auditorium",
-    trainingHour: "3",
-    startDate: "21 Aug 2026",
-    endDate: "21 Aug 2026",
-    expensePerPerson: "612",
-    functionTh: "ซ่อมบำรุง",
-    functionEn: "Maintenance",
-    logDate: "22 Aug 2026",
-  },
-  {
-    id: "uploaded-center-pdpa-001",
-    no: "4",
-    year: "2026",
-    month: "07",
-    company: "All Companies",
-    recordNo: "REC-HRD-2026-015",
-    empCode: "ATFB-2204",
-    idCard: "1101700000015",
-    titleTh: "นางสาว",
-    nameTh: "พิมพ์ชนก",
-    surnameTh: "ตั้งใจ",
-    courseCode: "PDPA-2026-07",
-    courseName: "Data Privacy Awareness",
-    groupNo: "2",
-    instructor: "IT Governance",
-    institute: "HRD Center",
-    trainingPlace: "Online",
-    trainingHour: "2",
-    startDate: "15 Jul 2026",
-    endDate: "15 Jul 2026",
-    expensePerPerson: "167",
-    functionTh: "ฝ่ายขาย",
-    functionEn: "Sales",
-    logDate: "16 Jul 2026",
-  },
-  {
-    id: "uploaded-atfb-serv-001",
-    no: "5",
-    year: "2026",
-    month: "09",
-    company: "ATFB",
-    recordNo: "REC-ATFB-2026-041",
-    empCode: "ATFB-1107",
-    idCard: "1101700000041",
-    titleTh: "นาย",
-    nameTh: "ธนวัฒน์",
-    surnameTh: "มั่นคง",
-    courseCode: "SERV-2026-09",
-    courseName: "Service Mind for Frontline",
-    groupNo: "1",
-    instructor: "Maliwan P.",
-    institute: "Corporate Training",
-    trainingPlace: "Training Room B",
-    trainingHour: "6",
-    startDate: "8 Sep 2026",
-    endDate: "8 Sep 2026",
-    expensePerPerson: "1492",
-    functionTh: "บริการลูกค้า",
-    functionEn: "Customer Service",
-    logDate: "9 Sep 2026",
-  },
-];
-
 const formatNumber = (value: number) => new Intl.NumberFormat("en-US").format(value);
+
+/**
+ * Whether this attendee passed. The result HRD recorded wins: it is a decision a person made,
+ * while the assessment submission is only evidence, and most courses have no test at all.
+ *
+ * This used to read `postTestPassed ? "Passed" : "Failed"`. assessment_submission is empty, so
+ * postTestPassed is null for everyone, and null took the false branch - the screen marked every
+ * attendee in the company as having failed a test that was never given.
+ */
+export const prePostOf = (attendee: TrainingRecordAttendee): "Passed" | "Failed" | "Pending" => {
+  if (attendee.result?.completionStatus === "COMPLETED") return "Passed";
+  if (attendee.result?.completionStatus === "NOT_COMPLETED") return "Failed";
+  if (attendee.postTestPassed === true) return "Passed";
+  if (attendee.postTestPassed === false) return "Failed";
+  return "Pending";
+};
 
 const normalizeHeader = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 
@@ -574,14 +364,7 @@ const mapImportRowToUploadedRecord = (
   };
 };
 
-const expenseItems = [
-  { key: "instructor", label: "ค่าวิทยากร (Instructor)", icon: "👨‍🏫" },
-  { key: "foodBeverage", label: "ค่าอาหาร & เครื่องดื่ม (Food & Beverage)", icon: "🍱" },
-  { key: "material", label: "ค่าเอกสาร & อุปกรณ์ (Material)", icon: "📚" },
-  { key: "seminarRoom", label: "ค่าห้องอบรม & สถานที่ (Seminar Room)", icon: "🏢" },
-  { key: "traveling", label: "ค่าเดินทาง (Traveling)", icon: "🚗" },
-  { key: "accommodation", label: "ค่าที่พัก (Accommodation)", icon: "🏨" },
-] as const;
+const expenseItems = EXPENSE_ITEMS;
 
 export default function TrainingRecord() {
   const user = useAuthenticatedUser();
@@ -671,7 +454,7 @@ export default function TrainingRecord() {
               employeeCode: attendee.employeeCode,
               department: attendee.department,
               position: (attendee as any).position ?? "",
-              prePost: attendee.postTestPassed ? "Passed" : "Failed",
+              prePost: prePostOf(attendee),
               evaluation: attendee.evaluationCompleted ? "Done" : "Pending",
             })),
         };
@@ -974,7 +757,7 @@ export default function TrainingRecord() {
       employeeCode: empCode,
       name: empName,
       department,
-      prePost: "Failed",
+      prePost: "Pending",
       evaluation: "Pending",
     };
 
@@ -1670,16 +1453,22 @@ export default function TrainingRecord() {
                               className={
                                 attendee.prePost === "Passed"
                                   ? styles.passBadge
-                                  : styles.failBadge
+                                  : attendee.prePost === "Failed"
+                                    ? styles.failBadge
+                                    : styles.evalPendingBadge
                               }
                             >
                               {attendee.prePost === "Passed" ? (
                                 <>
-                                  <span className={styles.glowingDotGreen} /> ผ่านเกณฑ์
+                                  <span className={styles.glowingDotGreen} /> ผ่าน
+                                </>
+                              ) : attendee.prePost === "Failed" ? (
+                                <>
+                                  <span className={styles.glowingDotRed} /> ไม่ผ่าน
                                 </>
                               ) : (
                                 <>
-                                  <span className={styles.glowingDotRed} /> ไม่ผ่าน
+                                  <span className={styles.glowingDotAmber} /> ยังไม่ระบุ
                                 </>
                               )}
                             </span>

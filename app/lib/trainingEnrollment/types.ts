@@ -17,9 +17,37 @@ export type AttendanceRecord = {
   remark: string;
 };
 
+/**
+ * How one stage of a course is assessed. The course table carries both an in-system form id and
+ * an external link per stage, and either may be absent:
+ *
+ *   FORM  - an assessment built in this system; the score can come from the submission
+ *   LINK  - somebody else's form (Google Forms and the like); this system cannot see the score
+ *   NONE  - the course has no test or evaluation at this stage at all
+ *
+ * The distinction matters on the result screen: for NONE there is no score to record, and writing
+ * one would put a mark for an exam that never existed onto a document the employee uses as
+ * evidence.
+ */
+export type AssessmentMode = "NONE" | "LINK" | "FORM";
+
+export type AssessmentStageInfo = {
+  mode: AssessmentMode;
+  /** Only set when mode is LINK. */
+  link: string | null;
+};
+
+export type EnrollmentAssessmentInfo = {
+  preTest: AssessmentStageInfo;
+  postTest: AssessmentStageInfo;
+  evaluation: AssessmentStageInfo;
+  evaluationAfter30Day: AssessmentStageInfo;
+};
+
 /** What the employee actually enrolled in. Snapshotted onto the enrollment so the employee
  *  portal never has to read the organisation-wide plan list. */
 export type EnrollmentPlanInfo = {
+  assessment: EnrollmentAssessmentInfo;
   planCode: string;
   planName: string;
   batchName: string;
@@ -34,10 +62,21 @@ export type EnrollmentPlanInfo = {
   owner: "CENTER" | "FACTORY";
 };
 
+/** What HRD recorded once the course ended. Null until somebody records it. */
+export type EnrollmentResultInfo = {
+  preScore: number | null;
+  postScore: number | null;
+  completionStatus: "PENDING" | "NOT_COMPLETED" | "COMPLETED";
+  completedAt: string | null;
+  validUntil: string | null;
+  certificateNo: string | null;
+};
+
 export type EnrollmentRecord = {
   id: string;
   planId: string;
   plan: EnrollmentPlanInfo;
+  result: EnrollmentResultInfo | null;
   employeeId: string;
   employeeUserId: string | null;
   employeeCode: string;

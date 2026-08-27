@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
-import type { EnrollmentRecord } from "../../lib/trainingEnrollment/types";
+import type {
+  AssessmentStageInfo,
+  EnrollmentAssessmentInfo,
+  EnrollmentRecord,
+} from "../../lib/trainingEnrollment/types";
 import {
   profileValue,
   useAuthenticatedUser,
@@ -26,6 +30,8 @@ export type EmployeeTrainingRecord = {
   instructor: string;
   location: string;
   note: string;
+  /** How this course assesses each stage: an in-system form, an external link, or nothing. */
+  assessment: EnrollmentAssessmentInfo;
   // Nobody has submitted an assessment through the system yet - assessment_submission is empty and
   // has no repository - so these are always Pending until that feature is built.
   preTestStatus: "Pending" | "Completed";
@@ -56,14 +62,15 @@ export const toRecord = (enrollment: EnrollmentRecord): EmployeeTrainingRecord =
   provider: enrollment.plan.owner === "CENTER" ? "HRD Center" : "Factory HRD",
   hours: enrollment.plan.hours,
   result: "Completed",
-  // No score and no certificate exist yet: training_result and training_certificate_file are both
-  // empty. This file is downloaded as evidence for job applications, so an invented certificate
-  // number would be a forged credential, not a placeholder.
-  score: null,
-  certificateNo: "-",
+  // Score and certificate come from the result HRD recorded, and stay absent until one exists.
+  // This file is downloaded as evidence for job applications, so a generated certificate number
+  // would be a forged credential rather than a placeholder.
+  score: enrollment.result?.postScore ?? null,
+  certificateNo: enrollment.result?.certificateNo || "-",
   instructor: enrollment.plan.instructor || "-",
   location: enrollment.plan.venue || "-",
   note: enrollment.plan.batchName,
+  assessment: enrollment.plan.assessment,
   preTestStatus: "Pending",
   postTestStatus: "Pending",
   evaluationStatus: "Pending",
@@ -442,66 +449,68 @@ export default function RecordModule() {
             </div>
 
             <div className={styles.employeeAssessmentSteps}>
-              {[
-                {
-                  key: "pre",
-                  title: "Pre Test",
-                  status: selectedRecord.preTestStatus,
-                  locked: false,
-                  action: "Open Pre Test",
-                },
-                {
-                  key: "post",
-                  title: "Post Test",
-                  status: selectedRecord.postTestStatus,
-                  locked: selectedRecord.preTestStatus !== "Completed",
-                  action: "Open Post Test",
-                },
-                {
-                  key: "evaluation",
-                  title: "Evaluation",
-                  status: selectedRecord.evaluationStatus,
-                  locked: selectedRecord.postTestStatus !== "Completed",
-                  action: "Open Evaluation",
-                },
-              ].map((step) => {
-                const isCompleted = step.status === "Completed";
-                const buttonLabel = step.locked
-                  ? "Locked"
-                  : isCompleted
-                    ? "Completed"
-                    : step.action;
-
-                return (
-                  <article
-                    className={step.locked ? styles.lockedAssessmentStep : styles.employeeAssessmentStep}
-                    key={step.key}
-                  >
+              {(
+                [
+                  { key: "pre", title: t("แบบทดสอบก่อนอบรม", "Pre Test"), stage: selectedRecord.assessment.preTest },
+                  { key: "post", title: t("แบบทดสอบหลังอบรม", "Post Test"), stage: selectedRecord.assessment.postTest },
+                  { key: "evaluation", title: t("แบบประเมิน", "Evaluation"), stage: selectedRecord.assessment.evaluation },
+                  {
+                    key: "evaluation30",
+                    title: t("ประเมินหลัง 30 วัน", "30-Day Evaluation"),
+                    stage: selectedRecord.assessment.evaluationAfter30Day,
+                  },
+                ] as Array<{ key: string; title: string; stage: AssessmentStageInfo }>
+              )
+                // A stage the course does not use is not a locked step - it does not exist. Showing
+                // it as "Locked" invited people to wait for something that was never coming.
+                .filter((step) => step.stage.mode !== "NONE")
+                .map((step) => (
+                  <article className={styles.employeeAssessmentStep} key={step.key}>
                     <div>
                       <span>{step.title}</span>
-                      <strong>{step.status}</strong>
+                      <strong>
+                        {step.stage.mode === "LINK"
+                          ? t("ทำผ่านลิงก์", "External link")
+                          : t("ทำในระบบ", "In this system")}
+                      </strong>
                       <small>
-                        {step.locked
-                          ? step.key === "post"
-                            ? "Complete pre test first"
-                            : "Complete post test first"
-                          : isCompleted
-                            ? "Already submitted"
-                            : "Ready to open"}
+                        {step.stage.mode === "LINK"
+                          ? t("เปิดในแท็บใหม่", "Opens in a new tab")
+                          : t("ยังไม่เปิดให้ทำ", "Not open yet")}
                       </small>
                     </div>
-                    <button
-                      disabled={step.locked || isCompleted}
-                      type="button"
-                      onClick={() => {
-                        toast.info(`เปิด ${step.title} สำหรับ ${selectedRecord.courseTitle} แล้ว / ${step.title} opened`);
-                      }}
-                    >
-                      {buttonLabel}
-                    </button>
+                    {step.stage.mode === "LINK" && step.stage.link ? (
+                      <a
+                        href={step.stage.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={styles.assessmentLinkButton}
+                      >
+                        {t("เปิด", "Open")}
+                      </a>
+                    ) : (
+                      // In-system assessments are built but no plan has one attached yet
+                      // (training_plan_assessment_setting is empty), so there is nothing to open.
+                      <button disabled type="button">
+                        {t("ยังไม่เปิด", "Not open")}
+                      </button>
+                    )}
                   </article>
-                );
-              })}
+                ))}
+
+              {[
+                selectedRecord.assessment.preTest,
+                selectedRecord.assessment.postTest,
+                selectedRecord.assessment.evaluation,
+                selectedRecord.assessment.evaluationAfter30Day,
+              ].every((stage) => stage.mode === "NONE") ? (
+                <p className={shell.emptyState}>
+                  {t(
+                    "หลักสูตรนี้ไม่มีแบบทดสอบหรือแบบประเมิน",
+                    "This course has no test or evaluation",
+                  )}
+                </p>
+              ) : null}
             </div>
 
           </section>

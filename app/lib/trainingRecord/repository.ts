@@ -8,12 +8,14 @@ import {
   EXPENSE_CATEGORIES,
   type CostBreakdown,
   type ExpenseCategory,
+  type CompletionStatus,
   type SaveExpensesInput,
+  type SaveResultsInput,
   type TrainingRecordExpenses,
   type TrainingRecordSummary,
 } from "./types";
 
-type DatabaseClient = Pick<PrismaClient, "training_plan" | "training_expense">;
+type DatabaseClient = Pick<PrismaClient, "training_plan" | "training_expense" | "training_result">;
 
 const EXPENSE_KEY_TO_CATEGORY: Record<keyof SaveExpensesInput, ExpenseCategory> = {
   accommodation: "ACCOMMODATION",
@@ -42,6 +44,7 @@ const trainingRecordInclude = {
       attendance: true,
       assessment_submission: true,
       evaluation_submission: true,
+      training_result: true,
     },
   },
 } satisfies Prisma.training_planInclude;
@@ -91,10 +94,31 @@ const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
         (enrollment.employee as any).position?.position_name_th ||
         "",
       company: enrollment.employee.company.company_code,
-      attended: enrollment.attendance !== null,
+      // PRESENT only, matching Training Actual and the cost breakdown. Counting any attendance row
+      // meant somebody marked ABSENT was still reported as having attended.
+      attended: enrollment.attendance?.attendance_status === "PRESENT",
       preTestPassed: preTest ? preTest.pass_status?.toUpperCase() === "PASS" : null,
       postTestPassed: postTest ? postTest.pass_status?.toUpperCase() === "PASS" : null,
       evaluationCompleted: enrollment.evaluation_submission.some((e) => e.submitted_at !== null),
+      result: enrollment.training_result
+        ? {
+            enrollmentId: enrollment.enrollment_id.toString(),
+            // Decimal comes back as an object; Number() keeps null distinct from 0, which is the
+            // difference between "not graded" and "scored nothing".
+            preScore:
+              enrollment.training_result.pre_score === null
+                ? null
+                : Number(enrollment.training_result.pre_score),
+            postScore:
+              enrollment.training_result.post_score === null
+                ? null
+                : Number(enrollment.training_result.post_score),
+            completionStatus: enrollment.training_result.completion_status as CompletionStatus,
+            completedAt: enrollment.training_result.completed_at?.toISOString() ?? null,
+            validUntil: enrollment.training_result.valid_until?.toISOString().slice(0, 10) ?? null,
+            certificateNo: enrollment.training_result.certificate_no,
+          }
+        : null,
     };
   });
 
@@ -104,7 +128,11 @@ const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
     attendedCount: attendees.filter((a) => a.attended).length,
     expenses,
     preTestPassCount: attendees.filter((a) => a.preTestPassed).length,
-    postTestPassCount: attendees.filter((a) => a.postTestPassed).length,
+    // A recorded result counts as a pass even when no test was taken: most courses have no test,
+    // and counting only submissions reported 0% passed on a roster HRD had just marked as passed.
+    postTestPassCount: attendees.filter(
+      (a) => a.result?.completionStatus === "COMPLETED" || a.postTestPassed,
+    ).length,
     evaluationCompletedCount: attendees.filter((a) => a.evaluationCompleted).length,
     attendees,
     savedAt: (savedAt ?? new Date(0)).toISOString(),
@@ -117,7 +145,17 @@ export const createTrainingRecordRepository = (client?: DatabaseClient) => {
   return {
     async list(companyId: string | null) {
       return withDatabaseErrorMapping(async () => {
-        const where: Prisma.training_planWhereInput = { training_expense: { some: {} } };
+        // A training that happened leaves one of three traces. Requiring an expense row hid every
+        // course that cost nothing - an internal trainer, a supplier running it free - along with
+        // any results recorded against it, and saving all-zero expenses deleted the rows and made
+        // a plan disappear from this page entirely.
+        const where: Prisma.training_planWhereInput = {
+          OR: [
+            { training_expense: { some: {} } },
+            { training_enrollment: { some: { training_result: { isNot: null } } } },
+            { status: "COMPLETED" },
+          ],
+        };
         if (companyId) {
           where.AND = [
             {
@@ -188,6 +226,129 @@ export const createTrainingRecordRepository = (client?: DatabaseClient) => {
             where: { plan_id: id },
             data: { status: "COMPLETED", updated_at: new Date() },
           });
+        });
+
+        const updated = await db().training_plan.findUniqueOrThrow({
+          where: { plan_id: id },
+          include: trainingRecordInclude,
+        });
+        return mapTrainingRecord(updated);
+      });
+    },
+
+    // Nothing in this codebase ever wrote a training_result before this: the three places that
+    // named the table all deleted from it. Attendance was where the pipeline stopped, which is why
+    // certificates, scores and the result report were all empty.
+    async saveResults(planId: string, input: SaveResultsInput, companyId: string | null) {
+      return withDatabaseErrorMapping(async () => {
+        const id = BigInt(planId);
+        const plan = await db().training_plan.findUniqueOrThrow({
+          where: { plan_id: id },
+          include: {
+            training_plan_oap: { select: { company_id: true } },
+            training_enrollment: {
+              where: { approval_status: "APPROVED" },
+              select: { enrollment_id: true, attendance: { select: { attendance_status: true } } },
+            },
+          },
+        });
+
+        if (
+          companyId &&
+          (plan.training_plan_oap.company_id === null ||
+            plan.training_plan_oap.company_id?.toString() !== companyId)
+        ) {
+          throw new ApiError({
+            code: "FORBIDDEN",
+            message: "This training plan belongs to a different company or center scope",
+            status: 403,
+          });
+        }
+
+        const attendanceByEnrollment = new Map(
+          plan.training_enrollment.map((enrollment) => [
+            enrollment.enrollment_id.toString(),
+            enrollment.attendance?.attendance_status ?? null,
+          ]),
+        );
+
+        for (const row of input.results) {
+          // Refuse a result for someone who is not on this plan's approved roster, rather than
+          // letting an id from another plan through and writing a result nobody can explain.
+          if (!attendanceByEnrollment.has(row.enrollmentId)) {
+            throw new ApiError({
+              code: "ENROLLMENT_NOT_ON_PLAN",
+              message: `Enrollment ${row.enrollmentId} is not an approved enrollment on this plan`,
+              status: 409,
+            });
+          }
+          // A completion for someone the attendance sheet says never came is a claim the record
+          // cannot support - and this record is what an employee downloads as evidence.
+          const attendance = attendanceByEnrollment.get(row.enrollmentId);
+          if (row.completionStatus === "COMPLETED" && attendance !== "PRESENT" && attendance !== "LATE") {
+            throw new ApiError({
+              code: "ATTENDANCE_REQUIRED",
+              message: `Enrollment ${row.enrollmentId} cannot be completed without attendance`,
+              status: 409,
+            });
+          }
+        }
+
+        // certificate_no is unique across the whole table. Left to the database this surfaces as a
+        // generic conflict, and on a save of thirty rows HRD would not know which certificate
+        // clashed. Check it here so the message can name it.
+        const certificates = input.results
+          .map((row) => row.certificateNo)
+          .filter((value): value is string => value !== null);
+        const duplicateInPayload = certificates.find(
+          (value, index) => certificates.indexOf(value) !== index,
+        );
+        if (duplicateInPayload) {
+          throw new ApiError({
+            code: "CERTIFICATE_CONFLICT",
+            message: `Certificate number ${duplicateInPayload} is used twice in this save`,
+            status: 409,
+          });
+        }
+
+        if (certificates.length > 0) {
+          const taken = await db().training_result.findMany({
+            where: {
+              certificate_no: { in: certificates },
+              enrollment_id: { notIn: input.results.map((row) => BigInt(row.enrollmentId)) },
+            },
+            select: { certificate_no: true },
+          });
+          if (taken.length > 0) {
+            throw new ApiError({
+              code: "CERTIFICATE_CONFLICT",
+              message: `Certificate number ${taken[0].certificate_no} already belongs to another training result`,
+              status: 409,
+            });
+          }
+        }
+
+        const now = new Date();
+        await db().$transaction(async (tx) => {
+          for (const row of input.results) {
+            const enrollmentId = BigInt(row.enrollmentId);
+            const data = {
+              pre_score: row.preScore,
+              post_score: row.postScore,
+              completion_status: row.completionStatus,
+              // Owned by the status, not by the caller: a row that stops being COMPLETED must not
+              // keep the date it was completed on.
+              completed_at: row.completionStatus === "COMPLETED" ? now : null,
+              valid_until: row.validUntil ? new Date(`${row.validUntil}T00:00:00Z`) : null,
+              certificate_no: row.certificateNo,
+            };
+
+            await tx.training_result.upsert({
+              where: { enrollment_id: enrollmentId },
+              create: { enrollment_id: enrollmentId, ...data },
+              update: data,
+            });
+          }
         });
 
         const updated = await db().training_plan.findUniqueOrThrow({

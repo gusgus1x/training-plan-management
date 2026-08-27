@@ -2989,3 +2989,29 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* An external assessment is a link, not a button: it must be a real anchor so it can open in a
+ * new tab and behave like a link for keyboard and screen-reader users. */
+.assessmentLinkButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--ui-30-primary);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 0 16px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.assessmentLinkButton:hover {
+  background: var(--ui-30-primary-strong);
+  transform: translateY(-1px);
+}

@@ -11,8 +11,21 @@ import {
   type RollingPlan,
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
 import { listEnrollments, setEnrollmentAttendance } from "../../../../lib/trainingEnrollment/client";
-import type { EnrollmentRecord } from "../../../../lib/trainingEnrollment/types";
-import { getCostBreakdown, saveTrainingRecordExpenses } from "../../../../lib/trainingRecord/client";
+import type {
+  EnrollmentAssessmentInfo,
+  EnrollmentRecord,
+} from "../../../../lib/trainingEnrollment/types";
+import {
+  getCostBreakdown,
+  saveTrainingRecordExpenses,
+  saveTrainingResults,
+} from "../../../../lib/trainingRecord/client";
+import {
+  COMPLETION_STATUSES,
+  EXPENSE_ITEMS,
+  completionStatusLabel,
+  type CompletionStatus,
+} from "../../../../lib/trainingRecord/types";
 import type { CostBreakdown } from "../../../../lib/trainingRecord/types";
 import styles from "./TrainingRecord.module.css";
 
@@ -46,6 +59,44 @@ type Attendee = {
   level?: string;
   registered: boolean;
   attended: boolean;
+};
+
+/** One attendee's result while it is being typed. Everything is a string so a half-typed score
+ *  does not have to survive a round trip through Number. */
+type ResultDraft = {
+  preScore: string;
+  postScore: string;
+  completionStatus: CompletionStatus;
+  validUntil: string;
+  certificateNo: string;
+};
+
+const emptyResultDraft: ResultDraft = {
+  preScore: "",
+  postScore: "",
+  completionStatus: "PENDING",
+  validUntil: "",
+  certificateNo: "",
+};
+
+/**
+ * Seeds the form from what is already stored. Without this the boxes come back empty after a
+ * save, and editing one person's score rebuilt their whole row from the blank draft - so saving
+ * again wiped the certificate number, expiry and status that had been recorded for them.
+ */
+const draftsFromEnrollments = (records: EnrollmentRecord[]): Record<string, ResultDraft> => {
+  const drafts: Record<string, ResultDraft> = {};
+  for (const record of records) {
+    if (!record.result) continue;
+    drafts[record.id] = {
+      preScore: record.result.preScore === null ? "" : String(record.result.preScore),
+      postScore: record.result.postScore === null ? "" : String(record.result.postScore),
+      completionStatus: record.result.completionStatus,
+      validUntil: record.result.validUntil ?? "",
+      certificateNo: record.result.certificateNo ?? "",
+    };
+  }
+  return drafts;
 };
 
 const parseNameParts = (fullName: string) => {
@@ -113,23 +164,9 @@ type ActualCourseGroup = {
 type CourseOwner = ActualCourse["owner"];
 type CourseOwnerFilter = CourseOwner | "";
 
-const expenseFields: Array<{ key: ExpenseKey; label: string }> = [
-  { key: "instructor", label: "ค่าวิทยากร / ค่าอบรม" },
-  { key: "traveling", label: "ค่าเดินทาง" },
-  { key: "seminarRoom", label: "ค่าสถานที่ / ห้องสัมมนา" },
-  { key: "accommodation", label: "ค่าที่พัก" },
-  { key: "material", label: "ค่าวัดผล / เอกสารประกอบ" },
-  { key: "foodBeverage", label: "ค่าอาหารและเครื่องดื่ม" },
-];
-
-const expenseIcons: Record<ExpenseKey, string> = {
-  instructor: "👨‍🏫",
-  traveling: "🚗",
-  seminarRoom: "🏢",
-  accommodation: "🏨",
-  material: "📚",
-  foodBeverage: "🍱",
-};
+// Shared with Training Record. Each screen used to keep its own list, so the same key read
+// "ค่าวัดผล / เอกสารประกอบ" on the form and "ค่าเอกสาร & อุปกรณ์" on the report.
+const expenseFields = EXPENSE_ITEMS;
 
 const emptyExpenses: Record<ExpenseKey, string> = {
   instructor: "",
@@ -164,6 +201,14 @@ const isCenterCourse = (course: Pick<ActualCourse, "owner" | "ownerCompany" | "c
 export default function TrainingActual() {
   const user = useAuthenticatedUser();
   const toast = useToast();
+  const [resultDrafts, setResultDrafts] = useState<Record<string, ResultDraft>>({});
+  const [isSavingResults, setIsSavingResults] = useState(false);
+  const noAssessment: EnrollmentAssessmentInfo = {
+    preTest: { mode: "NONE", link: null },
+    postTest: { mode: "NONE", link: null },
+    evaluation: { mode: "NONE", link: null },
+    evaluationAfter30Day: { mode: "NONE", link: null },
+  };
   const { language } = useUiLanguage();
   const [courses, setCourses] = useState<ActualCourse[]>([]);
   const [courseOwnerFilter, setCourseOwnerFilter] = useState<CourseOwnerFilter>("");
@@ -286,7 +331,11 @@ export default function TrainingActual() {
     let active = true;
     listEnrollments({ planId: selectedCourse.id, employeeId: null, employeeUserId: null })
       .then((result) => {
-        if (active) setEnrollments(result.enrollments || []);
+        if (!active) return;
+        const loaded = result.enrollments || [];
+        setEnrollments(loaded);
+        // Switching course starts a fresh form, seeded from whatever is already recorded.
+        setResultDrafts(draftsFromEnrollments(loaded));
       })
       .catch((error) => {
         console.error("Failed to load attendees", error);
@@ -302,13 +351,17 @@ export default function TrainingActual() {
     setSavedMessage("");
   }, [selectedCourse?.id]);
 
+  // Returns what it fetched. The save handler needs the fresh numbers in the same tick, and
+  // reading them back from state would show whatever was on screen before the save.
   const reloadCostBreakdown = async (planId: string) => {
     try {
       const result = await getCostBreakdown(planId);
       setCostBreakdown(result.costBreakdown);
+      return result.costBreakdown;
     } catch (error) {
       console.error("Failed to load cost breakdown", error);
       setCostBreakdown(null);
+      return null;
     }
   };
 
@@ -430,7 +483,10 @@ export default function TrainingActual() {
     if (!selectedCourse) return;
     try {
       const result = await listEnrollments({ planId: selectedCourse.id, employeeId: null, employeeUserId: null });
-      setEnrollments(result.enrollments || []);
+      const loaded = result.enrollments || [];
+      setEnrollments(loaded);
+      // Keep whatever is being typed; only fill in rows that have no draft yet.
+      setResultDrafts((current) => ({ ...draftsFromEnrollments(loaded), ...current }));
     } catch (error) {
       console.error("Failed to reload attendees", error);
     }
@@ -468,6 +524,22 @@ export default function TrainingActual() {
     setExpenses((current) => ({ ...current, [key]: value }));
   };
 
+  // Results are edited per attendee and saved as one payload, because training_result has one row
+  // per enrollment and a partial save would leave the roster half-graded with no sign of it.
+  const setResultField = (
+    enrollmentId: string,
+    field: keyof ResultDraft,
+    value: string,
+  ) => {
+    setResultDrafts((current) => ({
+      ...current,
+      [enrollmentId]: { ...(current[enrollmentId] ?? emptyResultDraft), [field]: value },
+    }));
+  };
+
+  // Every enrollment on one plan shares the same course, so the configuration is the plan's.
+  const assessment = enrollments[0]?.plan.assessment ?? noAssessment;
+
   const handleSave = async () => {
     if (!selectedCourse || isSelectedCourseReadOnlyForFactory) {
       return;
@@ -481,6 +553,7 @@ export default function TrainingActual() {
       year: "numeric",
     }).format(new Date());
 
+    setIsSavingResults(true);
     try {
       await saveTrainingRecordExpenses(selectedCourse.id, {
         accommodation: Number(expenses.accommodation || 0),
@@ -490,27 +563,67 @@ export default function TrainingActual() {
         seminarRoom: Number(expenses.seminarRoom || 0),
         traveling: Number(expenses.traveling || 0),
       });
-      await reloadCostBreakdown(selectedCourse.id);
+
+      // Results ride along with the same button. Two save buttons on one screen left it unclear
+      // which one committed what, and it was possible to fill in results and leave without them.
+      const edited = attendees
+        .map((attendee) => ({ attendee, draft: resultDrafts[attendee.id] }))
+        .filter(({ draft }) => draft !== undefined);
+
+      if (edited.length > 0) {
+        await saveTrainingResults(selectedCourse.id, {
+          results: edited.map(({ attendee, draft }) => ({
+            enrollmentId: attendee.id,
+            // An empty box means "not graded", which is not the same as a score of zero on a
+            // record the employee downloads as evidence.
+            preScore: draft.preScore.trim() === "" ? null : Number(draft.preScore),
+            postScore: draft.postScore.trim() === "" ? null : Number(draft.postScore),
+            completionStatus: draft.completionStatus,
+            validUntil: draft.validUntil.trim() === "" ? null : draft.validUntil,
+            certificateNo: draft.certificateNo.trim() === "" ? null : draft.certificateNo.trim(),
+          })),
+        });
+
+        const refreshed = await listEnrollments({
+          planId: selectedCourse.id,
+          employeeId: null,
+          employeeUserId: null,
+        });
+        const saved = refreshed.enrollments || [];
+        setEnrollments(saved);
+        // After a save the stored values are the truth, so the form is rebuilt from them.
+        setResultDrafts(draftsFromEnrollments(saved));
+      }
+
+      // Read the figures from what the server just returned. Reading them from state here showed
+      // the values from before the save, so the very first save always reported 0 per person.
+      const fresh = await reloadCostBreakdown(selectedCourse.id);
+      const freshPerPerson = fresh?.costPerPerson ?? 0;
+      const freshPresent = fresh?.presentCount ?? 0;
 
       setSavedSummaryData({
         courseCode: selectedCourse.code,
         courseTitle: selectedCourse.title,
         batch: selectedCourse.batch ?? "1",
         date: selectedCourse.date,
-        actualCount,
+        actualCount: freshPresent || actualCount,
         totalCost: expenseTotal,
-        costPerPerson: actualCostPerPerson,
+        costPerPerson: freshPerPerson,
         savedTime: now,
       });
       setShowSaveSuccessModal(true);
 
       setSavedMessage(
-        `Saved ${selectedCourse.code} with ${actualCount} actual attendees, total THB ${formatCurrency(expenseTotal)} (THB ${formatCurrency(actualCostPerPerson)}/person) at ${now}.`,
+        `Saved ${selectedCourse.code} with ${freshPresent} present attendees, total THB ${formatCurrency(expenseTotal)} (THB ${formatCurrency(freshPerPerson)}/person) at ${now}.`,
       );
       toast.success("บันทึกข้อมูลการอบรมจริงแล้ว / Training actual saved");
     } catch (error) {
-      console.error("Failed to save training expenses", error);
-      toast.error("บันทึกค่าใช้จ่ายไม่สำเร็จ / Failed to save training expenses");
+      console.error("Failed to save training actual", error);
+      // Surface what the server said. A certificate clash or a completion without attendance is
+      // something HRD can fix, but only if they are told which one it was.
+      toast.error(error instanceof Error ? error.message : "บันทึกไม่สำเร็จ / Could not save");
+    } finally {
+      setIsSavingResults(false);
     }
   };
 
@@ -890,6 +1003,132 @@ export default function TrainingActual() {
                 </div>
               </div>
             ) : null}
+            <section className={styles.actualResultsPanel} aria-label="Training results">
+              <div className={styles.actualResultsHeader}>
+                <div>
+                  <span>ผลการอบรม</span>
+                  <strong>Training Result</strong>
+                </div>
+                <small>{attendees.filter((a) => a.attended).length} attended</small>
+              </div>
+
+              {assessment.preTest.mode === "NONE" && assessment.postTest.mode === "NONE" ? (
+                <p className={styles.actualResultsNote}>
+                  หลักสูตรนี้ไม่ได้กำหนดแบบทดสอบ จึงไม่มีคะแนนให้บันทึก / This course has no test
+                  configured, so there is no score to record
+                </p>
+              ) : null}
+              {assessment.preTest.mode === "LINK" || assessment.postTest.mode === "LINK" ? (
+                <p className={styles.actualResultsNote}>
+                  แบบทดสอบใช้ลิงก์ภายนอก ระบบมองไม่เห็นคะแนน กรุณากรอกเอง / The test is an external
+                  link, so this system cannot read the score - enter it manually
+                </p>
+              ) : null}
+
+              {attendees.length === 0 ? (
+                <p className={styles.actualResultsEmpty}>
+                  ยังไม่มีผู้เข้าอบรมที่อนุมัติแล้ว / No approved attendee yet
+                </p>
+              ) : (
+                <div className={styles.actualResultsRows}>
+                  {attendees.map((attendee) => {
+                    const saved = enrollments.find((e) => e.id === attendee.id);
+                    const draft = resultDrafts[attendee.id] ?? emptyResultDraft;
+                    return (
+                      <article key={attendee.id} className={styles.actualResultRow}>
+                        <div className={styles.actualResultWho}>
+                          <strong>{attendee.name}</strong>
+                          <small>
+                            {attendee.employeeCode || "-"} · {attendee.company}
+                            {attendee.attended ? "" : " · ไม่ได้เข้าอบรม / absent"}
+                          </small>
+                        </div>
+
+                        {/* A course with no test at this stage has no score to record. Leaving the
+                            box on screen invites a mark for an exam that never happened onto a
+                            document the employee hands to an employer. */}
+                        {assessment.preTest.mode === "NONE" ? null : (
+                          <label>
+                            Pre
+                            <input
+                              type="number"
+                              min={0}
+                              value={draft.preScore}
+                              onChange={(event) =>
+                                setResultField(attendee.id, "preScore", event.target.value)
+                              }
+                            />
+                          </label>
+                        )}
+                        {assessment.postTest.mode === "NONE" ? null : (
+                          <label>
+                            Post
+                            <input
+                              type="number"
+                              min={0}
+                              value={draft.postScore}
+                              onChange={(event) =>
+                                setResultField(attendee.id, "postScore", event.target.value)
+                              }
+                            />
+                          </label>
+                        )}
+                        <label>
+                          ผลการอบรม
+                          <select
+                            value={draft.completionStatus}
+                            onChange={(event) =>
+                              setResultField(attendee.id, "completionStatus", event.target.value)
+                            }
+                          >
+                            {COMPLETION_STATUSES.map((status) => (
+                              <option key={status} value={status}>
+                                {completionStatusLabel(status, language)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          เลขใบรับรอง
+                          <input
+                            type="text"
+                            value={draft.certificateNo}
+                            placeholder="-"
+                            onChange={(event) =>
+                              setResultField(attendee.id, "certificateNo", event.target.value)
+                            }
+                          />
+                        </label>
+                        <label>
+                          หมดอายุ
+                          <input
+                            type="date"
+                            value={draft.validUntil}
+                            onChange={(event) =>
+                              setResultField(attendee.id, "validUntil", event.target.value)
+                            }
+                          />
+                        </label>
+
+                        {saved?.result ? (
+                          <small className={styles.actualResultSaved}>
+                            บันทึกแล้ว: {completionStatusLabel(saved.result.completionStatus, language)}
+                            {saved.result.certificateNo ? ` · ${saved.result.certificateNo}` : ""}
+                          </small>
+                        ) : null}
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+
+              <p className={styles.actualResultsNote}>
+                กรอกแล้วกดปุ่มบันทึกด้านขวาครั้งเดียว บันทึกทั้งค่าใช้จ่ายและผลการอบรมพร้อมกัน / Fill
+                these in and use the single save button on the right - it saves the expenses and
+                the results together
+              </p>
+            </section>
+
           </div>
 
           {/* Executive Expense Calculation Sidebar */}
@@ -906,7 +1145,7 @@ export default function TrainingActual() {
               {expenseFields.map((field) => (
                 <label key={field.key} className={styles.expenseInputCard}>
                   <div className={styles.expenseLabelHeader}>
-                    <span>{expenseIcons[field.key]} {field.label}</span>
+                    <span>{field.icon} {field.label}</span>
                   </div>
                   <div className={styles.expenseInputWrap}>
                     <span className={styles.currencyPrefix}>THB</span>
@@ -945,7 +1184,7 @@ export default function TrainingActual() {
                     const variance = planned - actual;
                     return (
                       <tr key={field.key}>
-                        <td>{expenseIcons[field.key]} {field.label}</td>
+                        <td>{field.icon} {field.label}</td>
                         <td>THB {formatCurrency(planned)}</td>
                         <td>THB {formatCurrency(actual)}</td>
                         <td className={variance < 0 ? styles.actualBudgetOverrun : undefined}>
@@ -983,6 +1222,17 @@ export default function TrainingActual() {
                 })()}
               </small>
             </div>
+
+            {/* The per-person figure is the total divided by who was marked PRESENT. With nobody
+                marked, there is nothing to divide by, and rendering nothing at all made the save
+                look like it had failed. */}
+            {(costBreakdown?.presentCount ?? 0) === 0 ? (
+              <p className={styles.actualResultsNote}>
+                {language === "th"
+                  ? "ยังไม่มีใครถูกเช็กชื่อว่าเข้าอบรม จึงยังจำแนกค่าใช้จ่ายต่อคนไม่ได้ — เช็กชื่อในตารางด้านซ้ายก่อน"
+                  : "Nobody is marked as present yet, so the cost cannot be split per person - check attendance in the table on the left first"}
+              </p>
+            ) : null}
 
             {companyCostBreakdown.length > 0 ? (
               <div className={styles.actualCompanyBreakdownBox}>
@@ -1079,7 +1329,7 @@ export default function TrainingActual() {
             <button
               className={styles.actualSaveButton}
               type="button"
-              disabled={isSelectedCourseReadOnlyForFactory}
+              disabled={isSelectedCourseReadOnlyForFactory || isSavingResults}
               title={
                 isSelectedCourseReadOnlyForFactory
                   ? "หลักสูตรของส่วนกลาง โรงงานดูได้อย่างเดียว แก้ไขไม่ได้ (Center course — read-only for factory users)"
@@ -1087,7 +1337,7 @@ export default function TrainingActual() {
               }
               onClick={() => void handleSave()}
             >
-              💾 บันทึกข้อมูลการอบรม & คำนวณเงิน
+              {isSavingResults ? "กำลังบันทึก..." : "💾 บันทึกค่าใช้จ่าย & ผลการอบรม"}
             </button>
 
             {savedMessage ? <p className={styles.actualSavedMessage}>{savedMessage}</p> : null}

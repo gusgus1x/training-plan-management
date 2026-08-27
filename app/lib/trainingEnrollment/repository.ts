@@ -4,6 +4,7 @@ import { ApiError } from "../api/errors";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
 import type {
+  AssessmentStageInfo,
   AttendanceStatus,
   CreateEnrollmentInput,
   EnrollmentAction,
@@ -31,6 +32,7 @@ const employeeInclude = {
 const enrollmentInclude = {
   employee: { include: employeeInclude },
   attendance: true,
+  training_result: true,
   training_plan: {
     include: {
       training_plan_oap: {
@@ -40,7 +42,19 @@ const enrollmentInclude = {
           planned_duration_hours: true,
           instructor_name_text: true,
           provider_name_text: true,
-          course: { select: { course_code: true } },
+          course: {
+            select: {
+              course_code: true,
+              pre_assessment_id: true,
+              pre_test_link: true,
+              post_assessment_id: true,
+              post_test_link: true,
+              evaluation_form_id: true,
+              evaluation_link: true,
+              evaluation_form_after_30day_id: true,
+              evaluation_after_30day_link: true,
+            },
+          },
         },
       },
     },
@@ -70,6 +84,17 @@ const mapStatus = (approvalStatus: string, planOwnerIsFactory: boolean): Enrollm
   }
 };
 
+// A form wins over a link when a course somehow carries both: the in-system one is the copy this
+// system can actually read a score from.
+export const assessmentStage = (
+  formId: bigint | null,
+  link: string | null,
+): AssessmentStageInfo => {
+  if (formId !== null) return { mode: "FORM", link: null };
+  if (link && link.trim()) return { mode: "LINK", link: link.trim() };
+  return { mode: "NONE", link: null };
+};
+
 const mapEnrollment = (row: EnrollmentWithRelations) => {
   const plan = row.training_plan;
   const oap = plan.training_plan_oap;
@@ -78,7 +103,31 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
   return {
     id: row.enrollment_id.toString(),
     planId: row.plan_id.toString(),
+    result: row.training_result
+      ? {
+          // Decimal arrives as an object. Number() keeps null apart from 0 - "not graded" and
+          // "scored nothing" are different claims on a record used as evidence.
+          preScore: row.training_result.pre_score === null ? null : Number(row.training_result.pre_score),
+          postScore: row.training_result.post_score === null ? null : Number(row.training_result.post_score),
+          completionStatus: row.training_result.completion_status as
+            | "PENDING"
+            | "NOT_COMPLETED"
+            | "COMPLETED",
+          completedAt: row.training_result.completed_at?.toISOString() ?? null,
+          validUntil: row.training_result.valid_until?.toISOString().slice(0, 10) ?? null,
+          certificateNo: row.training_result.certificate_no,
+        }
+      : null,
     plan: {
+      assessment: {
+        preTest: assessmentStage(oap.course.pre_assessment_id, oap.course.pre_test_link),
+        postTest: assessmentStage(oap.course.post_assessment_id, oap.course.post_test_link),
+        evaluation: assessmentStage(oap.course.evaluation_form_id, oap.course.evaluation_link),
+        evaluationAfter30Day: assessmentStage(
+          oap.course.evaluation_form_after_30day_id,
+          oap.course.evaluation_after_30day_link,
+        ),
+      },
       planCode: plan.plan_code,
       planName: plan.plan_name,
       batchName: plan.batch_name || `Batch ${plan.batch_no}`,
