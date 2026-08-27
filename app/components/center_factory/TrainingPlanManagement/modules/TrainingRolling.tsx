@@ -406,7 +406,11 @@ export default function TrainingRolling() {
   const visiblePlans = useMemo(
     () =>
       [...scopedRollingPlans]
-        .sort((a, b) => a.trainingDate.localeCompare(b.trainingDate))
+        .sort(
+          (a, b) =>
+            a.trainingDate.localeCompare(b.trainingDate) ||
+            (a.startTime || "").localeCompare(b.startTime || ""),
+        )
         .map((plan, index) => ({ ...plan, sequence: index + 1 }))
         .filter((plan) => {
           if (companyFilter !== "all") {
@@ -520,7 +524,7 @@ export default function TrainingRolling() {
       const sortedPlans = [...plans].sort(
         (a, b) =>
           a.trainingDate.localeCompare(b.trainingDate) ||
-          a.startTime.localeCompare(b.startTime),
+          (a.startTime || "").localeCompare(b.startTime || ""),
       );
       return {
         id,
@@ -531,15 +535,21 @@ export default function TrainingRolling() {
 
     return mappedGroups
       .sort((groupA, groupB) => {
+        const dateA = groupA.firstPlan.trainingDate;
+        const dateB = groupB.firstPlan.trainingDate;
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+
+        const timeA = groupA.firstPlan.startTime || "";
+        const timeB = groupB.firstPlan.startTime || "";
+        if (timeA !== timeB) return timeA.localeCompare(timeB);
+
         const weightA = getCompanySortWeight(groupA.firstPlan);
         const weightB = getCompanySortWeight(groupB.firstPlan);
         if (weightA !== weightB) return weightA - weightB;
 
         const companyA = formatRollingPlanCompanies(groupA.firstPlan);
         const companyB = formatRollingPlanCompanies(groupB.firstPlan);
-        if (companyA !== companyB) return companyA.localeCompare(companyB);
-
-        return groupA.firstPlan.trainingDate.localeCompare(groupB.firstPlan.trainingDate);
+        return companyA.localeCompare(companyB);
       })
       .map((group, index) => ({
         id: group.id,
