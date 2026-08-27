@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import dash from "../shared/DashboardShell.module.css";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useUiLanguage, type UiLanguage } from "../ThaiUiLocalization";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
 import type { EnrollmentRecord } from "../../lib/trainingEnrollment/types";
@@ -20,6 +19,7 @@ import {
   loadWorkflowRollingPlans,
   type RollingPlan,
 } from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
+import CalendarModule from "./CalendarModule";
 import RecordModule from "./RecordModule";
 import RegisterTrainingModule from "./RegisterTrainingModule";
 import ReportModule from "./ReportModule";
@@ -31,6 +31,71 @@ import {
   getCurrentCalendarDate,
 } from "../../lib/calendarDate";
 import TypewriterLoader from "../TypewriterLoader";
+
+const RegisterIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+    <rect x="7" y="4" width="18" height="24" rx="3" fill="#3B82F6" />
+    <rect x="7" y="24" width="18" height="2" fill="#EC4899" />
+    <line x1="12" y1="4" x2="12" y2="26" stroke="#1D4EDB" strokeWidth="1.5" />
+  </svg>
+);
+
+const RoadmapIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+    <rect x="5" y="7" width="22" height="18" rx="3" fill="#14B8A6" />
+    <path d="M5 12h22" stroke="#0D9488" strokeWidth="1.5" />
+    <circle cx="10" cy="18" r="2" fill="#ffffff" />
+    <line x1="15" y1="18" x2="22" y2="18" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
+const RequestIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+    <rect x="5" y="6" width="22" height="22" rx="3" fill="#8B5CF6" />
+    <path d="M12 11h8M12 16h8M12 21h5" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
+    <circle cx="9" cy="11" r="1.2" fill="#ffffff" />
+    <circle cx="9" cy="16" r="1.2" fill="#ffffff" />
+    <circle cx="9" cy="21" r="1.2" fill="#ffffff" />
+  </svg>
+);
+
+const RecordIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+    <rect x="6" y="6" width="20" height="22" rx="3" fill="#F59E0B" />
+    <rect x="11" y="4" width="10" height="4" rx="1.5" fill="#D97706" />
+    <path d="M11 15l3 3 7-7" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const ReportIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+    <rect x="5" y="5" width="22" height="22" rx="3" fill="#EF4444" />
+    <rect x="9" y="16" width="3" height="7" rx="1" fill="#ffffff" />
+    <rect x="14.5" y="11" width="3" height="12" rx="1" fill="#ffffff" />
+    <rect x="20" y="8" width="3" height="15" rx="1" fill="#ffffff" />
+  </svg>
+);
+
+const CalendarIcon = () => (
+  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
+    <rect x="5" y="5" width="22" height="22" rx="4" fill="#10B981" />
+    <path d="M5 11h22" stroke="#059669" strokeWidth="1.5" />
+    <rect x="9" y="15" width="4" height="4" rx="1" fill="#ffffff" />
+    <rect x="15" y="15" width="4" height="4" rx="1" fill="#ffffff" />
+    <rect x="21" y="15" width="4" height="4" rx="1" fill="#ffffff" />
+    <rect x="9" y="21" width="4" height="4" rx="1" fill="#ffffff" />
+    <rect x="15" y="21" width="4" height="4" rx="1" fill="#ffffff" />
+  </svg>
+);
+
+const moduleIconMap: Record<UserModule, React.ReactNode> = {
+  register: <RegisterIcon />,
+  roadmap: <RoadmapIcon />,
+  request: <RequestIcon />,
+  record: <RecordIcon />,
+  report: <ReportIcon />,
+  calendar: <CalendarIcon />,
+};
 
 type UserDashboardProps = {
   username: string;
@@ -107,7 +172,39 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
       ? t("ทั้งปี", "All year")
       : new Date(2020, Number(value) - 1, 1).toLocaleDateString(locale, { month: "long" }) ||
         fallback;
-  const employeeProfile = buildProfileItems(authenticatedUser);
+  const fullEmployeeProfileItems = useMemo(() => {
+    const userAny = authenticatedUser as any;
+    return [
+      {
+        label: isThai ? "ชื่อ-นามสกุล" : "Full Name",
+        value: profileValue(authenticatedUser?.displayName ?? username),
+      },
+      {
+        label: isThai ? "รหัสพนักงาน" : "Employee Code",
+        value: authenticatedUser?.employeeCode ? authenticatedUser.employeeCode : "EMPLOYEE Account",
+      },
+      {
+        label: isThai ? "ตำแหน่ง" : "Position",
+        value: profileValue(authenticatedUser?.positionName),
+      },
+      {
+        label: isThai ? "หน่วยงาน / แผนก" : "Department",
+        value: profileValue(authenticatedUser?.functionName),
+      },
+      {
+        label: isThai ? "วันเริ่มงาน" : "Start Date",
+        value: userAny?.startDate ? userAny.startDate : (isThai ? "ไม่ระบุ" : "Not specified"),
+      },
+      {
+        label: isThai ? "วันเกิด" : "Date of Birth",
+        value: userAny?.birthDate ? userAny.birthDate : (isThai ? "ไม่ระบุ" : "Not specified"),
+      },
+      {
+        label: isThai ? "บริษัท" : "Company",
+        value: profileValue(authenticatedUser?.companyName ?? authenticatedUser?.companyCode),
+      },
+    ];
+  }, [authenticatedUser, username, isThai]);
   const [activeModule, setActiveModule] = useState<UserModule | null>(null);
   const [trainingNeed, setTrainingNeed] = useState("");
   const [reason, setReason] = useState("");
@@ -118,6 +215,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
   const [selectedCalendarMonth, setSelectedCalendarMonth] = useState(
     calendarToday.month,
   );
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [isMonthListOpen, setIsMonthListOpen] = useState(false);
 
   const handlePrevCalendarMonth = () => {
@@ -133,6 +231,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
         setSelectedCalendarMonth(String(current - 1).padStart(2, "0"));
       }
     }
+    setSelectedDay(null);
   };
 
   const handleNextCalendarMonth = () => {
@@ -148,6 +247,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
         setSelectedCalendarMonth(String(current + 1).padStart(2, "0"));
       }
     }
+    setSelectedDay(null);
   };
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
@@ -339,7 +439,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
       ) : activeModule ? (
         <>
           {activeModule === "register" ? (
-            <RegisterTrainingModule />
+            <RegisterTrainingModule onNavigate={(mod) => setActiveModule(mod)} />
           ) : null}
           {activeModule === "roadmap" ? (
             <RoadmapModule />
@@ -361,6 +461,12 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
               completedCount={completedEnrollments.length}
             />
           ) : null}
+          {activeModule === "calendar" ? (
+            <CalendarModule
+              initialYear={selectedCalendarYear}
+              initialMonth={selectedCalendarMonth}
+            />
+          ) : null}
         </>
       ) : (
         <>
@@ -379,15 +485,20 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
             </div>
           </section>
 
-          <div className={dash.actionStrip} aria-label="What needs your attention">
+          <div className={styles.actionStrip} aria-label="What needs your attention">
             <button
-              className={`${dash.actionCard} ${openToRegister.length === 0 ? dash.quiet : ""}`}
+              className={styles.actionCard}
               type="button"
+              style={{
+                "--card-accent": "#2563eb",
+                "--card-accent-soft": "rgba(37, 99, 235, 0.12)",
+                "--card-accent-border": "rgba(37, 99, 235, 0.3)",
+              } as CSSProperties}
               disabled={openToRegister.length === 0}
               onClick={() => setActiveModule("register")}
             >
-              <span className={dash.actionCount}>{openToRegister.length}</span>
-              <span className={dash.actionCopy}>
+              <span className={styles.actionCount}>{openToRegister.length}</span>
+              <span className={styles.actionCopy}>
                 <strong>{isThai ? "หลักสูตรที่สมัครได้" : "Open to register"}</strong>
                 <span>
                   {openToRegister.length === 0
@@ -395,16 +506,22 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                     : (isThai ? "กดเพื่อเลือกหลักสูตร" : "Tap to choose a course")}
                 </span>
               </span>
+              <span className={styles.actionChevron} aria-hidden="true">›</span>
             </button>
 
             <button
-              className={`${dash.actionCard} ${awaitingApproval.length === 0 ? dash.quiet : ""}`}
+              className={styles.actionCard}
               type="button"
+              style={{
+                "--card-accent": "#7c3aed",
+                "--card-accent-soft": "rgba(124, 58, 237, 0.12)",
+                "--card-accent-border": "rgba(124, 58, 237, 0.3)",
+              } as CSSProperties}
               disabled={awaitingApproval.length === 0}
               onClick={() => setActiveModule("register")}
             >
-              <span className={dash.actionCount}>{awaitingApproval.length}</span>
-              <span className={dash.actionCopy}>
+              <span className={styles.actionCount}>{awaitingApproval.length}</span>
+              <span className={styles.actionCopy}>
                 <strong>{isThai ? "รออนุมัติ" : "Awaiting approval"}</strong>
                 <span>
                   {awaitingApproval.length === 0
@@ -412,16 +529,22 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                     : (isThai ? "HRD กำลังพิจารณา" : "With HRD for review")}
                 </span>
               </span>
+              <span className={styles.actionChevron} aria-hidden="true">›</span>
             </button>
 
             <button
-              className={`${dash.actionCard} ${completedEnrollments.length === 0 ? dash.quiet : ""}`}
+              className={styles.actionCard}
               type="button"
+              style={{
+                "--card-accent": "#10b981",
+                "--card-accent-soft": "rgba(16, 185, 129, 0.12)",
+                "--card-accent-border": "rgba(16, 185, 129, 0.3)",
+              } as CSSProperties}
               disabled={completedEnrollments.length === 0}
               onClick={() => setActiveModule("record")}
             >
-              <span className={dash.actionCount}>{completedEnrollments.length}</span>
-              <span className={dash.actionCopy}>
+              <span className={styles.actionCount}>{completedEnrollments.length}</span>
+              <span className={styles.actionCopy}>
                 <strong>{isThai ? "อบรมสำเร็จแล้ว" : "Completed"}</strong>
                 <span>
                   {completedEnrollments.length === 0
@@ -429,69 +552,70 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                     : (isThai ? `สะสม ${completedHours} ชั่วโมง` : `${completedHours} hours`)}
                 </span>
               </span>
+              <span className={styles.actionChevron} aria-hidden="true">›</span>
             </button>
           </div>
 
           <div className={styles.topRow}>
             <section className={styles.employeePanel} aria-label="My employee information">
-              <div className={dash.profileHeaderBanner}>
-                <div className={dash.photoBox} aria-hidden="true">
+              <div className={styles.profileHeaderBanner}>
+                <div className={styles.photoBox} aria-hidden="true">
                   {initialsOf(username)}
                 </div>
-                <div className={dash.profileMetaBox}>
-                  <div className={dash.profileTagRow}>
-                    <span className={dash.userRoleTag}>{t("พนักงาน", "Employee")}</span>
-                    <span className={dash.onlineBadge}>
-                      <span className={dash.onlineDot} aria-hidden="true" />
+                <div className={styles.profileMetaBox}>
+                  <div className={styles.profileTagRow}>
+                    <span className={styles.userRoleTag}>{t("พนักงาน", "EMPLOYEE")}</span>
+                    <span className={styles.onlineBadge}>
+                      <span className={styles.onlineDot} aria-hidden="true" />
                       {t("ออนไลน์", "Online")}
                     </span>
                   </div>
-                  <strong className={dash.profileName}>{username}</strong>
-                  <p className={dash.profileSubText}>
+                  <strong className={styles.profileName}>{username}</strong>
+                  <p className={styles.profileSubText}>
                     {profileValue(authenticatedUser?.positionName)} /{" "}
                     {profileValue(authenticatedUser?.functionName)}
                   </p>
                 </div>
               </div>
 
-              <div className={dash.employeeDetailsGrid}>
-                {employeeProfile.slice(0, 5).map((item) => (
-                  <div className={dash.detailCard} key={item.label}>
-                    <span className={dash.detailLabel}>{item.label}</span>
-                    <strong className={dash.detailValue} title={item.value}>
+              <div className={styles.employeeDetailsGrid}>
+                {fullEmployeeProfileItems.map((item) => (
+                  <div className={styles.detailCard} key={item.label}>
+                    <span className={styles.detailLabel}>{item.label}</span>
+                    <strong className={styles.detailValue} title={item.value}>
                       {item.value}
                     </strong>
                   </div>
                 ))}
               </div>
 
-              <div className={dash.kpiSummaryBar} aria-label="Training summary">
-                <div className={dash.kpiCol}>
-                  <span className={dash.kpiLabel}>{t("ลงทะเบียน", "Registered")}</span>
-                  <div className={dash.kpiValueRow}>
-                    <strong className={dash.kpiValue}>{enrolledPlanIds.size}</strong>
-                    <small className={dash.kpiHelper}>{t("หลักสูตร", "courses")}</small>
+              <div className={styles.kpiSummaryBar} aria-label="Training summary">
+                <div className={styles.kpiCol}>
+                  <span className={styles.kpiLabel}>{t("ลงทะเบียน", "Registered")}</span>
+                  <div className={styles.kpiValueRow}>
+                    <strong className={styles.kpiValue}>{enrolledPlanIds.size}</strong>
+                    <small className={styles.kpiHelper}>{t("หลักสูตร", "courses")}</small>
                   </div>
                 </div>
-                <div className={dash.kpiCol}>
-                  <span className={dash.kpiLabel}>{t("สำเร็จแล้ว", "Completed")}</span>
-                  <div className={dash.kpiValueRow}>
-                    <strong className={dash.kpiValue}>{completedHours}</strong>
-                    <small className={dash.kpiHelper}>{t("ชั่วโมง", "hours")}</small>
+                <div className={styles.kpiCol}>
+                  <span className={styles.kpiLabel}>{t("สำเร็จแล้ว", "Completed")}</span>
+                  <div className={styles.kpiValueRow}>
+                    <strong className={styles.kpiValue}>{completedHours}</strong>
+                    <small className={styles.kpiHelper}>{t("ชั่วโมง", "hours")}</small>
                   </div>
                 </div>
-                <div className={dash.kpiCol}>
-                  <span className={dash.kpiLabel}>{t("เปิดรับ", "Open")}</span>
-                  <div className={dash.kpiValueRow}>
-                    <strong className={dash.kpiValue}>{openToRegister.length}</strong>
-                    <small className={dash.kpiHelper}>{t("เข้าร่วมได้", "to join")}</small>
+                <div className={styles.kpiCol}>
+                  <span className={styles.kpiLabel}>{t("เปิดรับ", "Open")}</span>
+                  <div className={styles.kpiValueRow}>
+                    <strong className={styles.kpiValue}>{openToRegister.length}</strong>
+                    <small className={styles.kpiHelper}>{t("เข้าร่วมได้", "to join")}</small>
                   </div>
                 </div>
               </div>
 
               {nextTraining ? (
-                <div className={dash.nextTraining}>
-                  <div className={dash.nextTrainingDate}>
+                <div className={styles.nextTraining}>
+                  <div className={styles.nextTrainingDate}>
                     <strong>{new Date(nextTraining.plan.startAt).getDate()}</strong>
                     <span>
                       {new Date(nextTraining.plan.startAt).toLocaleDateString(locale, {
@@ -499,7 +623,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                       })}
                     </span>
                   </div>
-                  <div className={dash.nextTrainingCopy}>
+                  <div className={styles.nextTrainingCopy}>
                     <span>{isThai ? "อบรมครั้งถัดไป" : "Next training"}</span>
                     <strong title={nextTraining.plan.courseName}>
                       {nextTraining.plan.courseName}
@@ -513,7 +637,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                     if (days === null) return null;
                     return (
                       <span
-                        className={`${dash.countdownPill} ${days <= 3 ? dash.soon : ""}`}
+                        className={days <= 3 ? styles.countdownPillSoon : styles.countdownPill}
                       >
                         {countdownLabel(days, language)}
                       </span>
@@ -526,44 +650,88 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
             <section className={styles.calendarPanel} aria-label="Employee training calendar">
               <div className={styles.panelHeader}>
                 <div>
-                  <p>{t("ตารางการอบรม", "Training Schedule")}</p>
-                  <h2 translate="no">{t("ปฏิทินการอบรม", "Training Calendar")}</h2>
-                  <span className={styles.monthMetaBadge}>
-                    {selectedMonthLabel} {selectedCalendarYear} • {filteredCalendarTrainings.length} {t("หลักสูตร", "courses")}
-                  </span>
+                  <span>{selectedMonthLabel} {selectedCalendarYear}</span>
+                  <h2>{t("ปฏิทินการฝึกอบรม", "Training Calendar")}</h2>
                 </div>
-                <button
-                  className={styles.calendarToggleButton}
-                  type="button"
-                  onClick={() => setIsMonthListOpen((current) => !current)}
-                >
-                  {isMonthListOpen ? t("ซ่อนรายการ", "Hide list") : t("แสดงรายการ", "Show list")}
-                </button>
+                <div className={styles.calendarHeaderActions}>
+                  <b className={styles.courseCountBadge}>
+                    <span className={styles.badgeDot} />
+                    {filteredCalendarTrainings.length} {t("หลักสูตร", "courses")}
+                  </b>
+                  <button
+                    type="button"
+                    className={styles.fullCalendarBtn}
+                    onClick={() => setActiveModule("calendar")}
+                    title={t("ดูปฏิทินแบบเต็ม (Full Calendar)", "View Full Calendar")}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                      <polyline points="15 3 21 3 21 9" />
+                      <line x1="10" y1="14" x2="21" y2="3" />
+                    </svg>
+                    <span>{t("ปฏิทินใหญ่", "Full Calendar")}</span>
+                  </button>
+                </div>
               </div>
 
               <div className={styles.calendarFilters}>
-                <label>
-                  <span>{t("ปี", "Year")}</span>
-                  <select
-                    value={selectedCalendarYear}
-                    onChange={(event) => setSelectedCalendarYear(event.target.value)}
-                  >
-                    {calendarYears.map((year) => (
-                      <option key={year} value={year}>{year}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>{t("เดือน", "Month")}</span>
-                  <select
-                    value={selectedCalendarMonth}
-                    onChange={(event) => setSelectedCalendarMonth(event.target.value)}
-                  >
-                    {calendarMonths.map((month) => (
-                      <option key={month.value} value={month.value}>{monthLabel(month.value, month.label)}</option>
-                    ))}
-                  </select>
-                </label>
+                <div className={styles.filterItem}>
+                  <span className={styles.filterTitle}>{t("บริษัท", "Company")}</span>
+                  <div className={styles.selectWrapper}>
+                    <select
+                      className={styles.filterSelect}
+                      disabled
+                      value={employeeCompany}
+                    >
+                      <option value={employeeCompany}>{employeeCompany} + Center</option>
+                    </select>
+                    <svg className={styles.selectChevron} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div className={styles.filterItem}>
+                  <span className={styles.filterTitle}>{t("ปี", "Year")}</span>
+                  <div className={styles.selectWrapper}>
+                    <select
+                      className={styles.filterSelect}
+                      value={selectedCalendarYear}
+                      onChange={(event) => {
+                        setSelectedCalendarYear(event.target.value);
+                        setSelectedDay(null);
+                      }}
+                    >
+                      {calendarYears.map((year) => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
+                    </select>
+                    <svg className={styles.selectChevron} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div className={styles.filterItem}>
+                  <span className={styles.filterTitle}>{t("เดือน", "Month")}</span>
+                  <div className={styles.selectWrapper}>
+                    <select
+                      className={styles.filterSelect}
+                      value={selectedCalendarMonth}
+                      onChange={(event) => {
+                        setSelectedCalendarMonth(event.target.value);
+                        setSelectedDay(null);
+                      }}
+                    >
+                      {calendarMonths.map((month) => (
+                        <option key={month.value} value={month.value}>{monthLabel(month.value, month.label)}</option>
+                      ))}
+                    </select>
+                    <svg className={styles.selectChevron} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </div>
+                </div>
               </div>
 
               {selectedCalendarMonth === "all" ? null : (
@@ -577,23 +745,41 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                     const isWeekend = index % 7 === 0 || index % 7 === 6;
                     const isToday = isViewingCurrentMonth && item.day === calendarToday.day;
                     const hasTrainings = item.trainings.length > 0;
+                    const isSelected = item.day !== null && item.day === selectedDay;
+
+                    const className = [
+                      styles.calendarDay,
+                      hasTrainings ? styles.trainingDay : "",
+                      isToday ? styles.today : "",
+                      isSelected ? styles.selectedDay : "",
+                      isWeekend ? styles.weekendDay : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ");
 
                     return (
                       <div
-                        className={`${styles.calendarDay} ${hasTrainings ? styles.trainingDay : ""} ${isToday ? styles.today : ""} ${isWeekend ? styles.weekendDay : ""}`}
+                        className={className}
                         key={`${item.day ?? "empty"}-${index}`}
+                        onClick={() => {
+                          if (item.day !== null && hasTrainings) {
+                            setSelectedDay(item.day === selectedDay ? null : item.day);
+                          }
+                        }}
+                        style={hasTrainings ? { cursor: "pointer" } : undefined}
+                        title={hasTrainings ? `${item.trainings.length} ${isThai ? "หลักสูตร (กดเพื่อดูรายละเอียด)" : "courses (click for details)"}` : undefined}
                       >
                         {item.day ? (
                           <>
-                            <div className={styles.dayCellHeader}>
-                              <span className={styles.dayNum}>{item.day}</span>
-                              {isToday && <small className={styles.todayPill}>TODAY</small>}
+                            <div className={styles.dayCellTop}>
+                              <span className={styles.dayNumberBadge}>{item.day}</span>
+                              {isToday && <span className={styles.todayDotIndicator} title={isThai ? "วันนี้" : "Today"} />}
                             </div>
-                            {item.trainings.map((training) => (
-                              <small key={training.title} className={styles.trainingPill} title={training.title}>
-                                {training.shortName}
-                              </small>
-                            ))}
+                            {hasTrainings && (
+                              <span className={styles.topRightBadge}>
+                                {item.trainings.length}
+                              </span>
+                            )}
                           </>
                         ) : null}
                       </div>
@@ -601,6 +787,54 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                   })}
                 </div>
               )}
+
+              {selectedCalendarMonth !== "all" && selectedDay !== null && (() => {
+                const dayTrainings = filteredCalendarTrainings.filter(
+                  (item) => Number(item.date.slice(8, 10)) === selectedDay,
+                );
+                if (dayTrainings.length === 0) return null;
+                const dateStr = `${selectedCalendarYear}-${selectedCalendarMonth}-${String(selectedDay).padStart(2, "0")}`;
+                const dateLabel = new Date(`${dateStr}T00:00:00`).toLocaleDateString(isThai ? "th-TH" : "en-US", {
+                  weekday: "long", day: "numeric", month: "long", year: "numeric",
+                });
+                return (
+                  <div className={styles.dayDetailPanel} aria-label={`Training detail for day ${selectedDay}`}>
+                    <div className={styles.dayDetailHeader}>
+                      <div>
+                        <strong>📅 {dateLabel}</strong>
+                        <span>{dayTrainings.length} {isThai ? "รายการอบรมในวันนี้" : "training courses scheduled today"}</span>
+                      </div>
+                      <button
+                        className={styles.dayDetailClose}
+                        type="button"
+                        onClick={() => setSelectedDay(null)}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className={styles.dayDetailList}>
+                      {dayTrainings.map((training) => (
+                        <div className={styles.dayDetailItem} key={training.title}>
+                          <div className={styles.dayDetailItemTop}>
+                            <span className={styles.dayDetailCompanyTag}>
+                              🏠 {employeeCompany}
+                            </span>
+                            <span className={styles.dayDetailStatusBadge}>
+                              <span className={styles.pulseDot} />
+                              {training.status}
+                            </span>
+                          </div>
+                          <strong className={styles.dayDetailCourseName}>{training.title}</strong>
+                          <div className={styles.dayDetailInfo}>
+                            <span>🕐 {training.time}</span>
+                            <span>📍 {training.place}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {isMonthListOpen ? (
                 <div className={styles.calendarTrainingList}>
@@ -628,32 +862,100 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
             </section>
           </div>
 
-          <section className={styles.modulePanel} aria-label="User modules">
-            <div className={styles.panelHeader}>
+          <section className={styles.menuPanel} aria-label="Main workspace menu">
+            <div className={styles.menuHeader}>
               <div>
-                <p>{t("เมนูผู้ใช้งาน", "User Operation")}</p>
-                <h2 translate="no">{t("เลือกพื้นที่ทำงาน", "Select a workspace")}</h2>
+                <span>{t("เมนูผู้ใช้งาน", "User Operations")}</span>
+                <h2>{t("เลือกโมดูลที่ต้องการใช้งาน", "Select a Workspace Module")}</h2>
               </div>
-              <span>{moduleCards.length} {t("เมนู", "modules")}</span>
+              <p className={styles.coreModulesBadge}>{moduleCards.length} Core Modules</p>
             </div>
 
-            <div className={styles.moduleGrid}>
-              {moduleCards.map((module, index) => (
-                <button
-                  className={styles.moduleCard}
-                  key={module.key}
-                  type="button"
-                  onClick={() => setActiveModule(module.key)}
-                >
-                  <small>{String(index + 1).padStart(2, "0")}</small>
-                  <div>
-                    <em>{module.eyebrow}</em>
-                    <strong translate="no">{module.title}</strong>
-                    <span>{module.detail}</span>
-                  </div>
-                  <b>{t("เปิด", "Open")}</b>
-                </button>
-              ))}
+            <div className={styles.menuRow}>
+              {moduleCards.map((module, index) => {
+                const moduleThemes: Record<
+                  UserModule,
+                  { icon: string; accent: string; accentSoft: string; accentBorder: string; badgeText?: string }
+                > = {
+                  register: {
+                    icon: "📚",
+                    accent: "#2563eb",
+                    accentSoft: "rgba(37, 99, 235, 0.12)",
+                    accentBorder: "rgba(37, 99, 235, 0.3)",
+                    badgeText: openToRegister.length > 0 ? (isThai ? `เปิดรับ ${openToRegister.length} คอร์ส` : `${openToRegister.length} open`) : undefined,
+                  },
+                  roadmap: {
+                    icon: "🗺️",
+                    accent: "#0d9488",
+                    accentSoft: "rgba(13, 148, 136, 0.12)",
+                    accentBorder: "rgba(13, 148, 136, 0.3)",
+                    badgeText: isThai ? "เส้นทางฝึกอบรม" : "Personal Path",
+                  },
+                  request: {
+                    icon: "💡",
+                    accent: "#7c3aed",
+                    accentSoft: "rgba(124, 58, 237, 0.12)",
+                    accentBorder: "rgba(124, 58, 237, 0.3)",
+                    badgeText: awaitingApproval.length > 0 ? (isThai ? `รออนุมัติ ${awaitingApproval.length}` : `${awaitingApproval.length} pending`) : undefined,
+                  },
+                  record: {
+                    icon: "📋",
+                    accent: "#d97706",
+                    accentSoft: "rgba(217, 119, 6, 0.12)",
+                    accentBorder: "rgba(217, 119, 6, 0.3)",
+                    badgeText: isThai ? `สะสม ${completedHours} ชม.` : `${completedHours} hrs`,
+                  },
+                  report: {
+                    icon: "📊",
+                    accent: "#dc2626",
+                    accentSoft: "rgba(220, 38, 38, 0.12)",
+                    accentBorder: "rgba(220, 38, 38, 0.3)",
+                    badgeText: isThai ? "รายงานประวัติ" : "Summary",
+                  },
+                  calendar: {
+                    icon: "📅",
+                    accent: "#059669",
+                    accentSoft: "rgba(5, 150, 105, 0.12)",
+                    accentBorder: "rgba(5, 150, 105, 0.3)",
+                    badgeText: isThai ? "ตารางการอบรม" : "Schedules",
+                  },
+                };
+
+                const theme = moduleThemes[module.key];
+
+                return (
+                  <button
+                    className={styles.menuBox}
+                    key={module.key}
+                    type="button"
+                    style={{
+                      "--card-accent": theme.accent,
+                      "--card-accent-soft": theme.accentSoft,
+                      "--card-accent-border": theme.accentBorder,
+                    } as CSSProperties}
+                    onClick={() => setActiveModule(module.key)}
+                  >
+                    <div className={styles.cardHeaderRow}>
+                      <div className={styles.cardIconBox} aria-hidden="true">
+                        <span className={styles.cardEmojiIcon}>{theme.icon}</span>
+                      </div>
+                      <span className={styles.cardIndexPill} aria-hidden="true">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                    </div>
+
+                    <div className={styles.cardBodyContent}>
+                      <span className={styles.cardKicker}>{theme.badgeText || module.eyebrow}</span>
+                      <strong className={styles.cardMainTitle} translate="no">{module.title}</strong>
+                      <p className={styles.cardDescText}>{module.detail}</p>
+                    </div>
+
+                    <div className={styles.cardFooterAction}>
+                      <span className={styles.openBtn}>{isThai ? "เปิด" : "Open"}</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </section>
         </>

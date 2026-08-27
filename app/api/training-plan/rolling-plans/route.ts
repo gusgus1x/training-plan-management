@@ -7,7 +7,7 @@ import { parseCreateRollingPlan, parseRollingPlanListFilters } from "../../../li
 
 type Dependencies = { auth?: ProtectedRouteOptions; service?: RollingPlanService };
 
-const readOptions = (auth?: ProtectedRouteOptions) => ({ ...auth, allowedRoles: ["HRD_CENTER", "HRD_FACTORY"] as const });
+const readOptions = (auth?: ProtectedRouteOptions) => ({ ...auth, allowedRoles: ["HRD_CENTER", "HRD_FACTORY", "EMPLOYEE"] as const });
 const writeOptions = (auth?: ProtectedRouteOptions) => ({ ...auth, allowedRoles: ["HRD_CENTER", "HRD_FACTORY"] as const });
 
 export const createListRollingPlansHandler = (dependencies: Dependencies = {}) =>
