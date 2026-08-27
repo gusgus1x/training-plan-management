@@ -1405,9 +1405,13 @@ export default function TrainingRolling() {
 
         <div className={styles.companySectionsContainer}>
           {companyPlanGroups.map((companySection) => {
-            const sessions = companySection.groups.flatMap((group) =>
-              group.plans.map((plan) => ({ ...plan, group })),
-            );
+            const sessions = companySection.groups
+              .flatMap((group) => group.plans.map((plan) => ({ ...plan, group })))
+              .sort(
+                (a, b) =>
+                  a.trainingDate.localeCompare(b.trainingDate) ||
+                  (a.startTime || "").localeCompare(b.startTime || ""),
+              );
             const totalPages = Math.max(1, Math.ceil(sessions.length / ROLLING_PAGE_SIZE));
             const page = Math.min(sectionPage[companySection.companyName] ?? 1, totalPages);
             const pageStart = (page - 1) * ROLLING_PAGE_SIZE;
