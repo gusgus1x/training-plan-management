@@ -138,6 +138,51 @@ const statusOptions = (current?: AssessmentStatus): AssessmentStatus[] => {
   return current === "ACTIVE" ? ["ACTIVE", "INACTIVE"] : ["INACTIVE", "ACTIVE"];
 };
 
+
+
+const generateNextAssessmentCode = (
+  purpose: AssessmentPurpose,
+  scope: AssessmentScope,
+  companyId: string,
+  userCompanyCode: string | null | undefined,
+  companyRecords: CompanyRecord[],
+  assessmentRecords: AssessmentRecord[],
+) => {
+  const purposeTag = purpose === "PRE_TEST" ? "PRE" : purpose === "POST_TEST" ? "POST" : "ASM";
+  const company = companyRecords.find((c) => c.companyId === companyId);
+  const companyCode = scope === "COMPANY"
+    ? (company?.companyCode || userCompanyCode || undefined)
+    : undefined;
+
+  const prefix = companyCode ? `${companyCode}-${purposeTag}` : purposeTag;
+  const upperPrefix = prefix.toUpperCase();
+
+  let maxSeq = 0;
+  for (const item of assessmentRecords) {
+    const code = (item.seriesCode || "").trim().toUpperCase();
+    if (item.purpose === purpose || (code && code.startsWith(upperPrefix))) {
+      const match = code.match(/(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxSeq) {
+          maxSeq = num;
+        }
+      }
+    }
+  }
+
+  return `${prefix}-${String(maxSeq + 1).padStart(6, "0")}`;
+};
+
+const RequiredIndicator = ({ isFilled }: { isFilled: boolean }) => (
+  <span
+    className={isFilled ? styles.indicatorDone : styles.indicatorPending}
+    title={isFilled ? "กรอกข้อมูลเรียบร้อยแล้ว / Completed" : "จำเป็นต้องกรอก / Required field"}
+  >
+    <span className={styles.indicatorDot} />
+  </span>
+);
+
 export default function Assessment() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
@@ -164,6 +209,26 @@ export default function Assessment() {
   );
   const [formErrors, setFormErrors] = useState<FormErrors>({});
 
+  const updateDraftField = <K extends keyof Draft>(field: K, value: Draft[K]) => {
+    setDraft((current) => {
+      const next = { ...current, [field]: value };
+      if (mode === "new" && (field === "purpose" || field === "scope" || field === "companyId")) {
+        next.seriesCode = generateNextAssessmentCode(
+          next.purpose,
+          next.scope,
+          next.companyId,
+          user?.companyCode,
+          companies,
+          items,
+        );
+      }
+      return next;
+    });
+    if (field in formErrors) {
+      setFormErrors((current) => ({ ...current, [field]: undefined }));
+    }
+  };
+
   const selected = useMemo(
     () => items.find((item) => item.assessmentId === selectedId) ?? null,
     [items, selectedId],
@@ -182,7 +247,7 @@ export default function Assessment() {
     try {
       const [assessmentResult, companyResult] = await Promise.all([
         listAssessments(),
-        isCenter ? listCompanies() : Promise.resolve({ items: [] as CompanyRecord[] }),
+        listCompanies(),
       ]);
       setItems(assessmentResult.items);
       setCompanies(companyResult.items);
@@ -193,7 +258,7 @@ export default function Assessment() {
       setBusy(false);
       setIsLoading(false);
     }
-  }, [isCenter, setFeedback]);
+  }, [setFeedback]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
@@ -212,7 +277,19 @@ export default function Assessment() {
   const startNew = () => {
     setSelectedId("");
     setOpenDetailId("");
-    setDraft(blankDraft(user?.companyId ?? "", !isCenter));
+    const initialDraft = blankDraft(user?.companyId ?? "", !isCenter);
+    const autoCode = generateNextAssessmentCode(
+      initialDraft.purpose,
+      initialDraft.scope,
+      initialDraft.companyId,
+      user?.companyCode,
+      companies,
+      items,
+    );
+    setDraft({
+      ...initialDraft,
+      seriesCode: autoCode,
+    });
     setQuestions([]);
     setQuestion(blankQuestion());
     setEditingQuestionId("");
@@ -236,6 +313,30 @@ export default function Assessment() {
       status: selected.status,
     });
     setQuestions(toDraftQuestions(selected));
+    setQuestion(blankQuestion());
+    setEditingQuestionId("");
+    setFeedback(null);
+    setFormErrors({});
+    setMode("edit");
+  };
+
+  const openEditForItem = (item: AssessmentRecord) => {
+    if (!item.canModify) return;
+    setSelectedId(item.assessmentId);
+    setOpenDetailId("");
+    setDraft({
+      scope: item.scope,
+      companyId: item.companyId ?? "",
+      seriesCode: item.seriesCode,
+      seriesName: item.seriesName,
+      purpose: item.purpose,
+      versionNote: item.versionNote ?? "",
+      instructions: item.instructions ?? "",
+      passingScorePercent: item.passingScorePercent,
+      timeLimitMinutes: item.timeLimitMinutes?.toString() ?? "",
+      status: item.status,
+    });
+    setQuestions(toDraftQuestions(item));
     setQuestion(blankQuestion());
     setEditingQuestionId("");
     setFeedback(null);
@@ -389,20 +490,77 @@ export default function Assessment() {
     }
   };
 
-  const remove = async () => {
-    if (!selected?.canModify) return;
-    if (!(await confirm({ message: { th: `ยืนยันที่จะลบแบบทดสอบ "${selected.seriesName}" หรือไม่?`, en: `Confirm deleting assessment "${selected.seriesName}"?` }, danger: true }))) return;
+  const removeTargetItem = async (targetItem: AssessmentRecord) => {
+    if (!targetItem.canModify) return;
+    if (!(await confirm({ message: { th: `ยืนยันที่จะลบแบบทดสอบ "${targetItem.seriesName}" หรือไม่?`, en: `Confirm deleting assessment "${targetItem.seriesName}"?` }, danger: true }))) return;
     setBusy(true);
     try {
-      await deleteAssessment(selected.assessmentId);
-      setSelectedId("");
-      setOpenDetailId("");
+      await deleteAssessment(targetItem.assessmentId);
+      if (selectedId === targetItem.assessmentId) setSelectedId("");
+      if (openDetailId === targetItem.assessmentId) setOpenDetailId("");
       closeEditor();
       await load();
       setFeedback({ tone: "success", message: "Assessment deleted." });
     } catch (error) {
       setFeedback({ tone: "error", message: error instanceof Error ? error.message : "Unable to delete assessment" });
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handlePublishItem = async (item: AssessmentRecord) => {
+    if (!item.canModify) return;
+    if (!item.questions.length) {
+      setFeedback({ tone: "error", message: "Add at least one question before publishing." });
+      return;
+    }
+    if (
+      !(await confirm({
+        message: {
+          th: `ยืนยันที่จะเผยแพร่แบบทดสอบ "${item.seriesName}" หรือไม่? เมื่อเผยแพร่แล้วจะถูกเลือกใช้เป็น Pre/Post Test ในหลักสูตรได้ทันที`,
+          en: `Confirm publishing assessment "${item.seriesName}"? It becomes selectable on courses immediately.`,
+        },
+      }))
+    )
+      return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      const publishInput: AssessmentWriteInput = {
+        scope: item.scope,
+        companyId: item.companyId,
+        seriesCode: item.seriesCode,
+        seriesName: item.seriesName,
+        purpose: item.purpose,
+        versionNote: item.versionNote,
+        instructions: item.instructions,
+        passingScorePercent: String(item.passingScorePercent),
+        timeLimitMinutes: item.timeLimitMinutes,
+        status: "ACTIVE",
+        questions: item.questions.map((q) => ({
+          questionText: q.questionText,
+          questionType: q.questionType,
+          questionScore: String(q.questionScore),
+          isRequired: q.isRequired,
+          choices: q.choices.map((c) => ({
+            choiceText: c.choiceText,
+            isCorrect: c.isCorrect,
+            optionScore: String(c.optionScore),
+          })),
+        })),
+      };
+      const updated = (await updateAssessment(item.assessmentId, publishInput)).assessment;
+      setItems((current) => current.map((i) => (i.assessmentId === updated.assessmentId ? updated : i)));
+      setFeedback({ tone: "success", message: `Published assessment "${item.seriesName}".` });
+    } catch (error) {
+      setFeedback({ tone: "error", message: error instanceof Error ? error.message : "Unable to publish assessment" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async () => {
+    if (selected) await removeTargetItem(selected);
   };
 
   const exportCsv = () => {
@@ -420,48 +578,333 @@ export default function Assessment() {
   const renderEditor = () => (
     <section className={styles.editorPanel}>
       <div className={styles.panelHeader}>
-        <div><p className={styles.kicker}>{mode === "new" ? "New assessment" : mode === "version" ? "New version" : "Edit assessment"}</p><h3>{mode === "new" ? "Create assessment series" : selected?.seriesName}</h3></div>
+        <div>
+          <p className={styles.kicker}>
+            {mode === "new" ? "New assessment" : mode === "version" ? "New version" : "Edit assessment"}
+          </p>
+          <h3>{mode === "new" ? "สร้างแบบทดสอบใหม่ (Create Assessment)" : selected?.seriesName}</h3>
+        </div>
         <button className={styles.closeButton} type="button" onClick={closeEditor}>Close</button>
       </div>
+
       <div className={styles.formGrid}>
-        {isCenter ? <label>Scope<select disabled={mode === "version"} value={draft.scope} onChange={(event) => setDraft({ ...draft, scope: event.target.value as AssessmentScope })}><option value="CENTRAL">Central</option><option value="COMPANY">Company</option></select></label> : null}
-        {isCenter && draft.scope === "COMPANY" ? <label>Company<select aria-invalid={Boolean(formErrors.companyId)} className={formErrors.companyId ? styles.inputError : undefined} disabled={mode === "version"} value={draft.companyId} onChange={(event) => { setDraft({ ...draft, companyId: event.target.value }); setFormErrors((current) => ({ ...current, companyId: undefined })); }}><option value="">Select company</option>{companies.map((company) => <option key={company.companyId} value={company.companyId}>{company.companyCode} — {company.companyNameTh}</option>)}</select>{formErrors.companyId ? <small>{formErrors.companyId}</small> : null}</label> : null}
-        <label>Assessment Code<input aria-invalid={Boolean(formErrors.seriesCode)} className={formErrors.seriesCode ? styles.inputError : undefined} disabled maxLength={50} value={draft.seriesCode} placeholder="Auto-generated on save" />{formErrors.seriesCode ? <small>{formErrors.seriesCode}</small> : null}</label>
-        <label>Series Name<input aria-invalid={Boolean(formErrors.seriesName)} className={formErrors.seriesName ? styles.inputError : undefined} disabled={mode === "version"} maxLength={255} value={draft.seriesName} onChange={(event) => { setDraft({ ...draft, seriesName: event.target.value }); setFormErrors((current) => ({ ...current, seriesName: undefined })); }} />{formErrors.seriesName ? <small>{formErrors.seriesName}</small> : null}</label>
-        <label>Purpose<select disabled={mode === "version"} value={draft.purpose} onChange={(event) => setDraft({ ...draft, purpose: event.target.value as AssessmentPurpose })}><option value="PRE_TEST">PRE TEST</option><option value="POST_TEST">POST TEST</option><option value="GENERAL">GENERAL</option></select></label>
-        <label>Passing Score (%)<input aria-invalid={Boolean(formErrors.passingScorePercent)} className={formErrors.passingScorePercent ? styles.inputError : undefined} type="number" min="0" max="100" step="0.01" value={draft.passingScorePercent} onChange={(event) => { setDraft({ ...draft, passingScorePercent: event.target.value }); setFormErrors((current) => ({ ...current, passingScorePercent: undefined })); }} />{formErrors.passingScorePercent ? <small>{formErrors.passingScorePercent}</small> : null}</label>
-        <label>Time Limit (minutes)<input aria-invalid={Boolean(formErrors.timeLimitMinutes)} className={formErrors.timeLimitMinutes ? styles.inputError : undefined} type="number" min="1" value={draft.timeLimitMinutes} onChange={(event) => { setDraft({ ...draft, timeLimitMinutes: event.target.value }); setFormErrors((current) => ({ ...current, timeLimitMinutes: undefined })); }} placeholder="Optional" />{formErrors.timeLimitMinutes ? <small>{formErrors.timeLimitMinutes}</small> : null}</label>
-        <label>Status<select disabled={mode === "version"} value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value as AssessmentStatus })}>{statusOptions(mode === "edit" ? selected?.status : undefined).map((status) => <option key={status}>{status}</option>)}</select></label>
-        <label className={styles.fullWidth}>Version Note<input maxLength={500} value={draft.versionNote} onChange={(event) => setDraft({ ...draft, versionNote: event.target.value })} placeholder="Optional" /></label>
-        <label className={styles.fullWidth}>Instructions<textarea value={draft.instructions} onChange={(event) => setDraft({ ...draft, instructions: event.target.value })} placeholder="Instructions shown to learners" /></label>
+        {isCenter ? (
+          <label>
+            <span>Scope <RequiredIndicator isFilled={Boolean(draft.scope)} /></span>
+            <select
+              disabled={mode === "version"}
+              value={draft.scope}
+              onChange={(event) => updateDraftField("scope", event.target.value as AssessmentScope)}
+            >
+              <option value="CENTRAL">Central (ส่วนกลาง)</option>
+              <option value="COMPANY">Company (โรงงาน)</option>
+            </select>
+          </label>
+        ) : null}
+
+        {isCenter && draft.scope === "COMPANY" ? (
+          <label>
+            <span>Company <RequiredIndicator isFilled={Boolean(draft.companyId)} /></span>
+            <select
+              aria-invalid={Boolean(formErrors.companyId)}
+              className={formErrors.companyId ? styles.inputError : undefined}
+              disabled={mode === "version"}
+              value={draft.companyId}
+              onChange={(event) => updateDraftField("companyId", event.target.value)}
+            >
+              <option value="">-- เลือกโรงงาน (Select company) --</option>
+              {companies.map((company) => (
+                <option key={company.companyId} value={company.companyId}>
+                  {company.companyCode} — {company.companyNameTh}
+                </option>
+              ))}
+            </select>
+            {formErrors.companyId ? <small>{formErrors.companyId}</small> : null}
+          </label>
+        ) : null}
+
+        <label>
+          <span>Purpose (วัตถุประสงค์) <RequiredIndicator isFilled={Boolean(draft.purpose)} /></span>
+          <select
+            disabled={mode === "version"}
+            value={draft.purpose}
+            onChange={(event) => updateDraftField("purpose", event.target.value as AssessmentPurpose)}
+          >
+            <option value="PRE_TEST">PRE TEST (ทดสอบก่อนเรียน)</option>
+            <option value="POST_TEST">POST TEST (ทดสอบหลังเรียน)</option>
+            <option value="GENERAL">GENERAL (แบบทดสอบทั่วไป)</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Assessment Code <RequiredIndicator isFilled={Boolean(draft.seriesCode.trim())} /></span>
+          <input
+            aria-invalid={Boolean(formErrors.seriesCode)}
+            className={formErrors.seriesCode ? styles.inputError : undefined}
+            disabled={mode === "version"}
+            maxLength={50}
+            value={draft.seriesCode}
+            onChange={(event) => updateDraftField("seriesCode", event.target.value.toUpperCase())}
+            placeholder="Auto-generated e.g. PRE-000001"
+          />
+          {formErrors.seriesCode ? <small>{formErrors.seriesCode}</small> : null}
+        </label>
+
+        <label className={styles.fullWidth}>
+          <span>Series Name (ชื่อแบบทดสอบ) <RequiredIndicator isFilled={Boolean(draft.seriesName.trim())} /></span>
+          <input
+            aria-invalid={Boolean(formErrors.seriesName)}
+            className={formErrors.seriesName ? styles.inputError : undefined}
+            disabled={mode === "version"}
+            maxLength={255}
+            placeholder="เช่น แบบทดสอบวัดความรู้เรื่องการคลัง..."
+            value={draft.seriesName}
+            onChange={(event) => updateDraftField("seriesName", event.target.value)}
+          />
+          {formErrors.seriesName ? <small>{formErrors.seriesName}</small> : null}
+        </label>
+
+        <label>
+          <span>Passing Score (%) (เกณฑ์ผ่าน) <RequiredIndicator isFilled={Boolean(draft.passingScorePercent.trim())} /></span>
+          <input
+            aria-invalid={Boolean(formErrors.passingScorePercent)}
+            className={formErrors.passingScorePercent ? styles.inputError : undefined}
+            type="number"
+            min="0"
+            max="100"
+            step="0.01"
+            value={draft.passingScorePercent}
+            onChange={(event) => updateDraftField("passingScorePercent", event.target.value)}
+          />
+          {formErrors.passingScorePercent ? <small>{formErrors.passingScorePercent}</small> : null}
+        </label>
+
+        <label>
+          <span>Time Limit (minutes) (เวลาทำแบบทดสอบ)</span>
+          <input
+            aria-invalid={Boolean(formErrors.timeLimitMinutes)}
+            className={formErrors.timeLimitMinutes ? styles.inputError : undefined}
+            type="number"
+            min="1"
+            value={draft.timeLimitMinutes}
+            onChange={(event) => updateDraftField("timeLimitMinutes", event.target.value)}
+            placeholder="ระบุเป็นนาที (ไม่ระบุ = ไม่จำกัดเวลา)"
+          />
+          {formErrors.timeLimitMinutes ? <small>{formErrors.timeLimitMinutes}</small> : null}
+        </label>
+
+        <label className={styles.fullWidth}>
+          <span>Version Note (บันทึกเวอร์ชัน)</span>
+          <input
+            maxLength={500}
+            value={draft.versionNote}
+            onChange={(event) => updateDraftField("versionNote", event.target.value)}
+            placeholder="ระบุคำอธิบายการแก้ไขหรือสร้างเวอร์ชันใหม่ (Optional)"
+          />
+        </label>
+
+        <label className={styles.fullWidth}>
+          <span>Instructions (คำชี้แจงสำหรับผู้ทำแบบทดสอบ)</span>
+          <textarea
+            value={draft.instructions}
+            onChange={(event) => updateDraftField("instructions", event.target.value)}
+            placeholder="คำแนะนำหรือข้อตกลงในการทำแบบทดสอบ..."
+          />
+        </label>
       </div>
 
       <div className={styles.questionBuilder}>
-        <div className={styles.panelHeader}><div><p className={styles.kicker}>Question builder</p><h3>{editingQuestionId ? "Edit question" : "Add question"}</h3></div><span>{questions.length} questions</span></div>
-        <div className={styles.questionGrid}>
-          <label className={styles.fullWidth}>Question<textarea aria-invalid={Boolean(formErrors.question)} className={formErrors.question ? styles.inputError : undefined} value={question.questionText} onChange={(event) => { setQuestion({ ...question, questionText: event.target.value }); setFormErrors((current) => ({ ...current, question: undefined })); }} /></label>
-          <label>Question Type<select value={question.questionType} onChange={(event) => setQuestionType(event.target.value as MockQuestionType)}><option value="Choice">Choice</option><option value="Text">Text</option></select></label>
-          <label>Score<input type="number" min="0.01" step="0.01" value={question.questionScore} onChange={(event) => setQuestion({ ...question, questionScore: event.target.value })} /></label>
-          <label>Required<select value={question.isRequired ? "YES" : "NO"} onChange={(event) => setQuestion({ ...question, isRequired: event.target.value === "YES" })}><option value="YES">Yes</option><option value="NO">No</option></select></label>
-          {question.choices.map((choice, index) => <label key={choice.id}>Option {String.fromCharCode(65 + index)}<input value={choice.choiceText} onChange={(event) => setQuestion({ ...question, choices: question.choices.map((item) => item.id === choice.id ? { ...item, choiceText: event.target.value } : item) })} /></label>)}
-          {question.questionType === "Choice" ? <label>Correct Answer<select value={String.fromCharCode(65 + Math.max(0, question.choices.findIndex((choice) => choice.isCorrect)))} onChange={(event) => { const correctIndex = event.target.value.charCodeAt(0) - 65; setQuestion({ ...question, choices: question.choices.map((choice, index) => ({ ...choice, isCorrect: index === correctIndex })) }); }}>{question.choices.map((choice, index) => <option key={choice.id} value={String.fromCharCode(65 + index)}>{String.fromCharCode(65 + index)}</option>)}</select></label> : null}
+        <div className={styles.panelHeader}>
+          <div>
+            <p className={styles.kicker}>Question Builder</p>
+            <h3>{editingQuestionId ? "แก้ไขข้อสอบ (Edit Question)" : "เพิ่มคำถามข้อสอบ (Add Question)"}</h3>
+          </div>
+          <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#10b981" }}>
+            {questions.length} ข้อ • คะแนนรวม {questions.reduce((acc, q) => acc + (Number(q.questionScore) || 0), 0)} คะแนน
+          </span>
         </div>
+
+        <div className={styles.questionGrid}>
+          <label className={styles.fullWidth}>
+            <span>โจทย์คำถาม (Question) <RequiredIndicator isFilled={Boolean(question.questionText.trim())} /></span>
+            <textarea
+              aria-invalid={Boolean(formErrors.question)}
+              className={formErrors.question ? styles.inputError : undefined}
+              value={question.questionText}
+              placeholder="พิมพ์โจทย์คำถามที่ต้องการทดสอบ..."
+              onChange={(event) => {
+                setQuestion({ ...question, questionText: event.target.value });
+                setFormErrors((current) => ({ ...current, question: undefined }));
+              }}
+            />
+          </label>
+
+          <label>
+            <span>ประเภทคำถาม (Type)</span>
+            <select
+              value={question.questionType}
+              onChange={(event) => setQuestionType(event.target.value as MockQuestionType)}
+            >
+              <option value="Choice">Choice (ปรนัย - 4 ตัวเลือก)</option>
+              <option value="Text">Text (อัตนัย / เติมคำ)</option>
+            </select>
+          </label>
+
+          <label>
+            <span>คะแนนข้อนี้ (Score) <RequiredIndicator isFilled={Boolean(Number(question.questionScore) > 0)} /></span>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={question.questionScore}
+              onChange={(event) => setQuestion({ ...question, questionScore: event.target.value })}
+            />
+          </label>
+
+          <label>
+            <span>บังคับตอบ (Required)</span>
+            <select
+              value={question.isRequired ? "YES" : "NO"}
+              onChange={(event) => setQuestion({ ...question, isRequired: event.target.value === "YES" })}
+            >
+              <option value="YES">Yes (ต้องตอบ)</option>
+              <option value="NO">No (ไม่บังคับ)</option>
+            </select>
+          </label>
+
+          {question.questionType === "Choice" ? (
+            <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px", marginTop: "8px" }}>
+              {question.choices.map((choice, index) => {
+                const letter = String.fromCharCode(65 + index);
+                return (
+                  <div
+                    key={choice.id}
+                    style={{
+                      padding: "10px 12px",
+                      borderRadius: "8px",
+                      border: choice.isCorrect ? "1.5px solid #10b981" : "1px solid var(--ui-30-border)",
+                      background: choice.isCorrect ? "rgba(16, 185, 129, 0.08)" : "var(--ui-60-surface-soft)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "6px",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontWeight: 800, fontSize: "0.84rem", color: choice.isCorrect ? "#10b981" : "var(--ui-30-ink)" }}>
+                        Option {letter} {choice.isCorrect ? "(Correct Answer)" : ""}
+                      </span>
+                      <label style={{ display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}>
+                        <input
+                          type="radio"
+                          name={`correct-${question.id}`}
+                          checked={choice.isCorrect}
+                          onChange={() => {
+                            setQuestion({
+                              ...question,
+                              choices: question.choices.map((item, idx) => ({ ...item, isCorrect: idx === index })),
+                            });
+                          }}
+                        />
+                        <span style={{ color: choice.isCorrect ? "#10b981" : "var(--ui-30-muted)" }}>Correct</span>
+                      </label>
+                    </div>
+                    <input
+                      value={choice.choiceText}
+                      placeholder={`กรอกตัวเลือก ${letter}... / Enter option ${letter}...`}
+                      onChange={(event) =>
+                        setQuestion({
+                          ...question,
+                          choices: question.choices.map((item) =>
+                            item.id === choice.id ? { ...item, choiceText: event.target.value } : item,
+                          ),
+                        })
+                      }
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+
         {formErrors.question ? <p className={styles.validationMessage} role="alert">{formErrors.question}</p> : null}
+
         <div className={styles.formActions}>
-          <button className={styles.secondaryButton} type="button" onClick={saveQuestion}>{editingQuestionId ? "Update question" : "Add question"}</button>
-          {editingQuestionId ? <button className={styles.closeButton} type="button" onClick={() => { setQuestion(blankQuestion()); setEditingQuestionId(""); setFormErrors((current) => ({ ...current, question: undefined })); }}>Cancel question edit</button> : null}
-          <button className={styles.primaryButton} type="button" disabled={busy} onClick={() => void save()}>Save assessment</button>
+          <button className={styles.secondaryButton} type="button" onClick={saveQuestion}>
+            {editingQuestionId ? "Update Question" : "Add Question"}
+          </button>
+          {editingQuestionId ? (
+            <button
+              className={styles.closeButton}
+              type="button"
+              onClick={() => {
+                setQuestion(blankQuestion());
+                setEditingQuestionId("");
+                setFormErrors((current) => ({ ...current, question: undefined }));
+              }}
+            >
+              Cancel Edit
+            </button>
+          ) : null}
+          <button className={styles.primaryButton} type="button" disabled={busy} onClick={() => void save()}>
+            Save Assessment
+          </button>
         </div>
         {formErrors.questions ? <p className={styles.validationMessage} role="alert">{formErrors.questions}</p> : null}
       </div>
 
       <div className={styles.previewPanel}>
-        <div className={styles.panelHeader}><div><p className={styles.kicker}>Preview</p><h3>Question preview</h3></div></div>
-        {questions.length ? <div className={styles.questionList}>{questions.map((item, index) => <article key={item.id}>
-          <div className={styles.questionHeading}><strong>{index + 1}. {item.questionText}</strong><span>{item.questionType} · {item.questionScore} points</span></div>
-          {item.choices.map((choice, choiceIndex) => <p key={choice.id}>{choice.isCorrect ? "✓ " : ""}{String.fromCharCode(65 + choiceIndex)}. {choice.choiceText}</p>)}
-          <div className={styles.questionActions}><button className={styles.secondaryButton} type="button" disabled={index === 0} onClick={() => moveQuestion(index, -1)}>Up</button><button className={styles.secondaryButton} type="button" disabled={index === questions.length - 1} onClick={() => moveQuestion(index, 1)}>Down</button><button className={styles.secondaryButton} type="button" onClick={() => { setQuestion(item); setEditingQuestionId(item.id); setFormErrors((current) => ({ ...current, question: undefined })); }}>Edit</button><button className={styles.dangerButton} type="button" onClick={() => setQuestions((current) => current.filter((candidate) => candidate.id !== item.id))}>Remove</button></div>
-        </article>)}</div> : <div className={styles.emptyState}>No questions added yet.</div>}
+        <div className={styles.panelHeader}>
+          <div>
+            <p className={styles.kicker}>Question List ({questions.length} ข้อ)</p>
+            <h3>รายการคำถามในชุดแบบทดสอบนี้</h3>
+          </div>
+        </div>
+        {questions.length ? (
+          <div className={styles.questionList}>
+            {questions.map((item, index) => (
+              <article key={item.id}>
+                <div className={styles.questionHeading}>
+                  <strong>{index + 1}. {item.questionText}</strong>
+                  <span>{item.questionType} · {item.questionScore} คะแนน</span>
+                </div>
+                {item.choices.map((choice, choiceIndex) => (
+                  <p key={choice.id} style={{ color: choice.isCorrect ? "#10b981" : undefined, fontWeight: choice.isCorrect ? 700 : undefined }}>
+                    {choice.isCorrect ? "[Correct] " : ""}{String.fromCharCode(65 + choiceIndex)}. {choice.choiceText}
+                  </p>
+                ))}
+                <div className={styles.questionActions}>
+                  <button className={styles.secondaryButton} type="button" disabled={index === 0} onClick={() => moveQuestion(index, -1)}>
+                    Move Up
+                  </button>
+                  <button className={styles.secondaryButton} type="button" disabled={index === questions.length - 1} onClick={() => moveQuestion(index, 1)}>
+                    Move Down
+                  </button>
+                  <button
+                    className={styles.secondaryButton}
+                    type="button"
+                    onClick={() => {
+                      setQuestion(item);
+                      setEditingQuestionId(item.id);
+                      setFormErrors((current) => ({ ...current, question: undefined }));
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className={styles.dangerButton}
+                    type="button"
+                    onClick={() => setQuestions((current) => current.filter((candidate) => candidate.id !== item.id))}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className={styles.emptyState}>ยังไม่มีรายการคำถาม เพิ่มคำถามแรกด้านบนได้ทันที</div>
+        )}
       </div>
     </section>
   );
@@ -478,27 +921,177 @@ export default function Assessment() {
     <section className={styles.hero}><div><p className={styles.kicker}>{assessmentModule.subtitle}</p><h2>{assessmentModule.title}</h2><p>{assessmentModule.description}</p></div></section>
     <section className={styles.workspace}>
       <div className={styles.toolbar}>
-        <span className={styles.listMeta}>{visible.length} / {items.length} assessments</span>
-        <input aria-label="Search assessment" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search code, name, company, purpose, status" />
-        <button className={styles.primaryButton} type="button" disabled={busy} onClick={startNew}>New</button>
-        <button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canModify} onClick={startEdit}>Edit</button>
-        <button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canCreateVersion} onClick={startVersion}>New Version</button>
-        <button className={styles.dangerButton} type="button" disabled={busy || !selected?.canModify} onClick={() => void remove()}>Delete</button>
-        <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void load()}>Refresh</button>
-        <button className={styles.secondaryButton} type="button" onClick={exportCsv}>Export</button>
+        <span className={styles.listMeta}>{visible.length} / {items.length} แบบทดสอบ</span>
+        <input aria-label="Search assessment" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ค้นหารหัส, ชื่อแบบทดสอบ, บริษัท, วัตถุประสงค์, สถานะ..." />
+        <button className={styles.primaryButton} type="button" disabled={busy} onClick={startNew}>+ เพิ่มแบบทดสอบ</button>
+        <button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canModify} onClick={startEdit}>แก้ไข</button>
+        <button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canCreateVersion} onClick={startVersion}>สร้างเวอร์ชันใหม่</button>
+        <button className={styles.dangerButton} type="button" disabled={busy || !selected?.canModify} onClick={() => void remove()}>ลบ</button>
+        <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void load()}>รีเฟรช</button>
+        <button className={styles.secondaryButton} type="button" onClick={exportCsv}>ส่งออก CSV</button>
       </div>
       {mode !== "idle" ? renderEditor() : null}
-            <div className={styles.tableWrap}><table className={styles.assessmentTable}><thead><tr><th>Code</th><th>Assessment Name</th><th>Scope</th><th>Purpose</th><th>Version</th><th>Pass</th><th>Questions</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-        {!visible.length ? <tr><td className={styles.emptyTableCell} colSpan={9}>{busy ? "Loading assessments..." : "No assessments found."}</td></tr> : null}
-        {visible.map((item) => {
-          const isSelected = item.assessmentId === selectedId;
-          const isOpen = item.assessmentId === openDetailId;
-          const statusClass = item.status === "ACTIVE" ? styles.statusPublished : item.status === "DRAFT" ? styles.statusDraft : styles.statusInactive;
-          return <Fragment key={item.assessmentId}><tr aria-selected={isSelected} tabIndex={0} className={`${styles.selectableRow} ${isSelected ? styles.selectedRow : ""}`} onClick={() => { setSelectedId(isSelected ? "" : item.assessmentId); setOpenDetailId(""); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedId(isSelected ? "" : item.assessmentId); setOpenDetailId(""); } }}><td>{item.seriesCode}</td><td>{item.seriesName}</td><td>{item.companyCode ?? "Central"}</td><td>{item.purpose}</td><td>v{item.versionNo}</td><td>{item.passingScorePercent}%</td><td>{item.questions.length}</td><td><span className={`${styles.statusPill} ${statusClass}`}>{item.status}</span></td><td className={styles.actionCell}><button className={styles.detailButton} type="button" onClick={(event) => { event.stopPropagation(); setSelectedId(item.assessmentId); setOpenDetailId(isOpen ? "" : item.assessmentId); }}>{isOpen ? "Hide" : "Details"}</button></td></tr>
-            {isOpen ? <tr className={styles.detailRow}><td colSpan={9}><div className={styles.detailPanel}><div className={styles.panelHeader}><div><p className={styles.kicker}>{item.scope} · {item.purpose} · v{item.versionNo}</p><h3>{item.seriesName}</h3></div><span>{item.isUsed ? "Locked — already in use" : "Unused"}</span></div><p>{item.instructions || "No instructions"}</p>{item.questions.length ? <div className={styles.questionList}>{item.questions.map((detail, index) => <article key={detail.questionId}><strong>{index + 1}. {detail.questionText}</strong><span>{displayQuestionType(detail.questionType)} · {detail.questionScore} points</span>{detail.choices.map((choice, choiceIndex) => <p key={choice.choiceId}>{choice.isCorrect ? "✓ " : ""}{String.fromCharCode(65 + choiceIndex)}. {choice.choiceText}</p>)}</article>)}</div> : <div className={styles.emptyState}>This draft does not have questions yet.</div>}</div></td></tr> : null}
-          </Fragment>;
-        })}
-      </tbody></table></div>
+      <div className={styles.tableWrap}>
+        <table className={styles.assessmentTable}>
+          <thead>
+            <tr>
+              <th>รหัสแบบทดสอบ</th>
+              <th>ชื่อแบบทดสอบ</th>
+              <th>ขอบเขต</th>
+              <th>วัตถุประสงค์</th>
+              <th>เวอร์ชัน</th>
+              <th>เกณฑ์ผ่าน</th>
+              <th>จำนวนคำถาม</th>
+              <th>สถานะ</th>
+              <th style={{ textAlign: "right" }}>การดำเนินการ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {!visible.length ? (
+              <tr>
+                <td className={styles.emptyTableCell} colSpan={9}>
+                  {busy ? "กำลังโหลดข้อมูลแบบทดสอบ..." : "ไม่พบรายการแบบทดสอบ"}
+                </td>
+              </tr>
+            ) : null}
+            {visible.map((item) => {
+              const isSelected = item.assessmentId === selectedId;
+              const isOpen = item.assessmentId === openDetailId;
+              const statusClass =
+                item.status === "ACTIVE"
+                  ? styles.statusPublished
+                  : item.status === "DRAFT"
+                    ? styles.statusDraft
+                    : styles.statusInactive;
+              return (
+                <Fragment key={item.assessmentId}>
+                  <tr
+                    aria-selected={isSelected}
+                    tabIndex={0}
+                    className={`${styles.selectableRow} ${isSelected ? styles.selectedRow : ""}`}
+                    onClick={() => {
+                      setSelectedId(isSelected ? "" : item.assessmentId);
+                      setOpenDetailId("");
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelectedId(isSelected ? "" : item.assessmentId);
+                        setOpenDetailId("");
+                      }
+                    }}
+                  >
+                    <td>{item.seriesCode}</td>
+                    <td>{item.seriesName}</td>
+                    <td>{item.companyCode ?? "Central"}</td>
+                    <td>{item.purpose}</td>
+                    <td>v{item.versionNo}</td>
+                    <td>{item.passingScorePercent}%</td>
+                    <td>{item.questions.length}</td>
+                    <td>
+                      <span className={`${styles.statusPill} ${statusClass}`}>{item.status}</span>
+                    </td>
+                    <td className={styles.actionCell} onClick={(event) => event.stopPropagation()}>
+                      <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                        <button
+                          className={styles.detailButton}
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSelectedId(item.assessmentId);
+                            setOpenDetailId(isOpen ? "" : item.assessmentId);
+                          }}
+                        >
+                          {isOpen ? "ซ่อนรายละเอียด" : "ดูรายละเอียด"}
+                        </button>
+                        {item.status === "DRAFT" ? (
+                          <button
+                            className={styles.primaryButton}
+                            type="button"
+                            style={{ whiteSpace: "nowrap", padding: "3px 8px", fontSize: "0.74rem" }}
+                            disabled={busy || !item.canModify}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handlePublishItem(item);
+                            }}
+                          >
+                            เผยแพร่
+                          </button>
+                        ) : null}
+                        <button
+                          className={styles.secondaryButton}
+                          type="button"
+                          style={{ whiteSpace: "nowrap", padding: "3px 8px", fontSize: "0.74rem" }}
+                          disabled={busy || !item.canModify}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openEditForItem(item);
+                          }}
+                        >
+                          แก้ไข
+                        </button>
+                        <button
+                          className={styles.dangerButton}
+                          type="button"
+                          style={{ whiteSpace: "nowrap", padding: "3px 8px", fontSize: "0.74rem" }}
+                          disabled={busy || !item.canModify}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSelectedId(item.assessmentId);
+                            void removeTargetItem(item);
+                          }}
+                        >
+                          ลบ
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {isOpen ? (
+                    <tr className={styles.detailRow}>
+                      <td colSpan={9}>
+                        <div className={styles.detailPanel}>
+                          <div className={styles.panelHeader}>
+                            <div>
+                              <p className={styles.kicker}>
+                                {item.scope} · {item.purpose} · v{item.versionNo}
+                              </p>
+                              <h3>{item.seriesName}</h3>
+                            </div>
+                            <span>{item.isUsed ? "Locked — already in use" : "Unused"}</span>
+                          </div>
+                          <p>{item.instructions || "No instructions"}</p>
+                          {item.questions.length ? (
+                            <div className={styles.questionList}>
+                              {item.questions.map((detail, index) => (
+                                <article key={detail.questionId}>
+                                  <strong>
+                                    {index + 1}. {detail.questionText}
+                                  </strong>
+                                  <span>
+                                    {displayQuestionType(detail.questionType)} · {detail.questionScore} points
+                                  </span>
+                                  {detail.choices.map((choice, choiceIndex) => (
+                                    <p key={choice.choiceId}>
+                                      {choice.isCorrect ? "[Correct] " : ""}
+                                      {String.fromCharCode(65 + choiceIndex)}. {choice.choiceText}
+                                    </p>
+                                  ))}
+                                </article>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className={styles.emptyState}>This draft does not have questions yet.</div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </section>
   </section>;
 }

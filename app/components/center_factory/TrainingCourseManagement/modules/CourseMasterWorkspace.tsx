@@ -184,6 +184,15 @@ function translateKeyboard(input: string): string {
   return result;
 }
 
+const RequiredIndicator = ({ isFilled }: { isFilled: boolean }) => (
+  <span
+    className={isFilled ? styles.indicatorDone : styles.indicatorPending}
+    title={isFilled ? "กรอกข้อมูลเรียบร้อยแล้ว / Completed" : "จำเป็นต้องกรอก / Required field"}
+  >
+    <span className={styles.indicatorDot} />
+  </span>
+);
+
 interface SearchableSelectOption {
   id?: string;
   code: string;
@@ -333,7 +342,123 @@ function CourseMaster() {
   const [evaluationOptions, setEvaluationOptions] = useState<TrainingEvaluationOption[]>([]);
   const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [selectedTemplateCourseId, setSelectedTemplateCourseId] = useState("");
   const [form, setForm] = useState<CourseForm>(emptyCourseForm);
+
+  const centerCoursesForTemplate = useMemo(
+    () =>
+      courses.filter(
+        (course) =>
+          course.owner === "CENTER" ||
+          course.ownerCompany === "CENTER" ||
+          course.ownerCompany === "HRD Center" ||
+          !course.ownerCompany,
+      ),
+    [courses],
+  );
+
+  const centerCourseTemplateOptions = useMemo(
+    () => [
+      { code: "", name: language === "th" ? "-- ไม่ใช้เทมเพลต (สร้างใหม่จากหน้าว่าง) --" : "-- None (Start from scratch) --" },
+      ...centerCoursesForTemplate.map((c) => ({
+        code: c.id,
+        name: `[${c.courseCode}] ${getCourseDisplayName(c)}`,
+        nameTh: c.courseNameTh,
+        nameEn: c.courseNameEn || c.courseNameTh,
+      })),
+    ],
+    [centerCoursesForTemplate, language],
+  );
+
+  const handleApplyCenterTemplate = (courseId: string) => {
+    setSelectedTemplateCourseId(courseId);
+
+    if (!courseId) {
+      setForm(emptyCourseForm);
+      setLinkModeFields(new Set());
+      resetStandardForm();
+      return;
+    }
+
+    const templateCourse = centerCoursesForTemplate.find((c) => c.id === courseId);
+    if (!templateCourse) return;
+
+    const courseGroup = templateCourse.courseGroup;
+    let nextCode = "";
+    const matchedGroup = courseGroupOptions.find((g) => g.name === courseGroup);
+    if (matchedGroup && matchedGroup.code) {
+      if (isFactoryUser) {
+        const companyGroupCourses = courses.filter(
+          (c) => c.courseGroup === courseGroup && c.ownerCompany === userCompanyCode,
+        );
+        let maxSeq = 0;
+        for (const c of companyGroupCourses) {
+          const parts = (c.courseCode || "").split("-");
+          const num = parseInt(parts[parts.length - 1], 10);
+          if (!isNaN(num) && num > maxSeq) {
+            maxSeq = num;
+          }
+        }
+        nextCode = `${userCompanyCode}-${matchedGroup.code.trim()}-${String(maxSeq + 1).padStart(6, "0")}`;
+      } else {
+        const groupCourses = courses.filter((c) => c.courseGroup === courseGroup);
+        let maxSeq = 0;
+        for (const c of groupCourses) {
+          const parts = (c.courseCode || "").split("-");
+          const num = parseInt(parts[parts.length - 1], 10);
+          if (!isNaN(num) && num > maxSeq) {
+            maxSeq = num;
+          }
+        }
+        const nextNum = groupCourses.length === 0 ? 1 : Math.max(maxSeq + 1, (matchedGroup.lastCourseNumber ?? 0) + 1);
+        nextCode = `${matchedGroup.code.trim()}-${String(nextNum).padStart(6, "0")}`;
+      }
+    }
+
+    let resolvedCourseType = templateCourse.courseType;
+    if (isFactoryUser && !factoryCourseTypeAllowlist.includes(resolvedCourseType)) {
+      resolvedCourseType = courseTypes[0] || "IN-HOUSE";
+    }
+
+    setForm({
+      ...emptyCourseForm,
+      courseCode: nextCode,
+      courseGroup: templateCourse.courseGroup,
+      courseType: resolvedCourseType,
+      courseNameTh: templateCourse.courseNameTh,
+      courseNameEn: templateCourse.courseNameEn || templateCourse.courseNameTh,
+      objective: templateCourse.objective || "",
+      learningContent: templateCourse.learningContent || "",
+      targetGroup: templateCourse.targetGroup || "",
+      methodology: templateCourse.methodology || "",
+      lifeCycleMonth: templateCourse.lifeCycleMonth || "0",
+      remark: templateCourse.remark || "",
+      status: "Active",
+
+      // Reset tests & evaluations per requirement
+      preTestId: "",
+      preTest: "",
+      preTestLink: "",
+      postTestId: "",
+      postTest: "",
+      postTestLink: "",
+      evaluationId: "",
+      evaluation: "",
+      evaluationLink: "",
+      evaluationAfter30DayId: "",
+      evaluationAfter30Day: "",
+      evaluationAfter30DayLink: "",
+    });
+
+    setLinkModeFields(new Set());
+    resetStandardForm();
+
+    toast.success(
+      language === "th"
+        ? `คัดลอกรายละเอียดจากหลักสูตรส่วนกลาง "${templateCourse.courseCode}" แล้ว (สามารถแก้ไขรายละเอียดเพิ่มเติมได้ก่อนบันทึก)`
+        : `Copied details from Center course template "${templateCourse.courseCode}". You can edit details before saving.`,
+    );
+  };
   const [linkModeFields, setLinkModeFields] = useState<Set<LinkModeField>>(new Set());
   const [isEditing, setIsEditing] = useState(false);
   const [isNewOpen, setIsNewOpen] = useState(false);
@@ -764,7 +889,12 @@ function CourseMaster() {
     () =>
       courses.filter((course) => {
         if (isFactoryUser) {
-          return course.ownerCompany === userCompanyCode;
+          const isCenter =
+            course.owner === "CENTER" ||
+            course.ownerCompany === "CENTER" ||
+            course.ownerCompany === "HRD Center" ||
+            !course.ownerCompany;
+          return course.ownerCompany === userCompanyCode || isCenter;
         }
         return isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode);
       }),
@@ -1225,6 +1355,7 @@ function CourseMaster() {
   const handleNew = () => {
     void loadPublishedForms();
     setSelectedCourseId("");
+    setSelectedTemplateCourseId("");
     setOpenDetailCourseId("");
     setForm(emptyCourseForm);
     setLinkModeFields(new Set());
@@ -1368,6 +1499,7 @@ function CourseMaster() {
     }
 
     setSelectedCourseId("");
+    setSelectedTemplateCourseId("");
     setOpenDetailCourseId("");
     setSearch("");
     setIsEditing(false);
@@ -1380,6 +1512,7 @@ function CourseMaster() {
   const handleShowDetails = (course: CourseRecord) => {
     const isSameOpen = openDetailCourseId === course.id && !isEditing;
     setSelectedCourseId(isSameOpen ? "" : course.id);
+    setSelectedTemplateCourseId("");
     setOpenDetailCourseId(isSameOpen ? "" : course.id);
     setIsNewOpen(false);
     setIsEditing(false);
@@ -1390,6 +1523,7 @@ function CourseMaster() {
 
   const handleClosePanel = () => {
     setSelectedCourseId("");
+    setSelectedTemplateCourseId("");
     setOpenDetailCourseId("");
     setIsNewOpen(false);
     setIsEditing(false);
@@ -1580,14 +1714,43 @@ function CourseMaster() {
             Close
           </button>
         </div>
-
       </div>
 
-
+      {isNewOpen ? (
+        <div style={{
+          marginBottom: "16px",
+          padding: "16px",
+          borderRadius: "10px",
+          background: "linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(59, 130, 246, 0.02))",
+          border: "1px solid rgba(59, 130, 246, 0.3)",
+        }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: "6px", width: "100%" }}>
+            <span className={styles.fieldLabel} style={{ color: "#2563eb", fontWeight: 800, fontSize: "0.92rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px" }}>
+              <span>📋</span>
+              <span>
+                {language === "th"
+                  ? "ดึงข้อมูลจากหลักสูตรส่วนกลาง (Copy details from Center Course template)"
+                  : "Copy details from Center Course template"}
+              </span>
+            </span>
+            <SearchableSelect
+              value={selectedTemplateCourseId}
+              options={centerCourseTemplateOptions}
+              placeholder={language === "th" ? "🔍 เลือกหลักสูตรส่วนกลางเพื่อดึงรายละเอียด..." : "🔍 Select Center course template..."}
+              onChange={(code) => handleApplyCenterTemplate(code)}
+            />
+            <small className={styles.fieldHint} style={{ color: "#64748b", marginTop: "4px" }}>
+              {language === "th"
+                ? "* ระบบจะดึงเฉพาะข้อมูลรายละเอียดหลักสูตร (กลุ่มหลักสูตร, ประเภทหลักสูตร, ชื่อหลักสูตร, วัตถุประสงค์, เนื้อหา, ที่มา) โดยจะเว้นแบบทดสอบ แบบประเมิน และเกณฑ์มาตรฐานให้คุณระบุเอง"
+                : "* Copies course details (Group, Type, Name, Objective, Content, Reason). Tests, Evaluations, and Target Standards are left blank for you to define."}
+            </small>
+          </label>
+        </div>
+      ) : null}
 
       <div className={styles.formGrid}>
         <label>
-          <span className={styles.fieldLabel}>Course Group <b>*</b></span>
+          <span className={styles.fieldLabel}>Course Group <RequiredIndicator isFilled={Boolean(form.courseGroup)} /></span>
           <select value={form.courseGroup} disabled={!isEditing} onChange={(event) => handleCourseGroupChange(event.target.value)}>
             <option value="">Select Course Group</option>
             {courseGroups.map((group) => (
@@ -1598,7 +1761,7 @@ function CourseMaster() {
           <small className={styles.fieldHint}>Controls course classification and the generated course code.</small>
         </label>
         <label>
-          <span className={styles.fieldLabel}>Course Code <b>*</b></span>
+          <span className={styles.fieldLabel}>Course Code <RequiredIndicator isFilled={Boolean(form.courseCode)} /></span>
           <input
             value={form.courseCode}
             readOnly
@@ -1608,7 +1771,7 @@ function CourseMaster() {
           <small className={styles.fieldHint}>Auto-generated based on selected Course Group.</small>
         </label>
         <label>
-          <span className={styles.fieldLabel}>Course Type <b>*</b></span>
+          <span className={styles.fieldLabel}>Course Type <RequiredIndicator isFilled={Boolean(form.courseType)} /></span>
           <select
             value={form.courseType}
             disabled={!isEditing}
@@ -1633,7 +1796,7 @@ function CourseMaster() {
           />
         </label>
         <label>
-          <span className={styles.fieldLabel}>Course Name (TH) <b>*</b></span>
+          <span className={styles.fieldLabel}>Course Name (TH) <RequiredIndicator isFilled={Boolean(form.courseNameTh.trim())} /></span>
           <input
             value={form.courseNameTh}
             disabled={!isEditing}
@@ -1642,7 +1805,7 @@ function CourseMaster() {
           />
         </label>
         <label>
-          <span className={styles.fieldLabel}>Course Name (EN) <b>*</b></span>
+          <span className={styles.fieldLabel}>Course Name (EN) <RequiredIndicator isFilled={Boolean(form.courseNameEn.trim())} /></span>
           <input
             value={form.courseNameEn}
             disabled={!isEditing}
@@ -1651,7 +1814,7 @@ function CourseMaster() {
           />
         </label>
         <label className={styles.fullWidth}>
-          <span className={styles.fieldLabel}>ที่มา (Background) <b>*</b></span>
+          <span className={styles.fieldLabel}>ที่มา (Background) <RequiredIndicator isFilled={Boolean(form.remark.trim())} /></span>
           <textarea
             value={form.remark}
             disabled={!isEditing}
@@ -1661,7 +1824,7 @@ function CourseMaster() {
           <small className={styles.fieldHint}>อธิบายที่มา ความจำเป็น หรือเหตุผลในการจัดทำหลักสูตรการอบรมนี้</small>
         </label>
         <label className={styles.fullWidth}>
-          <span className={styles.fieldLabel}>Objective <b>*</b></span>
+          <span className={styles.fieldLabel}>Objective <RequiredIndicator isFilled={Boolean(form.objective.trim())} /></span>
           <textarea
             value={form.objective}
             disabled={!isEditing}
@@ -1671,7 +1834,7 @@ function CourseMaster() {
           <small className={styles.fieldHint}>Use a measurable outcome, for example “Explain and apply the five safety rules.”</small>
         </label>
         <label className={styles.fullWidth}>
-          <span className={styles.fieldLabel}>Learning Content <b>*</b></span>
+          <span className={styles.fieldLabel}>Learning Content <RequiredIndicator isFilled={Boolean(form.learningContent.trim())} /></span>
           <textarea
             value={form.learningContent}
             disabled={!isEditing}
@@ -1680,7 +1843,7 @@ function CourseMaster() {
           />
         </label>
         <label>
-          <span className={styles.fieldLabel}>Target Group <b>*</b></span>
+          <span className={styles.fieldLabel}>Target Group <RequiredIndicator isFilled={Boolean(form.targetGroup.trim())} /></span>
           <textarea
             value={form.targetGroup}
             disabled={!isEditing}
@@ -1736,7 +1899,7 @@ function CourseMaster() {
           </select>
           {linkModeFields.has("preTest") ? (
             <div className={styles.linkField}>
-              <span className={styles.fieldLabel} style={{ width: "100%", margin: "4px 0 2px" }}>Pre Test Link <b>*</b></span>
+              <span className={styles.fieldLabel} style={{ width: "100%", margin: "4px 0 2px" }}>Pre Test Link <RequiredIndicator isFilled={Boolean(form.preTestLink.trim())} /></span>
               <input
                 value={form.preTestLink}
                 disabled={!isEditing}
@@ -1771,7 +1934,7 @@ function CourseMaster() {
           </small>
         </label>
         <label>
-          <span className={styles.fieldLabel}>Post Test {linkModeFields.has("postTest") ? <b>*</b> : <em>Optional</em>}</span>
+          <span className={styles.fieldLabel}>Post Test {linkModeFields.has("postTest") ? <RequiredIndicator isFilled={Boolean(form.postTestLink.trim())} /> : <em>Optional</em>}</span>
           <select
             value={linkModeFields.has("postTest") ? LINK_MODE_VALUE : form.postTestId}
             disabled={!isEditing}
@@ -1800,7 +1963,7 @@ function CourseMaster() {
           </select>
           {linkModeFields.has("postTest") ? (
             <div className={styles.linkField}>
-              <span className={styles.fieldLabel} style={{ width: "100%", margin: "4px 0 2px" }}>Post Test Link <b>*</b></span>
+              <span className={styles.fieldLabel} style={{ width: "100%", margin: "4px 0 2px" }}>Post Test Link <RequiredIndicator isFilled={Boolean(form.postTestLink.trim())} /></span>
               <input
                 value={form.postTestLink}
                 disabled={!isEditing}
@@ -1835,7 +1998,7 @@ function CourseMaster() {
           </small>
         </label>
         <label>
-          <span className={styles.fieldLabel}>Evaluation After Training {linkModeFields.has("evaluation") ? <b>*</b> : <em>Optional</em>}</span>
+          <span className={styles.fieldLabel}>Evaluation After Training {linkModeFields.has("evaluation") ? <RequiredIndicator isFilled={Boolean(form.evaluationLink.trim())} /> : <em>Optional</em>}</span>
           <select
             value={linkModeFields.has("evaluation") ? LINK_MODE_VALUE : form.evaluationId}
             disabled={!isEditing}
@@ -1864,7 +2027,7 @@ function CourseMaster() {
           </select>
           {linkModeFields.has("evaluation") ? (
             <div className={styles.linkField}>
-              <span className={styles.fieldLabel} style={{ width: "100%", margin: "4px 0 2px" }}>Evaluation Link <b>*</b></span>
+              <span className={styles.fieldLabel} style={{ width: "100%", margin: "4px 0 2px" }}>Evaluation Link <RequiredIndicator isFilled={Boolean(form.evaluationLink.trim())} /></span>
               <input
                 value={form.evaluationLink}
                 disabled={!isEditing}
@@ -1899,7 +2062,7 @@ function CourseMaster() {
           </small>
         </label>
         <label>
-          <span className={styles.fieldLabel}>Evaluation After 30 Days {linkModeFields.has("evaluationAfter30Day") ? <b>*</b> : <em>Optional</em>}</span>
+          <span className={styles.fieldLabel}>Evaluation After 30 Days {linkModeFields.has("evaluationAfter30Day") ? <RequiredIndicator isFilled={Boolean(form.evaluationAfter30DayLink.trim())} /> : <em>Optional</em>}</span>
           <select
             value={linkModeFields.has("evaluationAfter30Day") ? LINK_MODE_VALUE : form.evaluationAfter30DayId}
             disabled={!isEditing}
@@ -1929,7 +2092,7 @@ function CourseMaster() {
           </select>
           {linkModeFields.has("evaluationAfter30Day") ? (
             <div className={styles.linkField}>
-              <span className={styles.fieldLabel} style={{ width: "100%", margin: "4px 0 2px" }}>30-Day Evaluation Link <b>*</b></span>
+              <span className={styles.fieldLabel} style={{ width: "100%", margin: "4px 0 2px" }}>30-Day Evaluation Link <RequiredIndicator isFilled={Boolean(form.evaluationAfter30DayLink.trim())} /></span>
               <input
                 value={form.evaluationAfter30DayLink}
                 disabled={!isEditing}
@@ -1979,7 +2142,7 @@ function CourseMaster() {
         <div className={styles.standard_checkSection}>
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-              <h4>Check List Company <span style={{ color: "#d71920" }}>*</span></h4>
+              <h4>Check List Company <RequiredIndicator isFilled={selectedCompanies.length > 0} /></h4>
               <button
                 className={styles.secondaryButton}
                 type="button"

@@ -32,12 +32,54 @@ describe("assessment client", () => {
       passingScorePercent: "80",
       timeLimitMinutes: null,
       status: "DRAFT",
-      questions: [],
     } satisfies AssessmentWriteInput;
-    await expect(createAssessment(input, fetcher)).resolves.toEqual({ assessment });
+    await createAssessment(input, fetcher);
     expect(fetcher).toHaveBeenCalledWith(
       "/api/training-course/assessments",
       expect.objectContaining({ method: "POST", credentials: "include" }),
     );
   });
+
+  it("creates Pre Test and Post Test successfully with seriesCode", async () => {
+    const preAssessment = { assessmentId: "101", seriesCode: "PRE-000001", seriesName: "Pre Test", purpose: "PRE_TEST" };
+    const postAssessment = { assessmentId: "102", seriesCode: "POST-000001", seriesName: "Post Test", purpose: "POST_TEST" };
+
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(success({ assessment: preAssessment }, 201))
+      .mockResolvedValueOnce(success({ assessment: postAssessment }, 201));
+
+    const preInput: AssessmentWriteInput = {
+      scope: "CENTRAL",
+      companyId: null,
+      seriesCode: "PRE-000001",
+      seriesName: "Pre Test",
+      purpose: "PRE_TEST",
+      versionNote: null,
+      instructions: "Pre Test instructions",
+      passingScorePercent: "80.00",
+      timeLimitMinutes: 30,
+      status: "ACTIVE",
+      questions: [],
+    };
+
+    const postInput: AssessmentWriteInput = {
+      scope: "CENTRAL",
+      companyId: null,
+      seriesCode: "POST-000001",
+      seriesName: "Post Test",
+      purpose: "POST_TEST",
+      versionNote: null,
+      instructions: "Post Test instructions",
+      passingScorePercent: "80.00",
+      timeLimitMinutes: 30,
+      status: "ACTIVE",
+      questions: [],
+    };
+
+    await expect(createAssessment(preInput, fetcher)).resolves.toEqual({ assessment: preAssessment });
+    await expect(createAssessment(postInput, fetcher)).resolves.toEqual({ assessment: postAssessment });
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
 });
+

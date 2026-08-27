@@ -93,6 +93,35 @@ const questionCreates = (input: EvaluationWriteInput) => input.questions.map((qu
   },
 }));
 
+const computeDefaultEvaluationCode = async (
+  transaction: Prisma.TransactionClient,
+  timing: string,
+  companyId: bigint | null,
+) => {
+  const timingTag = timing === "AFTER_TRAINING" ? "EVL-AFTER" : timing === "FOLLOW_UP_30_DAYS" ? "EVL-30DAY" : "EVA";
+  let prefix = timingTag;
+  if (companyId) {
+    const comp = await transaction.company.findUnique({
+      where: { company_id: companyId },
+      select: { company_code: true },
+    });
+    if (comp?.company_code) prefix = `${comp.company_code}-${timingTag}`;
+  }
+  const rows = await transaction.evaluation_form.findMany({
+    where: { form_code: { startsWith: prefix } },
+    select: { form_code: true },
+  });
+  let maxSeq = 0;
+  for (const row of rows) {
+    const match = row.form_code.match(/(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxSeq) maxSeq = num;
+    }
+  }
+  return `${prefix}-${String(maxSeq + 1).padStart(6, "0")}`;
+};
+
 export type EvaluationRepository = ReturnType<typeof createEvaluationRepository>;
 
 export const createEvaluationRepository = (client?: DatabaseClient) => {
@@ -159,15 +188,14 @@ export const createEvaluationRepository = (client?: DatabaseClient) => {
     async create(input: EvaluationWriteInput, companyId: string | null, userId: string) {
       return withDatabaseErrorMapping(async () => {
         const created = await db().$transaction(async (transaction) => {
-          const sequenceRows = await transaction.$queryRaw<Array<{ next_value: bigint }>>`
-            SELECT NEXT VALUE FOR dbo.evaluation_form_code_seq AS next_value
-          `;
-          const nextValue = sequenceRows[0]?.next_value;
-          if (nextValue === undefined) throw new Error("Evaluation code sequence did not return a value");
+          const rawCode = input.formCode?.trim();
+          const formCodeValue = rawCode && rawCode.toUpperCase() !== "AUTO"
+            ? rawCode
+            : await computeDefaultEvaluationCode(transaction, input.timing, companyId ? BigInt(companyId) : null);
           return transaction.evaluation_form.create({
             data: {
               company_id: companyId ? BigInt(companyId) : null,
-              form_code: `EVA-${nextValue.toString().padStart(3, "0")}`,
+              form_code: formCodeValue,
               form_name: input.formName,
               description: input.description,
               timing: input.timing,
@@ -193,6 +221,7 @@ export const createEvaluationRepository = (client?: DatabaseClient) => {
             where: { evaluation_form_id: BigInt(current.evaluationFormId) },
             data: {
               company_id: companyId ? BigInt(companyId) : null,
+              ...(input.formCode ? { form_code: input.formCode } : {}),
               form_name: input.formName,
               description: input.description,
               timing: input.timing,

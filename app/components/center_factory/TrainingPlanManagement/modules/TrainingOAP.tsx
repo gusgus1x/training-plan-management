@@ -107,6 +107,15 @@ const buildRequestCourse = (request: EmployeeTrainingNeedRequest): WorkflowCours
   createdBy: request.employeeName,
 });
 
+const RequiredIndicator = ({ isFilled }: { isFilled: boolean }) => (
+  <span
+    className={isFilled ? styles.indicatorDone : styles.indicatorPending}
+    title={isFilled ? "กรอกข้อมูลเรียบร้อยแล้ว / Completed" : "จำเป็นต้องกรอก / Required field"}
+  >
+    <span className={styles.indicatorDot} />
+  </span>
+);
+
 export default function TrainingOAP({ username = "Current user" }: TrainingOAPProps) {
   const { language } = useUiLanguage();
   const user = useAuthenticatedUser();
@@ -260,6 +269,12 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   );
   const selectedCourse =
     courseOptions.find((course) => course.courseCode === form.courseCode) ?? null;
+  const isSelectedCourseCenter = selectedCourse
+    ? selectedCourse.owner === "CENTER" ||
+      selectedCourse.ownerCompany === "CENTER" ||
+      selectedCourse.ownerCompany === "HRD Center" ||
+      !selectedCourse.ownerCompany
+    : false;
   const selectedCourseStandard = useMemo(() => {
     if (!selectedCourse) {
       return null;
@@ -721,17 +736,25 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             ) : null}
             <div className={styles.formGrid}>
               <label className={styles.fullField}>
-                <span>Course Name <span className={styles.required}>*</span></span>
+                <span>Course Name <RequiredIndicator isFilled={Boolean(form.courseCode.trim())} /></span>
                 <SearchableSelect
                   options={courseOptions.map((course) => {
                     const secondaryName = getCourseSecondaryName(course);
                     const displayName = getCourseDisplayName(course);
-                    const groupOrType = course.courseGroup || course.courseType;
+                    const isCenter =
+                      course.owner === "CENTER" ||
+                      course.ownerCompany === "CENTER" ||
+                      course.ownerCompany === "HRD Center" ||
+                      !course.ownerCompany;
+                    const ownerTag = isCenter
+                      ? "🏢 Center (ส่วนกลาง)"
+                      : `🏬 Factory (${course.ownerCompany || "โรงงาน"})`;
+
                     return {
                       value: course.courseCode,
                       label: `[${course.courseCode}] ${displayName}`,
-                      secondaryLabel: secondaryName || undefined,
-                      badge: groupOrType || undefined,
+                      secondaryLabel: secondaryName ? `${secondaryName} • ${ownerTag}` : ownerTag,
+                      badge: isCenter ? "🏢 Center" : `🏬 ${course.ownerCompany || "Factory"}`,
                     };
                   })}
                   value={form.courseCode}
@@ -739,8 +762,46 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                   placeholder="🔍 พิมพ์เพื่อค้นหาหลักสูตร (รหัส/ชื่อ)... / Search course..."
                 />
               </label>
+              {selectedCourse ? (
+                <div className={styles.fullField}>
+                  <div
+                    className={
+                      isSelectedCourseCenter
+                        ? styles.courseOwnerBannerCenter
+                        : styles.courseOwnerBannerFactory
+                    }
+                  >
+                    <span className={styles.courseOwnerIcon}>{isSelectedCourseCenter ? "🏢" : "🏬"}</span>
+                    <div className={styles.courseOwnerContent}>
+                      <div className={styles.courseOwnerTitleRow}>
+                        <strong>
+                          {isSelectedCourseCenter
+                            ? "หลักสูตรส่วนกลาง (HRD Center Course)"
+                            : `หลักสูตรโรงงาน (Factory Course: ${selectedCourse.ownerCompany || "Factory"})`}
+                        </strong>
+                        <span
+                          className={
+                            isSelectedCourseCenter
+                              ? styles.courseOwnerTagCenter
+                              : styles.courseOwnerTagFactory
+                          }
+                        >
+                          {isSelectedCourseCenter
+                            ? "🏢 Center (ส่วนกลาง)"
+                            : `🏬 Factory (${selectedCourse.ownerCompany || "โรงงาน"})`}
+                        </span>
+                      </div>
+                      <p className={styles.courseOwnerDesc}>
+                        {isSelectedCourseCenter
+                          ? "หลักสูตรมาตรฐานส่วนกลาง พัฒนาและดูแลโดย HRD Center (ส่วนกลาง)"
+                          : `หลักสูตรเฉพาะสร้างขึ้นโดยโรงงาน ${selectedCourse.ownerCompany || ""}`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               <label>
-                <span>Participants / Group <span className={styles.required}>*</span></span>
+                <span>Participants / Group <RequiredIndicator isFilled={Boolean(form.participants.trim())} /></span>
                 <input
                   disabled={!selectedCourse}
                   inputMode="numeric"
@@ -750,7 +811,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                 />
               </label>
               <label>
-                <span>Training Hours <span className={styles.required}>*</span></span>
+                <span>Training Hours <RequiredIndicator isFilled={Boolean(form.hours.trim())} /></span>
                 <input
                   disabled={!selectedCourse}
                   inputMode="numeric"

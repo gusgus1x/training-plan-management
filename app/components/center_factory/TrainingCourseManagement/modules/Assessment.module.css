@@ -263,7 +263,7 @@
 .assessmentTable tbody tr:hover td,
 .selectedRow td {
   background: var(--ui-60-surface-soft);
-  border-color: #bfd3ef;
+  border-color: var(--ui-30-primary-border);
 }
 
 .statusPill {
@@ -1063,12 +1063,17 @@
   transform: none;
 }
 
-/* Functional mockup states */
 .formGrid label small {
-  color: #b42318;
-  font-size: 0.7rem;
-  font-weight: 800;
+  color: var(--ui-30-muted, #94a3b8);
+  font-size: 0.74rem;
+  font-weight: 500;
   line-height: 1.35;
+}
+
+.formGrid label small.fieldError,
+.inputError + small {
+  color: #b42318;
+  font-weight: 800;
 }
 
 .inputError,
@@ -1121,19 +1126,94 @@
   outline-offset: -3px;
 }
 
+@keyframes statusPulseGreen {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+@keyframes statusPulseAmber {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+@keyframes statusPulseGray {
+  0% {
+    box-shadow: 0 0 0 0 rgba(107, 114, 128, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(107, 114, 128, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(107, 114, 128, 0);
+  }
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.statusPill::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .statusPill.statusPublished {
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary-strong);
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.statusPill.statusPublished::before {
+  background: #10b981;
+  animation: statusPulseGreen 1.8s infinite ease-in-out;
 }
 
 .statusPill.statusDraft {
   background: #fff7ed;
-  color: #b45309;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.statusPill.statusDraft::before {
+  background: #f97316;
+  animation: statusPulseAmber 1.8s infinite ease-in-out;
 }
 
 .statusPill.statusInactive {
-  background: var(--ui-60-surface-muted);
-  color: var(--ui-30-muted);
+  background: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+}
+
+.statusPill.statusInactive::before {
+  background: #9ca3af;
+  animation: statusPulseGray 2s infinite ease-in-out;
 }
 
 .emptyTableCell {
@@ -1192,3 +1272,71 @@
     width: 100%;
   }
 }
+
+.fieldLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fieldHint {
+  color: var(--ui-30-muted, #94a3b8);
+  font-size: 0.76rem;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+/* Required field blinking dot indicator styles */
+.indicatorPending,
+.indicatorDone {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  vertical-align: middle;
+  border-radius: 50%;
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.indicatorPending {
+  background: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+  animation: pulseRadar 1.6s ease-in-out infinite;
+}
+
+.indicatorDone {
+  background: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+  animation: scaleInCheck 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.indicatorPending .indicatorDot,
+.indicatorDone .indicatorDot {
+  display: none;
+}
+
+@keyframes pulseRadar {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 5px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+@keyframes scaleInCheck {
+  0% {
+    transform: scale(0.6);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+

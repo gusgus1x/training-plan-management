@@ -27,6 +27,7 @@ model announcement {
 model assessment {
   assessment_id                                                      BigInt                  @id(map: "PK_assessment") @default(autoincrement())
   assessment_series_id                                               BigInt
+  assessment_code                                                    String?                 @db.NVarChar(50)
   version_no                                                         Int
   version_note                                                       String?                 @db.NVarChar(500)
   instructions                                                       String?

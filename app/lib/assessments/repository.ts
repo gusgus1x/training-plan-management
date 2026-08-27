@@ -4,12 +4,14 @@ import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
 import type {
   AssessmentListFilters,
+  AssessmentPurpose,
   AssessmentRecord,
   AssessmentWriteInput,
 } from "./types";
 
 const detailSelect = {
   assessment_id: true,
+  assessment_code: true,
   version_no: true,
   version_note: true,
   instructions: true,
@@ -92,7 +94,7 @@ const map = (row: DetailRow, isUsed: boolean): StoredAssessmentRecord => ({
   companyCode: row.assessment_series.company?.company_code ?? null,
   companyName: row.assessment_series.company?.company_name_th ?? null,
   scope: row.assessment_series.company_id === null ? "CENTRAL" : "COMPANY",
-  seriesCode: row.assessment_series.series_code,
+  seriesCode: row.assessment_code || row.assessment_series.series_code,
   seriesName: row.assessment_series.series_name,
   purpose: row.assessment_series.purpose as AssessmentRecord["purpose"],
   versionNo: row.version_no,
@@ -121,6 +123,35 @@ const map = (row: DetailRow, isUsed: boolean): StoredAssessmentRecord => ({
   updatedAt: row.updated_at?.toISOString() ?? null,
 });
 
+const computeDefaultAssessmentCode = async (
+  transaction: Prisma.TransactionClient,
+  purpose: AssessmentPurpose,
+  companyId: bigint | null,
+) => {
+  const purposeTag = purpose === "PRE_TEST" ? "PRE" : purpose === "POST_TEST" ? "POST" : "ASM";
+  let prefix = purposeTag;
+  if (companyId) {
+    const comp = await transaction.company.findUnique({
+      where: { company_id: companyId },
+      select: { company_code: true },
+    });
+    if (comp?.company_code) prefix = `${comp.company_code}-${purposeTag}`;
+  }
+  const rows = await transaction.assessment_series.findMany({
+    where: { series_code: { startsWith: prefix } },
+    select: { series_code: true },
+  });
+  let maxSeq = 0;
+  for (const row of rows) {
+    const match = row.series_code.match(/(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxSeq) maxSeq = num;
+    }
+  }
+  return `${prefix}-${String(maxSeq + 1).padStart(6, "0")}`;
+};
+
 export type AssessmentRepository = ReturnType<typeof createAssessmentRepository>;
 
 export const createAssessmentRepository = (client?: DatabaseClient) => {
@@ -145,11 +176,24 @@ export const createAssessmentRepository = (client?: DatabaseClient) => {
   };
 
   return {
-    async list(filters: AssessmentListFilters, principal: AuthenticatedPrincipal) {
+    async list(filters: AssessmentListFilters, principalOrCompanyId: AuthenticatedPrincipal | string | null | Record<string, unknown>) {
       const constraints: Prisma.assessment_seriesWhereInput[] = [];
-      if (principal.role === "HRD_FACTORY") {
-        constraints.push({ OR: [{ company_id: null }, { company_id: BigInt(principal.companyId!) }] });
+      const isPrincipal = typeof principalOrCompanyId === "object" && principalOrCompanyId !== null && "role" in principalOrCompanyId;
+      const role = isPrincipal ? (principalOrCompanyId as AuthenticatedPrincipal).role : null;
+      const companyId = isPrincipal
+        ? (principalOrCompanyId as AuthenticatedPrincipal).companyId
+        : typeof principalOrCompanyId === "object" && principalOrCompanyId !== null && "companyId" in principalOrCompanyId
+          ? (principalOrCompanyId as any).companyId
+          : typeof principalOrCompanyId === "string"
+            ? principalOrCompanyId
+            : null;
+
+      if (role === "HRD_FACTORY") {
+        constraints.push({ OR: [{ company_id: null }, { company_id: companyId ? BigInt(companyId) : null }] });
+      } else if (companyId) {
+        constraints.push({ company_id: BigInt(companyId) });
       }
+
       if (filters.search) {
         constraints.push({
           OR: [
@@ -159,10 +203,12 @@ export const createAssessmentRepository = (client?: DatabaseClient) => {
           ],
         });
       }
+
       const where: Prisma.assessment_seriesWhereInput = {
         ...(constraints.length ? { AND: constraints } : {}),
         ...(filters.purpose ? { purpose: filters.purpose } : {}),
       };
+
       return withDatabaseErrorMapping(async () => {
         const seriesRows = await db().assessment_series.findMany({
           where,
@@ -171,12 +217,14 @@ export const createAssessmentRepository = (client?: DatabaseClient) => {
           },
           orderBy: { series_code: "asc" },
         });
+
         const latestRows = seriesRows.flatMap((series) => series.assessment);
         const filteredRows = filters.status
           ? latestRows.filter((row) => row.status === filters.status)
           : latestRows;
         const totalItems = filteredRows.length;
         const rows = filteredRows.slice(filters.skip, filters.skip + filters.take);
+
         const items = await Promise.all(rows.map(async (row) => map(row, await isUsed(row.assessment_id.toString()))));
         return { items, totalItems };
       });
@@ -199,17 +247,14 @@ export const createAssessmentRepository = (client?: DatabaseClient) => {
     async create(input: AssessmentWriteInput, companyId: string | null, userId: string) {
       return withDatabaseErrorMapping(async () => {
         const created = await db().$transaction(async (transaction) => {
+          const rawCode = input.seriesCode.trim();
+          const seriesCodeValue = rawCode && rawCode.toUpperCase() !== "AUTO"
+            ? rawCode
+            : await computeDefaultAssessmentCode(transaction, input.purpose, companyId ? BigInt(companyId) : null);
           const series = await transaction.assessment_series.create({
             data: {
               company_id: companyId ? BigInt(companyId) : null,
-              series_code: await (async () => {
-                const rows = await transaction.$queryRaw<Array<{ next_value: bigint }>>`
-                  SELECT NEXT VALUE FOR dbo.assessment_series_code_seq AS next_value
-                `;
-                const nextValue = rows[0]?.next_value;
-                if (nextValue === undefined) throw new Error("Assessment code sequence did not return a value");
-                return `ASM-${nextValue.toString().padStart(3, "0")}`;
-              })(),
+              series_code: seriesCodeValue,
               series_name: input.seriesName,
               series_name_normalized: normalizeAssessmentName(input.seriesName),
               purpose: input.purpose,
@@ -222,6 +267,7 @@ export const createAssessmentRepository = (client?: DatabaseClient) => {
           return transaction.assessment.create({
             data: {
               assessment_series_id: series.assessment_series_id,
+              assessment_code: seriesCodeValue,
               version_no: 1,
               version_note: input.versionNote,
               instructions: input.instructions,
@@ -258,6 +304,7 @@ export const createAssessmentRepository = (client?: DatabaseClient) => {
           return transaction.assessment.update({
             where: { assessment_id: BigInt(current.assessmentId) },
             data: {
+              assessment_code: input.seriesCode,
               version_note: input.versionNote,
               instructions: input.instructions,
               passing_score_percent: new Prisma.Decimal(input.passingScorePercent),
@@ -285,6 +332,7 @@ export const createAssessmentRepository = (client?: DatabaseClient) => {
           return transaction.assessment.create({
             data: {
               assessment_series_id: BigInt(current.assessmentSeriesId),
+              assessment_code: input.seriesCode,
               version_no: series.last_version_no,
               version_note: input.versionNote,
               instructions: input.instructions,
