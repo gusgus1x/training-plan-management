@@ -1,10 +1,8 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
-import {
-  APPROVED_TRAINING_NEED_STORAGE_KEY,
-  type EmployeeTrainingNeedRequest,
-} from "../../../../lib/trainingRequests";
+import { APPROVED_TRAINING_NEED_STORAGE_KEY } from "../../../../lib/trainingRequests";
+import type { NeedRequestRecord } from "../../../../lib/trainingNeedRequests/types";
 import {
   getCourseDisplayName,
   getCourseSecondaryName,
@@ -77,33 +75,35 @@ const readApprovedTrainingNeed = () => {
 
   try {
     const storedValue = window.localStorage.getItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
-    return storedValue ? (JSON.parse(storedValue) as EmployeeTrainingNeedRequest) : null;
+    return storedValue ? (JSON.parse(storedValue) as NeedRequestRecord) : null;
   } catch {
     return null;
   }
 };
 
-const buildRequestCourse = (request: EmployeeTrainingNeedRequest): WorkflowCourse => ({
+const buildRequestCourse = (request: NeedRequestRecord): WorkflowCourse => ({
   id: `request-${request.id}`,
   courseCode: `REQ-${request.requestNo}`,
-  courseNameTh: request.courseNeed,
-  courseNameEn: request.courseNeed,
-  objective: request.reason,
-  learningContent: request.expectedBenefit,
-  targetGroup: `${request.employeeName} / ${request.company} / ${request.functionName}`,
+  courseNameTh: request.requestedCourseName,
+  courseNameEn: request.requestedCourseName,
+  objective: request.requestReason,
+  learningContent: request.requestReason,
+  targetGroup: `${request.employeeName} / ${request.companyCode} / ${request.functionName}`,
   methodology: "Classroom / Workshop",
   preTest: "",
   postTest: "",
   evaluation: "Course Evaluation",
   evaluationAfter30Day: "Follow-up evaluation",
   lifeCycleMonth: "0",
-  courseType: request.sourceCourseOwner === "Factory" ? "Factory Specific" : "Center Standard",
-  courseGroup: request.company,
+  // A request carries no owner of its own - the employee asks, HRD decides who runs it. This is
+  // the prefilled starting point on the form, not a decision.
+  courseType: "Center Standard",
+  courseGroup: request.companyCode,
   remark: `Approved from request #${request.requestNo} by ${request.employeeName}`,
   status: "Active",
   updatedAt: new Date().toISOString().slice(0, 10),
-  owner: request.sourceCourseOwner === "Factory" ? "FACTORY" : "CENTER",
-  ownerCompany: request.sourceCourseOwner === "Factory" ? request.company : "HRD Center",
+  owner: "CENTER",
+  ownerCompany: "HRD Center",
   createdBy: request.employeeName,
 });
 
@@ -130,7 +130,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const [standards, setStandards] = useState<WorkflowStandard[]>([]);
   const [plans, setPlans] = useState<OapPlan[]>([]);
   const [form, setForm] = useState(emptyForm);
-  const [approvedRequest, setApprovedRequest] = useState<EmployeeTrainingNeedRequest | null>(null);
+  const [approvedRequest, setApprovedRequest] = useState<NeedRequestRecord | null>(null);
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [openDetailId, setOpenDetailId] = useState("");
@@ -155,7 +155,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
         ...emptyForm,
         courseCode: `REQ-${request.requestNo}`,
         participants: "1",
-        provider: request.sourceCourseOwner === "Factory" ? request.company : "HRD Center",
+        provider: "HRD Center",
       });
       setEditingId("");
       setOpenDetailId("");
@@ -712,10 +712,10 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             {approvedRequest ? (
               <div className={styles.approvedRequestBanner}>
                 <span>Approved training need</span>
-                <strong>{approvedRequest.courseNeed}</strong>
+                <strong>{approvedRequest.requestedCourseName}</strong>
                 <p>
-                  From {approvedRequest.employeeName} / {approvedRequest.company} /{" "}
-                  {approvedRequest.sourceCourseOwner ?? "Center"} course
+                  From {approvedRequest.employeeName} / {approvedRequest.companyCode} /{" "}
+                  {approvedRequest.functionName || "-"}
                 </p>
               </div>
             ) : null}

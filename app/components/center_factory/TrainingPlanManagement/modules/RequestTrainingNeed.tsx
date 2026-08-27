@@ -1,14 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
+import { useToast } from "../../../ToastHost";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import {
-  APPROVED_TRAINING_NEED_STORAGE_KEY,
-  EMPLOYEE_TRAINING_REQUESTS_STORAGE_KEY,
-  type EmployeeTrainingNeedRequest,
-  type TrainingNeedRequestStatus,
-} from "../../../../lib/trainingRequests";
+  listNeedRequests,
+  updateNeedRequest,
+} from "../../../../lib/trainingNeedRequests/client";
+import {
+  NEED_REQUEST_STATUSES,
+  needRequestStatusLabel,
+} from "../../../../lib/trainingNeedRequests/labels";
+import type {
+  NeedRequestAction,
+  NeedRequestRecord,
+  NeedRequestStatus,
+} from "../../../../lib/trainingNeedRequests/types";
+import { APPROVED_TRAINING_NEED_STORAGE_KEY } from "../../../../lib/trainingRequests";
 import styles from "./RequestTrainingNeed.module.css";
 
 export const requestTrainingNeedModule = {
@@ -18,105 +28,7 @@ export const requestTrainingNeedModule = {
     "Review Course Needed and Request Reason submitted from the employee training request page.",
 } as const;
 
-const companies = ["SATI", "ATFB", "TEP", "ATA", "NIC", "SNF"] as const;
-const statuses: Array<TrainingNeedRequestStatus | "all"> = [
-  "all",
-  "New Request",
-  "Review",
-  "Accepted",
-  "Rejected",
-];
-
-const defaultRequests: EmployeeTrainingNeedRequest[] = [
-  {
-    id: "req-001",
-    requestNo: "REQ-2026-001",
-    employeeCode: "4301",
-    employeeName: "Wipada Chaiporn",
-    company: "SATI",
-    functionName: "IT Promotion",
-    courseNeed: "Advanced Quality Control",
-    reason: "Need to improve quality inspection skills for production line work.",
-    sourceCourse: "Quality Control Basics",
-    sourceCourseDate: "24 Sep 2026",
-    sourceCourseResult: "Pending",
-    sourceCourseOwner: "Center",
-    expectedBenefit: "Improve inspection accuracy and reduce repeat production issues.",
-    preferredMonth: "August 2026",
-    urgency: "High",
-    status: "New Request",
-    submittedAt: "2026-07-16",
-    approvedBy: "",
-  },
-  {
-    id: "req-002",
-    requestNo: "REQ-2026-002",
-    employeeCode: "2102",
-    employeeName: "Orasa Jandee",
-    company: "ATFB",
-    functionName: "Safety and Environment",
-    courseNeed: "ISO 45001 Internal Audit",
-    reason: "Team needs more internal auditors before the next surveillance audit.",
-    expectedBenefit: "Improve audit readiness and close findings faster.",
-    preferredMonth: "September 2026",
-    urgency: "Normal",
-    sourceCourseOwner: "Factory",
-    status: "Review",
-    submittedAt: "2026-07-12",
-    approvedBy: "HRD Center",
-  },
-  {
-    id: "req-003",
-    requestNo: "REQ-2026-003",
-    employeeCode: "6502",
-    employeeName: "Benjamas Yingcharoen",
-    company: "TEP",
-    functionName: "Production Planing",
-    courseNeed: "Advanced Excel for Planning",
-    reason: "Planning team handles capacity files and needs stronger formula skills.",
-    expectedBenefit: "Reduce planning errors and shorten weekly planning work.",
-    preferredMonth: "October 2026",
-    urgency: "Normal",
-    sourceCourseOwner: "Center",
-    status: "Accepted",
-    submittedAt: "2026-07-08",
-    approvedBy: "HRD Center",
-  },
-  {
-    id: "req-004",
-    requestNo: "REQ-2026-004",
-    employeeCode: "3201",
-    employeeName: "Kanda Rungrueang",
-    company: "NIC",
-    functionName: "Purchase",
-    courseNeed: "Negotiation Skill",
-    reason: "Purchasing staff need better supplier negotiation techniques.",
-    expectedBenefit: "Improve cost saving discussions and supplier communication.",
-    preferredMonth: "November 2026",
-    urgency: "Low",
-    sourceCourseOwner: "Factory",
-    status: "New Request",
-    submittedAt: "2026-07-18",
-    approvedBy: "",
-  },
-];
-
-const readStoredRequests = () => {
-  if (typeof window === "undefined") {
-    return [] as EmployeeTrainingNeedRequest[];
-  }
-
-  try {
-    const storedValue = window.localStorage.getItem(EMPLOYEE_TRAINING_REQUESTS_STORAGE_KEY);
-    return storedValue ? (JSON.parse(storedValue) as EmployeeTrainingNeedRequest[]) : [];
-  } catch {
-    return [] as EmployeeTrainingNeedRequest[];
-  }
-};
-
-const mergeRequests = (storedRequests: EmployeeTrainingNeedRequest[]) => {
-  return storedRequests;
-};
+const formatDate = (iso: string) => iso.slice(0, 10);
 
 type RequestTrainingNeedProps = {
   onOpenTrainingOap?: () => void;
@@ -125,136 +37,151 @@ type RequestTrainingNeedProps = {
 export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTrainingNeedProps) {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
-  const userCompanyCode = profileValue(user?.companyCode);
+  const toast = useToast();
+  const { language } = useUiLanguage();
+  const t = (th: string, en: string) => (language === "th" ? th : en);
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
-  const [requests, setRequests] = useState<EmployeeTrainingNeedRequest[]>([]);
+
+  const [requests, setRequests] = useState<NeedRequestRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState("");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<TrainingNeedRequestStatus | "all">("all");
-  const [companyFilter, setCompanyFilter] = useState<(typeof companies)[number] | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<NeedRequestStatus | "all">("all");
+  const [pendingAction, setPendingAction] = useState(false);
+
+  const loadRequests = async () => {
+    setIsLoading(true);
+    try {
+      // The server scopes a factory HRD to their own company; no company filter is sent from here.
+      const { needRequests } = await listNeedRequests();
+      setRequests(needRequests);
+      setLoadError(null);
+    } catch (error: unknown) {
+      // An empty inbox and a failed fetch look identical otherwise, and this inbox is the only
+      // place an employee's request surfaces.
+      setLoadError(error instanceof Error ? error.message : "Could not load requests");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const syncStoredRequests = () => {
-      setRequests(mergeRequests(readStoredRequests()));
-    };
-
-    syncStoredRequests();
-    window.addEventListener("storage", syncStoredRequests);
-    window.addEventListener("employee-training-requests-changed", syncStoredRequests);
-
-    return () => {
-      window.removeEventListener("storage", syncStoredRequests);
-      window.removeEventListener("employee-training-requests-changed", syncStoredRequests);
-    };
+    void loadRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const selectedRequest =
-    requests.find((request) => request.id === selectedId) ?? requests[0] ?? null;
 
   const visibleRequests = useMemo(() => {
     const query = search.trim().toLowerCase();
 
     return requests.filter((request) => {
-      const courseOwner = request.sourceCourseOwner ?? "Center";
-      const matchesPermission =
-        isFactoryUser
-          ? courseOwner === "Factory" &&
-            (userCompanyCode === "-" || request.company === userCompanyCode)
-          : courseOwner === "Center";
       const matchesStatus = statusFilter === "all" || request.status === statusFilter;
-      const matchesCompany = companyFilter === "all" || request.company === companyFilter;
       const matchesSearch =
         !query ||
         [
           request.requestNo,
           request.employeeCode,
           request.employeeName,
-          request.company,
+          request.companyCode,
           request.functionName,
-          request.courseNeed,
-          request.reason,
-          request.expectedBenefit,
-          request.preferredMonth,
+          request.requestedCourseName,
+          request.requestReason,
         ]
           .join(" ")
           .toLowerCase()
           .includes(query);
 
-      return matchesPermission && matchesStatus && matchesCompany && matchesSearch;
+      return matchesStatus && matchesSearch;
     });
-  }, [companyFilter, isFactoryUser, requests, search, statusFilter, userCompanyCode]);
+  }, [requests, search, statusFilter]);
 
-  const updateSelectedStatus = (status: TrainingNeedRequestStatus) => {
-    if (!selectedRequest) {
-      return;
-    }
+  const selectedRequest =
+    visibleRequests.find((request) => request.id === selectedId) ?? visibleRequests[0] ?? null;
 
-    const updateRequest = (request: EmployeeTrainingNeedRequest) =>
-      request.id === selectedRequest.id
-        ? {
-            ...request,
-            status,
-            approvedBy: status === "New Request" ? "" : "HRD Center",
-          }
-        : request;
+  const applyAction = async (action: NeedRequestAction, note: string | null) => {
+    if (!selectedRequest) return null;
 
-    setRequests((current) => current.map((request) => updateRequest(request)));
-
-    const storedRequests = readStoredRequests();
-    if (storedRequests.some((request) => request.id === selectedRequest.id)) {
-      window.localStorage.setItem(
-        EMPLOYEE_TRAINING_REQUESTS_STORAGE_KEY,
-        JSON.stringify(storedRequests.map((request) => updateRequest(request))),
+    setPendingAction(true);
+    try {
+      const { needRequest } = await updateNeedRequest(selectedRequest.id, { action, note });
+      setRequests((current) =>
+        current.map((request) => (request.id === needRequest.id ? needRequest : request)),
       );
-      window.dispatchEvent(new Event("employee-training-requests-changed"));
+      return needRequest;
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("อัปเดตคำขอไม่สำเร็จ", "Could not update the request"),
+      );
+      return null;
+    } finally {
+      setPendingAction(false);
     }
   };
 
-  const handleApproveToPlan = () => {
-    if (!selectedRequest) {
-      return;
+  const handleMarkReview = async () => {
+    const updated = await applyAction("review", null);
+    if (updated) {
+      toast.success(t(`ทำเครื่องหมายกำลังพิจารณาแล้ว`, "Marked as in review"));
     }
+  };
 
-    updateSelectedStatus("Accepted");
-    window.localStorage.setItem(
-      APPROVED_TRAINING_NEED_STORAGE_KEY,
-      JSON.stringify({
-        ...selectedRequest,
-        status: "Accepted" as TrainingNeedRequestStatus,
-        approvedBy: "HRD Center",
-      }),
-    );
+  const handleApproveToPlan = async () => {
+    const updated = await applyAction("accept", null);
+    if (!updated) return;
+
+    // Same-tab handoff to the OAP form so it can prefill from the request. This is UI state that
+    // dies with the tab, not the request itself - that now lives in training_need_request.
+    window.localStorage.setItem(APPROVED_TRAINING_NEED_STORAGE_KEY, JSON.stringify(updated));
     window.dispatchEvent(new Event("approved-training-need-changed"));
+    toast.success(t(`อนุมัติคำขอ ${updated.requestNo} แล้ว`, `Approved ${updated.requestNo}`));
     onOpenTrainingOap?.();
   };
 
-  const handleRefresh = () => {
-    setRequests([]);
-    window.localStorage.removeItem(EMPLOYEE_TRAINING_REQUESTS_STORAGE_KEY);
-    window.dispatchEvent(new Event("employee-training-requests-changed"));
-    setSelectedId("");
-    setSearch("");
-    setStatusFilter("all");
-    setCompanyFilter("all");
+  const handleReject = async () => {
+    if (!selectedRequest) return;
+
+    const ok = await confirm({
+      message: {
+        th: "ยืนยันที่จะปฏิเสธคำขออบรมนี้หรือไม่?",
+        en: "Confirm rejecting this training request?",
+      },
+      danger: true,
+    });
+    if (!ok) return;
+
+    // The server refuses a rejection with no reason, so ask for one rather than let the call fail.
+    const reason = window.prompt(
+      t("เหตุผลที่ไม่อนุมัติ", "Reason for rejecting this request"),
+      "",
+    );
+    if (!reason || !reason.trim()) {
+      toast.warning(t("ต้องระบุเหตุผลที่ไม่อนุมัติ", "A rejection reason is required"));
+      return;
+    }
+
+    const updated = await applyAction("reject", reason.trim());
+    if (updated) {
+      toast.success(t(`ปฏิเสธคำขอ ${updated.requestNo} แล้ว`, `Rejected ${updated.requestNo}`));
+    }
   };
+
+  const isDecided =
+    selectedRequest?.status === "ACCEPTED" || selectedRequest?.status === "REJECTED";
 
   return (
     <section className={styles.moduleWorkspace} aria-label="Request Training Need module">
-      <div className={styles.lockedNoticeBanner}>
-        🔒 <strong>This module is currently locked</strong> — Request Training Need module is under system maintenance.
-      </div>
       <section className={styles.moduleHero}>
         <div>
           <p className={styles.panelKicker}>{requestTrainingNeedModule.subtitle}</p>
           <h2>{requestTrainingNeedModule.title}</h2>
           <p>{requestTrainingNeedModule.description}</p>
-          {isFactoryUser ? (
-            <span className={styles.permissionNote}>
-              Factory permission: {userCompanyCode} factory requests only
-            </span>
-          ) : (
-            <span className={styles.permissionNote}>Center permission: center requests</span>
-          )}
+          <span className={styles.permissionNote}>
+            {isFactoryUser
+              ? t("สิทธิ์โรงงาน: เห็นเฉพาะบริษัทตนเอง", "Factory permission: own company only")
+              : t("สิทธิ์ส่วนกลาง: เห็นทุกบริษัท", "Center permission: all companies")}
+          </span>
         </div>
       </section>
 
@@ -264,73 +191,78 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
             aria-label="Search employee training requests"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search request, employee, course, reason"
+            placeholder={t(
+              "ค้นหาเลขคำขอ พนักงาน หลักสูตร เหตุผล",
+              "Search request, employee, course, reason",
+            )}
           />
-          <select
-            aria-label="Filter company"
-            value={companyFilter}
-            onChange={(event) =>
-              setCompanyFilter(event.target.value as (typeof companies)[number] | "all")
-            }
-          >
-            <option value="all">All companies</option>
-            {companies.map((company) => (
-              <option key={company} value={company}>
-                {company}
-              </option>
-            ))}
-          </select>
           <select
             aria-label="Filter status"
             value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as TrainingNeedRequestStatus | "all")
-            }
+            onChange={(event) => setStatusFilter(event.target.value as NeedRequestStatus | "all")}
           >
-            {statuses.map((status) => (
+            <option value="all">{t("ทุกสถานะ", "All status")}</option>
+            {NEED_REQUEST_STATUSES.map((status) => (
               <option key={status} value={status}>
-                {status === "all" ? "All status" : status}
+                {needRequestStatusLabel(status, language)}
               </option>
             ))}
           </select>
-          <button className={styles.refreshButton} type="button" onClick={handleRefresh}>
-            Refresh
+          <button
+            className={styles.refreshButton}
+            type="button"
+            disabled={isLoading}
+            onClick={() => void loadRequests()}
+          >
+            {isLoading ? t("กำลังโหลด...", "Loading...") : t("รีเฟรช", "Refresh")}
           </button>
         </div>
+
+        {loadError ? (
+          <div className={styles.emptyState} role="alert">
+            {t("โหลดคำขอไม่สำเร็จ", "Could not load requests")}: {loadError}
+          </div>
+        ) : null}
       </section>
 
       <section className={styles.contentGrid}>
         <section className={styles.panel}>
           <div className={styles.panelHeader}>
             <div>
-              <span>Employee inbox</span>
-              <h3>Training Requests</h3>
+              <span>{t("กล่องคำขอจากพนักงาน", "Employee inbox")}</span>
+              <h3>{t("คำขอฝึกอบรม", "Training Requests")}</h3>
             </div>
-            <p>{visibleRequests.length} in view</p>
+            <p>{t(`${visibleRequests.length} รายการ`, `${visibleRequests.length} in view`)}</p>
           </div>
 
           <div className={styles.requestList}>
             {visibleRequests.map((request) => (
               <button
-                className={request.id === selectedRequest?.id ? styles.activeRequest : styles.requestCard}
+                className={
+                  request.id === selectedRequest?.id ? styles.activeRequest : styles.requestCard
+                }
                 key={request.id}
                 type="button"
                 onClick={() => setSelectedId(request.id)}
               >
                 <span className={styles.cardTopline}>
                   <b>{request.requestNo}</b>
-                  <i className={styles[request.urgency.toLowerCase()]}>{request.urgency}</i>
                 </span>
-                <strong>{request.courseNeed}</strong>
+                <strong>{request.requestedCourseName}</strong>
                 <small>
-                  {request.employeeName} / {request.company} / {request.functionName}
+                  {request.employeeName} / {request.companyCode} / {request.functionName || "-"}
                 </small>
-                <small>{request.sourceCourseOwner ?? "Center"} course</small>
-                <span className={styles.statusPill}>{request.status}</span>
+                <span className={styles.statusPill}>
+                  {needRequestStatusLabel(request.status, language)}
+                </span>
               </button>
             ))}
             {visibleRequests.length === 0 ? (
-              <div className={styles.emptyState}>No employee training request found.</div>
+              <div className={styles.emptyState}>
+                {isLoading
+                  ? t("กำลังโหลด...", "Loading...")
+                  : t("ยังไม่มีคำขอจากพนักงาน", "No employee training request found.")}
+              </div>
             ) : null}
           </div>
         </section>
@@ -338,103 +270,106 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
         <section className={styles.detailPanel}>
           <div className={styles.panelHeader}>
             <div>
-              <span>Employee request preview</span>
-              <h3>{selectedRequest?.courseNeed ?? "No request selected"}</h3>
+              <span>{t("รายละเอียดคำขอ", "Employee request preview")}</span>
+              <h3>{selectedRequest?.requestedCourseName ?? t("ยังไม่ได้เลือก", "No request selected")}</h3>
             </div>
-            {selectedRequest ? <p>{selectedRequest.status}</p> : null}
+            {selectedRequest ? (
+              <p>{needRequestStatusLabel(selectedRequest.status, language)}</p>
+            ) : null}
           </div>
 
           {selectedRequest ? (
             <>
               <div className={styles.employeeRequestPreview}>
                 <article>
-                  <span>Course Needed</span>
-                  <strong>{selectedRequest.courseNeed}</strong>
+                  <span>{t("หลักสูตรที่ขอ", "Course Needed")}</span>
+                  <strong>{selectedRequest.requestedCourseName}</strong>
                 </article>
                 <article>
-                  <span>Request Reason</span>
-                  <p>{selectedRequest.reason}</p>
+                  <span>{t("เหตุผล", "Request Reason")}</span>
+                  <p>{selectedRequest.requestReason}</p>
                 </article>
               </div>
 
               <dl className={styles.detailGrid}>
-                {selectedRequest.sourceCourse ? (
-                  <div className={styles.fullDetail}>
-                    <dt>Based On Training Record</dt>
-                    <dd>
-                      {selectedRequest.sourceCourse} / {selectedRequest.sourceCourseDate ?? "-"} /{" "}
-                      {selectedRequest.sourceCourseResult ?? "-"} /{" "}
-                      {selectedRequest.sourceCourseOwner ?? "Center"}
-                    </dd>
-                  </div>
-                ) : null}
                 <div>
-                  <dt>Request No.</dt>
+                  <dt>{t("เลขที่คำขอ", "Request No.")}</dt>
                   <dd>{selectedRequest.requestNo}</dd>
                 </div>
                 <div>
-                  <dt>Employee</dt>
+                  <dt>{t("พนักงาน", "Employee")}</dt>
                   <dd>
-                    {selectedRequest.employeeCode} / {selectedRequest.employeeName}
+                    {selectedRequest.employeeCode || "-"} / {selectedRequest.employeeName}
                   </dd>
                 </div>
                 <div>
-                  <dt>Company</dt>
-                  <dd>{selectedRequest.company}</dd>
+                  <dt>{t("บริษัท", "Company")}</dt>
+                  <dd>{selectedRequest.companyCode}</dd>
                 </div>
                 <div>
-                  <dt>Function</dt>
-                  <dd>{selectedRequest.functionName}</dd>
+                  <dt>{t("หน่วยงาน", "Function")}</dt>
+                  <dd>{selectedRequest.functionName || "-"}</dd>
                 </div>
                 <div>
-                  <dt>Preferred Month</dt>
-                  <dd>{selectedRequest.preferredMonth}</dd>
+                  <dt>{t("ช่วงเวลาที่สะดวก", "Preferred Dates")}</dt>
+                  <dd>
+                    {selectedRequest.preferredStartDate
+                      ? `${selectedRequest.preferredStartDate} - ${selectedRequest.preferredEndDate ?? "-"}`
+                      : "-"}
+                  </dd>
                 </div>
                 <div>
-                  <dt>Submitted</dt>
-                  <dd>{selectedRequest.submittedAt}</dd>
+                  <dt>{t("ส่งเมื่อ", "Submitted")}</dt>
+                  <dd>{formatDate(selectedRequest.requestedAt)}</dd>
                 </div>
               </dl>
 
-              <div className={styles.reasonBox}>
-                <span>Expected Benefit</span>
-                <p>{selectedRequest.expectedBenefit}</p>
-              </div>
+              {selectedRequest.rejectionReason ? (
+                <div className={styles.reasonBox}>
+                  <span>{t("เหตุผลที่ไม่อนุมัติ", "Rejection Reason")}</span>
+                  <p>{selectedRequest.rejectionReason}</p>
+                </div>
+              ) : null}
 
               <div className={styles.reviewActions}>
                 <button
                   className={styles.secondaryButton}
                   type="button"
-                  onClick={() => updateSelectedStatus("Review")}
+                  disabled={pendingAction || isDecided}
+                  onClick={() => void handleMarkReview()}
                 >
-                  Mark Review
+                  {t("กำลังพิจารณา", "Mark Review")}
                 </button>
                 <button
                   className={styles.actionButton}
                   type="button"
-                  onClick={handleApproveToPlan}
+                  disabled={pendingAction || isDecided}
+                  onClick={() => void handleApproveToPlan()}
                 >
-                  Approve & Create Training
+                  {t("อนุมัติและสร้างหลักสูตร", "Approve & Create Training")}
                 </button>
                 <button
                   className={styles.dangerButton}
                   type="button"
-                  onClick={() => {
-                    void confirm({ message: { th: "ยืนยันที่จะปฏิเสธคำขออบรมนี้หรือไม่?", en: "Confirm rejecting this training request?" }, danger: true }).then(
-                      (ok) => {
-                        if (ok) updateSelectedStatus("Rejected");
-                      },
-                    );
-                  }}
+                  disabled={pendingAction || isDecided}
+                  onClick={() => void handleReject()}
                 >
-                  Reject
+                  {t("ไม่อนุมัติ", "Reject")}
                 </button>
               </div>
+
+              {isDecided ? (
+                <p className={styles.emptyState}>
+                  {t(
+                    "คำขอนี้ตัดสินใจไปแล้ว ไม่สามารถแก้ไขได้",
+                    "This request has already been decided.",
+                  )}
+                </p>
+              ) : null}
             </>
           ) : null}
         </section>
       </section>
-
     </section>
   );
 }

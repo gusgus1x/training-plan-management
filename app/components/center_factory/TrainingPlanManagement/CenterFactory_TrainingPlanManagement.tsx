@@ -99,7 +99,9 @@ export default function TrainingPlanManagement({
                 type="button"
                 onClick={() => {
                   if (item.locked) {
-                    toast.warning("ฟังก์ชันคำขอฝึกอบรม (Request Training Need) ถูกล็อกการใช้งานไว้ชั่วคราว / This feature is temporarily locked");
+                    // No module carries locked:true today. The message names the module it blocks
+                    // rather than a fixed one, so re-locking anything says the right thing.
+                    toast.warning(`${item.title} ถูกล็อกการใช้งานไว้ชั่วคราว`);
                     return;
                   }
                   openSection(item);

@@ -22,6 +22,6 @@ export type PlanModuleTopic = {
 export const planItems: readonly PlanModuleTopic[] = [
   { ...withSlug(trainingOapModule), icon: "🗓️", Component: TrainingOAP },
   { ...withSlug(trainingRollingModule), icon: "📆", Component: TrainingRolling },
-  { ...withSlug(requestTrainingNeedModule), icon: "🔒", locked: true, Component: RequestTrainingNeed },
+  { ...withSlug(requestTrainingNeedModule), icon: "📝", Component: RequestTrainingNeed },
   { ...withSlug(trainingAcceptSurveyModule), icon: "☑️", Component: TrainingAcceptSurvey },
 ];

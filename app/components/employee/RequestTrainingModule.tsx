@@ -1,20 +1,25 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   buildProfileItems,
   profileValue,
   useAuthenticatedUser,
 } from "../AuthenticatedUserContext";
 import {
-  createTrainingNeedRequestNo,
-  EMPLOYEE_TRAINING_REQUESTS_STORAGE_KEY,
-  type EmployeeTrainingNeedRequest,
-} from "../../lib/trainingRequests";
-import { recordCourses, requestStatuses } from "./data";
+  createNeedRequest,
+  listNeedRequests,
+} from "../../lib/trainingNeedRequests/client";
+import type { NeedRequestRecord } from "../../lib/trainingNeedRequests/types";
+import { needRequestStatusLabel } from "../../lib/trainingNeedRequests/labels";
+import { requestStatuses } from "./data";
+import { listEnrollments } from "../../lib/trainingEnrollment/client";
+import { buildRecords, type EmployeeTrainingRecord } from "./RecordModule";
 import { useNotice } from "../NoticeDialog";
 import { useToast } from "../ToastHost";
+import { useUiLanguage } from "../ThaiUiLocalization";
 import ModuleHeader from "./ModuleHeader";
+import shell from "../shared/ModuleShell.module.css";
 import styles from "./UserDashboard.module.css";
 
 type RequestTrainingModuleProps = {
@@ -24,28 +29,10 @@ type RequestTrainingModuleProps = {
   trainingNeed: string;
 };
 
-const readStoredRequests = () => {
-  if (typeof window === "undefined") {
-    return [] as EmployeeTrainingNeedRequest[];
-  }
-
-  try {
-    const storedValue = window.localStorage.getItem(EMPLOYEE_TRAINING_REQUESTS_STORAGE_KEY);
-    return storedValue ? (JSON.parse(storedValue) as EmployeeTrainingNeedRequest[]) : [];
-  } catch {
-    return [] as EmployeeTrainingNeedRequest[];
-  }
-};
-
-const getCourseOwner = (courseName: string) => {
-  if (courseName.includes("5S")) {
-    return "Factory";
-  }
-
-  return "Center";
-};
-
-const completedRecordCourses: Array<(typeof recordCourses)[number]> = [];
+// The owning HRD comes from the plan itself. It used to be guessed from the course name containing
+// "5S", which mislabelled every other factory course as a Center one.
+const courseOwnerOf = (record: EmployeeTrainingRecord) =>
+  record.provider === "Factory HRD" ? "Factory" : "Center";
 
 export default function RequestTrainingModule({
   reason,
@@ -59,82 +46,105 @@ export default function RequestTrainingModule({
   const employeeName = profileValue(authenticatedUser?.username);
   const employeeCompany = profileValue(authenticatedUser?.companyCode);
   const employeeFunction = profileValue(authenticatedUser?.functionName);
-  const [selectedCourseName, setSelectedCourseName] = useState<string>(
-    completedRecordCourses[0]?.course ?? "",
-  );
+  const [completedCourses, setCompletedCourses] = useState<EmployeeTrainingRecord[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = useState("");
   const notice = useNotice();
   const toast = useToast();
-  const [submittedRequests, setSubmittedRequests] = useState(readStoredRequests);
+  const { language } = useUiLanguage();
+  // One language at a time - a "ไทย / English" label shows both to a reader who asked for one.
+  const t = (th: string, en: string) => (language === "th" ? th : en);
+  const statusLabel = (status: NeedRequestRecord["status"]) => needRequestStatusLabel(status, language);
+  const [myRequests, setMyRequests] = useState<NeedRequestRecord[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const selectedCourse =
-    completedRecordCourses.find((course) => course.course === selectedCourseName) ??
-    completedRecordCourses[0];
-  const selectedCourseOwner = selectedCourse ? getCourseOwner(selectedCourse.course) : "Center";
+    completedCourses.find((course) => course.id === selectedCourseId) ?? completedCourses[0];
+  const selectedCourseOwner = selectedCourse ? courseOwnerOf(selectedCourse) : "Center";
 
-  const myRequests = useMemo(
-    () =>
-      submittedRequests.filter(
-        (request) => employeeCode === "-" || request.employeeCode === employeeCode,
-      ),
-    [employeeCode, submittedRequests],
-  );
+  useEffect(() => {
+    let cancelled = false;
+    // Same source and same rule as the training record page, so a course shown there can always be
+    // picked here. The server scopes the list to the signed-in employee.
+    listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
+      .then(({ enrollments }) => {
+        if (cancelled) return;
+        setCompletedCourses(buildRecords(enrollments));
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const loadMyRequests = () =>
+    listNeedRequests()
+      .then(({ needRequests }) => setMyRequests(needRequests))
+      .catch(() => undefined);
+
+  useEffect(() => {
+    void loadMyRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async () => {
-    const nextRequest: EmployeeTrainingNeedRequest = {
-      id: `employee-req-${Date.now()}`,
-      requestNo: createTrainingNeedRequestNo(),
-      employeeCode,
-      employeeName,
-      company: employeeCompany,
-      functionName: employeeFunction,
-      courseNeed: trainingNeed.trim(),
-      reason: reason.trim(),
-      sourceCourse: selectedCourse?.course,
-      sourceCourseDate: selectedCourse?.date,
-      sourceCourseResult: selectedCourse?.result,
-      sourceCourseOwner: selectedCourseOwner,
-      expectedBenefit: "Improve working skill and apply the knowledge in daily operation.",
-      preferredMonth: "-",
-      urgency: "Normal",
-      status: "New Request",
-      submittedAt: new Date().toISOString().slice(0, 10),
-      approvedBy: "",
-    };
+    const courseNeed = trainingNeed.trim();
+    const requestReason = reason.trim();
 
     const missingFields: string[] = [];
-    if (!nextRequest.courseNeed) missingFields.push("หลักสูตรที่ต้องการอบรม (Course Needed)");
-    if (!nextRequest.reason) missingFields.push("เหตุผลในการขออบรม (Request Reason)");
+    if (!courseNeed) missingFields.push("หลักสูตรที่ต้องการอบรม (Course Needed)");
+    if (!requestReason) missingFields.push("เหตุผลในการขออบรม (Request Reason)");
     if (missingFields.length > 0) {
       await notice({ missingFields });
       return;
     }
 
-    const nextRequests = [nextRequest, ...readStoredRequests()];
-    window.localStorage.setItem(
-      EMPLOYEE_TRAINING_REQUESTS_STORAGE_KEY,
-      JSON.stringify(nextRequests),
-    );
-    window.dispatchEvent(new Event("employee-training-requests-changed"));
-    setSubmittedRequests(nextRequests);
-    toast.success(`ส่งคำขอ ${nextRequest.requestNo} ไปยัง HRD ส่วนกลางแล้ว / Request submitted to HRD Center`);
+    setIsSubmitting(true);
+    try {
+      // The request is filed against the signed-in employee on the server; nothing about who is
+      // asking travels in the body.
+      const { needRequest } = await createNeedRequest({
+        requestedCourseName: courseNeed,
+        requestReason,
+        preferredStartDate: null,
+        preferredEndDate: null,
+      });
+
+      setMyRequests((current) => [needRequest, ...current]);
+      setTrainingNeed("");
+      setReason("");
+      toast.success(
+        t(
+          `ส่งคำขอ ${needRequest.requestNo} ไปยัง HRD แล้ว`,
+          `Request ${needRequest.requestNo} submitted to HRD`,
+        ),
+      );
+    } catch (error: unknown) {
+      // The old page reported success the moment it wrote to localStorage, so a request that never
+      // reached anyone still looked sent.
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("ส่งคำขอไม่สำเร็จ กรุณาลองอีกครั้ง", "Could not submit the request"),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleSelectCourse = (courseName: string) => {
-    const nextCourse = completedRecordCourses.find((course) => course.course === courseName);
+  const handleSelectCourse = (courseId: string) => {
+    const nextCourse = completedCourses.find((course) => course.id === courseId);
 
-    setSelectedCourseName(courseName);
-    setTrainingNeed(nextCourse ? `${nextCourse.course} follow-up training` : "");
+    setSelectedCourseId(courseId);
+    setTrainingNeed(nextCourse ? `${nextCourse.courseTitle} follow-up training` : "");
     setReason(
       nextCourse
-        ? `I completed ${nextCourse.course} on ${nextCourse.date} and would like additional training to improve practical usage.`
+        ? `I completed ${nextCourse.courseTitle} on ${nextCourse.completedDate} and would like additional training to improve practical usage.`
         : "",
     );
   };
 
   return (
-    <section className={styles.modulePage}>
-      <div className={styles.lockedNoticeBanner}>
-        🔒 <strong>หน้านี้ถูกล็อกการใช้งานชั่วคราว</strong> — ฟังก์ชันคำขอฝึกอบรม (Request Training Need) อยู่ระหว่างการปรับปรุงระบบ
-      </div>
+    <section className={shell.moduleWorkspace}>
       <ModuleHeader
         eyebrow="Request Training Need"
         title="Request Training Need"
@@ -160,12 +170,17 @@ export default function RequestTrainingModule({
             <label className={styles.courseDropdown}>
               Course
               <select
-                value={selectedCourseName}
+                value={selectedCourse?.id ?? ""}
                 onChange={(event) => handleSelectCourse(event.target.value)}
               >
-                {completedRecordCourses.map((course) => (
-                  <option key={course.course} value={course.course}>
-                    {course.course}
+                {completedCourses.length === 0 ? (
+                  <option value="">
+                    {t("ยังไม่มีประวัติการอบรม", "No completed training yet")}
+                  </option>
+                ) : null}
+                {completedCourses.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.courseTitle}
                   </option>
                 ))}
               </select>
@@ -175,9 +190,10 @@ export default function RequestTrainingModule({
               <article className={styles.selectedPreviousCourse}>
                 <div>
                   <span>Completed Course</span>
-                  <strong>{selectedCourse.course}</strong>
+                  <strong>{selectedCourse.courseTitle}</strong>
                   <small>
-                    {selectedCourse.date} / {selectedCourse.result} / {selectedCourse.assessment}
+                    {selectedCourse.completedDate} · {selectedCourse.result} ·{" "}
+                    {selectedCourse.hours} hrs
                   </small>
                 </div>
                 <b className={styles.courseOwnerBadge}>{selectedCourseOwner}</b>
@@ -203,8 +219,14 @@ export default function RequestTrainingModule({
               placeholder="Explain why this training is needed"
             />
           </label>
-          <button type="button" onClick={() => void handleSubmit()}>
-            Submit Training Need
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => void handleSubmit()}
+          >
+            {isSubmitting
+              ? t("กำลังส่ง...", "Submitting...")
+              : t("ส่งคำขอฝึกอบรม", "Submit Training Need")}
           </button>
         </form>
 
@@ -218,10 +240,10 @@ export default function RequestTrainingModule({
           {selectedCourse ? (
             <section className={styles.selectedRecordPreview}>
               <p>Based On Training Record</p>
-              <strong>{selectedCourse.course}</strong>
+              <strong>{selectedCourse.courseTitle}</strong>
               <span>
-                {selectedCourseOwner} / {selectedCourse.date} / {selectedCourse.result} /{" "}
-                {selectedCourse.assessment}
+                {selectedCourseOwner} · {selectedCourse.completedDate} · {selectedCourse.result} ·{" "}
+                {selectedCourse.hours} hrs
               </span>
             </section>
           ) : null}
@@ -238,16 +260,23 @@ export default function RequestTrainingModule({
             ))}
           </div>
 
-          <section className={styles.myRequestPanel}>
-            <div>
-              <p>My Requests</p>
-              <strong>{myRequests.length} submitted</strong>
+          <section className={shell.panel}>
+            <div className={shell.panelHeader}>
+              <div>
+                <span>{t("คำขอของฉัน", "My Requests")}</span>
+                <h3>{t(`ส่งไปแล้ว ${myRequests.length} รายการ`, `${myRequests.length} submitted`)}</h3>
+              </div>
             </div>
-            {myRequests.slice(0, 3).map((request) => (
+            {myRequests.length === 0 ? (
+              <p className={shell.emptyState}>
+                {t("ยังไม่เคยส่งคำขอ", "No request submitted yet")}
+              </p>
+            ) : null}
+            {myRequests.slice(0, 5).map((request) => (
               <article key={request.id}>
                 <span>{request.requestNo}</span>
-                <strong>{request.courseNeed}</strong>
-                <small>{request.status}</small>
+                <strong>{request.requestedCourseName}</strong>
+                <small>{statusLabel(request.status)}</small>
               </article>
             ))}
           </section>

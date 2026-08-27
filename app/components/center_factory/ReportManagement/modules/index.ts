@@ -33,5 +33,5 @@ export type ReportModuleTopic = {
 export const centerReportItems: readonly ReportModuleTopic[] = [
   { ...withSlug(summaryDashboardModule), icon: "📊", Component: SummaryDashboard },
   { ...withSlug(scheduleCalendarModule), icon: "📅", Component: ScheduleCalendar },
-  { ...withSlug(internalReportModule), icon: "✉️", Component: InternalReport, locked: true },
+  { ...withSlug(internalReportModule), icon: "✉️", Component: InternalReport },
 ];
