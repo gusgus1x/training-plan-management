@@ -40,6 +40,7 @@ export type TrainingRecordAttendee = {
   employeeCode: string;
   name: string;
   department: string;
+  position: string;
   company: string;
   attended: boolean;
   preTestPassed: boolean | null;

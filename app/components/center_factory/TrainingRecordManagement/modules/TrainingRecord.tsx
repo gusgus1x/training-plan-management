@@ -453,7 +453,7 @@ export default function TrainingRecord() {
               name: attendee.name,
               employeeCode: attendee.employeeCode,
               department: attendee.department,
-              position: (attendee as any).position ?? "",
+              position: attendee.position,
               prePost: prePostOf(attendee),
               evaluation: attendee.evaluationCompleted ? "Done" : "Pending",
             })),

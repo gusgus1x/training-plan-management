@@ -8,6 +8,7 @@ const attendee = (overrides: Partial<TrainingRecordAttendee> = {}): TrainingReco
   employeeCode: "1290-000017",
   name: "ทดสอบ ระบบอบรม",
   department: "Office Administration",
+  position: "Officer",
   company: "ATA",
   attended: true,
   preTestPassed: null,

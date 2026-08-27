@@ -32,6 +32,10 @@ const CATEGORY_TO_EXPENSE_KEY = Object.fromEntries(
 const employeeInclude = {
   company: true,
   organization_function: true,
+  // The mapper always read a position, but the relation was never loaded, so every attendee's
+  // position came back empty and the column showed "-" for the whole roster. The `as any` cast on
+  // the read is what kept the compiler quiet about it.
+  position: true,
 } satisfies Prisma.employeeInclude;
 
 const trainingRecordInclude = {
@@ -90,8 +94,8 @@ const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
         enrollment.employee.organization_function?.function_name_th ||
         "",
       position:
-        (enrollment.employee as any).position?.position_name_en ||
-        (enrollment.employee as any).position?.position_name_th ||
+        enrollment.employee.position?.position_name_en ||
+        enrollment.employee.position?.position_name_th ||
         "",
       company: enrollment.employee.company.company_code,
       // PRESENT only, matching Training Actual and the cost breakdown. Counting any attendance row
