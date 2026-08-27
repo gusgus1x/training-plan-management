@@ -1,12 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  TRAINING_WORKFLOW_EVENT,
-  TRAINING_WORKFLOW_KEYS,
-  readWorkflowCollection,
-  type WorkflowCompletedCourse,
-} from "../../lib/trainingWorkflow";
+import dash from "../shared/DashboardShell.module.css";
+import { useUiLanguage, type UiLanguage } from "../ThaiUiLocalization";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
 import type { EnrollmentRecord } from "../../lib/trainingEnrollment/types";
 import {
@@ -69,9 +65,48 @@ type CalendarTraining = {
 };
 
 const ACTIVE_ENROLLMENT_STATUSES: readonly string[] = ["Pending Approval", "Factory Approved", "Center Approved"];
+const APPROVED_ENROLLMENT_STATUSES: readonly string[] = ["Factory Approved", "Center Approved"];
+
+export const initialsOf = (name: string) => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "EU";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+};
+
+/** Whole days from today to the training, floored, so "today" reads as 0 rather than -1. */
+export const daysUntil = (isoDate: string) => {
+  const startOfDay = (value: Date) =>
+    new Date(value.getFullYear(), value.getMonth(), value.getDate()).getTime();
+  const target = new Date(isoDate);
+  if (Number.isNaN(target.getTime())) return null;
+  return Math.round((startOfDay(target) - startOfDay(new Date())) / 86_400_000);
+};
+
+export const countdownLabel = (days: number, language: UiLanguage) => {
+  const isThai = language === "th";
+  if (days < 0) return isThai ? "กำลังดำเนินการ" : "In progress";
+  if (days === 0) return isThai ? "วันนี้" : "Today";
+  if (days === 1) return isThai ? "พรุ่งนี้" : "Tomorrow";
+  return isThai ? `อีก ${days} วัน` : `in ${days} days`;
+};
 
 export default function UserDashboard({ username, onHome, onLogout }: UserDashboardProps) {
   const authenticatedUser = useAuthenticatedUser();
+  const { language } = useUiLanguage();
+  const isThai = language === "th";
+  // One language at a time. A "ไทย / English" label shows both to a reader who asked for one.
+  const t = (th: string, en: string) => (isThai ? th : en);
+  // Thai keeps the Gregorian calendar here: the plan dates are stored as Gregorian and the HRD
+  // screens show them that way, so switching to the Buddhist era would put the two sides two
+  // years apart on the same training.
+  const locale = isThai ? "th-TH-u-ca-gregory" : "en-GB";
+  const weekDayNames = isThai ? ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"] : weekDays;
+  const monthLabel = (value: string, fallback: string) =>
+    value === "all"
+      ? t("ทั้งปี", "All year")
+      : new Date(2020, Number(value) - 1, 1).toLocaleDateString(locale, { month: "long" }) ||
+        fallback;
   const employeeProfile = buildProfileItems(authenticatedUser);
   const [activeModule, setActiveModule] = useState<UserModule | null>(null);
   const [trainingNeed, setTrainingNeed] = useState("");
@@ -116,18 +151,19 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
   };
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
-  const [completedCourses, setCompletedCourses] = useState<WorkflowCompletedCourse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const employeeCode = profileValue(authenticatedUser?.employeeCode);
   const employeeCompany = profileValue(authenticatedUser?.companyCode);
-  const employeeId = authenticatedUser?.employeeId ?? null;
 
   useEffect(() => {
     let active = true;
     setIsLoading(true);
-    const fetchEnrollments = employeeId
-      ? listEnrollments({ planId: null, employeeId, employeeUserId: null }).catch(() => ({ enrollments: [] }))
-      : Promise.resolve({ enrollments: [] });
+    // No employee filter is sent: the server scopes an EMPLOYEE caller to themselves. Guarding on
+    // employeeId here used to blank the page for an account that carries only the durable key.
+    const fetchEnrollments = listEnrollments({
+      planId: null,
+      employeeId: null,
+      employeeUserId: null,
+    }).catch(() => ({ enrollments: [] }));
 
     void Promise.all([
       loadWorkflowRollingPlans().catch(() => []),
@@ -141,20 +177,6 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
     });
 
     return () => { active = false; };
-  }, [employeeId]);
-
-  useEffect(() => {
-    const syncWorkflow = () => {
-      setCompletedCourses(
-        readWorkflowCollection<WorkflowCompletedCourse>(
-          TRAINING_WORKFLOW_KEYS.completedCourses,
-        ),
-      );
-    };
-
-    syncWorkflow();
-    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflow);
-    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflow);
   }, []);
 
   const availableRollingPlans = useMemo(
@@ -167,20 +189,47 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
       ),
     [employeeCompany, rollingPlans],
   );
-  const completedHours = useMemo(
-    () =>
-      completedCourses.reduce(
-        (total, course) =>
-          course.attendees.some(
-            (attendee) =>
-              attendee.employeeCode === employeeCode && attendee.attended,
-          )
-            ? total + course.hours
-            : total,
-        0,
-      ),
-    [completedCourses, employeeCode],
+  // Attended enrollments are the completed record. Same rule as RecordModule, same source, so the
+  // hours on the dashboard and the rows on the record page can no longer disagree.
+  const completedEnrollments = useMemo(
+    () => enrollments.filter((enrollment) => enrollment.attendance?.status === "PRESENT"),
+    [enrollments],
   );
+  const completedHours = useMemo(
+    () => completedEnrollments.reduce((total, enrollment) => total + enrollment.plan.hours, 0),
+    [completedEnrollments],
+  );
+  const enrolledPlanIds = useMemo(
+    () =>
+      new Set(
+        enrollments
+          .filter((enrollment) => ACTIVE_ENROLLMENT_STATUSES.includes(enrollment.status))
+          .map((enrollment) => enrollment.planId),
+      ),
+    [enrollments],
+  );
+  // What the employee can still act on: a course open to their company that they are not already
+  // registered for. Counting every open plan would keep nagging about ones they have joined.
+  const openToRegister = useMemo(
+    () => availableRollingPlans.filter((plan) => !enrolledPlanIds.has(plan.rollingId)),
+    [availableRollingPlans, enrolledPlanIds],
+  );
+  const awaitingApproval = useMemo(
+    () => enrollments.filter((enrollment) => enrollment.status === "Pending Approval"),
+    [enrollments],
+  );
+  // The soonest approved training that has not finished yet. Sorted rather than reduced so a tie
+  // resolves the same way every render.
+  const nextTraining = useMemo(() => {
+    const now = Date.now();
+    return enrollments
+      .filter(
+        (enrollment) =>
+          APPROVED_ENROLLMENT_STATUSES.includes(enrollment.status) &&
+          Date.parse(enrollment.plan.endAt) >= now,
+      )
+      .sort((left, right) => left.plan.startAt.localeCompare(right.plan.startAt))[0];
+  }, [enrollments]);
   const employeeCalendarTrainings = useMemo<CalendarTraining[]>(
     () =>
       availableRollingPlans.map((plan) => ({
@@ -208,8 +257,10 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
     [calendarToday.year, rollingPlans],
   );
 
-  const selectedMonthLabel =
-    calendarMonths.find((month) => month.value === selectedCalendarMonth)?.label ?? "Selected month";
+  const selectedMonthLabel = monthLabel(
+    selectedCalendarMonth,
+    t("เดือนที่เลือก", "Selected month"),
+  );
   const isViewingCurrentMonth =
     selectedCalendarYear === calendarToday.year &&
     selectedCalendarMonth === calendarToday.month;
@@ -305,70 +356,180 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
             <RecordModule />
           ) : null}
           {activeModule === "report" ? (
-            <ReportModule completedHours={completedHours} />
+            <ReportModule
+              completedHours={completedHours}
+              completedCount={completedEnrollments.length}
+            />
           ) : null}
         </>
       ) : (
         <>
-          <div className={styles.workspaceBadge}>Employee Workspace</div>
+          <div className={styles.workspaceBadge}>{t("พื้นที่ทำงานพนักงาน", "Employee Workspace")}</div>
 
           <section className={styles.heroPanel} aria-label="Employee dashboard overview">
             <div className={styles.heroCopy}>
-              <span>Employee Training</span>
-              <h1 translate="no">My Training Dashboard</h1>
+              <span>{t("การฝึกอบรมพนักงาน", "Employee Training")}</span>
+              <h1 translate="no">{t("แดชบอร์ดการอบรมของฉัน", "My Training Dashboard")}</h1>
               <p>
-                Review your training calendar, register courses, request training needs,
-                and follow your training records.
+                {t(
+                  "ตรวจสอบปฏิทินอบรม ลงทะเบียนหลักสูตร ส่งคำขอฝึกอบรม และติดตามประวัติการอบรมของคุณ",
+                  "Review your training calendar, register courses, request training needs, and follow your training records.",
+                )}
               </p>
             </div>
           </section>
 
+          <div className={dash.actionStrip} aria-label="What needs your attention">
+            <button
+              className={`${dash.actionCard} ${openToRegister.length === 0 ? dash.quiet : ""}`}
+              type="button"
+              disabled={openToRegister.length === 0}
+              onClick={() => setActiveModule("register")}
+            >
+              <span className={dash.actionCount}>{openToRegister.length}</span>
+              <span className={dash.actionCopy}>
+                <strong>{isThai ? "หลักสูตรที่สมัครได้" : "Open to register"}</strong>
+                <span>
+                  {openToRegister.length === 0
+                    ? (isThai ? "ยังไม่มีหลักสูตรใหม่" : "Nothing new right now")
+                    : (isThai ? "กดเพื่อเลือกหลักสูตร" : "Tap to choose a course")}
+                </span>
+              </span>
+            </button>
+
+            <button
+              className={`${dash.actionCard} ${awaitingApproval.length === 0 ? dash.quiet : ""}`}
+              type="button"
+              disabled={awaitingApproval.length === 0}
+              onClick={() => setActiveModule("register")}
+            >
+              <span className={dash.actionCount}>{awaitingApproval.length}</span>
+              <span className={dash.actionCopy}>
+                <strong>{isThai ? "รออนุมัติ" : "Awaiting approval"}</strong>
+                <span>
+                  {awaitingApproval.length === 0
+                    ? (isThai ? "ไม่มีคำขอค้าง" : "No request pending")
+                    : (isThai ? "HRD กำลังพิจารณา" : "With HRD for review")}
+                </span>
+              </span>
+            </button>
+
+            <button
+              className={`${dash.actionCard} ${completedEnrollments.length === 0 ? dash.quiet : ""}`}
+              type="button"
+              disabled={completedEnrollments.length === 0}
+              onClick={() => setActiveModule("record")}
+            >
+              <span className={dash.actionCount}>{completedEnrollments.length}</span>
+              <span className={dash.actionCopy}>
+                <strong>{isThai ? "อบรมสำเร็จแล้ว" : "Completed"}</strong>
+                <span>
+                  {completedEnrollments.length === 0
+                    ? (isThai ? "ยังไม่มีประวัติ" : "No record yet")
+                    : (isThai ? `สะสม ${completedHours} ชั่วโมง` : `${completedHours} hours`)}
+                </span>
+              </span>
+            </button>
+          </div>
+
           <div className={styles.topRow}>
             <section className={styles.employeePanel} aria-label="My employee information">
-              <div className={styles.employeeProfile}>
-                <div className={styles.avatar} aria-hidden="true">
-                  EU
+              <div className={dash.profileHeaderBanner}>
+                <div className={dash.photoBox} aria-hidden="true">
+                  {initialsOf(username)}
                 </div>
-                <div className={styles.profileCopy}>
-                  <span>Employee Profile</span>
-                  <h1>{username}</h1>
-                  <p>{profileValue(authenticatedUser?.positionName)} / {profileValue(authenticatedUser?.functionName)}</p>
+                <div className={dash.profileMetaBox}>
+                  <div className={dash.profileTagRow}>
+                    <span className={dash.userRoleTag}>{t("พนักงาน", "Employee")}</span>
+                    <span className={dash.onlineBadge}>
+                      <span className={dash.onlineDot} aria-hidden="true" />
+                      {t("ออนไลน์", "Online")}
+                    </span>
+                  </div>
+                  <strong className={dash.profileName}>{username}</strong>
+                  <p className={dash.profileSubText}>
+                    {profileValue(authenticatedUser?.positionName)} /{" "}
+                    {profileValue(authenticatedUser?.functionName)}
+                  </p>
                 </div>
-                <b className={styles.employeeStatus}>Online</b>
               </div>
 
-              <div className={styles.employeeProfileGrid}>
-                {employeeProfile.slice(0, 4).map((item) => (
-                  <article key={item.label}>
-                    <span>{item.label}</span>
-                    <strong>{item.value}</strong>
-                  </article>
+              <div className={dash.employeeDetailsGrid}>
+                {employeeProfile.slice(0, 5).map((item) => (
+                  <div className={dash.detailCard} key={item.label}>
+                    <span className={dash.detailLabel}>{item.label}</span>
+                    <strong className={dash.detailValue} title={item.value}>
+                      {item.value}
+                    </strong>
+                  </div>
                 ))}
               </div>
 
-              <div className={styles.profileStats}>
-                <article>
-                  <span>Available Courses</span>
-                  <strong>{availableRollingPlans.length}</strong>
-                </article>
-                <article>
-                  <span>Completed Hours</span>
-                  <strong>{completedHours}</strong>
-                </article>
-                <article>
-                  <span>Pending Requests</span>
-                  <strong>0</strong>
-                </article>
+              <div className={dash.kpiSummaryBar} aria-label="Training summary">
+                <div className={dash.kpiCol}>
+                  <span className={dash.kpiLabel}>{t("ลงทะเบียน", "Registered")}</span>
+                  <div className={dash.kpiValueRow}>
+                    <strong className={dash.kpiValue}>{enrolledPlanIds.size}</strong>
+                    <small className={dash.kpiHelper}>{t("หลักสูตร", "courses")}</small>
+                  </div>
+                </div>
+                <div className={dash.kpiCol}>
+                  <span className={dash.kpiLabel}>{t("สำเร็จแล้ว", "Completed")}</span>
+                  <div className={dash.kpiValueRow}>
+                    <strong className={dash.kpiValue}>{completedHours}</strong>
+                    <small className={dash.kpiHelper}>{t("ชั่วโมง", "hours")}</small>
+                  </div>
+                </div>
+                <div className={dash.kpiCol}>
+                  <span className={dash.kpiLabel}>{t("เปิดรับ", "Open")}</span>
+                  <div className={dash.kpiValueRow}>
+                    <strong className={dash.kpiValue}>{openToRegister.length}</strong>
+                    <small className={dash.kpiHelper}>{t("เข้าร่วมได้", "to join")}</small>
+                  </div>
+                </div>
               </div>
+
+              {nextTraining ? (
+                <div className={dash.nextTraining}>
+                  <div className={dash.nextTrainingDate}>
+                    <strong>{new Date(nextTraining.plan.startAt).getDate()}</strong>
+                    <span>
+                      {new Date(nextTraining.plan.startAt).toLocaleDateString(locale, {
+                        month: "short",
+                      })}
+                    </span>
+                  </div>
+                  <div className={dash.nextTrainingCopy}>
+                    <span>{isThai ? "อบรมครั้งถัดไป" : "Next training"}</span>
+                    <strong title={nextTraining.plan.courseName}>
+                      {nextTraining.plan.courseName}
+                    </strong>
+                    <small>
+                      {nextTraining.plan.venue || "-"} • {nextTraining.plan.hours} hrs
+                    </small>
+                  </div>
+                  {(() => {
+                    const days = daysUntil(nextTraining.plan.startAt);
+                    if (days === null) return null;
+                    return (
+                      <span
+                        className={`${dash.countdownPill} ${days <= 3 ? dash.soon : ""}`}
+                      >
+                        {countdownLabel(days, language)}
+                      </span>
+                    );
+                  })()}
+                </div>
+              ) : null}
             </section>
 
             <section className={styles.calendarPanel} aria-label="Employee training calendar">
               <div className={styles.panelHeader}>
                 <div>
-                  <p>Training Schedule</p>
-                  <h2 translate="no">Training Calendar</h2>
+                  <p>{t("ตารางการอบรม", "Training Schedule")}</p>
+                  <h2 translate="no">{t("ปฏิทินการอบรม", "Training Calendar")}</h2>
                   <span className={styles.monthMetaBadge}>
-                    {selectedMonthLabel} {selectedCalendarYear} • {filteredCalendarTrainings.length} courses
+                    {selectedMonthLabel} {selectedCalendarYear} • {filteredCalendarTrainings.length} {t("หลักสูตร", "courses")}
                   </span>
                 </div>
                 <button
@@ -376,13 +537,13 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                   type="button"
                   onClick={() => setIsMonthListOpen((current) => !current)}
                 >
-                  {isMonthListOpen ? "Hide list" : "Show list"}
+                  {isMonthListOpen ? t("ซ่อนรายการ", "Hide list") : t("แสดงรายการ", "Show list")}
                 </button>
               </div>
 
               <div className={styles.calendarFilters}>
                 <label>
-                  <span>Year</span>
+                  <span>{t("ปี", "Year")}</span>
                   <select
                     value={selectedCalendarYear}
                     onChange={(event) => setSelectedCalendarYear(event.target.value)}
@@ -393,13 +554,13 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                   </select>
                 </label>
                 <label>
-                  <span>Month</span>
+                  <span>{t("เดือน", "Month")}</span>
                   <select
                     value={selectedCalendarMonth}
                     onChange={(event) => setSelectedCalendarMonth(event.target.value)}
                   >
                     {calendarMonths.map((month) => (
-                      <option key={month.value} value={month.value}>{month.label}</option>
+                      <option key={month.value} value={month.value}>{monthLabel(month.value, month.label)}</option>
                     ))}
                   </select>
                 </label>
@@ -407,7 +568,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
 
               {selectedCalendarMonth === "all" ? null : (
                 <div className={styles.calendarGrid} aria-label={`Training calendar in ${selectedMonthLabel} ${selectedCalendarYear}`}>
-                  {weekDays.map((day, idx) => (
+                  {weekDayNames.map((day, idx) => (
                     <b key={day} className={idx === 0 ? styles.sunHeader : idx === 6 ? styles.satHeader : undefined}>
                       {day}
                     </b>
@@ -446,7 +607,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                   {filteredCalendarTrainings.map((training) => {
                     const date = new Date(`${training.date}T00:00:00`);
                     const dayNum = date.getDate();
-                    const monthName = date.toLocaleDateString("en-US", { month: "short" });
+                    const monthName = date.toLocaleDateString(locale, { month: "short" });
 
                     return (
                       <article key={training.title} className={styles.calendarListCard}>
@@ -470,10 +631,10 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
           <section className={styles.modulePanel} aria-label="User modules">
             <div className={styles.panelHeader}>
               <div>
-                <p>User Operation</p>
-                <h2 translate="no">Select a workspace</h2>
+                <p>{t("เมนูผู้ใช้งาน", "User Operation")}</p>
+                <h2 translate="no">{t("เลือกพื้นที่ทำงาน", "Select a workspace")}</h2>
               </div>
-              <span>{moduleCards.length} modules</span>
+              <span>{moduleCards.length} {t("เมนู", "modules")}</span>
             </div>
 
             <div className={styles.moduleGrid}>
@@ -490,7 +651,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                     <strong translate="no">{module.title}</strong>
                     <span>{module.detail}</span>
                   </div>
-                  <b>Open</b>
+                  <b>{t("เปิด", "Open")}</b>
                 </button>
               ))}
             </div>

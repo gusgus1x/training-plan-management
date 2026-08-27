@@ -2,14 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext";
-import { recordCourses } from "./data";
 import { useNotice } from "../NoticeDialog";
 import { useToast } from "../ToastHost";
+import { useUiLanguage } from "../ThaiUiLocalization";
 import ModuleHeader from "./ModuleHeader";
+import shell from "../shared/ModuleShell.module.css";
 import styles from "./UserDashboard.module.css";
 
 type ReportModuleProps = {
   completedHours: number;
+  completedCount: number;
 };
 
 type ReportStatus = "Draft" | "Ready" | "Sent";
@@ -64,8 +66,8 @@ const initialReports: EmployeeReport[] = [
   },
 ];
 
-const createInitialMessage = (completedHours: number) =>
-  `Please review my training records. I have completed ${completedHours} training hours and ${recordCourses.length} records are available.`;
+const createInitialMessage = (completedHours: number, completedCount: number) =>
+  `Please review my training records. I have completed ${completedHours} training hours and ${completedCount} records are available.`;
 
 const formatFileSize = (size: number) => {
   if (size >= 1024 * 1024) {
@@ -75,7 +77,7 @@ const formatFileSize = (size: number) => {
   return `${Math.max(1, Math.round(size / 1024))} KB`;
 };
 
-export default function ReportModule({ completedHours }: ReportModuleProps) {
+export default function ReportModule({ completedHours, completedCount }: ReportModuleProps) {
   const authenticatedUser = useAuthenticatedUser();
   const senderEmail = profileValue(authenticatedUser?.email);
   const today = new Date().toISOString().slice(0, 10);
@@ -84,7 +86,7 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
   const [recipientType, setRecipientType] = useState<RecipientType>("Person");
   const [recipientTarget, setRecipientTarget] = useState("");
   const [sendDate, setSendDate] = useState(today);
-  const [messageBody, setMessageBody] = useState(createInitialMessage(completedHours));
+  const [messageBody, setMessageBody] = useState(createInitialMessage(completedHours, completedCount));
   const [attachments, setAttachments] = useState<AttachmentRecord[]>([]);
   const [attachmentInputKey, setAttachmentInputKey] = useState(0);
   const [reports, setReports] = useState<EmployeeReport[]>([]);
@@ -92,6 +94,9 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
   const [search, setSearch] = useState("");
   const notice = useNotice();
   const toast = useToast();
+  const { language } = useUiLanguage();
+  // One language at a time - a "ไทย / English" label shows both to a reader who asked for one.
+  const t = (th: string, en: string) => (language === "th" ? th : en);
 
   const selectedReport = reports.find((report) => report.id === selectedId) ?? reports[0] ?? null;
   const visibleReports = useMemo(() => {
@@ -152,7 +157,7 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
     setMessageBody("");
     setAttachments([]);
     setAttachmentInputKey((current) => current + 1);
-    toast.info("ล้างแบบฟอร์มแล้ว / Composer cleared");
+    toast.info(t("ล้างแบบฟอร์มแล้ว", "Composer cleared"));
   };
 
   const resetComposer = () => {
@@ -160,7 +165,7 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
     setRecipientType("Person");
     setRecipientTarget("");
     setSendDate(today);
-    setMessageBody(createInitialMessage(completedHours));
+    setMessageBody(createInitialMessage(completedHours, completedCount));
     setAttachments([]);
     setAttachmentInputKey((current) => current + 1);
   };
@@ -203,8 +208,11 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
     setSelectedId(nextReport.id);
     toast.success(
       status === "Sent"
-        ? `ส่งรายงานถึง ${recipientTarget} แล้ว / Sent to ${recipientTarget}`
-        : `บันทึกรายงานสถานะ ${status} พร้อมไฟล์แนบ ${attachments.length} ไฟล์ / ${status} report saved`,
+        ? t(`ส่งรายงานถึง ${recipientTarget} แล้ว`, `Sent to ${recipientTarget}`)
+        : t(
+            `บันทึกรายงานสถานะ ${status} พร้อมไฟล์แนบ ${attachments.length} ไฟล์`,
+            `${status} report saved with ${attachments.length} attachment(s)`,
+          ),
     );
   };
 
@@ -220,11 +228,11 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
     setMessageBody(selectedReport.message);
     setAttachments(selectedReport.attachments);
     setAttachmentInputKey((current) => current + 1);
-    toast.info("โหลดรายงานที่เลือกแล้ว / Loaded selected report");
+    toast.info(t("โหลดรายงานที่เลือกแล้ว", "Loaded selected report"));
   };
 
   return (
-    <section className={styles.modulePage}>
+    <section className={shell.moduleWorkspace}>
       <ModuleHeader
         eyebrow="Training Report"
         title="Training Report"
@@ -238,7 +246,7 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
         </article>
         <article>
           <span>Training Records</span>
-          <strong>{recordCourses.length}</strong>
+          <strong>{completedCount}</strong>
         </article>
         <article>
           <span>Ready</span>
@@ -250,9 +258,12 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
         </article>
       </div>
 
-      <div className={styles.reportWorkspace}>
-        <section className={styles.reportControlPanel} aria-label="Compose employee report">
-          <div className={styles.panelHeader}>
+      <div className={shell.contentGrid}>
+        <section
+          className={`${shell.panel} ${styles.reportControlPanel}`}
+          aria-label="Compose employee report"
+        >
+          <div className={shell.panelHeader}>
             <div>
               <p>Compose</p>
               <h2>Email Setup</h2>
@@ -357,8 +368,8 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
           </div>
         </section>
 
-        <section className={styles.reportResultPanel} aria-label="Employee report preview">
-          <div className={styles.panelHeader}>
+        <section className={shell.panel} aria-label="Employee report preview">
+          <div className={shell.panelHeader}>
             <div>
               <p>Preview</p>
               <h2>{subject || "Email subject"}</h2>
@@ -391,8 +402,8 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
         </section>
       </div>
 
-      <section className={styles.reportResultPanel} aria-label="Employee report history">
-        <div className={styles.panelHeader}>
+      <section className={shell.panel} aria-label="Employee report history">
+        <div className={shell.panelHeader}>
           <div>
             <p>History / Queue</p>
             <h2>Submitted Reports</h2>
@@ -435,11 +446,11 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
               </button>
             ))}
             {visibleReports.length === 0 ? (
-              <div className={styles.recordEmpty}>No report found.</div>
+              <div className={shell.emptyState}>No report found.</div>
             ) : null}
           </div>
 
-          <aside className={styles.employeeReportDetailPanel}>
+          <aside className={shell.detailPanel}>
             {selectedReport ? (
               <>
                 <div className={styles.employeeReportDetailHeader}>
@@ -491,7 +502,7 @@ export default function ReportModule({ completedHours }: ReportModuleProps) {
                 </div>
               </>
             ) : (
-              <div className={styles.recordEmpty}>Select a report to view details.</div>
+              <div className={shell.emptyState}>Select a report to view details.</div>
             )}
           </aside>
         </div>

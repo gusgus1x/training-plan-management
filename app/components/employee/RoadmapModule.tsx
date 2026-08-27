@@ -13,6 +13,7 @@ import {
 import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext";
 import { loadWorkflowRollingPlans, type RollingPlan } from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
 import ModuleHeader from "./ModuleHeader";
+import shell from "../shared/ModuleShell.module.css";
 import styles from "./UserDashboard.module.css";
 
 const isTargetMatch = (targets: readonly string[], value: string) =>
@@ -151,24 +152,24 @@ export default function RoadmapModule() {
   );
 
   return (
-    <section className={styles.modulePage}>
+    <section className={shell.moduleWorkspace}>
       <ModuleHeader
         eyebrow="Training Roadmap"
         title="My Target Courses"
         detail="Shows courses where this employee is included in the target group by company, function, or position."
       />
 
-      <div className={styles.registerWorkspace}>
+      <div className={`${shell.contentGrid} ${styles.registerWorkspace}`}>
         {roadmapGroups.map((group) => {
           const courses = fallbackCourses.filter((item) => item.courseOwner === group.owner);
 
           return (
             <section
-              className={styles.registerListPanel}
+              className={shell.panel}
               aria-label={`${group.title} target courses`}
               key={group.owner}
             >
-              <div className={styles.panelHeader}>
+              <div className={shell.panelHeader}>
                 <div>
                   <p>{group.owner} roadmap</p>
                   <h2>{group.title}</h2>
@@ -257,7 +258,7 @@ export default function RoadmapModule() {
                   );
                 })}
                 {courses.length === 0 ? (
-                  <p className={styles.emptyCourseGroup}>No target courses in this group.</p>
+                  <p className={shell.emptyState}>No target courses in this group.</p>
                 ) : null}
               </div>
             </section>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext";
 import { useConfirm } from "../ConfirmDialog";
 import { useToast } from "../ToastHost";
+import { useUiLanguage } from "../ThaiUiLocalization";
 import {
   getRollingPlanCompanies,
   loadWorkflowRollingPlans,
@@ -12,6 +13,7 @@ import {
 import { createEnrollment, listEnrollments, updateEnrollmentStatus } from "../../lib/trainingEnrollment/client";
 import type { EnrollmentRecord } from "../../lib/trainingEnrollment/types";
 import ModuleHeader from "./ModuleHeader";
+import shell from "../shared/ModuleShell.module.css";
 import styles from "./UserDashboard.module.css";
 
 const ACTIVE_ENROLLMENT_STATUSES = ["Pending Approval", "Factory Approved", "Center Approved"] as const;
@@ -103,6 +105,9 @@ export default function RegisterTrainingModule() {
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
   const toast = useToast();
+  const { language } = useUiLanguage();
+  // One language at a time - a "ไทย / English" label shows both to a reader who asked for one.
+  const t = (th: string, en: string) => (language === "th" ? th : en);
 
   useEffect(() => {
     void loadWorkflowRollingPlans().then(setRollingPlans);
@@ -203,17 +208,17 @@ export default function RegisterTrainingModule() {
       await loadEnrollments();
       toast.success(
         course.enrollmentId
-          ? `ยกเลิกการลงทะเบียน  แล้ว / Registration cancelled`
-          : `ลงทะเบียนอบรม  แล้ว / Registered`,
+          ? t("ยกเลิกการลงทะเบียนแล้ว", "Registration cancelled")
+          : t("ลงทะเบียนอบรมแล้ว", "Registered"),
       );
     } catch (error) {
       console.error("Failed to update registration", error);
-      toast.error("อัปเดตการลงทะเบียนไม่สำเร็จ กรุณาลองอีกครั้ง / Failed to update registration");
+      toast.error(t("อัปเดตการลงทะเบียนไม่สำเร็จ กรุณาลองอีกครั้ง", "Failed to update registration"));
     }
   };
 
   return (
-    <section className={styles.modulePage}>
+    <section className={shell.moduleWorkspace}>
       <ModuleHeader
         eyebrow="Register Training"
         title="Register Training"
@@ -221,7 +226,7 @@ export default function RegisterTrainingModule() {
       />
 
 
-      <div className={styles.registerWorkspace}>
+      <div className={`${shell.contentGrid} ${styles.registerWorkspace}`}>
         {courseOwnerGroups.map((group) => {
           const courses = availableCourses.filter(
             (course) => course.courseOwner === group.owner,
@@ -229,11 +234,11 @@ export default function RegisterTrainingModule() {
 
           return (
             <section
-              className={styles.registerListPanel}
+              className={shell.panel}
               aria-label={`${group.title} available courses`}
               key={group.owner}
             >
-              <div className={styles.panelHeader}>
+              <div className={shell.panelHeader}>
                 <div>
                   <p>{group.owner} registration</p>
                   <h2>{group.title}</h2>
@@ -308,7 +313,7 @@ export default function RegisterTrainingModule() {
                   );
                 })}
                 {courses.length === 0 ? (
-                  <p className={styles.emptyCourseGroup}>
+                  <p className={shell.emptyState}>
                     No published courses in this group.
                   </p>
                 ) : null}

@@ -42,11 +42,10 @@
 .profilePanel,
 .calendarPanel,
 .modulePanel,
-.modulePage,
 .employeeListPanel,
 .historyPanel {
   border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-xl);
+  border-radius: 8px;
   background: var(--ui-60-surface);
   box-shadow: var(--ui-shadow-md);
 }
@@ -61,25 +60,7 @@
 
 /* ── Avatar ── */
 
-.avatar {
-  display: grid;
-  width: 64px;
-  min-height: 64px;
-  place-items: center;
-  border: 1px solid var(--ui-30-primary-border);
-  border-radius: 12px;
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary);
-  font-size: 18px;
-  font-weight: 900;
-  line-height: 1;
-  padding: 12px;
-  text-align: center;
-}
-
 /* ── Overflow guard ── */
-
-.profileCopy,
 .trainingItem div,
 .historyList div,
 .roadmapGrid article > div,
@@ -88,10 +69,7 @@
 }
 
 /* ── Shared label text (eyebrow) ── */
-
-.profileCopy span,
 .panelHeader p,
-.moduleHeader p,
 .trainingItem small,
 .requestPreview p,
 .reportHero p {
@@ -104,33 +82,17 @@
   text-transform: uppercase;
 }
 
-.profileCopy span {
-  color: var(--ui-30-muted);
-  font-size: 10px;
-  letter-spacing: 0;
-  margin-bottom: 0;
-}
-
 /* โ”€โ”€ Shared heading styles โ”€โ”€ */
-
-.profileCopy h1,
 .panelHeader h2,
-.moduleHeader h1,
 .requestPreview h3,
 .reportHero h2 {
   margin: 0;
   color: var(--ui-30-ink);
   line-height: 1.2;
 }
-
-.profileCopy h1,
 .panelHeader h2,
 .requestPreview h3 {
   font-size: 18px;
-}
-
-.moduleHeader h1 {
-  font-size: 24px;
 }
 
 /* โ”€โ”€ Hidden by default (shown in wide mode) โ”€โ”€ */
@@ -145,9 +107,6 @@
 }
 
 /* โ”€โ”€ Shared description / body text โ”€โ”€ */
-
-.profileCopy p,
-.moduleHeader span,
 .moduleCard span,
 .trainingItem span,
 .historyList span,
@@ -160,13 +119,6 @@
   font-size: 12px;
   font-weight: 700;
   line-height: 1.45;
-}
-
-.profileCopy p {
-  margin: 4px 0 0;
-  color: var(--ui-30-text);
-  font-size: 12px;
-  font-weight: 800;
 }
 
 /* โ”€โ”€ Calendar filters โ”€โ”€ */
@@ -206,12 +158,6 @@
 /* โ”€โ”€ Panel & calendar header โ”€โ”€ */
 
 .panelHeader,
-.moduleHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-}
 
 .panelHeader {
   margin-bottom: 14px;
@@ -267,7 +213,7 @@
   gap: 3px;
   background: var(--ui-60-surface-soft);
   border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-lg);
+  border-radius: 8px;
   padding: 2px;
 }
 
@@ -304,7 +250,7 @@
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
   border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-xl);
+  border-radius: 8px;
   background: var(--ui-60-surface);
   padding: 10px;
   margin-top: 10px;
@@ -334,7 +280,7 @@
   justify-content: space-between;
   min-height: 56px;
   border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-lg);
+  border-radius: 8px;
   background: var(--ui-60-surface-soft);
   padding: 6px;
   transition: all 0.2s ease;
@@ -342,7 +288,7 @@
 
 .calendarDay:hover {
   border-color: var(--ui-30-primary-border);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 18px 38px rgba(24, 36, 56, 0.14);
 }
 
 .weekendDay {
@@ -414,7 +360,7 @@
   align-items: center;
   gap: 12px;
   border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-lg);
+  border-radius: 8px;
   background: var(--ui-60-surface);
   padding: 10px 14px;
   transition: all 0.15s ease;
@@ -486,49 +432,11 @@
 }
 
 /* โ”€โ”€ Module header (wide card at top of each module) โ”€โ”€ */
-
-.moduleHeader {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto auto auto;
-  align-items: center;
-  gap: 5px 18px;
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
-  padding: 16px 18px 18px;
-}
-
-.moduleHeader p {
-  grid-column: 1;
-  grid-row: 1;
-  margin: 0;
-}
-
-.moduleHeader h1 {
-  grid-column: 1;
-  grid-row: 2;
-  font-size: clamp(24px, 2.9vw, 34px);
-  line-height: 1.15;
-}
-
-.moduleHeader span {
-  grid-column: 1;
-  grid-row: 3;
-  max-width: 900px;
-  margin-top: 2px;
-}
-
-
-.profileStats,
 .recordSummary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
 }
-
-.profileStats article,
 .recordSummary article {
   display: grid;
   gap: 4px;
@@ -539,20 +447,7 @@
   background: #f0fdfa;
   padding: 10px;
 }
-
-.profileStats span,
 .recordSummary span,
-.employeeProfileGrid span {
-  overflow: hidden;
-  color: var(--ui-30-muted);
-  font-size: 11px;
-  font-weight: 900;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.profileStats strong,
 .recordSummary strong {
   color: var(--ui-10-accent);
   font-size: 16px;
@@ -562,7 +457,6 @@
 
 .modulePanel,
 .calendarPanel,
-.modulePage,
 .employeeListPanel,
 .historyPanel {
   padding: 18px;
@@ -606,12 +500,6 @@
 }
 
 .panelHeader,
-.moduleHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-}
 
 .panelHeader {
   margin-bottom: 14px;
@@ -686,41 +574,6 @@
   font-weight: 800;
   padding: 0 9px;
 }
-
-.moduleHeader {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto auto auto;
-  align-items: center;
-  gap: 5px 18px;
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
-  padding: 16px 18px 18px;
-}
-
-.moduleHeader p {
-  grid-column: 1;
-  grid-row: 1;
-  margin: 0;
-}
-
-.moduleHeader h1 {
-  grid-column: 1;
-  grid-row: 2;
-  font-size: clamp(24px, 2.9vw, 34px);
-  line-height: 1.15;
-}
-
-.moduleHeader span {
-  grid-column: 1;
-  grid-row: 3;
-  max-width: 900px;
-  margin-top: 2px;
-}
-
-.moduleHeader button,
 .trainingItem button,
 .requestForm button {
   min-height: 38px;
@@ -734,15 +587,6 @@
   font-weight: 900;
   padding: 0 14px;
   white-space: nowrap;
-}
-
-.moduleHeader button {
-  grid-column: 2;
-  grid-row: 1 / span 3;
-  align-self: center;
-  justify-self: end;
-  background: #ffffff;
-  color: var(--ui-10-accent);
 }
 
 .moduleGrid {
@@ -759,7 +603,7 @@
   align-content: start;
   border: 1px solid var(--ui-30-border);
   border-left: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-xl);
+  border-radius: 8px;
   background: var(--ui-60-surface);
   box-shadow: var(--ui-card-shadow);
   color: var(--ui-30-ink);
@@ -798,16 +642,6 @@
 .roadmapGrid strong,
 .approvalTimeline strong,
 .reportRows strong,
-.employeeProfileGrid strong {
-  display: block;
-  overflow: hidden;
-  color: var(--ui-30-ink);
-  font-size: 13px;
-  font-weight: 900;
-  line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 .moduleCard strong {
   color: var(--ui-30-ink);
@@ -864,15 +698,6 @@
   color: var(--ui-10-accent);
 }
 
-.modulePage {
-  display: grid;
-  gap: 18px;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  padding: 0;
-}
-
 .trainingList,
 .calendarTrainingList,
 .historyList,
@@ -882,25 +707,13 @@
   gap: 12px;
 }
 
-.modulePage > .trainingList,
-.modulePage > .flowSteps,
-.modulePage > .roadmapGrid,
-.modulePage > .recordSummary,
-.modulePage > .recordWorkflow {
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
-  padding: 18px;
-}
-
 .courseDetailPanel {
   border: 1px solid rgba(248, 113, 113, 0.38);
   border-radius: 8px;
   background:
     linear-gradient(180deg, rgba(240, 253, 250, 0.82), rgba(255, 255, 255, 0.96)),
     var(--ui-60-surface);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
   padding: 16px;
 }
 
@@ -1087,14 +900,14 @@
 
 .trainingItem:hover {
   border-color: rgba(215, 25, 32, 0.35);
-  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 18px 38px rgba(24, 36, 56, 0.14);
   transform: translateY(-1px);
 }
 
 .activeTrainingItem {
   border-color: rgba(215, 25, 32, 0.55) !important;
   background: linear-gradient(180deg, rgba(255, 241, 242, 0.7), var(--ui-60-surface)) !important;
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 18px 38px rgba(24, 36, 56, 0.14);
 }
 
 .trainingItem span,
@@ -1153,14 +966,6 @@
   background: var(--ui-10-accent) !important;
   color: #ffffff !important;
 }
-
-.employeeProfileGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
-}
-
-.employeeProfileGrid article,
 .historyList article,
 .roadmapGrid article,
 .requestPreview > article,
@@ -1170,16 +975,6 @@
   border-radius: 8px;
   background: var(--ui-60-surface-soft);
   padding: 12px;
-}
-
-.employeeProfileGrid article {
-  min-height: 72px;
-  align-content: center;
-  padding: 12px 10px;
-}
-
-.employeeProfileGrid strong {
-  white-space: normal;
 }
 
 .historyList article,
@@ -1223,7 +1018,7 @@
 
 .roadmapGrid article:hover {
   border-color: rgba(215, 25, 32, 0.26);
-  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 18px 38px rgba(24, 36, 56, 0.14);
   transform: translateY(-1px);
 }
 
@@ -1241,7 +1036,7 @@
 .activeRoadmapItem {
   border-color: rgba(215, 25, 32, 0.48) !important;
   background: linear-gradient(90deg, rgba(255, 241, 242, 0.7), var(--ui-60-surface) 44%) !important;
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 18px 38px rgba(24, 36, 56, 0.14);
 }
 
 .activeRoadmapItem::before {
@@ -1391,7 +1186,7 @@
   border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: 8px;
   background: var(--ui-60-surface);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
   padding: 18px;
 }
 
@@ -1488,7 +1283,7 @@
 
 .recordPanel {
   background: var(--ui-60-surface);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
   padding: 18px;
 }
 
@@ -1578,14 +1373,6 @@
 }
 
 .recordReasonBox,
-.recordEmpty {
-  border: 1px solid var(--ui-10-accent-border);
-  border-left: 4px solid var(--ui-10-accent);
-  border-radius: var(--ui-radius-md);
-  background: var(--ui-10-accent-soft);
-  color: var(--ui-30-ink);
-  padding: 12px;
-}
 
 .recordReasonBox span {
   display: block;
@@ -1602,14 +1389,6 @@
   font-size: 13px;
   font-weight: 900;
   line-height: 1.45;
-}
-
-.recordEmpty {
-  background: var(--ui-60-surface-soft);
-  color: var(--ui-30-muted);
-  font-size: 13px;
-  font-weight: 900;
-  text-align: center;
 }
 
 .externalRecordList article {
@@ -1674,21 +1453,8 @@
 }
 
 .reportFlowGrid,
-.reportWorkspace {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
 
 .reportFlowPanel,
-.reportControlPanel,
-.reportResultPanel {
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
-  padding: 18px;
-}
 
 .reportStepList {
   display: grid;
@@ -1725,11 +1491,6 @@
   counter-increment: report-steps;
   font-size: 11px;
   font-weight: 900;
-}
-
-.reportResultPanel {
-  display: grid;
-  gap: 12px;
 }
 
 .savedReportList {
@@ -1882,104 +1643,6 @@
   display: none !important;
 }
 
-.reportWorkspace {
-  grid-template-columns: 1fr;
-}
-
-.reportControlPanel,
-.reportResultPanel {
-  display: grid;
-  gap: 14px;
-  align-content: start;
-  border: 1.5px solid rgba(15, 23, 42, 0.18);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-}
-
-.reportControlPanel .panelHeader,
-.reportResultPanel .panelHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 0;
-}
-
-.reportControlPanel .panelHeader p,
-.reportResultPanel .panelHeader p {
-  display: block !important;
-  margin: 0 0 6px;
-  color: #c2410c;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.reportControlPanel .panelHeader h2,
-.reportResultPanel .panelHeader h2 {
-  color: var(--ui-30-ink);
-  font-size: 18px;
-  line-height: 1.25;
-}
-
-.reportControlPanel .panelHeader > span,
-.reportResultPanel .panelHeader > span {
-  display: inline-flex !important;
-  border-radius: 999px;
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary-strong);
-  font-size: 11px;
-  font-weight: 900;
-  padding: 7px 9px;
-  white-space: nowrap;
-}
-
-.reportControlPanel .recordRequestForm {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 0;
-}
-
-.reportControlPanel .recordRequestForm label {
-  display: grid;
-  gap: 6px;
-  color: var(--ui-30-text);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.reportControlPanel .recordRequestForm label:has(textarea) {
-  grid-column: 1 / -1;
-}
-
-.reportControlPanel .recordRequestForm input,
-.reportControlPanel .recordRequestForm select,
-.reportControlPanel .recordRequestForm textarea {
-  border: 1.5px solid rgba(15, 23, 42, 0.16);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.reportControlPanel .recordRequestForm input,
-.reportControlPanel .recordRequestForm select {
-  height: 40px;
-}
-
-.reportControlPanel .recordRequestForm textarea {
-  min-height: 104px;
-}
-
-.reportControlPanel .recordRequestForm button {
-  grid-column: 1 / -1;
-  justify-self: end;
-  min-height: 40px;
-  border-color: var(--ui-10-accent);
-  background: var(--ui-10-accent);
-  font-size: 13px;
-  padding: 0 18px;
-}
-
 .savedReportList article {
   border-left: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-md);
@@ -2003,105 +1666,6 @@
   .reportControlPanel .recordRequestForm {
     grid-template-columns: 1fr;
   }
-}
-
-.registerWorkspace {
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
-  gap: 14px;
-  align-items: start;
-}
-
-.registerListPanel {
-  grid-column: 1 / -1;
-  min-width: 0;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
-  box-shadow: 0 18px 42px rgba(31, 41, 55, 0.12);
-  padding: 16px;
-}
-
-.registerWorkspace .panelHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.registerWorkspace .panelHeader p {
-  display: block !important;
-  margin: 0 0 6px;
-  color: var(--ui-30-muted);
-  font-size: 0.68rem;
-  font-weight: 900;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.registerWorkspace .panelHeader h2 {
-  margin: 0;
-  color: var(--ui-30-ink);
-  font-size: 1rem;
-  font-weight: 900;
-  line-height: 1.2;
-}
-
-.registerWorkspace .panelHeader div > span {
-  display: block;
-  margin-top: 5px;
-  color: var(--ui-30-muted);
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1.4;
-}
-
-.registerWorkspace .panelHeader > span {
-  display: inline-flex !important;
-  width: fit-content;
-  border: 1px solid var(--ui-10-accent-border);
-  border-radius: 999px;
-  background: var(--ui-10-accent-soft);
-  color: var(--ui-10-accent);
-  font-size: 0.72rem;
-  font-weight: 900;
-  line-height: 1;
-  padding: 7px 11px;
-  white-space: nowrap;
-}
-
-.registerWorkspace .trainingList {
-  gap: 10px;
-}
-
-.registerWorkspace .trainingItem {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
-  border: 1px solid var(--ui-30-border);
-  border-left: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-md);
-  background: var(--ui-60-surface);
-  box-shadow: none;
-}
-
-.registerWorkspace .trainingItem:nth-child(2n) {
-  border-left-color: var(--ui-30-border);
-}
-
-.registerWorkspace .activeTrainingItem {
-  border-color: rgba(215, 25, 32, 0.34) !important;
-  background: var(--ui-60-surface-soft) !important;
-  box-shadow: 0 16px 32px rgba(31, 41, 55, 0.1);
-}
-
-.registerWorkspace .trainingActions {
-  grid-column: 1 / -1;
-  justify-content: flex-start;
-}
-
-.registerWorkspace .secondaryActionButton {
-  min-width: 126px;
 }
 
 .trainingScheduleGrid {
@@ -2229,40 +1793,6 @@
   padding-top: 14px;
 }
 
-.emptyCourseGroup {
-  margin: 0;
-  border: 1px solid var(--ui-30-primary-border);
-  border-radius: 8px;
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary);
-  font-size: 12px;
-  font-weight: 900;
-  line-height: 1.45;
-  padding: 12px;
-}
-
-.registerWorkspace .courseDetailPanel {
-  position: sticky;
-  top: 126px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: var(--ui-60-surface);
-  box-shadow: 0 18px 42px rgba(31, 41, 55, 0.12);
-}
-
-.registerWorkspace .courseDetailPanel p {
-  display: block !important;
-}
-
-.registerWorkspace + .flowSteps {
-  display: grid !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
-  box-shadow: 0 18px 42px rgba(31, 41, 55, 0.1);
-  padding: 14px;
-}
-
 @media (max-width: 980px) {
   .registerWorkspace {
     grid-template-columns: 1fr;
@@ -2347,9 +1877,9 @@
   min-height: 128px;
   margin-bottom: 14px;
   border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-xl);
+  border-radius: 8px;
   background: var(--ui-60-surface);
-  box-shadow: 0 24px 54px rgba(31, 41, 55, 0.22);
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
 }
 
 .heroPanel::before {
@@ -2479,7 +2009,7 @@
   min-height: 168px;
   border: 1px solid var(--ui-30-border);
   border-left: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-xl);
+  border-radius: 8px;
   background: var(--ui-60-surface);
   box-shadow: var(--ui-card-shadow);
   padding: 18px;
@@ -2594,12 +2124,6 @@
 .roadmapWorkspace,
 .requestLayout,
 .recordLayout,
-.reportWorkspace {
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
-  gap: 16px;
-  align-items: start;
-}
 
 .requestLayout {
   grid-template-columns: 1fr;
@@ -2609,68 +2133,21 @@
 .requestForm,
 .requestPreview,
 .recordPanel,
-.reportControlPanel,
-.reportResultPanel {
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.09);
-}
 
 .roadmapListPanel,
 .recordPanel,
-.reportControlPanel,
-.reportResultPanel {
-  padding: 18px;
-}
 
 .roadmapWorkspace .panelHeader,
 .recordPanel .panelHeader,
-.reportControlPanel .panelHeader,
-.reportResultPanel .panelHeader {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 14px;
-}
 
 .roadmapWorkspace .panelHeader p,
 .recordPanel .panelHeader p,
-.reportControlPanel .panelHeader p,
-.reportResultPanel .panelHeader p {
-  display: block !important;
-  margin: 0 0 6px;
-  color: var(--ui-30-muted);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
 
 .roadmapWorkspace .panelHeader h2,
 .recordPanel .panelHeader h2,
-.reportControlPanel .panelHeader h2,
-.reportResultPanel .panelHeader h2 {
-  margin: 0;
-  color: var(--ui-30-ink);
-  font-size: 1rem;
-  line-height: 1.2;
-}
 
 .roadmapWorkspace .panelHeader > span,
 .recordPanel .panelHeader > span,
-.reportControlPanel .panelHeader > span,
-.reportResultPanel .panelHeader > span {
-  display: inline-flex !important;
-  width: fit-content;
-  border: 1px solid var(--ui-10-accent-border);
-  border-radius: 999px;
-  background: #fff7f8;
-  color: var(--ui-10-accent);
-  font-size: 11px;
-  font-weight: 900;
-}
 
 .roadmapWorkspace .roadmapGrid {
   gap: 12px;
@@ -2764,15 +2241,6 @@
   grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
   gap: 12px;
   align-items: start;
-}
-
-.employeeReportDetailPanel {
-  display: grid;
-  gap: 12px;
-  border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
-  background: var(--ui-60-surface-soft);
-  padding: 14px;
 }
 
 .employeeReportDetailHeader {
@@ -2875,28 +2343,6 @@
   }
 }
 
-.modulePage {
-  border: 0 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  padding: 38px 0 0 !important;
-}
-
-.moduleHeader {
-  min-height: 128px;
-  align-content: center;
-  border: 1px solid var(--ui-30-border);
-  border-left: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-xl);
-  background: var(--ui-60-surface);
-  box-shadow: 0 24px 54px rgba(31, 41, 55, 0.22);
-  padding: 26px 30px 26px 30px;
-}
-
-.moduleHeader::before {
-  display: none;
-}
-
 .employeePanel,
 .calendarPanel {
   position: relative;
@@ -2909,36 +2355,6 @@
   position: absolute;
   inset: 0 auto 0 0;
   width: 4px;
-  background: var(--ui-card-edge);
-  box-shadow: var(--ui-card-edge-shadow);
-  pointer-events: none;
-}
-
-.employeeProfile {
-  border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-md);
-  background:
-    linear-gradient(90deg, rgba(240, 253, 244, 0.86), rgba(255, 255, 255, 0.96) 46%),
-    var(--ui-60-surface);
-  padding: 10px;
-}
-
-.employeeProfileGrid article,
-.profileStats article {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-md);
-  background: var(--ui-60-surface);
-  padding-left: 13px;
-}
-
-.employeeProfileGrid article::before,
-.profileStats article::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
   background: var(--ui-card-edge);
   box-shadow: var(--ui-card-edge-shadow);
   pointer-events: none;
@@ -3004,32 +2420,9 @@
   padding: 18px;
 }
 
-.employeeProfile {
-  min-height: auto;
-  padding: 12px;
-}
-
-.avatar {
-  width: 54px;
-  min-height: 54px;
-}
-
-.employeeProfileGrid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
 .employeeRecordHero,
 .employeeRecordStats,
-.employeeRecordToolbar,
 .employeeRecordDownloadBox,
-.employeeRecordListPanel,
-.employeeRecordDetailPanel {
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.09);
-}
 
 .employeeRecordHero {
   position: relative;
@@ -3043,16 +2436,6 @@
 
 .employeeRecordHero::before,
 .employeeRecordDownloadBox::before,
-.employeeRecordListPanel::before,
-.employeeRecordDetailPanel::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: var(--ui-card-edge);
-  box-shadow: var(--ui-card-edge-shadow);
-  pointer-events: none;
-}
 
 .employeeRecordHero span,
 .employeeRecordDetailHead span,
@@ -3148,34 +2531,6 @@
   font-size: 22px;
   font-weight: 900;
   line-height: 1;
-}
-
-.employeeRecordToolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(190px, 0.28fr);
-  gap: 10px;
-  padding: 12px;
-}
-
-.employeeRecordToolbar input,
-.employeeRecordToolbar select {
-  width: 100%;
-  min-height: 40px;
-  border: 1.5px solid rgba(15, 23, 42, 0.14);
-  border-radius: 8px;
-  background: var(--ui-60-surface-soft);
-  color: var(--ui-30-ink);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 800;
-  outline: none;
-  padding: 0 12px;
-}
-
-.employeeRecordToolbar input:focus,
-.employeeRecordToolbar select:focus {
-  border-color: var(--ui-30-primary);
-  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.12);
 }
 
 .employeeRecordDownloadBox {
@@ -3300,20 +2655,6 @@
   grid-column: 1 / -1;
 }
 
-.employeeRecordWorkspace {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-  align-items: start;
-}
-
-.employeeRecordListPanel,
-.employeeRecordDetailPanel {
-  position: relative;
-  overflow: hidden;
-  padding: 18px;
-}
-
 .employeeRecordTimeline {
   display: grid;
   gap: 10px;
@@ -3351,7 +2692,7 @@
 .employeeRecordItem:hover,
 .activeEmployeeRecordItem:hover {
   border-color: rgba(215, 25, 32, 0.3);
-  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 18px 38px rgba(24, 36, 56, 0.14);
   transform: translateY(-1px);
 }
 
@@ -3403,8 +2744,6 @@
   padding: 7px 9px;
   white-space: nowrap;
 }
-
-.employeeRecordEmpty,
 .employeeRecordMessage {
   margin: 0;
   border: 1px solid var(--ui-30-primary-border);
@@ -3415,12 +2754,6 @@
   font-weight: 900;
   line-height: 1.45;
   padding: 10px 12px;
-}
-
-.employeeRecordDetailPanel {
-  position: relative;
-  display: grid;
-  gap: 14px;
 }
 
 .employeeRecordDetailHead {
@@ -3619,21 +2952,6 @@
   .employeeRecordActions button {
     width: 100%;
   }
-}
-
-.employeeProfileGrid article {
-  min-height: 58px;
-  padding: 10px 11px 10px 15px;
-}
-
-.profileStats {
-  gap: 10px;
-  margin-top: 2px;
-}
-
-.profileStats article {
-  min-height: 72px;
-  padding: 11px 12px 11px 15px;
 }
 
 .calendarToggleButton {

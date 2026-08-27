@@ -1,0 +1,425 @@
+/*
+ * The dashboard landing surface: profile banner, detail grid, KPI bar, and the action strip.
+ *
+ * The profile rules are the HRD dashboard's, lifted so the employee dashboard stops being a
+ * near-miss of it. The action strip below them is new to the employee side - the HRD dashboard has
+ * no equivalent because HRD staff arrive with a task in mind, while an employee arrives to find
+ * out whether anything is waiting for them.
+ */
+
+.profileHeaderBanner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--ui-30-border);
+}
+
+.photoBox {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  border: 2px solid #ffffff;
+  color: #ffffff;
+  font-size: 1.15rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+}
+
+.profileMetaBox {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex-grow: 1;
+}
+
+.profileTagRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.userRoleTag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 9999px;
+  padding: 2px 8px;
+}
+
+.profileName {
+  overflow: hidden;
+  color: var(--ui-30-ink);
+  font-size: 1.25rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.profileSubText {
+  margin: 0;
+  overflow: hidden;
+  color: var(--ui-30-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.onlineBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #a7f3d0;
+  border-radius: 9999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 0.68rem;
+  font-weight: 900;
+  padding: 2px 8px;
+  line-height: 1;
+}
+
+.onlineDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulseDot 2s infinite;
+}
+
+@keyframes pulseDot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+.employeeDetailsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.detailCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.detailCard:first-child {
+  grid-column: span 2;
+  background: linear-gradient(
+    135deg,
+    rgba(16, 185, 129, 0.06) 0%,
+    rgba(248, 250, 252, 0.85) 100%
+  );
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.detailCard:hover {
+  border-color: var(--ui-30-primary);
+  background: var(--ui-60-surface);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+  transform: translateY(-1px);
+}
+
+.detailLabel {
+  color: var(--ui-30-muted);
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.detailValue {
+  overflow: hidden;
+  color: var(--ui-30-ink);
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kpiSummaryBar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  padding: 12px 6px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.kpiCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 4px;
+  border-right: 1px solid var(--ui-30-border);
+}
+
+.kpiCol:last-child {
+  border-right: 0;
+}
+
+.kpiLabel {
+  color: var(--ui-30-muted);
+  font-size: 0.65rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.kpiValueRow {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.kpiValue {
+  color: var(--ui-30-primary);
+  font-size: 1.25rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.kpiHelper {
+  color: var(--ui-30-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+/* ── Action strip ─────────────────────────────────────────────────────────
+ * What is waiting for this employee, and the button that goes there. Cards
+ * are buttons, because every one of them is something to act on. */
+
+.actionStrip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.actionCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
+  cursor: pointer;
+  font: inherit;
+  padding: 14px 16px;
+  text-align: left;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.actionCard:hover {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 18px 38px rgba(24, 36, 56, 0.14);
+  transform: translateY(-1px);
+}
+
+/* Nothing to do is a valid state and must not look like a broken card. */
+.actionCard.quiet {
+  background: var(--ui-60-surface-soft);
+  box-shadow: none;
+  cursor: default;
+}
+
+.actionCard.quiet:hover {
+  border-color: var(--ui-30-border);
+  box-shadow: none;
+  transform: none;
+}
+
+.actionCount {
+  display: grid;
+  min-width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.actionCard.quiet .actionCount {
+  background: var(--ui-60-surface-muted);
+  color: var(--ui-30-muted);
+}
+
+.actionCard.urgent .actionCount {
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
+}
+
+.actionCopy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.actionCopy strong {
+  color: var(--ui-30-ink);
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.actionCopy span {
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Next training ───────────────────────────────────────────────────────── */
+
+.nextTraining {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 8px;
+  background: var(--ui-30-primary-soft);
+  padding: 12px 16px;
+  margin-top: 12px;
+}
+
+.nextTrainingDate {
+  display: grid;
+  min-width: 54px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-primary-border);
+  padding: 6px 10px;
+}
+
+.nextTrainingDate strong {
+  color: var(--ui-30-primary);
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.nextTrainingDate span {
+  color: var(--ui-30-muted);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.nextTrainingCopy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.nextTrainingCopy span {
+  color: var(--ui-30-primary);
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.nextTrainingCopy strong {
+  color: var(--ui-30-ink);
+  font-size: 0.95rem;
+  font-weight: 900;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nextTrainingCopy small {
+  color: var(--ui-30-text);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.countdownPill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 9999px;
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-primary-border);
+  color: var(--ui-30-primary);
+  font-size: 0.72rem;
+  font-weight: 900;
+  padding: 5px 12px;
+  white-space: nowrap;
+}
+
+.countdownPill.soon {
+  border-color: var(--ui-10-accent-border);
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
+}
+
+@media (max-width: 760px) {
+  .employeeDetailsGrid,
+  .kpiSummaryBar {
+    grid-template-columns: 1fr;
+  }
+
+  .kpiCol {
+    border-right: 0;
+    border-bottom: 1px solid var(--ui-30-border);
+    padding-bottom: 8px;
+  }
+
+  .kpiCol:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .nextTraining {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .countdownPill {
+    grid-column: span 2;
+    justify-self: start;
+  }
+}

@@ -1,36 +1,33 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  TRAINING_WORKFLOW_EVENT,
-  TRAINING_WORKFLOW_KEYS,
-  readWorkflowCollection,
-  type WorkflowCompletedCourse,
-} from "../../lib/trainingWorkflow";
+import { listEnrollments } from "../../lib/trainingEnrollment/client";
+import type { EnrollmentRecord } from "../../lib/trainingEnrollment/types";
 import {
   profileValue,
   useAuthenticatedUser,
 } from "../AuthenticatedUserContext";
 import { useToast } from "../ToastHost";
+import { useUiLanguage } from "../ThaiUiLocalization";
 import ModuleHeader from "./ModuleHeader";
+import shell from "../shared/ModuleShell.module.css";
 import styles from "./UserDashboard.module.css";
 
-type EmployeeTrainingRecord = {
+export type EmployeeTrainingRecord = {
   id: string;
   courseCode: string;
   courseTitle: string;
-  category: "Mandatory" | "Core Skill" | "Role Skill" | "Safety";
   completedDate: string;
-  provider: "HRD Center" | "Factory HRD" | "External";
-  trainingType: "Classroom" | "Online" | "Workshop" | "External";
+  provider: "HRD Center" | "Factory HRD";
   hours: number;
-  result: "Completed" | "Passed";
+  result: "Completed";
   score: number | null;
   certificateNo: string;
-  evidenceStatus: "Ready" | "Verified";
   instructor: string;
   location: string;
   note: string;
+  // Nobody has submitted an assessment through the system yet - assessment_submission is empty and
+  // has no repository - so these are always Pending until that feature is built.
   preTestStatus: "Pending" | "Completed";
   postTestStatus: "Pending" | "Completed";
   evaluationStatus: "Pending" | "Completed";
@@ -49,70 +46,37 @@ const downloadPurposes: Record<DownloadPurpose, { label: string; description: st
   },
 };
 
-const employeeRecords: EmployeeTrainingRecord[] = [
-  {
-    id: "record-orientation",
-    courseCode: "ORI-2026-05",
-    courseTitle: "Orientation Program",
-    category: "Core Skill",
-    completedDate: "2026-05-12",
-    provider: "HRD Center",
-    trainingType: "Classroom",
-    hours: 6,
-    result: "Completed",
-    score: null,
-    certificateNo: "EMP-ORI-260512-001",
-    evidenceStatus: "Verified",
-    instructor: "HRD Learning Team",
-    location: "Training Room A",
-    note: "New employee orientation completed and verified by HRD.",
-    preTestStatus: "Completed",
-    postTestStatus: "Completed",
-    evaluationStatus: "Completed",
-  },
-  {
-    id: "record-5s",
-    courseCode: "5S-2026-06",
-    courseTitle: "5S Awareness",
-    category: "Safety",
-    completedDate: "2026-06-22",
-    provider: "Factory HRD",
-    trainingType: "Workshop",
-    hours: 3,
-    result: "Passed",
-    score: 88,
-    certificateNo: "EMP-5S-260622-014",
-    evidenceStatus: "Ready",
-    instructor: "Production Excellence",
-    location: "Shop Floor Learning Area",
-    note: "Passed post-training assessment and practical review.",
-    preTestStatus: "Completed",
-    postTestStatus: "Pending",
-    evaluationStatus: "Pending",
-  },
-  {
-    id: "record-pdpa",
-    courseCode: "PDPA-2026-07",
-    courseTitle: "Data Privacy Awareness",
-    category: "Mandatory",
-    completedDate: "2026-07-15",
-    provider: "HRD Center",
-    trainingType: "Online",
-    hours: 2,
-    result: "Passed",
-    score: 96,
-    certificateNo: "EMP-PDPA-260715-021",
-    evidenceStatus: "Verified",
-    instructor: "IT Governance",
-    location: "Online",
-    note: "Mandatory compliance training completed for annual requirement.",
-    preTestStatus: "Pending",
-    postTestStatus: "Pending",
-    evaluationStatus: "Pending",
-  },
-];
+// A record is one enrollment the employee actually attended. Attendance is the only completed
+// signal the database carries today: training_result has no rows and no repository yet.
+export const toRecord = (enrollment: EnrollmentRecord): EmployeeTrainingRecord => ({
+  id: enrollment.id,
+  courseCode: enrollment.plan.courseCode,
+  courseTitle: enrollment.plan.courseName,
+  completedDate: enrollment.plan.startAt.slice(0, 10),
+  provider: enrollment.plan.owner === "CENTER" ? "HRD Center" : "Factory HRD",
+  hours: enrollment.plan.hours,
+  result: "Completed",
+  // No score and no certificate exist yet: training_result and training_certificate_file are both
+  // empty. This file is downloaded as evidence for job applications, so an invented certificate
+  // number would be a forged credential, not a placeholder.
+  score: null,
+  certificateNo: "-",
+  instructor: enrollment.plan.instructor || "-",
+  location: enrollment.plan.venue || "-",
+  note: enrollment.plan.batchName,
+  preTestStatus: "Pending",
+  postTestStatus: "Pending",
+  evaluationStatus: "Pending",
+});
 
-const categories = ["all", "Mandatory", "Core Skill", "Role Skill", "Safety"] as const;
+export const buildRecords = (enrollments: EnrollmentRecord[]) =>
+  enrollments
+    .filter((enrollment) => enrollment.attendance?.status === "PRESENT")
+    .map(toRecord)
+    .sort((left, right) => right.completedDate.localeCompare(left.completedDate));
+
+const providers = ["all", "HRD Center", "Factory HRD"] as const;
+
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat("en-GB", {
@@ -138,14 +102,11 @@ const exportPersonalRecord = (
     "Completed Date",
     "Course Code",
     "Course Title",
-    "Category",
     "Provider",
-    "Training Type",
     "Hours",
     "Result",
     "Score",
     "Certificate No.",
-    "Evidence Status",
     "Pre Test",
     "Post Test",
     "Evaluation",
@@ -157,14 +118,11 @@ const exportPersonalRecord = (
     formatDate(record.completedDate),
     record.courseCode,
     record.courseTitle,
-    record.category,
     record.provider,
-    record.trainingType,
     record.hours,
     record.result,
     record.score,
     record.certificateNo,
-    record.evidenceStatus,
     record.preTestStatus,
     record.postTestStatus,
     record.evaluationStatus,
@@ -200,78 +158,69 @@ const exportPersonalRecord = (
 
 export default function RecordModule() {
   const authenticatedUser = useAuthenticatedUser();
+  const { language } = useUiLanguage();
+  // One language at a time - a "ไทย / English" label shows both to a reader who asked for one.
+  const t = (th: string, en: string) => (language === "th" ? th : en);
   const employeeName = profileValue(authenticatedUser?.displayName ?? authenticatedUser?.username);
-  const employeeCode = profileValue(authenticatedUser?.employeeCode);
   const [records, setRecords] = useState<EmployeeTrainingRecord[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<(typeof categories)[number]>("all");
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedProvider, setSelectedProvider] = useState<(typeof providers)[number]>("all");
   const [query, setQuery] = useState("");
   const [selectedRecordId, setSelectedRecordId] = useState("");
   const [downloadPurpose, setDownloadPurpose] = useState<DownloadPurpose>("job_change");
   const toast = useToast();
 
   useEffect(() => {
-    const syncRecords = () => {
-      const nextRecords = readWorkflowCollection<WorkflowCompletedCourse>(
-        TRAINING_WORKFLOW_KEYS.completedCourses,
-      )
-        .filter((course) =>
-          course.attendees.some(
-            (attendee) =>
-              attendee.employeeCode === employeeCode && attendee.attended,
-          ),
-        )
-        .map<EmployeeTrainingRecord>((course) => ({
-          id: course.id,
-          courseCode: course.code,
-          courseTitle: course.title,
-          category: course.owner === "CENTER" ? "Mandatory" : "Core Skill",
-          completedDate: course.date,
-          provider: course.owner === "CENTER" ? "HRD Center" : "Factory HRD",
-          trainingType: "Classroom",
-          hours: course.hours,
-          result: "Completed",
-          score: null,
-          certificateNo: `CERT-${course.code}-${employeeCode}`,
-          evidenceStatus: "Ready",
-          instructor: course.instructor,
-          location: course.room,
-          note: "Saved from Training Actual by HRD.",
-          preTestStatus: "Pending",
-          postTestStatus: "Pending",
-          evaluationStatus: "Pending",
-        }));
+    let cancelled = false;
 
-      setRecords(nextRecords);
-      setSelectedRecordId((current) =>
-        nextRecords.some((record) => record.id === current)
-          ? current
-          : nextRecords[0]?.id ?? "",
-      );
+    // The server scopes this to the signed-in employee; no filter is sent from here, so a stale or
+    // spoofed employee id in the browser cannot widen it.
+    listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
+      .then(({ enrollments }) => {
+        if (cancelled) return;
+        const nextRecords = buildRecords(enrollments);
+
+        setRecords(nextRecords);
+        setSelectedRecordId((current) =>
+          nextRecords.some((record) => record.id === current)
+            ? current
+            : nextRecords[0]?.id ?? "",
+        );
+        setLoadError(null);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        // An empty list and a failed request look identical on screen otherwise.
+        setLoadError(error instanceof Error ? error.message : "Could not load training record");
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
     };
+  }, []);
 
-    syncRecords();
-    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncRecords);
-    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncRecords);
-  }, [employeeCode]);
 
   const filteredRecords = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
     return records.filter((record) => {
-      const matchesCategory = selectedCategory === "all" || record.category === selectedCategory;
+      const matchesProvider = selectedProvider === "all" || record.provider === selectedProvider;
       const matchesQuery =
         !normalizedQuery ||
         [
           record.courseCode,
           record.courseTitle,
-          record.category,
           record.provider,
-          record.certificateNo,
+          record.instructor,
         ].some((value) => value.toLowerCase().includes(normalizedQuery));
 
-      return matchesCategory && matchesQuery;
+      return matchesProvider && matchesQuery;
     });
-  }, [query, records, selectedCategory]);
+  }, [query, records, selectedProvider]);
 
   const selectedRecord =
     filteredRecords.find((record) => record.id === selectedRecordId) ??
@@ -280,7 +229,7 @@ export default function RecordModule() {
 
   const handleExportAll = () => {
     if (records.length === 0) {
-      toast.warning("ไม่มีประวัติการอบรมให้ส่งออก / No training record available to export");
+      toast.warning(t("ไม่มีประวัติการอบรมให้ส่งออก", "No training record available to export"));
       return;
     }
 
@@ -288,38 +237,56 @@ export default function RecordModule() {
 
     exportPersonalRecord(records, employeeName, purpose);
     toast.success(
-      `ดาวน์โหลดประวัติการอบรม  รายการแล้ว / Downloaded  training record(s)`,
+      t(`ดาวน์โหลดประวัติการอบรม ${records.length} รายการแล้ว`, `Downloaded ${records.length} training record(s)`),
     );
   };
 
   return (
-    <section className={styles.modulePage}>
+    <section className={shell.moduleWorkspace}>
       <ModuleHeader
         eyebrow="Employee Training Record"
         title="My Training Record"
-        detail="A personal training passport for completed courses, certificates, scores, and verified learning hours."
+        detail={t(
+          "ประวัติการอบรมส่วนตัว หลักสูตรที่สำเร็จ ชั่วโมงเรียนรู้ และหลักฐานประกอบ",
+          "A personal training passport for completed courses, learning hours, and evidence.",
+        )}
+        aside={
+          <span className={shell.permissionNote}>
+            {records.length} {t("รายการ", "completed")}
+          </span>
+        }
       />
 
-      <section className={styles.employeeRecordToolbar} aria-label="Training record filters">
-        <input
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-          }}
-          placeholder="Search course, provider, certificate..."
-        />
-        <select
-          value={selectedCategory}
-          onChange={(event) => {
-            setSelectedCategory(event.target.value as (typeof categories)[number]);
-          }}
-        >
-          {categories.map((category) => (
-            <option key={category} value={category}>
-              {category === "all" ? "All categories" : category}
-            </option>
-          ))}
-        </select>
+      <section className={shell.panel}>
+        <div className={shell.toolbar} aria-label="Training record filters">
+          <input
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+            }}
+            placeholder={t("ค้นหาหลักสูตร ผู้จัด วิทยากร...", "Search course, provider, instructor...")}
+          />
+          <div className={shell.filterGroup}>
+            <select
+              value={selectedProvider}
+              onChange={(event) => {
+                setSelectedProvider(event.target.value as (typeof providers)[number]);
+              }}
+            >
+              {providers.map((provider) => (
+                <option key={provider} value={provider}>
+                  {provider === "all" ? t("ผู้จัดทั้งหมด", "All providers") : provider}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {loadError ? (
+          <p className={shell.emptyState} role="alert">
+            {t("โหลดประวัติการอบรมไม่สำเร็จ", "Could not load training record")}: {loadError}
+          </p>
+        ) : null}
       </section>
 
       <section className={styles.employeeRecordDownloadBox} aria-label="Download completed training files">
@@ -364,14 +331,14 @@ export default function RecordModule() {
         </div>
       </section>
 
-      <div className={styles.employeeRecordWorkspace}>
-        <section className={styles.employeeRecordListPanel} aria-label="Completed training list">
-          <div className={styles.panelHeader}>
+      <div className={shell.contentGrid}>
+        <section className={shell.panel} aria-label="Completed training list">
+          <div className={shell.panelHeader}>
             <div>
               <p>Completed History</p>
               <h2>Training Timeline</h2>
             </div>
-            <span>{filteredRecords.length} records</span>
+            <p>{filteredRecords.length} records</p>
           </div>
 
           <div className={styles.employeeRecordTimeline}>
@@ -397,20 +364,24 @@ export default function RecordModule() {
               </button>
             ))}
             {filteredRecords.length === 0 ? (
-              <p className={styles.employeeRecordEmpty}>No completed training record found.</p>
+              <p className={shell.emptyState}>
+                {isLoading
+                  ? t("กำลังโหลด...", "Loading...")
+                  : t("ไม่พบประวัติการอบรม", "No completed training record found.")}
+              </p>
             ) : null}
           </div>
         </section>
 
         {selectedRecord ? (
-        <aside className={styles.employeeRecordDetailPanel} aria-label="Selected training record detail">
+        <aside className={shell.detailPanel} aria-label="Selected training record detail">
           <div className={styles.employeeRecordDetailHead}>
             <div>
-              <span>{selectedRecord.category}</span>
+              <span>{selectedRecord.provider}</span>
               <h2>{selectedRecord.courseTitle}</h2>
               <p>{selectedRecord.courseCode} / {formatDate(selectedRecord.completedDate)}</p>
             </div>
-            <b>{selectedRecord.evidenceStatus}</b>
+            <b>{selectedRecord.result}</b>
           </div>
 
           <div className={styles.employeeRecordDetailGrid}>
@@ -423,8 +394,8 @@ export default function RecordModule() {
               <strong>{selectedRecord.score ? `${selectedRecord.score}%` : "-"}</strong>
             </article>
             <article>
-              <span>Type</span>
-              <strong>{selectedRecord.trainingType}</strong>
+              <span>Batch</span>
+              <strong>{selectedRecord.note}</strong>
             </article>
             <article>
               <span>Result</span>
@@ -452,8 +423,13 @@ export default function RecordModule() {
           </dl>
 
           <div className={styles.employeeRecordEvidence}>
-            <span>Evidence Note</span>
-            <p>{selectedRecord.note}</p>
+            <span>{t("หมายเหตุหลักฐาน", "Evidence Note")}</span>
+            <p>
+              {t(
+                "บันทึกจากการเช็กชื่อเข้าอบรม ใบรับรองและคะแนนจะแสดงเมื่อระบบบันทึกผลการอบรมแล้ว",
+                "Confirmed by attendance check-in. Certificate and score appear once results are recorded.",
+              )}
+            </p>
           </div>
 
           <section className={styles.employeeAssessmentPanel} aria-label="Assessment flow">
@@ -532,8 +508,8 @@ export default function RecordModule() {
 
         </aside>
         ) : (
-          <aside className={styles.employeeRecordDetailPanel} aria-label="No training record">
-            <p className={styles.employeeRecordEmpty}>
+          <aside className={shell.detailPanel} aria-label="No training record">
+            <p className={shell.emptyState}>
               No completed training record yet.
             </p>
           </aside>
