@@ -1689,3 +1689,149 @@ padding: 10px;
   font-weight: 700;
 }
 
+.courseOwnerBannerCenter,
+.courseOwnerBannerFactory {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-top: 6px;
+  margin-bottom: 4px;
+  transition: all 0.2s ease;
+}
+
+.courseOwnerBannerCenter {
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(59, 130, 246, 0.04));
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+}
+
+.courseOwnerBannerFactory {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.12), rgba(147, 51, 234, 0.04));
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.08);
+}
+
+.courseOwnerIcon {
+  font-size: 1.4rem;
+  line-height: 1;
+  padding-top: 2px;
+}
+
+.courseOwnerContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.courseOwnerTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.courseOwnerTitleRow strong {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--ui-30-ink, #f8fafc);
+}
+
+.courseOwnerTagCenter {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(37, 99, 235, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.courseOwnerTagFactory {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: rgba(168, 85, 247, 0.2);
+  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: #c084fc;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.courseOwnerDesc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ui-30-muted, #94a3b8);
+  line-height: 1.4;
+}
+
+.required {
+  color: #ef4444 !important;
+  font-weight: 800;
+  margin-left: 2px;
+}
+
+/* Required field blinking dot indicator styles */
+.indicatorPending,
+.indicatorDone {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  vertical-align: middle;
+  border-radius: 50%;
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.indicatorPending {
+  background: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+  animation: pulseRadar 1.6s ease-in-out infinite;
+}
+
+.indicatorDone {
+  background: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+  animation: scaleInCheck 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.indicatorPending .indicatorDot,
+.indicatorDone .indicatorDot {
+  display: none;
+}
+
+@keyframes pulseRadar {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 5px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+@keyframes scaleInCheck {
+  0% {
+    transform: scale(0.6);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+
+
+
+

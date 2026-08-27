@@ -110,6 +110,15 @@ export type RollingPlan = {
   updatedAt: string;
 };
 
+const RequiredIndicator = ({ isFilled }: { isFilled: boolean }) => (
+  <span
+    className={isFilled ? styles.indicatorDone : styles.indicatorPending}
+    title={isFilled ? "กรอกข้อมูลเรียบร้อยแล้ว / Completed" : "จำเป็นต้องกรอก / Required field"}
+  >
+    <span className={styles.indicatorDot} />
+  </span>
+);
+
 const rollingCompanyOptions = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
 
 export const getRollingPlanCompanies = (plan: RollingPlan): string[] => {
@@ -1061,7 +1070,7 @@ export default function TrainingRolling() {
             </div>
             <div className={styles.formGrid}>
               <label className={styles.fullField}>
-                <span>Course Name <span className={styles.required}>*</span></span>
+                <span>Course Name <RequiredIndicator isFilled={Boolean(form.oapId)} /></span>
                 <SearchableSelect
                   options={oapSources.map((source) => {
                     const tag = source.course.courseGroup || source.course.courseType;
@@ -1106,7 +1115,7 @@ export default function TrainingRolling() {
                       </div>
                       <div className={styles.sessionGrid}>
                         <label>
-                          <span>Batch <span className={styles.required}>*</span></span>
+                          <span>Batch <RequiredIndicator isFilled={Boolean(session.batchName.trim())} /></span>
                           <input
                             disabled={!selectedOap}
                             placeholder="Optional label, e.g. batch 1 or Supervisor batch"
@@ -1117,7 +1126,7 @@ export default function TrainingRolling() {
                           />
                         </label>
                         <label>
-                          <span>Location <span className={styles.required}>*</span></span>
+                          <span>Location <RequiredIndicator isFilled={Boolean(session.location.trim())} /></span>
                           <input
                             disabled={!selectedOap}
                             value={session.location}
@@ -1128,7 +1137,7 @@ export default function TrainingRolling() {
                         </label>
 
                         <label>
-                          <span>Start Date (วันที่เริ่ม) <span className={styles.required}>*</span></span>
+                          <span>Start Date (วันที่เริ่ม) <RequiredIndicator isFilled={Boolean(session.trainingDate.trim())} /></span>
                           <input
                             disabled={!selectedOap}
                             type="date"
@@ -1148,7 +1157,7 @@ export default function TrainingRolling() {
                           />
                         </label>
                         <label>
-                          <span>End Date (วันที่สิ้นสุด) <span className={styles.required}>*</span></span>
+                          <span>End Date (วันที่สิ้นสุด) <RequiredIndicator isFilled={Boolean((session.endDate || session.trainingDate).trim())} /></span>
                           <input
                             disabled={!selectedOap}
                             type="date"
@@ -1165,7 +1174,7 @@ export default function TrainingRolling() {
                           />
                         </label>
                         <label>
-                          <span>Start Time (เวลาเริ่ม) <span className={styles.required}>*</span></span>
+                          <span>Start Time (เวลาเริ่ม) <RequiredIndicator isFilled={Boolean(session.startTime.trim())} /></span>
                           <input
                             disabled={!selectedOap}
                             type="time"
@@ -1181,7 +1190,7 @@ export default function TrainingRolling() {
                           />
                         </label>
                         <label>
-                          <span>End Time (เวลาสิ้นสุด) <span className={styles.required}>*</span></span>
+                          <span>End Time (เวลาสิ้นสุด) <RequiredIndicator isFilled={Boolean(session.endTime.trim())} /></span>
                           <input
                             disabled={!selectedOap}
                             type="time"

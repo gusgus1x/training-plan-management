@@ -258,7 +258,7 @@
 .evaluationTable tbody tr:hover td,
 .selectedRow td {
   background: var(--ui-60-surface-soft);
-  border-color: #bfd3ef;
+  border-color: var(--ui-30-primary-border);
 }
 
 .statusPill {
@@ -1004,19 +1004,94 @@
   outline-offset: -3px;
 }
 
+@keyframes statusPulseGreen {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+@keyframes statusPulseAmber {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+@keyframes statusPulseGray {
+  0% {
+    box-shadow: 0 0 0 0 rgba(107, 114, 128, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(107, 114, 128, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(107, 114, 128, 0);
+  }
+}
+
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.statusPill::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .statusPill.statusPublished {
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary-strong);
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.statusPill.statusPublished::before {
+  background: #10b981;
+  animation: statusPulseGreen 1.8s infinite ease-in-out;
 }
 
 .statusPill.statusDraft {
   background: #fff7ed;
-  color: #b45309;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.statusPill.statusDraft::before {
+  background: #f97316;
+  animation: statusPulseAmber 1.8s infinite ease-in-out;
 }
 
 .statusPill.statusInactive {
-  background: var(--ui-60-surface-muted);
-  color: var(--ui-30-muted);
+  background: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+}
+
+.statusPill.statusInactive::before {
+  background: #9ca3af;
+  animation: statusPulseGray 2s infinite ease-in-out;
 }
 
 .emptyTableCell {

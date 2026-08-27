@@ -122,6 +122,20 @@ const allowedStatuses = (current?: EvaluationStatus): MockStatus[] => {
   return current === "PUBLISHED" ? ["Published", "Inactive"] : ["Inactive", "Published"];
 };
 
+const generateNextEvaluationCode = (timing: MockTiming, existingItems: EvaluationRecord[]) => {
+  const prefix = timing === "After Training" ? "EVL-AFTER" : "EVL-30DAY";
+  let maxSeq = 0;
+  existingItems.forEach((item) => {
+    const code = item.formCode || "";
+    const match = code.match(/(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxSeq) maxSeq = num;
+    }
+  });
+  return `${prefix}-${String(maxSeq + 1).padStart(6, "0")}`;
+};
+
 export default function EvaluationManagement() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
@@ -139,7 +153,6 @@ export default function EvaluationManagement() {
   const [search, setSearch] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const toast = useToast();
-  // Same call shape as the old banner state, routed to the global toast instead.
   const setFeedback = useCallback(
     (next: Feedback | null) => {
       if (next) toast[next.tone](next.message);
@@ -193,23 +206,123 @@ export default function EvaluationManagement() {
     resetQuestionEditor();
   };
   const handleNew = () => {
-    setSelectedId(""); setOpenDetailId(""); setFeedback(null);
-    setDraft(blankDraft(user?.companyId ?? "", isFactory));
-    setQuestions([]); setPreviewAnswers({}); setErrors({}); resetQuestionEditor(); setMode("new");
+    setSelectedId("");
+    setOpenDetailId("");
+    setFeedback(null);
+    const initialTiming: MockTiming = "After Training";
+    const initialDraft = blankDraft(user?.companyId ?? "", isFactory);
+    initialDraft.formCode = generateNextEvaluationCode(initialTiming, items);
+    setDraft(initialDraft);
+    setQuestions([]);
+    setPreviewAnswers({});
+    setErrors({});
+    resetQuestionEditor();
+    setMode("new");
   };
-  const handleEdit = () => {
-    if (!selected?.canModify) return;
+
+  const openEditForItem = (item: EvaluationRecord) => {
+    if (!item.canModify) return;
+    setSelectedId(item.evaluationFormId);
+    setOpenDetailId("");
     setDraft({
-      formCode: selected.formCode,
-      formName: selected.formName,
-      scope: selected.scope,
-      companyId: selected.companyId ?? "",
-      timing: timingFromApi(selected.timing),
-      respondent: respondentFromApi(selected.respondentType),
-      anonymous: selected.isAnonymous,
-      status: statusFromApi(selected.status),
+      formCode: item.formCode,
+      formName: item.formName,
+      scope: item.scope,
+      companyId: item.companyId ?? "",
+      timing: timingFromApi(item.timing),
+      respondent: respondentFromApi(item.respondentType),
+      anonymous: item.isAnonymous,
+      status: statusFromApi(item.status),
     });
-    setQuestions(toDraftQuestions(selected)); setPreviewAnswers({}); setErrors({}); resetQuestionEditor(); setFeedback(null); setMode("edit");
+    setQuestions(toDraftQuestions(item));
+    setPreviewAnswers({});
+    setErrors({});
+    resetQuestionEditor();
+    setFeedback(null);
+    setMode("edit");
+  };
+
+  const removeTargetItem = async (item: EvaluationRecord) => {
+    if (!item.canModify) return;
+    if (
+      !(await confirm({
+        message: {
+          th: `ยืนยันที่จะลบแบบประเมิน "${item.formName}" หรือไม่?`,
+          en: `Confirm deleting evaluation "${item.formName}"?`,
+        },
+        danger: true,
+      }))
+    )
+      return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      await deleteEvaluation(item.evaluationFormId);
+      setItems((current) => current.filter((i) => i.evaluationFormId !== item.evaluationFormId));
+      if (selectedId === item.evaluationFormId) {
+        setSelectedId("");
+        closeEditor();
+      }
+      setFeedback({ tone: "success", message: "Evaluation deleted." });
+    } catch (error) {
+      setFeedback({ tone: "error", message: error instanceof Error ? error.message : "Unable to delete evaluation" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handlePublishItem = async (item: EvaluationRecord) => {
+    if (!item.canModify) return;
+    const draftQs = toDraftQuestions(item);
+    if (!draftQs.length) {
+      setFeedback({ tone: "error", message: "Add at least one question before publishing." });
+      return;
+    }
+    if (!draftQs.some((q) => q.required)) {
+      setFeedback({ tone: "error", message: "Published evaluations need at least one required question." });
+      return;
+    }
+    if (
+      !(await confirm({
+        message: {
+          th: `ยืนยันที่จะเผยแพร่แบบประเมิน "${item.formName}" หรือไม่? เมื่อเผยแพร่แล้วจะถูกเลือกใช้ในหลักสูตรได้ทันที`,
+          en: `Confirm publishing evaluation "${item.formName}"? It becomes selectable on courses immediately.`,
+        },
+      }))
+    )
+      return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      const publishInput: EvaluationWriteInput = {
+        scope: item.scope,
+        companyId: item.companyId,
+        formCode: item.formCode,
+        formName: item.formName,
+        description: item.description,
+        timing: item.timing,
+        respondentType: item.respondentType,
+        isAnonymous: item.isAnonymous,
+        status: "PUBLISHED",
+        questions: item.questions.map((question) => ({
+          questionText: question.questionText,
+          questionType: question.questionType,
+          sectionName: question.sectionName,
+          isRequired: question.isRequired,
+          options: question.options.map((option) => ({
+            optionText: option.optionText,
+            optionValue: option.optionValue,
+          })),
+        })),
+      };
+      const updated = (await updateEvaluation(item.evaluationFormId, publishInput)).evaluation;
+      setItems((current) => current.map((i) => (i.evaluationFormId === updated.evaluationFormId ? updated : i)));
+      setFeedback({ tone: "success", message: `Published evaluation "${item.formName}".` });
+    } catch (error) {
+      setFeedback({ tone: "error", message: error instanceof Error ? error.message : "Unable to publish evaluation" });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const payload = (sourceDraft = draft, sourceQuestions = questions): EvaluationWriteInput => ({
@@ -257,19 +370,6 @@ export default function EvaluationManagement() {
     finally { setBusy(false); }
   };
 
-  const handleDelete = async () => {
-    if (!selected?.canModify) return;
-    if (!(await confirm({ message: { th: `ยืนยันที่จะลบแบบประเมิน "${selected.formName}" หรือไม่?`, en: `Confirm deleting evaluation "${selected.formName}"?` }, danger: true }))) return;
-    setBusy(true); setFeedback(null);
-    try {
-      await deleteEvaluation(selected.evaluationFormId);
-      setItems((current) => current.filter((item) => item.evaluationFormId !== selected.evaluationFormId));
-      setSelectedId(""); setOpenDetailId(""); closeEditor();
-      setFeedback({ tone: "success", message: "Evaluation deleted." });
-    } catch (error) { setFeedback({ tone: "error", message: error instanceof Error ? error.message : "Unable to delete evaluation" }); }
-    finally { setBusy(false); }
-  };
-
   const handleAddQuestion = () => {
     const cleanOptions = questionDraft.options.map((option) => option.trim());
     if (!questionDraft.prompt.trim()) return setErrors((current) => ({ ...current, question: "Enter an evaluation question." }));
@@ -291,10 +391,7 @@ export default function EvaluationManagement() {
     const nextErrors: FormErrors = {};
     if (!draft.formName.trim()) nextErrors.name = "Evaluation name is required.";
     if (!isFactory && draft.scope === "COMPANY" && !draft.companyId) nextErrors.companyId = "Select a company for a company-specific form.";
-    if (draft.status === "Published" && !questions.length) nextErrors.questions = "Add at least one question before publishing.";
-    if (draft.status === "Published" && !questions.some((question) => question.required)) nextErrors.questions = "Published evaluations need at least one required question.";
     if (Object.keys(nextErrors).length) { setErrors(nextErrors); setFeedback({ tone: "error", message: "Please correct the highlighted fields." }); return; }
-    if (draft.status === "Published" && !(await confirm({ message: { th: "ยืนยันที่จะเผยแพร่แบบประเมินนี้หรือไม่? เมื่อเผยแพร่แล้วจะถูกเลือกใช้ในหลักสูตรได้ทันที", en: "Confirm publishing this evaluation? It becomes selectable on courses immediately." } }))) return;
     setBusy(true); setFeedback(null);
     try {
       const saved = mode === "edit" && selected
@@ -326,14 +423,88 @@ export default function EvaluationManagement() {
   const renderEditor = () => <section className={styles.editorPanel}>
     <div className={styles.panelHeader}><div><p className={styles.kicker}>{mode === "new" ? "New evaluation" : "Edit evaluation"}</p><h3>Evaluation form settings</h3></div><button className={styles.closeButton} type="button" onClick={closeEditor}>Close</button></div>
     <div className={styles.formGrid}>
-      <label>Evaluation Code<input disabled value={draft.formCode} placeholder="Auto-generated on save" /></label>
-      <label>Evaluation Name<input aria-invalid={Boolean(errors.name)} className={errors.name ? styles.inputError : undefined} value={draft.formName} onChange={(event) => { setDraft({ ...draft, formName: event.target.value }); setErrors((current) => ({ ...current, name: undefined })); }} placeholder="e.g. Standard Course Evaluation" />{errors.name ? <small>{errors.name}</small> : null}</label>
-      <label>Timing<select value={draft.timing} onChange={(event) => setDraft({ ...draft, timing: event.target.value as MockTiming })}><option>After Training</option><option>30-Day Follow-up</option></select></label>
-      <label>Respondent<select value={draft.respondent} onChange={(event) => setDraft({ ...draft, respondent: event.target.value as MockRespondent })}><option>Employee</option><option>Manager</option></select></label>
-      {!isFactory ? <label>Scope<select value={draft.scope} onChange={(event) => setDraft({ ...draft, scope: event.target.value as EvaluationScope })}><option value="CENTRAL">Central</option><option value="COMPANY">Company</option></select></label> : null}
-      {!isFactory && draft.scope === "COMPANY" ? <label>Company<select aria-invalid={Boolean(errors.companyId)} className={errors.companyId ? styles.inputError : undefined} value={draft.companyId} onChange={(event) => { setDraft({ ...draft, companyId: event.target.value }); setErrors((current) => ({ ...current, companyId: undefined })); }}><option value="">Select company</option>{companies.map((company) => <option key={company.companyId} value={company.companyId}>{company.companyCode}</option>)}</select>{errors.companyId ? <small>{errors.companyId}</small> : null}</label> : null}
-      <label>Status<select value={draft.status} onChange={(event) => setDraft({ ...draft, status: event.target.value as MockStatus })}>{allowedStatuses(mode === "edit" ? selected?.status : undefined).map((status) => <option key={status}>{status}</option>)}</select></label>
-      <label className={styles.toggleLabel}><input checked={draft.anonymous} type="checkbox" onChange={(event) => setDraft({ ...draft, anonymous: event.target.checked })} />Anonymous responses<small>Hide the respondent identity in evaluation results.</small></label>
+      <label className={styles.fullWidth}>Evaluation Name
+        <input
+          aria-invalid={Boolean(errors.name)}
+          className={errors.name ? styles.inputError : undefined}
+          value={draft.formName}
+          onChange={(event) => {
+            setDraft({ ...draft, formName: event.target.value });
+            setErrors((current) => ({ ...current, name: undefined }));
+          }}
+          placeholder="e.g. Standard Course Evaluation"
+        />
+        {errors.name ? <small>{errors.name}</small> : null}
+      </label>
+      {!isFactory ? (
+        <label>Scope
+          <select
+            value={draft.scope}
+            onChange={(event) => setDraft({ ...draft, scope: event.target.value as EvaluationScope })}
+          >
+            <option value="CENTRAL">Central</option>
+            <option value="COMPANY">Company</option>
+          </select>
+        </label>
+      ) : null}
+      {!isFactory && draft.scope === "COMPANY" ? (
+        <label>Company
+          <select
+            aria-invalid={Boolean(errors.companyId)}
+            className={errors.companyId ? styles.inputError : undefined}
+            value={draft.companyId}
+            onChange={(event) => {
+              setDraft({ ...draft, companyId: event.target.value });
+              setErrors((current) => ({ ...current, companyId: undefined }));
+            }}
+          >
+            <option value="">Select company</option>
+            {companies.map((company) => (
+              <option key={company.companyId} value={company.companyId}>
+                {company.companyCode}
+              </option>
+            ))}
+          </select>
+          {errors.companyId ? <small>{errors.companyId}</small> : null}
+        </label>
+      ) : null}
+      <label>Timing
+        <select
+          value={draft.timing}
+          onChange={(event) => {
+            const nextTiming = event.target.value as MockTiming;
+            setDraft((current) => ({
+              ...current,
+              timing: nextTiming,
+              formCode: mode === "new" ? generateNextEvaluationCode(nextTiming, items) : current.formCode,
+            }));
+          }}
+        >
+          <option>After Training</option>
+          <option>30-Day Follow-up</option>
+        </select>
+      </label>
+      <label>Respondent
+        <select
+          value={draft.respondent}
+          onChange={(event) => setDraft({ ...draft, respondent: event.target.value as MockRespondent })}
+        >
+          <option>Employee</option>
+          <option>Manager</option>
+        </select>
+      </label>
+      <label>Evaluation Code
+        <input disabled value={draft.formCode} placeholder="Auto-generated" />
+      </label>
+      <label className={styles.toggleLabel}>
+        <input
+          checked={draft.anonymous}
+          type="checkbox"
+          onChange={(event) => setDraft({ ...draft, anonymous: event.target.checked })}
+        />
+        Anonymous responses
+        <small>Hide the respondent identity in evaluation results.</small>
+      </label>
     </div>
     <div className={styles.questionBuilder}><div className={styles.panelHeader}><div><p className={styles.kicker}>Question builder</p><h3>{editingQuestionId ? "Edit question" : "Add evaluation question"}</h3></div><span>{questions.length} questions</span></div>
       <div className={styles.questionGrid}><label className={styles.fullWidth}>Question<textarea aria-invalid={Boolean(errors.question)} className={errors.question ? styles.inputError : undefined} value={questionDraft.prompt} onChange={(event) => { setQuestionDraft({ ...questionDraft, prompt: event.target.value }); setErrors((current) => ({ ...current, question: undefined })); }} placeholder="Enter the question shown to respondents" /></label>
@@ -359,15 +530,195 @@ export default function EvaluationManagement() {
     );
   }
 
-  return <section className={styles.page} aria-label="Evaluation Management"><section className={styles.hero}><div><p className={styles.kicker}>{evaluationManagementModule.subtitle}</p><h2>{evaluationManagementModule.title}</h2><p>{evaluationManagementModule.description}</p></div></section><section className={styles.workspace}>
-    <div className={styles.toolbar}><span className={styles.listMeta}>{visible.length} / {items.length} evaluations</span><input aria-label="Search evaluation" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, timing, respondent, scope, company, status" /><button className={styles.primaryButton} type="button" disabled={busy} onClick={handleNew}>New</button><button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canModify} onClick={handleEdit}>Edit</button><button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canDuplicate} onClick={() => void handleDuplicate()}>Duplicate</button><button className={styles.dangerButton} type="button" disabled={busy || !selected?.canModify} onClick={() => void handleDelete()}>Delete</button><button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void load()}>Refresh</button><button className={styles.secondaryButton} type="button" onClick={handleExport}>Export</button></div>
-    {mode !== "idle" ? renderEditor() : null}
-    <div className={styles.tableWrap}><table className={styles.evaluationTable}><thead><tr><th>Code</th><th>Evaluation Name</th><th>Timing</th><th>Respondent</th><th>Scope</th><th>Questions</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-      {!visible.length ? <tr><td className={styles.emptyTableCell} colSpan={8}>{busy ? "Loading evaluations..." : "No evaluations yet. Select New to create the first form."}</td></tr> : null}
-      {visible.map((item) => { const isSelected = item.evaluationFormId === selectedId; const isOpen = item.evaluationFormId === openDetailId; const draftQuestions = toDraftQuestions(item); const status = statusFromApi(item.status); const statusClass = status === "Published" ? styles.statusPublished : status === "Draft" ? styles.statusDraft : styles.statusInactive;
-        return <Fragment key={item.evaluationFormId}><tr aria-selected={isSelected} tabIndex={0} className={`${styles.selectableRow} ${isSelected ? styles.selectedRow : ""}`} onClick={() => { setSelectedId(isSelected ? "" : item.evaluationFormId); setOpenDetailId(""); }} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedId(isSelected ? "" : item.evaluationFormId); setOpenDetailId(""); } }}><td>{item.formCode}</td><td>{item.formName}</td><td>{timingFromApi(item.timing)}</td><td>{respondentFromApi(item.respondentType)}</td><td>{item.scope === "CENTRAL" ? "Central" : `Company · ${item.companyCode}`}</td><td>{item.questions.length}</td><td><span className={`${styles.statusPill} ${statusClass}`}>{status}</span></td><td className={styles.actionCell}><button className={styles.detailButton} type="button" onClick={(event) => { event.stopPropagation(); setSelectedId(item.evaluationFormId); setOpenDetailId(isOpen ? "" : item.evaluationFormId); }}>{isOpen ? "Hide" : "Preview"}</button></td></tr>
-          {isOpen ? <tr className={styles.detailRow}><td colSpan={8}><div className={styles.detailPanel}><div className={styles.panelHeader}><div><p className={styles.kicker}>Evaluation preview</p><h3>{item.formName}</h3></div><button className={styles.closeButton} type="button" onClick={() => setOpenDetailId("")}>Close</button></div><div className={styles.detailMeta}><article><span>Timing</span><strong>{timingFromApi(item.timing)}</strong></article><article><span>Respondent</span><strong>{respondentFromApi(item.respondentType)}</strong></article><article><span>Scope</span><strong>{item.companyCode ?? "All companies"}</strong></article><article><span>Response identity</span><strong>{item.isAnonymous ? "Anonymous" : "Identified"}</strong></article></div>{renderQuestionPreview(draftQuestions, `detail-${item.evaluationFormId}`, false)}</div></td></tr> : null}
-        </Fragment>; })}
-    </tbody></table></div>
-  </section></section>;
+  return (
+    <section className={styles.page} aria-label="Evaluation Management">
+      <section className={styles.hero}>
+        <div>
+          <p className={styles.kicker}>{evaluationManagementModule.subtitle}</p>
+          <h2>{evaluationManagementModule.title}</h2>
+          <p>{evaluationManagementModule.description}</p>
+        </div>
+      </section>
+      <section className={styles.workspace}>
+        <div className={styles.toolbar}>
+          <span className={styles.listMeta}>
+            {visible.length} / {items.length} แบบประเมิน
+          </span>
+          <input
+            aria-label="Search evaluation"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="ค้นหารหัส, ชื่อแบบประเมิน, ช่วงเวลา, ผู้ตอบ, ขอบเขต, สถานะ..."
+          />
+          <button className={styles.primaryButton} type="button" disabled={busy} onClick={handleNew}>
+            + เพิ่มแบบประเมิน
+          </button>
+          <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void load()}>
+            รีเฟรช
+          </button>
+          <button className={styles.secondaryButton} type="button" onClick={handleExport}>
+            ส่งออก CSV
+          </button>
+        </div>
+        {mode !== "idle" ? renderEditor() : null}
+        <div className={styles.tableWrap}>
+          <table className={styles.evaluationTable}>
+            <thead>
+              <tr>
+                <th>รหัสแบบประเมิน</th>
+                <th>ชื่อแบบประเมิน</th>
+                <th>ช่วงเวลา</th>
+                <th>กลุ่มผู้ตอบ</th>
+                <th>ขอบเขต</th>
+                <th>จำนวนคำถาม</th>
+                <th>สถานะ</th>
+                <th style={{ textAlign: "right" }}>การดำเนินการ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {!visible.length ? (
+                <tr>
+                  <td className={styles.emptyTableCell} colSpan={8}>
+                    {busy ? "Loading evaluations..." : "No evaluations yet. Select New to create the first form."}
+                  </td>
+                </tr>
+              ) : null}
+              {visible.map((item) => {
+                const isSelected = item.evaluationFormId === selectedId;
+                const isOpen = item.evaluationFormId === openDetailId;
+                const draftQuestions = toDraftQuestions(item);
+                const status = statusFromApi(item.status);
+                const statusClass =
+                  status === "Published"
+                    ? styles.statusPublished
+                    : status === "Draft"
+                      ? styles.statusDraft
+                      : styles.statusInactive;
+                return (
+                  <Fragment key={item.evaluationFormId}>
+                    <tr
+                      aria-selected={isSelected}
+                      tabIndex={0}
+                      className={`${styles.selectableRow} ${isSelected ? styles.selectedRow : ""}`}
+                      onClick={() => {
+                        setSelectedId(isSelected ? "" : item.evaluationFormId);
+                        setOpenDetailId("");
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setSelectedId(isSelected ? "" : item.evaluationFormId);
+                          setOpenDetailId("");
+                        }
+                      }}
+                    >
+                      <td>{item.formCode}</td>
+                      <td>{item.formName}</td>
+                      <td>{timingFromApi(item.timing)}</td>
+                      <td>{respondentFromApi(item.respondentType)}</td>
+                      <td>{item.scope === "CENTRAL" ? "Central" : `Company · ${item.companyCode}`}</td>
+                      <td>{item.questions.length}</td>
+                      <td>
+                        <span className={`${styles.statusPill} ${statusClass}`}>{status}</span>
+                      </td>
+                      <td className={styles.actionCell} onClick={(event) => event.stopPropagation()}>
+                        <div style={{ display: "flex", gap: "6px", alignItems: "center", justifyContent: "flex-end" }}>
+                          <button
+                            className={styles.detailButton}
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedId(item.evaluationFormId);
+                              setOpenDetailId(isOpen ? "" : item.evaluationFormId);
+                            }}
+                          >
+                            {isOpen ? "Hide" : "Preview"}
+                          </button>
+                          {item.status === "DRAFT" ? (
+                            <button
+                              className={styles.primaryButton}
+                              type="button"
+                              style={{ whiteSpace: "nowrap", padding: "3px 8px", fontSize: "0.74rem" }}
+                              disabled={busy || !item.canModify}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void handlePublishItem(item);
+                              }}
+                            >
+                              เผยแพร่
+                            </button>
+                          ) : null}
+                          <button
+                            className={styles.secondaryButton}
+                            type="button"
+                            style={{ whiteSpace: "nowrap", padding: "3px 8px", fontSize: "0.74rem" }}
+                            disabled={busy || !item.canModify}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openEditForItem(item);
+                            }}
+                          >
+                            แก้ไข
+                          </button>
+                          <button
+                            className={styles.dangerButton}
+                            type="button"
+                            style={{ whiteSpace: "nowrap", padding: "3px 8px", fontSize: "0.74rem" }}
+                            disabled={busy || !item.canModify}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedId(item.evaluationFormId);
+                              void removeTargetItem(item);
+                            }}
+                          >
+                            ลบ
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {isOpen ? (
+                      <tr className={styles.detailRow}>
+                        <td colSpan={8}>
+                          <div className={styles.detailPanel}>
+                            <div className={styles.panelHeader}>
+                              <div>
+                                <p className={styles.kicker}>Evaluation preview</p>
+                                <h3>{item.formName}</h3>
+                              </div>
+                              <button className={styles.closeButton} type="button" onClick={() => setOpenDetailId("")}>
+                                Close
+                              </button>
+                            </div>
+                            <div className={styles.detailMeta}>
+                              <article>
+                                <span>Timing</span>
+                                <strong>{timingFromApi(item.timing)}</strong>
+                              </article>
+                              <article>
+                                <span>Respondent</span>
+                                <strong>{respondentFromApi(item.respondentType)}</strong>
+                              </article>
+                              <article>
+                                <span>Scope</span>
+                                <strong>{item.companyCode ?? "All companies"}</strong>
+                              </article>
+                              <article>
+                                <span>Response identity</span>
+                                <strong>{item.isAnonymous ? "Anonymous" : "Identified"}</strong>
+                              </article>
+                            </div>
+                            {renderQuestionPreview(draftQuestions, `detail-${item.evaluationFormId}`, false)}
+                          </div>
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  );
 }
