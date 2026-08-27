@@ -1,4 +1,4 @@
-export type UserModule = "register" | "roadmap" | "request" | "record" | "report";
+export type UserModule = "register" | "roadmap" | "request" | "record" | "report" | "calendar";
 
 export const moduleCards: Array<{
   key: UserModule;
@@ -41,6 +41,13 @@ export const moduleCards: Array<{
     title: "Training Report",
     detail: "Prepare and review employee training reports for HRD follow-up.",
     metric: "Ready",
+  },
+  {
+    key: "calendar",
+    eyebrow: "Calendar",
+    title: "Calendar Training",
+    detail: "Monthly and annual training schedule calendar for employee operations.",
+    metric: "Schedule",
   },
 ];
 

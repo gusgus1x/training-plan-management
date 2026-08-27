@@ -32,6 +32,7 @@ import { createEnrollment, listEnrollments, updateEnrollmentStatus } from "../..
 import type { EnrollmentRecord, EnrollmentSource, EnrollmentStatus } from "../../../../lib/trainingEnrollment/types";
 import { defaultFunctionRows } from "../../MasterDataManagement/modules/FunctionData";
 import { listPositions } from "../../../../lib/positions/client";
+import { getCurrentCalendarDate } from "../../../../lib/calendarDate";
 import styles from "./TrainingAcceptSurvey.module.css";
 
 export const trainingAcceptSurveyModule = {
@@ -698,10 +699,18 @@ export default function TrainingAcceptSurvey() {
 
 
 
+  const [calendarToday] = useState(getCurrentCalendarDate);
+  const todayStr = `${calendarToday.year}-${calendarToday.month}-${String(calendarToday.day).padStart(2, "0")}`;
+
   const courseSurveys = useMemo<CourseSurvey[]>(
     () =>
       rollingPlans
-        .filter((plan) => plan.status === "Planned")
+        .filter((plan) => {
+          if (plan.status !== "Planned") return false;
+          const endDateStr = plan.endDate || plan.trainingDate;
+          const isEnded = plan.dbStatus === "COMPLETED" || (Boolean(endDateStr) && endDateStr < todayStr);
+          return !isEnded;
+        })
         .map((plan) => {
           const planCourseId = plan.course?.id || "";
           const planCourseCode = (plan.course?.code || "").trim().toUpperCase();
@@ -715,9 +724,13 @@ export default function TrainingAcceptSurvey() {
               (item.courseName && planCourseName && item.courseName.trim().toLowerCase() === planCourseName),
           );
           const isCenterPlan =
-            plan.ownerScope === "CENTER" ||
+            (plan.ownerScope && plan.ownerScope.toUpperCase() === "CENTER") ||
+            (plan.owner && plan.owner.toUpperCase() === "CENTER") ||
+            plan.ownerCompany === "CENTER" ||
             plan.ownerCompany === "HRD Center" ||
-            plan.provider === "HRD Center";
+            plan.provider === "HRD Center" ||
+            plan.company === "All Companies" ||
+            plan.company === "CENTER";
           const standardCompanies =
             standard?.companies && standard.companies.length > 0
               ? standard.companies
@@ -786,24 +799,27 @@ export default function TrainingAcceptSurvey() {
         { value: "factory" as const, label: "Factory" },
       ]
       : [
+        { value: "" as const, label: "ทั้งหมด (Center & Factory)" },
         { value: "factory" as const, label: "Factory" },
         { value: "center" as const, label: "Center" },
       ];
   const availableCourseGroups = useMemo<CourseSurveyGroup[]>(() => {
     const ownerFilteredSessions =
-      selectedCourseOwner === ""
-        ? []
-        : roleMode === "center"
+      roleMode === "center"
+        ? (selectedCourseOwner
+          ? courseSurveys.filter((course) => course.owner === selectedCourseOwner)
+          : courseSurveys.filter((course) => course.owner === "center"))
+        : (selectedCourseOwner === ""
           ? courseSurveys.filter(
-            (course) => course.owner === selectedCourseOwner,
+            (course) =>
+              (course.owner === "factory" && (course.ownerCompany === userCompanyCode || course.companies.includes(userCompanyCode))) ||
+              (course.owner === "center" && course.companies.includes(userCompanyCode)),
           )
           : courseSurveys.filter((course) =>
             selectedCourseOwner === "factory"
-              ? course.owner === "factory" &&
-              course.ownerCompany === userCompanyCode
-              : course.owner === "center" &&
-              course.companies.includes(userCompanyCode),
-          );
+              ? course.owner === "factory" && (course.ownerCompany === userCompanyCode || course.companies.includes(userCompanyCode))
+              : course.owner === "center" && course.companies.includes(userCompanyCode),
+          ));
     const groups = new Map<string, CourseSurvey[]>();
 
     ownerFilteredSessions.forEach((session) => {
@@ -881,7 +897,7 @@ export default function TrainingAcceptSurvey() {
     selectedCourse?.owner === "factory" &&
     selectedCourse.ownerCompany === userCompanyCode;
   const hasSelectedCourse = selectedCourse !== null;
-  const canShowAcceptanceList = hasSelectedCourse && selectedCourse?.owner === "center";
+  const canShowAcceptanceList = hasSelectedCourse;
 
   const accessibleCompanies: string[] =
     roleMode === "center"
@@ -1048,6 +1064,7 @@ export default function TrainingAcceptSurvey() {
     enrollments.filter(
       (candidate) =>
         selectedCourse !== null &&
+        candidate.planId === selectedCourse.id &&
         (roleMode === "factory" ? candidate.company === userCompanyCode : true) &&
         (selectedCourse.owner === "factory"
           ? candidate.status === "Factory Approved" || candidate.status === "Center Approved"
@@ -1127,12 +1144,16 @@ export default function TrainingAcceptSurvey() {
     roleMode === "center"
       ? enrollments.filter(
         (candidate) =>
+          selectedCourse !== null &&
+          candidate.planId === selectedCourse.id &&
           candidate.status !== "Center Approved" &&
           candidate.status !== "Rejected" &&
           candidate.status !== "Cancelled",
       )
       : enrollments.filter(
         (candidate) =>
+          selectedCourse !== null &&
+          candidate.planId === selectedCourse.id &&
           candidate.company === userCompanyCode &&
           candidate.status !== "Factory Approved" &&
           candidate.status !== "Center Approved" &&
@@ -1433,15 +1454,20 @@ export default function TrainingAcceptSurvey() {
             <select
               className={styles.controlSelect}
               value={selectedCourseGroup?.id ?? ""}
-              disabled={selectedCourseOwner === ""}
+              disabled={availableCourseGroups.length === 0}
               onChange={(event) => {
                 const newGroupId = event.target.value;
                 setSelectedCourseGroupId(newGroupId);
-                setSelectedCourseId("");
+                const group = availableCourseGroups.find((g) => g.id === newGroupId);
+                if (group && group.sessions.length > 0) {
+                  setSelectedCourseId(group.sessions[0].id);
+                } else {
+                  setSelectedCourseId("");
+                }
               }}
             >
               <option value="">
-                {selectedCourseOwner === "" ? "⚡ กรุณาเลือกผู้ดูแลหลักสูตรก่อน" : "เลือกหลักสูตร"}
+                {availableCourseGroups.length === 0 ? "ไม่พบหลักสูตรที่เปิดรับในขณะนี้" : "เลือกหลักสูตรที่ต้องการจัดการ"}
               </option>
               {availableCourseGroups.map((group) => (
                 <option key={group.id} value={group.id}>
@@ -2013,6 +2039,8 @@ export default function TrainingAcceptSurvey() {
                   {(() => {
                     const savedCandidates = enrollments.filter(
                       (candidate) =>
+                        selectedCourse !== null &&
+                        candidate.planId === selectedCourse.id &&
                         candidate.company === userCompanyCode &&
                         candidate.status !== "Center Approved" &&
                         candidate.status !== "Cancelled" &&
@@ -2112,7 +2140,134 @@ export default function TrainingAcceptSurvey() {
                     );
                   })()}
                 </>
-              ) : null
+              ) : (
+                <section className={styles.approvalPanel} style={{ marginTop: "16px", marginBottom: "16px" }}>
+                  <div className={styles.workspaceHeader}>
+                    <div>
+                      <p className={styles.kicker} style={{ color: "#38bdf8" }}>Candidate Approval (Factory Mode)</p>
+                      <h3>รายการพนักงานลงทะเบียน / สมัครเข้าอบรมโรงงานรอการอนุมัติ ({visibleCandidates.length} คน)</h3>
+                    </div>
+                    <div className={styles.participantActions}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#38bdf8", fontWeight: 700, fontSize: "0.82rem" }}>
+                        <span className={styles.glowingDotBlue}></span> รออนุมัติ {approvalQueue.length} คน
+                      </span>
+                      <button
+                        className={styles.batchApproveBtn}
+                        type="button"
+                        disabled={approvalQueue.length === 0}
+                        onClick={async () => {
+                          if (approvalQueue.length === 0) return;
+                          try {
+                            for (const candidate of approvalQueue) {
+                              await updateEnrollmentStatus(candidate.id, { action: "approve" });
+                            }
+                            await reloadEnrollments();
+                            toast.success(`อนุมัติพนักงานทั้งหมด ${approvalQueue.length} คนเรียบร้อยแล้ว / Batch approved ${approvalQueue.length} candidates`);
+                          } catch (err) {
+                            console.error("Failed batch approve", err);
+                            toast.error("เกิดข้อผิดพลาดในการอนุมัติทั้งหมด / Failed to batch approve");
+                          }
+                        }}
+                      >
+                        ✓ อนุมัติทั้งหมด ({approvalQueue.length})
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className={styles.employeeRows}>
+                    {visibleCandidates.length > 0 ? (
+                      <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
+                        <span>จัดการ</span>
+                        <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                          <span>รหัสพนักงาน</span>
+                          <span>สถานะ</span>
+                          <span>คำนำหน้า</span>
+                          <span>ชื่อ</span>
+                          <span>นามสกุล</span>
+                          <span>บริษัท</span>
+                          <span>ส่วนงาน</span>
+                          <span>ฝ่าย</span>
+                          <span>แผนก</span>
+                          <span>ตำแหน่ง</span>
+                          <span>ระดับ</span>
+                        </div>
+                      </div>
+                    ) : null}
+                    {visibleCandidates.map((candidate) => {
+                      const masterEmp = masterEmployees.find(
+                        (emp) =>
+                          emp.employeeCode === candidate.employeeCode ||
+                          emp.id === candidate.employeeId,
+                      );
+                      const nameProfile = masterEmp
+                        ? getEmployeeNameProfile(masterEmp)
+                        : getEmployeeNameProfile({ name: candidate.employeeName });
+
+                      const canApprove = candidate.status === "Pending Approval";
+                      const canReject = candidate.status !== "Rejected";
+
+                      return (
+                        <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={candidate.id}>
+                          <div className={styles.actionCellBtns}>
+                            {canApprove ? (
+                              <button
+                                className={styles.approveCandidateBtn}
+                                type="button"
+                                onClick={() => void handleApprove(candidate.id)}
+                              >
+                                ✓ อนุมัติ
+                              </button>
+                            ) : null}
+                            {canReject ? (
+                              <button
+                                className={styles.rejectCandidateBtn}
+                                type="button"
+                                onClick={() => void handleReject(candidate.id)}
+                              >
+                                ✗ ปฏิเสธ
+                              </button>
+                            ) : null}
+                          </div>
+                          <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.employeeCode}>{candidate.employeeCode}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
+                              {candidate.status === "Pending Approval" ? (
+                                <span className={styles.badgePending}>
+                                  <span className={styles.glowingDotYellow}></span> รออนุมัติ
+                                </span>
+                              ) : candidate.status === "Factory Approved" || candidate.status === "Center Approved" ? (
+                                <span className={styles.badgeApproved}>
+                                  <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
+                                </span>
+                              ) : candidate.status === "Rejected" ? (
+                                <span className={styles.badgeRejected}>
+                                  <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
+                                </span>
+                              ) : (
+                                <span>{candidate.status}</span>
+                              )}
+                            </span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.firstName}>{nameProfile.firstName}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.lastName}>{nameProfile.lastName}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.company}>{candidate.company}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.section || "-"}>{masterEmp?.section || "-"}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.division || "-"}>{masterEmp?.division || "-"}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={masterEmp?.department || candidate.department || "-"}>{masterEmp?.department || candidate.department || "-"}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.position || "-"}>{candidate.position || "-"}</span>
+                            <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.level || "-"}>{candidate.level || "-"}</span>
+                          </div>
+                        </article>
+                      );
+                    })}
+                    {visibleCandidates.length === 0 ? (
+                      <div className={styles.emptyDraftBox}>
+                        📋 ยังไม่มีรายการพนักงานลงทะเบียนรออนุมัติในขณะนี้
+                      </div>
+                    ) : null}
+                  </div>
+                </section>
+              )
             ) : null}
           </div>
 

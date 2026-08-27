@@ -163,6 +163,8 @@ export default function RecordModule() {
   const t = (th: string, en: string) => (language === "th" ? th : en);
   const employeeName = profileValue(authenticatedUser?.displayName ?? authenticatedUser?.username);
   const [records, setRecords] = useState<EmployeeTrainingRecord[]>([]);
+  const [rawEnrollments, setRawEnrollments] = useState<EnrollmentRecord[]>([]);
+  const [activeTab, setActiveTab] = useState<"pending" | "completed">("pending");
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedProvider, setSelectedProvider] = useState<(typeof providers)[number]>("all");
@@ -174,11 +176,10 @@ export default function RecordModule() {
   useEffect(() => {
     let cancelled = false;
 
-    // The server scopes this to the signed-in employee; no filter is sent from here, so a stale or
-    // spoofed employee id in the browser cannot widen it.
     listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
       .then(({ enrollments }) => {
         if (cancelled) return;
+        setRawEnrollments(enrollments);
         const nextRecords = buildRecords(enrollments);
 
         setRecords(nextRecords);
@@ -191,7 +192,6 @@ export default function RecordModule() {
       })
       .catch((error: unknown) => {
         if (cancelled) return;
-        // An empty list and a failed request look identical on screen otherwise.
         setLoadError(error instanceof Error ? error.message : "Could not load training record");
       })
       .finally(() => {
@@ -202,6 +202,12 @@ export default function RecordModule() {
       cancelled = true;
     };
   }, []);
+
+  const pendingEnrollments = useMemo(() => {
+    return rawEnrollments.filter(
+      (e) => e.status !== "Cancelled" && e.attendance?.status !== "PRESENT",
+    );
+  }, [rawEnrollments]);
 
 
   const filteredRecords = useMemo(() => {
@@ -257,37 +263,175 @@ export default function RecordModule() {
         }
       />
 
-      <section className={shell.panel}>
-        <div className={shell.toolbar} aria-label="Training record filters">
-          <input
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-            }}
-            placeholder={t("ค้นหาหลักสูตร ผู้จัด วิทยากร...", "Search course, provider, instructor...")}
-          />
-          <div className={shell.filterGroup}>
-            <select
-              value={selectedProvider}
-              onChange={(event) => {
-                setSelectedProvider(event.target.value as (typeof providers)[number]);
-              }}
-            >
-              {providers.map((provider) => (
-                <option key={provider} value={provider}>
-                  {provider === "all" ? t("ผู้จัดทั้งหมด", "All providers") : provider}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+      {/* Workspace Tabs */}
+      <div style={{ display: "flex", gap: "10px", marginBottom: "16px", flexWrap: "wrap" }}>
+        <button
+          type="button"
+          onClick={() => setActiveTab("pending")}
+          style={{
+            padding: "10px 22px",
+            borderRadius: "999px",
+            border: activeTab === "pending" ? "1px solid var(--ui-30-primary)" : "1px solid var(--ui-30-border)",
+            background: activeTab === "pending" ? "var(--ui-30-primary)" : "var(--ui-60-surface-soft)",
+            color: activeTab === "pending" ? "#ffffff" : "var(--ui-30-ink)",
+            fontSize: "0.85rem",
+            fontWeight: 800,
+            cursor: "pointer",
+            boxShadow: activeTab === "pending" ? "0 4px 14px rgba(37, 99, 235, 0.25)" : "none",
+            transition: "all 0.2s ease",
+          }}
+        >
+          ⏳ {t("สถานะลงทะเบียน & รออนุมัติ", "Registration Status & Approval")} ({pendingEnrollments.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("completed")}
+          style={{
+            padding: "10px 22px",
+            borderRadius: "999px",
+            border: activeTab === "completed" ? "1px solid var(--ui-30-primary)" : "1px solid var(--ui-30-border)",
+            background: activeTab === "completed" ? "var(--ui-30-primary)" : "var(--ui-60-surface-soft)",
+            color: activeTab === "completed" ? "#ffffff" : "var(--ui-30-ink)",
+            fontSize: "0.85rem",
+            fontWeight: 800,
+            cursor: "pointer",
+            boxShadow: activeTab === "completed" ? "0 4px 14px rgba(37, 99, 235, 0.25)" : "none",
+            transition: "all 0.2s ease",
+          }}
+        >
+          📜 {t("ประวัติการอบรมที่สำเร็จแล้ว", "Completed Records")} ({records.length})
+        </button>
+      </div>
 
-        {loadError ? (
-          <p className={shell.emptyState} role="alert">
-            {t("โหลดประวัติการอบรมไม่สำเร็จ", "Could not load training record")}: {loadError}
-          </p>
-        ) : null}
-      </section>
+      {activeTab === "pending" ? (
+        <section className={shell.panel} style={{ marginBottom: "24px" }} aria-label="Pending approval registrations">
+          <div className={shell.panelHeader}>
+            <div>
+              <p>Registration & Survey Status</p>
+              <h2>{t("หลักสูตรที่ลงทะเบียน / รอการพิจารณาอนุมัติ", "Registered Courses / Awaiting Approval")}</h2>
+            </div>
+            <p>{pendingEnrollments.length} {t("รายการ", "items")}</p>
+          </div>
+
+          <div style={{ display: "grid", gap: "12px", marginTop: "16px" }}>
+            {pendingEnrollments.map((enrollment) => {
+              const isCenterOwner = enrollment.plan.owner === "CENTER";
+              const isPending = enrollment.status === "Pending Approval";
+              const isApproved = enrollment.status === "Center Approved" || enrollment.status === "Factory Approved";
+              const isRejected = enrollment.status === "Rejected";
+
+              let statusBadgeText = isPending
+                ? isCenterOwner
+                  ? t("🟡 รอ HRD Center พิจารณาอนุมัติ", "🟡 Awaiting HRD Center Approval")
+                  : t("🟡 รอ Factory HRD พิจารณาอนุมัติ", "🟡 Awaiting Factory HRD Approval")
+                : isApproved
+                  ? t("🟢 อนุมัติการลงทะเบียนแล้ว (รอเข้าอบรม & ทำแบบสำรวจ)", "🟢 Approved - Ready for Training & Survey")
+                  : isRejected
+                    ? t("🔴 ถูกปฏิเสธการลงทะเบียน", "🔴 Registration Rejected")
+                    : enrollment.status;
+
+              return (
+                <div
+                  key={enrollment.id}
+                  style={{
+                    padding: "16px",
+                    borderRadius: "var(--ui-radius-lg)",
+                    background: "var(--ui-60-surface-soft)",
+                    border: "1px solid var(--ui-30-border)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "16px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span
+                        style={{
+                          fontSize: "0.78rem",
+                          fontWeight: 800,
+                          padding: "4px 12px",
+                          borderRadius: "999px",
+                          background: isPending
+                            ? "rgba(245, 158, 11, 0.15)"
+                            : isApproved
+                              ? "rgba(16, 185, 129, 0.15)"
+                              : "rgba(239, 68, 68, 0.15)",
+                          color: isPending
+                            ? "#d97706"
+                            : isApproved
+                              ? "#10b981"
+                              : "#dc2626",
+                          border: isPending
+                            ? "1px solid rgba(245, 158, 11, 0.3)"
+                            : isApproved
+                              ? "1px solid rgba(16, 185, 129, 0.3)"
+                              : "1px solid rgba(239, 68, 68, 0.3)",
+                        }}
+                      >
+                        {statusBadgeText}
+                      </span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--ui-30-muted)", fontWeight: 700 }}>
+                        {isCenterOwner ? "🏛️ HRD Center" : "🏭 Factory HRD"}
+                      </span>
+                    </div>
+                    <strong style={{ fontSize: "1.05rem", color: "var(--ui-30-ink)" }}>
+                      {enrollment.plan.courseName} ({enrollment.plan.courseCode})
+                    </strong>
+                    <div style={{ fontSize: "0.82rem", color: "var(--ui-30-muted)", display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                      <span>📅 {enrollment.plan.startAt.slice(0, 10)}</span>
+                      <span>📍 {enrollment.plan.venue || "-"}</span>
+                      <span>👨‍🏫 {enrollment.plan.instructor || "-"}</span>
+                      <span>⏱️ {enrollment.plan.hours} {t("ชม.", "hrs")}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {pendingEnrollments.length === 0 ? (
+              <p className={shell.emptyState}>
+                {t("ยังไม่มีรายการลงทะเบียนที่อยู่ระหว่างรออนุมัติ", "No pending registrations currently.")}
+              </p>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "completed" ? (
+        <>
+          <section className={shell.panel}>
+            <div className={shell.toolbar} aria-label="Training record filters">
+              <input
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                }}
+                placeholder={t("ค้นหาหลักสูตร ผู้จัด วิทยากร...", "Search course, provider, instructor...")}
+              />
+              <div className={shell.filterGroup}>
+                <select
+                  value={selectedProvider}
+                  onChange={(event) => {
+                    setSelectedProvider(event.target.value as (typeof providers)[number]);
+                  }}
+                >
+                  {providers.map((provider) => (
+                    <option key={provider} value={provider}>
+                      {provider === "all" ? t("ผู้จัดทั้งหมด", "All providers") : provider}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {loadError ? (
+              <p className={shell.emptyState} role="alert">
+                {t("โหลดประวัติการอบรมไม่สำเร็จ", "Could not load training record")}: {loadError}
+              </p>
+            ) : null}
+          </section>
 
       <section className={styles.employeeRecordDownloadBox} aria-label="Download completed training files">
         <div>
@@ -515,6 +659,8 @@ export default function RecordModule() {
           </aside>
         )}
       </div>
+        </>
+      ) : null}
     </section>
   );
 }
