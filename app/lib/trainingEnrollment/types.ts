@@ -17,9 +17,27 @@ export type AttendanceRecord = {
   remark: string;
 };
 
+/** What the employee actually enrolled in. Snapshotted onto the enrollment so the employee
+ *  portal never has to read the organisation-wide plan list. */
+export type EnrollmentPlanInfo = {
+  planCode: string;
+  planName: string;
+  batchName: string;
+  courseCode: string;
+  courseName: string;
+  hours: number;
+  instructor: string;
+  provider: string;
+  venue: string;
+  startAt: string;
+  endAt: string;
+  owner: "CENTER" | "FACTORY";
+};
+
 export type EnrollmentRecord = {
   id: string;
   planId: string;
+  plan: EnrollmentPlanInfo;
   employeeId: string;
   employeeUserId: string | null;
   employeeCode: string;

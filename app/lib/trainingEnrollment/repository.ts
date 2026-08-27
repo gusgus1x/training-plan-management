@@ -26,10 +26,25 @@ const employeeInclude = {
   employee_level: true,
 } satisfies Prisma.employeeInclude;
 
+// The OAP fields ride along so an employee can see what they enrolled in without calling the
+// rolling-plan list, which would hand them every plan in the organisation to read three of them.
 const enrollmentInclude = {
   employee: { include: employeeInclude },
   attendance: true,
-  training_plan: { include: { training_plan_oap: { select: { company_id: true } } } },
+  training_plan: {
+    include: {
+      training_plan_oap: {
+        select: {
+          company_id: true,
+          course_name_snapshot: true,
+          planned_duration_hours: true,
+          instructor_name_text: true,
+          provider_name_text: true,
+          course: { select: { course_code: true } },
+        },
+      },
+    },
+  },
 } satisfies Prisma.training_enrollmentInclude;
 
 type EnrollmentWithRelations = Prisma.training_enrollmentGetPayload<{ include: typeof enrollmentInclude }>;
@@ -56,11 +71,27 @@ const mapStatus = (approvalStatus: string, planOwnerIsFactory: boolean): Enrollm
 };
 
 const mapEnrollment = (row: EnrollmentWithRelations) => {
-  const planOwnerIsFactory = row.training_plan.training_plan_oap.company_id !== null;
+  const plan = row.training_plan;
+  const oap = plan.training_plan_oap;
+  const planOwnerIsFactory = oap.company_id !== null;
   const employee = row.employee;
   return {
     id: row.enrollment_id.toString(),
     planId: row.plan_id.toString(),
+    plan: {
+      planCode: plan.plan_code,
+      planName: plan.plan_name,
+      batchName: plan.batch_name || `Batch ${plan.batch_no}`,
+      courseCode: oap.course.course_code,
+      courseName: oap.course_name_snapshot,
+      hours: oap.planned_duration_hours,
+      instructor: oap.instructor_name_text || "",
+      provider: oap.provider_name_text || "",
+      venue: plan.venue || "",
+      startAt: plan.start_datetime.toISOString(),
+      endAt: plan.end_datetime.toISOString(),
+      owner: planOwnerIsFactory ? ("FACTORY" as const) : ("CENTER" as const),
+    },
     employeeId: employee.employee_id.toString(),
     // Carried through so the layers above can move to the durable key without another query.
     employeeUserId: row.employee_user_id ?? employee.user_id ?? null,

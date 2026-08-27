@@ -33,6 +33,7 @@ export const listEnrollments = async (filters: EnrollmentListFilters) => {
   const params = new URLSearchParams();
   if (filters.planId) params.set("planId", filters.planId);
   if (filters.employeeId) params.set("employeeId", filters.employeeId);
+  if (filters.employeeUserId) params.set("employeeUserId", filters.employeeUserId);
   const response = await fetch(`/api/training-plan/enrollments?${params.toString()}`, {
     credentials: "include",
     cache: "no-store",
