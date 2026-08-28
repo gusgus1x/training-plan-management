@@ -210,14 +210,11 @@ export default function RecordModule() {
   const [detailModalEnrollment, setDetailModalEnrollment] = useState<EnrollmentRecord | null>(null);
 
   useEffect(() => {
-    if (!employeeId) {
-      setEnrollments([]);
-      setIsLoading(false);
-      return;
-    }
     setIsLoading(true);
     setLoadError(null);
-    listEnrollments({ planId: null, employeeId, employeeUserId: null })
+    // No employee filter is sent: the server scopes an EMPLOYEE caller to themselves. Guarding on
+    // employeeId here blanks the page for an account that carries only the durable key.
+    listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
       .then((result) => {
         setEnrollments(result.enrollments || []);
       })
@@ -228,7 +225,7 @@ export default function RecordModule() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [employeeId]);
+  }, []);
 
   const pendingEnrollments = useMemo(
     () => enrollments.filter((enrollment) => enrollment.attendance?.status !== "PRESENT"),
