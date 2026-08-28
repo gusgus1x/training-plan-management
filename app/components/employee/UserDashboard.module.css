@@ -322,6 +322,21 @@
   transform: translateY(-2px);
 }
 
+.lockedMenuBox {
+  opacity: 0.65;
+  cursor: not-allowed !important;
+  border-color: var(--ui-30-border) !important;
+  background: var(--ui-60-surface-soft) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.lockedMenuBox:hover {
+  border-color: var(--ui-30-border) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
 .cardHeaderRow {
   display: flex;
   align-items: center;
@@ -622,7 +637,7 @@
 
 .detailCard:first-child {
   grid-column: span 2;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(248, 250, 252, 0.85) 100%);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, var(--ui-60-surface-soft) 100%);
   border-color: rgba(16, 185, 129, 0.25);
 }
 

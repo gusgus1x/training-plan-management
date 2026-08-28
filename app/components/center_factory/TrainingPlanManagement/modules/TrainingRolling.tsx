@@ -62,6 +62,9 @@ export type RollingCourseDetail = {
   courseType: string;
   courseGroup: string;
   remark: string;
+  targetPositions?: string[];
+  targetLevels?: string[];
+  targetCompanies?: string[];
 };
 
 // Kept structurally identical to the legacy WorkflowRollingPlan shape (see
@@ -175,6 +178,9 @@ const mapCourseDetail = (course: WorkflowCourse): RollingCourseDetail => ({
   courseType: course.courseType,
   courseGroup: course.courseGroup,
   remark: course.remark || "",
+  targetPositions: (course as unknown as Record<string, unknown>).targetPositions as string[] || [],
+  targetLevels: (course as unknown as Record<string, unknown>).targetLevels as string[] || [],
+  targetCompanies: (course as unknown as Record<string, unknown>).targetCompanies as string[] || [],
 });
 
 const mapRecordToRollingPlan = (record: RollingPlanRecord): RollingPlan => {
