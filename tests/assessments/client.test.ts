@@ -32,6 +32,7 @@ describe("assessment client", () => {
       passingScorePercent: "80",
       timeLimitMinutes: null,
       status: "DRAFT",
+      questions: [],
     } satisfies AssessmentWriteInput;
     await createAssessment(input, fetcher);
     expect(fetcher).toHaveBeenCalledWith(
