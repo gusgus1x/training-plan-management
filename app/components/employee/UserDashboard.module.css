@@ -322,6 +322,21 @@
   transform: translateY(-2px);
 }
 
+.lockedMenuBox {
+  opacity: 0.65;
+  cursor: not-allowed !important;
+  border-color: var(--ui-30-border) !important;
+  background: var(--ui-60-surface-soft) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.lockedMenuBox:hover {
+  border-color: var(--ui-30-border) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
 .cardHeaderRow {
   display: flex;
   align-items: center;

@@ -6,6 +6,7 @@ export const moduleCards: Array<{
   title: string;
   detail: string;
   metric: string;
+  locked?: boolean;
 }> = [
   {
     key: "register",
@@ -40,7 +41,8 @@ export const moduleCards: Array<{
     eyebrow: "Report",
     title: "Training Report",
     detail: "Prepare and review employee training reports for HRD follow-up.",
-    metric: "Ready",
+    metric: "Locked",
+    locked: true,
   },
   {
     key: "calendar",

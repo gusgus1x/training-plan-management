@@ -31,7 +31,9 @@ export type ReportModuleTopic = {
 };
 
 export const centerReportItems: readonly ReportModuleTopic[] = [
-  { ...withSlug(summaryDashboardModule), icon: "📊", Component: SummaryDashboard, locked: true },
-  { ...withSlug(scheduleCalendarModule), icon: "📅", Component: ScheduleCalendar, locked: true },
+  { ...withSlug(summaryDashboardModule), icon: "📊", Component: SummaryDashboard },
+  { ...withSlug(scheduleCalendarModule), icon: "📅", Component: ScheduleCalendar },
+  // Locked until it has a backend: sending a report only adds it to local component state, and
+  // announcement and notification are both empty, so a sent report reaches nobody.
   { ...withSlug(internalReportModule), icon: "✉️", Component: InternalReport, locked: true },
 ];

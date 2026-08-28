@@ -417,7 +417,10 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
     ...moduleCards.map((module) => ({
       title: module.title,
       active: activeModule === module.key,
-      onClick: () => setActiveModule(module.key),
+      locked: module.locked,
+      onClick: () => {
+        if (!module.locked) setActiveModule(module.key);
+      },
     })),
   ];
 
@@ -923,35 +926,40 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
 
                 const theme = moduleThemes[module.key];
 
+                const isLocked = module.locked;
+
                 return (
                   <button
-                    className={styles.menuBox}
+                    className={`${styles.menuBox} ${isLocked ? styles.lockedMenuBox : ""}`}
                     key={module.key}
                     type="button"
+                    disabled={isLocked}
                     style={{
                       "--card-accent": theme.accent,
                       "--card-accent-soft": theme.accentSoft,
                       "--card-accent-border": theme.accentBorder,
                     } as CSSProperties}
-                    onClick={() => setActiveModule(module.key)}
+                    onClick={() => {
+                      if (!isLocked) setActiveModule(module.key);
+                    }}
                   >
                     <div className={styles.cardHeaderRow}>
                       <div className={styles.cardIconBox} aria-hidden="true">
-                        <span className={styles.cardEmojiIcon}>{theme.icon}</span>
+                        <span className={styles.cardEmojiIcon}>{isLocked ? "🔒" : theme.icon}</span>
                       </div>
                       <span className={styles.cardIndexPill} aria-hidden="true">
-                        {String(index + 1).padStart(2, "0")}
+                        {isLocked ? "🔒" : String(index + 1).padStart(2, "0")}
                       </span>
                     </div>
 
                     <div className={styles.cardBodyContent}>
-                      <span className={styles.cardKicker}>{theme.badgeText || module.eyebrow}</span>
+                      <span className={styles.cardKicker}>{isLocked ? (isThai ? "🔒 ล็อกอยู่" : "🔒 Locked") : (theme.badgeText || module.eyebrow)}</span>
                       <strong className={styles.cardMainTitle} translate="no">{module.title}</strong>
                       <p className={styles.cardDescText}>{module.detail}</p>
                     </div>
 
                     <div className={styles.cardFooterAction}>
-                      <span className={styles.openBtn}>{isThai ? "เปิด" : "Open"}</span>
+                      <span className={styles.openBtn}>{isLocked ? (isThai ? "🔒 ล็อกอยู่" : "🔒 Locked") : (isThai ? "เปิด" : "Open")}</span>
                     </div>
                   </button>
                 );
