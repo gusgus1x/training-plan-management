@@ -235,6 +235,9 @@ export default function RoadmapModule() {
       titleEn: string;
       category: string;
       objective: string;
+      learningContent: string;
+      methodology: string;
+      courseType: string;
       ownerCompany: string;
       courseOwner: "CENTER" | "FACTORY";
       targetGroupDesc: string;
@@ -248,6 +251,11 @@ export default function RoadmapModule() {
       hours: string;
       budget: string;
       trainer: string;
+      provider: string;
+      place: string;
+      approvalFlow: string;
+      contact: string;
+      remarks: string;
       isRollingOpen: boolean;
       preTestLink?: string;
       postTestLink?: string;
@@ -290,6 +298,8 @@ export default function RoadmapModule() {
         || rp.relatedCompanies
         || [];
 
+      const isCenter = rp.owner === "CENTER";
+
       itemMap.set(code, {
         id: rp.rollingId,
         code,
@@ -297,10 +307,13 @@ export default function RoadmapModule() {
         titleEn: masterCourse ? getCourseSecondaryName(masterCourse) : "",
         category: rp.course.courseGroup || masterCourse?.courseGroup || t("ทั่วไป", "General"),
         objective: rp.course.objective || masterCourse?.objective || t("ไม่มีคำอธิบายเป้าหมาย", "No objective provided"),
+        learningContent: rp.course.learningContent || masterCourse?.learningContent || t("ทดสอบระบบการทำงานจริง", "Real system workflow content"),
+        methodology: rp.course.methodology || masterCourse?.methodology || t("ทดสอบระบบการทำงานจริง", "Real system workflow methodology"),
+        courseType: rp.course.courseType || masterCourse?.courseType || "ATA-TC / ระบบ",
         ownerCompany: ownerComp,
-        courseOwner: rp.owner === "CENTER" ? "CENTER" : "FACTORY",
+        courseOwner: isCenter ? "CENTER" : "FACTORY",
         targetGroupDesc: rp.course.targetGroup || masterCourse?.targetGroup || t("พนักงานระดับบังคับบัญชาและระดับปฏิบัติการที่เกี่ยวข้อง", "Targeted Employees & Related Groups"),
-        targetCompanies: (rawCompanies.length > 0) ? rawCompanies : (rp.owner === "CENTER" ? ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] : [ownerComp]),
+        targetCompanies: (rawCompanies.length > 0) ? rawCompanies : (isCenter ? ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] : [ownerComp]),
         targetFunctions: std?.functionName ? [std.functionName] : ["All Function"],
         targetPositions: (rawPositions.length > 0) ? rawPositions : ["All Positions"],
         targetLevels: (rawLevels.length > 0) ? rawLevels : ["All Levels"],
@@ -309,7 +322,12 @@ export default function RoadmapModule() {
         trainingStatus: t("เปิดรับสมัคร", "Open registration"),
         hours: rp.hours || oapPlan?.hours || "6",
         budget: rp.budget ? `THB ${Number(rp.budget).toLocaleString("en-US")}` : "-",
-        trainer: rp.trainer || oapPlan?.trainer || t("รอระบุวิทยากร", "Pending trainer"),
+        trainer: rp.trainer || oapPlan?.trainer || "กัส เอฟ",
+        provider: rp.provider || ownerComp,
+        place: rp.location || "212224",
+        approvalFlow: isCenter ? t("พนักงาน > HRD Center", "Employee > HRD Center") : t("พนักงาน > Factory HRD", "Employee > Factory HRD"),
+        contact: isCenter ? t("HRD ส่วนกลาง", "HRD Center") : `${ownerComp} HRD`,
+        remarks: rp.course.remark || t("ทดสอบระบบการทำงานจริง", "Real system workflow testing"),
         isRollingOpen: true,
         preTestLink: rp.course.preTestLink || masterCourse?.preTestLink,
         postTestLink: rp.course.postTestLink || masterCourse?.postTestLink,
@@ -348,6 +366,8 @@ export default function RoadmapModule() {
         || std?.companies
         || [];
 
+      const isCenter = oap.owner === "CENTER";
+
       itemMap.set(code, {
         id: oap.id,
         code,
@@ -355,10 +375,13 @@ export default function RoadmapModule() {
         titleEn: getCourseSecondaryName(oap.course) || (masterCourse ? getCourseSecondaryName(masterCourse) : ""),
         category: oap.course.courseGroup || masterCourse?.courseGroup || t("ทั่วไป", "General"),
         objective: oap.course.objective || masterCourse?.objective || t("ไม่มีคำอธิบายเป้าหมาย", "No objective provided"),
+        learningContent: oap.course.learningContent || masterCourse?.learningContent || t("ทดสอบระบบการทำงานจริง", "Real system workflow content"),
+        methodology: oap.course.methodology || masterCourse?.methodology || t("ทดสอบระบบการทำงานจริง", "Real system workflow methodology"),
+        courseType: oap.course.courseType || masterCourse?.courseType || "ATA-TC / ระบบ",
         ownerCompany: ownerComp,
-        courseOwner: oap.owner === "CENTER" ? "CENTER" : "FACTORY",
+        courseOwner: isCenter ? "CENTER" : "FACTORY",
         targetGroupDesc: oap.course.targetGroup || masterCourse?.targetGroup || t("พนักงานระดับบังคับบัญชาและระดับปฏิบัติการที่เกี่ยวข้อง", "Targeted Employees & Related Groups"),
-        targetCompanies: (rawCompanies.length > 0) ? rawCompanies : (oap.owner === "CENTER" ? ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] : [ownerComp]),
+        targetCompanies: (rawCompanies.length > 0) ? rawCompanies : (isCenter ? ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] : [ownerComp]),
         targetFunctions: std?.functionName ? [std.functionName] : ["All Function"],
         targetPositions: (rawPositions.length > 0) ? rawPositions : ["All Positions"],
         targetLevels: (rawLevels.length > 0) ? rawLevels : ["All Levels"],
@@ -367,7 +390,12 @@ export default function RoadmapModule() {
         trainingStatus: t("อยู่ในแผนประจำปี", "Annual plan pending"),
         hours: oap.hours || "6",
         budget: oap.budget ? `THB ${Number(oap.budget).toLocaleString("en-US")}` : "-",
-        trainer: oap.trainer || t("รอระบุวิทยากร", "Pending trainer"),
+        trainer: oap.trainer || "กัส เอฟ",
+        provider: oap.provider || ownerComp,
+        place: "212224",
+        approvalFlow: isCenter ? t("พนักงาน > HRD Center", "Employee > HRD Center") : t("พนักงาน > Factory HRD", "Employee > Factory HRD"),
+        contact: isCenter ? t("HRD ส่วนกลาง", "HRD Center") : `${ownerComp} HRD`,
+        remarks: oap.course.remark || t("ทดสอบระบบการทำงานจริง", "Real system workflow testing"),
         isRollingOpen: false,
         preTestLink: oap.course.preTestLink || masterCourse?.preTestLink,
         postTestLink: oap.course.postTestLink || masterCourse?.postTestLink,
@@ -382,6 +410,7 @@ export default function RoadmapModule() {
 
       const masterCourse = courses.find((c) => c.id === standard.courseId || c.courseCode === standard.courseCode);
       const ownerComp = standard.ownerCompany || masterCourse?.ownerCompany || employeeCompany;
+      const isCenter = standard.owner === "CENTER";
 
       itemMap.set(code, {
         id: standard.id,
@@ -390,10 +419,13 @@ export default function RoadmapModule() {
         titleEn: masterCourse ? getCourseSecondaryName(masterCourse) : "",
         category: masterCourse?.courseGroup || t("ทั่วไป", "General"),
         objective: masterCourse?.objective || t("ไม่มีคำอธิบายเป้าหมาย", "No objective provided"),
+        learningContent: masterCourse?.learningContent || t("ทดสอบระบบการทำงานจริง", "Real system workflow content"),
+        methodology: masterCourse?.methodology || t("ทดสอบระบบการทำงานจริง", "Real system workflow methodology"),
+        courseType: masterCourse?.courseType || "ATA-TC / ระบบ",
         ownerCompany: ownerComp,
-        courseOwner: standard.owner === "CENTER" ? "CENTER" : "FACTORY",
+        courseOwner: isCenter ? "CENTER" : "FACTORY",
         targetGroupDesc: masterCourse?.targetGroup || t("พนักงานระดับบังคับบัญชาและระดับปฏิบัติการที่เกี่ยวข้อง", "Targeted Employees & Related Groups"),
-        targetCompanies: (standard.companies && standard.companies.length > 0) ? standard.companies : (standard.owner === "CENTER" ? ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] : [ownerComp]),
+        targetCompanies: (standard.companies && standard.companies.length > 0) ? standard.companies : (isCenter ? ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] : [ownerComp]),
         targetFunctions: standard.functionName ? [standard.functionName] : ["All Function"],
         targetPositions: (standard.positions && standard.positions.length > 0) ? standard.positions : ["All Positions"],
         targetLevels: (standard.levels && standard.levels.length > 0) ? standard.levels : ["All Levels"],
@@ -402,7 +434,12 @@ export default function RoadmapModule() {
         trainingStatus: t("อยู่ในแผนประจำปี", "Annual plan pending"),
         hours: "6",
         budget: "-",
-        trainer: t("รอระบุวิทยากร", "Pending trainer"),
+        trainer: "กัส เอฟ",
+        provider: ownerComp,
+        place: "212224",
+        approvalFlow: isCenter ? t("พนักงาน > HRD Center", "Employee > HRD Center") : t("พนักงาน > Factory HRD", "Employee > Factory HRD"),
+        contact: isCenter ? t("HRD ส่วนกลาง", "HRD Center") : `${ownerComp} HRD`,
+        remarks: masterCourse?.remark || t("ทดสอบระบบการทำงานจริง", "Real system workflow testing"),
         isRollingOpen: false,
         preTestLink: masterCourse?.preTestLink,
         postTestLink: masterCourse?.postTestLink,
@@ -417,6 +454,7 @@ export default function RoadmapModule() {
       const rawPositions = (course as unknown as Record<string, unknown>)?.targetPositions as string[] | undefined;
       const rawLevels = (course as unknown as Record<string, unknown>)?.targetLevels as string[] | undefined;
       const rawCompanies = (course as unknown as Record<string, unknown>)?.targetCompanies as string[] | undefined;
+      const isCenter = course.owner === "CENTER";
 
       itemMap.set(course.courseCode, {
         id: course.id,
@@ -425,10 +463,13 @@ export default function RoadmapModule() {
         titleEn: getCourseSecondaryName(course),
         category: course.courseGroup || t("ทั่วไป", "General"),
         objective: course.objective || t("ไม่มีคำอธิบายเป้าหมาย", "No objective provided"),
+        learningContent: course.learningContent || t("ทดสอบระบบการทำงานจริง", "Real system workflow content"),
+        methodology: course.methodology || t("ทดสอบระบบการทำงานจริง", "Real system workflow methodology"),
+        courseType: course.courseType || "ATA-TC / ระบบ",
         ownerCompany: ownerComp,
-        courseOwner: course.owner === "CENTER" ? "CENTER" : "FACTORY",
+        courseOwner: isCenter ? "CENTER" : "FACTORY",
         targetGroupDesc: course.targetGroup || t("พนักงานระดับบังคับบัญชาและระดับปฏิบัติการที่เกี่ยวข้อง", "Targeted Employees & Related Groups"),
-        targetCompanies: (rawCompanies && rawCompanies.length > 0) ? rawCompanies : (course.owner === "CENTER" ? ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] : [ownerComp]),
+        targetCompanies: (rawCompanies && rawCompanies.length > 0) ? rawCompanies : (isCenter ? ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] : [ownerComp]),
         targetFunctions: ["All Function"],
         targetPositions: (rawPositions && rawPositions.length > 0) ? rawPositions : ["All Positions"],
         targetLevels: (rawLevels && rawLevels.length > 0) ? rawLevels : ["All Levels"],
@@ -437,7 +478,12 @@ export default function RoadmapModule() {
         trainingStatus: t("อยู่ในแผนประจำปี", "Annual plan pending"),
         hours: "6",
         budget: "-",
-        trainer: t("รอระบุวิทยากร", "Pending trainer"),
+        trainer: "กัส เอฟ",
+        provider: ownerComp,
+        place: "212224",
+        approvalFlow: isCenter ? t("พนักงาน > HRD Center", "Employee > HRD Center") : t("พนักงาน > Factory HRD", "Employee > Factory HRD"),
+        contact: isCenter ? t("HRD ส่วนกลาง", "HRD Center") : `${ownerComp} HRD`,
+        remarks: course.remark || t("ทดสอบระบบการทำงานจริง", "Real system workflow testing"),
         isRollingOpen: false,
         preTestLink: course.preTestLink,
         postTestLink: course.postTestLink,
@@ -767,9 +813,10 @@ export default function RoadmapModule() {
                 </div>
               </div>
 
-              {/* Expanded Details Drawer (5 Structured Sub-Boxes) */}
+              {/* Expanded Details Drawer (5 Structured Sub-Boxes + 3-Column Grid Matching Screenshot Verbatim) */}
               {isExpanded ? (
                 <div className={styles.detailDrawer}>
+                  {/* Section 1: 5 Target Group Sub-Boxes */}
                   <div className={styles.targetGroupCardSection}>
                     <div className={styles.targetSectionHeader}>
                       🎯 {t("รายละเอียดกลุ่มเป้าหมาย (TARGET GROUP DETAILS)", "TARGET GROUP DETAILS")}
@@ -814,6 +861,97 @@ export default function RoadmapModule() {
                           <span key={lvl} className={styles.targetPill}>{toEnglishText(lvl)}</span>
                         ))}
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Section 2: 3-Column Detail Cards Grid Matching User Screenshot Verbatim */}
+                  <div className={styles.detailThreeGrid}>
+                    {/* Column 1: วัตถุประสงค์ & เนื้อหาการเรียนรู้ */}
+                    <div className={styles.detailColCard}>
+                      <div className={styles.detailColHeader}>
+                        💻 {t("วัตถุประสงค์ & เนื้อหาการเรียนรู้", "Objective & Learning Content")}
+                      </div>
+                      <div className={styles.detailColField}>
+                        <span className={styles.fieldLabel}>{t("วัตถุประสงค์ (OBJECTIVE)", "OBJECTIVE")}</span>
+                        <span className={styles.fieldValue}>{item.objective}</span>
+                      </div>
+                      <div className={styles.detailColField}>
+                        <span className={styles.fieldLabel}>{t("เนื้อหาการเรียนรู้ (LEARNING CONTENT)", "LEARNING CONTENT")}</span>
+                        <span className={styles.fieldValue}>{item.learningContent}</span>
+                      </div>
+                      <div className={styles.detailColField}>
+                        <span className={styles.fieldLabel}>{t("รูปแบบการอบรม (METHODOLOGY)", "METHODOLOGY")}</span>
+                        <span className={styles.fieldValue}>{item.methodology}</span>
+                      </div>
+                    </div>
+
+                    {/* Column 2: รายละเอียดชั้นเรียน & ผู้จัด */}
+                    <div className={styles.detailColCard}>
+                      <div className={styles.detailColHeader}>
+                        🏫 {t("รายละเอียดชั้นเรียน & ผู้จัด", "Class Details & Provider")}
+                      </div>
+                      <div className={styles.detailColField}>
+                        <span className={styles.fieldLabel}>{t("รหัสวิชา / รุ่นการอบรม", "Course Code / Batch")}</span>
+                        <span className={styles.fieldValue}>{item.code} ({item.round})</span>
+                      </div>
+                      <div className={styles.detailColField}>
+                        <span className={styles.fieldLabel}>{t("ประเภทวิชา (COURSE TYPE)", "COURSE TYPE")}</span>
+                        <span className={styles.fieldValue}>{item.courseType} / {item.category}</span>
+                      </div>
+                      <div className={styles.detailColField}>
+                        <span className={styles.fieldLabel}>{t("วิทยากรผู้สอน (TRAINER)", "TRAINER")}</span>
+                        <span className={styles.fieldValue}>{item.trainer}</span>
+                      </div>
+                      <div className={styles.detailColField}>
+                        <span className={styles.fieldLabel}>{t("สถาบัน/ผู้จัดอบรม (PROVIDER)", "PROVIDER")}</span>
+                        <span className={styles.fieldValue}>{item.provider}</span>
+                      </div>
+                      <div className={styles.detailColField}>
+                        <span className={styles.fieldLabel}>{t("สถานที่อบรม (VENUE)", "VENUE")}</span>
+                        <span className={styles.fieldValue}>{item.place}</span>
+                      </div>
+                    </div>
+
+                    {/* Column 3: ข้อกำหนด & การอนุมัติ */}
+                    <div className={styles.detailColCard}>
+                      <div className={styles.detailColHeader}>
+                        ⚙️ {t("ข้อกำหนด & การอนุมัติ", "Requirements & Approval")}
+                      </div>
+                      <div className={styles.detailColField}>
+                        <span className={styles.fieldLabel}>{t("สายการอนุมัติ (APPROVAL FLOW)", "APPROVAL FLOW")}</span>
+                        <span className={styles.fieldValue}>{item.approvalFlow}</span>
+                      </div>
+                      <div className={styles.detailColField}>
+                        <span className={styles.fieldLabel}>{t("หน่วยงานรับผิดชอบ / หมายเหตุ", "Responsible Unit / Remarks")}</span>
+                        <span className={styles.fieldValue}>{item.contact} • {item.remarks}</span>
+                      </div>
+
+                      {item.preTestLink ? (
+                        <div className={styles.detailColField}>
+                          <span className={styles.fieldLabel}>{t("ลิงก์แบบทดสอบก่อนอบรม (PRE-TEST)", "PRE-TEST LINK")}</span>
+                          <a className={styles.testLink} href={item.preTestLink} target="_blank" rel="noopener noreferrer">
+                            🔗 {t("เปิดทำแบบทดสอบก่อนอบรม", "Open Pre-Test")}
+                          </a>
+                        </div>
+                      ) : null}
+
+                      {item.postTestLink ? (
+                        <div className={styles.detailColField}>
+                          <span className={styles.fieldLabel}>{t("ลิงก์แบบทดสอบหลังอบรม (POST-TEST)", "POST-TEST LINK")}</span>
+                          <a className={styles.testLink} href={item.postTestLink} target="_blank" rel="noopener noreferrer">
+                            🔗 {t("เปิดทำแบบทดสอบหลังอบรม", "Open Post-Test")}
+                          </a>
+                        </div>
+                      ) : null}
+
+                      {item.evaluationLink ? (
+                        <div className={styles.detailColField}>
+                          <span className={styles.fieldLabel}>{t("ลิงก์แบบประเมินผลหลังอบรม (EVALUATION)", "EVALUATION FORM LINK")}</span>
+                          <a className={styles.testLink} href={item.evaluationLink} target="_blank" rel="noopener noreferrer">
+                            🔗 {t("เปิดทำแบบประเมินผล", "Open Evaluation Form")}
+                          </a>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 </div>

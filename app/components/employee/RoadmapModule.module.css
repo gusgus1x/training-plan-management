@@ -524,15 +524,15 @@
   color: #ef4444;
 }
 
-/* 5 Structured Sub-Boxes Drawer */
+/* 5 Structured Sub-Boxes & 3-Column Grid Drawer */
 .detailDrawer {
-  padding: 16px;
+  padding: 18px;
   border-radius: var(--ui-radius-lg, 14px);
   background: var(--ui-60-surface-soft);
   border: 1px solid var(--ui-30-border);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
   animation: fadeIn 0.2s ease-out;
 }
 
@@ -609,6 +609,78 @@
   border: 1px solid var(--ui-30-border);
   color: var(--ui-30-ink);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* 3-Column Detail Cards Grid Matching Screenshot Verbatim */
+.detailThreeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .detailThreeGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.detailColCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: var(--ui-radius-lg, 14px);
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+}
+
+.detailColHeader {
+  font-size: 0.88rem;
+  font-weight: 900;
+  color: var(--ui-30-ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ui-30-border);
+}
+
+.detailColField {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fieldLabel {
+  font-size: 0.68rem;
+  font-weight: 900;
+  color: var(--ui-30-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.fieldValue {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: var(--ui-30-ink);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.testLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.83rem;
+  font-weight: 800;
+  color: #10b981;
+  text-decoration: underline;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.testLink:hover {
+  opacity: 0.8;
 }
 
 /* Empty Box */
