@@ -57,6 +57,16 @@ describe("login UI contract", () => {
     expect(authGateSource).toContain("logoutCurrentSession()");
   });
 
+  it("keeps the logged-in user from the login response so the redirect cannot race", () => {
+    // The white screen after signing in: handleLogin discarded the user the API returned, so
+    // between router.push and the refreshed server layout effectiveUser was null while pathname
+    // had already moved off /login — which the guard effect read as "signed out" and bounced back.
+    expect(authGateSource).toContain("setSessionUser(await loginWithCredentials(username, password))");
+    expect(authGateSource).toContain("user ?? sessionUser ?? previewUser");
+    // Cleared on sign-out, or it would outlive the server session.
+    expect(authGateSource).toMatch(/setLogoutMessage\(null\);\s*\n[^}]*setSessionUser\(null\)/);
+  });
+
   it("maps employees separately and shares the center/factory application", () => {
     expect(pageSource).toContain('user.roleCode === "EMPLOYEE"');
     expect(pageSource).toContain("<UserDashboard");

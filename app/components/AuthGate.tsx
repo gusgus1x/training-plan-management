@@ -95,6 +95,10 @@ export default function AuthGate({
   const router = useRouter();
   const pathname = usePathname();
   const [previewUser, setPreviewUser] = useState<ClientSessionUser | null>(null);
+  // The user the login response already handed back. Without it there is a window between
+  // router.push and the refreshed server layout where the session is real but this component still
+  // sees null — and the effect below reads that as "signed out" and bounces back to /login.
+  const [sessionUser, setSessionUser] = useState<ClientSessionUser | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutMessage, setLogoutMessage] = useState<string | null>(null);
   const [targetReturnUrl, setTargetReturnUrl] = useState<string | null>(null);
@@ -120,7 +124,7 @@ export default function AuthGate({
   };
 
   const handleLogin = async (username: string, password: string) => {
-    await loginWithCredentials(username, password);
+    setSessionUser(await loginWithCredentials(username, password));
     setLogoutMessage(null);
     const dest = getSanitizedDestination(targetReturnUrl);
     router.push(dest);
@@ -167,6 +171,8 @@ export default function AuthGate({
 
     setIsLoggingOut(true);
     setLogoutMessage(null);
+    // Must be cleared here too, or it would outlive the server session and keep the user "in".
+    setSessionUser(null);
 
     if (previewUser) {
       setPreviewUser(null);
@@ -187,7 +193,8 @@ export default function AuthGate({
     }
   };
 
-  const effectiveUser = user ?? previewUser;
+  // The server session wins once it arrives; sessionUser only covers the gap right after login.
+  const effectiveUser = user ?? sessionUser ?? previewUser;
   const isDevelopmentPreview = !user && previewUser !== null;
 
   useEffect(() => {
