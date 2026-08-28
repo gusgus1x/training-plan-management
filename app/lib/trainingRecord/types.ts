@@ -1,3 +1,5 @@
+import type { AssessmentStageInfo } from "../trainingEnrollment/types";
+
 export type TrainingRecordExpenses = {
   accommodation: number;
   foodBeverage: number;
@@ -63,6 +65,8 @@ export type SaveResultsInput = {
 
 export type TrainingRecordSummary = {
   planId: string;
+  /** How this course is evaluated: an in-system form, an external link, or not at all. */
+  evaluation: AssessmentStageInfo;
   registeredCount: number;
   attendedCount: number;
   expenses: TrainingRecordExpenses;
@@ -106,6 +110,28 @@ export type SaveExpensesInput = Record<
 >;
 
 export type ExpenseKey = keyof SaveExpensesInput;
+
+/**
+ * When a result taken on `trainingDate` stops being valid, given the course's validity period.
+ * Returns null when the course declares none, because then there is no expiry to record.
+ *
+ * Month arithmetic overflows: 31 August plus 6 months is 31 February, which Date rolls forward
+ * into March. The day is clamped to the end of the target month instead, so a certificate cannot
+ * silently gain days.
+ */
+export const expiryFrom = (trainingDate: string, validityMonths: number | null) => {
+  if (!validityMonths || validityMonths <= 0) return null;
+
+  const start = new Date(`${trainingDate.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(start.getTime())) return null;
+
+  const year = start.getUTCFullYear();
+  const month = start.getUTCMonth() + validityMonths;
+  const lastDayOfTargetMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const day = Math.min(start.getUTCDate(), lastDayOfTargetMonth);
+
+  return new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10);
+};
 
 /**
  * One name per expense, shared by every screen. Training Actual and Training Record each had their

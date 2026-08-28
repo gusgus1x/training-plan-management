@@ -3174,6 +3174,7 @@
 .glowingDotGreen,
 .glowingDotBlue,
 .glowingDotAmber,
+.glowingDotGrey,
 .glowingDotRed {
   display: inline-block;
   width: 8px;
@@ -3198,6 +3199,12 @@
   background: #f59e0b;
   box-shadow: 0 0 8px #f59e0b;
   animation: pulseGlowAmber 1.8s infinite ease-in-out;
+}
+
+/* Deliberately still: nobody is waiting on this. Either the course has no evaluation, or it lives
+   on somebody else's form where this system cannot see it. */
+.glowingDotGrey {
+  background: #94a3b8;
 }
 
 .glowingDotRed {

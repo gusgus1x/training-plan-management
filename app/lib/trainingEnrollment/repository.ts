@@ -3,8 +3,8 @@ import { Prisma } from "../../generated/prisma/client";
 import { ApiError } from "../api/errors";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
+import { assessmentStage } from "./types";
 import type {
-  AssessmentStageInfo,
   AttendanceStatus,
   CreateEnrollmentInput,
   EnrollmentAction,
@@ -53,6 +53,7 @@ const enrollmentInclude = {
               evaluation_link: true,
               evaluation_form_after_30day_id: true,
               evaluation_after_30day_link: true,
+              validity_months: true,
             },
           },
         },
@@ -83,18 +84,6 @@ const mapStatus = (approvalStatus: string, planOwnerIsFactory: boolean): Enrollm
       return "Pending Approval";
   }
 };
-
-// A form wins over a link when a course somehow carries both: the in-system one is the copy this
-// system can actually read a score from.
-export const assessmentStage = (
-  formId: bigint | null,
-  link: string | null,
-): AssessmentStageInfo => {
-  if (formId !== null) return { mode: "FORM", link: null };
-  if (link && link.trim()) return { mode: "LINK", link: link.trim() };
-  return { mode: "NONE", link: null };
-};
-
 const mapEnrollment = (row: EnrollmentWithRelations) => {
   const plan = row.training_plan;
   const oap = plan.training_plan_oap;
@@ -128,6 +117,11 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
           oap.course.evaluation_after_30day_link,
         ),
       },
+      // 0 is stored the same as null elsewhere in the codebase: "no validity period".
+      validityMonths:
+        oap.course.validity_months && oap.course.validity_months > 0
+          ? oap.course.validity_months
+          : null,
       planCode: plan.plan_code,
       planName: plan.plan_name,
       batchName: plan.batch_name || `Batch ${plan.batch_no}`,

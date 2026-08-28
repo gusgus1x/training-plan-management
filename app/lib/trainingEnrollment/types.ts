@@ -37,6 +37,21 @@ export type AssessmentStageInfo = {
   link: string | null;
 };
 
+/**
+ * Reads one stage's configuration off a course. A form wins over a link when a course carries
+ * both: the in-system copy is the one this system can read a result from. Lives beside the type
+ * because both the enrollment and the training-record repositories resolve stages the same way,
+ * and two copies of this rule would drift.
+ */
+export const assessmentStage = (
+  formId: bigint | null,
+  link: string | null,
+): AssessmentStageInfo => {
+  if (formId !== null) return { mode: "FORM", link: null };
+  if (link && link.trim()) return { mode: "LINK", link: link.trim() };
+  return { mode: "NONE", link: null };
+};
+
 export type EnrollmentAssessmentInfo = {
   preTest: AssessmentStageInfo;
   postTest: AssessmentStageInfo;
@@ -48,6 +63,12 @@ export type EnrollmentAssessmentInfo = {
  *  portal never has to read the organisation-wide plan list. */
 export type EnrollmentPlanInfo = {
   assessment: EnrollmentAssessmentInfo;
+  /**
+   * How long a result for this course stays valid, in months. Null means it does not expire, so
+   * there is no expiry to record. When it is set, the expiry is the training date plus this many
+   * months - a figure the course already declares, which nobody should be retyping per attendee.
+   */
+  validityMonths: number | null;
   planCode: string;
   planName: string;
   batchName: string;

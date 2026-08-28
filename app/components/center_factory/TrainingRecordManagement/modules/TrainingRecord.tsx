@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "reac
 import { listEmployees } from "../../../../lib/employees/client";
 import type { EmployeeRecord } from "../../../../lib/employees/types";
 import { listTrainingRecords } from "../../../../lib/trainingRecord/client";
+import type { AssessmentStageInfo } from "../../../../lib/trainingEnrollment/types";
 import { EXPENSE_ITEMS } from "../../../../lib/trainingRecord/types";
 import type {
   TrainingRecordAttendee,
@@ -80,7 +81,9 @@ type CompletedCourse = {
     /** "Pending" is a real third state: nobody has decided yet. Folding it into "Failed"
      *  marked every ungraded attendee as having failed. */
     prePost: "Passed" | "Failed" | "Pending";
-    evaluation: "Done" | "Pending";
+    /** "None" - the course has no evaluation. "External" - it is somebody else's form and this
+     *  system cannot see whether it was filled in. Neither is the same as "Pending". */
+    evaluation: "Done" | "Pending" | "None" | "External";
   }>;
 };
 
@@ -123,6 +126,24 @@ const formatNumber = (value: number) => new Intl.NumberFormat("en-US").format(va
  * postTestPassed is null for everyone, and null took the false branch - the screen marked every
  * attendee in the company as having failed a test that was never given.
  */
+/**
+ * Whether this attendee's evaluation is outstanding. A course with no evaluation has nothing to
+ * wait for, and one that uses an external form is filled in somewhere this system cannot see.
+ *
+ * This used to be `evaluationCompleted ? "Done" : "Pending"`. evaluation_submission is empty, so
+ * every attendee read as "รอดำเนินการ" - including on courses that have no evaluation at all,
+ * which left HRD waiting on something that was never coming.
+ */
+export const evaluationStateOf = (
+  stage: AssessmentStageInfo,
+  completed: boolean,
+): "Done" | "Pending" | "None" | "External" => {
+  if (completed) return "Done";
+  if (stage.mode === "NONE") return "None";
+  if (stage.mode === "LINK") return "External";
+  return "Pending";
+};
+
 export const prePostOf = (attendee: TrainingRecordAttendee): "Passed" | "Failed" | "Pending" => {
   if (attendee.result?.completionStatus === "COMPLETED") return "Passed";
   if (attendee.result?.completionStatus === "NOT_COMPLETED") return "Failed";
@@ -455,7 +476,7 @@ export default function TrainingRecord() {
               department: attendee.department,
               position: attendee.position,
               prePost: prePostOf(attendee),
-              evaluation: attendee.evaluationCompleted ? "Done" : "Pending",
+              evaluation: evaluationStateOf(record.evaluation, attendee.evaluationCompleted),
             })),
         };
       });
@@ -1484,6 +1505,14 @@ export default function TrainingRecord() {
                               {attendee.evaluation === "Done" ? (
                                 <>
                                   <span className={styles.glowingDotBlue} /> ทำแล้ว
+                                </>
+                              ) : attendee.evaluation === "None" ? (
+                                <>
+                                  <span className={styles.glowingDotGrey} /> ไม่มีแบบประเมิน
+                                </>
+                              ) : attendee.evaluation === "External" ? (
+                                <>
+                                  <span className={styles.glowingDotGrey} /> ทำผ่านลิงก์
                                 </>
                               ) : (
                                 <>

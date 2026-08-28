@@ -24,6 +24,7 @@ import {
   COMPLETION_STATUSES,
   EXPENSE_ITEMS,
   completionStatusLabel,
+  expiryFrom,
   type CompletionStatus,
 } from "../../../../lib/trainingRecord/types";
 import type { CostBreakdown } from "../../../../lib/trainingRecord/types";
@@ -87,12 +88,22 @@ const emptyResultDraft: ResultDraft = {
 const draftsFromEnrollments = (records: EnrollmentRecord[]): Record<string, ResultDraft> => {
   const drafts: Record<string, ResultDraft> = {};
   for (const record of records) {
-    if (!record.result) continue;
+    // The expiry follows from the course's validity period and the training date, so it is filled
+    // in rather than asked for. HRD can still change it; what they cannot do is get it wrong on
+    // thirty rows by hand.
+    const derivedExpiry = expiryFrom(record.plan.startAt, record.plan.validityMonths) ?? "";
+
+    if (!record.result) {
+      // Only worth a draft when there is something to prefill.
+      if (derivedExpiry) drafts[record.id] = { ...emptyResultDraft, validUntil: derivedExpiry };
+      continue;
+    }
+
     drafts[record.id] = {
       preScore: record.result.preScore === null ? "" : String(record.result.preScore),
       postScore: record.result.postScore === null ? "" : String(record.result.postScore),
       completionStatus: record.result.completionStatus,
-      validUntil: record.result.validUntil ?? "",
+      validUntil: record.result.validUntil ?? derivedExpiry,
       certificateNo: record.result.certificateNo ?? "",
     };
   }
@@ -539,6 +550,7 @@ export default function TrainingActual() {
 
   // Every enrollment on one plan shares the same course, so the configuration is the plan's.
   const assessment = enrollments[0]?.plan.assessment ?? noAssessment;
+  const validityMonths = enrollments[0]?.plan.validityMonths ?? null;
 
   const handleSave = async () => {
     if (!selectedCourse || isSelectedCourseReadOnlyForFactory) {
@@ -1088,32 +1100,27 @@ export default function TrainingActual() {
                             ))}
                           </select>
                         </label>
-                        <label>
-                          เลขใบรับรอง
-                          <input
-                            type="text"
-                            value={draft.certificateNo}
-                            placeholder="-"
-                            onChange={(event) =>
-                              setResultField(attendee.id, "certificateNo", event.target.value)
-                            }
-                          />
-                        </label>
-                        <label>
-                          หมดอายุ
-                          <input
-                            type="date"
-                            value={draft.validUntil}
-                            onChange={(event) =>
-                              setResultField(attendee.id, "validUntil", event.target.value)
-                            }
-                          />
-                        </label>
+                        {/* The certificate number is not entered here for now. The draft still
+                            carries whatever is stored, so a save leaves an existing number
+                            untouched rather than clearing it. */}
+                        {/* A course with no validity period has no expiry to record. The box used
+                            to appear for every course, inviting a date that means nothing. */}
+                        {validityMonths === null ? null : (
+                          <label>
+                            หมดอายุ
+                            <input
+                              type="date"
+                              value={draft.validUntil}
+                              onChange={(event) =>
+                                setResultField(attendee.id, "validUntil", event.target.value)
+                              }
+                            />
+                          </label>
+                        )}
 
                         {saved?.result ? (
                           <small className={styles.actualResultSaved}>
                             บันทึกแล้ว: {completionStatusLabel(saved.result.completionStatus, language)}
-                            {saved.result.certificateNo ? ` · ${saved.result.certificateNo}` : ""}
                           </small>
                         ) : null}
                       </article>

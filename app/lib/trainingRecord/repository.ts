@@ -4,6 +4,7 @@ import { ApiError } from "../api/errors";
 import type { AuthenticatedPrincipal } from "../auth/types";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
+import { assessmentStage } from "../trainingEnrollment/types";
 import {
   EXPENSE_CATEGORIES,
   type CostBreakdown,
@@ -39,7 +40,19 @@ const employeeInclude = {
 } satisfies Prisma.employeeInclude;
 
 const trainingRecordInclude = {
-  training_plan_oap: { select: { company_id: true } },
+  training_plan_oap: {
+    select: {
+      company_id: true,
+      // How the course is evaluated. Without it the report cannot tell "nobody has filled the
+      // evaluation in yet" apart from "this course has no evaluation to fill in".
+      course: {
+        select: {
+          evaluation_form_id: true,
+          evaluation_link: true,
+        },
+      },
+    },
+  },
   training_expense: true,
   training_enrollment: {
     where: { approval_status: "APPROVED" },
@@ -128,6 +141,10 @@ const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
 
   return {
     planId: row.plan_id.toString(),
+    evaluation: assessmentStage(
+      row.training_plan_oap.course.evaluation_form_id,
+      row.training_plan_oap.course.evaluation_link,
+    ),
     registeredCount: attendees.length,
     attendedCount: attendees.filter((a) => a.attended).length,
     expenses,

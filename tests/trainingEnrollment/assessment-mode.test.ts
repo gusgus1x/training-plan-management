@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assessmentStage } from "../../app/lib/trainingEnrollment/repository";
+import { assessmentStage } from "../../app/lib/trainingEnrollment/types";
 
 // A course configures each stage as an in-system form, somebody else's link, or nothing at all.
 // The three are not interchangeable: NONE means there is no score to record, and putting one on a

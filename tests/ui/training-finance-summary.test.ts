@@ -143,6 +143,7 @@ describe("training finance summary", () => {
             evaluation: { mode: "NONE", link: null },
             evaluationAfter30Day: { mode: "NONE", link: null },
           },
+          validityMonths: null,
           planCode: "PLAN-001",
           planName: "Center course",
           batchName: "Batch 1",

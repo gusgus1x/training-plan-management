@@ -13,6 +13,7 @@ const enrollment = (overrides: Partial<EnrollmentRecord> = {}): EnrollmentRecord
       evaluation: { mode: "NONE", link: null },
       evaluationAfter30Day: { mode: "NONE", link: null },
     },
+    validityMonths: null,
     planCode: "PLAN-001",
     planName: "Quality Control Basics batch 1",
     batchName: "Batch 1",
