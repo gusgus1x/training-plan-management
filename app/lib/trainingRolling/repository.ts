@@ -20,6 +20,13 @@ const courseInclude = {
   evaluation_form: true,
   evaluation_form_after_30day: true,
   company: true,
+  course_standard_course: {
+    include: {
+      course_standard_target_position: { include: { position: true } },
+      course_standard_target_level: { include: { employee_level: true } },
+      course_standard_target_company: { include: { company: true } },
+    },
+  },
 } satisfies Prisma.courseInclude;
 
 type CourseWithRelations = Prisma.courseGetPayload<{ include: typeof courseInclude }>;
@@ -29,7 +36,20 @@ type CourseWithRelations = Prisma.courseGetPayload<{ include: typeof courseInclu
 const mapCourseSnapshot = (row: CourseWithRelations): WorkflowCourse => {
   const owner = row.company_id ? "FACTORY" : "CENTER";
   const ownerCompany = row.company?.company_code ?? "CENTER";
-  return {
+
+  const targetPositions = row.course_standard_course?.flatMap((sc) =>
+    sc.course_standard_target_position.map((p) => p.position.position_name_en || p.position.position_name_th || p.position.position_code)
+  ) ?? [];
+
+  const targetLevels = row.course_standard_course?.flatMap((sc) =>
+    sc.course_standard_target_level.map((l) => l.employee_level.level_code || l.employee_level.level_code_en || l.employee_level.level_key)
+  ) ?? [];
+
+  const targetCompanies = row.course_standard_course?.flatMap((sc) =>
+    sc.course_standard_target_company.map((c) => c.company.company_code)
+  ) ?? [];
+
+  const result: WorkflowCourse = {
     id: row.course_id.toString(),
     courseCode: row.course_code,
     courseNameTh: row.course_name,
@@ -60,6 +80,12 @@ const mapCourseSnapshot = (row: CourseWithRelations): WorkflowCourse => {
     ownerCompany,
     createdBy: row.created_by?.toString() || "",
   };
+
+  (result as unknown as Record<string, unknown>).targetPositions = targetPositions;
+  (result as unknown as Record<string, unknown>).targetLevels = targetLevels;
+  (result as unknown as Record<string, unknown>).targetCompanies = targetCompanies;
+
+  return result;
 };
 
 const oapSummaryInclude = {

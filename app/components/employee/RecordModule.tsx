@@ -14,8 +14,7 @@ import {
 import { useToast } from "../ToastHost";
 import { useUiLanguage } from "../ThaiUiLocalization";
 import ModuleHeader from "./ModuleHeader";
-import shell from "../shared/ModuleShell.module.css";
-import styles from "./UserDashboard.module.css";
+import styles from "./RecordModule.module.css";
 
 export type EmployeeTrainingRecord = {
   id: string;
@@ -30,10 +29,7 @@ export type EmployeeTrainingRecord = {
   instructor: string;
   location: string;
   note: string;
-  /** How this course assesses each stage: an in-system form, an external link, or nothing. */
   assessment: EnrollmentAssessmentInfo;
-  // Nobody has submitted an assessment through the system yet - assessment_submission is empty and
-  // has no repository - so these are always Pending until that feature is built.
   preTestStatus: "Pending" | "Completed";
   postTestStatus: "Pending" | "Completed";
   evaluationStatus: "Pending" | "Completed";
@@ -52,8 +48,6 @@ const downloadPurposes: Record<DownloadPurpose, { label: string; description: st
   },
 };
 
-// A record is one enrollment the employee actually attended. Attendance is the only completed
-// signal the database carries today: training_result has no rows and no repository yet.
 export const toRecord = (enrollment: EnrollmentRecord): EmployeeTrainingRecord => ({
   id: enrollment.id,
   courseCode: enrollment.plan.courseCode,
@@ -62,14 +56,11 @@ export const toRecord = (enrollment: EnrollmentRecord): EmployeeTrainingRecord =
   provider: enrollment.plan.owner === "CENTER" ? "HRD Center" : "Factory HRD",
   hours: enrollment.plan.hours,
   result: "Completed",
-  // Score and certificate come from the result HRD recorded, and stay absent until one exists.
-  // This file is downloaded as evidence for job applications, so a generated certificate number
-  // would be a forged credential rather than a placeholder.
   score: enrollment.result?.postScore ?? null,
   certificateNo: enrollment.result?.certificateNo || "-",
   instructor: enrollment.plan.instructor || "-",
   location: enrollment.plan.venue || "-",
-  note: enrollment.plan.batchName,
+  note: enrollment.plan.batchName || "1",
   assessment: enrollment.plan.assessment,
   preTestStatus: "Pending",
   postTestStatus: "Pending",
@@ -83,7 +74,6 @@ export const buildRecords = (enrollments: EnrollmentRecord[]) =>
     .sort((left, right) => right.completedDate.localeCompare(left.completedDate));
 
 const providers = ["all", "HRD Center", "Factory HRD"] as const;
-
 
 const formatDate = (value: string) =>
   new Intl.DateTimeFormat("en-GB", {
@@ -148,106 +138,140 @@ const exportPersonalRecord = (
     ["Total Completed Hours", records.reduce((total, record) => total + record.hours, 0)],
     ["Generated Date", formatDate(new Date().toISOString().slice(0, 10))],
   ]
-    .map((row) => `<tr>${row.map((cell) => `<td>${escapeCell(cell)}</td>`).join("")}</tr>`)
+    .map(([key, value]) => `<tr><th>${escapeCell(key)}</th><td>${escapeCell(value)}</td></tr>`)
     .join("");
-  const workbook = `<!doctype html><html><head><meta charset="utf-8" /><style>body{font-family:Arial,sans-serif}table{border-collapse:collapse;margin-bottom:16px}td{border:1px solid #cbd5e1;padding:6px 8px;white-space:nowrap}.summary tr td:first-child,.records tr:first-child td{background:#f1f5f9;font-weight:700}</style></head><body><table class="summary">${summaryRows}</table><table class="records">${recordTableRows}</table></body></html>`;
-  const blob = new Blob([workbook], { type: "application/vnd.ms-excel;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
 
-  link.href = url;
-  link.download = `my-training-record-${new Date().toISOString().slice(0, 10)}.xls`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Training Record - ${escapeCell(employeeName)}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; color: #0f172a; }
+    h1 { margin-bottom: 4px; }
+    p { margin-top: 0; color: #475569; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+    th, td { border: 1px solid #cbd5e1; padding: 8px 10px; font-size: 12px; text-align: left; }
+    th { background-color: #f1f5f9; font-weight: bold; }
+    .summary-table th { width: 220px; }
+  </style>
+</head>
+<body>
+  <h1>Official Training Record Passport</h1>
+  <p>Issued by ATTG Training Plan Management System for ${escapeCell(employeeName)}</p>
+
+  <table class="summary-table">
+    <tbody>
+      ${summaryRows}
+    </tbody>
+  </table>
+
+  <h2>Completed Course History</h2>
+  <table>
+    <tbody>
+      ${recordTableRows}
+    </tbody>
+  </table>
+</body>
+</html>`;
+
+  const blob = new Blob([htmlContent], { type: "text/html" });
+  const downloadUrl = URL.createObjectURL(blob);
+  const downloadLink = document.createElement("a");
+  downloadLink.href = downloadUrl;
+  downloadLink.download = `Training_Record_${employeeName.replaceAll(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.html`;
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  downloadLink.remove();
+  URL.revokeObjectURL(downloadUrl);
 };
 
 export default function RecordModule() {
-  const authenticatedUser = useAuthenticatedUser();
   const { language } = useUiLanguage();
-  // One language at a time - a "ไทย / English" label shows both to a reader who asked for one.
-  const t = (th: string, en: string) => (language === "th" ? th : en);
-  const employeeName = profileValue(authenticatedUser?.displayName ?? authenticatedUser?.username);
-  const [records, setRecords] = useState<EmployeeTrainingRecord[]>([]);
-  const [rawEnrollments, setRawEnrollments] = useState<EnrollmentRecord[]>([]);
-  const [activeTab, setActiveTab] = useState<"pending" | "completed">("pending");
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedProvider, setSelectedProvider] = useState<(typeof providers)[number]>("all");
-  const [query, setQuery] = useState("");
-  const [selectedRecordId, setSelectedRecordId] = useState("");
-  const [downloadPurpose, setDownloadPurpose] = useState<DownloadPurpose>("job_change");
+  const isThai = language === "th";
+  const t = (th: string, en: string) => (isThai ? th : en);
+
+  const authenticatedUser = useAuthenticatedUser();
+  const employeeId = authenticatedUser?.employeeId ?? null;
+  const employeeName = profileValue(authenticatedUser?.username);
+  const employeeCode = profileValue(authenticatedUser?.employeeCode);
+  const employeeCompany = profileValue(authenticatedUser?.companyCode);
   const toast = useToast();
 
+  const [activeTab, setActiveTab] = useState<"pending" | "completed" | "download">("pending");
+  const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [query, setQuery] = useState("");
+  const [selectedProvider, setSelectedProvider] = useState<(typeof providers)[number]>("all");
+  const [downloadPurpose, setDownloadPurpose] = useState<DownloadPurpose>("job_change");
+  const [detailModalRecord, setDetailModalRecord] = useState<EmployeeTrainingRecord | null>(null);
+  const [detailModalEnrollment, setDetailModalEnrollment] = useState<EnrollmentRecord | null>(null);
+
   useEffect(() => {
-    let cancelled = false;
-
-    listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
-      .then(({ enrollments }) => {
-        if (cancelled) return;
-        setRawEnrollments(enrollments);
-        const nextRecords = buildRecords(enrollments);
-
-        setRecords(nextRecords);
-        setSelectedRecordId((current) =>
-          nextRecords.some((record) => record.id === current)
-            ? current
-            : nextRecords[0]?.id ?? "",
-        );
-        setLoadError(null);
+    if (!employeeId) {
+      setEnrollments([]);
+      setIsLoading(false);
+      return;
+    }
+    setIsLoading(true);
+    setLoadError(null);
+    listEnrollments({ planId: null, employeeId, employeeUserId: null })
+      .then((result) => {
+        setEnrollments(result.enrollments || []);
       })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        setLoadError(error instanceof Error ? error.message : "Could not load training record");
+      .catch((error) => {
+        const errorMsg = error instanceof Error ? error.message : "Failed to load enrollments";
+        setLoadError(errorMsg);
       })
       .finally(() => {
-        if (!cancelled) setIsLoading(false);
+        setIsLoading(false);
       });
+  }, [employeeId]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const pendingEnrollments = useMemo(
+    () => enrollments.filter((enrollment) => enrollment.attendance?.status !== "PRESENT"),
+    [enrollments],
+  );
 
-  const pendingEnrollments = useMemo(() => {
-    return rawEnrollments.filter(
-      (e) => e.status !== "Cancelled" && e.attendance?.status !== "PRESENT",
-    );
-  }, [rawEnrollments]);
+  const records = useMemo(() => buildRecords(enrollments), [enrollments]);
 
+  const filteredRecords = useMemo(
+    () =>
+      records.filter((record) => {
+        if (selectedProvider !== "all" && record.provider !== selectedProvider) {
+          return false;
+        }
+        if (!query.trim()) {
+          return true;
+        }
+        const normalizedQuery = query.toLowerCase().trim();
+        return (
+          record.courseCode.toLowerCase().includes(normalizedQuery) ||
+          record.courseTitle.toLowerCase().includes(normalizedQuery) ||
+          record.provider.toLowerCase().includes(normalizedQuery) ||
+          record.instructor.toLowerCase().includes(normalizedQuery) ||
+          record.location.toLowerCase().includes(normalizedQuery)
+        );
+      }),
+    [query, records, selectedProvider],
+  );
 
-  const filteredRecords = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-
-    return records.filter((record) => {
-      const matchesProvider = selectedProvider === "all" || record.provider === selectedProvider;
-      const matchesQuery =
-        !normalizedQuery ||
-        [
-          record.courseCode,
-          record.courseTitle,
-          record.provider,
-          record.instructor,
-        ].some((value) => value.toLowerCase().includes(normalizedQuery));
-
-      return matchesProvider && matchesQuery;
-    });
-  }, [query, records, selectedProvider]);
-
-  const selectedRecord =
-    filteredRecords.find((record) => record.id === selectedRecordId) ??
-    filteredRecords[0] ??
-    null;
+  const passportSummary = useMemo(() => {
+    const totalHours = records.reduce((sum, r) => sum + r.hours, 0);
+    const completedCount = records.length;
+    const scores = records.map((r) => r.score).filter((s): s is number => s !== null);
+    const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+    return { totalHours, completedCount, avgScore, pendingCount: pendingEnrollments.length };
+  }, [pendingEnrollments.length, records]);
 
   const handleExportAll = () => {
     if (records.length === 0) {
-      toast.warning(t("ไม่มีประวัติการอบรมให้ส่งออก", "No training record available to export"));
+      toast.error(t("ไม่มีประวัติการอบรมที่สำเร็จสำหรับดาวน์โหลด", "No completed records to download"));
       return;
     }
-
     const purpose = downloadPurposes[downloadPurpose];
-
     exportPersonalRecord(records, employeeName, purpose);
     toast.success(
       t(`ดาวน์โหลดประวัติการอบรม ${records.length} รายการแล้ว`, `Downloaded ${records.length} training record(s)`),
@@ -255,142 +279,206 @@ export default function RecordModule() {
   };
 
   return (
-    <section className={shell.moduleWorkspace}>
+    <section className={styles.recordWorkspace}>
       <ModuleHeader
-        eyebrow="Employee Training Record"
-        title="My Training Record"
+        eyebrow="My Record"
+        title="My Record"
         detail={t(
-          "ประวัติการอบรมส่วนตัว หลักสูตรที่สำเร็จ ชั่วโมงเรียนรู้ และหลักฐานประกอบ",
-          "A personal training passport for completed courses, learning hours, and evidence.",
+          "พาสปอร์ตและประวัติการอบรมส่วนตัว รายการหลักสูตรที่ลงทะเบียน ชั่วโมงเรียนรู้ และใบรับรอง",
+          "Personal training passport for registered & completed courses, learning hours, and certificates.",
         )}
         aside={
-          <span className={shell.permissionNote}>
-            {records.length} {t("รายการ", "completed")}
+          <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "var(--ui-30-muted)" }}>
+            {employeeName} ({employeeCode}) • {employeeCompany}
           </span>
         }
       />
 
-      {/* Workspace Tabs */}
-      <div style={{ display: "flex", gap: "10px", marginBottom: "16px", flexWrap: "wrap" }}>
+      {/* 1. Training Passport Hero Bar (Summary KPI Cards) */}
+      <section className={styles.passportHero} aria-label="Training Passport KPI Summary">
+        <div className={styles.heroStatCard}>
+          <div
+            className={styles.heroIconBadge}
+            style={{
+              background: "linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.3))",
+              color: "#10b981",
+            }}
+          >
+            🏆
+          </div>
+          <div className={styles.heroMeta}>
+            <span className={styles.heroLabel}>{t("ผ่านการอบรมแล้ว", "Completed Courses")}</span>
+            <span className={styles.heroValue}>{passportSummary.completedCount} {t("หลักสูตร", "courses")}</span>
+            <span className={styles.heroSub}>{t("บันทึกการเช็กชื่อเข้าร่วม", "Attended check-in verified")}</span>
+          </div>
+        </div>
+
+        <div className={styles.heroStatCard}>
+          <div
+            className={styles.heroIconBadge}
+            style={{
+              background: "linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.3))",
+              color: "#3b82f6",
+            }}
+          >
+            ⏱️
+          </div>
+          <div className={styles.heroMeta}>
+            <span className={styles.heroLabel}>{t("ชั่วโมงเรียนรู้สะสม", "Learning Hours")}</span>
+            <span className={styles.heroValue}>{passportSummary.totalHours} {t("ชั่วโมง", "hours")}</span>
+            <span className={styles.heroSub}>{t("สะสมปีปัจจุบัน", "Current year total")}</span>
+          </div>
+        </div>
+
+        <div className={styles.heroStatCard}>
+          <div
+            className={styles.heroIconBadge}
+            style={{
+              background: "linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(124, 58, 237, 0.3))",
+              color: "#8b5cf6",
+            }}
+          >
+            📊
+          </div>
+          <div className={styles.heroMeta}>
+            <span className={styles.heroLabel}>{t("คะแนนเฉลี่ยสอบ", "Average Post-Score")}</span>
+            <span className={styles.heroValue}>{passportSummary.avgScore !== null ? `${passportSummary.avgScore}%` : "-"}</span>
+            <span className={styles.heroSub}>{t("ผลทดสอบหลังอบรม", "Post-test average")}</span>
+          </div>
+        </div>
+
+        <div className={styles.heroStatCard}>
+          <div
+            className={styles.heroIconBadge}
+            style={{
+              background: "linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.3))",
+              color: "#f59e0b",
+            }}
+          >
+            ⏳
+          </div>
+          <div className={styles.heroMeta}>
+            <span className={styles.heroLabel}>{t("รออนุมัติ / รออบรม", "Pending Approvals")}</span>
+            <span className={styles.heroValue}>{passportSummary.pendingCount} {t("รายการ", "items")}</span>
+            <span className={styles.heroSub}>{t("สถานะการลงทะเบียน", "Registration pipeline")}</span>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. Navigation Tabs Bar */}
+      <div className={styles.tabBar} role="tablist" aria-label="Training Record Workspace Tabs">
         <button
+          className={`${styles.tabBtn} ${activeTab === "pending" ? styles.activeTab : ""}`}
           type="button"
+          role="tab"
+          aria-selected={activeTab === "pending"}
           onClick={() => setActiveTab("pending")}
-          style={{
-            padding: "10px 22px",
-            borderRadius: "999px",
-            border: activeTab === "pending" ? "1px solid var(--ui-30-primary)" : "1px solid var(--ui-30-border)",
-            background: activeTab === "pending" ? "var(--ui-30-primary)" : "var(--ui-60-surface-soft)",
-            color: activeTab === "pending" ? "#ffffff" : "var(--ui-30-ink)",
-            fontSize: "0.85rem",
-            fontWeight: 800,
-            cursor: "pointer",
-            boxShadow: activeTab === "pending" ? "0 4px 14px rgba(37, 99, 235, 0.25)" : "none",
-            transition: "all 0.2s ease",
-          }}
         >
-          ⏳ {t("สถานะลงทะเบียน & รออนุมัติ", "Registration Status & Approval")} ({pendingEnrollments.length})
+          ⏳ {t("สถานะลงทะเบียน & รออนุมัติ", "Registration Status & Approvals")}
+          <span className={styles.tabBadge}>{pendingEnrollments.length}</span>
         </button>
+
         <button
+          className={`${styles.tabBtn} ${activeTab === "completed" ? styles.activeTab : ""}`}
           type="button"
+          role="tab"
+          aria-selected={activeTab === "completed"}
           onClick={() => setActiveTab("completed")}
-          style={{
-            padding: "10px 22px",
-            borderRadius: "999px",
-            border: activeTab === "completed" ? "1px solid var(--ui-30-primary)" : "1px solid var(--ui-30-border)",
-            background: activeTab === "completed" ? "var(--ui-30-primary)" : "var(--ui-60-surface-soft)",
-            color: activeTab === "completed" ? "#ffffff" : "var(--ui-30-ink)",
-            fontSize: "0.85rem",
-            fontWeight: 800,
-            cursor: "pointer",
-            boxShadow: activeTab === "completed" ? "0 4px 14px rgba(37, 99, 235, 0.25)" : "none",
-            transition: "all 0.2s ease",
-          }}
         >
-          📜 {t("ประวัติการอบรมที่สำเร็จแล้ว", "Completed Records")} ({records.length})
+          📜 {t("ประวัติการอบรมที่สำเร็จแล้ว", "Completed Passport")}
+          <span className={styles.tabBadge}>{records.length}</span>
+        </button>
+
+        <button
+          className={`${styles.tabBtn} ${activeTab === "download" ? styles.activeTab : ""}`}
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "download"}
+          onClick={() => setActiveTab("download")}
+        >
+          📥 {t("ดาวน์โหลดประวัติ & เอกสาร", "Download Official Record")}
         </button>
       </div>
 
+      {/* TAB 1: Pending & Registration Status (Image 2 Card Layout) */}
       {activeTab === "pending" ? (
-        <section className={shell.panel} style={{ marginBottom: "24px" }} aria-label="Pending approval registrations">
-          <div className={shell.panelHeader}>
-            <div>
-              <p>Registration & Survey Status</p>
-              <h2>{t("หลักสูตรที่ลงทะเบียน / รอการพิจารณาอนุมัติ", "Registered Courses / Awaiting Approval")}</h2>
-            </div>
-            <p>{pendingEnrollments.length} {t("รายการ", "items")}</p>
+        <section className={styles.cardSection} aria-label="Pending approval registrations">
+          <div className={styles.cardSectionHeader}>
+            <h3 className={styles.cardSectionTitle}>
+              ⏳ {t("หลักสูตรที่ลงทะเบียน / รอการพิจารณาอนุมัติ", "Registered Courses / Awaiting Approval")}
+            </h3>
+            <span className={styles.cardCountBadge}>
+              {pendingEnrollments.length} {t("รายการ", "items")}
+            </span>
           </div>
 
-          <div style={{ display: "grid", gap: "12px", marginTop: "16px" }}>
+          <div className={styles.cardList}>
             {pendingEnrollments.map((enrollment) => {
               const isCenterOwner = enrollment.plan.owner === "CENTER";
               const isPending = enrollment.status === "Pending Approval";
               const isApproved = enrollment.status === "Center Approved" || enrollment.status === "Factory Approved";
               const isRejected = enrollment.status === "Rejected";
 
-              let statusBadgeText = isPending
+              const statusBadgeText = isPending
                 ? isCenterOwner
-                  ? t("🟡 รอ HRD Center พิจารณาอนุมัติ", "🟡 Awaiting HRD Center Approval")
-                  : t("🟡 รอ Factory HRD พิจารณาอนุมัติ", "🟡 Awaiting Factory HRD Approval")
+                  ? t("รอ HRD Center พิจารณาอนุมัติ", "Awaiting HRD Center Approval")
+                  : t("รอ Factory HRD พิจารณาอนุมัติ", "Awaiting Factory HRD Approval")
                 : isApproved
-                  ? t("🟢 อนุมัติการลงทะเบียนแล้ว (รอเข้าอบรม & ทำแบบสำรวจ)", "🟢 Approved - Ready for Training & Survey")
+                  ? t("อนุมัติการลงทะเบียนแล้ว (รอเข้าอบรม)", "Approved - Ready for Training")
                   : isRejected
-                    ? t("🔴 ถูกปฏิเสธการลงทะเบียน", "🔴 Registration Rejected")
+                    ? t("ถูกปฏิเสธการลงทะเบียน", "Registration Rejected")
                     : enrollment.status;
 
               return (
-                <div
-                  key={enrollment.id}
-                  style={{
-                    padding: "16px",
-                    borderRadius: "var(--ui-radius-lg)",
-                    background: "var(--ui-60-surface-soft)",
-                    border: "1px solid var(--ui-30-border)",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: "16px",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <span
-                        style={{
-                          fontSize: "0.78rem",
-                          fontWeight: 800,
-                          padding: "4px 12px",
-                          borderRadius: "999px",
-                          background: isPending
-                            ? "rgba(245, 158, 11, 0.15)"
-                            : isApproved
-                              ? "rgba(16, 185, 129, 0.15)"
-                              : "rgba(239, 68, 68, 0.15)",
-                          color: isPending
-                            ? "#d97706"
-                            : isApproved
-                              ? "#10b981"
-                              : "#dc2626",
-                          border: isPending
-                            ? "1px solid rgba(245, 158, 11, 0.3)"
-                            : isApproved
-                              ? "1px solid rgba(16, 185, 129, 0.3)"
-                              : "1px solid rgba(239, 68, 68, 0.3)",
-                        }}
-                      >
-                        {statusBadgeText}
-                      </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--ui-30-muted)", fontWeight: 700 }}>
+                <div className={styles.recordCard} key={enrollment.id}>
+                  {/* Top row matching Image 2 */}
+                  <div className={styles.cardHeaderRow}>
+                    <span
+                      className={`${styles.statusPill} ${
+                        isPending ? styles.statusPending : isApproved ? styles.statusApproved : styles.statusRejected
+                      }`}
+                    >
+                      <span className={styles.statusDot} />
+                      {statusBadgeText}
+                    </span>
+
+                    <div className={styles.cardRightHeaderGroup}>
+                      <span className={styles.providerTag}>
                         {isCenterOwner ? "🏛️ HRD Center" : "🏭 Factory HRD"}
                       </span>
+
+                      <button
+                        className={styles.viewDetailBtn}
+                        type="button"
+                        onClick={() => setDetailModalEnrollment(enrollment)}
+                      >
+                        🔍 {t("แสดงรายละเอียด", "View Details")}
+                      </button>
                     </div>
-                    <strong style={{ fontSize: "1.05rem", color: "var(--ui-30-ink)" }}>
-                      {enrollment.plan.courseName} ({enrollment.plan.courseCode})
-                    </strong>
-                    <div style={{ fontSize: "0.82rem", color: "var(--ui-30-muted)", display: "flex", gap: "12px", flexWrap: "wrap" }}>
-                      <span>📅 {enrollment.plan.startAt.slice(0, 10)}</span>
-                      <span>📍 {enrollment.plan.venue || "-"}</span>
-                      <span>👨‍🏫 {enrollment.plan.instructor || "-"}</span>
-                      <span>⏱️ {enrollment.plan.hours} {t("ชม.", "hrs")}</span>
+                  </div>
+
+                  {/* Course Title matching Image 2 */}
+                  <h4 className={styles.courseTitleText}>
+                    {enrollment.plan.courseName} ({enrollment.plan.courseCode})
+                  </h4>
+
+                  {/* Horizontal Info Bar matching Image 2 */}
+                  <div className={styles.infoBarGrid}>
+                    <div className={styles.infoBarItem}>
+                      <span className={styles.infoBarLabel}>{t("วันที่อบรม", "Training Date")}</span>
+                      <span className={styles.infoBarValue}>📅 {enrollment.plan.startAt.slice(0, 10)}</span>
+                    </div>
+                    <div className={styles.infoBarItem}>
+                      <span className={styles.infoBarLabel}>{t("สถานที่", "Venue")}</span>
+                      <span className={styles.infoBarValue}>📍 {enrollment.plan.venue || "-"}</span>
+                    </div>
+                    <div className={styles.infoBarItem}>
+                      <span className={styles.infoBarLabel}>{t("วิทยากร", "Instructor")}</span>
+                      <span className={styles.infoBarValue}>👨‍🏫 {enrollment.plan.instructor || "-"}</span>
+                    </div>
+                    <div className={styles.infoBarItem}>
+                      <span className={styles.infoBarLabel}>{t("ระยะเวลา", "Duration")}</span>
+                      <span className={styles.infoBarValue}>⏱️ {enrollment.plan.hours} {t("ชม.", "hrs")}</span>
                     </div>
                   </div>
                 </div>
@@ -398,277 +486,426 @@ export default function RecordModule() {
             })}
 
             {pendingEnrollments.length === 0 ? (
-              <p className={shell.emptyState}>
+              <div className={styles.emptyStateBox} style={{ padding: "20px" }}>
                 {t("ยังไม่มีรายการลงทะเบียนที่อยู่ระหว่างรออนุมัติ", "No pending registrations currently.")}
-              </p>
+              </div>
             ) : null}
           </div>
         </section>
       ) : null}
 
+      {/* TAB 2: Completed Passport (Image 2 Card Layout for Completed Records) */}
       {activeTab === "completed" ? (
-        <>
-          <section className={shell.panel}>
-            <div className={shell.toolbar} aria-label="Training record filters">
-              <input
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                }}
-                placeholder={t("ค้นหาหลักสูตร ผู้จัด วิทยากร...", "Search course, provider, instructor...")}
-              />
-              <div className={shell.filterGroup}>
-                <select
-                  value={selectedProvider}
-                  onChange={(event) => {
-                    setSelectedProvider(event.target.value as (typeof providers)[number]);
-                  }}
-                >
-                  {providers.map((provider) => (
-                    <option key={provider} value={provider}>
-                      {provider === "all" ? t("ผู้จัดทั้งหมด", "All providers") : provider}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {loadError ? (
-              <p className={shell.emptyState} role="alert">
-                {t("โหลดประวัติการอบรมไม่สำเร็จ", "Could not load training record")}: {loadError}
-              </p>
-            ) : null}
-          </section>
-
-      <section className={styles.employeeRecordDownloadBox} aria-label="Download completed training files">
-        <div>
-          <span>All Completed Training Files</span>
-          <h2>Download full training record</h2>
-          <p>
-            Download one file that includes every completed training record, certificate number,
-            learning hours, score, provider, evidence status, and document purpose.
-          </p>
-        </div>
-        <div className={styles.employeeRecordPurposeGroup} aria-label="Document purpose">
-          {(Object.keys(downloadPurposes) as DownloadPurpose[]).map((purposeKey) => (
-            <label key={purposeKey}>
-              <input
-                checked={downloadPurpose === purposeKey}
-                name="download-purpose"
-                onChange={() => {
-                  setDownloadPurpose(purposeKey);
-                }}
-                type="radio"
-              />
-              <span>
-                <strong>{downloadPurposes[purposeKey].label}</strong>
-                <small>{downloadPurposes[purposeKey].description}</small>
-              </span>
-            </label>
-          ))}
-        </div>
-        <div className={styles.employeeRecordDownloadMeta}>
-          <article>
-            <span>Records</span>
-            <strong>{records.length}</strong>
-          </article>
-          <article>
-            <span>Hours</span>
-            <strong>{records.reduce((total, record) => total + record.hours, 0)}</strong>
-          </article>
-          <button type="button" onClick={handleExportAll}>
-            Download All Records
-          </button>
-        </div>
-      </section>
-
-      <div className={shell.contentGrid}>
-        <section className={shell.panel} aria-label="Completed training list">
-          <div className={shell.panelHeader}>
-            <div>
-              <p>Completed History</p>
-              <h2>Training Timeline</h2>
-            </div>
-            <p>{filteredRecords.length} records</p>
+        <section className={styles.cardSection} aria-label="Completed training section">
+          <div className={styles.cardSectionHeader}>
+            <h3 className={styles.cardSectionTitle}>
+              📜 {t("ประวัติการอบรมที่สำเร็จแล้ว (Completed Training History)", "Completed Training History")}
+            </h3>
+            <span className={styles.cardCountBadge}>{filteredRecords.length} {t("รายการ", "records")}</span>
           </div>
 
-          <div className={styles.employeeRecordTimeline}>
+          {/* Integrated Single-Row Filter Toolbar */}
+          <div className={styles.toolbar} aria-label="Training record filters">
+            <select
+              className={styles.selectFilter}
+              value={selectedProvider}
+              onChange={(e) => setSelectedProvider(e.target.value as (typeof providers)[number])}
+            >
+              {providers.map((provider) => (
+                <option key={provider} value={provider}>
+                  {provider === "all" ? `-- ${t("ผู้จัดทั้งหมด", "All Providers")} --` : provider}
+                </option>
+              ))}
+            </select>
+
+            <div className={styles.searchInputBox}>
+              <span className={styles.searchIcon} aria-hidden="true">🔍</span>
+              <input
+                className={styles.searchInput}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t("ค้นหาชื่อหลักสูตร, รหัส, วิทยากร, สถานที่...", "Search course name, code, instructor...")}
+              />
+            </div>
+          </div>
+
+          {loadError ? (
+            <div className={styles.emptyStateBox} role="alert">
+              {t("โหลดประวัติการอบรมไม่สำเร็จ", "Could not load training record")}: {loadError}
+            </div>
+          ) : null}
+
+          {/* Cards List matching Image 2 Design */}
+          <div className={styles.cardList}>
             {filteredRecords.map((record) => (
-              <button
-                className={
-                  record.id === selectedRecord?.id
-                    ? styles.activeEmployeeRecordItem
-                    : styles.employeeRecordItem
-                }
-                key={record.id}
-                type="button"
-                onClick={() => {
-                  setSelectedRecordId(record.id);
-                }}
-              >
-                <time dateTime={record.completedDate}>{formatDate(record.completedDate)}</time>
-                <div>
-                  <strong>{record.courseTitle}</strong>
-                  <span>{record.courseCode} / {record.provider}</span>
+              <div className={styles.recordCard} key={record.id}>
+                {/* Top Row matching Image 2 with Completed status dot */}
+                <div className={styles.cardHeaderRow}>
+                  <span className={`${styles.statusPill} ${styles.statusCompleted}`}>
+                    <span className={styles.statusDot} />
+                    {t("ผ่านการอบรมเสร็จสมบูรณ์", "Completed")}
+                  </span>
+
+                  <div className={styles.cardRightHeaderGroup}>
+                    <span className={styles.providerTag}>
+                      {record.provider === "HRD Center" ? "🏛️ HRD Center" : "🏭 Factory HRD"}
+                    </span>
+
+                    <button
+                      className={styles.viewDetailBtn}
+                      type="button"
+                      onClick={() => setDetailModalRecord(record)}
+                    >
+                      🔍 {t("แสดงรายละเอียด", "View Details")}
+                    </button>
+                  </div>
                 </div>
-                <b>{record.result}</b>
-              </button>
+
+                {/* Course Title matching Image 2 */}
+                <h4 className={styles.courseTitleText}>
+                  {record.courseTitle} ({record.courseCode})
+                </h4>
+
+                {/* Horizontal Info Bar matching Image 2 */}
+                <div className={styles.infoBarGrid}>
+                  <div className={styles.infoBarItem}>
+                    <span className={styles.infoBarLabel}>{t("วันที่สำเร็จอบรม", "Completed Date")}</span>
+                    <span className={styles.infoBarValue}>📅 {formatDate(record.completedDate)}</span>
+                  </div>
+                  <div className={styles.infoBarItem}>
+                    <span className={styles.infoBarLabel}>{t("สถานที่อบรม", "Venue")}</span>
+                    <span className={styles.infoBarValue}>📍 {record.location || "-"}</span>
+                  </div>
+                  <div className={styles.infoBarItem}>
+                    <span className={styles.infoBarLabel}>{t("วิทยากรผู้สอน", "Instructor")}</span>
+                    <span className={styles.infoBarValue}>👨‍🏫 {record.instructor || "-"}</span>
+                  </div>
+                  <div className={styles.infoBarItem}>
+                    <span className={styles.infoBarLabel}>{t("ระยะเวลาเรียน", "Duration")}</span>
+                    <span className={styles.infoBarValue}>⏱️ {record.hours} {t("ชม.", "hrs")}</span>
+                  </div>
+                </div>
+              </div>
             ))}
+
             {filteredRecords.length === 0 ? (
-              <p className={shell.emptyState}>
+              <div className={styles.emptyStateBox}>
                 {isLoading
-                  ? t("กำลังโหลด...", "Loading...")
-                  : t("ไม่พบประวัติการอบรม", "No completed training record found.")}
-              </p>
+                  ? t("กำลังโหลดประวัติ...", "Loading records...")
+                  : t("ไม่พบประวัติการอบรมตามเงื่อนไข", "No completed training records found.")}
+              </div>
             ) : null}
           </div>
         </section>
+      ) : null}
 
-        {selectedRecord ? (
-        <aside className={shell.detailPanel} aria-label="Selected training record detail">
-          <div className={styles.employeeRecordDetailHead}>
-            <div>
-              <span>{selectedRecord.provider}</span>
-              <h2>{selectedRecord.courseTitle}</h2>
-              <p>{selectedRecord.courseCode} / {formatDate(selectedRecord.completedDate)}</p>
-            </div>
-            <b>{selectedRecord.result}</b>
-          </div>
-
-          <div className={styles.employeeRecordDetailGrid}>
-            <article>
-              <span>Hours</span>
-              <strong>{selectedRecord.hours}</strong>
-            </article>
-            <article>
-              <span>Score</span>
-              <strong>{selectedRecord.score ? `${selectedRecord.score}%` : "-"}</strong>
-            </article>
-            <article>
-              <span>Batch</span>
-              <strong>{selectedRecord.note}</strong>
-            </article>
-            <article>
-              <span>Result</span>
-              <strong>{selectedRecord.result}</strong>
-            </article>
-          </div>
-
-          <dl className={styles.employeeRecordMeta}>
-            <div>
-              <dt>Certificate No.</dt>
-              <dd>{selectedRecord.certificateNo}</dd>
-            </div>
-            <div>
-              <dt>Instructor</dt>
-              <dd>{selectedRecord.instructor}</dd>
-            </div>
-            <div>
-              <dt>Location</dt>
-              <dd>{selectedRecord.location}</dd>
-            </div>
-            <div>
-              <dt>Provider</dt>
-              <dd>{selectedRecord.provider}</dd>
-            </div>
-          </dl>
-
-          <div className={styles.employeeRecordEvidence}>
-            <span>{t("หมายเหตุหลักฐาน", "Evidence Note")}</span>
+      {/* TAB 3: Download Official Document Passport Panel (With Completed Courses List Preview!) */}
+      {activeTab === "download" ? (
+        <section className={styles.exportPanel} aria-label="Download completed training files">
+          <div className={styles.exportHeader}>
+            <h3>📑 {t("ดาวน์โหลดประวัติและเอกสารการอบรมฉบับเต็ม", "Download Full Official Training Record")}</h3>
             <p>
               {t(
-                "บันทึกจากการเช็กชื่อเข้าอบรม ใบรับรองและคะแนนจะแสดงเมื่อระบบบันทึกผลการอบรมแล้ว",
-                "Confirmed by attendance check-in. Certificate and score appear once results are recorded.",
+                "ส่งออกไฟล์ประวัติการอบรมฉบับสมบูรณ์ ประกอบด้วยหลักสูตรที่ผ่าน ชั่วโมงเรียน เลขที่ใบรับรอง คะแนนสอบ และผู้จัด สำหรับยื่นเรื่องปรับตำแหน่ง ย้ายแผนก หรือลาออก",
+                "Download official training passport containing course history, certificate numbers, learning hours, scores, and document evidence purpose.",
               )}
             </p>
           </div>
 
-          <section className={styles.employeeAssessmentPanel} aria-label="Assessment flow">
-            <div>
-              <span>Assessment Flow</span>
-              <h3>Pre test / Post test / Evaluation</h3>
-              <p>
-                Post test opens after pre test is completed. Evaluation opens after post test is completed.
+          <div className={styles.purposeRadioGroup} aria-label="Document purpose selection">
+            {(Object.keys(downloadPurposes) as DownloadPurpose[]).map((purposeKey) => (
+              <label className={styles.purposeOption} key={purposeKey}>
+                <input
+                  checked={downloadPurpose === purposeKey}
+                  name="download-purpose"
+                  onChange={() => setDownloadPurpose(purposeKey)}
+                  type="radio"
+                />
+                <span className={styles.purposeText}>
+                  <strong>{downloadPurposes[purposeKey].label}</strong>
+                  <small>{downloadPurposes[purposeKey].description}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+
+          {/* TAB 3 Completed Courses List Preview */}
+          <div className={styles.exportPreviewBox}>
+            <h4>
+              📋 {t("รายการหลักสูตรที่เสร็จสมบูรณ์ที่จะจัดส่งออกในเอกสารฉบับนี้", "Completed Courses Included in Document")}{" "}
+              ({records.length} {t("รายการ", "records")})
+            </h4>
+            <div className={styles.exportPreviewList}>
+              {records.map((record) => (
+                <div className={styles.exportPreviewRow} key={record.id}>
+                  <div>
+                    <strong style={{ fontSize: "0.9rem", color: "var(--ui-30-ink)" }}>{record.courseTitle}</strong>
+                    <div style={{ fontSize: "0.78rem", color: "var(--ui-30-muted)", marginTop: "2px" }}>
+                      {record.courseCode} • {record.provider} • 📅 {formatDate(record.completedDate)}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <span style={{ fontSize: "0.84rem", fontWeight: 900, color: "#10b981" }}>
+                      ⏱️ {record.hours} {t("ชม.", "hrs")}
+                    </span>
+                    <div style={{ fontSize: "0.74rem", color: "var(--ui-30-muted)" }}>
+                      {t("เลขใบรับรอง", "Cert No")}: {record.certificateNo}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {records.length === 0 ? (
+                <div className={styles.emptyStateBox} style={{ padding: "18px" }}>
+                  {t("ยังไม่มีประวัติการอบรมที่เสร็จสมบูรณ์สำหรับจัดทำเอกสาร", "No completed training records available for export.")}
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className={styles.exportFooter}>
+            <div className={styles.exportStats}>
+              <span className={styles.statBadge}>📚 {records.length} {t("หลักสูตร", "Records")}</span>
+              <span className={styles.statBadge}>⏱️ {records.reduce((t, r) => t + r.hours, 0)} {t("ชั่วโมง", "Hours")}</span>
+            </div>
+
+            <button className={styles.exportBtn} type="button" onClick={handleExportAll}>
+              📥 {t("ดาวน์โหลดเอกสาร (Download HTML)", "Download Passport Document")}
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {/* Detailed Modal Overlay when clicking "View Details" on Completed Record */}
+      {detailModalRecord ? (
+        <div
+          className={styles.modalOverlay}
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setDetailModalRecord(null)}
+        >
+          <div className={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div>
+                <span className={styles.inspectorProvider}>
+                  {detailModalRecord.provider === "HRD Center" ? "🏛️ HRD Center" : "🏭 Factory HRD"}
+                </span>
+                <h3 className={styles.inspectorTitle} style={{ margin: "4px 0" }}>
+                  {detailModalRecord.courseTitle}
+                </h3>
+                <span className={styles.inspectorSub}>
+                  {detailModalRecord.courseCode} • {formatDate(detailModalRecord.completedDate)}
+                </span>
+              </div>
+
+              <button
+                className={styles.modalCloseBtn}
+                type="button"
+                onClick={() => setDetailModalRecord(null)}
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 4-Column Metric Box */}
+            <div className={styles.modalMetricBox}>
+              <div className={styles.metricCol}>
+                <span className={styles.metricLabel}>{t("ระยะเวลา", "Duration")}</span>
+                <strong className={styles.metricValue}>{detailModalRecord.hours} {t("ชม.", "hrs")}</strong>
+              </div>
+              <div className={styles.metricCol}>
+                <span className={styles.metricLabel}>{t("คะแนนสอบ", "Score")}</span>
+                <strong className={styles.metricValue}>{detailModalRecord.score ? `${detailModalRecord.score}%` : "-"}</strong>
+              </div>
+              <div className={styles.metricCol}>
+                <span className={styles.metricLabel}>{t("รุ่น / รอบ", "Batch / Round")}</span>
+                <strong className={styles.metricValue}>{detailModalRecord.note}</strong>
+              </div>
+              <div className={styles.metricCol}>
+                <span className={styles.metricLabel}>{t("ผลการอบรม", "Result")}</span>
+                <strong className={styles.metricValue}>{t("เสร็จสิ้น", "Completed")}</strong>
+              </div>
+            </div>
+
+            {/* 2x2 Metadata Grid */}
+            <div className={styles.modalMetaGrid}>
+              <div className={styles.metaBox}>
+                <span className={styles.metaBoxLabel}>{t("เลขที่ใบรับรอง", "Certificate No.")}</span>
+                <strong className={styles.metaBoxValue}>{detailModalRecord.certificateNo}</strong>
+              </div>
+              <div className={styles.metaBox}>
+                <span className={styles.metaBoxLabel}>{t("วิทยากรผู้สอน", "Instructor")}</span>
+                <strong className={styles.metaBoxValue}>{detailModalRecord.instructor}</strong>
+              </div>
+              <div className={styles.metaBox}>
+                <span className={styles.metaBoxLabel}>{t("สถานที่อบรม", "Location")}</span>
+                <strong className={styles.metaBoxValue}>{detailModalRecord.location}</strong>
+              </div>
+              <div className={styles.metaBox}>
+                <span className={styles.metaBoxLabel}>{t("หน่วยงานผู้จัด", "Provider")}</span>
+                <strong className={styles.metaBoxValue}>{detailModalRecord.provider}</strong>
+              </div>
+            </div>
+
+            {/* Assessment Flow Links Grid */}
+            <section className={styles.assessmentBox} aria-label="Assessment links">
+              <h4 className={styles.assessmentTitle}>
+                📄 {t("แบบทดสอบ & แบบประเมินผล (ASSESSMENT FLOW)", "ASSESSMENT & EVALUATION FLOW")}
+              </h4>
+
+              <div className={styles.assessmentSteps}>
+                {(
+                  [
+                    { key: "pre", title: t("แบบทดสอบก่อนอบรม", "Pre Test"), stage: detailModalRecord.assessment.preTest },
+                    { key: "post", title: t("แบบทดสอบหลังอบรม", "Post Test"), stage: detailModalRecord.assessment.postTest },
+                    { key: "evaluation", title: t("แบบประเมินผลการอบรม", "Evaluation"), stage: detailModalRecord.assessment.evaluation },
+                    {
+                      key: "evaluation30",
+                      title: t("แบบประเมินผลหลัง 30 วัน", "30-Day Evaluation"),
+                      stage: detailModalRecord.assessment.evaluationAfter30Day,
+                    },
+                  ] as Array<{ key: string; title: string; stage: AssessmentStageInfo }>
+                )
+                  .filter((step) => step.stage.mode !== "NONE")
+                  .map((step) => (
+                    <div className={styles.stepRow} key={step.key}>
+                      <div className={styles.stepText}>
+                        <span>{step.title}</span>
+                        <small>
+                          {step.stage.mode === "LINK"
+                            ? t("ทำผ่านลิงก์ภายนอก", "External link")
+                            : t("ทำในระบบ", "In-system form")}
+                        </small>
+                      </div>
+
+                      {step.stage.mode === "LINK" && step.stage.link ? (
+                        <a
+                          href={step.stage.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.openLinkBtn}
+                        >
+                          🔗 {t("เปิดทำแบบทดสอบ", "Open Link")}
+                        </a>
+                      ) : (
+                        <button
+                          disabled
+                          type="button"
+                          className={styles.openLinkBtn}
+                          style={{ opacity: 0.5, cursor: "not-allowed" }}
+                        >
+                          {t("ยังไม่เปิดให้ทำ", "Not available")}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+
+                {[
+                  detailModalRecord.assessment.preTest,
+                  detailModalRecord.assessment.postTest,
+                  detailModalRecord.assessment.evaluation,
+                  detailModalRecord.assessment.evaluationAfter30Day,
+                ].every((stage) => stage.mode === "NONE") ? (
+                  <div className={styles.emptyStateBox} style={{ padding: "12px", fontSize: "0.78rem" }}>
+                    {t("หลักสูตรนี้ไม่มีแบบทดสอบหรือแบบประเมิน", "This course has no test or evaluation form.")}
+                  </div>
+                ) : null}
+              </div>
+            </section>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: "10px" }}>
+              <button
+                className={styles.exportBtn}
+                type="button"
+                onClick={() => setDetailModalRecord(null)}
+              >
+                {t("ปิดหน้าต่าง", "Close")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Detailed Modal Overlay when clicking "View Details" on Pending Enrollment */}
+      {detailModalEnrollment ? (
+        <div
+          className={styles.modalOverlay}
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setDetailModalEnrollment(null)}
+        >
+          <div className={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div>
+                <span className={styles.providerTag}>
+                  {detailModalEnrollment.plan.owner === "CENTER" ? "🏛️ HRD Center" : "🏭 Factory HRD"}
+                </span>
+                <h3 className={styles.courseTitleText} style={{ margin: "4px 0" }}>
+                  {detailModalEnrollment.plan.courseName}
+                </h3>
+                <span style={{ fontSize: "0.82rem", color: "var(--ui-30-muted)" }}>
+                  {detailModalEnrollment.plan.courseCode} • {detailModalEnrollment.plan.batchName || "Batch 1"}
+                </span>
+              </div>
+
+              <button
+                className={styles.modalCloseBtn}
+                type="button"
+                onClick={() => setDetailModalEnrollment(null)}
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className={styles.infoBarGrid}>
+              <div className={styles.infoBarItem}>
+                <span>{t("วันที่อบรม", "Training Date")}</span>
+                <strong>📅 {detailModalEnrollment.plan.startAt.slice(0, 10)}</strong>
+              </div>
+              <div className={styles.infoBarItem}>
+                <span>{t("สถานที่อบรม", "Venue")}</span>
+                <strong>📍 {detailModalEnrollment.plan.venue || "-"}</strong>
+              </div>
+              <div className={styles.infoBarItem}>
+                <span>{t("วิทยากรผู้สอน", "Instructor")}</span>
+                <strong>👨‍🏫 {detailModalEnrollment.plan.instructor || "-"}</strong>
+              </div>
+              <div className={styles.infoBarItem}>
+                <span>{t("ระยะเวลาเรียน", "Duration")}</span>
+                <strong>⏱️ {detailModalEnrollment.plan.hours} {t("ชม.", "hrs")}</strong>
+              </div>
+            </div>
+
+            <div className={styles.metaBox} style={{ gap: "6px" }}>
+              <span className={styles.metaBoxLabel}>{t("สถานะการพิจารณาอนุมัติ", "Approval Status")}</span>
+              <strong className={styles.metaBoxValue} style={{ color: "#10b981", fontSize: "0.95rem" }}>
+                🟢 {detailModalEnrollment.status}
+              </strong>
+            </div>
+
+            <div className={styles.metaBox} style={{ gap: "6px" }}>
+              <span className={styles.metaBoxLabel}>{t("รายละเอียดการเข้าร่วม", "Training Guidelines")}</span>
+              <p style={{ margin: 0, fontSize: "0.83rem", color: "var(--ui-30-text)", lineHeight: 1.4 }}>
+                {t(
+                  "เมื่อถึงกำหนดวันอบรม ให้พนักงานเข้ารายงานตัว ณ สถานที่อบรมที่ระบุ และทำการลงทะเบียนเช็กชื่อผ่านระบบ จากนั้นจะสามารถทำแบบทดสอบ Pre-test และ Post-test เพื่อรับใบรับรอง",
+                  "On the scheduled training date, please check in at the designated venue. Completing attendance will enable pre/post-tests for certificate issuance.",
+                )}
               </p>
             </div>
 
-            <div className={styles.employeeAssessmentSteps}>
-              {(
-                [
-                  { key: "pre", title: t("แบบทดสอบก่อนอบรม", "Pre Test"), stage: selectedRecord.assessment.preTest },
-                  { key: "post", title: t("แบบทดสอบหลังอบรม", "Post Test"), stage: selectedRecord.assessment.postTest },
-                  { key: "evaluation", title: t("แบบประเมิน", "Evaluation"), stage: selectedRecord.assessment.evaluation },
-                  {
-                    key: "evaluation30",
-                    title: t("ประเมินหลัง 30 วัน", "30-Day Evaluation"),
-                    stage: selectedRecord.assessment.evaluationAfter30Day,
-                  },
-                ] as Array<{ key: string; title: string; stage: AssessmentStageInfo }>
-              )
-                // A stage the course does not use is not a locked step - it does not exist. Showing
-                // it as "Locked" invited people to wait for something that was never coming.
-                .filter((step) => step.stage.mode !== "NONE")
-                .map((step) => (
-                  <article className={styles.employeeAssessmentStep} key={step.key}>
-                    <div>
-                      <span>{step.title}</span>
-                      <strong>
-                        {step.stage.mode === "LINK"
-                          ? t("ทำผ่านลิงก์", "External link")
-                          : t("ทำในระบบ", "In this system")}
-                      </strong>
-                      <small>
-                        {step.stage.mode === "LINK"
-                          ? t("เปิดในแท็บใหม่", "Opens in a new tab")
-                          : t("ยังไม่เปิดให้ทำ", "Not open yet")}
-                      </small>
-                    </div>
-                    {step.stage.mode === "LINK" && step.stage.link ? (
-                      <a
-                        href={step.stage.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={styles.assessmentLinkButton}
-                      >
-                        {t("เปิด", "Open")}
-                      </a>
-                    ) : (
-                      // In-system assessments are built but no plan has one attached yet
-                      // (training_plan_assessment_setting is empty), so there is nothing to open.
-                      <button disabled type="button">
-                        {t("ยังไม่เปิด", "Not open")}
-                      </button>
-                    )}
-                  </article>
-                ))}
-
-              {[
-                selectedRecord.assessment.preTest,
-                selectedRecord.assessment.postTest,
-                selectedRecord.assessment.evaluation,
-                selectedRecord.assessment.evaluationAfter30Day,
-              ].every((stage) => stage.mode === "NONE") ? (
-                <p className={shell.emptyState}>
-                  {t(
-                    "หลักสูตรนี้ไม่มีแบบทดสอบหรือแบบประเมิน",
-                    "This course has no test or evaluation",
-                  )}
-                </p>
-              ) : null}
+            <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: "10px" }}>
+              <button
+                className={styles.exportBtn}
+                type="button"
+                onClick={() => setDetailModalEnrollment(null)}
+              >
+                {t("ปิดหน้าต่าง", "Close")}
+              </button>
             </div>
-
-          </section>
-
-        </aside>
-        ) : (
-          <aside className={shell.detailPanel} aria-label="No training record">
-            <p className={shell.emptyState}>
-              No completed training record yet.
-            </p>
-          </aside>
-        )}
-      </div>
-        </>
+          </div>
+        </div>
       ) : null}
     </section>
   );

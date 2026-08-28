@@ -1,31 +1,33 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext";
-import { useConfirm } from "../ConfirmDialog";
-import { useToast } from "../ToastHost";
-import { useUiLanguage } from "../ThaiUiLocalization";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { listCourses } from "../../lib/courses/client";
 import {
-  getRollingPlanCompanies,
+  TRAINING_WORKFLOW_EVENT,
+  TRAINING_WORKFLOW_KEYS,
+  readWorkflowCollection,
+  writeWorkflowCollection,
+  type WorkflowRegistration,
+  type WorkflowStandard,
+} from "../../lib/trainingWorkflow";
+import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext";
+import {
   loadWorkflowRollingPlans,
   type RollingPlan,
 } from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
-import { createEnrollment, listEnrollments, updateEnrollmentStatus } from "../../lib/trainingEnrollment/client";
-import type { EnrollmentRecord } from "../../lib/trainingEnrollment/types";
+import { useUiLanguage } from "../ThaiUiLocalization";
+import type { UserModule } from "./data";
 import ModuleHeader from "./ModuleHeader";
-import shell from "../shared/ModuleShell.module.css";
 import styles from "./RegisterTrainingModule.module.css";
-import { getCurrentCalendarDate } from "../../lib/calendarDate";
 
-const ACTIVE_ENROLLMENT_STATUSES = ["Pending Approval", "Factory Approved", "Center Approved"] as const;
-
-type AvailableCourse = {
+export type AvailableCourseItem = {
   rollingId: string;
-  enrollmentId: string | null;
+  registrationId: string | null;
   id: string;
   title: string;
   category: string;
   courseOwner: "Center" | "Factory";
+  ownerCompany: string;
   description: string;
   objective: string;
   learningContent: string;
@@ -40,10 +42,14 @@ type AvailableCourse = {
   round: string;
   type: string;
   duration: string;
-  trainingStatus: string;
+  trainingStatus: "Not registered" | "Registered";
   trainer: string;
   provider: string;
   targetGroup: string;
+  targetGroupDesc: string;
+  targetCompanies: string[];
+  targetPositions: string[];
+  targetLevels: string[];
   preTestText: string;
   postTestText: string;
   evaluationText: string;
@@ -59,223 +65,322 @@ type AvailableCourse = {
   isPending: boolean;
 };
 
-const monthTabs = [
-  { value: "all", labelTh: "ทั้งปี", labelEn: "All Year" },
-  { value: "01", labelTh: "มกราคม", labelEn: "Jan" },
-  { value: "02", labelTh: "กุมภาพันธ์", labelEn: "Feb" },
-  { value: "03", labelTh: "มีนาคม", labelEn: "Mar" },
-  { value: "04", labelTh: "เมษายน", labelEn: "Apr" },
-  { value: "05", labelTh: "พฤษภาคม", labelEn: "May" },
-  { value: "06", labelTh: "มิถุนายน", labelEn: "Jun" },
-  { value: "07", labelTh: "กรกฎาคม", labelEn: "Jul" },
-  { value: "08", labelTh: "สิงหาคม", labelEn: "Aug" },
-  { value: "09", labelTh: "กันยายน", labelEn: "Sep" },
-  { value: "10", labelTh: "ตุลาคม", labelEn: "Oct" },
-  { value: "11", labelTh: "พฤศจิกายน", labelEn: "Nov" },
-  { value: "12", labelTh: "ธันวาคม", labelEn: "Dec" },
-] as const;
+export type RegisterTrainingModuleProps = {
+  initialCourseCode?: string | null;
+  onNavigate?: (moduleName: UserModule | null) => void;
+};
 
-const renderFormattedText = (text: string) => {
+const toEnglishText = (value: string): string => {
+  if (!value || value === "-") return "-";
+  const trimmed = value.trim();
+
+  // If already standard English code or name, keep as-is
+  if (
+    /^S[1-9]$/i.test(trimmed) ||
+    /^M[1-9]$/i.test(trimmed) ||
+    /^O[1-9]$/i.test(trimmed) ||
+    /^LVL/i.test(trimmed) ||
+    /^POS/i.test(trimmed) ||
+    trimmed === "All Positions" ||
+    trimmed === "All Levels" ||
+    trimmed === "All Companies" ||
+    trimmed === "All Function" ||
+    trimmed === "Officer" ||
+    trimmed === "Staff" ||
+    trimmed === "Engineer" ||
+    trimmed === "Technician" ||
+    trimmed === "Section Head" ||
+    trimmed === "Manager" ||
+    trimmed === "General Manager" ||
+    trimmed === "Plant Manager" ||
+    trimmed === "President" ||
+    trimmed === "Vice President" ||
+    trimmed === "Advisor" ||
+    trimmed === "Foreman"
+  ) {
+    return trimmed;
+  }
+
+  // Position Mappings (Thai -> English)
+  if (trimmed === "เจ้าหน้าที่") return "Officer";
+  if (trimmed === "พนักงาน") return "Staff";
+  if (trimmed === "วิศวกร") return "Engineer";
+  if (trimmed === "ช่างเทคนิค") return "Technician";
+  if (trimmed === "หัวหน้างาน" || trimmed === "หัวหน้าแผนก") return "Section Head";
+  if (trimmed === "ผู้จัดการ") return "Manager";
+  if (trimmed === "ผู้จัดการฝ่าย" || trimmed === "ผู้จัดการทั่วไป") return "General Manager";
+  if (trimmed === "ผู้จัดการโรงงาน") return "Plant Manager";
+  if (trimmed === "ประธาน") return "President";
+  if (trimmed === "รองประธาน") return "Vice President";
+  if (trimmed === "ที่ปรึกษา") return "Advisor";
+  if (trimmed === "หัวหน้าชุด") return "Foreman";
+  if (trimmed === "หัวหน้าชุดอาวุโส") return "Senior Foreman";
+
+  // Level Mappings (Thai -> English / Standard Code)
+  if (trimmed === "บังคับบัญชา3" || trimmed === "บังคับบัญชา 3" || trimmed === "บ3" || trimmed === "บ.3") return "S3";
+  if (trimmed === "บังคับบัญชา4" || trimmed === "บังคับบัญชา 4" || trimmed === "บ4" || trimmed === "บ.4") return "S4";
+  if (trimmed === "บังคับบัญชา2" || trimmed === "บังคับบัญชา 2" || trimmed === "บ2" || trimmed === "บ.2") return "S2";
+  if (trimmed === "บังคับบัญชา1" || trimmed === "บังคับบัญชา 1" || trimmed === "บ1" || trimmed === "บ.1") return "S1";
+  if (trimmed === "จัดการ1" || trimmed === "จัดการ 1" || trimmed === "จ1" || trimmed === "จ.1") return "M1";
+  if (trimmed === "จัดการ2" || trimmed === "จัดการ 2" || trimmed === "จ2" || trimmed === "จ.2") return "M2";
+  if (trimmed === "จัดการ3" || trimmed === "จัดการ 3" || trimmed === "จ3" || trimmed === "จ.3") return "M3";
+  if (trimmed === "จัดการ4" || trimmed === "จัดการ 4" || trimmed === "จ4" || trimmed === "จ.4") return "M4";
+  if (trimmed === "ปฏิบัติการ1" || trimmed === "ปฏิบัติการ 1" || trimmed === "ป1" || trimmed === "ป.1") return "O1";
+  if (trimmed === "ปฏิบัติการ2" || trimmed === "ปฏิบัติการ 2" || trimmed === "ป2" || trimmed === "ป.2") return "O2";
+  if (trimmed === "ปฏิบัติการ3" || trimmed === "ปฏิบัติการ 3" || trimmed === "ป3" || trimmed === "ป.3") return "O3";
+  if (trimmed === "ปฏิบัติการ4" || trimmed === "ปฏิบัติการ 4" || trimmed === "ป4" || trimmed === "ป.4") return "O4";
+
+  return trimmed;
+};
+
+const renderFormattedText = (text: string): ReactNode => {
   if (!text || text === "-") return "-";
-
-  const items = text.split(/(?=\b\d+\.\s*)/).map((s) => s.trim()).filter(Boolean);
-
-  if (items.length > 1 && items.some((item) => /^\d+\.\s*/.test(item))) {
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginTop: "4px" }}>
-        {items.map((item, idx) => (
-          <div key={idx} style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--ui-30-ink)", lineHeight: 1.45 }}>
-            {item}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (text.includes("\n")) {
-    const lines = text.split("\n").map((s) => s.trim()).filter(Boolean);
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginTop: "4px" }}>
-        {lines.map((line, idx) => (
-          <div key={idx} style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--ui-30-ink)", lineHeight: 1.45 }}>
-            {line}
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  return text;
+  const lines = text.split("\n");
+  return lines.map((line, idx) => (
+    <span key={idx} style={{ display: "block", marginBottom: idx < lines.length - 1 ? "4px" : "0" }}>
+      {line}
+    </span>
+  ));
 };
 
-type RegisterTrainingModuleProps = {
-  onNavigate?: (module: "record" | "register" | "roadmap" | "request" | "report" | "calendar") => void;
+// Robust date check to determine if a course training date has passed
+const isCourseEnded = (dateStr: string, endDateStr?: string): boolean => {
+  if (!dateStr || dateStr === "-") return false;
+  const targetStr = endDateStr || dateStr;
+
+  let dateObj = new Date(targetStr);
+  if (isNaN(dateObj.getTime())) {
+    const parts = targetStr.split(/[\/\-]/);
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      } else {
+        dateObj = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+      }
+    }
+  }
+
+  if (isNaN(dateObj.getTime())) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  dateObj.setHours(23, 59, 59, 999);
+
+  return dateObj < today;
 };
 
-export default function RegisterTrainingModule({ onNavigate }: RegisterTrainingModuleProps = {}) {
-  const user = useAuthenticatedUser();
-  const confirm = useConfirm();
-  const employeeCompany = profileValue(user?.companyCode);
-  const employeeId = user?.employeeId ?? null;
-  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
-  const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
-  const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
-  const toast = useToast();
+// Check if a rolling plan is relevant for the employee's company
+const isPlanRelevantForEmployeeCompany = (plan: RollingPlan, empCompany: string) => {
+  if (!empCompany || empCompany === "-") return true;
+  const normEmpComp = empCompany.trim().toUpperCase();
+
+  // 1. Plan belongs directly to employee's company
+  const planOwnerComp = (plan.ownerCompany || plan.company || "").trim().toUpperCase();
+  if (planOwnerComp === normEmpComp) return true;
+
+  // 2. Plan belongs to Center and targets employee's company or All
+  if (plan.owner === "CENTER") {
+    const relComps = plan.relatedCompanies || [];
+    if (relComps.length === 0) return true; // Unrestricted Center course
+    return relComps.some((c) => {
+      const normC = c.trim().toUpperCase();
+      return normC === "ALL" || normC === "ALL COMPANIES" || normC === normEmpComp;
+    });
+  }
+
+  // 3. Plan is a Factory plan that lists employee's company in relatedCompanies
+  const relComps = plan.relatedCompanies || [];
+  return relComps.some((c) => {
+    const normC = c.trim().toUpperCase();
+    return normC === "ALL" || normC === "ALL COMPANIES" || normC === normEmpComp;
+  });
+};
+
+export default function RegisterTrainingModule({
+  initialCourseCode,
+}: RegisterTrainingModuleProps) {
   const { language } = useUiLanguage();
   const isThai = language === "th";
   const t = (th: string, en: string) => (isThai ? th : en);
 
-  const [calendarToday] = useState(getCurrentCalendarDate);
-  const [selectedMonth, setSelectedMonth] = useState<string>(calendarToday.month);
+  const authenticatedUser = useAuthenticatedUser();
+  const employeeCode = profileValue(authenticatedUser?.employeeCode);
+  const employeeName = profileValue(authenticatedUser?.username);
+  const employeeCompany = profileValue(authenticatedUser?.companyCode);
+  const employeePosition = profileValue(authenticatedUser?.positionName);
+  const employeeLevel = profileValue(authenticatedUser?.levelName);
+
+  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
+  const [apiStandards, setApiStandards] = useState<WorkflowStandard[]>([]);
+  const [localStandards, setLocalStandards] = useState<WorkflowStandard[]>([]);
+  const [registrations, setRegistrations] = useState<WorkflowRegistration[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [selectedScope, setSelectedScope] = useState<"ALL" | "Center" | "Factory">("ALL");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showCompleted, setShowCompleted] = useState(false);
+  const [showCompleted, setShowCompleted] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>(initialCourseCode || "");
+  const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
 
-  const todayStr = `${calendarToday.year}-${calendarToday.month}-${calendarToday.day}`;
-
+  // Load Rolling Plans, Standards, and Registrations dynamically from API & Storage
   useEffect(() => {
-    void loadWorkflowRollingPlans().then((plans) => {
-      setRollingPlans(plans);
-      if (plans.length > 0) {
-        const activeCurrentMonthCourses = plans.some((p) => {
-          if (p.dbStatus === "CANCELLED" || p.status === "Cancel") return false;
-          const endDate = p.endDate || p.trainingDate;
-          const isEnded = p.dbStatus === "COMPLETED" || (endDate && endDate < todayStr);
-          const monthKey = p.trainingDate ? p.trainingDate.slice(5, 7) : "";
-          return !isEnded && monthKey === calendarToday.month;
-        });
+    void loadWorkflowRollingPlans().then(setRollingPlans);
+    setRegistrations(readWorkflowCollection<WorkflowRegistration>(TRAINING_WORKFLOW_KEYS.registrations));
+    setLocalStandards(readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards));
 
-        if (!activeCurrentMonthCourses) {
-          setSelectedMonth("all");
+    // Fetch live API standards
+    void listCourses({ search: null, status: null })
+      .then((res) => {
+        if (res && res.standards && res.standards.length > 0) {
+          setApiStandards(res.standards);
         }
-      }
-    });
-  }, [calendarToday.day, calendarToday.month, calendarToday.year, todayStr]);
-
-  const loadEnrollments = async () => {
-    if (!employeeId) {
-      setEnrollments([]);
-      return;
-    }
-    try {
-      const result = await listEnrollments({ planId: null, employeeId, employeeUserId: null });
-      setEnrollments(result.enrollments || []);
-    } catch (error) {
-      console.error("Failed to load my registrations", error);
-      setEnrollments([]);
-    }
-  };
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
-    void loadEnrollments();
-  }, [employeeId]);
+    const syncData = () => {
+      setLocalStandards(readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards));
+      setRegistrations(readWorkflowCollection<WorkflowRegistration>(TRAINING_WORKFLOW_KEYS.registrations));
+    };
 
-  const userCompanyCode = user?.companyCode?.trim() || "";
-  const userCompanyName = user?.companyName?.trim() || "";
+    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncData);
+    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncData);
+  }, []);
 
-  const allAvailableCourses = useMemo<AvailableCourse[]>(
+  // Merge local & API standards into a flat list, preserving exact courseId and courseCode matches
+  const standards = useMemo(() => {
+    const combined: WorkflowStandard[] = [...localStandards];
+    for (const apiStd of apiStandards) {
+      const idx = combined.findIndex(
+        (s) =>
+          (s.courseCode && apiStd.courseCode && s.courseCode.trim().toLowerCase() === apiStd.courseCode.trim().toLowerCase()) ||
+          (s.courseId && apiStd.courseId && String(s.courseId) === String(apiStd.courseId)) ||
+          (s.id && apiStd.id && String(s.id) === String(apiStd.id))
+      );
+      if (idx >= 0) {
+        combined[idx] = {
+          ...combined[idx],
+          ...apiStd,
+          positions: (apiStd.positions && apiStd.positions.length > 0) ? apiStd.positions : combined[idx].positions,
+          levels: (apiStd.levels && apiStd.levels.length > 0) ? apiStd.levels : combined[idx].levels,
+          companies: (apiStd.companies && apiStd.companies.length > 0) ? apiStd.companies : combined[idx].companies,
+        };
+      } else {
+        combined.push(apiStd);
+      }
+    }
+    return combined;
+  }, [apiStandards, localStandards]);
+
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return d.toISOString().split("T")[0];
+  }, []);
+
+  // Compute Available Courses strictly matching TrainingRolling.tsx logic
+  const allAvailableCourses: AvailableCourseItem[] = useMemo(
     () =>
       rollingPlans
-        .filter((plan) => {
-          if (plan.dbStatus === "CANCELLED" || plan.status === "Cancel") return false;
-
-          const isCenter =
-            (plan.ownerScope && plan.ownerScope.toUpperCase() === "CENTER") ||
-            (plan.owner && plan.owner.toUpperCase() === "CENTER") ||
-            plan.ownerCompany === "CENTER" ||
-            plan.company === "All Companies";
-
-          if (isCenter) return true;
-
-          const planCompanies = getRollingPlanCompanies(plan);
-          if (planCompanies.includes("ALL") || planCompanies.includes("All Companies") || planCompanies.length === 0) {
-            return true;
-          }
-
-          if (!userCompanyCode && !userCompanyName) {
-            return true;
-          }
-
-          const codeUpper = userCompanyCode.toUpperCase();
-          const nameUpper = userCompanyName.toUpperCase();
-
-          return planCompanies.some((c) => {
-            const compUpper = c.toUpperCase();
-            return (
-              (codeUpper !== "" && (compUpper === codeUpper || codeUpper.includes(compUpper) || compUpper.includes(codeUpper))) ||
-              (nameUpper !== "" && (compUpper === nameUpper || nameUpper.includes(compUpper) || compUpper.includes(nameUpper))) ||
-              (Boolean(plan.ownerCompany) && (plan.ownerCompany.toUpperCase() === codeUpper || codeUpper.includes(plan.ownerCompany.toUpperCase())))
-            );
-          });
-        })
-        .sort((a, b) => (a.trainingDate || "").localeCompare(b.trainingDate || ""))
+        .filter(
+          (plan) =>
+            plan.status === "Planned" &&
+            isPlanRelevantForEmployeeCompany(plan, employeeCompany),
+        )
         .map((plan) => {
-          const isCenter =
-            (plan.ownerScope && plan.ownerScope.toUpperCase() === "CENTER") ||
-            (plan.owner && plan.owner.toUpperCase() === "CENTER") ||
-            plan.ownerCompany === "CENTER" ||
-            plan.company === "All Companies";
+          const courseOwner = plan.owner === "CENTER" ? "Center" : "Factory";
+          const ownerCompany = plan.ownerCompany || plan.company || employeeCompany;
 
-          const courseOwner: "Center" | "Factory" = isCenter ? "Center" : "Factory";
-          const activeEnrollment = enrollments.find(
-            (enrollment) =>
-              enrollment.planId === plan.rollingId &&
-              (ACTIVE_ENROLLMENT_STATUSES as readonly string[]).includes(enrollment.status),
+          // Flexible matching identical to TrainingRolling.tsx
+          const standard = standards.find(
+            (s) =>
+              (s.courseId && plan.course.id && String(s.courseId).trim() === String(plan.course.id).trim()) ||
+              (s.courseCode && plan.course.code && s.courseCode.trim().toLowerCase() === plan.course.code.trim().toLowerCase()) ||
+              (s.courseCode && plan.course.id && String(s.courseCode).trim().toLowerCase() === String(plan.course.id).trim().toLowerCase()) ||
+              (s.courseId && plan.course.code && String(s.courseId).trim().toLowerCase() === String(plan.course.code).trim().toLowerCase()) ||
+              (s.id && plan.course.id && String(s.id).trim() === String(plan.course.id).trim()) ||
+              (s.id && plan.course.code && String(s.id).trim().toLowerCase() === String(plan.course.code).trim().toLowerCase()) ||
+              (s.courseName && plan.course.name && s.courseName.trim().toLowerCase() === plan.course.name.trim().toLowerCase())
           );
-          const isRegistered = Boolean(activeEnrollment);
-          const monthKey = plan.trainingDate ? plan.trainingDate.slice(5, 7) : "01";
-          const endDateStr = plan.endDate || plan.trainingDate;
-          const isEnded = plan.dbStatus === "COMPLETED" || (Boolean(endDateStr) && endDateStr < todayStr);
 
-          const isTrueValue = (val: unknown) => {
-            if (!val) return false;
-            if (typeof val === "boolean") return val;
-            if (typeof val === "string") {
-              const trimmed = val.trim().toLowerCase();
-              return trimmed !== "" && trimmed !== "no" && trimmed !== "none" && trimmed !== "ไม่มี" && trimmed !== "false";
-            }
-            return false;
-          };
+          const stdCompanies = standard?.companies;
+          const targetCompanies = (stdCompanies && stdCompanies.length > 0)
+            ? stdCompanies
+            : ((plan.relatedCompanies && plan.relatedCompanies.length > 0)
+              ? plan.relatedCompanies
+              : (plan.owner === "CENTER" ? ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] : [ownerCompany]));
 
-          const hasPreOrPostTest =
-            isTrueValue(plan.course.preTest) ||
-            isTrueValue(plan.course.postTest) ||
-            Boolean(plan.course.preTestLink) ||
-            Boolean(plan.course.postTestLink);
+          const rawPositions = (plan.course as unknown as Record<string, unknown>)?.targetPositions as string[] | undefined;
+          const rawLevels = (plan.course as unknown as Record<string, unknown>)?.targetLevels as string[] | undefined;
 
-          const hasEvaluation =
-            isTrueValue(plan.course.evaluation) ||
-            Boolean(plan.course.evaluationLink);
+          // Extract exact positions from matched standard or course master
+          const targetPositions = (standard?.positions && standard.positions.length > 0)
+            ? standard.positions
+            : ((rawPositions && rawPositions.length > 0)
+              ? rawPositions
+              : [t("ทุกตำแหน่ง", "All Positions")]);
 
-          const preTestText = plan.course.preTest ? t("มีแบบทดสอบก่อนอบรม", "Pre-test Required") : t("ไม่มี", "None");
-          const postTestText = plan.course.postTest ? t("มีแบบทดสอบหลังอบรม", "Post-test Required") : t("ไม่มี", "None");
-          const evaluationText = plan.course.evaluation ? t("ประเมินผลหลังจบอบรม", "Post-course Evaluation") : t("ไม่มี", "None");
+          // Extract exact levels from matched standard or course master
+          const targetLevels = (standard?.levels && standard.levels.length > 0)
+            ? standard.levels
+            : ((rawLevels && rawLevels.length > 0)
+              ? rawLevels
+              : [t("ทุกระดับ", "All Levels")]);
 
-          const isPending = activeEnrollment?.status === "Pending Approval";
+          const targetGroupDesc = plan.course.targetGroup || t("พนักงานระดับบังคับบัญชาและระดับปฏิบัติการที่เกี่ยวข้อง", "Targeted Employees & Related Groups");
 
-          let statusLabel = isRegistered
-            ? isPending
-              ? courseOwner === "Center"
-                ? t("🟡 รอ HRD Center อนุมัติ", "🟡 Pending HRD Center Approval")
-                : t("🟡 รอ Factory HRD อนุมัติ", "🟡 Pending Factory HRD Approval")
-              : activeEnrollment?.status === "Center Approved" || activeEnrollment?.status === "Factory Approved"
-                ? t("🟢 อนุมัติแล้ว (พร้อมอบรม)", "🟢 Approved")
-                : t("ลงทะเบียนแล้ว", "Registered")
-            : courseOwner === "Center"
-              ? t("หลักสูตรบังคับศูนย์กลาง", "Center Mandatory")
-              : t("เปิดรับลงทะเบียน", "Open registration");
+          const activeReg = registrations.find(
+            (r) =>
+              r.employeeCode === employeeCode &&
+              r.rollingId === plan.rollingId,
+          );
 
-          if (isEnded && !isRegistered) {
-            statusLabel = t("ผ่านเวลาไปแล้วไม่สามารถลงได้", "Registration deadline passed");
+          const isRegistered = !!activeReg;
+
+          const planDate = plan.trainingDate || todayStr;
+          const planEndDate = plan.endDate || planDate;
+          const isEnded = isCourseEnded(planDate, planEndDate);
+
+          const dateObj = new Date(planDate);
+          const monthKey = isNaN(dateObj.getTime())
+            ? "2026-04"
+            : `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}`;
+
+          let statusLabel = t("เปิดรับสมัคร", "Open registration");
+          if (isEnded) {
+            statusLabel = t("เสร็จสิ้นแล้ว", "Finished / Ended");
+          } else if (isRegistered) {
+            statusLabel = t("ลงทะเบียนแล้ว", "Registered");
+          }
+
+          const hasPreTest = Boolean(plan.course.preTest && plan.course.preTest !== "-" && plan.course.preTest !== "ไม่มี");
+          const hasPostTest = Boolean(plan.course.postTest && plan.course.postTest !== "-" && plan.course.postTest !== "ไม่มี");
+          const hasEval = Boolean(plan.course.evaluation && plan.course.evaluation !== "-" && plan.course.evaluation !== "ไม่มี");
+
+          const hasPreOrPostTest = hasPreTest || hasPostTest;
+          const hasEvaluation = hasEval;
+
+          let preTestText = t("ไม่มีแบบทดสอบก่อนเรียน", "No Pre-test");
+          if (hasPreTest) {
+            preTestText = `${t("ต้องทำแบบทดสอบก่อนเรียน", "Pre-test required")} (${plan.course.preTest})`;
+          }
+
+          let postTestText = t("ไม่มีแบบทดสอบหลังเรียน", "No Post-test");
+          if (hasPostTest) {
+            postTestText = `${t("ต้องทำแบบทดสอบหลังเรียน", "Post-test required")} (${plan.course.postTest})`;
+          }
+
+          let evaluationText = t("ไม่มีแบบประเมินผล", "No Evaluation Form");
+          if (hasEval) {
+            evaluationText = `${t("ต้องทำแบบประเมินผลหลังอบรม", "Evaluation form required")} (${plan.course.evaluation})`;
           }
 
           return {
             rollingId: plan.rollingId,
-            enrollmentId: activeEnrollment?.id ?? null,
+            registrationId: activeReg?.id ?? null,
             id: plan.course.code,
             title: plan.course.name,
             category: plan.course.courseGroup,
             courseOwner,
+            ownerCompany,
             description: plan.course.objective || "-",
             objective: plan.course.objective || "-",
             learningContent: plan.course.learningContent || "-",
@@ -293,7 +398,11 @@ export default function RegisterTrainingModule({ onNavigate }: RegisterTrainingM
             trainingStatus: isRegistered ? "Registered" : "Not registered",
             trainer: plan.trainer || "-",
             provider: plan.provider || "-",
-            targetGroup: plan.course.targetGroup || "-",
+            targetGroup: plan.course.targetGroup || t("พนักงานทุกกลุ่ม", "All Employees"),
+            targetGroupDesc,
+            targetCompanies,
+            targetPositions,
+            targetLevels,
             preTestText,
             postTestText,
             evaluationText,
@@ -309,18 +418,18 @@ export default function RegisterTrainingModule({ onNavigate }: RegisterTrainingM
             contact:
               courseOwner === "Center"
                 ? "HRD Center"
-                : `${plan.ownerCompany ?? employeeCompany ?? "Factory"} HRD`,
+                : `${ownerCompany} HRD`,
             remarks: plan.course.remark || (courseOwner === "Center"
                 ? t("หลักสูตรบังคับจากศูนย์กลาง", "Center Mandatory Course")
                 : t("จัดโดย HRD โรงงาน", "Managed by Factory HRD")),
             isEnded,
-            isPending,
+            isPending: false,
           };
         }),
-    [employeeCompany, enrollments, rollingPlans, isThai, todayStr],
+    [employeeCode, employeeCompany, isThai, registrations, rollingPlans, standards, t, todayStr],
   );
 
-  // Filtered courses
+  // Filtered courses - strictly hide ended courses unless showCompleted is checked
   const filteredCourses = useMemo(() => {
     return allAvailableCourses.filter((course) => {
       // Hide ended courses by default unless showCompleted is checked
@@ -342,13 +451,14 @@ export default function RegisterTrainingModule({ onNavigate }: RegisterTrainingM
         const matchCode = course.id.toLowerCase().includes(query);
         const matchCategory = course.category.toLowerCase().includes(query);
         const matchTrainer = course.trainer.toLowerCase().includes(query);
-        if (!matchTitle && !matchCode && !matchCategory && !matchTrainer) return false;
+        const matchTargetGroup = course.targetGroup.toLowerCase().includes(query);
+        if (!matchTitle && !matchCode && !matchCategory && !matchTrainer && !matchTargetGroup) return false;
       }
       return true;
     });
   }, [allAvailableCourses, showCompleted, selectedMonth, selectedScope, searchTerm]);
 
-  // Month counts (only active unended courses, or all if showCompleted is checked)
+  // Month counts - calculated from active courses (or all if showCompleted checked)
   const monthCounts = useMemo(() => {
     const map: Record<string, number> = { all: 0 };
     for (const course of allAvailableCourses) {
@@ -359,412 +469,416 @@ export default function RegisterTrainingModule({ onNavigate }: RegisterTrainingM
     return map;
   }, [allAvailableCourses, showCompleted]);
 
-  // Stats calculation
-  const stats = useMemo(() => {
-    const activeList = showCompleted
-      ? allAvailableCourses
-      : allAvailableCourses.filter((c) => !c.isEnded);
-
-    const monthCourses = selectedMonth === "all"
-      ? activeList
-      : activeList.filter((c) => c.monthKey === selectedMonth);
-
-    const openCount = monthCourses.filter((c) => c.trainingStatus !== "Registered" && !c.isEnded).length;
-    const registeredCount = monthCourses.filter((c) => c.trainingStatus === "Registered").length;
-    const centerCount = monthCourses.filter((c) => c.courseOwner === "Center").length;
-
-    return { openCount, registeredCount, centerCount };
-  }, [allAvailableCourses, selectedMonth, showCompleted]);
-
-  // Scope Counts for Filter Pills
-  const scopeCounts = useMemo(() => {
-    const activeList = showCompleted
-      ? allAvailableCourses
-      : allAvailableCourses.filter((c) => !c.isEnded);
-
-    const monthCourses = selectedMonth === "all"
-      ? activeList
-      : activeList.filter((c) => c.monthKey === selectedMonth);
-
-    const all = monthCourses.length;
-    const center = monthCourses.filter((c) => c.courseOwner === "Center").length;
-    const factory = monthCourses.filter((c) => c.courseOwner === "Factory").length;
-
-    return { all, center, factory };
-  }, [allAvailableCourses, selectedMonth, showCompleted]);
-
-  const handleRegistration = async (course: AvailableCourse) => {
-    if (!employeeId || course.isEnded) return;
-
-    try {
-      if (course.enrollmentId) {
-        if (!(await confirm({ message: { th: `ยืนยันที่จะยกเลิกการลงทะเบียนอบรม ${course.title} หรือไม่?`, en: `Confirm cancelling registration for ${course.title}?` }, danger: true }))) {
-          return;
-        }
-        await updateEnrollmentStatus(course.enrollmentId, { action: "cancel" });
-        toast.success(t("ยกเลิกการลงทะเบียนเรียบร้อยแล้ว", "Registration cancelled"));
-      } else {
-        await createEnrollment({ planId: course.rollingId, employeeId, employeeUserId: null, source: "EMPLOYEE" });
-        toast.success(
-          t(
-            "ลงทะเบียนอบรมสำเร็จ! (สถานะ: รอการอนุมัติ)",
-            "Registered successfully! (Status: Pending Approval)",
-          ),
-        );
-      }
-      await loadEnrollments();
-    } catch (error) {
-      console.error("Failed to update registration", error);
-      toast.error(t("อัปเดตการลงทะเบียนไม่สำเร็จ กรุณาลองอีกครั้ง", "Failed to update registration"));
+  // Available unique months
+  const monthList = useMemo(() => {
+    const months = new Set<string>();
+    for (const course of allAvailableCourses) {
+      if (!showCompleted && course.isEnded) continue;
+      months.add(course.monthKey);
     }
+    return Array.from(months).sort();
+  }, [allAvailableCourses, showCompleted]);
+
+  const scopeCounts = useMemo(() => {
+    const active = allAvailableCourses.filter((c) => showCompleted || !c.isEnded);
+    return {
+      all: active.length,
+      center: active.filter((c) => c.courseOwner === "Center").length,
+      factory: active.filter((c) => c.courseOwner === "Factory").length,
+    };
+  }, [allAvailableCourses, showCompleted]);
+
+  const handleRegistration = async (course: AvailableCourseItem) => {
+    if (course.isEnded) return;
+
+    if (course.trainingStatus === "Registered" && course.registrationId) {
+      const confirmed = window.confirm(
+        t(
+          `คุณต้องการยกเลิกการลงทะเบียนหลักสูตร "${course.title}" ใช่หรือไม่?`,
+          `Are you sure you want to cancel registration for "${course.title}"?`,
+        ),
+      );
+      if (!confirmed) return;
+
+      const currentList = readWorkflowCollection<WorkflowRegistration>(TRAINING_WORKFLOW_KEYS.registrations);
+      const updated = currentList.filter((r) => r.id !== course.registrationId);
+      writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.registrations, updated);
+      setRegistrations(updated);
+      return;
+    }
+
+    const confirmed = window.confirm(
+      t(
+        `ยืนยันการสมัครอบรมหลักสูตร:\n• ${course.title} (${course.id})\n• วันที่: ${course.date}\n• วิทยากร: ${course.trainer}`,
+        `Confirm registration for course:\n• ${course.title} (${course.id})\n• Date: ${course.date}\n• Trainer: ${course.trainer}`,
+      ),
+    );
+
+    if (!confirmed) return;
+
+    const newReg: WorkflowRegistration = {
+      id: `reg-${Date.now()}`,
+      rollingId: course.rollingId,
+      employeeCode,
+      employeeName,
+      company: employeeCompany,
+      department: "",
+      position: employeePosition,
+      level: employeeLevel,
+      registeredAt: new Date().toISOString(),
+    };
+
+    const currentList = readWorkflowCollection<WorkflowRegistration>(TRAINING_WORKFLOW_KEYS.registrations);
+    const updated = [newReg, ...currentList];
+    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.registrations, updated);
+    setRegistrations(updated);
+  };
+
+  const formatMonthLabel = (mKey: string) => {
+    if (mKey === "all") return t("ทุกเดือน (All Months)", "All Months");
+    const [yearStr, monthStr] = mKey.split("-");
+    const monthIndex = parseInt(monthStr, 10) - 1;
+    const date = new Date(parseInt(yearStr, 10), monthIndex, 1);
+    if (isThai) {
+      const thaiMonthNames = [
+        "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+        "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
+      ];
+      const thaiYear = parseInt(yearStr, 10) + 543;
+      return `${thaiMonthNames[monthIndex]} ${thaiYear}`;
+    }
+    return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
   };
 
   return (
-    <section className={shell.moduleWorkspace}>
+    <main className={styles.page}>
       <ModuleHeader
-        eyebrow="Register Training"
-        title={t("ลงทะเบียนเข้าอบรมประจำเดือน", "Monthly Rolling Registration")}
-        detail={t("เลือกและลงทะเบียนเข้าร่วมหลักสูตรอบรมจากแผน Rolling Plan ประจำเดือนของศูนย์กลางและโรงงาน", "Select and register for training courses from monthly published rolling plans.")}
+        eyebrow={t("การลงทะเบียนอบรมพนักงานประจำเดือน", "Monthly Employee Training Registration")}
+        title="Monthly Rolling Registration"
+        detail={t(
+          "เลือกลงทะเบียนอบรมตามแผนประจำเดือน (Rolling Plan) ที่เปิดรับสมัครสำหรับพนักงานสังกัดบริษัทของคุณ",
+          "Register for open monthly training courses planned for your company and role.",
+        )}
       />
 
-      <div className={styles.container}>
-        {/* Toolbar & Filter Panel */}
-        <section className={styles.toolbarPanel} aria-label="Monthly registration toolbar">
-          {/* Monthly KPI Stats Row */}
-          <div className={styles.statsRow}>
-            <div className={styles.statCard} style={{ "--stat-bg": "rgba(59, 130, 246, 0.12)", "--stat-color": "#3b82f6" } as React.CSSProperties}>
-              <div className={styles.statIcon}>📚</div>
-              <div className={styles.statMeta}>
-                <span className={styles.statLabel}>{t("เปิดรับสมัคร", "Open Courses")}</span>
-                <strong className={styles.statValue}>{stats.openCount} {t("หลักสูตร", "courses")}</strong>
-              </div>
-            </div>
+      {/* Control Panel Card */}
+      <section className={styles.controlPanelCard} aria-label="Course Filters & Search">
+        {/* Month Navigation Tabs */}
+        <div className={styles.monthNav} role="tablist" aria-label="Month Filters">
+          <button
+            type="button"
+            className={`${styles.monthTab} ${selectedMonth === "all" ? styles.activeMonthTab : ""}`}
+            onClick={() => setSelectedMonth("all")}
+          >
+            {t("ทุกเดือน", "All Months")}
+            <span className={styles.monthTabCount}>{monthCounts.all || 0}</span>
+          </button>
+          {monthList.map((mKey) => (
+            <button
+              key={mKey}
+              type="button"
+              className={`${styles.monthTab} ${selectedMonth === mKey ? styles.activeMonthTab : ""}`}
+              onClick={() => setSelectedMonth(mKey)}
+            >
+              {formatMonthLabel(mKey)}
+              <span className={styles.monthTabCount}>{monthCounts[mKey] || 0}</span>
+            </button>
+          ))}
+        </div>
 
-            <div className={styles.statCard} style={{ "--stat-bg": "rgba(16, 185, 129, 0.12)", "--stat-color": "#10b981" } as React.CSSProperties}>
-              <div className={styles.statIcon}>✅</div>
-              <div className={styles.statMeta}>
-                <span className={styles.statLabel}>{t("ลงทะเบียนแล้ว", "My Registered")}</span>
-                <strong className={styles.statValue}>{stats.registeredCount} {t("หลักสูตร", "courses")}</strong>
-              </div>
-            </div>
+        {/* Filter Controls Row */}
+        <div className={styles.filterRow}>
+          <div className={styles.scopePills}>
+            <button
+              type="button"
+              className={`${styles.scopePill} ${selectedScope === "ALL" ? styles.activeScopePill : ""}`}
+              onClick={() => setSelectedScope("ALL")}
+            >
+              🌐 {t("ทั้งหมด", "All Scopes")} ({scopeCounts.all})
+            </button>
+            <button
+              type="button"
+              className={`${styles.scopePill} ${selectedScope === "Center" ? styles.activeScopePill : ""}`}
+              onClick={() => setSelectedScope("Center")}
+            >
+              🏛️ {t("ศูนย์กลาง", "Center")} ({scopeCounts.center})
+            </button>
+            <button
+              type="button"
+              className={`${styles.scopePill} ${selectedScope === "Factory" ? styles.activeScopePill : ""}`}
+              onClick={() => setSelectedScope("Factory")}
+            >
+              🏭 {t("โรงงาน", "Factory Training")} ({scopeCounts.factory})
+            </button>
 
-            <div className={styles.statCard} style={{ "--stat-bg": "rgba(124, 58, 237, 0.12)", "--stat-color": "#7c3aed" } as React.CSSProperties}>
-              <div className={styles.statIcon}>🏛️</div>
-              <div className={styles.statMeta}>
-                <span className={styles.statLabel}>{t("หลักสูตรศูนย์กลาง", "Center Courses")}</span>
-                <strong className={styles.statValue}>{stats.centerCount} {t("หลักสูตร", "courses")}</strong>
-              </div>
-            </div>
-          </div>
-
-          {/* Month Navigation Tabs */}
-          <div className={styles.monthPickerRow}>
-            <div className={styles.monthTabs} aria-label="Filter by month">
-              {monthTabs.map((tab) => {
-                const count = monthCounts[tab.value] || 0;
-                const isActive = selectedMonth === tab.value;
-
-                return (
-                  <button
-                    key={tab.value}
-                    type="button"
-                    className={`${styles.monthTab} ${isActive ? styles.activeMonthTab : ""}`}
-                    onClick={() => setSelectedMonth(tab.value)}
-                  >
-                    {isThai ? tab.labelTh : tab.labelEn}
-                    {count > 0 ? <span className={styles.monthTabCount}>{count}</span> : null}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Filter Pills & Search */}
-          <div className={styles.filterRow}>
-            <div className={styles.scopePills} aria-label="Filter by scope">
-              <button
-                type="button"
-                className={`${styles.scopePill} ${selectedScope === "ALL" ? styles.activeScopePill : ""}`}
-                onClick={() => setSelectedScope("ALL")}
-              >
-                {t("ทั้งหมด", "All Scopes")} ({scopeCounts.all})
-              </button>
-              <button
-                type="button"
-                className={`${styles.scopePill} ${selectedScope === "Center" ? styles.activeScopePill : ""}`}
-                onClick={() => setSelectedScope("Center")}
-              >
-                🏛️ {t("ศูนย์กลาง", "Center Mandatory")} ({scopeCounts.center})
-              </button>
-              <button
-                type="button"
-                className={`${styles.scopePill} ${selectedScope === "Factory" ? styles.activeScopePill : ""}`}
-                onClick={() => setSelectedScope("Factory")}
-              >
-                🏭 {t("โรงงาน", "Factory Training")} ({scopeCounts.factory})
-              </button>
-
-              <label className={styles.checkboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={showCompleted}
-                  onChange={(e) => setShowCompleted(e.target.checked)}
-                />
-                {t("แสดงคอร์สที่จบไปแล้วด้วย", "Show ended courses")}
-              </label>
-            </div>
-
-            <div className={styles.searchInputWrapper}>
-              <svg className={styles.searchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
+            <label className={styles.checkboxLabel}>
               <input
-                type="text"
-                className={styles.searchInput}
-                placeholder={t("ค้นหารายชื่อคอร์ส, รหัสวิชา หรือ วิทยากร...", "Search course name, code or trainer...")}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                type="checkbox"
+                checked={showCompleted}
+                onChange={(e) => setShowCompleted(e.target.checked)}
               />
-            </div>
+              {t("แสดงคอร์สที่จบไปแล้วด้วย", "Show ended courses")}
+            </label>
           </div>
-        </section>
 
-        {/* Course Cards Container */}
-        <div className={styles.courseList}>
-          {filteredCourses.map((course) => {
-            const isExpanded = course.rollingId === expandedCourseId;
-            const isRegistered = course.trainingStatus === "Registered";
-            const isCenter = course.courseOwner === "Center";
-            const isEnded = course.isEnded;
+          <div className={styles.searchInputWrapper}>
+            <svg className={styles.searchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              className={styles.searchInput}
+              placeholder={t("ค้นหารายชื่อคอร์ส, รหัสวิชา หรือ กลุ่มเป้าหมาย...", "Search course name, code, or target group...")}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+      </section>
 
-            return (
-              <article
-                className={`${styles.courseCard} ${isCenter ? styles.centerCard : styles.factoryCard} ${isRegistered ? styles.registeredCard : ""} ${isEnded ? styles.endedCard : ""}`}
-                key={course.rollingId}
-              >
-                {/* Card Header Row */}
-                <div className={styles.cardHeaderRow}>
-                  <div className={styles.tagGroup}>
-                    <span className={`${styles.scopeBadge} ${isCenter ? styles.centerBadge : styles.factoryBadge}`}>
-                      {isCenter ? "🏛️ Center Mandatory" : "🏭 Factory Training"}
-                    </span>
-                    <span className={styles.categoryPill}>{course.category}</span>
-                    {isEnded ? <span className={styles.categoryPill} style={{ background: "rgba(100,116,139,0.15)", color: "#64748b" }}>🏁 {t("จบการอบรมแล้ว", "Ended")}</span> : null}
-                  </div>
-                  <span className={styles.codePill}>{course.id}</span>
-                </div>
+      {/* Course Cards Container */}
+      <div className={styles.courseList}>
+        {filteredCourses.map((course) => {
+          const isExpanded = course.rollingId === expandedCourseId;
+          const isRegistered = course.trainingStatus === "Registered";
+          const isCenter = course.courseOwner === "Center";
+          const isEnded = course.isEnded;
 
-                {/* Main Body */}
-                <div className={styles.cardMainBody}>
-                  <h3 className={styles.courseTitle} translate="no">{course.title}</h3>
-                  {course.description ? (
-                    <p className={styles.courseObjective}>{course.description}</p>
-                  ) : null}
-                </div>
-
-                {/* Schedule Grid Box */}
-                <div className={styles.scheduleGrid}>
-                  <div className={styles.scheduleItem}>
-                    <span className={styles.scheduleLabel}>📅 {t("วันที่อบรม", "Date")}</span>
-                    <strong className={styles.scheduleValue}>{course.date}</strong>
-                  </div>
-                  <div className={styles.scheduleItem}>
-                    <span className={styles.scheduleLabel}>⏰ {t("เวลา / ระยะเวลา", "Time & Duration")}</span>
-                    <strong className={styles.scheduleValue}>{course.time} ({course.duration})</strong>
-                  </div>
-                  <div className={styles.scheduleItem}>
-                    <span className={styles.scheduleLabel}>📍 {t("สถานที่อบรม", "Venue / Place")}</span>
-                    <strong className={styles.scheduleValue} title={course.place}>{course.place}</strong>
-                  </div>
-                  <div className={styles.scheduleItem}>
-                    <span className={styles.scheduleLabel}>👨‍🏫 {t("วิทยากร / ที่นั่ง", "Trainer & Seats")}</span>
-                    <strong className={styles.scheduleValue}>{course.trainer} • {course.seats}</strong>
-                  </div>
-                </div>
-
-                {/* Card Footer Actions */}
-                <div className={styles.cardFooter}>
-                  <span className={`${styles.statusPill} ${isEnded ? styles.statusEnded : course.isPending ? styles.statusPending : isRegistered ? styles.statusRegistered : styles.statusOpen}`}>
-                    {course.status}
+          return (
+            <article
+              className={`${styles.courseCard} ${isCenter ? styles.centerCard : styles.factoryCard} ${isRegistered ? styles.registeredCard : ""} ${isEnded ? styles.endedCard : ""}`}
+              key={course.rollingId}
+            >
+              {/* Card Header Row - Scope, Category, Target Group & Owner Company Badge */}
+              <div className={styles.cardHeaderRow}>
+                <div className={styles.tagGroup}>
+                  <span className={`${styles.scopeBadge} ${isCenter ? styles.centerBadge : styles.factoryBadge}`}>
+                    {isCenter ? "🏛️ Center Mandatory" : `🏭 ${course.ownerCompany}`}
                   </span>
-
-                  <div className={styles.actionButtons}>
-                    <button
-                      className={styles.detailBtn}
-                      type="button"
-                      aria-expanded={isExpanded}
-                      onClick={() => setExpandedCourseId(isExpanded ? null : course.rollingId)}
-                    >
-                      {isExpanded ? t("ซ่อนรายละเอียด", "Hide detail") : t("ดูรายละเอียดคอร์ส", "Show detail")}
-                    </button>
-                    {isEnded ? (
-                      <button className={styles.detailBtn} type="button" disabled style={{ opacity: 0.65, cursor: "not-allowed", color: "var(--ui-30-muted)" }}>
-                        {isRegistered ? t("เข้าร่วมอบรมแล้ว", "Attended") : t("ผ่านเวลาไปแล้วไม่สามารถลงได้", "Past deadline - Cannot register")}
-                      </button>
-                    ) : isRegistered ? (
-                      <button
-                        className={styles.cancelBtn}
-                        type="button"
-                        onClick={() => void handleRegistration(course)}
-                      >
-                        {t("ยกเลิกการลงทะเบียน", "Cancel registration")}
-                      </button>
-                    ) : (
-                      <button
-                        className={styles.registerBtn}
-                        type="button"
-                        onClick={() => void handleRegistration(course)}
-                      >
-                        {t("ลงทะเบียนอบรม", "Register now")}
-                      </button>
-                    )}
-                  </div>
+                  <span className={styles.categoryPill}>{course.category}</span>
+                  <span className={styles.targetGroupBadge}>
+                    🏢 {t("บริษัทที่เกี่ยวข้อง", "Target Companies")}: <strong>{course.targetCompanies.join(", ")}</strong>
+                  </span>
+                  {isEnded ? <span className={styles.categoryPill} style={{ background: "rgba(100,116,139,0.15)", color: "#64748b" }}>🏁 {t("จบการอบรมแล้ว", "Ended")}</span> : null}
                 </div>
+                <span className={styles.codePill}>{course.id}</span>
+              </div>
 
-                {/* Expanded Detail Drawer */}
-                {isExpanded ? (
-                  <div className={styles.detailDrawer}>
-                    <div className={styles.detailGrid}>
-                      {/* Section 1: Objective & Learning Content */}
-                      <div className={styles.detailSectionCard}>
-                        <h4>📖 {t("วัตถุประสงค์ & เนื้อหาการเรียนรู้", "Objective & Learning Content")}</h4>
-                        <dl className={styles.detailDl}>
-                          <div className={styles.detailItem}>
-                            <dt>{t("วัตถุประสงค์ (Objective)", "Objective")}</dt>
-                            <dd>{renderFormattedText(course.objective)}</dd>
-                          </div>
-                          <div className={styles.detailItem}>
-                            <dt>{t("เนื้อหาการเรียนรู้ (Learning Content)", "Learning Content")}</dt>
-                            <dd>{renderFormattedText(course.learningContent)}</dd>
-                          </div>
-                          <div className={styles.detailItem}>
-                            <dt>{t("รูปแบบการอบรม (Methodology)", "Methodology")}</dt>
-                            <dd>{renderFormattedText(course.methodology)}</dd>
-                          </div>
-                        </dl>
+              {/* Main Body */}
+              <div className={styles.cardMainBody}>
+                <h3 className={styles.courseTitle} translate="no">{course.title}</h3>
+                {course.description ? (
+                  <p className={styles.courseObjective}>{course.description}</p>
+                ) : null}
+              </div>
+
+              {/* Schedule Grid Box */}
+              <div className={styles.scheduleGrid}>
+                <div className={styles.scheduleItem}>
+                  <span className={styles.scheduleLabel}>📅 {t("วันที่อบรม", "Date")}</span>
+                  <strong className={styles.scheduleValue}>{course.date}</strong>
+                </div>
+                <div className={styles.scheduleItem}>
+                  <span className={styles.scheduleLabel}>⏰ {t("เวลา / ระยะเวลา", "Time & Duration")}</span>
+                  <strong className={styles.scheduleValue}>{course.time} ({course.duration})</strong>
+                </div>
+                <div className={styles.scheduleItem}>
+                  <span className={styles.scheduleLabel}>📍 {t("สถานที่อบรม", "Venue / Place")}</span>
+                  <strong className={styles.scheduleValue} title={course.place}>{course.place}</strong>
+                </div>
+                <div className={styles.scheduleItem}>
+                  <span className={styles.scheduleLabel}>👨‍🏫 {t("วิทยากร / ที่นั่ง", "Trainer & Seats")}</span>
+                  <strong className={styles.scheduleValue}>{course.trainer} • {course.seats}</strong>
+                </div>
+              </div>
+
+              {/* Card Footer Actions */}
+              <div className={styles.cardFooter}>
+                <span className={`${styles.statusPill} ${isEnded ? styles.statusEnded : course.isPending ? styles.statusPending : isRegistered ? styles.statusRegistered : styles.statusOpen}`}>
+                  {course.status}
+                </span>
+
+                <div className={styles.actionButtons}>
+                  <button
+                    className={styles.detailBtn}
+                    type="button"
+                    aria-expanded={isExpanded}
+                    onClick={() => setExpandedCourseId(isExpanded ? null : course.rollingId)}
+                  >
+                    {isExpanded ? t("ซ่อนรายละเอียด", "Hide detail") : t("รายละเอียดกลุ่มเป้าหมาย", "Target Group Details")}
+                  </button>
+                  {isEnded ? (
+                    <button className={styles.detailBtn} type="button" disabled style={{ opacity: 0.65, cursor: "not-allowed", color: "var(--ui-30-muted)" }}>
+                      {isRegistered ? t("เข้าร่วมอบรมแล้ว", "Attended") : t("ผ่านเวลาไปแล้วไม่สามารถลงได้", "Past deadline - Cannot register")}
+                    </button>
+                  ) : isRegistered ? (
+                    <button
+                      className={styles.cancelBtn}
+                      type="button"
+                      onClick={() => void handleRegistration(course)}
+                    >
+                      {t("ยกเลิกการลงทะเบียน", "Cancel registration")}
+                    </button>
+                  ) : (
+                    <button
+                      className={styles.registerBtn}
+                      type="button"
+                      onClick={() => void handleRegistration(course)}
+                    >
+                      {t("ลงทะเบียนอบรม", "Register now")}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Expanded Detail Drawer with Target Group Breakdown matching Screenshot */}
+              {isExpanded ? (
+                <div className={styles.detailDrawer}>
+                  {/* Screenshot-Matched Target Group Sub-Boxes */}
+                  <div className={styles.targetGroupCardSection}>
+                    <div className={styles.targetSectionHeader}>
+                      🎯 {t("รายละเอียดกลุ่มเป้าหมาย (TARGET GROUP)", "TARGET GROUP DETAILS")}
+                    </div>
+
+                    <div className={styles.targetSubBox}>
+                      <span className={styles.targetSubLabel}>{t("กลุ่มผู้เข้าอบรม", "Target Audience Description")}</span>
+                      <p className={styles.targetSubValue}>{course.targetGroupDesc}</p>
+                    </div>
+
+                    <div className={styles.targetSubBox}>
+                      <span className={styles.targetSubLabel}>STANDARD COMPANIES</span>
+                      <div className={styles.badgePillsRow}>
+                        {course.targetCompanies.map((comp) => (
+                          <span key={comp} className={styles.targetPill}>{comp}</span>
+                        ))}
                       </div>
+                    </div>
 
-                      {/* Section 2: Class & Schedule Detail */}
-                      <div className={styles.detailSectionCard}>
-                        <h4>🏫 {t("รายละเอียดชั้นเรียน & ผู้จัด", "Class & Trainer Detail")}</h4>
-                        <dl className={styles.detailDl}>
-                          <div className={styles.detailItem}>
-                            <dt>{t("รหัสวิชา / รุ่นการอบรม", "Course Code / Batch")}</dt>
-                            <dd>{course.id} ({course.round})</dd>
-                          </div>
-                          <div className={styles.detailItem}>
-                            <dt>{t("ประเภทวิชา (Course Type)", "Course Type")}</dt>
-                            <dd>{course.type} / {course.category}</dd>
-                          </div>
-                          <div className={styles.detailItem}>
-                            <dt>{t("วิทยากรผู้สอน (Trainer)", "Trainer")}</dt>
-                            <dd>{course.trainer}</dd>
-                          </div>
-                          <div className={styles.detailItem}>
-                            <dt>{t("สถาบัน/ผู้จัดอบรม (Provider)", "Provider")}</dt>
-                            <dd>{course.provider}</dd>
-                          </div>
-                          <div className={styles.detailItem}>
-                            <dt>{t("สถานที่อบรม (Venue)", "Location / Venue")}</dt>
-                            <dd>{course.place}</dd>
-                          </div>
-                        </dl>
+                    <div className={styles.targetSubBox}>
+                      <span className={styles.targetSubLabel}>STANDARD POSITIONS</span>
+                      <div className={styles.badgePillsRow}>
+                        {course.targetPositions.map((pos) => (
+                          <span key={pos} className={styles.targetPill}>{toEnglishText(pos)}</span>
+                        ))}
                       </div>
+                    </div>
 
-                      {/* Section 3: Target Audience & Requirements */}
-                      <div className={styles.detailSectionCard}>
-                        <h4>🎯 {t("กลุ่มเป้าหมาย & ข้อกำหนด", "Target Group & Requirements")}</h4>
-                        <dl className={styles.detailDl}>
-                          <div className={styles.detailItem}>
-                            <dt>{t("กลุ่มเป้าหมายหลัก (Target Group)", "Target Group")}</dt>
-                            <dd>{course.targetGroup}</dd>
-                          </div>
-                          {course.hasPreOrPostTest ? (
-                            <div className={styles.detailItem}>
-                              <dt>{t("แบบทดสอบก่อน-หลัง (Pre / Post Test)", "Pre / Post Test")}</dt>
-                              <dd>{course.preTestText} / {course.postTestText}</dd>
-                            </div>
-                          ) : null}
-                          {course.hasEvaluation ? (
-                            <div className={styles.detailItem}>
-                              <dt>{t("การประเมินผล (Evaluation Form)", "Evaluation")}</dt>
-                              <dd>{course.evaluationText}</dd>
-                            </div>
-                          ) : null}
-                          <div className={styles.detailItem}>
-                            <dt>{t("สายการอนุมัติ (Approval Flow)", "Approval Flow")}</dt>
-                            <dd>{course.approvalFlow}</dd>
-                          </div>
-                          <div className={styles.detailItem}>
-                            <dt>{t("หน่วยงานรับผิดชอบ / หมายเหตุ", "Owner & Remarks")}</dt>
-                            <dd>{course.contact} • {course.remarks}</dd>
-                          </div>
-                          {course.preTestLink ? (
-                            <div className={styles.detailItem}>
-                              <dt>{t("ลิงก์แบบทดสอบก่อนอบรม (Pre-Test)", "Pre-Test Link")}</dt>
-                              <dd>
-                                <a href={course.preTestLink} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ui-30-primary)", textDecoration: "underline", fontWeight: 800 }}>
-                                  🔗 {t("เปิดทำแบบทดสอบก่อนอบรม", "Open Pre-Test")}
-                                </a>
-                              </dd>
-                            </div>
-                          ) : null}
-                          {course.postTestLink ? (
-                            <div className={styles.detailItem}>
-                              <dt>{t("ลิงก์แบบทดสอบหลังอบรม (Post-Test)", "Post-Test Link")}</dt>
-                              <dd>
-                                <a href={course.postTestLink} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ui-30-primary)", textDecoration: "underline", fontWeight: 800 }}>
-                                  🔗 {t("เปิดทำแบบทดสอบหลังอบรม", "Open Post-Test")}
-                                </a>
-                              </dd>
-                            </div>
-                          ) : null}
-                          {course.evaluationLink ? (
-                            <div className={styles.detailItem}>
-                              <dt>{t("ลิงก์แบบประเมินผลการอบรม (Evaluation)", "Evaluation Link")}</dt>
-                              <dd>
-                                <a href={course.evaluationLink} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ui-30-primary)", textDecoration: "underline", fontWeight: 800 }}>
-                                  📋 {t("เปิดทำแบบประเมินผล", "Open Evaluation Form")}
-                                </a>
-                              </dd>
-                            </div>
-                          ) : null}
-                        </dl>
+                    <div className={styles.targetSubBox}>
+                      <span className={styles.targetSubLabel}>STANDARD LEVELS</span>
+                      <div className={styles.badgePillsRow}>
+                        {course.targetLevels.map((lvl) => (
+                          <span key={lvl} className={styles.targetPill}>{toEnglishText(lvl)}</span>
+                        ))}
                       </div>
                     </div>
                   </div>
-                ) : null}
-              </article>
-            );
-          })}
 
-          {filteredCourses.length === 0 ? (
-            <div className={styles.emptyCard}>
-              <span className={styles.emptyIcon}>📅</span>
-              <h3 className={styles.emptyTitle}>
-                {t("ไม่พบหลักสูตรเปิดลงทะเบียนในเดือนนี้", "No courses open for registration in this period")}
-              </h3>
-              <p className={styles.emptyDesc}>
-                {t("กรุณาเลือกเดือนอื่น หรือกดเปิด 'แสดงคอร์สที่จบไปแล้วด้วย' เพื่อดูประวัติหลักสูตรเพิ่มเติม", "Please select another month or check 'Show ended courses' to view past courses.")}
-              </p>
-              {selectedMonth !== "all" ? (
-                <button
-                  type="button"
-                  className={styles.detailBtn}
-                  onClick={() => {
-                    setSelectedMonth("all");
-                    setSelectedScope("ALL");
-                    setSearchTerm("");
-                  }}
-                >
-                  {t("ดูหลักสูตรเปิดสมัครทั้งปี", "View All Year Courses")}
-                </button>
+                  <div className={styles.detailGrid}>
+                    {/* Section 1: Objective & Learning Content */}
+                    <div className={styles.detailSectionCard}>
+                      <h4>📖 {t("วัตถุประสงค์ & เนื้อหาการเรียนรู้", "Objective & Learning Content")}</h4>
+                      <dl className={styles.detailDl}>
+                        <div className={styles.detailItem}>
+                          <dt>{t("วัตถุประสงค์ (Objective)", "Objective")}</dt>
+                          <dd>{renderFormattedText(course.objective)}</dd>
+                        </div>
+                        <div className={styles.detailItem}>
+                          <dt>{t("เนื้อหาการเรียนรู้ (Learning Content)", "Learning Content")}</dt>
+                          <dd>{renderFormattedText(course.learningContent)}</dd>
+                        </div>
+                        <div className={styles.detailItem}>
+                          <dt>{t("รูปแบบการอบรม (Methodology)", "Methodology")}</dt>
+                          <dd>{renderFormattedText(course.methodology)}</dd>
+                        </div>
+                      </dl>
+                    </div>
+
+                    {/* Section 2: Class & Schedule Detail */}
+                    <div className={styles.detailSectionCard}>
+                      <h4>🏫 {t("รายละเอียดชั้นเรียน & ผู้จัด", "Class & Trainer Detail")}</h4>
+                      <dl className={styles.detailDl}>
+                        <div className={styles.detailItem}>
+                          <dt>{t("รหัสวิชา / รุ่นการอบรม", "Course Code / Batch")}</dt>
+                          <dd>{course.id} ({course.round})</dd>
+                        </div>
+                        <div className={styles.detailItem}>
+                          <dt>{t("ประเภทวิชา (Course Type)", "Course Type")}</dt>
+                          <dd>{course.type} / {course.category}</dd>
+                        </div>
+                        <div className={styles.detailItem}>
+                          <dt>{t("วิทยากรผู้สอน (Trainer)", "Trainer")}</dt>
+                          <dd>{course.trainer}</dd>
+                        </div>
+                        <div className={styles.detailItem}>
+                          <dt>{t("สถาบัน/ผู้จัดอบรม (Provider)", "Provider")}</dt>
+                          <dd>{course.provider}</dd>
+                        </div>
+                        <div className={styles.detailItem}>
+                          <dt>{t("สถานที่อบรม (Venue)", "Location / Venue")}</dt>
+                          <dd>{course.place}</dd>
+                        </div>
+                      </dl>
+                    </div>
+
+                    {/* Section 3: Requirements & Approval Flow */}
+                    <div className={styles.detailSectionCard}>
+                      <h4>⚙️ {t("ข้อกำหนด & การอนุมัติ", "Requirements & Approval")}</h4>
+                      <dl className={styles.detailDl}>
+                        {course.hasPreOrPostTest ? (
+                          <div className={styles.detailItem}>
+                            <dt>{t("แบบทดสอบก่อน-หลัง (Pre / Post Test)", "Pre / Post Test")}</dt>
+                            <dd>{course.preTestText} / {course.postTestText}</dd>
+                          </div>
+                        ) : null}
+                        {course.hasEvaluation ? (
+                          <div className={styles.detailItem}>
+                            <dt>{t("การประเมินผล (Evaluation Form)", "Evaluation")}</dt>
+                            <dd>{course.evaluationText}</dd>
+                          </div>
+                        ) : null}
+                        <div className={styles.detailItem}>
+                          <dt>{t("สายการอนุมัติ (Approval Flow)", "Approval Flow")}</dt>
+                          <dd>{course.approvalFlow}</dd>
+                        </div>
+                        <div className={styles.detailItem}>
+                          <dt>{t("หน่วยงานรับผิดชอบ / หมายเหตุ", "Owner & Remarks")}</dt>
+                          <dd>{course.contact} • {course.remarks}</dd>
+                        </div>
+                        {course.preTestLink ? (
+                          <div className={styles.detailItem}>
+                            <dt>{t("ลิงก์แบบทดสอบก่อนอบรม (Pre-Test)", "Pre-Test Link")}</dt>
+                            <dd>
+                              <a href={course.preTestLink} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ui-30-primary)", textDecoration: "underline", fontWeight: 800 }}>
+                                🔗 {t("เปิดทำแบบทดสอบก่อนอบรม", "Open Pre-Test")}
+                              </a>
+                            </dd>
+                          </div>
+                        ) : null}
+                      </dl>
+                    </div>
+                  </div>
+                </div>
               ) : null}
+            </article>
+          );
+        })}
+
+        {filteredCourses.length === 0 ? (
+          <div className={styles.emptyStateCard}>
+            <div className={styles.emptyIcon}>📂</div>
+            <div className={styles.emptyTitle}>
+              {t("ไม่พบรายชื่อคอร์สฝึกอบรมที่ตรงตามเงื่อนไข", "No training courses found")}
             </div>
-          ) : null}
-        </div>
+            <div className={styles.emptyDesc}>
+              {t(
+                "ขณะนี้ไม่มีคอร์สอบรมที่เปิดรับสมัครสำหรับสังกัดบริษัทของคุณในเดือนที่เลือก",
+                "There are currently no open training courses available for your company in the selected month.",
+              )}
+            </div>
+          </div>
+        ) : null}
       </div>
-    </section>
+    </main>
   );
 }

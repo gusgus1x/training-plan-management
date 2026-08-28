@@ -31,7 +31,7 @@ export const moduleCards: Array<{
   {
     key: "record",
     eyebrow: "Record",
-    title: "Training Record",
+    title: "My Record",
     detail: "Check training history, accumulated hours, course results, and evidence status.",
     metric: "9 hours",
   },

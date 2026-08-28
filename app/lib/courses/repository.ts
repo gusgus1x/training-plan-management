@@ -147,7 +147,19 @@ export const createCourseRepository = (client?: DatabaseClient) => {
           const owner = row.company_id ? "FACTORY" : "CENTER";
           const ownerCompany = row.company?.company_code ?? "CENTER";
           
-          courses.push({
+          const targetPositions = row.course_standard_course.flatMap((sc) =>
+            sc.course_standard_target_position.map((p) => p.position.position_name_en || p.position.position_name_th || p.position.position_code)
+          );
+
+          const targetLevels = row.course_standard_course.flatMap((sc) =>
+            sc.course_standard_target_level.map((l) => l.employee_level.level_code || l.employee_level.level_code_en || l.employee_level.level_key)
+          );
+
+          const targetCompanies = row.course_standard_course.flatMap((sc) =>
+            sc.course_standard_target_company.map((c) => c.company.company_code)
+          );
+
+          const courseItem: WorkflowCourse = {
             id: row.course_id.toString(),
             courseCode: row.course_code,
             courseNameTh: row.course_name,
@@ -177,7 +189,13 @@ export const createCourseRepository = (client?: DatabaseClient) => {
             owner,
             ownerCompany,
             createdBy: row.created_by.toString()
-          });
+          };
+
+          (courseItem as unknown as Record<string, unknown>).targetPositions = targetPositions;
+          (courseItem as unknown as Record<string, unknown>).targetLevels = targetLevels;
+          (courseItem as unknown as Record<string, unknown>).targetCompanies = targetCompanies;
+
+          courses.push(courseItem);
 
           if (row.course_standard_course.length > 0) {
             const stdCourse = row.course_standard_course[0];
