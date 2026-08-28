@@ -641,6 +641,9 @@ const copyTextToClipboard = async (text: string): Promise<boolean> => {
 export default function TrainingAcceptSurvey() {
   const user = useAuthenticatedUser();
   const [urlCourseId, setUrlCourseId] = useState<string | null>(null);
+  // Declared here, above the effect that sets it. Separate from isTargetLoading, which is reused
+  // when switching course: only the very first load should replace the whole page.
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -675,6 +678,10 @@ export default function TrainingAcceptSurvey() {
   useEffect(() => {
     let active = true;
     setIsTargetLoading(true);
+    // Four requests, one of them the whole employee master. Until they land the page rendered its
+    // shell with empty lists and no sign anything was happening, so it read as broken rather than
+    // busy - the loader below only covers the target panel, which is not even reached yet.
+    // isInitialLoading starts true and this effect runs once, so it only needs clearing.
     void Promise.all([
       loadWorkflowRollingPlans().catch(() => []),
       listCourses({ search: "", status: null }).catch(() => ({ standards: [] })),
@@ -691,7 +698,10 @@ export default function TrainingAcceptSurvey() {
       }
       setEnrollments(enrollResult.enrollments || []);
     }).finally(() => {
-      if (active) setIsTargetLoading(false);
+      if (active) {
+        setIsTargetLoading(false);
+        setIsInitialLoading(false);
+      }
     });
 
     return () => { active = false; };
@@ -1389,6 +1399,23 @@ export default function TrainingAcceptSurvey() {
   };
 
   const [isTargetLoading, setIsTargetLoading] = useState(false);
+
+  // Same shape the Master Data screens use: keep the hero so the page does not jump, and put the
+  // loader where the content will appear.
+  if (isInitialLoading) {
+    return (
+      <section className={styles.page} aria-label="Training Accept Survey module">
+        <section className={styles.hero}>
+          <div>
+            <p className={styles.kicker}>{trainingAcceptSurveyModule.subtitle}</p>
+            <h2>{trainingAcceptSurveyModule.title}</h2>
+            <p>{trainingAcceptSurveyModule.description}</p>
+          </div>
+        </section>
+        <TypewriterLoader label="กำลังโหลดข้อมูลหลักสูตรและรายชื่อพนักงาน..." />
+      </section>
+    );
+  }
 
   return (
     <section className={styles.page} aria-label="Training Accept Survey module">
