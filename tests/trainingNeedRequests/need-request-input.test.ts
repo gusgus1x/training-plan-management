@@ -78,25 +78,53 @@ describe("training need request input", () => {
     );
   });
 
-  it("accepts and reviews without demanding a note", () => {
-    expect(parseUpdateNeedRequest({ action: "accept" }).action).toBe("accept");
-    expect(parseUpdateNeedRequest({ action: "review" }).note).toBeNull();
+  it("approves without demanding a note", () => {
+    expect(parseUpdateNeedRequest({ action: "approve" }).action).toBe("approve");
+    expect(parseUpdateNeedRequest({ action: "approve" }).note).toBeNull();
   });
 
   it("rejects an unknown action rather than passing it to the database", () => {
-    expect(rejectionReason(() => parseUpdateNeedRequest({ action: "delete" }))).toMatch(
-      /review, accept/,
-    );
+    // "review" and "accept" were the old action names; the check constraint refuses the statuses
+    // they mapped to, so they must not survive as silent aliases.
+    for (const action of ["delete", "review", "accept"]) {
+      expect(rejectionReason(() => parseUpdateNeedRequest({ action }))).toMatch(
+        /approve or reject/,
+      );
+    }
   });
 
-  it("rejects an unknown status filter", () => {
+  it("refuses reason text longer than the NVARCHAR(1000) columns", () => {
+    const tooLong = "x".repeat(1001);
+
+    expect(
+      rejectionReason(() =>
+        parseCreateNeedRequest({ requestedCourseName: "Course", requestReason: tooLong }),
+      ),
+    ).toBeTruthy();
+    expect(
+      rejectionReason(() => parseUpdateNeedRequest({ action: "reject", note: tooLong })),
+    ).toBeTruthy();
+  });
+
+  it("only allows status filters the check constraint accepts", () => {
     expect(
       rejectionReason(() => parseNeedRequestListFilters(new URLSearchParams("status=WHATEVER"))),
     ).toMatch(/Status must be one of/);
 
-    expect(parseNeedRequestListFilters(new URLSearchParams("status=REVIEW"))).toEqual({
-      status: "REVIEW",
-      employeeUserId: null,
-    });
+    // The live constraint CK_RC2_training_need_request_status_enum refuses these two.
+    for (const status of ["REVIEW", "ACCEPTED"]) {
+      expect(
+        rejectionReason(() =>
+          parseNeedRequestListFilters(new URLSearchParams(`status=${status}`)),
+        ),
+      ).toMatch(/Status must be one of/);
+    }
+
+    for (const status of ["PENDING", "APPROVED", "REJECTED", "PLANNED"]) {
+      expect(parseNeedRequestListFilters(new URLSearchParams(`status=${status}`))).toEqual({
+        status,
+        employeeUserId: null,
+      });
+    }
   });
 });

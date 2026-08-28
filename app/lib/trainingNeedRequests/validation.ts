@@ -16,7 +16,11 @@ const invalid = (field: string, reason: string) =>
     details: { field, reason },
   });
 
-const STATUSES: readonly NeedRequestStatus[] = ["PENDING", "REVIEW", "ACCEPTED", "REJECTED"];
+const STATUSES: readonly NeedRequestStatus[] = ["PENDING", "APPROVED", "REJECTED", "PLANNED"];
+
+// request_reason, review_note and rejection_reason are all NVARCHAR(1000). Refusing here beats
+// letting SQL Server truncate the text the employee or the reviewer actually wrote.
+const REASON_MAX_LENGTH = 1000;
 
 // A date-only column. Anything else would be silently coerced by the driver, so it is refused here.
 const isoDate = (value: string | null, field: string) => {
@@ -43,21 +47,24 @@ export const parseCreateNeedRequest = (input: InputObject): CreateNeedRequestInp
 
   return {
     requestedCourseName: readRequiredString(input, "requestedCourseName", { maxLength: 255 }),
-    requestReason: readRequiredString(input, "requestReason", { maxLength: 4000 }),
+    requestReason: readRequiredString(input, "requestReason", { maxLength: REASON_MAX_LENGTH }),
     preferredStartDate: start,
     preferredEndDate: end,
   };
 };
 
 const action = (value: unknown): NeedRequestAction => {
-  if (typeof value !== "string" || !["review", "accept", "reject"].includes(value)) {
-    throw invalid("action", "Action must be review, accept, or reject");
+  if (typeof value !== "string" || !["approve", "reject"].includes(value)) {
+    throw invalid("action", "Action must be approve or reject");
   }
   return value as NeedRequestAction;
 };
 
 export const parseUpdateNeedRequest = (input: InputObject): UpdateNeedRequestInput => {
-  const parsed = { action: action(input.action), note: readOptionalString(input, "note", { maxLength: 4000 }) };
+  const parsed = {
+    action: action(input.action),
+    note: readOptionalString(input, "note", { maxLength: REASON_MAX_LENGTH }),
+  };
 
   // Rejecting without saying why leaves the employee with no way to fix the request.
   if (parsed.action === "reject" && !parsed.note) {

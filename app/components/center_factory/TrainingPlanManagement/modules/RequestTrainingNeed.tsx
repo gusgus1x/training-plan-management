@@ -120,15 +120,8 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
     }
   };
 
-  const handleMarkReview = async () => {
-    const updated = await applyAction("review", null);
-    if (updated) {
-      toast.success(t(`ทำเครื่องหมายกำลังพิจารณาแล้ว`, "Marked as in review"));
-    }
-  };
-
   const handleApproveToPlan = async () => {
-    const updated = await applyAction("accept", null);
+    const updated = await applyAction("approve", null);
     if (!updated) return;
 
     // Same-tab handoff to the OAP form so it can prefill from the request. This is UI state that
@@ -167,8 +160,8 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
     }
   };
 
-  const isDecided =
-    selectedRequest?.status === "ACCEPTED" || selectedRequest?.status === "REJECTED";
+  // Only a PENDING request is still open; APPROVED, REJECTED and PLANNED are all past deciding.
+  const isDecided = Boolean(selectedRequest) && selectedRequest?.status !== "PENDING";
 
   return (
     <section className={styles.moduleWorkspace} aria-label="Request Training Need module">
@@ -332,14 +325,6 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
               ) : null}
 
               <div className={styles.reviewActions}>
-                <button
-                  className={styles.secondaryButton}
-                  type="button"
-                  disabled={pendingAction || isDecided}
-                  onClick={() => void handleMarkReview()}
-                >
-                  {t("กำลังพิจารณา", "Mark Review")}
-                </button>
                 <button
                   className={styles.actionButton}
                   type="button"

@@ -4,8 +4,12 @@
  * so a request was visible only in the browser that created it.
  */
 
-/** Database values. The UI labels live in the components, not here. */
-export type NeedRequestStatus = "PENDING" | "REVIEW" | "ACCEPTED" | "REJECTED";
+/**
+ * Database values, fixed by the live check constraint `CK_RC2_training_need_request_status_enum`.
+ * The UI labels live in `labels.ts`, not here. PLANNED is set once the approved request becomes a
+ * training plan; no screen writes it yet, so it only ever arrives from the database.
+ */
+export type NeedRequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "PLANNED";
 
 export type NeedRequestRecord = {
   id: string;
@@ -39,7 +43,7 @@ export type CreateNeedRequestInput = {
   preferredEndDate: string | null;
 };
 
-export type NeedRequestAction = "review" | "accept" | "reject";
+export type NeedRequestAction = "approve" | "reject";
 
 export type UpdateNeedRequestInput = {
   action: NeedRequestAction;

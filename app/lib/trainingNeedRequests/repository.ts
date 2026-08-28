@@ -65,13 +65,13 @@ const mapRequest = (row: RequestWithRelations) => ({
 });
 
 const STATUS_FOR_ACTION: Record<NeedRequestAction, NeedRequestStatus> = {
-  review: "REVIEW",
-  accept: "ACCEPTED",
+  approve: "APPROVED",
   reject: "REJECTED",
 };
 
 // A decided request is final. Reopening one would silently change what the employee was told.
-const DECIDED: readonly NeedRequestStatus[] = ["ACCEPTED", "REJECTED"];
+// PLANNED is past decided: the request is already a training plan.
+const DECIDED: readonly NeedRequestStatus[] = ["APPROVED", "REJECTED", "PLANNED"];
 
 export type NeedRequestRepository = ReturnType<typeof createNeedRequestRepository>;
 
@@ -126,8 +126,13 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
             },
           });
 
-          const year = row.requested_at.getFullYear();
-          const requestNo = `REQ-${year}-${row.training_need_request_id.toString().padStart(5, "0")}`;
+          // TN-YYYYMM-000001, the format the data dictionary specifies for this table.
+          const yearMonth = `${row.requested_at.getFullYear()}${String(
+            row.requested_at.getMonth() + 1,
+          ).padStart(2, "0")}`;
+          const requestNo = `TN-${yearMonth}-${row.training_need_request_id
+            .toString()
+            .padStart(6, "0")}`;
 
           return tx.training_need_request.update({
             where: { training_need_request_id: row.training_need_request_id },
