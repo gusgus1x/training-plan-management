@@ -622,7 +622,7 @@
 
 .detailCard:first-child {
   grid-column: span 2;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(248, 250, 252, 0.85) 100%);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, var(--ui-60-surface-soft) 100%);
   border-color: rgba(16, 185, 129, 0.25);
 }
 
