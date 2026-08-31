@@ -143,30 +143,6 @@ export type WorkflowRegistration = {
   registeredAt: string;
 };
 
-export type WorkflowAcceptance = {
-  id: string;
-  name: string;
-  company: string;
-  department: string;
-  position: string;
-  level: string;
-  legacyLabel: string;
-  courseId: string;
-  source:
-    | "Employee Registration"
-    | "Auto Target"
-    | "Added by Center"
-    | "Submitted by Factory";
-  status:
-    | "Pending Approval"
-    | "Target"
-    | "Factory Submitted"
-    | "Factory Approved"
-    | "Center Approved"
-    | "Rejected";
-  remark: string;
-};
-
 export type WorkflowCompletedCourse = {
   id: string;
   rollingId: string;
@@ -204,26 +180,20 @@ export type WorkflowCompletedCourse = {
   savedAt: string;
 };
 
+// Only these three are still referenced. rollingPlans, registrations, acceptances and
+// completedCourses had no reader and no writer left; registrations went when employee sign-up moved
+// onto training_enrollment. Their raw strings stay in LEGACY_TRANSACTION_KEYS below so browsers
+// that still hold the old values get them cleared.
 export const TRAINING_WORKFLOW_KEYS = {
   courses: "tpm_workflow_courses",
   standards: "tpm_workflow_standards",
   oapPlans: "tpm_workflow_oap_plans",
-  rollingPlans: "tpm_workflow_rolling_plans",
-  registrations: "tpm_workflow_registrations",
-  acceptances: "tpm_workflow_acceptances",
-  completedCourses: "tpm_workflow_completed_courses",
 } as const;
 
 export const TRAINING_WORKFLOW_EVENT = "training-workflow-changed";
+// Every master list except employees moved to the API; the other seven keys had no reader or writer.
 export const TRAINING_MASTER_KEYS = {
-  companies: "tpm_master_companies",
-  courseTypes: "tpm_master_course_types",
-  courseGroups: "tpm_master_course_groups",
   employees: "tpm_master_employees",
-  functions: "tpm_master_functions",
-  positions: "tpm_master_positions",
-  levels: "tpm_master_levels",
-  instructors: "tpm_master_instructors",
 } as const;
 export const TRAINING_MASTER_EVENT = "training-master-changed";
 

@@ -38,44 +38,6 @@ export const levelDataModule = {
     "Maintain the shared employee level catalog used by every company.",
 } as const;
 
-const mockLevels = [
-  ["m4", "จ", "M", "จัดการ4", "Management4", "4", "จ4"],
-  ["m3", "จ", "M", "จัดการ3", "Management3", "3", "จ3"],
-  ["m2", "จ", "M", "จัดการ2", "Management2", "2", "จ2"],
-  ["m1", "จ", "M", "จัดการ1", "Management1", "1", "จ1"],
-  ["s4", "บ", "S", "บังคับบัญชา4", "Supervisor4", "4", "บ4"],
-  ["s3", "บ", "S", "บังคับบัญชา3", "Supervisor3", "3", "บ3"],
-  ["s2", "บ", "S", "บังคับบัญชา2", "Supervisor2", "2", "บ2"],
-  ["s1", "บ", "S", "บังคับบัญชา1", "Supervisor1", "1", "บ1"],
-  ["o5", "ป", "O", "ปฏิบัติการ5", "Operator5", "5", "ป5"],
-  ["o4", "ป", "O", "ปฏิบัติการ4", "Operator4", "4", "ป4"],
-  ["o3", "ป", "O", "ปฏิบัติการ3", "Operator3", "3", "ป3"],
-  ["o2", "ป", "O", "ปฏิบัติการ2", "Operator2", "2", "ป2"],
-  ["o1", "ป", "O", "ปฏิบัติการ1", "Operator1", "1", "ป1"],
-] as const;
-
-// Temporary compatibility export for Employee and Course Standard mock consumers.
-export const defaultLevelRows: LevelRecord[] = mockLevels.map(
-  ([
-    id,
-    levelCodeTh,
-    levelCodeEn,
-    levelNameTh,
-    levelNameEn,
-    pl,
-    levelKey,
-  ]) => ({
-    id: `level-${id}`,
-    levelCodeTh,
-    levelCodeEn,
-    levelNameTh,
-    levelNameEn,
-    pl,
-    levelKey,
-    remark: "",
-  }),
-);
-
 type LevelForm = CreateLevelInput;
 const blankForm = (): LevelForm => ({
   levelCodeTh: "",

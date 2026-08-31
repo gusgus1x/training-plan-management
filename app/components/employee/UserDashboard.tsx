@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useUiLanguage, type UiLanguage } from "../ThaiUiLocalization";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
-import type { EnrollmentRecord } from "../../lib/trainingEnrollment/types";
+import {
+  ACTIVE_ENROLLMENT_STATUSES,
+  type EnrollmentRecord,
+} from "../../lib/trainingEnrollment/types";
 import {
   buildProfileItems,
   profileValue,
@@ -129,7 +132,6 @@ type CalendarTraining = {
   status: string;
 };
 
-const ACTIVE_ENROLLMENT_STATUSES: readonly string[] = ["Pending Approval", "Factory Approved", "Center Approved"];
 const APPROVED_ENROLLMENT_STATUSES: readonly string[] = ["Factory Approved", "Center Approved"];
 
 export const initialsOf = (name: string) => {

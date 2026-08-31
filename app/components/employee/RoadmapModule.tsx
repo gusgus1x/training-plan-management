@@ -8,13 +8,20 @@ import {
   getCourseDisplayName,
   getCourseSecondaryName,
   readWorkflowCollection,
-  writeWorkflowCollection,
   type WorkflowCourse,
   type WorkflowOapPlan,
-  type WorkflowRegistration,
   type WorkflowStandard,
 } from "../../lib/trainingWorkflow";
-import { listEnrollments } from "../../lib/trainingEnrollment/client";
+import {
+  createEnrollment,
+  listEnrollments,
+  updateEnrollmentStatus,
+} from "../../lib/trainingEnrollment/client";
+import {
+  ACTIVE_ENROLLMENT_STATUSES,
+  type EnrollmentRecord,
+} from "../../lib/trainingEnrollment/types";
+import { useToast } from "../ToastHost";
 import { buildRecords, type EmployeeTrainingRecord } from "./RecordModule";
 import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext";
 import { loadWorkflowRollingPlans, type RollingPlan } from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
@@ -186,8 +193,10 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
   const isThai = language === "th";
   const t = (th: string, en: string) => (isThai ? th : en);
 
+  const toast = useToast();
   const authenticatedUser = useAuthenticatedUser();
-  const employeeCode = profileValue(authenticatedUser?.employeeCode);
+  // employeeCode is gone: it only ever matched rows in the localStorage registration list. The
+  // server identifies the employee from the session now.
   const employeeName = profileValue(authenticatedUser?.username);
   const employeeCompany = profileValue(authenticatedUser?.companyCode);
   const employeeFunction = profileValue(authenticatedUser?.functionName);
@@ -199,7 +208,10 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
   const [apiStandards, setApiStandards] = useState<WorkflowStandard[]>([]);
   const [oapPlans, setOapPlans] = useState<WorkflowOapPlan[]>([]);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
-  const [registrations, setRegistrations] = useState<WorkflowRegistration[]>([]);
+  // Registrations live in training_enrollment, not localStorage. This screen used to write only to
+  // the browser, so a registration made here never reached HRD.
+  const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [completedRecords, setCompletedRecords] = useState<EmployeeTrainingRecord[]>([]);
 
   const [selectedTab, setSelectedTab] = useState<TargetScopeTab>("ALL");
@@ -208,15 +220,25 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
   const [selectedGroup, setSelectedGroup] = useState<string>("ALL");
   const [expandedCode, setExpandedCode] = useState<string | null>(null);
 
+  // One request feeds both the completed history and the "already registered" check, so the
+  // registration state can no longer disagree with the record shown beside it.
+  const applyEnrollments = (loaded: EnrollmentRecord[]) => {
+    setEnrollments(loaded);
+    setCompletedRecords(buildRecords(loaded));
+  };
+
+  const reloadEnrollments = () =>
+    listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
+      .then(({ enrollments: loaded }) => applyEnrollments(loaded || []))
+      .catch((err) => console.error("Failed to load enrollments in Roadmap", err));
+
   useEffect(() => {
     let cancelled = false;
     listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
-      .then(({ enrollments }) => {
-        if (!cancelled) {
-          setCompletedRecords(buildRecords(enrollments || []));
-        }
+      .then(({ enrollments: loaded }) => {
+        if (!cancelled) applyEnrollments(loaded || []);
       })
-      .catch((err) => console.error("Failed to load completed records in Roadmap", err));
+      .catch((err) => console.error("Failed to load enrollments in Roadmap", err));
     return () => {
       cancelled = true;
     };
@@ -255,7 +277,6 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
       setCourses(readWorkflowCollection<WorkflowCourse>(TRAINING_WORKFLOW_KEYS.courses));
       setLocalStandards(readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards));
       setOapPlans(readWorkflowCollection<WorkflowOapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans));
-      setRegistrations(readWorkflowCollection<WorkflowRegistration>(TRAINING_WORKFLOW_KEYS.registrations));
     };
 
     syncWorkflow();
@@ -646,7 +667,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
   }, [allRoadmapItems, showCompleted, completedMap]);
 
   // Registration handler for direct enrollment from Roadmap
-  const handleRegisterCourse = (item: (typeof filteredRoadmapItems)[number]) => {
+  const handleRegisterCourse = async (item: (typeof filteredRoadmapItems)[number]) => {
     const completedRecord =
       completedMap.get(item.code.trim().toLowerCase()) ??
       completedMap.get(item.title.trim().toLowerCase()) ??
@@ -672,8 +693,12 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
       return;
     }
 
-    const activeReg = registrations.find(
-      (r) => r.employeeCode === employeeCode && r.rollingId === item.id
+    if (isSubmitting) return;
+
+    const activeReg = enrollments.find(
+      (enrollment) =>
+        enrollment.planId === item.id &&
+        ACTIVE_ENROLLMENT_STATUSES.includes(enrollment.status)
     );
 
     if (activeReg) {
@@ -685,10 +710,20 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
       );
       if (!confirmed) return;
 
-      const currentList = readWorkflowCollection<WorkflowRegistration>(TRAINING_WORKFLOW_KEYS.registrations);
-      const updated = currentList.filter((r) => r.id !== activeReg.id);
-      writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.registrations, updated);
-      setRegistrations(updated);
+      setIsSubmitting(true);
+      try {
+        await updateEnrollmentStatus(activeReg.id, { action: "cancel" });
+        await reloadEnrollments();
+        toast.success(t("ยกเลิกการลงทะเบียนแล้ว", "Registration cancelled"));
+      } catch (error: unknown) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t("ยกเลิกไม่สำเร็จ", "Could not cancel the registration")
+        );
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -701,22 +736,27 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
 
     if (!confirmed) return;
 
-    const newReg: WorkflowRegistration = {
-      id: `reg-${Date.now()}`,
-      rollingId: item.id,
-      employeeCode,
-      employeeName,
-      company: employeeCompany,
-      department: employeeFunction || "-",
-      position: employeePosition || "-",
-      level: employeeLevel || "-",
-      registeredAt: new Date().toISOString(),
-    };
-
-    const currentList = readWorkflowCollection<WorkflowRegistration>(TRAINING_WORKFLOW_KEYS.registrations);
-    const updated = [...currentList, newReg];
-    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.registrations, updated);
-    setRegistrations(updated);
+    setIsSubmitting(true);
+    try {
+      // The route pins both employee keys to the session for an EMPLOYEE caller, so nothing sent
+      // from here decides who is enrolled. See the same call in RegisterTrainingModule.
+      await createEnrollment({
+        planId: item.id,
+        employeeId: authenticatedUser?.employeeId ?? "0",
+        employeeUserId: null,
+        source: "EMPLOYEE",
+      });
+      await reloadEnrollments();
+      toast.success(t("ส่งใบสมัครอบรมแล้ว รอ HRD อนุมัติ", "Registered. Awaiting HRD approval"));
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("สมัครอบรมไม่สำเร็จ", "Could not submit the registration")
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -833,8 +873,11 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
           const isCenter = item.courseOwner === "CENTER";
           const isExpanded = expandedCode === item.code;
 
-          const activeReg = registrations.find(
-            (r) => r.employeeCode === employeeCode && r.rollingId === item.id
+          // Server-scoped to this employee already, so matching the plan is enough.
+          const activeReg = enrollments.find(
+            (enrollment) =>
+              enrollment.planId === item.id &&
+              ACTIVE_ENROLLMENT_STATUSES.includes(enrollment.status)
           );
           const isRegistered = Boolean(activeReg);
           const completedRecord =
@@ -944,7 +987,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                     <button
                       className={styles.cancelBtn}
                       type="button"
-                      onClick={() => handleRegisterCourse(item)}
+                      onClick={() => void handleRegisterCourse(item)}
                       title={t("คลิกเพื่อยกเลิกการสมัคร", "Click to cancel registration")}
                     >
                       {t("ยกเลิกการลงทะเบียน", "Cancel registration")}
@@ -953,7 +996,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                     <button
                       className={styles.registerBtn}
                       type="button"
-                      onClick={() => handleRegisterCourse(item)}
+                      onClick={() => void handleRegisterCourse(item)}
                     >
                       {t("ลงทะเบียนอบรม", "Register now")}
                     </button>

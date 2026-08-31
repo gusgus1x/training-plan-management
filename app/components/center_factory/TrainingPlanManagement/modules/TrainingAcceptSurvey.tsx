@@ -1,12 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
-import {
-  TRAINING_MASTER_EVENT,
-  TRAINING_WORKFLOW_KEYS,
-  readWorkflowCollection,
-  type WorkflowStandard,
-} from "../../../../lib/trainingWorkflow";
+import { type WorkflowStandard } from "../../../../lib/trainingWorkflow";
 import {
   getLevelRank,
   normalizeEmployeeLevel,

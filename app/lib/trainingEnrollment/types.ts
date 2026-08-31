@@ -2,6 +2,17 @@ export type EnrollmentSource = "EMPLOYEE" | "HRD_FACTORY" | "HRD_CENTER";
 
 export type EnrollmentStatus = "Pending Approval" | "Factory Approved" | "Center Approved" | "Rejected" | "Cancelled";
 
+/**
+ * An enrollment that still holds the employee's seat. Rejected and Cancelled do not, so a course
+ * carrying only those is open to register for again. Shared because three employee screens ask the
+ * same question — a local copy in each is how they drift apart.
+ */
+export const ACTIVE_ENROLLMENT_STATUSES: readonly EnrollmentStatus[] = [
+  "Pending Approval",
+  "Factory Approved",
+  "Center Approved",
+];
+
 export type MatchStatus = "MATCHED" | "NOT_MATCHED";
 export type LevelMatchStatus = "MATCHED" | "NOT_MATCHED" | "NOT_REQUIRED";
 

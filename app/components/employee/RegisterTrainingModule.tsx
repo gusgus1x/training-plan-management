@@ -6,10 +6,18 @@ import {
   TRAINING_WORKFLOW_EVENT,
   TRAINING_WORKFLOW_KEYS,
   readWorkflowCollection,
-  writeWorkflowCollection,
-  type WorkflowRegistration,
   type WorkflowStandard,
 } from "../../lib/trainingWorkflow";
+import {
+  createEnrollment,
+  listEnrollments,
+  updateEnrollmentStatus,
+} from "../../lib/trainingEnrollment/client";
+import {
+  ACTIVE_ENROLLMENT_STATUSES,
+  type EnrollmentRecord,
+} from "../../lib/trainingEnrollment/types";
+import { useToast } from "../ToastHost";
 import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext";
 import {
   loadWorkflowRollingPlans,
@@ -204,27 +212,36 @@ export default function RegisterTrainingModule({
   const isThai = language === "th";
   const t = (th: string, en: string) => (isThai ? th : en);
 
+  const toast = useToast();
   const authenticatedUser = useAuthenticatedUser();
-  const employeeCode = profileValue(authenticatedUser?.employeeCode);
-  const employeeName = profileValue(authenticatedUser?.username);
+  // Only the company is still read here. Name, code, position and level were carried purely to
+  // build the localStorage registration row; the server now takes all of that from the session.
   const employeeCompany = profileValue(authenticatedUser?.companyCode);
-  const employeePosition = profileValue(authenticatedUser?.positionName);
-  const employeeLevel = profileValue(authenticatedUser?.levelName);
 
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [apiStandards, setApiStandards] = useState<WorkflowStandard[]>([]);
   const [localStandards, setLocalStandards] = useState<WorkflowStandard[]>([]);
-  const [registrations, setRegistrations] = useState<WorkflowRegistration[]>([]);
+  // Registrations live in training_enrollment, not localStorage. Until now this screen wrote only
+  // to the browser, so an employee saw their registration stick and HRD never received it.
+  const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [selectedScope, setSelectedScope] = useState<"ALL" | "Center" | "Factory">("ALL");
   const [showCompleted, setShowCompleted] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>(initialCourseCode || "");
   const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
 
+  // No employee filter is sent: the server scopes an EMPLOYEE caller to themselves. Same call the
+  // dashboard and record screens already make.
+  const reloadEnrollments = () =>
+    listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
+      .then((result) => setEnrollments(result.enrollments || []))
+      .catch(() => undefined);
+
   // Load Rolling Plans, Standards, and Registrations dynamically from API & Storage
   useEffect(() => {
     void loadWorkflowRollingPlans().then(setRollingPlans);
-    setRegistrations(readWorkflowCollection<WorkflowRegistration>(TRAINING_WORKFLOW_KEYS.registrations));
+    void reloadEnrollments();
     setLocalStandards(readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards));
 
     // Fetch live API standards
@@ -240,7 +257,6 @@ export default function RegisterTrainingModule({
   useEffect(() => {
     const syncData = () => {
       setLocalStandards(readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards));
-      setRegistrations(readWorkflowCollection<WorkflowRegistration>(TRAINING_WORKFLOW_KEYS.registrations));
     };
 
     window.addEventListener(TRAINING_WORKFLOW_EVENT, syncData);
@@ -325,10 +341,12 @@ export default function RegisterTrainingModule({
 
           const targetGroupDesc = plan.course.targetGroup || t("พนักงานระดับบังคับบัญชาและระดับปฏิบัติการที่เกี่ยวข้อง", "Targeted Employees & Related Groups");
 
-          const activeReg = registrations.find(
-            (r) =>
-              r.employeeCode === employeeCode &&
-              r.rollingId === plan.rollingId,
+          // The list is already scoped to this employee by the server, so matching on the plan is
+          // enough. Rejected and Cancelled do not hold a seat, so those courses are open again.
+          const activeReg = enrollments.find(
+            (enrollment) =>
+              enrollment.planId === plan.rollingId &&
+              ACTIVE_ENROLLMENT_STATUSES.includes(enrollment.status),
           );
 
           const isRegistered = !!activeReg;
@@ -424,7 +442,7 @@ export default function RegisterTrainingModule({
             isPending: false,
           };
         }),
-    [employeeCode, employeeCompany, isThai, registrations, rollingPlans, standards, t, todayStr],
+    [employeeCompany, isThai, enrollments, rollingPlans, standards, t, todayStr],
   );
 
   // Filtered courses - strictly hide ended courses unless showCompleted is checked
@@ -487,7 +505,7 @@ export default function RegisterTrainingModule({
   }, [allAvailableCourses, showCompleted]);
 
   const handleRegistration = async (course: AvailableCourseItem) => {
-    if (course.isEnded) return;
+    if (course.isEnded || isSubmitting) return;
 
     if (course.trainingStatus === "Registered" && course.registrationId) {
       const confirmed = window.confirm(
@@ -498,10 +516,20 @@ export default function RegisterTrainingModule({
       );
       if (!confirmed) return;
 
-      const currentList = readWorkflowCollection<WorkflowRegistration>(TRAINING_WORKFLOW_KEYS.registrations);
-      const updated = currentList.filter((r) => r.id !== course.registrationId);
-      writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.registrations, updated);
-      setRegistrations(updated);
+      setIsSubmitting(true);
+      try {
+        await updateEnrollmentStatus(course.registrationId, { action: "cancel" });
+        await reloadEnrollments();
+        toast.success(t("ยกเลิกการลงทะเบียนแล้ว", "Registration cancelled"));
+      } catch (error: unknown) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t("ยกเลิกไม่สำเร็จ", "Could not cancel the registration"),
+        );
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -514,22 +542,29 @@ export default function RegisterTrainingModule({
 
     if (!confirmed) return;
 
-    const newReg: WorkflowRegistration = {
-      id: `reg-${Date.now()}`,
-      rollingId: course.rollingId,
-      employeeCode,
-      employeeName,
-      company: employeeCompany,
-      department: "",
-      position: employeePosition,
-      level: employeeLevel,
-      registeredAt: new Date().toISOString(),
-    };
-
-    const currentList = readWorkflowCollection<WorkflowRegistration>(TRAINING_WORKFLOW_KEYS.registrations);
-    const updated = [newReg, ...currentList];
-    writeWorkflowCollection(TRAINING_WORKFLOW_KEYS.registrations, updated);
-    setRegistrations(updated);
+    setIsSubmitting(true);
+    try {
+      // The route pins both employee keys to the session for an EMPLOYEE caller, so what is sent
+      // here cannot change who is enrolled. employeeId is still required by the validator, and the
+      // session does not carry the durable key, hence the placeholder for an account linked only
+      // by that key — the server replaces it before the repository ever reads it.
+      await createEnrollment({
+        planId: course.rollingId,
+        employeeId: authenticatedUser?.employeeId ?? "0",
+        employeeUserId: null,
+        source: "EMPLOYEE",
+      });
+      await reloadEnrollments();
+      toast.success(t("ส่งใบสมัครอบรมแล้ว รอ HRD อนุมัติ", "Registered. Awaiting HRD approval"));
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t("สมัครอบรมไม่สำเร็จ", "Could not submit the registration"),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const formatMonthLabel = (mKey: string) => {
