@@ -398,14 +398,21 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
         }
 
         if (action === "cancel") {
+          // Cancelling really does destroy the record and its results, attendance and submissions —
+          // confirmed as intended, not an oversight, so do not "fix" this into a soft delete. The
+          // schema's CANCELLED status is deliberately unused.
           await db().$transaction(async (tx) => {
-            await tx.training_result.deleteMany({ where: { enrollment_id: enrollmentId } }).catch(() => undefined);
-            await tx.attendance.deleteMany({ where: { enrollment_id: enrollmentId } }).catch(() => undefined);
-            await tx.evaluation_submission.deleteMany({ where: { enrollment_id: enrollmentId } }).catch(() => undefined);
-            await tx.assessment_submission.deleteMany({ where: { enrollment_id: enrollmentId } }).catch(() => undefined);
+            // No .catch here: deleteMany on zero rows does not throw, so swallowing an error only
+            // hid a poisoned transaction and made the failure surface against the wrong table.
+            await tx.training_result.deleteMany({ where: { enrollment_id: enrollmentId } });
+            await tx.attendance.deleteMany({ where: { enrollment_id: enrollmentId } });
+            await tx.evaluation_submission.deleteMany({ where: { enrollment_id: enrollmentId } });
+            await tx.assessment_submission.deleteMany({ where: { enrollment_id: enrollmentId } });
             await tx.training_enrollment.delete({ where: { enrollment_id: enrollmentId } });
           });
-          return mapEnrollment({ ...current, approval_status: "CANCELLED" });
+          // The row is gone, so there is no enrollment to return and no stored status to report.
+          // This used to answer with approval_status "CANCELLED" — a value the database never held.
+          return { enrollmentId: id, outcome: "DELETED" as const };
         }
 
         const data: Prisma.training_enrollmentUncheckedUpdateInput = {};

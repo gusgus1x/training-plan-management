@@ -1,6 +1,6 @@
 "use client";
 
-import type { CreateEnrollmentInput, EnrollmentListFilters, EnrollmentRecord, SetAttendanceInput, UpdateEnrollmentInput } from "./types";
+import type { CreateEnrollmentInput, EnrollmentDeleted, EnrollmentListFilters, EnrollmentRecord, SetAttendanceInput, UpdateEnrollmentInput } from "./types";
 
 const parseApiResponse = async <T>(response: Response): Promise<T> => {
   let json: any;
@@ -46,9 +46,10 @@ export const createEnrollment = async (input: CreateEnrollmentInput) => {
   return parseApiResponse<{ enrollment: EnrollmentRecord }>(response);
 };
 
+// A cancel deletes the row, so it answers with EnrollmentDeleted rather than a record.
 export const updateEnrollmentStatus = async (id: string, input: UpdateEnrollmentInput) => {
   const response = await fetch(`/api/training-plan/enrollments/${id}`, jsonInit("PUT", input));
-  return parseApiResponse<{ enrollment: EnrollmentRecord }>(response);
+  return parseApiResponse<{ enrollment: EnrollmentRecord | EnrollmentDeleted }>(response);
 };
 
 export const setEnrollmentAttendance = async (id: string, input: SetAttendanceInput) => {

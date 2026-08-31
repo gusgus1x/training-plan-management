@@ -93,6 +93,16 @@ export type EnrollmentResultInfo = {
   certificateNo: string | null;
 };
 
+/**
+ * What a cancel returns. Cancelling deletes the enrollment and its results, attendance and
+ * submissions outright — the product decision, not a soft delete — so there is no record left to
+ * hand back and no stored status to name.
+ */
+export type EnrollmentDeleted = {
+  enrollmentId: string;
+  outcome: "DELETED";
+};
+
 export type EnrollmentRecord = {
   id: string;
   planId: string;
