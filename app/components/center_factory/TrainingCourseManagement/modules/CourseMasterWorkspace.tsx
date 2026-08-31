@@ -38,6 +38,7 @@ import { listLevels } from "../../../../lib/levels/client";
 import type { LevelRecord } from "../../../../lib/levels/types";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import TypewriterLoader from "../../../TypewriterLoader";
+import { UNDER_DEVELOPMENT } from "../../../../lib/underDevelopment";
 import styles from "./CourseMasterWorkspace.module.css";
 
 export const courseMasterWorkspaceModule = {
@@ -341,6 +342,22 @@ function CourseMaster() {
   const [assessmentOptions, setAssessmentOptions] = useState<TrainingAssessmentOption[]>([]);
   const [evaluationOptions, setEvaluationOptions] = useState<TrainingEvaluationOption[]>([]);
   const [courses, setCourses] = useState<CourseRecord[]>([]);
+  /**
+   * A master list that failed to load renders exactly like one that is legitimately empty. On most
+   * of these pickers that is merely confusing; on target companies it is dangerous. Saving a course
+   * standard with an empty target list writes zero rows, and computeTargetMatch in the enrollment
+   * repository reads "no target companies" as matching every employee in the group — so a failed
+   * request silently widens a course's audience to the whole company group.
+   *
+   * Record which lists failed so the save can refuse rather than guess.
+   */
+  const [failedMasterLists, setFailedMasterLists] = useState<string[]>([]);
+  const noteMasterListFailed = (label: string, clear: () => void) => {
+    clear();
+    setFailedMasterLists((current) =>
+      current.includes(label) ? current : [...current, label],
+    );
+  };
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [selectedTemplateCourseId, setSelectedTemplateCourseId] = useState("");
   const [form, setForm] = useState<CourseForm>(emptyCourseForm);
@@ -504,6 +521,9 @@ function CourseMaster() {
     reader.readAsText(file);
   };
 
+  // NOT REAL. This only pushes rows into React state and then toasts that the import succeeded, so
+  // everything vanishes on reload. The manual form in this same file persists through
+  // createCourse/updateCourse; the import path was never wired to them. Button disabled until it is.
   const handleCommitExcelImport = () => {
     if (importRows.length === 0) return;
 
@@ -1413,13 +1433,14 @@ function CourseMaster() {
   };
 
   const handleRefresh = async () => {
+    setFailedMasterLists([]);
     listCourseTypes({ status: "ACTIVE" })
       .then((types) =>
         setCourseTypeOptions(
           types.items.map((item: any) => ({ name: item.name, typeId: item.courseTypeId || item.code })),
         ),
       )
-      .catch(() => setCourseTypeOptions([]));
+      .catch(() => noteMasterListFailed("Course types", () => setCourseTypeOptions([])));
     listCourseGroups({ status: "ACTIVE" })
       .then((groups) =>
         setCourseGroupOptions(
@@ -1431,15 +1452,15 @@ function CourseMaster() {
           })),
         ),
       )
-      .catch(() => setCourseGroupOptions([]));
+      .catch(() => noteMasterListFailed("Course groups", () => setCourseGroupOptions([])));
     void listOapPlans({ search: null, status: null }).then((result) => setOapPlans(result.oapPlans || []));
     void loadWorkflowRollingPlans().then(setRollingPlans);
     listPositions()
       .then((result) => setPositionRows(result.items.filter((item) => item.status === "ACTIVE")))
-      .catch(() => setPositionRows([]));
+      .catch(() => noteMasterListFailed("Positions", () => setPositionRows([])));
     listLevels()
       .then((result) => setLevelRows(result.items.filter((item) => item.status === "ACTIVE")))
-      .catch(() => setLevelRows([]));
+      .catch(() => noteMasterListFailed("Levels", () => setLevelRows([])));
     void loadPublishedForms();
     listFunctions()
       .then((functions) =>
@@ -1449,7 +1470,7 @@ function CourseMaster() {
             .map((item) => ({ id: item.functionId, code: item.functionCode, name: item.functionNameEn || item.functionNameTh })),
         ),
       )
-      .catch(() => setFunctionRows([]));
+      .catch(() => noteMasterListFailed("Functions", () => setFunctionRows([])));
     listCompanies()
       .then((companies) =>
         setCompanyRows(
@@ -1458,7 +1479,7 @@ function CourseMaster() {
             .map((item) => ({ id: item.companyId, code: item.companyCode, name: item.companyNameEn || item.companyNameTh })),
         ),
       )
-      .catch(() => setCompanyRows([]));
+      .catch(() => noteMasterListFailed("Companies", () => setCompanyRows([])));
     listDivisions()
       .then((divisions) =>
         setDivisionRows(
@@ -1467,7 +1488,7 @@ function CourseMaster() {
             .map((item) => ({ id: item.divisionId, code: item.divisionCode, name: item.divisionNameEn || item.divisionNameTh })),
         ),
       )
-      .catch(() => setDivisionRows([]));
+      .catch(() => noteMasterListFailed("Divisions", () => setDivisionRows([])));
     listDepartments()
       .then((departments) =>
         setDepartmentRows(
@@ -1476,7 +1497,7 @@ function CourseMaster() {
             .map((item) => ({ id: item.departmentId, code: item.departmentCode, name: item.departmentNameEn || item.departmentNameTh })),
         ),
       )
-      .catch(() => setDepartmentRows([]));
+      .catch(() => noteMasterListFailed("Departments", () => setDepartmentRows([])));
     listSections()
       .then((sections) =>
         setSectionRows(
@@ -1485,10 +1506,10 @@ function CourseMaster() {
             .map((item) => ({ id: item.sectionId, code: item.sectionCode, name: item.sectionNameEn || item.sectionNameTh })),
         ),
       )
-      .catch(() => setSectionRows([]));
+      .catch(() => noteMasterListFailed("Sections", () => setSectionRows([])));
     listOrgHierarchyUsage()
       .then((result) => setOrgUsage(result.items))
-      .catch(() => setOrgUsage([]));
+      .catch(() => noteMasterListFailed("Org hierarchy usage", () => setOrgUsage([])));
 
     try {
       const courseData = await listCourses({ search: "", status: null });
@@ -1533,6 +1554,17 @@ function CourseMaster() {
   };
 
   const handleSave = async () => {
+    // Refuse rather than let an empty picker be read as a deliberate choice — see failedMasterLists.
+    if (failedMasterLists.length > 0) {
+      const failed = failedMasterLists.join(", ");
+      toast.error(
+        language === "th"
+          ? `โหลดข้อมูลหลักไม่สำเร็จ (${failed}) กรุณากดรีเฟรชแล้วลองใหม่ ยังบันทึกไม่ได้เพราะกลุ่มเป้าหมายอาจว่างโดยไม่ได้ตั้งใจ`
+          : `Could not load master data (${failed}). Refresh and try again — saving now could store an empty target audience by accident.`,
+      );
+      return;
+    }
+
     const missingFields: string[] = [];
 
     if (!form.courseGroup.trim()) {
@@ -2841,20 +2873,23 @@ function CourseMaster() {
               </button>
               <button
                 type="button"
-                disabled={importRows.length === 0}
+                disabled
+                title={`${UNDER_DEVELOPMENT.th} / ${UNDER_DEVELOPMENT.en}`}
                 style={{
-                  background: importRows.length === 0 ? "#94a3b8" : "#10b981",
+                  background: "#94a3b8",
                   color: "#ffffff",
                   border: "none",
                   padding: "8px 22px",
                   borderRadius: "8px",
                   fontWeight: 700,
-                  cursor: importRows.length === 0 ? "not-allowed" : "pointer",
+                  cursor: "not-allowed",
                 }}
-                onClick={handleCommitExcelImport}
               >
                 ยืนยันการนำเข้าข้อมูล ({importRows.length} รายการ)
               </button>
+              <p style={{ margin: "8px 0 0", fontSize: "12px", color: "#64748b" }}>
+                {UNDER_DEVELOPMENT.th} / {UNDER_DEVELOPMENT.en}
+              </p>
             </div>
           </div>
         </div>

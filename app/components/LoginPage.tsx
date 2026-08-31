@@ -12,7 +12,7 @@ import Navbar from "./Navbar";
 import styles from "./LoginPage.module.css";
 import type { ClientRoleCode } from "../lib/auth/client";
 import { useUiLanguage } from "./ThaiUiLocalization";
-import { useToast } from "./ToastHost";
+import { UNDER_DEVELOPMENT } from "../lib/underDevelopment";
 
 type LoginPageProps = {
   onLogin: (username: string, password: string) => Promise<void>;
@@ -42,7 +42,6 @@ export default function LoginPage({
   const { language } = useUiLanguage();
   const isThai = language === "th";
   const t = (th: string, en: string) => (isThai ? th : en);
-  const toast = useToast();
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -73,14 +72,6 @@ export default function LoginPage({
       setIsPasswordVisible(false);
       setIsSubmitting(false);
     }
-  };
-
-  const handleLineLogin = () => {
-    const lineMessage = t(
-      "ระบบเตรียมการเชื่อมต่อ LINE Official Account (LINE Login) พร้อมเปิดใช้งานเร็วๆ นี้",
-      "LINE Official Account (LINE Login) integration ready for service deployment soon.",
-    );
-    toast.info(lineMessage);
   };
 
   return (
@@ -281,8 +272,8 @@ export default function LoginPage({
           <button
             className={styles.lineLoginButton}
             type="button"
-            disabled={isSubmitting}
-            onClick={handleLineLogin}
+            disabled
+            title={`${UNDER_DEVELOPMENT.th} / ${UNDER_DEVELOPMENT.en}`}
           >
             <svg
               width="24"

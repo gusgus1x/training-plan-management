@@ -245,7 +245,13 @@ export default function TrainingActual() {
   const [costBreakdown, setCostBreakdown] = useState<CostBreakdown | null>(null);
 
   useEffect(() => {
-    void loadWorkflowRollingPlans().then(setRollingPlans);
+    let active = true;
+    void loadWorkflowRollingPlans().then((plans) => {
+      if (active) setRollingPlans(plans);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -364,14 +370,16 @@ export default function TrainingActual() {
 
   // Returns what it fetched. The save handler needs the fresh numbers in the same tick, and
   // reading them back from state would show whatever was on screen before the save.
-  const reloadCostBreakdown = async (planId: string) => {
+  // `isStale` lets the effect below discard a response for a course the user has already moved off,
+  // while the save handler — which calls this for the value, not the render — always keeps it.
+  const reloadCostBreakdown = async (planId: string, isStale: () => boolean = () => false) => {
     try {
       const result = await getCostBreakdown(planId);
-      setCostBreakdown(result.costBreakdown);
+      if (!isStale()) setCostBreakdown(result.costBreakdown);
       return result.costBreakdown;
     } catch (error) {
       console.error("Failed to load cost breakdown", error);
-      setCostBreakdown(null);
+      if (!isStale()) setCostBreakdown(null);
       return null;
     }
   };
@@ -381,7 +389,14 @@ export default function TrainingActual() {
       setCostBreakdown(null);
       return;
     }
-    void reloadCostBreakdown(selectedCourse.id);
+    // Without this, a slow response for course A could land after course B's and paint A's budget
+    // and actual expenses next to B's title and attendees — and a save from that screen would write
+    // B's plan with A's numbers. The attendee effect above already guards itself the same way.
+    let active = true;
+    void reloadCostBreakdown(selectedCourse.id, () => !active);
+    return () => {
+      active = false;
+    };
   }, [selectedCourse?.id]);
 
   const [currentPage, setCurrentPage] = useState(1);

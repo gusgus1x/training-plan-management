@@ -18,6 +18,7 @@ import {
 import { useUiLanguage } from "../ThaiUiLocalization";
 import type { UserModule } from "./data";
 import ModuleHeader from "./ModuleHeader";
+import { getLocalDateString } from "../../lib/calendarDate";
 import styles from "./RegisterTrainingModule.module.css";
 
 export type AvailableCourseItem = {
@@ -271,10 +272,7 @@ export default function RegisterTrainingModule({
     return combined;
   }, [apiStandards, localStandards]);
 
-  const todayStr = useMemo(() => {
-    const d = new Date();
-    return d.toISOString().split("T")[0];
-  }, []);
+  const todayStr = useMemo(() => getLocalDateString(), []);
 
   // Compute Available Courses strictly matching TrainingRolling.tsx logic
   const allAvailableCourses: AvailableCourseItem[] = useMemo(

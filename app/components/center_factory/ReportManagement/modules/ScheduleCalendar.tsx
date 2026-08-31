@@ -15,6 +15,7 @@ import {
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import TypewriterLoader from "../../../TypewriterLoader";
+import { UNDER_DEVELOPMENT } from "../../../../lib/underDevelopment";
 import type { InternalReportDraft } from "./InternalReport";
 import styles from "./ScheduleCalendar.module.css";
 
@@ -386,11 +387,13 @@ export default function ScheduleCalendar({
               </svg>
               <span>{uiLang === "th" ? "ส่งออก Excel" : "Export Excel"}</span>
             </button>
+            {/* Its handler routes into InternalReport, which is locked for having no backend, so
+                the click already did nothing at all - silently. Say so instead. */}
             <button
               className={styles.emailButton}
-              disabled={exportPlans.length === 0}
+              disabled
+              title={`${UNDER_DEVELOPMENT.th} / ${UNDER_DEVELOPMENT.en}`}
               type="button"
-              onClick={handlePrepareEmail}
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />

@@ -19,6 +19,7 @@ import {
   type RollingPlan,
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
 import TypewriterLoader from "../../../TypewriterLoader";
+import { UNDER_DEVELOPMENT } from "../../../../lib/underDevelopment";
 import styles from "./TrainingRecord.module.css";
 
 export const trainingRecordModule = {
@@ -637,6 +638,8 @@ export default function TrainingRecord() {
       )
     : [];
 
+  // NOT REAL. Sets a message saying the file downloaded and produces no file — there is no ZIP or
+  // PDF generation anywhere. Both buttons that called it are disabled until there is.
   const handleDownload = (label: string) => {
     if (!selectedCourse) {
       return;
@@ -706,6 +709,8 @@ export default function TrainingRecord() {
     );
   };
 
+  // NOT REAL. No API call: it only sets React state and reports "Saved N courses", so the import is
+  // gone on reload. Button disabled until the courses actually persist.
   const handleSaveImportedCourses = () => {
     if (importedCourses.length === 0) {
       setImportMessage("Import a valid Excel export before saving.");
@@ -1376,7 +1381,8 @@ export default function TrainingRecord() {
                 <button
                   type="button"
                   className={styles.secondaryButton}
-                  onClick={() => handleDownload("All evaluation forms")}
+                  disabled
+                  title={`${UNDER_DEVELOPMENT.th} / ${UNDER_DEVELOPMENT.en}`}
                 >
                   📥 Download All Forms (ZIP)
                 </button>
@@ -1530,7 +1536,8 @@ export default function TrainingRecord() {
                             <button
                               type="button"
                               className={styles.individualDownloadBtn}
-                              onClick={() => handleDownload(`Evaluation form for ${attendee.name}`)}
+                              disabled
+                              title={`${UNDER_DEVELOPMENT.th} / ${UNDER_DEVELOPMENT.en}`}
                             >
                               📄 Form PDF
                             </button>
@@ -1848,7 +1855,11 @@ export default function TrainingRecord() {
               <span>Preview</span>
               <strong>{importedCourses.length} courses / {importedRecordRows.length} records</strong>
             </div>
-            <button type="button" onClick={handleSaveImportedCourses}>
+            <button
+              type="button"
+              disabled
+              title={`${UNDER_DEVELOPMENT.th} / ${UNDER_DEVELOPMENT.en}`}
+            >
               Save Imported Courses
             </button>
           </div>

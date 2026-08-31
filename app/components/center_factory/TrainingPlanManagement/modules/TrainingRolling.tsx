@@ -27,6 +27,7 @@ import { useToast } from "../../../ToastHost";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import TypewriterLoader from "../../../TypewriterLoader";
 import SearchableSelect from "../../../SearchableSelect";
+import { getLocalDateString } from "../../../../lib/calendarDate";
 import styles from "./TrainingRolling.module.css";
 
 export const trainingRollingModule = {
@@ -719,7 +720,7 @@ export default function TrainingRolling() {
       return;
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getLocalDateString();
     // Read before the form is reset below, otherwise the toast reports 0.
     const sessionCount = form.sessions.length;
 
