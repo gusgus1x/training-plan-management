@@ -1724,7 +1724,7 @@ function CourseMaster() {
           background: "linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(59, 130, 246, 0.02))",
           border: "1px solid rgba(59, 130, 246, 0.3)",
         }}>
-          <label style={{ display: "flex", flexDirection: "column", gap: "6px", width: "100%" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", width: "100%" }}>
             <span className={styles.fieldLabel} style={{ color: "#2563eb", fontWeight: 800, fontSize: "0.92rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px" }}>
               <span>📋</span>
               <span>
@@ -1744,7 +1744,7 @@ function CourseMaster() {
                 ? "* ระบบจะดึงเฉพาะข้อมูลรายละเอียดหลักสูตร (กลุ่มหลักสูตร, ประเภทหลักสูตร, ชื่อหลักสูตร, วัตถุประสงค์, เนื้อหา, ที่มา) โดยจะเว้นแบบทดสอบ แบบประเมิน และเกณฑ์มาตรฐานให้คุณระบุเอง"
                 : "* Copies course details (Group, Type, Name, Objective, Content, Reason). Tests, Evaluations, and Target Standards are left blank for you to define."}
             </small>
-          </label>
+          </div>
         </div>
       ) : null}
 
@@ -2250,7 +2250,7 @@ function CourseMaster() {
               ) : null}
 
               <div className={styles.standard_formGrid}>
-                <label>
+                <div style={{ display: "grid", gap: "6px" }}>
                   <span className={styles.fieldLabel} translate="no">Function Name</span>
                   <SearchableSelect
                     value={scopeRow.functionCode}
@@ -2269,9 +2269,9 @@ function CourseMaster() {
                       }
                     }}
                   />
-                </label>
+                </div>
 
-                <label>
+                <div style={{ display: "grid", gap: "6px" }}>
                   <span className={styles.fieldLabel} translate="no">Division</span>
                   <SearchableSelect
                     value={scopeRow.divisionCode}
@@ -2285,9 +2285,9 @@ function CourseMaster() {
                       if (index === 0) setStandardDivisionCode(nextCode);
                     }}
                   />
-                </label>
+                </div>
 
-                <label>
+                <div style={{ display: "grid", gap: "6px" }}>
                   <span className={styles.fieldLabel} translate="no">Department</span>
                   <SearchableSelect
                     value={scopeRow.departmentCode}
@@ -2301,9 +2301,9 @@ function CourseMaster() {
                       if (index === 0) setStandardDepartmentCode(nextCode);
                     }}
                   />
-                </label>
+                </div>
 
-                <label>
+                <div style={{ display: "grid", gap: "6px" }}>
                   <span className={styles.fieldLabel} translate="no">Section</span>
                   <SearchableSelect
                     value={scopeRow.sectionCode}
@@ -2317,7 +2317,7 @@ function CourseMaster() {
                       if (index === 0) setStandardSectionCode(nextCode);
                     }}
                   />
-                </label>
+                </div>
               </div>
             </div>
           ))}

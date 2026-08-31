@@ -186,7 +186,11 @@ const exportPersonalRecord = (
   URL.revokeObjectURL(downloadUrl);
 };
 
-export default function RecordModule() {
+type RecordModuleProps = {
+  onRequestRefresher?: (record: EmployeeTrainingRecord) => void;
+};
+
+export default function RecordModule({ onRequestRefresher }: RecordModuleProps = {}) {
   const { language } = useUiLanguage();
   const isThai = language === "th";
   const t = (th: string, en: string) => (isThai ? th : en);
@@ -548,6 +552,17 @@ export default function RecordModule() {
                       {record.provider === "HRD Center" ? "🏛️ HRD Center" : "🏭 Factory HRD"}
                     </span>
 
+                    {onRequestRefresher ? (
+                      <button
+                        className={styles.requestRetrainBtn}
+                        type="button"
+                        title={t("ขอให้เปิดอบรมทบทวนหลักสูตรนี้ใหม่", "Request refresher for this course")}
+                        onClick={() => onRequestRefresher(record)}
+                      >
+                        🔄 {t("ขออบรมทบทวน", "Request Refresher")}
+                      </button>
+                    ) : null}
+
                     <button
                       className={styles.viewDetailBtn}
                       type="button"
@@ -811,7 +826,20 @@ export default function RecordModule() {
               </div>
             </section>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: "10px" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", paddingTop: "10px" }}>
+              {onRequestRefresher ? (
+                <button
+                  className={styles.requestRetrainBtn}
+                  type="button"
+                  onClick={() => {
+                    const rec = detailModalRecord;
+                    setDetailModalRecord(null);
+                    onRequestRefresher(rec);
+                  }}
+                >
+                  🔄 {t("ขออบรมทบทวนหลักสูตรนี้", "Request Refresher")}
+                </button>
+              ) : null}
               <button
                 className={styles.exportBtn}
                 type="button"

@@ -249,11 +249,11 @@ type RollingForm = {
   sessions: RollingSessionForm[];
 };
 
-const createEmptySession = (index = 0): RollingSessionForm => ({
+const createEmptySession = (index = 0, batchName = ""): RollingSessionForm => ({
   id: `session-${Date.now()}-${index}`,
   dbId: null,
   status: "Planning",
-  batchName: "",
+  batchName,
   location: "",
   trainingDate: "",
   endDate: "",
@@ -603,8 +603,53 @@ export default function TrainingRolling() {
     : false;
   const isSelectedGroupReadOnlyForFactory = isFactoryUser && isSelectedGroupCenter;
 
+  const getNextBatchNumber = (oapId: string): string => {
+    if (!oapId) return "1";
+    const matchingPlans = rollingPlans.filter((p) => p.oapId === oapId);
+    const targetOap = oapPlans.find((o) => o.id === oapId);
+    const courseCode = targetOap?.course?.courseCode;
+    const sameCoursePlans = courseCode
+      ? rollingPlans.filter((p) => p.course?.code === courseCode || p.oapId === oapId)
+      : matchingPlans;
+
+    const plansToScan = sameCoursePlans.length > 0 ? sameCoursePlans : matchingPlans;
+    if (plansToScan.length === 0) return "1";
+
+    let maxBatch = 0;
+    for (const plan of plansToScan) {
+      if (typeof plan.batchNo === "number" && !isNaN(plan.batchNo) && plan.batchNo > maxBatch) {
+        maxBatch = plan.batchNo;
+      }
+      if (plan.batch) {
+        const matches = plan.batch.match(/\d+/g);
+        if (matches) {
+          for (const m of matches) {
+            const num = parseInt(m, 10);
+            if (!isNaN(num) && num > maxBatch) {
+              maxBatch = num;
+            }
+          }
+        }
+      }
+    }
+    return String(maxBatch + 1);
+  };
+
   const updateOap = (value: string) => {
-    setForm((current) => ({ ...current, oapId: value }));
+    const nextBatch = getNextBatchNumber(value);
+    setForm((current) => {
+      const isInitialOrNumeric = current.sessions.every(
+        (s) => !s.batchName || /^\d+$/.test(s.batchName.trim())
+      );
+      return {
+        ...current,
+        oapId: value,
+        sessions: current.sessions.map((session) => ({
+          ...session,
+          batchName: isInitialOrNumeric || !session.batchName ? nextBatch : session.batchName,
+        })),
+      };
+    });
   };
 
   const updateSession = (
@@ -621,11 +666,14 @@ export default function TrainingRolling() {
   };
 
   const addSession = () => {
+    const prevSession = form.sessions[form.sessions.length - 1];
+    const defaultBatch =
+      prevSession?.batchName?.trim() || getNextBatchNumber(form.oapId);
     setForm((current) => ({
       ...current,
       sessions: [
         ...current.sessions,
-        createEmptySession(current.sessions.length),
+        createEmptySession(current.sessions.length, defaultBatch),
       ],
     }));
   };
@@ -1085,7 +1133,7 @@ export default function TrainingRolling() {
               <button className={styles.closeButton} type="button" onClick={() => setIsNewOpen(false)}>Close</button>
             </div>
             <div className={styles.formGrid}>
-              <label className={styles.fullField}>
+              <div className={styles.fullField}>
                 <span>Course Name <RequiredIndicator isFilled={Boolean(form.oapId)} /></span>
                 <SearchableSelect
                   options={oapSources.map((source) => {
@@ -1101,7 +1149,7 @@ export default function TrainingRolling() {
                   onChange={(oapId) => updateOap(oapId)}
                   placeholder="🔍 พิมพ์เพื่อค้นหาหลักสูตร/แผน OAP... / Search course or OAP plan..."
                 />
-              </label>
+              </div>
 
               <div className={`${styles.fullField} ${styles.sessionSection}`}>
                 <div className={styles.sectionHeader}>
@@ -1131,10 +1179,10 @@ export default function TrainingRolling() {
                       </div>
                       <div className={styles.sessionGrid}>
                         <label>
-                          <span>Batch <RequiredIndicator isFilled={Boolean(session.batchName.trim())} /></span>
+                          <span>{language === 'th' ? 'รุ่นการอบรม (Batch)' : 'Batch'} <RequiredIndicator isFilled={Boolean(session.batchName.trim())} /></span>
                           <input
                             disabled={!selectedOap}
-                            placeholder="Optional label, e.g. batch 1 or Supervisor batch"
+                            placeholder={language === 'th' ? "เช่น 1, 2 หรือระบุชื่อรุ่น" : "Optional label, e.g. 1, 2 or Batch label"}
                             value={session.batchName}
                             onChange={(event) =>
                               updateSession(session.id, "batchName", event.target.value)

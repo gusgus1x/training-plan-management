@@ -1,0 +1,444 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.requestLayout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .requestLayout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.mainCard,
+.sideCard {
+  border: 1px solid var(--ui-30-border, #cbd5e1);
+  border-radius: 14px;
+  background: var(--ui-60-surface, #ffffff);
+  box-shadow: var(--ui-shadow-sm, 0 1px 3px rgba(0, 0, 0, 0.08));
+  padding: 24px;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--ui-30-border, #e2e8f0);
+  padding-bottom: 14px;
+  margin-bottom: 18px;
+}
+
+.cardHeaderTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cardHeaderTitle h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ui-30-ink, #0f172a);
+}
+
+.cardHeaderIcon {
+  font-size: 1.35rem;
+}
+
+.employeeStrip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  background: var(--ui-60-surface-soft, #f8fafc);
+  border: 1px solid var(--ui-30-border, #e2e8f0);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+
+.employeeStripItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.employeeStripItem span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--ui-30-muted, #64748b);
+  letter-spacing: 0.04em;
+}
+
+.employeeStripItem strong {
+  font-size: 0.88rem;
+  color: var(--ui-30-ink, #0f172a);
+}
+
+.sectionBlock {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ui-30-ink, #0f172a);
+}
+
+.sectionHint {
+  font-size: 0.82rem;
+  color: var(--ui-30-muted, #64748b);
+  margin-top: -4px;
+}
+
+.pastCourseCard {
+  background: linear-gradient(135deg, rgba(0, 122, 61, 0.06), rgba(0, 122, 61, 0.02));
+  border: 1.5px solid rgba(0, 122, 61, 0.25);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+}
+
+.pastCourseCard::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--ui-30-primary, #007a3d);
+}
+
+.pastCourseHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pastCourseTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ui-30-ink, #0f172a);
+  margin: 0;
+}
+
+.providerBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  background: rgba(0, 122, 61, 0.12);
+  color: var(--ui-30-primary, #007a3d);
+  border: 1px solid rgba(0, 122, 61, 0.25);
+  white-space: nowrap;
+}
+
+.pastCourseGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px 16px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(0, 122, 61, 0.2);
+}
+
+.pastCourseMetaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pastCourseMetaItem span {
+  font-size: 0.72rem;
+  color: var(--ui-30-muted, #64748b);
+  font-weight: 600;
+}
+
+.pastCourseMetaItem strong {
+  font-size: 0.84rem;
+  color: var(--ui-30-ink, #0f172a);
+}
+
+.formGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formField label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ui-30-ink, #0f172a);
+}
+
+.textInput,
+.textareaInput {
+  width: 100%;
+  border: 1.5px solid var(--ui-30-border, #cbd5e1);
+  border-radius: 10px;
+  background: var(--ui-60-surface-soft, #f8fafc);
+  color: var(--ui-30-ink, #0f172a);
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 160ms ease;
+}
+
+.textInput:focus,
+.textareaInput:focus {
+  border-color: var(--ui-30-primary, #007a3d);
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.15);
+}
+
+.textareaInput {
+  min-height: 90px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.quickTagsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.quickTagBtn {
+  background: var(--ui-60-surface-soft, #f1f5f9);
+  border: 1px solid var(--ui-30-border, #e2e8f0);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ui-30-ink, #334155);
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.quickTagBtn:hover {
+  background: rgba(0, 122, 61, 0.08);
+  border-color: var(--ui-30-primary, #007a3d);
+  color: var(--ui-30-primary, #007a3d);
+}
+
+.dateRangeGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.dateRangeGrid input[type="date"] {
+  width: 100%;
+  border: 1.5px solid var(--ui-30-border, #cbd5e1);
+  border-radius: 10px;
+  background: var(--ui-60-surface-soft, #f8fafc);
+  color: var(--ui-30-ink, #0f172a);
+  padding: 8px 12px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.submitBtn {
+  width: 100%;
+  min-height: 44px;
+  background: var(--ui-30-primary, #007a3d);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 160ms ease;
+  box-shadow: 0 4px 12px rgba(0, 122, 61, 0.25);
+  margin-top: 8px;
+}
+
+.submitBtn:hover:not(:disabled) {
+  background: #006030;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 122, 61, 0.35);
+}
+
+.submitBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.emptyRecordsAlert {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 0.85rem;
+  color: #92400e;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.previewPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.previewCard {
+  background: var(--ui-60-surface-soft, #f8fafc);
+  border: 1px solid var(--ui-30-border, #e2e8f0);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.previewCard span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--ui-30-muted, #64748b);
+}
+
+.previewCard h4 {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: var(--ui-30-ink, #0f172a);
+}
+
+.previewCard p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ui-30-muted, #475569);
+  line-height: 1.4;
+}
+
+.historyList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.historyItem {
+  background: var(--ui-60-surface-soft, #f8fafc);
+  border: 1px solid var(--ui-30-border, #e2e8f0);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 140ms ease;
+}
+
+.historyItem:hover {
+  border-color: var(--ui-30-primary, #007a3d);
+}
+
+.historyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.historyReqNo {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--ui-30-primary, #007a3d);
+  font-family: monospace;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.statusPending {
+  background: rgba(245, 158, 11, 0.12);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.statusApproved {
+  background: rgba(16, 185, 129, 0.12);
+  color: #047857;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.statusRejected {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.statusPlanned {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.historyCourseName {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ui-30-ink, #0f172a);
+  margin: 0;
+}
+
+.historyReason {
+  font-size: 0.8rem;
+  color: var(--ui-30-muted, #64748b);
+  margin: 0;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.historyDate {
+  font-size: 0.72rem;
+  color: var(--ui-30-muted, #94a3b8);
+}

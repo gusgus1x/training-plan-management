@@ -208,6 +208,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
   const [activeModule, setActiveModule] = useState<UserModule | null>(null);
   const [trainingNeed, setTrainingNeed] = useState("");
   const [reason, setReason] = useState("");
+  const [requestCourseId, setRequestCourseId] = useState("");
   const [calendarToday] = useState(getCurrentCalendarDate);
   const [selectedCalendarYear, setSelectedCalendarYear] = useState(
     calendarToday.year,
@@ -453,10 +454,17 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
               setReason={setReason}
               setTrainingNeed={setTrainingNeed}
               trainingNeed={trainingNeed}
+              initialCourseId={requestCourseId}
+              onNavigate={(mod) => setActiveModule(mod as any)}
             />
           ) : null}
           {activeModule === "record" ? (
-            <RecordModule />
+            <RecordModule
+              onRequestRefresher={(record) => {
+                setRequestCourseId(record.id);
+                setActiveModule("request");
+              }}
+            />
           ) : null}
           {activeModule === "report" ? (
             <ReportModule

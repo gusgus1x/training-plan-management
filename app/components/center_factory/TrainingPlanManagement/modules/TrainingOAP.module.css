@@ -396,7 +396,8 @@
   gap: 14px 16px;
 }
 
-.formGrid label {
+.formGrid label,
+.formGrid .fullField {
   display: grid;
   grid-column: span 2;
   gap: 6px;

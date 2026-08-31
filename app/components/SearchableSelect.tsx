@@ -47,6 +47,7 @@ export default function SearchableSelect({
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
+        setSearchQuery("");
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -70,21 +71,19 @@ export default function SearchableSelect({
     setIsOpen(true);
     setSearchQuery("");
     setHighlightedIndex(0);
-    setTimeout(() => {
-      inputRef.current?.focus();
-    }, 50);
   };
 
   const handleSelectOption = (optValue: string) => {
-    onChange(optValue);
     setIsOpen(false);
     setSearchQuery("");
+    onChange(optValue);
   };
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
     onChange("");
     setSearchQuery("");
+    setIsOpen(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -98,6 +97,7 @@ export default function SearchableSelect({
 
     if (e.key === "Escape") {
       setIsOpen(false);
+      setSearchQuery("");
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
       setHighlightedIndex((prev) => (prev + 1) % Math.max(1, filteredOptions.length));
@@ -114,7 +114,14 @@ export default function SearchableSelect({
 
   return (
     <div ref={containerRef} className={`${styles.container} ${className || ""}`} style={style}>
-      <div className={styles.inputWrapper} onClick={handleOpen}>
+      <div
+        className={styles.inputWrapper}
+        onClick={() => {
+          if (!disabled && !isOpen) {
+            handleOpen();
+          }
+        }}
+      >
         <input
           ref={inputRef}
           className={`${styles.input} ${isOpen ? styles.inputOpen : ""}`}
@@ -127,8 +134,10 @@ export default function SearchableSelect({
             setHighlightedIndex(0);
             if (!isOpen) setIsOpen(true);
           }}
-          onFocus={() => {
-            if (!isOpen && !disabled) handleOpen();
+          onClick={() => {
+            if (!disabled && !isOpen) {
+              handleOpen();
+            }
           }}
           onKeyDown={handleKeyDown}
         />

@@ -107,7 +107,9 @@ export default function AuthGate({
     initializeTrainingWorkflow();
   }, []);
 
-  const getSanitizedDestination = (targetUrl: string | null): string => {
+  const getSanitizedDestination = (targetUrl: string | null, roleCode?: ClientRoleCode): string => {
+    // Employees always land directly on their personal UserDashboard at "/"
+    if (roleCode === "EMPLOYEE") return "/";
     if (!targetUrl || typeof targetUrl !== "string") return "/";
     if (targetUrl === "/login" || !targetUrl.startsWith("/")) return "/";
     const path = targetUrl.split("?")[0];
@@ -124,9 +126,11 @@ export default function AuthGate({
   };
 
   const handleLogin = async (username: string, password: string) => {
-    setSessionUser(await loginWithCredentials(username, password));
+    const loggedUser = await loginWithCredentials(username, password);
+    setSessionUser(loggedUser);
     setLogoutMessage(null);
-    const dest = getSanitizedDestination(targetReturnUrl);
+    const dest = getSanitizedDestination(targetReturnUrl, loggedUser.roleCode);
+    setTargetReturnUrl(null);
     router.push(dest);
     router.refresh();
   };
@@ -160,7 +164,8 @@ export default function AuthGate({
 
     setLogoutMessage(null);
     setPreviewUser(nextPreviewUser);
-    const dest = getSanitizedDestination(targetReturnUrl);
+    const dest = getSanitizedDestination(targetReturnUrl, nextPreviewUser.roleCode);
+    setTargetReturnUrl(null);
     router.push(dest);
   };
 
@@ -171,8 +176,9 @@ export default function AuthGate({
 
     setIsLoggingOut(true);
     setLogoutMessage(null);
-    // Must be cleared here too, or it would outlive the server session and keep the user "in".
+    // Clear session user and target return url so the next login does not inherit the previous page
     setSessionUser(null);
+    setTargetReturnUrl(null);
 
     if (previewUser) {
       setPreviewUser(null);
@@ -205,8 +211,12 @@ export default function AuthGate({
       }
       router.replace("/login");
     } else if (effectiveUser && pathname === "/login") {
-      const dest = getSanitizedDestination(targetReturnUrl);
+      const dest = getSanitizedDestination(targetReturnUrl, effectiveUser.roleCode);
+      setTargetReturnUrl(null);
       router.replace(dest);
+    } else if (effectiveUser && effectiveUser.roleCode === "EMPLOYEE" && pathname !== "/") {
+      // Employees do not access Center/Factory sub-routes; redirect to their personal dashboard
+      router.replace("/");
     }
   }, [effectiveUser, pathname, router, targetReturnUrl]);
 

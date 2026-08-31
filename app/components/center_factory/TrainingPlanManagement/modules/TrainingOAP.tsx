@@ -735,7 +735,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               </div>
             ) : null}
             <div className={styles.formGrid}>
-              <label className={styles.fullField}>
+              <div className={styles.fullField}>
                 <span>Course Name <RequiredIndicator isFilled={Boolean(form.courseCode.trim())} /></span>
                 <SearchableSelect
                   options={courseOptions.map((course) => {
@@ -761,7 +761,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                   onChange={(code) => updateForm("courseCode", code)}
                   placeholder="🔍 พิมพ์เพื่อค้นหาหลักสูตร (รหัส/ชื่อ)... / Search course..."
                 />
-              </label>
+              </div>
               {selectedCourse ? (
                 <div className={styles.fullField}>
                   <div
