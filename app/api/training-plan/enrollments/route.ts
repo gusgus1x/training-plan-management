@@ -36,7 +36,13 @@ export const createCreateEnrollmentHandler = (dependencies: Dependencies = {}) =
     const input = parseCreateEnrollment(await readJsonObject(request));
 
     if (principal.role === "EMPLOYEE") {
-      requireEmployeeOwnership(principal, input.employeeId);
+      requireEmployeeOwnership(principal, input.employeeId, input.employeeUserId);
+      // Either key may PROVE ownership, but the repository RESOLVES the row by employeeUserId
+      // first — so a caller proving themselves with employeeId while sending a colleague's
+      // employeeUserId would enrol the colleague. Pin both keys to the principal instead of
+      // trusting what was sent; an employee acting for themselves needs neither from the client.
+      input.employeeId = principal.employeeId ?? input.employeeId;
+      input.employeeUserId = principal.employeeUserId;
       input.source = "EMPLOYEE";
     } else {
       input.source = principal.role;

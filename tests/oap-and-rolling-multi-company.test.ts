@@ -209,7 +209,7 @@ describe("OAP Plan & Rolling Plan Multi-User Verification Test", () => {
         await rollingPlanService.deleteRollingPlan(planId, null).catch(err => console.error(`Rolling cleanup error ${planId}:`, err));
       }
       for (const oapId of createdOapPlanIds) {
-        await oapPlanService.deleteOapPlan(oapId).catch(err => console.error(`OAP cleanup error ${oapId}:`, err));
+        await oapPlanService.deleteOapPlan(oapId, null).catch(err => console.error(`OAP cleanup error ${oapId}:`, err));
       }
       for (const courseId of createdCourseIds) {
         await courseService.deleteCourse(courseId, userId, null).catch(err => console.error(`Course cleanup error ${courseId}:`, err));

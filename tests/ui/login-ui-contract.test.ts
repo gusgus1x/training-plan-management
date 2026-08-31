@@ -61,7 +61,12 @@ describe("login UI contract", () => {
     // The white screen after signing in: handleLogin discarded the user the API returned, so
     // between router.push and the refreshed server layout effectiveUser was null while pathname
     // had already moved off /login — which the guard effect read as "signed out" and bounced back.
-    expect(authGateSource).toContain("setSessionUser(await loginWithCredentials(username, password))");
+    // Matched as a regex rather than an exact string: what has to hold is that the login response
+    // reaches setSessionUser, not whether it is written inline or via a local. Asserting the exact
+    // expression made this fail on a refactor that kept the behaviour intact.
+    expect(authGateSource).toMatch(
+      /loginWithCredentials\(username, password\)[\s\S]{0,160}setSessionUser\(/,
+    );
     expect(authGateSource).toContain("user ?? sessionUser ?? previewUser");
     // Cleared on sign-out, or it would outlive the server session.
     expect(authGateSource).toMatch(/setLogoutMessage\(null\);\s*\n[^}]*setSessionUser\(null\)/);

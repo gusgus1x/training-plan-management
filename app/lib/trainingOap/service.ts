@@ -7,11 +7,11 @@ export const createOapPlanService = (repository: OapPlanRepository = oapPlanRepo
   async createOapPlan(input: CreateOapPlanInput, userId: string, companyId: string | null) {
     return repository.create(input, userId, companyId);
   },
-  async updateOapPlan(id: string, input: UpdateOapPlanInput, userId: string) {
-    return repository.update(id, input, userId);
+  async updateOapPlan(id: string, input: UpdateOapPlanInput, userId: string, companyId: string | null) {
+    return repository.update(id, input, userId, companyId);
   },
-  async deleteOapPlan(id: string) {
-    return repository.delete(id);
+  async deleteOapPlan(id: string, companyId: string | null) {
+    return repository.delete(id, companyId);
   },
 });
 

@@ -1,6 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import { createProtectedRoute } from "../../../lib/auth/guard";
 import {
   getCourseOutlineFileName,
   type CourseOutlineRequest,
@@ -29,7 +30,9 @@ const buildContentDisposition = (fileName: string) => {
   return `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
 };
 
-export async function POST(request: Request) {
+// Reads a template off disk and builds a workbook per request, so it stays behind the same guard
+// as every other route: an unauthenticated caller could otherwise spin these up at will.
+export const POST = createProtectedRoute(async (request) => {
   try {
     const { course, standard, oapPlan, schedule, budget } =
       (await request.json()) as CourseOutlineRequest;
@@ -48,7 +51,9 @@ export async function POST(request: Request) {
       schedule,
       budget,
     );
-    return new Response(new Uint8Array(workbook), {
+    // NextResponse, not Response: the guard sets headers and rolls the session cookie on whatever
+    // comes back, and a plain Response carries no cookies.
+    return new NextResponse(new Uint8Array(workbook), {
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -69,4 +74,4 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
-}
+}, { allowedRoles: ["HRD_CENTER", "HRD_FACTORY"] });

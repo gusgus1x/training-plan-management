@@ -116,6 +116,31 @@ const mapOapPlan = (row: OapPlanWithRelations, sequence: number) => {
   };
 };
 
+// A factory HRD may only touch OAP plans owned by their own company. `companyId` is null for
+// HRD_CENTER, which is allowed everywhere. Mirrors trainingRolling/repository.ts, which guards its
+// update and delete the same way — this module was the one that never did.
+const assertOwnedByCompany = async (
+  db: PrismaClient,
+  id: string,
+  companyId: string | null,
+  action: "modify" | "delete",
+) => {
+  if (!companyId) return;
+
+  const current = await db.training_plan_oap.findUniqueOrThrow({
+    where: { oap_plan_id: BigInt(id) },
+    select: { company_id: true },
+  });
+
+  if (current.company_id?.toString() !== companyId) {
+    throw new ApiError({
+      code: "FORBIDDEN",
+      message: `Factory users cannot ${action} OAP plans owned by HRD Center or other factories`,
+      status: 403,
+    });
+  }
+};
+
 export type OapPlanRepository = ReturnType<typeof createOapPlanRepository>;
 export const createOapPlanRepository = (client?: DatabaseClient) => {
   const db = () => (client ?? getPrismaClient()) as PrismaClient;
@@ -234,8 +259,10 @@ let oapCode = baseCode;
       });
     },
 
-    async update(id: string, input: UpdateOapPlanInput, userId: string) {
+    async update(id: string, input: UpdateOapPlanInput, userId: string, companyId: string | null = null) {
       return withDatabaseErrorMapping(async () => {
+        await assertOwnedByCompany(db(), id, companyId, "modify");
+
         const data: Prisma.training_plan_oapUncheckedUpdateInput = {
           updated_by: BigInt(userId),
           updated_at: new Date(),
@@ -293,8 +320,10 @@ let oapCode = baseCode;
       });
     },
 
-    async delete(id: string) {
+    async delete(id: string, companyId: string | null = null) {
       return withDatabaseErrorMapping(async () => {
+        await assertOwnedByCompany(db(), id, companyId, "delete");
+
         const oapPlanId = BigInt(id);
         await db().$transaction(async (tx) => {
           // Find all training_plans for this OAP plan
