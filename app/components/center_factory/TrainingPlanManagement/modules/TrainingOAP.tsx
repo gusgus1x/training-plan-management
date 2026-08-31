@@ -154,31 +154,30 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const userCompanyCode = profileValue(user?.companyCode);
 
   useEffect(() => {
-    const syncApprovedRequest = () => {
+    const handleApprovedTrainingNeed = () => {
       const request = readApprovedTrainingNeed();
+      if (!request) return;
 
-      if (!request) {
-        return;
-      }
+      // Consume once and immediately clear from localStorage
+      window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
 
       setApprovedRequest(request);
       const matched = matchCourseForRequest(request.requestedCourseName, courses);
-      setForm((prev) => ({
+      setForm({
         ...emptyForm,
-        courseCode: matched ? matched.courseCode : prev.courseCode,
+        courseCode: matched ? matched.courseCode : "",
         participants: "1",
         provider: "HRD Center",
-      }));
+      });
       setEditingId("");
       setOpenDetailId("");
       setIsNewOpen(true);
     };
 
-    syncApprovedRequest();
-    window.addEventListener("approved-training-need-changed", syncApprovedRequest);
+    window.addEventListener("approved-training-need-changed", handleApprovedTrainingNeed);
 
     return () => {
-      window.removeEventListener("approved-training-need-changed", syncApprovedRequest);
+      window.removeEventListener("approved-training-need-changed", handleApprovedTrainingNeed);
     };
   }, [courses]);
 
@@ -226,13 +225,18 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
       const pendingRequest = readApprovedTrainingNeed();
       if (pendingRequest) {
+        window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
+        setApprovedRequest(pendingRequest);
         const matched = matchCourseForRequest(pendingRequest.requestedCourseName, loadedCourses);
-        if (matched) {
-          setForm((prev) => ({
-            ...prev,
-            courseCode: matched.courseCode,
-          }));
-        }
+        setForm({
+          ...emptyForm,
+          courseCode: matched ? matched.courseCode : "",
+          participants: "1",
+          provider: "HRD Center",
+        });
+        setEditingId("");
+        setOpenDetailId("");
+        setIsNewOpen(true);
       }
     } catch (error) {
       console.error("Failed to load Training OAP workspace", error);
