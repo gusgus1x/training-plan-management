@@ -52,7 +52,9 @@ const parseChoice = (value: unknown, path: string): AssessmentChoiceInput => {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw invalid(path, "Choice must be an object");
   const input = value as InputObject;
   return {
-    choiceText: readRequiredString(input, "choiceText", { maxLength: 2000 }),
+    // assessment_choice.choice_text is NVARCHAR(1000); 2000 let SQL Server refuse the insert with
+    // a truncation error instead of this layer naming the field.
+    choiceText: readRequiredString(input, "choiceText", { maxLength: 1000 }),
     isCorrect: boolean(input.isCorrect, `${path}.isCorrect`),
     optionScore: decimal(input.optionScore ?? 0, `${path}.optionScore`, 0, 999999.99),
   };
@@ -115,7 +117,8 @@ export const parseAssessmentWriteInput = (input: InputObject): AssessmentWriteIn
     seriesName: readRequiredString(input, "seriesName", { maxLength: 255 }),
     purpose: member(input.purpose, ASSESSMENT_PURPOSES, "purpose") as AssessmentPurpose,
     versionNote: readOptionalString(input, "versionNote", { maxLength: 500 }),
-    instructions: readOptionalString(input, "instructions", { maxLength: 10000 }),
+    // assessment.instructions is NVARCHAR(1000), not 10000.
+    instructions: readOptionalString(input, "instructions", { maxLength: 1000 }),
     passingScorePercent: decimal(input.passingScorePercent, "passingScorePercent", 0, 100),
     timeLimitMinutes,
     status,

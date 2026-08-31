@@ -35,9 +35,13 @@ export const parseCreateEnrollment = (input: InputObject): CreateEnrollmentInput
   };
 };
 
+// training_enrollment.reject_reason is NVARCHAR(1000). Unbounded, a long rejection reason validated
+// fine and then failed in SQL Server, so HRD saw a 500 on a rejection they believed had gone through.
+const REJECT_REASON_MAX_LENGTH = 1000;
+
 export const parseUpdateEnrollment = (input: InputObject): UpdateEnrollmentInput => ({
   action: action(input.action),
-  reason: readOptionalString(input, "reason") || undefined,
+  reason: readOptionalString(input, "reason", { maxLength: REJECT_REASON_MAX_LENGTH }) || undefined,
 });
 
 export const parseSetAttendance = (input: InputObject): SetAttendanceInput => {

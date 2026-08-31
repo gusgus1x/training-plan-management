@@ -9,6 +9,13 @@ import type { CreateOapPlanInput, OapPlanListFilters, OapPlanStatus, UpdateOapPl
 
 type DatabaseClient = Pick<PrismaClient, "training_plan_oap" | "course">;
 
+// course.objective is NVARCHAR(Max) but course_description_snapshot is NVARCHAR(1000), so a course
+// with a long objective could not have an OAP plan created for it at all — the insert failed with a
+// truncation error naming neither the course nor the field. Truncating is right here: this is a
+// snapshot for display, not the record of what the course says.
+const snapshotDescription = (objective: string | null) =>
+  objective === null ? null : objective.slice(0, 1000);
+
 const safeBigInt = (val: string | null | undefined): bigint | null => {
   if (!val) return null;
   try {
@@ -229,7 +236,7 @@ let oapCode = baseCode;
             plan_year: input.planYear,
             course_id: courseId,
             course_name_snapshot: course.course_name,
-            course_description_snapshot: course.objective,
+            course_description_snapshot: snapshotDescription(course.objective),
             pre_assessment_id: course.pre_assessment_id,
             post_assessment_id: course.post_assessment_id,
             evaluation_form_id: course.evaluation_form_id,
@@ -289,7 +296,7 @@ let oapCode = baseCode;
         }
           data.course_id = courseId;
           data.course_name_snapshot = course.course_name;
-          data.course_description_snapshot = course.objective;
+          data.course_description_snapshot = snapshotDescription(course.objective);
           data.pre_assessment_id = course.pre_assessment_id;
           data.post_assessment_id = course.post_assessment_id;
           data.evaluation_form_id = course.evaluation_form_id;

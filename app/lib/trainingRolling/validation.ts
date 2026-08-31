@@ -30,10 +30,15 @@ const status = (value: unknown, fallback?: RollingPlanStatus): RollingPlanStatus
   return value as RollingPlanStatus;
 };
 
+// Match training_plan's column widths. Without these the value reached SQL Server unchecked and
+// came back as a truncation error naming neither the field nor the limit.
+const BATCH_NAME_MAX_LENGTH = 100;
+const VENUE_MAX_LENGTH = 500;
+
 export const parseCreateRollingPlan = (input: InputObject): CreateRollingPlanInput => ({
   oapPlanId: readRequiredString(input, "oapPlanId"),
-  batchName: readOptionalString(input, "batchName"),
-  venue: readOptionalString(input, "venue") || "",
+  batchName: readOptionalString(input, "batchName", { maxLength: BATCH_NAME_MAX_LENGTH }),
+  venue: readOptionalString(input, "venue", { maxLength: VENUE_MAX_LENGTH }) || "",
   trainingDate: readDate(input, "trainingDate"),
   endDate: hasOwn(input, "endDate") && input.endDate ? readDate(input, "endDate") : readDate(input, "trainingDate"),
   startTime: readTime(input, "startTime"),
@@ -44,8 +49,8 @@ export const parseCreateRollingPlan = (input: InputObject): CreateRollingPlanInp
 export const parseUpdateRollingPlan = (input: InputObject): UpdateRollingPlanInput => {
   const update: UpdateRollingPlanInput = {};
   if (hasOwn(input, "oapPlanId")) update.oapPlanId = readRequiredString(input, "oapPlanId");
-  if (hasOwn(input, "batchName")) update.batchName = readOptionalString(input, "batchName");
-  if (hasOwn(input, "venue")) update.venue = readOptionalString(input, "venue") || "";
+  if (hasOwn(input, "batchName")) update.batchName = readOptionalString(input, "batchName", { maxLength: BATCH_NAME_MAX_LENGTH });
+  if (hasOwn(input, "venue")) update.venue = readOptionalString(input, "venue", { maxLength: VENUE_MAX_LENGTH }) || "";
   if (hasOwn(input, "trainingDate")) update.trainingDate = readDate(input, "trainingDate");
   if (hasOwn(input, "endDate")) update.endDate = readDate(input, "endDate");
   if (hasOwn(input, "startTime")) update.startTime = readTime(input, "startTime");

@@ -45,6 +45,11 @@ const parseTargetOrgScopes = (input: InputObject): CreateCourseInput["targetOrgS
   return scopes.length > 0 ? scopes : undefined;
 };
 
+// course.description is NVARCHAR(1000). `objective` is deliberately left unbounded: its column is
+// NVARCHAR(Max). See trainingOap/repository.ts, which truncates it when snapshotting into a
+// 1000-wide column rather than limiting what a course may say.
+const REMARK_MAX_LENGTH = 1000;
+
 export const parseCreateCourse = (input: InputObject): CreateCourseInput => ({
   courseNameTh: readRequiredString(input, "courseNameTh", { maxLength: 255 }),
   courseNameEn: readOptionalString(input, "courseNameEn", { maxLength: 255 }) || "",
@@ -62,7 +67,7 @@ export const parseCreateCourse = (input: InputObject): CreateCourseInput => ({
   postTestLink: readOptionalString(input, "postTestLink", { maxLength: 2048 }),
   evaluationLink: readOptionalString(input, "evaluationLink", { maxLength: 2048 }),
   evaluationAfter30DayLink: readOptionalString(input, "evaluationAfter30DayLink", { maxLength: 2048 }),
-  remark: readOptionalString(input, "remark") || "",
+  remark: readOptionalString(input, "remark", { maxLength: REMARK_MAX_LENGTH }) || "",
   status: status(input.status, "Active"),
   courseTypeId: readRequiredString(input, "courseTypeId"),
   courseGroupId: readRequiredString(input, "courseGroupId"),
@@ -102,7 +107,7 @@ export const parseUpdateCourse = (input: InputObject): UpdateCourseInput => {
   if (hasOwn(input, "postTestLink")) update.postTestLink = readOptionalString(input, "postTestLink", { maxLength: 2048 });
   if (hasOwn(input, "evaluationLink")) update.evaluationLink = readOptionalString(input, "evaluationLink", { maxLength: 2048 });
   if (hasOwn(input, "evaluationAfter30DayLink")) update.evaluationAfter30DayLink = readOptionalString(input, "evaluationAfter30DayLink", { maxLength: 2048 });
-  if (hasOwn(input, "remark")) update.remark = readOptionalString(input, "remark") ?? undefined;
+  if (hasOwn(input, "remark")) update.remark = readOptionalString(input, "remark", { maxLength: REMARK_MAX_LENGTH }) ?? undefined;
   if (hasOwn(input, "status")) update.status = status(input.status);
   if (hasOwn(input, "courseTypeId")) update.courseTypeId = readRequiredString(input, "courseTypeId");
   if (hasOwn(input, "courseGroupId")) update.courseGroupId = readRequiredString(input, "courseGroupId");

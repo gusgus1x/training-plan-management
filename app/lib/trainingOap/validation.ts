@@ -31,6 +31,11 @@ const cleanBudgetString = (val: unknown): string => {
   return "0";
 };
 
+// training_plan_oap.instructor_name_text and provider_name_text are both NVARCHAR(255). These were
+// unbounded, so an over-long name reached SQL Server and came back as a truncation error naming
+// neither the field nor the limit.
+const NAME_TEXT_MAX_LENGTH = 255;
+
 export const parseCreateOapPlan = (input: InputObject): CreateOapPlanInput => ({
   courseId: readRequiredString(input, "courseId"),
   planYear: readNumber(input, "planYear") || new Date().getFullYear(),
@@ -43,9 +48,9 @@ export const parseCreateOapPlan = (input: InputObject): CreateOapPlanInput => ({
   budgetAccommodation: cleanBudgetString(input.budgetAccommodation),
   budgetMaterial: cleanBudgetString(input.budgetMaterial),
   budgetFoodBeverage: cleanBudgetString(input.budgetFoodBeverage),
-  trainerName: readOptionalString(input, "trainerName") || "",
+  trainerName: readOptionalString(input, "trainerName", { maxLength: NAME_TEXT_MAX_LENGTH }) || "",
   instructorId: readOptionalString(input, "instructorId"),
-  providerName: readOptionalString(input, "providerName") || "",
+  providerName: readOptionalString(input, "providerName", { maxLength: NAME_TEXT_MAX_LENGTH }) || "",
   providerId: readOptionalString(input, "providerId"),
   status: status(input.status, "Planning"),
 });
@@ -63,9 +68,9 @@ export const parseUpdateOapPlan = (input: InputObject): UpdateOapPlanInput => {
   if (hasOwn(input, "budgetAccommodation")) update.budgetAccommodation = cleanBudgetString(input.budgetAccommodation);
   if (hasOwn(input, "budgetMaterial")) update.budgetMaterial = cleanBudgetString(input.budgetMaterial);
   if (hasOwn(input, "budgetFoodBeverage")) update.budgetFoodBeverage = cleanBudgetString(input.budgetFoodBeverage);
-  if (hasOwn(input, "trainerName")) update.trainerName = readOptionalString(input, "trainerName") || "";
+  if (hasOwn(input, "trainerName")) update.trainerName = readOptionalString(input, "trainerName", { maxLength: NAME_TEXT_MAX_LENGTH }) || "";
   if (hasOwn(input, "instructorId")) update.instructorId = readOptionalString(input, "instructorId");
-  if (hasOwn(input, "providerName")) update.providerName = readOptionalString(input, "providerName") || "";
+  if (hasOwn(input, "providerName")) update.providerName = readOptionalString(input, "providerName", { maxLength: NAME_TEXT_MAX_LENGTH }) || "";
   if (hasOwn(input, "providerId")) update.providerId = readOptionalString(input, "providerId");
   if (hasOwn(input, "status")) update.status = status(input.status);
 
