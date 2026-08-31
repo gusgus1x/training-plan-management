@@ -465,6 +465,17 @@ export default function RequestTrainingModule({
                       <div className={styles.historyHeader}>
                         <span className={styles.historyReqNo}>{request.requestNo}</span>
                         <span className={`${styles.statusBadge} ${getStatusBadgeClass(request.status)}`}>
+                          <span
+                            className={`${styles.statusDot} ${
+                              request.status === "APPROVED"
+                                ? styles.dotApproved
+                                : request.status === "PLANNED"
+                                ? styles.dotPlanned
+                                : request.status === "REJECTED"
+                                ? styles.dotRejected
+                                : `${styles.dotPending} ${styles.dotPulse}`
+                            }`}
+                          />
                           {needRequestStatusLabel(request.status, language)}
                         </span>
                       </div>

@@ -307,13 +307,33 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
   const getStatusBadge = (status: NeedRequestStatus) => {
     switch (status) {
       case "PENDING":
-        return <span className={`${styles.statusBadge} ${styles.statusBadgePending}`}>⏳ {t("รอตรวจสอบ", "Pending")}</span>;
+        return (
+          <span className={`${styles.statusBadge} ${styles.statusBadgePending}`}>
+            <span className={`${styles.statusDot} ${styles.dotPending} ${styles.dotPulse}`} />
+            {t("รอตรวจสอบ", "Pending")}
+          </span>
+        );
       case "APPROVED":
-        return <span className={`${styles.statusBadge} ${styles.statusBadgeApproved}`}>✓ {t("อนุมัติแล้ว", "Approved")}</span>;
+        return (
+          <span className={`${styles.statusBadge} ${styles.statusBadgeApproved}`}>
+            <span className={`${styles.statusDot} ${styles.dotApproved} ${styles.dotPulse}`} />
+            {t("อนุมัติแล้ว", "Approved")}
+          </span>
+        );
       case "PLANNED":
-        return <span className={`${styles.statusBadge} ${styles.statusBadgePlanned}`}>📋 {t("จัดลงแผนแล้ว", "Planned")}</span>;
+        return (
+          <span className={`${styles.statusBadge} ${styles.statusBadgePlanned}`}>
+            <span className={`${styles.statusDot} ${styles.dotPlanned} ${styles.dotPulse}`} />
+            {t("จัดลงแผนแล้ว", "Planned")}
+          </span>
+        );
       case "REJECTED":
-        return <span className={`${styles.statusBadge} ${styles.statusBadgeRejected}`}>✕ {t("ไม่อนุมัติ", "Rejected")}</span>;
+        return (
+          <span className={`${styles.statusBadge} ${styles.statusBadgeRejected}`}>
+            <span className={`${styles.statusDot} ${styles.dotRejected}`} />
+            {t("ไม่อนุมัติ", "Rejected")}
+          </span>
+        );
       default:
         return <span className={styles.statusBadge}>{status}</span>;
     }
@@ -353,58 +373,73 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
       {/* 2. Interactive KPI Stats Deck */}
       <div className={styles.statsGrid}>
         <button
-          className={`${styles.statCard} ${statusFilter === "PENDING" ? styles.statCardActive : ""}`}
+          className={`${styles.statCard} ${styles.statCardPending} ${statusFilter === "PENDING" ? styles.statCardActive : ""}`}
           type="button"
           onClick={() => setStatusFilter(statusFilter === "PENDING" ? "all" : "PENDING")}
         >
           <div className={styles.statCardHeader}>
-            <span className={styles.statLabel}>⏳ {t("รอตรวจสอบ", "Pending")}</span>
+            <span className={styles.statLabel}>
+              <span className={`${styles.statusDot} ${styles.dotPending} ${styles.dotPulse}`} />
+              {t("รอตรวจสอบ", "Pending")}
+            </span>
           </div>
           <strong className={`${styles.statCount} ${styles.statCountPending}`}>{stats.pending}</strong>
         </button>
 
         <button
-          className={`${styles.statCard} ${statusFilter === "APPROVED" ? styles.statCardActive : ""}`}
+          className={`${styles.statCard} ${styles.statCardApproved} ${statusFilter === "APPROVED" ? styles.statCardActive : ""}`}
           type="button"
           onClick={() => setStatusFilter(statusFilter === "APPROVED" ? "all" : "APPROVED")}
         >
           <div className={styles.statCardHeader}>
-            <span className={styles.statLabel}>✓ {t("อนุมัติแล้ว", "Approved")}</span>
+            <span className={styles.statLabel}>
+              <span className={`${styles.statusDot} ${styles.dotApproved} ${styles.dotPulse}`} />
+              {t("อนุมัติแล้ว", "Approved")}
+            </span>
           </div>
           <strong className={`${styles.statCount} ${styles.statCountApproved}`}>{stats.approved}</strong>
         </button>
 
         <button
-          className={`${styles.statCard} ${statusFilter === "PLANNED" ? styles.statCardActive : ""}`}
+          className={`${styles.statCard} ${styles.statCardPlanned} ${statusFilter === "PLANNED" ? styles.statCardActive : ""}`}
           type="button"
           onClick={() => setStatusFilter(statusFilter === "PLANNED" ? "all" : "PLANNED")}
         >
           <div className={styles.statCardHeader}>
-            <span className={styles.statLabel}>📋 {t("จัดลงแผนแล้ว", "Planned")}</span>
+            <span className={styles.statLabel}>
+              <span className={`${styles.statusDot} ${styles.dotPlanned} ${styles.dotPulse}`} />
+              {t("จัดลงแผนแล้ว", "Planned")}
+            </span>
           </div>
           <strong className={`${styles.statCount} ${styles.statCountPlanned}`}>{stats.planned}</strong>
         </button>
 
         <button
-          className={`${styles.statCard} ${statusFilter === "REJECTED" ? styles.statCardActive : ""}`}
+          className={`${styles.statCard} ${styles.statCardRejected} ${statusFilter === "REJECTED" ? styles.statCardActive : ""}`}
           type="button"
           onClick={() => setStatusFilter(statusFilter === "REJECTED" ? "all" : "REJECTED")}
         >
           <div className={styles.statCardHeader}>
-            <span className={styles.statLabel}>✕ {t("ไม่อนุมัติ", "Rejected")}</span>
+            <span className={styles.statLabel}>
+              <span className={`${styles.statusDot} ${styles.dotRejected}`} />
+              {t("ไม่อนุมัติ", "Rejected")}
+            </span>
           </div>
           <strong className={`${styles.statCount} ${styles.statCountRejected}`}>{stats.rejected}</strong>
         </button>
 
         <button
-          className={`${styles.statCard} ${statusFilter === "all" ? styles.statCardActive : ""}`}
+          className={`${styles.statCard} ${styles.statCardTotal} ${statusFilter === "all" ? styles.statCardActive : ""}`}
           type="button"
           onClick={() => setStatusFilter("all")}
         >
           <div className={styles.statCardHeader}>
-            <span className={styles.statLabel}>📊 {t("คำขอทั้งหมด", "Total")}</span>
+            <span className={styles.statLabel}>
+              <span className={`${styles.statusDot} ${styles.dotTotal} ${styles.dotPulse}`} />
+              {t("คำขอทั้งหมด", "Total")}
+            </span>
           </div>
-          <strong className={styles.statCount}>{stats.total}</strong>
+          <strong className={`${styles.statCount} ${styles.statCountTotal}`}>{stats.total}</strong>
         </button>
       </div>
 

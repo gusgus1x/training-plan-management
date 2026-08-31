@@ -80,33 +80,41 @@
 /* KPI Summary Cards */
 .statsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 12px;
 }
 
 .statCard {
   background: var(--ui-60-surface);
-  border: 1.5px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-sm, 12px);
-  padding: 14px 18px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-sm, 10px);
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   cursor: pointer;
-  transition: all 160ms ease;
+  transition: all 160ms cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   text-align: left;
+  overflow: hidden;
+  box-shadow: var(--ui-shadow-sm);
+}
+
+.statCard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: transparent;
+  transition: background 160ms ease;
 }
 
 .statCard:hover {
   transform: translateY(-2px);
   box-shadow: var(--ui-shadow-md);
-}
-
-.statCardActive {
-  border-color: var(--ui-30-primary);
-  background: var(--ui-30-primary-soft);
-  box-shadow: 0 0 0 2px var(--ui-focus-ring);
+  border-color: var(--ui-30-primary-border);
 }
 
 .statCardHeader {
@@ -119,8 +127,9 @@
   font-size: 0.78rem;
   font-weight: 700;
   color: var(--ui-30-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .statCount {
@@ -130,42 +139,69 @@
   line-height: 1.1;
 }
 
+/* Distinct Top Accent Bars & Count Colors */
+.statCardPending::before { background: #f59e0b; }
 .statCountPending { color: #f59e0b; }
+
+.statCardApproved::before { background: #10b981; }
 .statCountApproved { color: #10b981; }
+
+.statCardPlanned::before { background: #3b82f6; }
 .statCountPlanned { color: #3b82f6; }
+
+.statCardRejected::before { background: #ef4444; }
 .statCountRejected { color: #ef4444; }
+
+.statCardTotal::before { background: var(--ui-30-primary, #6366f1); }
+.statCountTotal { color: var(--ui-30-ink); }
+
+.statCardActive {
+  background: var(--ui-60-surface-soft);
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 1.5px var(--ui-30-primary);
+}
 
 /* Control & Navigation Bar */
 .controlBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-sm, 10px);
+  padding: 8px 12px;
+  box-shadow: var(--ui-shadow-sm);
 }
 
 .viewTabs {
   display: flex;
+  align-items: center;
   background: var(--ui-60-surface-soft);
   border: 1px solid var(--ui-30-border);
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 3px;
-  gap: 4px;
+  gap: 3px;
 }
 
 .viewTab {
   background: none;
   border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 0.88rem;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 0.84rem;
   font-weight: 700;
   color: var(--ui-30-muted);
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   transition: all 140ms ease;
+}
+
+.viewTab:hover {
+  color: var(--ui-30-ink);
 }
 
 .viewTabActive {
@@ -177,41 +213,45 @@
 .filterControls {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
-  flex: 1;
-  justify-content: flex-end;
 }
 
 .searchInput {
-  min-width: 220px;
-  max-width: 320px;
-  flex: 1;
-  border: 1.5px solid var(--ui-30-border);
+  min-width: 200px;
+  width: 260px;
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: var(--ui-60-surface);
+  background: var(--ui-60-surface-soft);
   color: var(--ui-30-ink);
-  padding: 8px 14px;
-  font-size: 0.88rem;
+  padding: 7px 12px;
+  font-size: 0.84rem;
   outline: none;
-  transition: border-color 140ms ease;
+  transition: all 140ms ease;
 }
 
 .searchInput:focus {
   border-color: var(--ui-30-primary);
+  background: var(--ui-60-surface);
   box-shadow: 0 0 0 2px var(--ui-focus-ring);
 }
 
 .companySelect {
-  border: 1.5px solid var(--ui-30-border);
+  border: 1px solid var(--ui-30-border);
   border-radius: 8px;
-  background: var(--ui-60-surface);
+  background: var(--ui-60-surface-soft);
   color: var(--ui-30-ink);
-  padding: 8px 12px;
-  font-size: 0.88rem;
+  padding: 7px 12px;
+  font-size: 0.84rem;
   font-weight: 600;
   outline: none;
   cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.companySelect:focus {
+  border-color: var(--ui-30-primary);
+  background: var(--ui-60-surface);
 }
 
 /* Master-Detail Content Layout */
@@ -304,38 +344,97 @@
   color: var(--ui-30-text);
 }
 
+/* Glowing Pulsing Status Light Dots */
+@keyframes pulseDot {
+  0% {
+    box-shadow: 0 0 0 0 var(--dot-glow, rgba(245, 158, 11, 0.7));
+    transform: scale(0.95);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0);
+    transform: scale(1.05);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+    transform: scale(0.95);
+  }
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.dotPulse {
+  animation: pulseDot 2s infinite ease-in-out;
+}
+
+.dotPending {
+  background-color: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.7);
+  --dot-glow: rgba(245, 158, 11, 0.6);
+}
+
+.dotApproved {
+  background-color: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7);
+  --dot-glow: rgba(16, 185, 129, 0.6);
+}
+
+.dotPlanned {
+  background-color: #3b82f6;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.7);
+  --dot-glow: rgba(59, 130, 246, 0.6);
+}
+
+.dotRejected {
+  background-color: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
+  --dot-glow: rgba(239, 68, 68, 0.6);
+}
+
+.dotTotal {
+  background-color: #8b5cf6;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.7);
+  --dot-glow: rgba(139, 92, 246, 0.6);
+}
+
 /* Status Badges */
 .statusBadge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
+  gap: 6px;
+  padding: 4px 10px;
   border-radius: 999px;
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 700;
   white-space: nowrap;
 }
 
 .statusBadgePending {
-  background: rgba(245, 158, 11, 0.15);
+  background: rgba(245, 158, 11, 0.12);
   color: #d97706;
   border: 1px solid rgba(245, 158, 11, 0.35);
 }
 
 .statusBadgeApproved {
-  background: rgba(16, 185, 129, 0.15);
+  background: rgba(16, 185, 129, 0.12);
   color: #059669;
   border: 1px solid rgba(16, 185, 129, 0.35);
 }
 
 .statusBadgePlanned {
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(59, 130, 246, 0.12);
   color: #2563eb;
   border: 1px solid rgba(59, 130, 246, 0.35);
 }
 
 .statusBadgeRejected {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgba(239, 68, 68, 0.12);
   color: #dc2626;
   border: 1px solid rgba(239, 68, 68, 0.35);
 }
@@ -472,7 +571,7 @@
 }
 
 .reviewHistoryCard {
-  background: rgba(15, 23, 42, 0.03);
+  background: var(--ui-60-surface-soft);
   border: 1px solid var(--ui-30-border);
   border-radius: 10px;
   padding: 12px 16px;

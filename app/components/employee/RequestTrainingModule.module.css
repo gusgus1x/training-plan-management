@@ -488,37 +488,89 @@
   color: var(--ui-30-muted);
 }
 
-/* Status Badges */
+/* Status Badges with Pulsing Light Dots */
+@keyframes pulseDot {
+  0% {
+    box-shadow: 0 0 0 0 var(--dot-glow, rgba(245, 158, 11, 0.7));
+    transform: scale(0.95);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0);
+    transform: scale(1.05);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+    transform: scale(0.95);
+  }
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.dotPulse {
+  animation: pulseDot 2s infinite ease-in-out;
+}
+
+.dotPending {
+  background-color: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.7);
+  --dot-glow: rgba(245, 158, 11, 0.6);
+}
+
+.dotApproved {
+  background-color: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.7);
+  --dot-glow: rgba(16, 185, 129, 0.6);
+}
+
+.dotPlanned {
+  background-color: #3b82f6;
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.7);
+  --dot-glow: rgba(59, 130, 246, 0.6);
+}
+
+.dotRejected {
+  background-color: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.7);
+  --dot-glow: rgba(239, 68, 68, 0.6);
+}
+
 .statusBadge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
+  gap: 6px;
+  padding: 3px 10px;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 700;
 }
 
 .statusPending {
-  background: rgba(245, 158, 11, 0.15);
+  background: rgba(245, 158, 11, 0.12);
   color: #f59e0b;
   border: 1px solid rgba(245, 158, 11, 0.35);
 }
 
 .statusApproved {
-  background: rgba(16, 185, 129, 0.15);
+  background: rgba(16, 185, 129, 0.12);
   color: #10b981;
   border: 1px solid rgba(16, 185, 129, 0.35);
 }
 
 .statusRejected {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgba(239, 68, 68, 0.12);
   color: #ef4444;
   border: 1px solid rgba(239, 68, 68, 0.35);
 }
 
 .statusPlanned {
-  background: rgba(59, 130, 246, 0.15);
+  background: rgba(59, 130, 246, 0.12);
   color: #3b82f6;
   border: 1px solid rgba(59, 130, 246, 0.35);
 }

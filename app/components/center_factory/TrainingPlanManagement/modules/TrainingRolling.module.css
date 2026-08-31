@@ -239,15 +239,22 @@
 .searchIcon {
   position: absolute;
   left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   font-size: 0.85rem;
   color: var(--ui-30-muted);
   pointer-events: none;
+  z-index: 2;
+  line-height: 1;
 }
 
+.searchWrapper .searchInput,
+.searchWrapper input,
+.toolbar .searchInput,
 .searchInput {
   width: 100%;
   min-height: 40px;
-  padding: 8px 14px 8px 36px;
+  padding: 8px 14px 8px 38px !important;
   border: 1px solid var(--ui-30-border);
   border-radius: 8px;
   background: var(--ui-60-surface-soft, rgba(255, 255, 255, 0.04));

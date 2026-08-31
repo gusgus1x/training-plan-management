@@ -1201,7 +1201,7 @@ const thaiUiDictionary: Record<string, string> = {
   "Select available courses, submit registration, and let HRD review the request.":
     "เลือกหลักสูตรที่เปิดอยู่ ส่งคำขอลงทะเบียน และรอ HRD ตรวจสอบ",
   "Review the personal development plan and required courses by timeline.":
-    "ตรวจสอบแผนพัฒนารายบุคคลและหลักสูตรที่ต้องเรียนตามช่วงเวลา",
+    "การลงทะเบียนเรียนตามกลุ่มเป้าหมาย",
   "Submit a new training need to HRD Center for review and approval.":
     "ส่งความต้องการฝึกอบรมใหม่ให้ HRD ส่วนกลางตรวจสอบและอนุมัติ",
   "Check training history, accumulated hours, course results, and evidence status.":
@@ -1461,6 +1461,12 @@ const thaiAttributeDictionary: Record<string, string> = {
     "คำนำหน้าไทยสำหรับพนักงานไทย ส่วนภาษาอังกฤษใช้กับพนักงานต่างชาติที่ไม่มีชื่อภาษาไทย",
   "Search course code, name, batch, location, status...":
     "ค้นหารหัสหลักสูตร ชื่อ รุ่น สถานที่ หรือสถานะ...",
+  "Search course code, name, trainer, provider, status...":
+    "ค้นหารหัสหลักสูตร ชื่อ วิทยากร สถาบัน หรือสถานะ...",
+  "Search annual training plan": "ค้นหาแผนการฝึกอบรมประจำปี",
+  "Search training request, employee, course...":
+    "ค้นหาคำขอฝึกอบรม รหัสพนักงาน หรือหลักสูตร...",
+  "Search training need requests": "ค้นหาคำขอฝึกอบรมของพนักงาน",
   "Optional label, e.g. batch 1 or Supervisor batch":
     "ป้ายกำกับรุ่น เช่น 1 หรือ รุ่นหัวหน้างาน 1",
   "Search course standard": "ค้นหามาตรฐานหลักสูตร",
