@@ -11,10 +11,6 @@ import {
   listNeedRequests,
   updateNeedRequest,
 } from "../../../../lib/trainingNeedRequests/client";
-import {
-  NEED_REQUEST_STATUSES,
-  needRequestStatusLabel,
-} from "../../../../lib/trainingNeedRequests/labels";
 import type {
   NeedRequestAction,
   NeedRequestRecord,
@@ -36,6 +32,18 @@ type RequestTrainingNeedProps = {
   onOpenTrainingOap?: () => void;
 };
 
+type CourseDemandGroup = {
+  courseKey: string;
+  courseTitle: string;
+  totalRequests: number;
+  pendingCount: number;
+  approvedCount: number;
+  plannedCount: number;
+  rejectedCount: number;
+  companies: string[];
+  requests: NeedRequestRecord[];
+};
+
 export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTrainingNeedProps) {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
@@ -52,6 +60,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<NeedRequestStatus | "all">("all");
   const [companyFilter, setCompanyFilter] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<"list" | "demand">("list");
   const [pendingAction, setPendingAction] = useState(false);
 
   // Rejection modal dialog state
@@ -63,7 +72,9 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
     try {
       const [requestsRes, companiesRes] = await Promise.all([
         listNeedRequests(),
-        !isFactoryUser ? listCompanies().catch(() => ({ items: [] as CompanyRecord[] })) : Promise.resolve({ items: [] as CompanyRecord[] }),
+        !isFactoryUser
+          ? listCompanies().catch(() => ({ items: [] as CompanyRecord[] }))
+          : Promise.resolve({ items: [] as CompanyRecord[] }),
       ]);
       setRequests(requestsRes.needRequests || []);
       setCompanies(companiesRes.items || []);
@@ -114,6 +125,43 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
     });
   }, [requests, search, statusFilter, companyFilter]);
 
+  // Aggregate requests by Course for Demand Tab
+  const demandGroups = useMemo(() => {
+    const groupMap = new Map<string, CourseDemandGroup>();
+
+    for (const req of visibleRequests) {
+      const title = req.requestedCourseName.trim();
+      const key = title.toLowerCase();
+
+      if (!groupMap.has(key)) {
+        groupMap.set(key, {
+          courseKey: key,
+          courseTitle: title,
+          totalRequests: 0,
+          pendingCount: 0,
+          approvedCount: 0,
+          plannedCount: 0,
+          rejectedCount: 0,
+          companies: [],
+          requests: [],
+        });
+      }
+
+      const g = groupMap.get(key)!;
+      g.totalRequests += 1;
+      if (req.status === "PENDING") g.pendingCount += 1;
+      if (req.status === "APPROVED") g.approvedCount += 1;
+      if (req.status === "PLANNED") g.plannedCount += 1;
+      if (req.status === "REJECTED") g.rejectedCount += 1;
+      if (req.companyCode && !g.companies.includes(req.companyCode)) {
+        g.companies.push(req.companyCode);
+      }
+      g.requests.push(req);
+    }
+
+    return Array.from(groupMap.values()).sort((a, b) => b.totalRequests - a.totalRequests);
+  }, [visibleRequests]);
+
   const selectedRequest =
     visibleRequests.find((request) => request.id === selectedId) ?? visibleRequests[0] ?? null;
 
@@ -139,22 +187,102 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
     }
   };
 
-  const handleApproveToPlan = async () => {
+  const handleApproveToPlan = async (customRequest?: NeedRequestRecord) => {
+    const targetReq = customRequest ?? selectedRequest;
+    if (!targetReq) return;
+
+    let target = targetReq;
+
+    if (target.status !== "APPROVED") {
+      const ok = await confirm({
+        message: {
+          th: `ยืนยันการอนุมัติคำขอ ${target.requestNo} และนำเข้าสู่การจัดทำแผน OAP หรือไม่?`,
+          en: `Confirm approving request ${target.requestNo} and proceed to OAP planning?`,
+        },
+      });
+      if (!ok) return;
+
+      const { needRequest } = await updateNeedRequest(target.id, { action: "approve", note: null });
+      setRequests((current) =>
+        current.map((request) => (request.id === needRequest.id ? needRequest : request)),
+      );
+      target = needRequest;
+    }
+
+    window.localStorage.setItem(APPROVED_TRAINING_NEED_STORAGE_KEY, JSON.stringify(target));
+    window.dispatchEvent(new Event("approved-training-need-changed"));
+    toast.success(
+      t(
+        `เปิดฟอร์มจัดทำแผน OAP สำหรับคำขอ ${target.requestNo} แล้ว`,
+        `Opened OAP plan form for ${target.requestNo}`,
+      ),
+    );
+    onOpenTrainingOap?.();
+  };
+
+  const handleBatchApproveGroup = async (group: CourseDemandGroup) => {
+    const pendingReqs = group.requests.filter((r) => r.status === "PENDING" || r.status === "APPROVED");
+    if (!pendingReqs.length) {
+      toast.info(t("ไม่มีคำขอที่รออนุมัติในกลุ่มนี้", "No pending requests in this group"));
+      return;
+    }
+
     const ok = await confirm({
       message: {
-        th: `ยืนยันการอนุมัติคำขอ ${selectedRequest?.requestNo} และนำเข้าสู่การจัดทำแผน OAP หรือไม่?`,
-        en: `Confirm approving request ${selectedRequest?.requestNo} and proceed to OAP planning?`,
+        th: `ยืนยันการอนุมัติความต้องการฝึกอบรมหลักสูตร "${group.courseTitle}" ทั้งหมด ${pendingReqs.length} รายการ และเปิดหน้าจัดทำแผน OAP หรือไม่?`,
+        en: `Confirm approving all ${pendingReqs.length} requests for "${group.courseTitle}" and proceed to OAP planning?`,
       },
     });
     if (!ok) return;
 
-    const updated = await applyAction("approve", null);
-    if (!updated) return;
+    setPendingAction(true);
+    try {
+      for (const req of pendingReqs) {
+        if (req.status === "PENDING") {
+          await updateNeedRequest(req.id, { action: "approve", note: null });
+        }
+      }
+      await loadRequests();
 
-    window.localStorage.setItem(APPROVED_TRAINING_NEED_STORAGE_KEY, JSON.stringify(updated));
-    window.dispatchEvent(new Event("approved-training-need-changed"));
-    toast.success(t(`อนุมัติคำขอ ${updated.requestNo} เรียบร้อยแล้ว`, `Approved ${updated.requestNo}`));
-    onOpenTrainingOap?.();
+      // Send the first request to open in OAP
+      const firstReq = pendingReqs[0];
+      window.localStorage.setItem(APPROVED_TRAINING_NEED_STORAGE_KEY, JSON.stringify(firstReq));
+      window.dispatchEvent(new Event("approved-training-need-changed"));
+      toast.success(
+        t(
+          `อนุมัติกลุ่มหลักสูตร ${group.courseTitle} (${pendingReqs.length} คน) เรียบร้อยแล้ว`,
+          `Approved course group (${pendingReqs.length} requesters)`,
+        ),
+      );
+      onOpenTrainingOap?.();
+    } catch (error) {
+      console.error("Batch approve failed", error);
+      toast.error(t("อนุมัติรวมชุดไม่สำเร็จ", "Failed to batch approve"));
+    } finally {
+      setPendingAction(false);
+    }
+  };
+
+  const handleRevertToPending = async () => {
+    if (!selectedRequest) return;
+    const ok = await confirm({
+      message: {
+        th: `ต้องการย้อนกลับสถานะคำขอ ${selectedRequest.requestNo} เป็น "รอตรวจสอบ" เพื่อให้สามารถตัดสินใจวางแผนหรือยกเลิกใหม่ได้หรือไม่?`,
+        en: `Revert request ${selectedRequest.requestNo} to "Pending" to reconsider planning or rejecting?`,
+      },
+    });
+    if (!ok) return;
+
+    const updated = await applyAction("reset", null);
+    if (updated) {
+      window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
+      toast.success(
+        t(
+          `ย้อนกลับสถานะคำขอ ${updated.requestNo} เป็นรอตรวจสอบแล้ว`,
+          `Reverted ${updated.requestNo} to Pending`,
+        ),
+      );
+    }
   };
 
   const handleOpenRejectModal = () => {
@@ -171,312 +299,407 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
     setIsRejectModalOpen(false);
     const updated = await applyAction("reject", rejectionNote.trim());
     if (updated) {
+      window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
       toast.success(t(`ปฏิเสธคำขอ ${updated.requestNo} แล้ว`, `Rejected ${updated.requestNo}`));
     }
   };
 
-  const isDecided = Boolean(selectedRequest) && selectedRequest?.status !== "PENDING";
+  const getStatusBadge = (status: NeedRequestStatus) => {
+    switch (status) {
+      case "PENDING":
+        return <span className={`${styles.statusBadge} ${styles.statusBadgePending}`}>⏳ {t("รอตรวจสอบ", "Pending")}</span>;
+      case "APPROVED":
+        return <span className={`${styles.statusBadge} ${styles.statusBadgeApproved}`}>✓ {t("อนุมัติแล้ว", "Approved")}</span>;
+      case "PLANNED":
+        return <span className={`${styles.statusBadge} ${styles.statusBadgePlanned}`}>📋 {t("จัดลงแผนแล้ว", "Planned")}</span>;
+      case "REJECTED":
+        return <span className={`${styles.statusBadge} ${styles.statusBadgeRejected}`}>✕ {t("ไม่อนุมัติ", "Rejected")}</span>;
+      default:
+        return <span className={styles.statusBadge}>{status}</span>;
+    }
+  };
+
+  const isFinalPlanned = selectedRequest?.status === "PLANNED";
 
   return (
     <section className={styles.moduleWorkspace} aria-label="Request Training Need module">
-      <section className={styles.moduleHero}>
-        <div>
-          <p className={styles.panelKicker}>{requestTrainingNeedModule.subtitle}</p>
-          <h2>{requestTrainingNeedModule.title}</h2>
-          <p>{requestTrainingNeedModule.description}</p>
-          <span className={styles.permissionNote}>
-            {isFactoryUser
-              ? t("🏢 สิทธิ์ HRD โรงงาน: แสดงคำขอของพนักงานในบริษัทตนเอง", "Factory permission: showing requests in own company")
-              : t("🏛️ สิทธิ์ HRD ส่วนกลาง: แสดงคำขอของพนักงานทุกบริษัท", "Center permission: showing requests from all companies")}
-          </span>
+      {/* 1. Hero Header */}
+      <header className={styles.heroHeader}>
+        <div className={styles.heroContent}>
+          <h2>
+            <span>📬</span> {t("คำขอจัดฝึกอบรมจากพนักงาน", "Training Need Requests Inbox")}
+          </h2>
+          <p>
+            {t(
+              "ตรวจสอบความต้องการฝึกอบรมของพนักงาน เพื่อพิจารณาอนุมัติและบรรจุลงในแผนการฝึกอบรมประจำปี (OAP)",
+              "Review employee training requests and approve to incorporate into Annual Training Plans (OAP).",
+            )}
+          </p>
         </div>
-      </section>
+        <div className={styles.heroActions}>
+          <div className={styles.scopeBadge}>
+            {isFactoryUser ? (
+              <span>🏬 {t(`HRD โรงงาน (${user?.companyCode || "Factory"})`, `Factory HRD (${user?.companyCode || "Factory"})`)}</span>
+            ) : (
+              <span>🏢 {t("HRD ส่วนกลาง (Center - ทุกบริษัท)", "Center HRD (All Companies)")}</span>
+            )}
+          </div>
+          <button className={styles.refreshBtn} type="button" onClick={() => void loadRequests()} title="Refresh">
+            🔄 {t("รีเฟรช", "Refresh")}
+          </button>
+        </div>
+      </header>
 
-      {/* Summary KPI Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "12px" }}>
-        <div
+      {/* 2. Interactive KPI Stats Deck */}
+      <div className={styles.statsGrid}>
+        <button
+          className={`${styles.statCard} ${statusFilter === "PENDING" ? styles.statCardActive : ""}`}
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === "PENDING" ? "all" : "PENDING")}
+        >
+          <div className={styles.statCardHeader}>
+            <span className={styles.statLabel}>⏳ {t("รอตรวจสอบ", "Pending")}</span>
+          </div>
+          <strong className={`${styles.statCount} ${styles.statCountPending}`}>{stats.pending}</strong>
+        </button>
+
+        <button
+          className={`${styles.statCard} ${statusFilter === "APPROVED" ? styles.statCardActive : ""}`}
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === "APPROVED" ? "all" : "APPROVED")}
+        >
+          <div className={styles.statCardHeader}>
+            <span className={styles.statLabel}>✓ {t("อนุมัติแล้ว", "Approved")}</span>
+          </div>
+          <strong className={`${styles.statCount} ${styles.statCountApproved}`}>{stats.approved}</strong>
+        </button>
+
+        <button
+          className={`${styles.statCard} ${statusFilter === "PLANNED" ? styles.statCardActive : ""}`}
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === "PLANNED" ? "all" : "PLANNED")}
+        >
+          <div className={styles.statCardHeader}>
+            <span className={styles.statLabel}>📋 {t("จัดลงแผนแล้ว", "Planned")}</span>
+          </div>
+          <strong className={`${styles.statCount} ${styles.statCountPlanned}`}>{stats.planned}</strong>
+        </button>
+
+        <button
+          className={`${styles.statCard} ${statusFilter === "REJECTED" ? styles.statCardActive : ""}`}
+          type="button"
+          onClick={() => setStatusFilter(statusFilter === "REJECTED" ? "all" : "REJECTED")}
+        >
+          <div className={styles.statCardHeader}>
+            <span className={styles.statLabel}>✕ {t("ไม่อนุมัติ", "Rejected")}</span>
+          </div>
+          <strong className={`${styles.statCount} ${styles.statCountRejected}`}>{stats.rejected}</strong>
+        </button>
+
+        <button
+          className={`${styles.statCard} ${statusFilter === "all" ? styles.statCardActive : ""}`}
+          type="button"
           onClick={() => setStatusFilter("all")}
-          style={{
-            background: statusFilter === "all" ? "var(--ui-60-surface)" : "var(--ui-60-surface-soft, #f8fafc)",
-            border: statusFilter === "all" ? "2px solid var(--ui-30-primary, #007a3d)" : "1px solid var(--ui-30-border, #e2e8f0)",
-            borderRadius: "10px",
-            padding: "12px 16px",
-            cursor: "pointer",
-            transition: "all 140ms ease",
-          }}
         >
-          <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>
-            {t("คำขอทั้งหมด", "All Requests")}
-          </span>
-          <h3 style={{ margin: "4px 0 0", fontSize: "1.3rem", fontWeight: 800, color: "#0f172a" }}>{stats.total}</h3>
-        </div>
-
-        <div
-          onClick={() => setStatusFilter("PENDING")}
-          style={{
-            background: statusFilter === "PENDING" ? "var(--ui-60-surface)" : "rgba(245, 158, 11, 0.04)",
-            border: statusFilter === "PENDING" ? "2px solid #f59e0b" : "1px solid rgba(245, 158, 11, 0.3)",
-            borderRadius: "10px",
-            padding: "12px 16px",
-            cursor: "pointer",
-            transition: "all 140ms ease",
-          }}
-        >
-          <span style={{ fontSize: "0.72rem", color: "#b45309", fontWeight: 700, textTransform: "uppercase" }}>
-            🟡 {t("รอตรวจสอบ", "Pending")}
-          </span>
-          <h3 style={{ margin: "4px 0 0", fontSize: "1.3rem", fontWeight: 800, color: "#b45309" }}>{stats.pending}</h3>
-        </div>
-
-        <div
-          onClick={() => setStatusFilter("APPROVED")}
-          style={{
-            background: statusFilter === "APPROVED" ? "var(--ui-60-surface)" : "rgba(16, 185, 129, 0.04)",
-            border: statusFilter === "APPROVED" ? "2px solid #10b981" : "1px solid rgba(16, 185, 129, 0.3)",
-            borderRadius: "10px",
-            padding: "12px 16px",
-            cursor: "pointer",
-            transition: "all 140ms ease",
-          }}
-        >
-          <span style={{ fontSize: "0.72rem", color: "#047857", fontWeight: 700, textTransform: "uppercase" }}>
-            🟢 {t("อนุมัติแล้ว", "Approved")}
-          </span>
-          <h3 style={{ margin: "4px 0 0", fontSize: "1.3rem", fontWeight: 800, color: "#047857" }}>{stats.approved}</h3>
-        </div>
-
-        <div
-          onClick={() => setStatusFilter("PLANNED")}
-          style={{
-            background: statusFilter === "PLANNED" ? "var(--ui-60-surface)" : "rgba(59, 130, 246, 0.04)",
-            border: statusFilter === "PLANNED" ? "2px solid #3b82f6" : "1px solid rgba(59, 130, 246, 0.3)",
-            borderRadius: "10px",
-            padding: "12px 16px",
-            cursor: "pointer",
-            transition: "all 140ms ease",
-          }}
-        >
-          <span style={{ fontSize: "0.72rem", color: "#1d4ed8", fontWeight: 700, textTransform: "uppercase" }}>
-            🔵 {t("บรรจุในแผน OAP", "Planned")}
-          </span>
-          <h3 style={{ margin: "4px 0 0", fontSize: "1.3rem", fontWeight: 800, color: "#1d4ed8" }}>{stats.planned}</h3>
-        </div>
-
-        <div
-          onClick={() => setStatusFilter("REJECTED")}
-          style={{
-            background: statusFilter === "REJECTED" ? "var(--ui-60-surface)" : "rgba(239, 68, 68, 0.04)",
-            border: statusFilter === "REJECTED" ? "2px solid #ef4444" : "1px solid rgba(239, 68, 68, 0.3)",
-            borderRadius: "10px",
-            padding: "12px 16px",
-            cursor: "pointer",
-            transition: "all 140ms ease",
-          }}
-        >
-          <span style={{ fontSize: "0.72rem", color: "#b91c1c", fontWeight: 700, textTransform: "uppercase" }}>
-            🔴 {t("ไม่อนุมัติ", "Rejected")}
-          </span>
-          <h3 style={{ margin: "4px 0 0", fontSize: "1.3rem", fontWeight: 800, color: "#b91c1c" }}>{stats.rejected}</h3>
-        </div>
+          <div className={styles.statCardHeader}>
+            <span className={styles.statLabel}>📊 {t("คำขอทั้งหมด", "Total")}</span>
+          </div>
+          <strong className={styles.statCount}>{stats.total}</strong>
+        </button>
       </div>
 
-      <section className={styles.panel}>
-        <div className={styles.toolbar}>
+      {/* 3. Control & Navigation Bar */}
+      <div className={styles.controlBar}>
+        <div className={styles.viewTabs}>
+          <button
+            className={`${styles.viewTab} ${activeTab === "list" ? styles.viewTabActive : ""}`}
+            type="button"
+            onClick={() => setActiveTab("list")}
+          >
+            📑 {t("รายการคำขอ (รายคน)", "Request List")} ({visibleRequests.length})
+          </button>
+          <button
+            className={`${styles.viewTab} ${activeTab === "demand" ? styles.viewTabActive : ""}`}
+            type="button"
+            onClick={() => setActiveTab("demand")}
+          >
+            📊 {t("รวมยอดตามหลักสูตร", "Demand by Course")} ({demandGroups.length})
+          </button>
+        </div>
+
+        <div className={styles.filterControls}>
           <input
-            aria-label="Search employee training requests"
+            className={styles.searchInput}
+            type="search"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={t(
-              "🔍 ค้นหาเลขที่คำขอ, รหัสพนักงาน, ชื่อพนักงาน, หลักสูตร, เหตุผล...",
-              "Search request, employee, course, reason...",
-            )}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t("🔍 ค้นหาเลขที่คำขอ, พนักงาน, หลักสูตร...", "Search request no, employee, course...")}
           />
 
-          {!isFactoryUser && (
+          {!isFactoryUser && companies.length > 0 ? (
             <select
-              aria-label="Filter company"
+              className={styles.companySelect}
               value={companyFilter}
-              onChange={(event) => setCompanyFilter(event.target.value)}
+              onChange={(e) => setCompanyFilter(e.target.value)}
             >
-              <option value="all">{t("-- ทุกบริษัท (All Companies) --", "-- All Companies --")}</option>
+              <option value="all">🏢 {t("ทุกบริษัท (All Companies)", "All Companies")}</option>
               {companies.map((c) => (
-                <option key={c.companyCode} value={c.companyCode}>
+                <option key={c.companyId} value={c.companyCode}>
                   {c.companyCode} - {language === "th" ? c.companyNameTh : (c.companyNameEn || c.companyNameTh)}
                 </option>
               ))}
             </select>
-          )}
-
-          <select
-            aria-label="Filter status"
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as NeedRequestStatus | "all")}
-          >
-            <option value="all">{t("ทุกสถานะ (All status)", "All status")}</option>
-            {NEED_REQUEST_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {needRequestStatusLabel(status, language)}
-              </option>
-            ))}
-          </select>
-
-          <button
-            className={styles.refreshButton}
-            type="button"
-            disabled={isLoading}
-            onClick={() => void loadRequests()}
-          >
-            {isLoading ? t("กำลังโหลด...", "Loading...") : t("🔄 รีเฟรช", "Refresh")}
-          </button>
-        </div>
-
-        {loadError ? (
-          <div className={styles.emptyState} role="alert">
-            {t("โหลดคำขอไม่สำเร็จ", "Could not load requests")}: {loadError}
-          </div>
-        ) : null}
-      </section>
-
-      <section className={styles.contentGrid}>
-        <section className={styles.panel}>
-          <div className={styles.panelHeader}>
-            <div>
-              <span>{t("กล่องคำขอจากพนักงาน", "Employee inbox")}</span>
-              <h3>{t("คำขอฝึกอบรม", "Training Requests")}</h3>
-            </div>
-            <p>{t(`${visibleRequests.length} รายการ`, `${visibleRequests.length} in view`)}</p>
-          </div>
-
-          <div className={styles.requestList}>
-            {visibleRequests.map((request) => (
-              <button
-                className={
-                  request.id === selectedRequest?.id ? styles.activeRequest : styles.requestCard
-                }
-                key={request.id}
-                type="button"
-                onClick={() => setSelectedId(request.id)}
-              >
-                <span className={styles.cardTopline}>
-                  <b>{request.requestNo}</b>
-                  <small style={{ color: "#64748b" }}>{formatDate(request.requestedAt)}</small>
-                </span>
-                <strong>{request.requestedCourseName}</strong>
-                <small>
-                  👤 {request.employeeName} ({request.employeeCode || "-"}) • 🏢 {request.companyCode} • {request.functionName || "-"}
-                </small>
-                <span className={styles.statusPill}>
-                  {needRequestStatusLabel(request.status, language)}
-                </span>
-              </button>
-            ))}
-            {visibleRequests.length === 0 ? (
-              <div className={styles.emptyState}>
-                {isLoading
-                  ? t("กำลังโหลด...", "Loading...")
-                  : t("ไม่พบคำขอฝึกอบรมตามเงื่อนไข", "No employee training requests match the filter.")}
-              </div>
-            ) : null}
-          </div>
-        </section>
-
-        <section className={styles.detailPanel}>
-          <div className={styles.panelHeader}>
-            <div>
-              <span>{t("รายละเอียดคำขอฝึกอบรม", "Training Request Details")}</span>
-              <h3>{selectedRequest?.requestedCourseName ?? t("ยังไม่ได้เลือกคำขอ", "No request selected")}</h3>
-            </div>
-            {selectedRequest ? (
-              <p>{needRequestStatusLabel(selectedRequest.status, language)}</p>
-            ) : null}
-          </div>
-
-          {selectedRequest ? (
-            <>
-              <div className={styles.employeeRequestPreview}>
-                <article>
-                  <span>{t("หลักสูตรที่ขอเปิด / ขออบรมทบทวน", "Course Needed / Refresher")}</span>
-                  <strong>{selectedRequest.requestedCourseName}</strong>
-                </article>
-                <article>
-                  <span>{t("เหตุผลและความจำเป็น", "Request Reason")}</span>
-                  <p>{selectedRequest.requestReason}</p>
-                </article>
-              </div>
-
-              <dl className={styles.detailGrid}>
-                <div>
-                  <dt>{t("เลขที่คำขอ", "Request No.")}</dt>
-                  <dd><strong>{selectedRequest.requestNo}</strong></dd>
-                </div>
-                <div>
-                  <dt>{t("พนักงานผู้ส่งคำขอ", "Employee")}</dt>
-                  <dd>
-                    {selectedRequest.employeeName} ({selectedRequest.employeeCode || "-"})
-                  </dd>
-                </div>
-                <div>
-                  <dt>{t("บริษัท", "Company")}</dt>
-                  <dd>{selectedRequest.companyCode}</dd>
-                </div>
-                <div>
-                  <dt>{t("หน่วยงาน / สายงาน", "Function")}</dt>
-                  <dd>{selectedRequest.functionName || "-"}</dd>
-                </div>
-                <div>
-                  <dt>{t("ช่วงเวลาที่สะดวก", "Preferred Dates")}</dt>
-                  <dd>
-                    {selectedRequest.preferredStartDate
-                      ? `📅 ${selectedRequest.preferredStartDate} ถึง ${selectedRequest.preferredEndDate ?? "-"}`
-                      : "-"}
-                  </dd>
-                </div>
-                <div>
-                  <dt>{t("วันที่ส่งคำขอ", "Submitted Date")}</dt>
-                  <dd>📅 {formatDate(selectedRequest.requestedAt)}</dd>
-                </div>
-              </dl>
-
-              {selectedRequest.rejectionReason ? (
-                <div className={styles.reasonBox}>
-                  <span>{t("เหตุผลที่ไม่อนุมัติคำขอ", "Rejection Reason")}</span>
-                  <p>🔴 {selectedRequest.rejectionReason}</p>
-                </div>
-              ) : null}
-
-              <div className={styles.reviewActions}>
-                <button
-                  className={styles.actionButton}
-                  type="button"
-                  disabled={pendingAction || isDecided}
-                  onClick={() => void handleApproveToPlan()}
-                >
-                  🚀 {t("อนุมัติและจัดลงแผน OAP", "Approve & Plan in OAP")}
-                </button>
-                <button
-                  className={styles.dangerButton}
-                  type="button"
-                  disabled={pendingAction || isDecided}
-                  onClick={() => handleOpenRejectModal()}
-                >
-                  ✕ {t("ไม่อนุมัติ", "Reject")}
-                </button>
-              </div>
-
-              {isDecided ? (
-                <p className={styles.emptyState} style={{ padding: "10px", fontSize: "0.84rem" }}>
-                  {t(
-                    "คำขอนี้ได้ทำการพิจารณาตัดสินใจไปแล้ว",
-                    "This request has already been decided.",
-                  )}
-                </p>
-              ) : null}
-            </>
           ) : null}
-        </section>
-      </section>
+        </div>
+      </div>
 
-      {/* Modern Rejection Modal */}
+      {loadError ? (
+        <div className={styles.emptyStateContainer}>
+          <p style={{ color: "#ef4444", fontWeight: 700 }}>⚠️ {loadError}</p>
+        </div>
+      ) : null}
+
+      {/* 4. Tab 1: Master-Detail List View */}
+      {activeTab === "list" && (
+        <div className={styles.mainLayout}>
+          {/* Left Pane: Requests List */}
+          <div className={styles.listPane}>
+            {visibleRequests.length === 0 ? (
+              <div className={styles.emptyStateContainer}>
+                <p>📭 {t("ไม่พบคำขอฝึกอบรมตามเงื่อนไขที่เลือก", "No training requests match your filters")}</p>
+              </div>
+            ) : (
+              visibleRequests.map((req) => {
+                const isSelected = selectedRequest?.id === req.id;
+                return (
+                  <div
+                    key={req.id}
+                    className={`${styles.requestCard} ${isSelected ? styles.requestCardActive : ""}`}
+                    onClick={() => setSelectedId(req.id)}
+                  >
+                    <div className={styles.requestCardHeader}>
+                      <span className={styles.requestNo}>{req.requestNo}</span>
+                      {getStatusBadge(req.status)}
+                    </div>
+                    <h4 className={styles.requestCardTitle}>{req.requestedCourseName}</h4>
+                    <div className={styles.requestCardMeta}>
+                      <span className={styles.requesterBadge}>
+                        👤 {req.employeeName} ({req.companyCode})
+                      </span>
+                      <span>📅 {formatDate(req.requestedAt)}</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Right Pane: Inspector & Decision Desk */}
+          {selectedRequest ? (
+            <div className={styles.detailPane}>
+              <div className={styles.detailHeader}>
+                <div className={styles.detailTitleSection}>
+                  <p className={styles.detailSubtitle}>
+                    {t("คำขอเลขที่", "Request No")} <span className={styles.requestNo}>{selectedRequest.requestNo}</span>
+                  </p>
+                  <h3>{selectedRequest.requestedCourseName}</h3>
+                </div>
+                {getStatusBadge(selectedRequest.status)}
+              </div>
+
+              {/* Requester Profile */}
+              <div className={styles.profileBox}>
+                <div className={styles.profileAvatar}>
+                  {selectedRequest.employeeName ? selectedRequest.employeeName.charAt(0) : "U"}
+                </div>
+                <div className={styles.profileInfo}>
+                  <span className={styles.profileName}>{selectedRequest.employeeName}</span>
+                  <span className={styles.profileOrg}>
+                    🆔 {selectedRequest.employeeCode} • 🏢 {selectedRequest.companyCode} • 📂 {selectedRequest.functionName || "-"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Request Reason */}
+              <div className={styles.infoSection}>
+                <span className={styles.sectionLabel}>📝 {t("เหตุผลความจำเป็นในการขอรับการฝึกอบรม", "Reason for Request")}</span>
+                <div className={styles.highlightBox}>
+                  {selectedRequest.requestReason || "-"}
+                </div>
+              </div>
+
+              {/* Preferred Dates */}
+              <div className={styles.infoSection}>
+                <span className={styles.sectionLabel}>📅 {t("ช่วงเวลาที่สะดวกในการเข้าอบรม", "Preferred Schedule")}</span>
+                <div className={styles.datesGrid}>
+                  <div className={styles.dateCard}>
+                    <span>{t("วันที่เริ่มต้นที่สะดวก", "Preferred Start Date")}</span>
+                    <strong>{selectedRequest.preferredStartDate || "-"}</strong>
+                  </div>
+                  <div className={styles.dateCard}>
+                    <span>{t("วันที่สิ้นสุดที่สะดวก", "Preferred End Date")}</span>
+                    <strong>{selectedRequest.preferredEndDate || "-"}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rejection / Review info if present */}
+              {selectedRequest.rejectionReason && (
+                <div className={styles.infoSection}>
+                  <span className={styles.sectionLabel} style={{ color: "#ef4444" }}>🚫 {t("เหตุผลที่ไม่อนุมัติ", "Rejection Reason")}</span>
+                  <div className={styles.highlightBox} style={{ borderColor: "rgba(239, 68, 68, 0.4)", background: "rgba(239, 68, 68, 0.06)" }}>
+                    {selectedRequest.rejectionReason}
+                  </div>
+                </div>
+              )}
+
+              {selectedRequest.reviewedAt && (
+                <div className={styles.reviewHistoryCard}>
+                  <span>
+                    ⏱️ {t("พิจารณาเมื่อ:", "Reviewed at:")} {formatDate(selectedRequest.reviewedAt)}
+                    {selectedRequest.reviewNote ? ` • Note: ${selectedRequest.reviewNote}` : ""}
+                  </span>
+                </div>
+              )}
+
+              {/* Decision Action Deck */}
+              <div className={styles.actionsBar}>
+                {!isFinalPlanned && (
+                  <>
+                    <button
+                      className={styles.btnPrimary}
+                      type="button"
+                      disabled={pendingAction}
+                      onClick={() => void handleApproveToPlan()}
+                    >
+                      🚀 {selectedRequest.status === "APPROVED"
+                        ? t("เปิดฟอร์มจัดทำแผน OAP อีกครั้ง", "Open OAP Plan Form")
+                        : t("อนุมัติและจัดลงแผน OAP", "Approve & Plan in OAP")}
+                    </button>
+
+                    {selectedRequest.status === "APPROVED" && (
+                      <button
+                        className={styles.btnSecondary}
+                        type="button"
+                        disabled={pendingAction}
+                        onClick={() => void handleRevertToPending()}
+                      >
+                        ↩️ {t("ย้อนกลับเป็นรอตรวจสอบ", "Revert to Pending")}
+                      </button>
+                    )}
+
+                    {selectedRequest.status !== "REJECTED" && (
+                      <button
+                        className={styles.btnDanger}
+                        type="button"
+                        disabled={pendingAction}
+                        onClick={() => handleOpenRejectModal()}
+                      >
+                        ✕ {selectedRequest.status === "APPROVED" ? t("เปลี่ยนเป็นไม่อนุมัติ", "Change to Reject") : t("ไม่อนุมัติ", "Reject")}
+                      </button>
+                    )}
+
+                    {selectedRequest.status === "REJECTED" && (
+                      <button
+                        className={styles.btnSecondary}
+                        type="button"
+                        disabled={pendingAction}
+                        onClick={() => void handleRevertToPending()}
+                      >
+                        ↩️ {t("เปิดพิจารณาใหม่ (รอตรวจสอบ)", "Reopen to Pending")}
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {isFinalPlanned && (
+                  <p style={{ margin: 0, fontSize: "0.86rem", color: "#2563eb", fontWeight: 700 }}>
+                    ✓ {t("คำขอนี้ได้รับการจัดทำแผนการอบรม (OAP / Rolling) เสร็จสมบูรณ์แล้ว", "Incorporated into training plan.")}
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className={styles.emptyStateContainer}>
+              <p>👈 {t("เลือกคำขอจากรายการด้านซ้ายเพื่อดูรายละเอียด", "Select a request to inspect")}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 5. Tab 2: Group by Course Demand View */}
+      {activeTab === "demand" && (
+        <div className={styles.demandGrid}>
+          {demandGroups.length === 0 ? (
+            <div className={styles.emptyStateContainer} style={{ gridColumn: "1 / -1" }}>
+              <p>📭 {t("ไม่มีข้อมูลความต้องการฝึกอบรม", "No course demand records")}</p>
+            </div>
+          ) : (
+            demandGroups.map((group) => (
+              <div key={group.courseKey} className={styles.demandCard}>
+                <div className={styles.demandCardHeader}>
+                  <h4 className={styles.demandCourseTitle}>{group.courseTitle}</h4>
+                  <span className={styles.demandCountBadge}>
+                    👥 {group.totalRequests} {t("คน", "requesters")}
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  {group.companies.map((comp) => (
+                    <span key={comp} className={styles.scopeBadge} style={{ fontSize: "0.74rem", padding: "2px 8px" }}>
+                      🏢 {comp}
+                    </span>
+                  ))}
+                  {group.pendingCount > 0 && (
+                    <span className={`${styles.statusBadge} ${styles.statusBadgePending}`}>
+                      ⏳ {group.pendingCount} {t("รอตรวจ", "Pending")}
+                    </span>
+                  )}
+                  {group.approvedCount > 0 && (
+                    <span className={`${styles.statusBadge} ${styles.statusBadgeApproved}`}>
+                      ✓ {group.approvedCount} {t("อนุมัติแล้ว", "Approved")}
+                    </span>
+                  )}
+                  {group.plannedCount > 0 && (
+                    <span className={`${styles.statusBadge} ${styles.statusBadgePlanned}`}>
+                      📋 {group.plannedCount} {t("ลงแผนแล้ว", "Planned")}
+                    </span>
+                  )}
+                </div>
+
+                {/* List of Requesters in this course */}
+                <div className={styles.demandRequestersList}>
+                  {group.requests.map((r) => (
+                    <div key={r.id} className={styles.demandRequesterItem}>
+                      <div>
+                        <strong>{r.employeeName}</strong> ({r.companyCode})
+                        <div style={{ fontSize: "0.76rem", color: "var(--ui-30-muted)", marginTop: "2px" }}>
+                          {r.requestReason}
+                        </div>
+                      </div>
+                      {getStatusBadge(r.status)}
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ marginTop: "auto", paddingTop: "10px" }}>
+                  <button
+                    className={styles.btnPrimary}
+                    type="button"
+                    style={{ width: "100%", justifyContent: "center" }}
+                    disabled={pendingAction}
+                    onClick={() => void handleBatchApproveGroup(group)}
+                  >
+                    🚀 {t("อนุมัติกลุ่มนี้ & เปิดแผน OAP", "Approve Group & Plan in OAP")}
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* 6. Rejection Modal Dialog */}
       {isRejectModalOpen && selectedRequest ? (
         <div
           style={{
@@ -494,12 +717,14 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
         >
           <div
             style={{
-              background: "#ffffff",
+              background: "var(--ui-60-surface)",
+              color: "var(--ui-30-ink)",
+              border: "1px solid var(--ui-30-border)",
               borderRadius: "14px",
               padding: "24px",
               maxWidth: "500px",
               width: "100%",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.2)",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.3)",
               display: "flex",
               flexDirection: "column",
               gap: "16px",
@@ -507,19 +732,19 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#b91c1c", display: "flex", alignItems: "center", gap: "8px" }}>
+              <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#ef4444", display: "flex", alignItems: "center", gap: "8px" }}>
                 <span>🚫</span> {t("ระบุเหตุผลที่ไม่อนุมัติคำขอ", "Reject Training Request")}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsRejectModalOpen(false)}
-                style={{ background: "none", border: "none", fontSize: "1.2rem", cursor: "pointer", color: "#64748b" }}
+                style={{ background: "none", border: "none", fontSize: "1.2rem", cursor: "pointer", color: "var(--ui-30-muted)" }}
               >
                 ✕
               </button>
             </div>
 
-            <p style={{ margin: 0, fontSize: "0.88rem", color: "#475569" }}>
+            <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--ui-30-text)" }}>
               {t("คำขอเลขที่:", "Request No:")} <strong>{selectedRequest.requestNo}</strong> ({selectedRequest.requestedCourseName})
             </p>
 
@@ -529,7 +754,9 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                 minHeight: "90px",
                 padding: "10px 12px",
                 borderRadius: "8px",
-                border: "1.5px solid #cbd5e1",
+                border: "1.5px solid var(--ui-30-border)",
+                background: "var(--ui-60-surface-soft)",
+                color: "var(--ui-30-ink)",
                 fontFamily: "inherit",
                 fontSize: "0.9rem",
                 boxSizing: "border-box",
@@ -543,7 +770,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
 
             {/* Quick Reason Templates */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-              <span style={{ fontSize: "0.76rem", color: "#64748b", fontWeight: 700, alignSelf: "center" }}>
+              <span style={{ fontSize: "0.76rem", color: "var(--ui-30-muted)", fontWeight: 700, alignSelf: "center" }}>
                 {t("ตัวอย่างเหตุผล:", "Quick reasons:")}
               </span>
               {[
@@ -556,8 +783,9 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                   type="button"
                   onClick={() => setRejectionNote(reasonText)}
                   style={{
-                    background: "#f1f5f9",
-                    border: "1px solid #cbd5e1",
+                    background: "var(--ui-60-surface-soft)",
+                    color: "var(--ui-30-text)",
+                    border: "1px solid var(--ui-30-border)",
                     borderRadius: "20px",
                     padding: "3px 10px",
                     fontSize: "0.76rem",
@@ -571,35 +799,17 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "8px" }}>
               <button
+                className={styles.btnSecondary}
                 type="button"
                 onClick={() => setIsRejectModalOpen(false)}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: "8px",
-                  border: "1px solid #cbd5e1",
-                  background: "#f8fafc",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                  fontSize: "0.88rem",
-                }}
               >
                 {t("ยกเลิก", "Cancel")}
               </button>
               <button
+                className={styles.btnDanger}
                 type="button"
                 disabled={!rejectionNote.trim() || pendingAction}
                 onClick={() => void handleConfirmReject()}
-                style={{
-                  padding: "8px 18px",
-                  borderRadius: "8px",
-                  border: "none",
-                  background: "#ef4444",
-                  color: "#ffffff",
-                  cursor: "pointer",
-                  fontWeight: 700,
-                  fontSize: "0.88rem",
-                  opacity: !rejectionNote.trim() || pendingAction ? 0.6 : 1,
-                }}
               >
                 {pendingAction ? t("กำลังบันทึก...", "Saving...") : t("ยืนยันไม่อนุมัติ", "Confirm Reject")}
               </button>

@@ -81,31 +81,32 @@ const readApprovedTrainingNeed = () => {
   }
 };
 
-const buildRequestCourse = (request: NeedRequestRecord): WorkflowCourse => ({
-  id: `request-${request.id}`,
-  courseCode: `REQ-${request.requestNo}`,
-  courseNameTh: request.requestedCourseName,
-  courseNameEn: request.requestedCourseName,
-  objective: request.requestReason,
-  learningContent: request.requestReason,
-  targetGroup: `${request.employeeName} / ${request.companyCode} / ${request.functionName}`,
-  methodology: "Classroom / Workshop",
-  preTest: "",
-  postTest: "",
-  evaluation: "Course Evaluation",
-  evaluationAfter30Day: "Follow-up evaluation",
-  lifeCycleMonth: "0",
-  // A request carries no owner of its own - the employee asks, HRD decides who runs it. This is
-  // the prefilled starting point on the form, not a decision.
-  courseType: "Center Standard",
-  courseGroup: request.companyCode,
-  remark: `Approved from request #${request.requestNo} by ${request.employeeName}`,
-  status: "Active",
-  updatedAt: new Date().toISOString().slice(0, 10),
-  owner: "CENTER",
-  ownerCompany: "HRD Center",
-  createdBy: request.employeeName,
-});
+const matchCourseForRequest = (requestName: string, courseList: WorkflowCourse[]): WorkflowCourse | null => {
+  if (!requestName || !courseList.length) return null;
+  const trimmed = requestName.trim();
+
+  // 1. Extract course code in brackets e.g. "[SY-000002]"
+  const codeInBrackets = trimmed.match(/\[([A-Za-z0-9_-]+)\]/);
+  if (codeInBrackets) {
+    const code = codeInBrackets[1].toLowerCase();
+    const found = courseList.find((c) => c.courseCode.toLowerCase() === code);
+    if (found) return found;
+  }
+
+  // 2. Exact match on courseCode
+  const exactCode = courseList.find((c) => trimmed.toLowerCase().startsWith(c.courseCode.toLowerCase()));
+  if (exactCode) return exactCode;
+
+  // 3. Exact match on courseNameTh or courseNameEn
+  const exactName = courseList.find(
+    (c) =>
+      trimmed.includes(c.courseNameTh) ||
+      (c.courseNameEn && trimmed.includes(c.courseNameEn)),
+  );
+  if (exactName) return exactName;
+
+  return null;
+};
 
 const RequiredIndicator = ({ isFilled }: { isFilled: boolean }) => (
   <span
@@ -118,6 +119,7 @@ const RequiredIndicator = ({ isFilled }: { isFilled: boolean }) => (
 
 export default function TrainingOAP({ username = "Current user" }: TrainingOAPProps) {
   const { language } = useUiLanguage();
+  const t = (th: string, en: string) => (language === "th" ? th : en);
   const user = useAuthenticatedUser();
 
   const getStatusLabel = (status: string) => {
@@ -160,12 +162,13 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       }
 
       setApprovedRequest(request);
-      setForm({
+      const matched = matchCourseForRequest(request.requestedCourseName, courses);
+      setForm((prev) => ({
         ...emptyForm,
-        courseCode: `REQ-${request.requestNo}`,
+        courseCode: matched ? matched.courseCode : prev.courseCode,
         participants: "1",
         provider: "HRD Center",
-      });
+      }));
       setEditingId("");
       setOpenDetailId("");
       setIsNewOpen(true);
@@ -177,7 +180,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     return () => {
       window.removeEventListener("approved-training-need-changed", syncApprovedRequest);
     };
-  }, []);
+  }, [courses]);
 
   useEffect(() => {
     let current = true;
@@ -216,9 +219,21 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
         listCourses({ search: "", status: null }),
         listOapPlans({ search: null, status: null }),
       ]);
-      setCourses(courseData.courses || []);
+      const loadedCourses = courseData.courses || [];
+      setCourses(loadedCourses);
       setStandards(courseData.standards || []);
       setPlans(oapData.oapPlans || []);
+
+      const pendingRequest = readApprovedTrainingNeed();
+      if (pendingRequest) {
+        const matched = matchCourseForRequest(pendingRequest.requestedCourseName, loadedCourses);
+        if (matched) {
+          setForm((prev) => ({
+            ...prev,
+            courseCode: matched.courseCode,
+          }));
+        }
+      }
     } catch (error) {
       console.error("Failed to load Training OAP workspace", error);
       setCourses([]);
@@ -261,11 +276,9 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
           return isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode);
         },
       );
-      return approvedRequest
-        ? [buildRequestCourse(approvedRequest), ...standardizedCourses]
-        : standardizedCourses;
+      return standardizedCourses;
     },
-    [approvedRequest, courses, standardCourseIds, isFactoryUser, isCenterUser, user?.roleCode, userCompanyCode],
+    [courses, standardCourseIds, isFactoryUser, isCenterUser, user?.roleCode, userCompanyCode],
   );
   const selectedCourse =
     courseOptions.find((course) => course.courseCode === form.courseCode) ?? null;
@@ -726,11 +739,25 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             </div>
             {approvedRequest ? (
               <div className={styles.approvedRequestBanner}>
-                <span>Approved training need</span>
-                <strong>{approvedRequest.requestedCourseName}</strong>
-                <p>
-                  From {approvedRequest.employeeName} / {approvedRequest.companyCode} /{" "}
-                  {approvedRequest.functionName || "-"}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+                  <span style={{ fontWeight: 800, color: "#007a3d", fontSize: "0.84rem" }}>
+                    📌 {t("สร้างแผนจากคำขอฝึกอบรม", "Created from Training Request")} #{approvedRequest.requestNo}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setApprovedRequest(null);
+                      window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
+                    }}
+                    style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "0.76rem" }}
+                  >
+                    ✕ {t("ยกเลิกการเชื่อมโยงคำขอ", "Unlink request")}
+                  </button>
+                </div>
+                <strong style={{ fontSize: "0.95rem" }}>{approvedRequest.requestedCourseName}</strong>
+                <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "#475569" }}>
+                  👤 {approvedRequest.employeeName} ({approvedRequest.companyCode} / {approvedRequest.functionName || "-"})
+                  {approvedRequest.requestReason ? ` • เหตุผลที่ขอ: "${approvedRequest.requestReason}"` : ""}
                 </p>
               </div>
             ) : null}

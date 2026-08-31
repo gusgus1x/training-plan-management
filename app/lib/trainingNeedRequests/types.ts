@@ -43,7 +43,7 @@ export type CreateNeedRequestInput = {
   preferredEndDate: string | null;
 };
 
-export type NeedRequestAction = "approve" | "reject";
+export type NeedRequestAction = "approve" | "reject" | "reset";
 
 export type UpdateNeedRequestInput = {
   action: NeedRequestAction;

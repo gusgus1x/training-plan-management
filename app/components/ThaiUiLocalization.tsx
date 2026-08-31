@@ -1157,7 +1157,7 @@ const thaiUiDictionary: Record<string, string> = {
   "Show month list": "แสดงรายการของเดือน",
   "Shows courses where this employee is included in the target group by company, function, or position.":
     "แสดงหลักสูตรที่พนักงานอยู่ในกลุ่มเป้าหมายตามบริษัท หน่วยงาน หรือตำแหน่ง",
-  "Training Roadmap": "แผนพัฒนาการอบรม",
+  "Training Roadmap": "Training Roadmap",
   "Training Room A": "ห้องอบรม A",
   "Training Room B": "ห้องอบรม B",
   "We could not verify your session.": "ไม่สามารถตรวจสอบเซสชันของคุณได้",

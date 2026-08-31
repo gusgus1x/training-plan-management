@@ -14,6 +14,8 @@ import {
   type WorkflowRegistration,
   type WorkflowStandard,
 } from "../../lib/trainingWorkflow";
+import { listEnrollments } from "../../lib/trainingEnrollment/client";
+import { buildRecords, type EmployeeTrainingRecord } from "./RecordModule";
 import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext";
 import { loadWorkflowRollingPlans, type RollingPlan } from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
 import { useUiLanguage } from "../ThaiUiLocalization";
@@ -21,6 +23,11 @@ import ModuleHeader from "./ModuleHeader";
 import styles from "./RoadmapModule.module.css";
 
 type TargetScopeTab = "ALL" | "CENTER" | "COMPANY";
+
+type RoadmapModuleProps = {
+  onRequestRefresher?: (recordId: string) => void;
+  onNavigate?: (module: string) => void;
+};
 
 // Translate Thai position, level, and function values to English
 const toEnglishText = (value: string): string => {
@@ -106,11 +113,11 @@ const normalizePosition = (val: string): string => {
   return t.toUpperCase();
 };
 
-// Helper function to check if a value matches target checklist
+// Helper function to check if a value matches target checklist (strictly matching user's position or level)
 const isTargetMatch = (targets: readonly string[] | undefined, userValue: string, isLevel = false, isPosition = false) => {
-  if (!targets || targets.length === 0) return true;
+  if (!targets || targets.length === 0) return false;
   const rawUser = (userValue || "").trim();
-  if (!rawUser || rawUser === "-") return true;
+  if (!rawUser || rawUser === "-") return false;
 
   const normalizedUser = isLevel
     ? normalizeLevel(rawUser)
@@ -131,7 +138,7 @@ const isTargetMatch = (targets: readonly string[] | undefined, userValue: string
       t === "ทุกกลุ่ม" ||
       t === "พนักงานทุกกลุ่ม"
     ) {
-      return true;
+      return false; // General/All does not count as a specific target match for Roadmap
     }
 
     const targetNorm = isLevel
@@ -148,7 +155,33 @@ const isTargetMatch = (targets: readonly string[] | undefined, userValue: string
   });
 };
 
-export default function RoadmapModule() {
+// Robust date check to determine if a course training date has passed
+const isCourseEnded = (dateStr: string, endDateStr?: string): boolean => {
+  if (!dateStr || dateStr === "-") return false;
+  const targetStr = endDateStr || dateStr;
+
+  let dateObj = new Date(targetStr);
+  if (isNaN(dateObj.getTime())) {
+    const parts = targetStr.split(/[\/\-]/);
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        dateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      } else {
+        dateObj = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+      }
+    }
+  }
+
+  if (isNaN(dateObj.getTime())) return false;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  dateObj.setHours(23, 59, 59, 999);
+
+  return dateObj < today;
+};
+
+export default function RoadmapModule({ onRequestRefresher, onNavigate }: RoadmapModuleProps = {}) {
   const { language } = useUiLanguage();
   const isThai = language === "th";
   const t = (th: string, en: string) => (isThai ? th : en);
@@ -167,11 +200,40 @@ export default function RoadmapModule() {
   const [oapPlans, setOapPlans] = useState<WorkflowOapPlan[]>([]);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [registrations, setRegistrations] = useState<WorkflowRegistration[]>([]);
+  const [completedRecords, setCompletedRecords] = useState<EmployeeTrainingRecord[]>([]);
 
   const [selectedTab, setSelectedTab] = useState<TargetScopeTab>("ALL");
+  const [showCompleted, setShowCompleted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<string>("ALL");
   const [expandedCode, setExpandedCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
+      .then(({ enrollments }) => {
+        if (!cancelled) {
+          setCompletedRecords(buildRecords(enrollments || []));
+        }
+      })
+      .catch((err) => console.error("Failed to load completed records in Roadmap", err));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const completedMap = useMemo(() => {
+    const map = new Map<string, EmployeeTrainingRecord>();
+    for (const rec of completedRecords) {
+      if (rec.courseCode) {
+        map.set(rec.courseCode.trim().toLowerCase(), rec);
+      }
+      if (rec.courseTitle) {
+        map.set(rec.courseTitle.trim().toLowerCase(), rec);
+      }
+    }
+    return map;
+  }, [completedRecords]);
 
   useEffect(() => {
     void loadWorkflowRollingPlans().then((plans) => {
@@ -257,6 +319,7 @@ export default function RoadmapModule() {
       contact: string;
       remarks: string;
       isRollingOpen: boolean;
+      isEnded: boolean;
       preTestLink?: string;
       postTestLink?: string;
       evaluationLink?: string;
@@ -300,6 +363,12 @@ export default function RoadmapModule() {
 
       const isCenter = rp.owner === "CENTER";
 
+      const isEnded = isCourseEnded(rp.trainingDate || "", rp.endDate || rp.trainingDate);
+      const isRollingOpen = !isEnded;
+      const trainingStatus = isEnded
+        ? t("เสร็จสิ้นการอบรมแล้ว", "Training ended")
+        : t("เปิดรับสมัคร", "Open registration");
+
       itemMap.set(code, {
         id: rp.rollingId,
         code,
@@ -319,7 +388,7 @@ export default function RoadmapModule() {
         targetLevels: (rawLevels.length > 0) ? rawLevels : ["All Levels"],
         round: rp.batch || "-",
         trainingDate: rp.trainingDate || "-",
-        trainingStatus: t("เปิดรับสมัคร", "Open registration"),
+        trainingStatus,
         hours: rp.hours || oapPlan?.hours || "6",
         budget: rp.budget ? `THB ${Number(rp.budget).toLocaleString("en-US")}` : "-",
         trainer: rp.trainer || oapPlan?.trainer || "กัส เอฟ",
@@ -328,7 +397,8 @@ export default function RoadmapModule() {
         approvalFlow: isCenter ? t("พนักงาน > HRD Center", "Employee > HRD Center") : t("พนักงาน > Factory HRD", "Employee > Factory HRD"),
         contact: isCenter ? t("HRD ส่วนกลาง", "HRD Center") : `${ownerComp} HRD`,
         remarks: rp.course.remark || t("ทดสอบระบบการทำงานจริง", "Real system workflow testing"),
-        isRollingOpen: true,
+        isRollingOpen,
+        isEnded,
         preTestLink: rp.course.preTestLink || masterCourse?.preTestLink,
         postTestLink: rp.course.postTestLink || masterCourse?.postTestLink,
         evaluationLink: rp.course.evaluationLink || masterCourse?.evaluationLink,
@@ -397,6 +467,7 @@ export default function RoadmapModule() {
         contact: isCenter ? t("HRD ส่วนกลาง", "HRD Center") : `${ownerComp} HRD`,
         remarks: oap.course.remark || t("ทดสอบระบบการทำงานจริง", "Real system workflow testing"),
         isRollingOpen: false,
+        isEnded: false,
         preTestLink: oap.course.preTestLink || masterCourse?.preTestLink,
         postTestLink: oap.course.postTestLink || masterCourse?.postTestLink,
         evaluationLink: oap.course.evaluationLink || masterCourse?.evaluationLink,
@@ -441,57 +512,14 @@ export default function RoadmapModule() {
         contact: isCenter ? t("HRD ส่วนกลาง", "HRD Center") : `${ownerComp} HRD`,
         remarks: masterCourse?.remark || t("ทดสอบระบบการทำงานจริง", "Real system workflow testing"),
         isRollingOpen: false,
+        isEnded: false,
         preTestLink: masterCourse?.preTestLink,
         postTestLink: masterCourse?.postTestLink,
         evaluationLink: masterCourse?.evaluationLink,
       });
     }
 
-    // 4. Load from course master
-    for (const course of courses) {
-      if (!course.courseCode || itemMap.has(course.courseCode)) continue;
-      const ownerComp = course.ownerCompany || employeeCompany;
-      const rawPositions = (course as unknown as Record<string, unknown>)?.targetPositions as string[] | undefined;
-      const rawLevels = (course as unknown as Record<string, unknown>)?.targetLevels as string[] | undefined;
-      const rawCompanies = (course as unknown as Record<string, unknown>)?.targetCompanies as string[] | undefined;
-      const isCenter = course.owner === "CENTER";
-
-      itemMap.set(course.courseCode, {
-        id: course.id,
-        code: course.courseCode,
-        title: getCourseDisplayName(course),
-        titleEn: getCourseSecondaryName(course),
-        category: course.courseGroup || t("ทั่วไป", "General"),
-        objective: course.objective || t("ไม่มีคำอธิบายเป้าหมาย", "No objective provided"),
-        learningContent: course.learningContent || t("ทดสอบระบบการทำงานจริง", "Real system workflow content"),
-        methodology: course.methodology || t("ทดสอบระบบการทำงานจริง", "Real system workflow methodology"),
-        courseType: course.courseType || "ATA-TC / ระบบ",
-        ownerCompany: ownerComp,
-        courseOwner: isCenter ? "CENTER" : "FACTORY",
-        targetGroupDesc: course.targetGroup || t("พนักงานระดับบังคับบัญชาและระดับปฏิบัติการที่เกี่ยวข้อง", "Targeted Employees & Related Groups"),
-        targetCompanies: (rawCompanies && rawCompanies.length > 0) ? rawCompanies : (isCenter ? ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] : [ownerComp]),
-        targetFunctions: ["All Function"],
-        targetPositions: (rawPositions && rawPositions.length > 0) ? rawPositions : ["All Positions"],
-        targetLevels: (rawLevels && rawLevels.length > 0) ? rawLevels : ["All Levels"],
-        round: "-",
-        trainingDate: "-",
-        trainingStatus: t("อยู่ในแผนประจำปี", "Annual plan pending"),
-        hours: "6",
-        budget: "-",
-        trainer: "กัส เอฟ",
-        provider: ownerComp,
-        place: "212224",
-        approvalFlow: isCenter ? t("พนักงาน > HRD Center", "Employee > HRD Center") : t("พนักงาน > Factory HRD", "Employee > Factory HRD"),
-        contact: isCenter ? t("HRD ส่วนกลาง", "HRD Center") : `${ownerComp} HRD`,
-        remarks: course.remark || t("ทดสอบระบบการทำงานจริง", "Real system workflow testing"),
-        isRollingOpen: false,
-        preTestLink: course.preTestLink,
-        postTestLink: course.postTestLink,
-        evaluationLink: course.evaluationLink,
-      });
-    }
-
-    // 5. Compute matching & visibility for each item
+    // 4. Compute matching & visibility for each item (Only specifically targeted courses)
     return Array.from(itemMap.values()).map((item) => {
       const isCompanyTargeted = item.courseOwner === "CENTER"
         ? (item.targetCompanies.length === 0 || item.targetCompanies.some((c) => c.toLowerCase() === "all" || c.toLowerCase() === "all companies" || !employeeCompany || employeeCompany === "-" || c.toUpperCase() === employeeCompany.toUpperCase()))
@@ -517,20 +545,31 @@ export default function RoadmapModule() {
     });
   }, [courses, employeeCompany, employeeFunction, employeeLevel, employeePosition, oapPlans, rollingPlans, standards, t]);
 
-  // Filter items based on selected scope tab, category group, and search query
+  // Filter items based on selected scope tab, category group, search query, and availability
   const filteredRoadmapItems = useMemo(() => {
     return allRoadmapItems.filter((item) => {
-      // Must be relevant for employee (Company + Position OR Level match)
+      // 1. Must be targeted for this employee (Company + Position / Level / Function match)
       if (!item.isRelevantForRoadmap) return false;
 
-      // Filter by Scope Tab (Center / Company / All)
+      // 2. If showCompleted is false:
+      // - Exclude ended/past date courses
+      // - Exclude courses already completed/passed by employee
+      if (!showCompleted) {
+        if (item.isEnded) return false;
+        const isCompleted =
+          completedMap.has(item.code.trim().toLowerCase()) ||
+          completedMap.has(item.title.trim().toLowerCase());
+        if (isCompleted) return false;
+      }
+
+      // 3. Filter by Scope Tab (Center / Company / All)
       if (selectedTab === "CENTER" && item.courseOwner !== "CENTER") return false;
       if (selectedTab === "COMPANY" && item.courseOwner !== "FACTORY") return false;
 
-      // Filter by Category Group
+      // 4. Filter by Category Group
       if (selectedGroup !== "ALL" && item.category !== selectedGroup) return false;
 
-      // Filter by Search Query
+      // 5. Filter by Search Query
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const matchCode = item.code.toLowerCase().includes(query);
@@ -542,31 +581,97 @@ export default function RoadmapModule() {
 
       return true;
     });
-  }, [allRoadmapItems, selectedTab, selectedGroup, searchQuery]);
+  }, [allRoadmapItems, showCompleted, completedMap, selectedTab, selectedGroup, searchQuery]);
 
-  // Unique course category groups for filter dropdown
+  // Unique course category groups for filter dropdown from relevant target items
   const categoryGroups = useMemo(() => {
     const groups = new Set<string>();
     for (const item of allRoadmapItems) {
-      if (item.isRelevantForRoadmap) {
+      if (!item.isRelevantForRoadmap) continue;
+      if (!showCompleted) {
+        if (item.isEnded) continue;
+        const isCompleted =
+          completedMap.has(item.code.trim().toLowerCase()) ||
+          completedMap.has(item.title.trim().toLowerCase());
+        if (isCompleted) continue;
+      }
+      if (item.category) {
         groups.add(item.category);
       }
     }
     return Array.from(groups).sort();
-  }, [allRoadmapItems]);
+  }, [allRoadmapItems, showCompleted, completedMap]);
 
-  // Counter metrics
-  const centerCount = useMemo(
-    () => allRoadmapItems.filter((item) => item.isRelevantForRoadmap && item.courseOwner === "CENTER").length,
-    [allRoadmapItems],
-  );
-  const companyCount = useMemo(
-    () => allRoadmapItems.filter((item) => item.isRelevantForRoadmap && item.courseOwner === "FACTORY").length,
-    [allRoadmapItems],
-  );
+  // Counter metrics for target courses
+  const totalCount = useMemo(() => {
+    return allRoadmapItems.filter((item) => {
+      if (!item.isRelevantForRoadmap) return false;
+      if (!showCompleted) {
+        if (item.isEnded) return false;
+        const isCompleted =
+          completedMap.has(item.code.trim().toLowerCase()) ||
+          completedMap.has(item.title.trim().toLowerCase());
+        if (isCompleted) return false;
+      }
+      return true;
+    }).length;
+  }, [allRoadmapItems, showCompleted, completedMap]);
+
+  const centerCount = useMemo(() => {
+    return allRoadmapItems.filter((item) => {
+      if (!item.isRelevantForRoadmap) return false;
+      if (!showCompleted) {
+        if (item.isEnded) return false;
+        const isCompleted =
+          completedMap.has(item.code.trim().toLowerCase()) ||
+          completedMap.has(item.title.trim().toLowerCase());
+        if (isCompleted) return false;
+      }
+      return item.courseOwner === "CENTER";
+    }).length;
+  }, [allRoadmapItems, showCompleted, completedMap]);
+
+  const companyCount = useMemo(() => {
+    return allRoadmapItems.filter((item) => {
+      if (!item.isRelevantForRoadmap) return false;
+      if (!showCompleted) {
+        if (item.isEnded) return false;
+        const isCompleted =
+          completedMap.has(item.code.trim().toLowerCase()) ||
+          completedMap.has(item.title.trim().toLowerCase());
+        if (isCompleted) return false;
+      }
+      return item.courseOwner === "FACTORY";
+    }).length;
+  }, [allRoadmapItems, showCompleted, completedMap]);
 
   // Registration handler for direct enrollment from Roadmap
   const handleRegisterCourse = (item: (typeof filteredRoadmapItems)[number]) => {
+    const completedRecord =
+      completedMap.get(item.code.trim().toLowerCase()) ??
+      completedMap.get(item.title.trim().toLowerCase()) ??
+      null;
+
+    if (completedRecord) {
+      window.alert(
+        t(
+          `คุณได้ผ่านการอบรมหลักสูตร "${item.title}" เรียบร้อยแล้ว (เมื่อวันที่ ${completedRecord.completedDate})\nหากต้องการเข้าอบรมซ้ำ กรุณาใช้เมนู "ขอจัดอบรมทบทวน (Request Training Need)"`,
+          `You have already completed "${item.title}" on ${completedRecord.completedDate}.\nIf you want to retake it, please use "Request Training Need" to request a refresher.`,
+        ),
+      );
+      return;
+    }
+
+    if (item.isEnded) {
+      window.alert(
+        t(
+          `หลักสูตร "${item.title}" ได้สิ้นสุดกำหนดการอบรมไปแล้ว (เมื่อวันที่ ${item.trainingDate})\nคุณสามารถใช้เมนู "ขอเปิดหลักสูตรฝึกอบรม (Request Training Need)" เพื่อขอให้ HRD เปิดรุ่นใหม่ได้ครับ`,
+          `Training for "${item.title}" ended on ${item.trainingDate}.\nPlease use "Request Training Need" to ask HRD for a new session.`,
+        ),
+      );
+      return;
+    }
+
     const activeReg = registrations.find(
       (r) => r.employeeCode === employeeCode && r.rollingId === item.id
     );
@@ -617,7 +722,7 @@ export default function RoadmapModule() {
   return (
     <main className={styles.page}>
       <ModuleHeader
-        eyebrow={t("แผนภูมิเส้นทางการเรียนรู้พนักงาน", "Employee Target Training Roadmap")}
+        eyebrow="Employee Target Training Roadmap"
         title="Training Roadmap"
         detail={t(
           "แสดงรายการหลักสูตรอบรมเป้าหมาย (Course Standard & Target Group) ที่ออกแบบสำหรับสังกัดบริษัท ตำแหน่ง และระดับงานของคุณ พร้อมระบบสมัครเข้าอบรมโดยตรง",
@@ -633,13 +738,13 @@ export default function RoadmapModule() {
             <div className={styles.avatarBadge}>👤</div>
             <div className={styles.profileText}>
               <h2>{employeeName}</h2>
-              <p>{t("ข้อมูลกลุ่มเป้าหมายของคุณ", "Your Target Group Profile")}</p>
+              <p>Your Target Group Profile</p>
             </div>
           </div>
           <div className={styles.profileBadges}>
-            <span className={styles.profileBadgeItem}>🏢 {t("บริษัท", "Company")}: <strong>{employeeCompany}</strong></span>
-            <span className={styles.profileBadgeItem}>💼 {t("ตำแหน่ง", "Position")}: <strong>{employeePosition}</strong></span>
-            <span className={styles.profileBadgeItem}>⭐ {t("ระดับงาน", "Level")}: <strong>{employeeLevel}</strong></span>
+            <span className={styles.profileBadgeItem}>🏢 Company: <strong>{employeeCompany}</strong></span>
+            <span className={styles.profileBadgeItem}>💼 Position: <strong>{toEnglishText(employeePosition)}</strong></span>
+            <span className={styles.profileBadgeItem}>⭐ Level: <strong>{toEnglishText(employeeLevel)}</strong></span>
           </div>
         </div>
 
@@ -651,15 +756,15 @@ export default function RoadmapModule() {
               className={`${styles.scopeTab} ${selectedTab === "ALL" ? styles.activeScopeTab : ""}`}
               onClick={() => setSelectedTab("ALL")}
             >
-              🌐 {t("คอร์สเป้าหมายทั้งหมด", "All Target Courses")}
-              <span className={styles.tabBadge}>{allRoadmapItems.filter((i) => i.isRelevantForRoadmap).length}</span>
+              🌐 {showCompleted ? t("คอร์สเป้าหมายทั้งหมด", "All Target Courses") : t("คอร์สเป้าหมายที่สมัครได้", "Available Target Courses")}
+              <span className={styles.tabBadge}>{totalCount}</span>
             </button>
             <button
               type="button"
               className={`${styles.scopeTab} ${selectedTab === "CENTER" ? styles.activeScopeTab : ""}`}
               onClick={() => setSelectedTab("CENTER")}
             >
-              🏛️ {t("หลักสูตรบังคับศูนย์กลาง", "Center Mandatory")}
+              🏛️ {t("ส่วนกลาง (Center)", "Center Mandatory")}
               <span className={styles.tabBadge}>{centerCount}</span>
             </button>
             <button
@@ -667,13 +772,45 @@ export default function RoadmapModule() {
               className={`${styles.scopeTab} ${selectedTab === "COMPANY" ? styles.activeScopeTab : ""}`}
               onClick={() => setSelectedTab("COMPANY")}
             >
-              🏭 {t("หลักสูตรประจำบริษัท", "Company Training")}
+              🏭 {employeeCompany || t("โรงงาน (Factory)", "Factory")}
               <span className={styles.tabBadge}>{companyCount}</span>
             </button>
           </div>
 
-          {/* Search & Category Filter */}
-          <div className={styles.filterRow}>
+          <label className={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              checked={showCompleted}
+              onChange={(e) => setShowCompleted(e.target.checked)}
+            />
+            {t("แสดงคอร์สที่จบไปแล้วด้วย", "Show ended courses")}
+          </label>
+        </div>
+
+        {/* Search & Category Filter Row */}
+        <div className={styles.filterControlsRow}>
+          <div className={styles.searchBox}>
+            <span className={styles.searchIcon}>🔍</span>
+            <input
+              type="text"
+              placeholder={t("ค้นหารหัส, ชื่อหลักสูตร, วิทยากร, เนื้อหา...", "Search code, title, instructor, content...")}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={styles.searchInput}
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                className={styles.clearBtn}
+                onClick={() => setSearchQuery("")}
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            ) : null}
+          </div>
+
+          <div className={styles.categorySelectWrap}>
             <select
               className={styles.categorySelect}
               value={selectedGroup}
@@ -686,34 +823,25 @@ export default function RoadmapModule() {
                 </option>
               ))}
             </select>
-
-            <div className={styles.searchInputWrapper}>
-              <svg className={styles.searchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-              <input
-                type="text"
-                className={styles.searchInput}
-                placeholder={t("ค้นหารายชื่อคอร์สมาตรฐาน, รหัสวิชา หรือ วัตถุประสงค์...", "Search course code, title, objective...")}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
           </div>
         </div>
       </section>
 
-      {/* Course Cards Grid */}
-      <div className={styles.courseGrid}>
+      {/* Grid of Roadmap Course Cards */}
+      <div className={styles.roadmapGrid}>
         {filteredRoadmapItems.map((item) => {
-          const isExpanded = item.code === expandedCode;
           const isCenter = item.courseOwner === "CENTER";
+          const isExpanded = expandedCode === item.code;
 
           const activeReg = registrations.find(
             (r) => r.employeeCode === employeeCode && r.rollingId === item.id
           );
           const isRegistered = Boolean(activeReg);
+          const completedRecord =
+            completedMap.get(item.code.trim().toLowerCase()) ??
+            completedMap.get(item.title.trim().toLowerCase()) ??
+            null;
+          const isCompleted = Boolean(completedRecord);
 
           return (
             <article
@@ -776,8 +904,8 @@ export default function RoadmapModule() {
               {/* Card Footer with Direct Registration Action */}
               <div className={styles.cardFooter}>
                 <div className={styles.statusGroup}>
-                  <span className={`${styles.statusPill} ${item.isRollingOpen ? styles.statusOpen : styles.statusPlanned}`}>
-                    {item.trainingStatus}
+                  <span className={`${styles.statusPill} ${isCompleted || item.isEnded ? styles.statusEnded : isRegistered ? styles.statusOpen : item.isRollingOpen ? styles.statusOpen : styles.statusPlanned}`}>
+                    {isCompleted ? t("เสร็จสิ้นการอบรมแล้ว", "Training ended") : item.trainingStatus}
                   </span>
                 </div>
 
@@ -791,15 +919,35 @@ export default function RoadmapModule() {
                     {isExpanded ? t("ซ่อนรายละเอียด", "Hide detail") : t("รายละเอียดกลุ่มเป้าหมาย", "Target Group Details")}
                   </button>
 
-                  {/* Direct Course Registration Button */}
-                  {isRegistered ? (
+                  {/* Course Status / Registration Action */}
+                  {isCompleted ? (
                     <button
-                      className={styles.registeredBtn}
+                      className={styles.detailBtn}
+                      type="button"
+                      disabled
+                      style={{ opacity: 0.65, cursor: "not-allowed", color: "var(--ui-30-muted)" }}
+                    >
+                      {t("ผ่านการอบรมแล้ว", "Completed")}
+                    </button>
+                  ) : item.isEnded ? (
+                    <button
+                      className={styles.detailBtn}
+                      type="button"
+                      disabled
+                      style={{ opacity: 0.65, cursor: "not-allowed", color: "var(--ui-30-muted)" }}
+                    >
+                      {isRegistered
+                        ? t("เข้าร่วมอบรมแล้ว", "Attended")
+                        : t("ผ่านเวลาไปแล้วไม่สามารถลงได้", "Past deadline - Cannot register")}
+                    </button>
+                  ) : isRegistered ? (
+                    <button
+                      className={styles.cancelBtn}
                       type="button"
                       onClick={() => handleRegisterCourse(item)}
                       title={t("คลิกเพื่อยกเลิกการสมัคร", "Click to cancel registration")}
                     >
-                      ✓ {t("ลงทะเบียนแล้ว", "Registered")}
+                      {t("ยกเลิกการลงทะเบียน", "Cancel registration")}
                     </button>
                   ) : (
                     <button
@@ -807,7 +955,7 @@ export default function RoadmapModule() {
                       type="button"
                       onClick={() => handleRegisterCourse(item)}
                     >
-                      📝 {t("สมัครเข้าอบรม", "Register Now")}
+                      {t("ลงทะเบียนอบรม", "Register now")}
                     </button>
                   )}
                 </div>
@@ -962,14 +1110,14 @@ export default function RoadmapModule() {
 
         {filteredRoadmapItems.length === 0 ? (
           <div className={styles.emptyBox}>
-            <div className={styles.emptyIcon}>📂</div>
+            <div className={styles.emptyIcon}>🎯</div>
             <div className={styles.emptyTitle}>
-              {t("ไม่พบรายชื่อคอร์สอบรมเป้าหมาย", "No target courses found")}
+              {t("ไม่มีหลักสูตรเป้าหมายที่เปิดรับสมัครในขณะนี้", "No open target courses available")}
             </div>
             <div className={styles.emptyDesc}>
               {t(
-                "ขณะนี้ไม่มีคอร์สอบรมเป้าหมายที่ตรงตามสังกัดบริษัท ตำแหน่ง หรือระดับงานของคุณ",
-                "There are currently no target training courses configured for your company, position, or job level.",
+                "ขณะนี้ไม่มีหลักสูตรอบรมเป้าหมายที่เปิดรับสมัครใหม่ หรือคุณอาจผ่านการอบรมตามแผนไปเรียบร้อยแล้ว หากต้องการขออบรมทบทวนความรู้เดิม สามารถไปที่เมนู \"ขอเปิดหลักสูตรฝึกอบรม (Request Training Need)\" ได้ครับ",
+                "There are currently no active target courses open for enrollment, or you have already completed your target courses. You can request a refresher session in 'Request Training Need'.",
               )}
             </div>
           </div>

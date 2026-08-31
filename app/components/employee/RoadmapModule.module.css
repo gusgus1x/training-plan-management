@@ -149,6 +149,32 @@
   padding: 0 5px;
 }
 
+.checkboxLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ui-30-muted);
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 8px;
+  border-radius: var(--ui-radius-sm, 6px);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.checkboxLabel:hover {
+  color: var(--ui-30-ink);
+}
+
+.checkboxLabel input[type="checkbox"] {
+  accent-color: var(--ui-30-primary);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
 /* Search & Select Filter Row */
 .filterRow {
   display: flex;
@@ -454,6 +480,12 @@
   color: #f59e0b;
 }
 
+.statusEnded {
+  background: rgba(100, 116, 139, 0.14);
+  border: 1px solid rgba(100, 116, 139, 0.4);
+  color: var(--ui-30-muted);
+}
+
 .actionGroup {
   display: flex;
   align-items: center;
@@ -499,6 +531,27 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 122, 61, 0.35);
   background: #006633;
+}
+
+.cancelBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  font-size: 0.78rem;
+  font-weight: 900;
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancelBtn:hover {
+  background: #ef4444;
+  color: #ffffff;
 }
 
 .registeredBtn {

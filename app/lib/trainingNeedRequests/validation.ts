@@ -54,8 +54,8 @@ export const parseCreateNeedRequest = (input: InputObject): CreateNeedRequestInp
 };
 
 const action = (value: unknown): NeedRequestAction => {
-  if (typeof value !== "string" || !["approve", "reject"].includes(value)) {
-    throw invalid("action", "Action must be approve or reject");
+  if (typeof value !== "string" || !["approve", "reject", "reset"].includes(value)) {
+    throw invalid("action", "Action must be approve, reject, or reset");
   }
   return value as NeedRequestAction;
 };

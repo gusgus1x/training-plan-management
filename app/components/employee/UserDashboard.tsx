@@ -446,7 +446,13 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
             <RegisterTrainingModule onNavigate={(mod) => setActiveModule(mod)} />
           ) : null}
           {activeModule === "roadmap" ? (
-            <RoadmapModule />
+            <RoadmapModule
+              onRequestRefresher={(recordId) => {
+                setRequestCourseId(recordId);
+                setActiveModule("request");
+              }}
+              onNavigate={(mod) => setActiveModule(mod as any)}
+            />
           ) : null}
           {activeModule === "request" ? (
             <RequestTrainingModule

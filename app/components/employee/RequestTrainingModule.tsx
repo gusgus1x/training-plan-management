@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  buildProfileItems,
-  profileValue,
   useAuthenticatedUser,
 } from "../AuthenticatedUserContext";
 import {
@@ -31,9 +29,6 @@ type RequestTrainingModuleProps = {
   onNavigate?: (module: string) => void;
 };
 
-const courseOwnerOf = (record: EmployeeTrainingRecord) =>
-  record.provider === "Factory HRD" ? "Factory" : "Center";
-
 export default function RequestTrainingModule({
   reason,
   setReason,
@@ -42,9 +37,9 @@ export default function RequestTrainingModule({
   initialCourseId,
 }: RequestTrainingModuleProps) {
   const authenticatedUser = useAuthenticatedUser();
-  const profileItems = buildProfileItems(authenticatedUser);
   const [completedCourses, setCompletedCourses] = useState<EmployeeTrainingRecord[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>(initialCourseId || "");
+  const [requestMode, setRequestMode] = useState<"record" | "custom">(initialCourseId ? "record" : "record");
   const [preferredStartDate, setPreferredStartDate] = useState("");
   const [preferredEndDate, setPreferredEndDate] = useState("");
   const [isLoadingRecords, setIsLoadingRecords] = useState(true);
@@ -60,8 +55,6 @@ export default function RequestTrainingModule({
     () => completedCourses.find((course) => course.id === selectedCourseId) ?? null,
     [completedCourses, selectedCourseId],
   );
-
-  const selectedCourseOwner = selectedCourse ? courseOwnerOf(selectedCourse) : "Center";
 
   // Load employee's completed training records from My Record
   useEffect(() => {
@@ -183,118 +176,158 @@ export default function RequestTrainingModule({
   return (
     <section className={shell.moduleWorkspace}>
       <ModuleHeader
-        eyebrow={t("ขอเปิดหลักสูตรฝึกอบรม", "Request Training Need")}
-        title={t("ขอจัดอบรมทบทวน / เปิดหลักสูตรใหม่", "Request Training Need")}
+        eyebrow={t("ส่งคำขอฝึกอบรม", "Employee Training Request")}
+        title={t("ขอจัดอบรมทบทวน / เปิดหลักสูตรฝึกอบรม", "Request Training Need")}
         detail={t(
-          "เลือกหลักสูตรที่เคยเข้าอบรมแล้วจากประวัติ (My Record) เพื่อส่งคำขอให้ HRD Center หรือ Factory HRD จัดอบรมทบทวนความรู้ใหม่อีกครั้ง",
-          "Select a previously completed course from your training records to request HRD Center or Factory HRD to organize a refresher training session.",
+          "ส่งคำขอฝึกอบรมถึง HRD เพื่อขอเปิดรอบอบรมทบทวนความรู้เดิม (Refresher) หรือเสนอความต้องการพัฒนาทักษะใหม่ในการทำงาน",
+          "Submit training needs to HRD for refresher training on past courses or requesting new skills.",
         )}
       />
 
       <div className={styles.container}>
-        {/* Employee Profile Quick Strip */}
-        <div className={styles.employeeStrip}>
-          {profileItems.slice(0, 4).map((item) => (
-            <div className={styles.employeeStripItem} key={item.label}>
-              <span>{item.label}</span>
-              <strong>{item.value || "-"}</strong>
+        {/* 1. Hero Guide Card */}
+        <div className={styles.heroGuideCard}>
+          <div className={styles.heroGuideText}>
+            <h3>
+              <span>💡</span> {t("ต้องการอบรมทบทวน หรือเรียนรู้ทักษะใดเพิ่มเติม?", "Need a refresher or new training topic?")}
+            </h3>
+            <p>
+              {t(
+                "คุณสามารถเลือกหลักสูตรที่เคยเรียนจบแล้วจากประวัติ เพื่อให้ HRD จัดรอบทบทวนความรู้ใหม่อีกครั้ง หรือระบุหัวข้อใหม่ที่ต้องการได้ทันที",
+                "Select a previously completed course to request a refresher, or submit any new skill topic directly to HRD.",
+              )}
+            </p>
+          </div>
+          <div className={styles.heroQuickStats}>
+            <div className={styles.statPill}>
+              <span className={styles.statPillDot} />
+              <span>
+                {completedCourses.length} {t("หลักสูตรที่เคยผ่าน", "completed")}
+              </span>
             </div>
-          ))}
+            <div className={styles.statPill}>
+              <span>📨</span>
+              <span>
+                {myRequests.length} {t("คำขอที่ส่งแล้ว", "requests sent")}
+              </span>
+            </div>
+          </div>
         </div>
 
+        {/* 2. Main 2-Column Layout */}
         <div className={styles.requestLayout}>
-          {/* Left Column: Request Form */}
+          {/* Left Column: Form */}
           <section className={styles.mainCard}>
             <div className={styles.cardHeader}>
               <div className={styles.cardHeaderTitle}>
                 <span className={styles.cardHeaderIcon}>📝</span>
-                <h3>{t("สร้างคำขอฝึกอบรม (New Training Need Request)", "New Training Need Request")}</h3>
+                <h3>{t("สร้างคำขอฝึกอบรม (New Request)", "New Training Request")}</h3>
               </div>
             </div>
 
-            {/* Step 1: Select Past Course from My Record */}
-            <div className={styles.sectionBlock}>
-              <div className={styles.sectionTitle}>
-                <span>{t("1. เลือกหลักสูตรที่เคยอบรมจาก My Record", "1. Select from My Record")}</span>
-                <span style={{ fontSize: "0.8rem", color: "#007a3d" }}>
-                  {completedCourses.length} {t("หลักสูตรที่เคยผ่าน", "completed courses")}
-                </span>
-              </div>
-              <p className={styles.sectionHint}>
-                {t(
-                  "เลือกหลักสูตรที่คุณเคยผ่านการอบรมแล้ว เพื่อขอให้เปิดรุ่นอบรมทบทวน (Refresher)",
-                  "Choose a course you have completed before to request a refresher session.",
-                )}
-              </p>
+            {/* Mode Switcher */}
+            <div className={styles.modeTabs}>
+              <button
+                className={`${styles.modeTab} ${requestMode === "record" ? styles.modeTabActive : ""}`}
+                type="button"
+                onClick={() => {
+                  setRequestMode("record");
+                }}
+              >
+                🔄 {t("ขออบรมทบทวนจากประวัติ (My Record)", "Refresher from My Record")}
+              </button>
+              <button
+                className={`${styles.modeTab} ${requestMode === "custom" ? styles.modeTabActive : ""}`}
+                type="button"
+                onClick={() => {
+                  setRequestMode("custom");
+                  setSelectedCourseId("");
+                }}
+              >
+                ✍️ {t("ระบุหัวข้อใหม่ / อื่นๆ", "New Course Topic")}
+              </button>
+            </div>
 
-              {completedCourses.length === 0 && !isLoadingRecords ? (
-                <div className={styles.emptyRecordsAlert}>
-                  <span>ℹ️</span>
-                  <div>
-                    <strong>{t("ยังไม่พบประวัติการอบรมที่เสร็จสมบูรณ์", "No completed training records found")}</strong>
-                    <div>{t("คุณสามารถพิมพ์ชื่อหลักสูตรที่ต้องการในช่องด้านล่างได้โดยตรง", "You can still type any course name needed in the field below.")}</div>
-                  </div>
+            {/* Mode 1: Select Past Course from My Record */}
+            {requestMode === "record" && (
+              <div className={styles.sectionBlock}>
+                <div className={styles.sectionTitle}>
+                  <span>{t("1. เลือกหลักสูตรที่เคยอบรมจาก My Record", "1. Select from My Record")}</span>
+                  <span style={{ fontSize: "0.8rem", color: "var(--ui-30-primary)" }}>
+                    {completedCourses.length} {t("หลักสูตรพร้อมทบทวน", "ready for refresher")}
+                  </span>
                 </div>
-              ) : (
-                <SearchableSelect
-                  options={completedCourses.map((course) => ({
-                    value: course.id,
-                    label: `[${course.courseCode}] ${course.courseTitle}`,
-                    secondaryLabel: `ผ่านเมื่อ: ${course.completedDate} • ${course.hours} ชม. • ${course.provider}`,
-                    badge: course.provider === "HRD Center" ? "🏢 Center" : "🏬 Factory",
-                  }))}
-                  value={selectedCourseId}
-                  onChange={(val) => handleSelectCourse(val)}
-                  placeholder={
-                    isLoadingRecords
-                      ? t("กำลังโหลดประวัติการอบรม...", "Loading training records...")
-                      : t("🔍 พิมพ์ค้นหาหลักสูตรที่เคยอบรมจาก My Record...", "Search completed course from My Record...")
-                  }
-                  disabled={isLoadingRecords}
-                />
-              )}
 
-              {/* Past Course Detail Card */}
-              {selectedCourse ? (
-                <div className={styles.pastCourseCard}>
-                  <div className={styles.pastCourseHeader}>
+                {completedCourses.length === 0 && !isLoadingRecords ? (
+                  <div className={styles.emptyRecordsAlert}>
+                    <span>ℹ️</span>
                     <div>
+                      <strong>{t("ยังไม่พบประวัติการอบรมที่เสร็จสมบูรณ์", "No completed training records found")}</strong>
+                      <div>{t("คุณสามารถกดเลือกแท็บ 'ระบุหัวข้อใหม่' เพื่อพิมพ์ชื่อหลักสูตรที่ต้องการได้โดยตรง", "You can switch to 'New Course Topic' to type any course name directly.")}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <SearchableSelect
+                    options={completedCourses.map((course) => ({
+                      value: course.id,
+                      label: `[${course.courseCode}] ${course.courseTitle}`,
+                      secondaryLabel: `ผ่านเมื่อ: ${course.completedDate} • ${course.hours} ชม. • ${course.provider}`,
+                      badge: course.provider === "HRD Center" ? "🏢 Center" : "🏬 Factory",
+                    }))}
+                    value={selectedCourseId}
+                    onChange={(val) => handleSelectCourse(val)}
+                    placeholder={
+                      isLoadingRecords
+                        ? t("กำลังโหลดประวัติการอบรม...", "Loading training records...")
+                        : t("🔍 พิมพ์ค้นหาหลักสูตรที่เคยอบรมจาก My Record...", "Search completed course from My Record...")
+                    }
+                    disabled={isLoadingRecords}
+                  />
+                )}
+
+                {/* Past Course Detail Card */}
+                {selectedCourse ? (
+                  <div className={styles.pastCourseCard}>
+                    <div className={styles.pastCourseHeader}>
                       <h4 className={styles.pastCourseTitle}>
                         [{selectedCourse.courseCode}] {selectedCourse.courseTitle}
                       </h4>
+                      <span className={styles.providerBadge}>
+                        {selectedCourse.provider === "HRD Center" ? "🏛️ HRD Center" : "🏭 Factory HRD"}
+                      </span>
                     </div>
-                    <span className={styles.providerBadge}>
-                      {selectedCourse.provider === "HRD Center" ? "🏛️ HRD Center" : "🏭 Factory HRD"}
-                    </span>
-                  </div>
 
-                  <div className={styles.pastCourseGrid}>
-                    <div className={styles.pastCourseMetaItem}>
-                      <span>{t("วันที่เคยอบรม", "Completed Date")}</span>
-                      <strong>📅 {selectedCourse.completedDate}</strong>
-                    </div>
-                    <div className={styles.pastCourseMetaItem}>
-                      <span>{t("จำนวนชั่วโมง", "Duration")}</span>
-                      <strong>⏱️ {selectedCourse.hours} {t("ชม.", "hrs")}</strong>
-                    </div>
-                    <div className={styles.pastCourseMetaItem}>
-                      <span>{t("วิทยากรผู้สอน", "Instructor")}</span>
-                      <strong>👨‍🏫 {selectedCourse.instructor || "-"}</strong>
-                    </div>
-                    <div className={styles.pastCourseMetaItem}>
-                      <span>{t("ผลการอบรมเดิม", "Past Result")}</span>
-                      <strong>✅ {selectedCourse.result || "Completed"}</strong>
+                    <div className={styles.pastCourseGrid}>
+                      <div className={styles.pastCourseMetaItem}>
+                        <span>{t("วันที่เคยอบรม", "Completed Date")}</span>
+                        <strong>📅 {selectedCourse.completedDate}</strong>
+                      </div>
+                      <div className={styles.pastCourseMetaItem}>
+                        <span>{t("จำนวนชั่วโมง", "Duration")}</span>
+                        <strong>⏱️ {selectedCourse.hours} {t("ชม.", "hrs")}</strong>
+                      </div>
+                      <div className={styles.pastCourseMetaItem}>
+                        <span>{t("วิทยากรผู้สอน", "Instructor")}</span>
+                        <strong>👨‍🏫 {selectedCourse.instructor || "-"}</strong>
+                      </div>
+                      <div className={styles.pastCourseMetaItem}>
+                        <span>{t("ผลการอบรมเดิม", "Past Result")}</span>
+                        <strong>✅ {selectedCourse.result || "Completed"}</strong>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ) : null}
-            </div>
+                ) : null}
+              </div>
+            )}
 
-            {/* Step 2: Request Form Fields */}
+            {/* Form Fields */}
             <div className={styles.formGrid}>
               <div className={styles.formField}>
                 <label>
-                  {t("2. หลักสูตรที่ต้องการขออบรม (Course Needed)", "2. Course Needed")} <b style={{ color: "#d71920" }}>*</b>
+                  {requestMode === "record"
+                    ? t("2. หลักสูตรที่ขออบรมทบทวน", "2. Refresher Course Name")
+                    : t("1. หลักสูตร/ทักษะที่ต้องการขออบรม", "1. Requested Course / Skill Name")}
+                  <b style={{ color: "var(--ui-10-accent)", marginLeft: "4px" }}>*</b>
                 </label>
                 <input
                   className={styles.textInput}
@@ -307,17 +340,19 @@ export default function RequestTrainingModule({
 
               <div className={styles.formField}>
                 <label>
-                  {t("3. เหตุผลและความจำเป็นในการขอรับการอบรม (Request Reason)", "3. Request Reason")} <b style={{ color: "#d71920" }}>*</b>
+                  {t("เหตุผลและความจำเป็นในการขอรับการอบรม", "Reason for Request")}
+                  <b style={{ color: "var(--ui-10-accent)", marginLeft: "4px" }}>*</b>
                 </label>
                 <textarea
                   className={styles.textareaInput}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  placeholder={t("อธิบายเหตุผลว่าทำไมถึงต้องการอบรมหลักสูตรนี้ซ้ำ หรือต้องการความรู้เรื่องนี้ไปใช้ในงานใด", "Explain why you need this training or how it applies to your work")}
+                  placeholder={t("อธิบายเหตุผลว่าทำไมถึงต้องการอบรมหลักสูตรนี้ หรือต้องการความรู้เรื่องนี้ไปใช้ในงานใด", "Explain why you need this training or how it applies to your work")}
                 />
 
+                {/* Quick Reasons */}
                 <div className={styles.quickTagsContainer}>
-                  <span style={{ fontSize: "0.76rem", color: "#64748b", alignSelf: "center", fontWeight: 600 }}>
+                  <span style={{ fontSize: "0.76rem", color: "var(--ui-30-muted)", alignSelf: "center", fontWeight: 700 }}>
                     {t("เหตุผลด่วน:", "Quick tags:")}
                   </span>
                   <button
@@ -352,10 +387,10 @@ export default function RequestTrainingModule({
               </div>
 
               <div className={styles.formField}>
-                <label>{t("4. ช่วงเวลาที่สะดวกเข้าอบรม (Preferred Timing - ไม่บังคับ)", "4. Preferred Timing (Optional)")}</label>
+                <label>{t("ช่วงเวลาที่สะดวกเข้าอบรม (Preferred Timing - ไม่บังคับ)", "Preferred Timing (Optional)")}</label>
                 <div className={styles.dateRangeGrid}>
                   <div>
-                    <span style={{ fontSize: "0.76rem", color: "#64748b" }}>{t("ตั้งแต่ (From)", "From")}</span>
+                    <span style={{ fontSize: "0.76rem", color: "var(--ui-30-muted)" }}>{t("ตั้งแต่ (From)", "From")}</span>
                     <input
                       type="date"
                       value={preferredStartDate}
@@ -363,7 +398,7 @@ export default function RequestTrainingModule({
                     />
                   </div>
                   <div>
-                    <span style={{ fontSize: "0.76rem", color: "#64748b" }}>{t("ถึง (To)", "To")}</span>
+                    <span style={{ fontSize: "0.76rem", color: "var(--ui-30-muted)" }}>{t("ถึง (To)", "To")}</span>
                     <input
                       type="date"
                       min={preferredStartDate}
@@ -387,39 +422,39 @@ export default function RequestTrainingModule({
             </div>
           </section>
 
-          {/* Right Column: Preview & My Requests History */}
+          {/* Right Column: History & Live Preview */}
           <aside className={styles.sideCard}>
             <div className={styles.cardHeader}>
               <div className={styles.cardHeaderTitle}>
                 <span className={styles.cardHeaderIcon}>📋</span>
                 <h3>{t("ประวัติคำขอของฉัน", "My Requests")}</h3>
               </div>
-              <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#007a3d" }}>
+              <span style={{ fontSize: "0.82rem", fontWeight: 800, color: "var(--ui-30-primary)" }}>
                 {myRequests.length} {t("รายการ", "items")}
               </span>
             </div>
 
-            <div className={styles.previewPanel}>
+            <div className={styles.sideContent}>
               {/* Live Preview Box */}
               <div className={styles.previewCard}>
                 <span>{t("ตัวอย่างคำขอที่จะส่ง", "Request Preview")}</span>
                 <h4>{trainingNeed || t("ชื่อหลักสูตรจะแสดงที่นี่...", "Course name will appear here...")}</h4>
                 <p>{reason || t("เหตุผลการขอจะแสดงที่นี่...", "Request reason will appear here...")}</p>
                 {selectedCourse ? (
-                  <small style={{ color: "#007a3d", marginTop: "4px", display: "block" }}>
-                    🔗 {t("อ้างอิงจากประวัติ:", "Based on record:")} [{selectedCourse.courseCode}] {selectedCourse.courseTitle} ({selectedCourseOwner})
+                  <small style={{ color: "var(--ui-30-primary)", marginTop: "4px", display: "block", fontWeight: 600 }}>
+                    🔗 [{selectedCourse.courseCode}] {selectedCourse.courseTitle}
                   </small>
                 ) : null}
               </div>
 
               {/* History List */}
               <div>
-                <strong style={{ fontSize: "0.88rem", color: "#0f172a" }}>
+                <strong style={{ fontSize: "0.88rem", color: "var(--ui-30-ink)" }}>
                   {t("คำขอที่เคยส่งไปแล้ว", "Submitted Requests")}
                 </strong>
 
                 {myRequests.length === 0 ? (
-                  <p style={{ fontSize: "0.84rem", color: "#64748b", marginTop: "8px" }}>
+                  <p style={{ fontSize: "0.84rem", color: "var(--ui-30-muted)", marginTop: "8px" }}>
                     {t("ยังไม่มีคำขอฝึกอบรมที่ส่งไป", "No submitted requests yet")}
                   </p>
                 ) : null}
@@ -435,6 +470,14 @@ export default function RequestTrainingModule({
                       </div>
                       <h5 className={styles.historyCourseName}>{request.requestedCourseName}</h5>
                       <p className={styles.historyReason}>{request.requestReason}</p>
+
+                      {/* Show Rejection note from HRD if rejected */}
+                      {request.rejectionReason && (
+                        <div className={styles.historyRejectionBox}>
+                          🚫 {t("เหตุผลจาก HRD:", "HRD Note:")} {request.rejectionReason}
+                        </div>
+                      )}
+
                       <span className={styles.historyDate}>
                         📅 {new Date(request.requestedAt).toLocaleDateString(language === "th" ? "th-TH" : "en-GB")}
                       </span>

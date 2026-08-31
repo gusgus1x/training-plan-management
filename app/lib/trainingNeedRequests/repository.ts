@@ -67,11 +67,11 @@ const mapRequest = (row: RequestWithRelations) => ({
 const STATUS_FOR_ACTION: Record<NeedRequestAction, NeedRequestStatus> = {
   approve: "APPROVED",
   reject: "REJECTED",
+  reset: "PENDING",
 };
 
-// A decided request is final. Reopening one would silently change what the employee was told.
-// PLANNED is past decided: the request is already a training plan.
-const DECIDED: readonly NeedRequestStatus[] = ["APPROVED", "REJECTED", "PLANNED"];
+// PLANNED is final: the request has already been finalized into a training plan.
+const FINAL_STATUSES: readonly NeedRequestStatus[] = ["PLANNED"];
 
 export type NeedRequestRepository = ReturnType<typeof createNeedRequestRepository>;
 
@@ -164,8 +164,8 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
           throw new ApiError({ code: "FORBIDDEN", message: "Access denied", status: 403 });
         }
 
-        if (DECIDED.includes(current.status.trim() as NeedRequestStatus)) {
-          throw conflict("This request has already been decided");
+        if (FINAL_STATUSES.includes(current.status.trim() as NeedRequestStatus)) {
+          throw conflict("This request has already been incorporated into a training plan and cannot be changed");
         }
 
         const status = STATUS_FOR_ACTION[action];
@@ -173,10 +173,10 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
           where: { training_need_request_id: current.training_need_request_id },
           data: {
             status,
-            reviewed_by: BigInt(reviewerUserId),
-            reviewed_at: new Date(),
-            review_note: action === "reject" ? current.review_note : note,
-            rejection_reason: action === "reject" ? note : current.rejection_reason,
+            reviewed_by: action === "reset" ? null : BigInt(reviewerUserId),
+            reviewed_at: action === "reset" ? null : new Date(),
+            review_note: action === "reject" ? current.review_note : (action === "reset" ? null : note),
+            rejection_reason: action === "reject" ? note : (action === "reset" ? null : current.rejection_reason),
           },
           include: requestInclude,
         });
