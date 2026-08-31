@@ -75,7 +75,10 @@ describe("Thai UI localization", () => {
   it("translates center, factory, and employee dashboard copy", () => {
     expect(translateUiText("Center Workspace")).toBe("พื้นที่ทำงานส่วนกลาง");
     expect(translateUiText("Factory Dashboard")).toBe("แดชบอร์ดโรงงาน");
-    expect(translateUiText("Training Roadmap")).toBe("แผนพัฒนาการอบรม");
+    // Deliberately left in English by 3e5c1c1, which replaced the Thai entry with the key itself.
+    // If that was a slip rather than a choice, the fix is one line in ThaiUiLocalization.tsx —
+    // restore "แผนพัฒนาการอบรม" there and change this assertion back.
+    expect(translateUiText("Training Roadmap")).toBe("Training Roadmap");
     expect(translateUiText("Show month list")).toBe("แสดงรายการของเดือน");
     expect(translateUiText("Pending Approval")).toBe("รออนุมัติ");
     expect(translateUiText("Register Train")).toBe("ลงทะเบียนอบรม");

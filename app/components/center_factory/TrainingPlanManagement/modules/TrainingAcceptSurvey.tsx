@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
@@ -130,8 +130,8 @@ const sourceClass: Record<EnrollmentSource, string> = {
 const toSurveyEmployee = (employee: EmployeeRecord): SurveyEmployee => {
   const thaiName = [employee.firstNameTh, employee.lastNameTh].filter(Boolean).join(" ");
   const engName = [employee.firstNameEn, employee.lastNameEn].filter(Boolean).join(" ");
-  const rawPrefix = employee.titleTh || (employee.titleEn === "Ms." ? "เธเธฒเธเธชเธฒเธง" : employee.titleEn === "Mrs." ? "เธเธฒเธ" : employee.titleEn || "");
-  const prefix = (!rawPrefix || rawPrefix === "-") ? "เธเธฒเธข" : rawPrefix;
+  const rawPrefix = employee.titleTh || (employee.titleEn === "Ms." ? "นางสาว" : employee.titleEn === "Mrs." ? "นาง" : employee.titleEn || "");
+  const prefix = (!rawPrefix || rawPrefix === "-") ? "นาย" : rawPrefix;
 
   const section = employee.sectionName || employee.sectionCode || "-";
   const division = employee.divisionName || employee.divisionCode || employee.functionName || "-";
@@ -163,7 +163,6 @@ const toSurveyEmployee = (employee: EmployeeRecord): SurveyEmployee => {
   };
 };
 
-
 const getEmployeeNameProfile = (employee: {
   name: string;
   prefix?: string;
@@ -179,7 +178,7 @@ const getEmployeeNameProfile = (employee: {
   const prefix =
     employee.titleTh ||
     (employee.prefix && employee.prefix !== "-" ? employee.prefix : "") ||
-    (employee.titleEn === "Ms." ? "เธเธฒเธเธชเธฒเธง" : employee.titleEn === "Mrs." ? "เธเธฒเธ" : "เธเธฒเธข");
+    (employee.titleEn === "Ms." ? "นางสาว" : employee.titleEn === "Mrs." ? "นาง" : "นาย");
 
   if (employee.firstNameTh || employee.lastNameTh) {
     return {
@@ -272,7 +271,7 @@ function PaginatedEmployeeGrid({
   employees,
   targetActionLabel,
   onAddEmployee,
-  emptyMessage = "เนเธกเนเธกเธตเธฃเธฒเธขเธเธทเนเธญเธเธเธฑเธเธเธฒเธเธชเธณเธซเธฃเธฑเธเธเธฃเธดเธฉเธฑเธ—เธเธตเน",
+  emptyMessage = "ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้",
   pageSize = 25,
   enrollments = [],
   draftSubmittedEmployees = [],
@@ -341,7 +340,7 @@ function PaginatedEmployeeGrid({
           <input
             className={styles.dropdownSearchInput}
             type="text"
-            placeholder="๐” เธเนเธเธซเธฒเธเธเธฑเธเธเธฒเธ (เธฃเธซเธฑเธช, เธเธณเธเธณเธซเธเนเธฒ, เธเธทเนเธญ, เธเธฒเธกเธชเธเธธเธฅ, เธชเนเธงเธเธเธฒเธ, เธเนเธฒเธข, เนเธเธเธ, เธ•เธณเนเธซเธเนเธ, เธฃเธฐเธ”เธฑเธ)..."
+            placeholder="🔍 ค้นหาพนักงาน (รหัส, คำนำหน้า, ชื่อ, นามสกุล, ส่วนงาน, ฝ่าย, แผนก, ตำแหน่ง, ระดับ)..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -356,35 +355,35 @@ function PaginatedEmployeeGrid({
                 setSearchQuery("");
                 setCurrentPage(1);
               }}
-              title="เธฅเนเธฒเธเธเธณเธเนเธเธซเธฒ"
+              title="ล้างคำค้นหา"
             >
-              โ•
+              ✕
             </button>
           ) : null}
         </div>
         <span className={styles.dropdownSearchCount}>
           {filteredEmployees.length === 0
-            ? "เนเธกเนเธเธเธเธเธฑเธเธเธฒเธ"
-            : `เนเธชเธ”เธ ${startIndex + 1}-${Math.min(startIndex + pageSize, filteredEmployees.length)} เธเธฒเธเธ—เธฑเนเธเธซเธกเธ” ${filteredEmployees.length} เธเธ`}
+            ? "ไม่พบพนักงาน"
+            : `แสดง ${startIndex + 1}-${Math.min(startIndex + pageSize, filteredEmployees.length)} จากทั้งหมด ${filteredEmployees.length} คน`}
         </span>
       </div>
 
       <div className={styles.dropdownScroll}>
         <div className={styles.relatedPeopleGrid}>
           <div className={`${styles.targetEmployeeHeader} ${styles.targetListHeader}`}>
-            <span>เธเธฑเธ”เธเธฒเธฃ</span>
+            <span>จัดการ</span>
             <div className={`${styles.targetEmployeeLine} ${styles.targetListLine}`}>
-              <span>เธฃเธซเธฑเธชเธเธเธฑเธเธเธฒเธ</span>
-              <span>เธชเธ–เธฒเธเธฐ</span>
-              <span>เธเธณเธเธณเธซเธเนเธฒ</span>
-              <span>เธเธทเนเธญ</span>
-              <span>เธเธฒเธกเธชเธเธธเธฅ</span>
-              <span>เธเธฃเธดเธฉเธฑเธ—</span>
-              <span>เธชเนเธงเธเธเธฒเธ</span>
-              <span>เธเนเธฒเธข</span>
-              <span>เนเธเธเธ</span>
-              <span>เธ•เธณเนเธซเธเนเธ</span>
-              <span>เธฃเธฐเธ”เธฑเธ</span>
+              <span>รหัสพนักงาน</span>
+              <span>สถานะ</span>
+              <span>คำนำหน้า</span>
+              <span>ชื่อ</span>
+              <span>นามสกุล</span>
+              <span>บริษัท</span>
+              <span>ส่วนงาน</span>
+              <span>ฝ่าย</span>
+              <span>แผนก</span>
+              <span>ตำแหน่ง</span>
+              <span>ระดับ</span>
             </div>
           </div>
           {pageEmployees.map((employee) => {
@@ -402,42 +401,42 @@ function PaginatedEmployeeGrid({
               (c) => c.employeeCode === employee.employeeCode || c.employeeId === employee.id,
             );
 
-            let statusBadge = <span className={styles.badgeNone}>โช เธขเธฑเธเนเธกเนเธฅเธเธ—เธฐเน€เธเธตเธขเธ</span>;
+            let statusBadge = <span className={styles.badgeNone}>⚪ ยังไม่ลงทะเบียน</span>;
             let buttonLabel = targetActionLabel;
             let isBtnDisabled = false;
 
             if (isDraft) {
               statusBadge = (
                 <span className={styles.badgeDraft}>
-                  <span className={styles.glowingDotYellow}></span> เธ”เธฃเธฒเธ
+                  <span className={styles.glowingDotYellow}></span> ดราฟ
                 </span>
               );
-              buttonLabel = "โ“ เนเธเธ”เธฃเธฒเธเนเธฅเนเธง";
+              buttonLabel = "✓ ในดราฟแล้ว";
               isBtnDisabled = true;
             } else if (enrollment) {
               if (enrollment.status === "Pending Approval") {
                 statusBadge = (
                   <span className={styles.badgePending}>
-                    <span className={styles.glowingDotBlue}></span> เธฃเธญเธญเธเธธเธกเธฑเธ•เธด
+                    <span className={styles.glowingDotBlue}></span> รออนุมัติ
                   </span>
                 );
-                buttonLabel = "โ“ เธฃเธญเธญเธเธธเธกเธฑเธ•เธด";
+                buttonLabel = "✓ รออนุมัติ";
                 isBtnDisabled = true;
               } else if (enrollment.status === "Factory Approved" || enrollment.status === "Center Approved") {
                 statusBadge = (
                   <span className={styles.badgeApproved}>
-                    <span className={styles.glowingDotGreen}></span> เธญเธเธธเธกเธฑเธ•เธดเนเธฅเนเธง
+                    <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
                   </span>
                 );
-                buttonLabel = "โ“ เธญเธเธธเธกเธฑเธ•เธดเนเธฅเนเธง";
+                buttonLabel = "✓ อนุมัติแล้ว";
                 isBtnDisabled = true;
               } else if (enrollment.status === "Rejected") {
                 statusBadge = (
                   <span className={styles.badgeRejected}>
-                    <span className={styles.glowingDotRed}></span> เธ–เธนเธเธเธเธดเน€เธชเธ
+                    <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
                   </span>
                 );
-                buttonLabel = "+ เน€เธฅเธทเธญเธเนเธซเธกเน";
+                buttonLabel = "+ เลือกใหม่";
                 isBtnDisabled = false;
               }
             }
@@ -489,7 +488,7 @@ function PaginatedEmployeeGrid({
       {totalPages > 1 ? (
         <div className={styles.dropdownPagination}>
           <span className={styles.paginationInfo}>
-            เธซเธเนเธฒ {activePage} เธเธฒเธ {totalPages} (เธ—เธฑเนเธเธซเธกเธ” {filteredEmployees.length} เธเธ)
+            หน้า {activePage} จาก {totalPages} (ทั้งหมด {filteredEmployees.length} คน)
           </span>
           <div className={styles.paginationNav}>
             {showLeftArrows ? (
@@ -498,17 +497,17 @@ function PaginatedEmployeeGrid({
                   className={styles.pageBtn}
                   type="button"
                   onClick={() => handlePageChange(1)}
-                  title="เนเธเธซเธเนเธฒเนเธฃเธ"
+                  title="ไปหน้าแรก"
                 >
-                  ยซ
+                  «
                 </button>
                 <button
                   className={styles.pageBtn}
                   type="button"
                   onClick={() => handlePageChange(activePage - 1)}
-                  title="เธซเธเนเธฒเธเนเธญเธเธซเธเนเธฒ"
+                  title="หน้าก่อนหน้า"
                 >
-                  โ€น
+                  ‹
                 </button>
               </>
             ) : null}
@@ -530,17 +529,17 @@ function PaginatedEmployeeGrid({
                   className={styles.pageBtn}
                   type="button"
                   onClick={() => handlePageChange(activePage + 1)}
-                  title="เธซเธเนเธฒเธ–เธฑเธ”เนเธ"
+                  title="หน้าถัดไป"
                 >
-                  โ€บ
+                  ›
                 </button>
                 <button
                   className={styles.pageBtn}
                   type="button"
                   onClick={() => handlePageChange(totalPages)}
-                  title="เนเธเธซเธเนเธฒเธชเธธเธ”เธ—เนเธฒเธข"
+                  title="ไปหน้าสุดท้าย"
                 >
-                  ยป
+                  »
                 </button>
               </>
             ) : null}
@@ -758,7 +757,7 @@ export default function TrainingAcceptSurvey() {
         { value: "factory" as const, label: "Factory" },
       ]
       : [
-        { value: "" as const, label: "เธ—เธฑเนเธเธซเธกเธ” (Center & Factory)" },
+        { value: "" as const, label: "ทั้งหมด (Center & Factory)" },
         { value: "factory" as const, label: "Factory" },
         { value: "center" as const, label: "Center" },
       ];
@@ -905,7 +904,7 @@ export default function TrainingAcceptSurvey() {
       !targetFn ||
       targetFn.toLowerCase().includes("all function") ||
       targetFn.toLowerCase() === "all" ||
-      targetFn === "เธ—เธธเธเธเนเธฒเธขเธเธฒเธ";
+      targetFn === "ทุกฝ่ายงาน";
 
     const cleanStr = (s: string) => s.toLowerCase().replace(/[\s\.\(\)\-_'"]/g, "");
     const empFnCode = (employee.departmentCode || "").trim().toUpperCase();
@@ -979,7 +978,7 @@ export default function TrainingAcceptSurvey() {
     }
 
     const targetGroupStr = (selectedCourse.targetGroup || "").trim();
-    if (targetGroupStr && !targetGroupStr.toLowerCase().includes("all") && !targetGroupStr.includes("เธ—เธธเธเธเธฅเธธเนเธก") && targetGroupStr !== "-") {
+    if (targetGroupStr && !targetGroupStr.toLowerCase().includes("all") && !targetGroupStr.includes("ทุกกลุ่ม") && targetGroupStr !== "-") {
       const cleanTg = targetGroupStr.toLowerCase();
       const empPosNorm = normalizeTargetPosition(employee.position);
       const empLvlNorm = (normalizeEmployeeLevel(employee.level) || employee.level || "").toLowerCase();
@@ -1186,12 +1185,12 @@ export default function TrainingAcceptSurvey() {
           candidate.status !== "Cancelled",
       );
       if (isAlreadyDraft || isAlreadyEnrolled) {
-        toast.info(`เธเธเธฑเธเธเธฒเธ ${employee.employeeCode} เธญเธขเธนเนเนเธเธฃเธฒเธขเธเธฒเธฃเนเธฅเนเธง`);
+        toast.info(`พนักงาน ${employee.employeeCode} อยู่ในรายการแล้ว`);
         return;
       }
       setDraftSubmittedEmployees((prev) => [...prev, employee]);
       toast.success(
-        `เน€เธเธดเนเธก ${employee.name} (${employee.employeeCode}) เนเธเธฃเธฒเธขเธเธฒเธฃเน€เธ•เธฃเธตเธขเธกเธชเนเธเนเธฅเนเธง (เธเธฃเธธเธ“เธฒเธเธ” "เธเธฑเธเธ—เธถเธเนเธฅเธฐเธขเธทเธเธขเธฑเธ" เธ”เนเธฒเธเธเธเน€เธเธทเนเธญเธชเนเธเนเธซเนเธชเนเธงเธเธเธฅเธฒเธ)`,
+        `เพิ่ม ${employee.name} (${employee.employeeCode}) ในรายการเตรียมส่งแล้ว (กรุณากด "บันทึกและยืนยัน" ด้านบนเพื่อส่งให้ส่วนกลาง)`,
       );
       return;
     }
@@ -1205,11 +1204,11 @@ export default function TrainingAcceptSurvey() {
       });
       await reloadEnrollments();
       toast.success(
-        `เน€เธเธดเนเธก ${employee.name} (${employee.employeeCode}) เน€เธเนเธฒเธญเธเธฃเธกเนเธฅเนเธง / Added ${employee.employeeCode} to this course`,
+        `เพิ่ม ${employee.name} (${employee.employeeCode}) เข้าอบรมแล้ว / Added ${employee.employeeCode} to this course`,
       );
     } catch (error) {
       console.error("Failed to add employee", error);
-      toast.error("เน€เธเธดเนเธกเธเธเธฑเธเธเธฒเธเนเธกเนเธชเธณเน€เธฃเนเธ / Failed to add employee.");
+      toast.error("เพิ่มพนักงานไม่สำเร็จ / Failed to add employee.");
     }
   };
 
@@ -1217,38 +1216,38 @@ export default function TrainingAcceptSurvey() {
     try {
       await updateEnrollmentStatus(enrollmentId, { action: "approve" });
       await reloadEnrollments();
-      toast.success("เธญเธเธธเธกเธฑเธ•เธดเธเธนเนเน€เธเนเธฒเธญเธเธฃเธกเนเธฅเนเธง / Candidate approved");
+      toast.success("อนุมัติผู้เข้าอบรมแล้ว / Candidate approved");
     } catch (error) {
       console.error("Failed to approve candidate", error);
-      toast.error("เธญเธเธธเธกเธฑเธ•เธดเนเธกเนเธชเธณเน€เธฃเนเธ / Failed to approve candidate.");
+      toast.error("อนุมัติไม่สำเร็จ / Failed to approve candidate.");
     }
   };
 
   const handleReject = async (enrollmentId: string) => {
-    if (!(await confirm({ message: { th: "เธขเธทเธเธขเธฑเธเธ—เธตเนเธเธฐเธเธเธดเน€เธชเธเธเธนเนเธชเธกเธฑเธเธฃเธเธเธเธตเนเธซเธฃเธทเธญเนเธกเน?", en: "Confirm rejecting this candidate?" }, danger: true }))) return;
+    if (!(await confirm({ message: { th: "ยืนยันที่จะปฏิเสธผู้สมัครคนนี้หรือไม่?", en: "Confirm rejecting this candidate?" }, danger: true }))) return;
     try {
       await updateEnrollmentStatus(enrollmentId, { action: "reject" });
       await reloadEnrollments();
-      toast.success("เธเธเธดเน€เธชเธเธเธนเนเน€เธเนเธฒเธญเธเธฃเธกเนเธฅเนเธง / Candidate rejected");
+      toast.success("ปฏิเสธผู้เข้าอบรมแล้ว / Candidate rejected");
     } catch (error) {
       console.error("Failed to reject candidate", error);
-      toast.error("เธเธเธดเน€เธชเธเนเธกเนเธชเธณเน€เธฃเนเธ / Failed to reject candidate.");
+      toast.error("ปฏิเสธไม่สำเร็จ / Failed to reject candidate.");
     }
   };
 
   const handleCancelEnrollment = async (enrollmentId: string) => {
-    if (!(await confirm({ message: { th: "เธขเธทเธเธขเธฑเธเธ—เธตเนเธเธฐเธขเธเน€เธฅเธดเธเธเธฒเธฃเธฅเธเธ—เธฐเน€เธเธตเธขเธเธเธตเนเธซเธฃเธทเธญเนเธกเน?", en: "Confirm cancelling this enrollment?" }, danger: true }))) return;
+    if (!(await confirm({ message: { th: "ยืนยันที่จะยกเลิกการลงทะเบียนนี้หรือไม่?", en: "Confirm cancelling this enrollment?" }, danger: true }))) return;
     try {
       await updateEnrollmentStatus(enrollmentId, { action: "cancel" });
       await reloadEnrollments();
-      toast.success("เธขเธเน€เธฅเธดเธเธเธฒเธฃเน€เธเนเธฒเธญเธเธฃเธกเนเธฅเนเธง / Enrollment cancelled");
+      toast.success("ยกเลิกการเข้าอบรมแล้ว / Enrollment cancelled");
     } catch (error) {
       console.error("Failed to remove candidate", error);
-      toast.error("เธขเธเน€เธฅเธดเธเนเธกเนเธชเธณเน€เธฃเนเธ / Failed to remove candidate.");
+      toast.error("ยกเลิกไม่สำเร็จ / Failed to remove candidate.");
     }
   };
 
-  // NOT REAL. There is no LINE endpoint anywhere in app/api โ€” this waits then claims the message
+  // NOT REAL. There is no LINE endpoint anywhere in app/api — this waits then claims the message
   // reached every accepted participant. The button is disabled; kept only as the shape the real
   // call will take. Do not re-enable it until something actually sends.
   const handleSendLineNotification = async () => {
@@ -1262,7 +1261,7 @@ export default function TrainingAcceptSurvey() {
 
     setIsSendingLineNotify(false);
     toast.success(
-      `๐’ฌ [LINE OA] เธชเนเธเธเนเธญเธเธงเธฒเธกเนเธเนเธเน€เธ•เธทเธญเธเน€เธเนเธฒเธฃเนเธงเธกเธเธฒเธฃเธญเธเธฃเธกเธงเธดเธเธฒ "${selectedCourse.title}" เนเธเธขเธฑเธเธเธเธฑเธเธเธฒเธ ${acceptedParticipants.length} เธ—เนเธฒเธ เธเนเธฒเธ LINE Official Account เน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง`,
+      `💬 [LINE OA] ส่งข้อความแจ้งเตือนเข้าร่วมการอบรมวิชา "${selectedCourse.title}" ไปยังพนักงาน ${acceptedParticipants.length} ท่าน ผ่าน LINE Official Account เรียบร้อยแล้ว`,
     );
   };
 
@@ -1292,7 +1291,7 @@ export default function TrainingAcceptSurvey() {
         company: emp.company,
         nameTh: emp.firstNameTh || emp.firstName,
         surnameTh: emp.lastNameTh || emp.lastName,
-        titleEn: emp.titleTh || (emp.prefix && emp.prefix !== "-" ? emp.prefix : "") || emp.titleEn || "เธเธฒเธข",
+        titleEn: emp.titleTh || (emp.prefix && emp.prefix !== "-" ? emp.prefix : "") || emp.titleEn || "นาย",
         functionName: emp.functionName || emp.department,
         positionName: emp.position,
       }));
@@ -1341,12 +1340,12 @@ export default function TrainingAcceptSurvey() {
       downloadLink.click();
       downloadLink.remove();
       window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 0);
-      toast.success("เธ”เธฒเธงเธเนเนเธซเธฅเธ”เนเธเน€เธเนเธเธเธทเนเธญเน€เธฃเธตเธขเธเธฃเนเธญเธข / Attendance sheet exported");
+      toast.success("ดาวน์โหลดใบเซ็นชื่อเรียบร้อย / Attendance sheet exported");
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "เธชเนเธเธญเธญเธเนเธเน€เธเนเธเธเธทเนเธญเนเธกเนเธชเธณเน€เธฃเนเธ / Unable to export attendance sheet.",
+          : "ส่งออกใบเซ็นชื่อไม่สำเร็จ / Unable to export attendance sheet.",
       );
     } finally {
       setIsExportingAttendance(false);
@@ -1367,7 +1366,7 @@ export default function TrainingAcceptSurvey() {
             <p>{trainingAcceptSurveyModule.description}</p>
           </div>
         </section>
-        <TypewriterLoader label="เธเธณเธฅเธฑเธเนเธซเธฅเธ”เธเนเธญเธกเธนเธฅเธซเธฅเธฑเธเธชเธนเธ•เธฃเนเธฅเธฐเธฃเธฒเธขเธเธทเนเธญเธเธเธฑเธเธเธฒเธ..." />
+        <TypewriterLoader label="กำลังโหลดข้อมูลหลักสูตรและรายชื่อพนักงาน..." />
       </section>
     );
   }
@@ -1387,20 +1386,20 @@ export default function TrainingAcceptSurvey() {
         <div className={styles.controlHeaderBar}>
           <div className={styles.accessBadge}>
             <span className={roleMode === "center" ? styles.glowingDotBlue : styles.glowingDotGreen}></span>
-            <span>เธชเธดเธ—เธเธดเนเธเธฒเธฃเนเธเนเธเธฒเธเธเธฑเธเธเธธเธเธฑเธ:</span>
+            <span>สิทธิ์การใช้งานปัจจุบัน:</span>
             <strong>{roleMode === "center" ? "HRD Center Functions" : `HRD Factory Functions (${userCompanyCode})`}</strong>
-            <span style={{ opacity: 0.7, fontWeight: 500 }}>โ€” {userCompanyLabel}</span>
+            <span style={{ opacity: 0.7, fontWeight: 500 }}>— {userCompanyLabel}</span>
           </div>
           <div className={styles.scopeBadge}>
-            <span>๐ฏ เธเธญเธเน€เธเธ•เธเธฒเธฃเธ—เธณเธเธฒเธ:</span>
+            <span>🎯 ขอบเขตการทำงาน:</span>
             <strong>
               {!selectedCourse
-                ? "เธเธฃเธธเธ“เธฒเน€เธฅเธทเธญเธเธซเธฅเธฑเธเธชเธนเธ•เธฃเธ”เนเธฒเธเธฅเนเธฒเธเน€เธเธทเนเธญเน€เธฃเธดเนเธกเธ•เนเธเธเธฑเธ”เธเธฒเธฃเธฃเธฒเธขเธเธทเนเธญ"
+                ? "กรุณาเลือกหลักสูตรด้านล่างเพื่อเริ่มต้นจัดการรายชื่อ"
                 : roleMode === "center"
-                  ? "เธ”เธนเธ เธฒเธเธฃเธงเธกเธเธเธฑเธเธเธฒเธเธ—เธธเธเธเธฃเธดเธฉเธฑเธ— / เธญเธเธธเธกเธฑเธ•เธดเธฃเธฒเธขเธเธทเนเธญเธ—เธตเนเนเธฃเธเธเธฒเธเธชเนเธเธกเธฒ"
+                  ? "ดูภาพรวมพนักงานทุกบริษัท / อนุมัติรายชื่อที่โรงงานส่งมา"
                   : isFactoryOwnedByUser
-                    ? `เธเธฑเธ”เธเธฒเธฃเธเธนเนเน€เธเนเธฒเธฃเนเธงเธกเธญเธเธฃเธกเธชเธณเธซเธฃเธฑเธเธซเธฅเธฑเธเธชเธนเธ•เธฃเธเธญเธเนเธฃเธเธเธฒเธ ${userCompanyCode}`
-                    : `เธชเนเธเธฃเธฒเธขเธเธทเนเธญเธเธเธฑเธเธเธฒเธ ${userCompanyCode} เน€เธเนเธฒเธญเธเธฃเธกเธเธฅเธฒเธเธเธฑเธ Center`}
+                    ? `จัดการผู้เข้าร่วมอบรมสำหรับหลักสูตรของโรงงาน ${userCompanyCode}`
+                    : `ส่งรายชื่อพนักงาน ${userCompanyCode} เข้าอบรมกลางกับ Center`}
             </strong>
           </div>
         </div>
@@ -1409,8 +1408,8 @@ export default function TrainingAcceptSurvey() {
         <div className={styles.controlGrid}>
           <div className={styles.controlStepLabel}>
             <div className={styles.controlStepTitle}>
-              <span>1๏ธโฃ</span>
-              <span>เธเธนเนเธ”เธนเนเธฅเธซเธฅเธฑเธเธชเธนเธ•เธฃ (Course Owner)</span>
+              <span>1️⃣</span>
+              <span>ผู้ดูแลหลักสูตร (Course Owner)</span>
             </div>
             <select
               className={styles.controlSelect}
@@ -1421,7 +1420,7 @@ export default function TrainingAcceptSurvey() {
                 setSelectedCourseId("");
               }}
             >
-              <option value="">เน€เธฅเธทเธญเธเธเธนเนเธ”เธนเนเธฅเธซเธฅเธฑเธเธชเธนเธ•เธฃ</option>
+              <option value="">เลือกผู้ดูแลหลักสูตร</option>
               {courseOwnerOptions.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
               ))}
@@ -1430,8 +1429,8 @@ export default function TrainingAcceptSurvey() {
 
           <div className={styles.controlStepLabel}>
             <div className={styles.controlStepTitle}>
-              <span>2๏ธโฃ</span>
-              <span>เธซเธฅเธฑเธเธชเธนเธ•เธฃเธฃเธฒเธขเน€เธ”เธทเธญเธเธ—เธตเนเน€เธเธขเนเธเธฃเนเนเธฅเนเธง (Published Course)</span>
+              <span>2️⃣</span>
+              <span>หลักสูตรรายเดือนที่เผยแพร่แล้ว (Published Course)</span>
             </div>
             <select
               className={styles.controlSelect}
@@ -1449,11 +1448,11 @@ export default function TrainingAcceptSurvey() {
               }}
             >
               <option value="">
-                {availableCourseGroups.length === 0 ? "เนเธกเนเธเธเธซเธฅเธฑเธเธชเธนเธ•เธฃเธ—เธตเนเน€เธเธดเธ”เธฃเธฑเธเนเธเธเธ“เธฐเธเธตเน" : "เน€เธฅเธทเธญเธเธซเธฅเธฑเธเธชเธนเธ•เธฃเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเธเธฑเธ”เธเธฒเธฃ"}
+                {availableCourseGroups.length === 0 ? "ไม่พบหลักสูตรที่เปิดรับในขณะนี้" : "เลือกหลักสูตรที่ต้องการจัดการ"}
               </option>
               {availableCourseGroups.map((group) => (
                 <option key={group.id} value={group.id}>
-                  [{group.code}] {group.title} ({group.sessions.length} เธฃเธญเธ)
+                  [{group.code}] {group.title} ({group.sessions.length} รอบ)
                 </option>
               ))}
             </select>
@@ -1461,8 +1460,8 @@ export default function TrainingAcceptSurvey() {
 
           <div className={styles.controlStepLabel}>
             <div className={styles.controlStepTitle}>
-              <span>3๏ธโฃ</span>
-              <span>เธฃเธญเธเธเธฒเธฃเธญเธเธฃเธก (Training Session)</span>
+              <span>3️⃣</span>
+              <span>รอบการอบรม (Training Session)</span>
             </div>
             <select
               className={styles.controlSelect}
@@ -1474,11 +1473,11 @@ export default function TrainingAcceptSurvey() {
               }}
             >
               <option value="">
-                {selectedCourseGroup ? "เน€เธฅเธทเธญเธเธฃเธญเธเธเธฒเธฃเธญเธเธฃเธก" : "โก เธเธฃเธธเธ“เธฒเน€เธฅเธทเธญเธเธซเธฅเธฑเธเธชเธนเธ•เธฃเธเนเธญเธ"}
+                {selectedCourseGroup ? "เลือกรอบการอบรม" : "⚡ กรุณาเลือกหลักสูตรก่อน"}
               </option>
               {availableSessions.map((session) => (
                 <option key={session.id} value={session.id}>
-                  เธฃเธญเธ {session.batch ?? "1"} / {session.date} / {session.startTime ?? "-"}-{session.endTime ?? "-"} / {session.location ?? "-"}
+                  รอบ {session.batch ?? "1"} / {session.date} / {session.startTime ?? "-"}-{session.endTime ?? "-"} / {session.location ?? "-"}
                 </option>
               ))}
             </select>
@@ -1559,12 +1558,12 @@ export default function TrainingAcceptSurvey() {
                     new Set(
                       selectedCourse.targetPositions.map((p) => {
                         const cleanP = p.trim();
-                        if (cleanP === "เธเธนเนเธเธฑเธ”เธเธฒเธฃเนเธเธเธ") return "SECTION HEAD";
-                        if (cleanP === "เธเธนเนเธเธฑเธ”เธเธฒเธฃเธเนเธฒเธข") return "GENERAL MANAGER";
-                        if (cleanP === "เธงเธดเธจเธงเธเธฃ") return "ENGINEER";
-                        if (cleanP === "เน€เธเนเธฒเธซเธเนเธฒเธ—เธตเน") return "OFFICER";
-                        if (cleanP === "เธซเธฑเธงเธซเธเนเธฒเธเธฒเธ") return "SUPERVISOR";
-                        if (cleanP === "เธเธเธฑเธเธเธฒเธเธเธเธดเธเธฑเธ•เธดเธเธฒเธฃ") return "OPERATOR";
+                        if (cleanP === "ผู้จัดการแผนก") return "SECTION HEAD";
+                        if (cleanP === "ผู้จัดการฝ่าย") return "GENERAL MANAGER";
+                        if (cleanP === "วิศวกร") return "ENGINEER";
+                        if (cleanP === "เจ้าหน้าที่") return "OFFICER";
+                        if (cleanP === "หัวหน้างาน") return "SUPERVISOR";
+                        if (cleanP === "พนักงานปฏิบัติการ") return "OPERATOR";
                         return cleanP;
                       })
                     )
@@ -1583,7 +1582,7 @@ export default function TrainingAcceptSurvey() {
                           const norm = normalizeEmployeeLevel(l);
                           return norm || l.trim();
                         })
-                        .filter((l) => l && l !== "-" && l !== "เธ" && l !== "เธ" && l !== "เธ" && l !== "S")
+                        .filter((l) => l && l !== "-" && l !== "บ" && l !== "จ" && l !== "ป" && l !== "S")
                     )
                   )
                     .sort((a, b) => getLevelRank(b) - getLevelRank(a))
@@ -1608,7 +1607,7 @@ export default function TrainingAcceptSurvey() {
                   <button
                     className={styles.shareLinkButton}
                     type="button"
-                    title="เธเธฑเธ”เธฅเธญเธเธฅเธดเนเธเธเนเธชเนเธเนเธซเน Section Head / เธซเธฑเธงเธซเธเนเธฒเธเธฒเธ เน€เธเธทเนเธญเน€เธเนเธฒเน€เธฅเธทเธญเธเนเธฅเธฐเน€เธชเธเธญเธเธทเนเธญเธเธเธฑเธเธเธฒเธเน€เธเนเธฒเธญเธเธฃเธกเน€เธญเธ"
+                    title="คัดลอกลิ้งก์ส่งให้ Section Head / หัวหน้างาน เพื่อเข้าเลือกและเสนอชื่อพนักงานเข้าอบรมเอง"
                     onClick={() => void handleCopyNominationLink()}
                   >
                     <span className={styles.folderContainer}>
@@ -1634,7 +1633,7 @@ export default function TrainingAcceptSurvey() {
                         </defs>
                       </svg>
                     </span>
-                    เธเธฑเธ”เธฅเธญเธเธฅเธดเนเธเธเนเนเธซเน Section Head
+                    คัดลอกลิ้งก์ให้ Section Head
                   </button>
                   <button
                     className={styles.lineNotifyButton}
@@ -1665,7 +1664,7 @@ export default function TrainingAcceptSurvey() {
                         </defs>
                       </svg>
                     </span>
-                    {isSendingLineNotify ? "เธเธณเธฅเธฑเธเธชเนเธ LINE..." : "เธชเนเธเนเธเนเธเน€เธ•เธทเธญเธ LINE OA"}
+                    {isSendingLineNotify ? "กำลังส่ง LINE..." : "ส่งแจ้งเตือน LINE OA"}
                   </button>
                   <button
                     className={styles.exportAttendanceButton}
@@ -1673,8 +1672,8 @@ export default function TrainingAcceptSurvey() {
                     disabled={acceptedParticipants.length === 0 || isExportingAttendance}
                     title={
                       acceptedParticipants.length === 0
-                        ? "เน€เธเธดเนเธกเธเธนเนเน€เธเนเธฒเธญเธเธฃเธกเธญเธขเนเธฒเธเธเนเธญเธข 1 เธเธเธเนเธญเธเธชเนเธเธญเธญเธเนเธเธฅเน Excel"
-                        : "เธชเนเธเธญเธญเธเธ•เธฒเธฃเธฒเธเน€เธเนเธเธเธทเนเธญเน€เธเนเธฒเธญเธเธฃเธกเน€เธเนเธเนเธเธฅเน Excel (Attendance Sheet)"
+                        ? "เพิ่มผู้เข้าอบรมอย่างน้อย 1 คนก่อนส่งออกไฟล์ Excel"
+                        : "ส่งออกตารางเช็คชื่อเข้าอบรมเป็นไฟล์ Excel (Attendance Sheet)"
                     }
                     onClick={() => void handleExportAttendanceSheet()}
                   >
@@ -1702,27 +1701,27 @@ export default function TrainingAcceptSurvey() {
                       </svg>
                     </span>
                     {isExportingAttendance
-                      ? "เธเธณเธฅเธฑเธเธชเธฃเนเธฒเธเนเธเธฅเน Excel..."
-                      : "เธชเนเธเธญเธญเธ Excel (Attendance Sheet)"}
+                      ? "กำลังสร้างไฟล์ Excel..."
+                      : "ส่งออก Excel (Attendance Sheet)"}
                   </button>
                 </div>
               </div>
               <div className={styles.employeeRows}>
                 {acceptedParticipants.length > 0 ? (
                   <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
-                    <span>เธเธฑเธ”เธเธฒเธฃ</span>
+                    <span>จัดการ</span>
                     <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
-                      <span>เธฃเธซเธฑเธชเธเธเธฑเธเธเธฒเธ</span>
-                      <span>เธชเธ–เธฒเธเธฐ</span>
-                      <span>เธเธณเธเธณเธซเธเนเธฒ</span>
-                      <span>เธเธทเนเธญ</span>
-                      <span>เธเธฒเธกเธชเธเธธเธฅ</span>
-                      <span>เธเธฃเธดเธฉเธฑเธ—</span>
-                      <span>เธชเนเธงเธเธเธฒเธ</span>
-                      <span>เธเนเธฒเธข</span>
-                      <span>เนเธเธเธ</span>
-                      <span>เธ•เธณเนเธซเธเนเธ</span>
-                      <span>เธฃเธฐเธ”เธฑเธ</span>
+                      <span>รหัสพนักงาน</span>
+                      <span>สถานะ</span>
+                      <span>คำนำหน้า</span>
+                      <span>ชื่อ</span>
+                      <span>นามสกุล</span>
+                      <span>บริษัท</span>
+                      <span>ส่วนงาน</span>
+                      <span>ฝ่าย</span>
+                      <span>แผนก</span>
+                      <span>ตำแหน่ง</span>
+                      <span>ระดับ</span>
                     </div>
                   </div>
                 ) : null}
@@ -1741,13 +1740,13 @@ export default function TrainingAcceptSurvey() {
                         type="button"
                         onClick={() => void handleCancelEnrollment(participant.id)}
                       >
-                        เธ–เธญเธ”เธฃเธฒเธขเธเธทเนเธญ
+                        ถอดรายชื่อ
                       </button>
                       <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
                         <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={participant.employeeCode}>{participant.employeeCode}</span>
                         <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
                           <span className={styles.badgeApproved}>
-                            <span className={styles.glowingDotGreen}></span> เธญเธเธธเธกเธฑเธ•เธดเนเธฅเนเธง
+                            <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
                           </span>
                         </span>
                         <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
@@ -1774,7 +1773,7 @@ export default function TrainingAcceptSurvey() {
                   );
                 })}
                 {acceptedParticipants.length === 0 ? (
-                  <div className={styles.emptyCompact}>เธขเธฑเธเนเธกเนเธกเธตเธเธนเนเน€เธเนเธฒเธฃเนเธงเธกเธ—เธตเนเธเนเธฒเธเธเธฒเธฃเธญเธเธธเธกเธฑเธ•เธด</div>
+                  <div className={styles.emptyCompact}>ยังไม่มีผู้เข้าร่วมที่ผ่านการอนุมัติ</div>
                 ) : null}
               </div>
             </section>
@@ -1785,11 +1784,11 @@ export default function TrainingAcceptSurvey() {
                   <div className={styles.workspaceHeader}>
                     <div>
                       <p className={styles.kicker} style={{ color: "#818cf8" }}>Candidate Approval (Center Mode)</p>
-                      <h3>เธฃเธฒเธขเธเธฒเธฃเธเธเธฑเธเธเธฒเธเธชเนเธเธเธฒเธเนเธฃเธเธเธฒเธเธฃเธญเธเธฒเธฃเธญเธเธธเธกเธฑเธ•เธดเน€เธเนเธฒเธญเธเธฃเธก ({visibleCandidates.length} เธเธ)</h3>
+                      <h3>รายการพนักงานส่งจากโรงงานรอการอนุมัติเข้าอบรม ({visibleCandidates.length} คน)</h3>
                     </div>
                     <div className={styles.participantActions}>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#818cf8", fontWeight: 700, fontSize: "0.82rem" }}>
-                        <span className={styles.glowingDotBlue}></span> เธฃเธญเธญเธเธธเธกเธฑเธ•เธด {approvalQueue.length} เธเธ
+                        <span className={styles.glowingDotBlue}></span> รออนุมัติ {approvalQueue.length} คน
                       </span>
                       <button
                         className={styles.batchApproveBtn}
@@ -1802,14 +1801,14 @@ export default function TrainingAcceptSurvey() {
                               await updateEnrollmentStatus(candidate.id, { action: "approve" });
                             }
                             await reloadEnrollments();
-                            toast.success(`เธญเธเธธเธกเธฑเธ•เธดเธเธเธฑเธเธเธฒเธเธ—เธฑเนเธเธซเธกเธ” ${approvalQueue.length} เธเธเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง / Batch approved ${approvalQueue.length} candidates`);
+                            toast.success(`อนุมัติพนักงานทั้งหมด ${approvalQueue.length} คนเรียบร้อยแล้ว / Batch approved ${approvalQueue.length} candidates`);
                           } catch (err) {
                             console.error("Failed batch approve", err);
-                            toast.error("เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”เนเธเธเธฒเธฃเธญเธเธธเธกเธฑเธ•เธดเธ—เธฑเนเธเธซเธกเธ” / Failed to batch approve");
+                            toast.error("เกิดข้อผิดพลาดในการอนุมัติทั้งหมด / Failed to batch approve");
                           }
                         }}
                       >
-                        โ“ เธญเธเธธเธกเธฑเธ•เธดเธ—เธฑเนเธเธซเธกเธ” ({approvalQueue.length})
+                        ✓ อนุมัติทั้งหมด ({approvalQueue.length})
                       </button>
                     </div>
                   </div>
@@ -1817,19 +1816,19 @@ export default function TrainingAcceptSurvey() {
                   <div className={styles.employeeRows}>
                     {visibleCandidates.length > 0 ? (
                       <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
-                        <span>เธเธฑเธ”เธเธฒเธฃ</span>
+                        <span>จัดการ</span>
                         <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
-                          <span>เธฃเธซเธฑเธชเธเธเธฑเธเธเธฒเธ</span>
-                          <span>เธชเธ–เธฒเธเธฐ</span>
-                          <span>เธเธณเธเธณเธซเธเนเธฒ</span>
-                          <span>เธเธทเนเธญ</span>
-                          <span>เธเธฒเธกเธชเธเธธเธฅ</span>
-                          <span>เธเธฃเธดเธฉเธฑเธ—</span>
-                          <span>เธชเนเธงเธเธเธฒเธ</span>
-                          <span>เธเนเธฒเธข</span>
-                          <span>เนเธเธเธ</span>
-                          <span>เธ•เธณเนเธซเธเนเธ</span>
-                          <span>เธฃเธฐเธ”เธฑเธ</span>
+                          <span>รหัสพนักงาน</span>
+                          <span>สถานะ</span>
+                          <span>คำนำหน้า</span>
+                          <span>ชื่อ</span>
+                          <span>นามสกุล</span>
+                          <span>บริษัท</span>
+                          <span>ส่วนงาน</span>
+                          <span>ฝ่าย</span>
+                          <span>แผนก</span>
+                          <span>ตำแหน่ง</span>
+                          <span>ระดับ</span>
                         </div>
                       </div>
                     ) : null}
@@ -1855,7 +1854,7 @@ export default function TrainingAcceptSurvey() {
                               disabled={!canApprove}
                               onClick={() => void handleApprove(candidate.id)}
                             >
-                              โ“ เธญเธเธธเธกเธฑเธ•เธด
+                              ✓ อนุมัติ
                             </button>
                             <button
                               className={styles.rejectCandidateBtn}
@@ -1863,7 +1862,7 @@ export default function TrainingAcceptSurvey() {
                               disabled={!canReject}
                               onClick={() => void handleReject(candidate.id)}
                             >
-                              โ• เธเธเธดเน€เธชเธ
+                              ✕ ปฏิเสธ
                             </button>
                           </div>
                           <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
@@ -1871,15 +1870,15 @@ export default function TrainingAcceptSurvey() {
                             <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
                               {candidate.status === "Pending Approval" ? (
                                 <span className={styles.badgePending}>
-                                  <span className={styles.glowingDotBlue}></span> เธฃเธญเธญเธเธธเธกเธฑเธ•เธด
+                                  <span className={styles.glowingDotBlue}></span> รออนุมัติ
                                 </span>
                               ) : candidate.status === "Center Approved" || candidate.status === "Factory Approved" ? (
                                 <span className={styles.badgeApproved}>
-                                  <span className={styles.glowingDotGreen}></span> เธญเธเธธเธกเธฑเธ•เธดเนเธฅเนเธง
+                                  <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
                                 </span>
                               ) : candidate.status === "Rejected" ? (
                                 <span className={styles.badgeRejected}>
-                                  <span className={styles.glowingDotRed}></span> เธ–เธนเธเธเธเธดเน€เธชเธ
+                                  <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
                                 </span>
                               ) : (
                                 <span>{candidate.status}</span>
@@ -1900,7 +1899,7 @@ export default function TrainingAcceptSurvey() {
                     })}
                     {visibleCandidates.length === 0 ? (
                       <div className={styles.emptyDraftBox}>
-                        ๐“ เนเธกเนเธกเธตเธฃเธฒเธขเธเธฒเธฃเธชเนเธเธเธเธฑเธเธเธฒเธเธเธฒเธเนเธฃเธเธเธฒเธเธ—เธตเนเธฃเธญเธญเธเธธเธกเธฑเธ•เธดเนเธเธเธ“เธฐเธเธตเน
+                        📋 ไม่มีรายการส่งพนักงานจากโรงงานที่รออนุมัติในขณะนี้
                       </div>
                     ) : null}
                   </div>
@@ -1912,11 +1911,11 @@ export default function TrainingAcceptSurvey() {
                     <div className={styles.workspaceHeader}>
                       <div>
                         <p className={styles.kicker} style={{ color: "#eab308" }}>Draft Submissions (Unsaved)</p>
-                        <h3>เธฃเธฒเธขเธเธฒเธฃเน€เธ•เธฃเธตเธขเธกเธชเนเธเธเธเน€เธเนเธฒเธญเธเธฃเธกเธเธฅเธฒเธ ({draftSubmittedEmployees.length} เธเธ)</h3>
+                        <h3>รายการเตรียมส่งคนเข้าอบรมกลาง ({draftSubmittedEmployees.length} คน)</h3>
                       </div>
                       <div className={styles.participantActions}>
                         <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#eab308", fontWeight: 700, fontSize: "0.82rem" }}>
-                          <span className={styles.glowingDotYellow}></span> {draftSubmittedEmployees.length} เธเธเธฃเธญเธชเนเธ
+                          <span className={styles.glowingDotYellow}></span> {draftSubmittedEmployees.length} คนรอส่ง
                         </span>
                         <button
                           className={styles.saveSubmissionButton}
@@ -1938,34 +1937,34 @@ export default function TrainingAcceptSurvey() {
                               setDraftSubmittedEmployees([]);
                               await reloadEnrollments();
                               toast.success(
-                                `เธเธฑเธเธ—เธถเธเนเธฅเธฐเธขเธทเธเธขเธฑเธเธชเนเธเธฃเธฒเธขเธเธทเนเธญเธเธเธฑเธเธเธฒเธเน€เธเนเธฒเธญเธเธฃเธกเธเธฅเธฒเธเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง เธฃเธงเธก ${submittedCount} เธเธ / Submitted ${submittedCount} employee(s) to HRD Center`,
+                                `บันทึกและยืนยันส่งรายชื่อพนักงานเข้าอบรมกลางเรียบร้อยแล้ว รวม ${submittedCount} คน / Submitted ${submittedCount} employee(s) to HRD Center`,
                               );
                             } catch (error) {
                               console.error("Failed to submit candidates to center", error);
-                              toast.error("เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”เนเธเธเธฒเธฃเธเธฑเธเธ—เธถเธ / Failed to submit candidates to center");
+                              toast.error("เกิดข้อผิดพลาดในการบันทึก / Failed to submit candidates to center");
                             }
                           }}
                         >
-                          ๐’พ เธเธฑเธเธ—เธถเธเนเธฅเธฐเธขเธทเธเธขเธฑเธเธชเนเธเธฃเธฒเธขเธเธทเนเธญเน€เธเนเธฒเธญเธเธฃเธกเธเธฅเธฒเธ ({draftSubmittedEmployees.length})
+                          💾 บันทึกและยืนยันส่งรายชื่อเข้าอบรมกลาง ({draftSubmittedEmployees.length})
                         </button>
                       </div>
                     </div>
                     <div className={styles.employeeRows}>
                       {draftSubmittedEmployees.length > 0 ? (
                         <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
-                          <span>เธเธฑเธ”เธเธฒเธฃ</span>
+                          <span>จัดการ</span>
                           <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
-                            <span>เธฃเธซเธฑเธชเธเธเธฑเธเธเธฒเธ</span>
-                            <span>เธชเธ–เธฒเธเธฐ</span>
-                            <span>เธเธณเธเธณเธซเธเนเธฒ</span>
-                            <span>เธเธทเนเธญ</span>
-                            <span>เธเธฒเธกเธชเธเธธเธฅ</span>
-                            <span>เธเธฃเธดเธฉเธฑเธ—</span>
-                            <span>เธชเนเธงเธเธเธฒเธ</span>
-                            <span>เธเนเธฒเธข</span>
-                            <span>เนเธเธเธ</span>
-                            <span>เธ•เธณเนเธซเธเนเธ</span>
-                            <span>เธฃเธฐเธ”เธฑเธ</span>
+                            <span>รหัสพนักงาน</span>
+                            <span>สถานะ</span>
+                            <span>คำนำหน้า</span>
+                            <span>ชื่อ</span>
+                            <span>นามสกุล</span>
+                            <span>บริษัท</span>
+                            <span>ส่วนงาน</span>
+                            <span>ฝ่าย</span>
+                            <span>แผนก</span>
+                            <span>ตำแหน่ง</span>
+                            <span>ระดับ</span>
                           </div>
                         </div>
                       ) : null}
@@ -1979,16 +1978,16 @@ export default function TrainingAcceptSurvey() {
                               type="button"
                               onClick={() => {
                                 setDraftSubmittedEmployees((prev) => prev.filter((e) => e.id !== emp.id));
-                                toast.info(`เธเธณ ${emp.employeeCode} เธญเธญเธเธเธฒเธเธฃเธฒเธขเธเธฒเธฃเน€เธ•เธฃเธตเธขเธกเธชเนเธเนเธฅเนเธง`);
+                                toast.info(`นำ ${emp.employeeCode} ออกจากรายการเตรียมส่งแล้ว`);
                               }}
                             >
-                              เธเธณเธญเธญเธ (Draft)
+                              นำออก (Draft)
                             </button>
                             <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
                               <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={emp.employeeCode}>{emp.employeeCode}</span>
                               <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
                                 <span className={styles.badgeDraft}>
-                                  <span className={styles.glowingDotYellow}></span> เธ”เธฃเธฒเธ (เธขเธฑเธเนเธกเนเธเธฑเธเธ—เธถเธ)
+                                  <span className={styles.glowingDotYellow}></span> ดราฟ (ยังไม่บันทึก)
                                 </span>
                               </span>
                               <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
@@ -2006,7 +2005,7 @@ export default function TrainingAcceptSurvey() {
                       })}
                       {draftSubmittedEmployees.length === 0 ? (
                         <div className={styles.emptyDraftBox}>
-                          ๐“ เธขเธฑเธเนเธกเนเธกเธตเธเธเธฑเธเธเธฒเธเนเธเธ”เธฃเธฒเธ (เธเธฃเธธเธ“เธฒเธเธ”เน€เธฅเธทเธญเธเธเธเธฑเธเธเธฒเธเธเธฒเธเธ•เธฒเธฃเธฒเธเธเธฅเธธเนเธกเน€เธเนเธฒเธซเธกเธฒเธขเธ”เนเธฒเธเธฅเนเธฒเธเน€เธเธทเนเธญเน€เธ•เธฃเธตเธขเธกเธชเนเธเน€เธเนเธฒเธญเธเธฃเธกเธเธฅเธฒเธ)
+                          📋 ยังไม่มีพนักงานในดราฟ (กรุณากดเลือกพนักงานจากตารางกลุ่มเป้าหมายด้านล่างเพื่อเตรียมส่งเข้าอบรมกลาง)
                         </div>
                       ) : null}
                     </div>
@@ -2029,30 +2028,30 @@ export default function TrainingAcceptSurvey() {
                         <div className={styles.workspaceHeader}>
                           <div>
                             <p className={styles.kicker}>Submitted to Center (Saved)</p>
-                            <h3>เธฃเธฒเธขเธเธฒเธฃเธชเนเธเธเธเน€เธเนเธฒเธญเธเธฃเธกเธเธฅเธฒเธเนเธฅเนเธง ({savedCandidates.length} เธเธ)</h3>
+                            <h3>รายการส่งคนเข้าอบรมกลางแล้ว ({savedCandidates.length} คน)</h3>
                           </div>
                           <div className={styles.participantActions}>
                             <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#60a5fa", fontWeight: 700, fontSize: "0.82rem" }}>
-                              <span className={styles.glowingDotBlue}></span> {savedCandidates.length} เธเธเธชเนเธเนเธฅเนเธง
+                              <span className={styles.glowingDotBlue}></span> {savedCandidates.length} คนส่งแล้ว
                             </span>
                           </div>
                         </div>
                         <div className={styles.employeeRows}>
                           {savedCandidates.length > 0 ? (
                             <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
-                              <span>เธเธฑเธ”เธเธฒเธฃ</span>
+                              <span>จัดการ</span>
                               <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
-                                <span>เธฃเธซเธฑเธชเธเธเธฑเธเธเธฒเธ</span>
-                                <span>เธชเธ–เธฒเธเธฐ</span>
-                                <span>เธเธณเธเธณเธซเธเนเธฒ</span>
-                                <span>เธเธทเนเธญ</span>
-                                <span>เธเธฒเธกเธชเธเธธเธฅ</span>
-                                <span>เธเธฃเธดเธฉเธฑเธ—</span>
-                                <span>เธชเนเธงเธเธเธฒเธ</span>
-                                <span>เธเนเธฒเธข</span>
-                                <span>เนเธเธเธ</span>
-                                <span>เธ•เธณเนเธซเธเนเธ</span>
-                                <span>เธฃเธฐเธ”เธฑเธ</span>
+                                <span>รหัสพนักงาน</span>
+                                <span>สถานะ</span>
+                                <span>คำนำหน้า</span>
+                                <span>ชื่อ</span>
+                                <span>นามสกุล</span>
+                                <span>บริษัท</span>
+                                <span>ส่วนงาน</span>
+                                <span>ฝ่าย</span>
+                                <span>แผนก</span>
+                                <span>ตำแหน่ง</span>
+                                <span>ระดับ</span>
                               </div>
                             </div>
                           ) : null}
@@ -2073,22 +2072,22 @@ export default function TrainingAcceptSurvey() {
                                   type="button"
                                   onClick={() => void handleCancelEnrollment(candidate.id)}
                                 >
-                                  เธขเธเน€เธฅเธดเธเธเธฒเธฃเธชเนเธ
+                                  ยกเลิกการส่ง
                                 </button>
                                 <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
                                   <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.employeeCode}>{candidate.employeeCode}</span>
                                   <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
                                     {candidate.status === "Pending Approval" ? (
                                       <span className={styles.badgePending}>
-                                        <span className={styles.glowingDotBlue}></span> เธฃเธญเธญเธเธธเธกเธฑเธ•เธด
+                                        <span className={styles.glowingDotBlue}></span> รออนุมัติ
                                       </span>
                                     ) : candidate.status === "Center Approved" || candidate.status === "Factory Approved" ? (
                                       <span className={styles.badgeApproved}>
-                                        <span className={styles.glowingDotGreen}></span> เธญเธเธธเธกเธฑเธ•เธดเนเธฅเนเธง
+                                        <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
                                       </span>
                                     ) : candidate.status === "Rejected" ? (
                                       <span className={styles.badgeRejected}>
-                                        <span className={styles.glowingDotRed}></span> เธ–เธนเธเธเธเธดเน€เธชเธ
+                                        <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
                                       </span>
                                     ) : (
                                       <span>{candidate.status}</span>
@@ -2109,7 +2108,7 @@ export default function TrainingAcceptSurvey() {
                           })}
                           {savedCandidates.length === 0 ? (
                             <div className={styles.emptyCompact}>
-                              เธขเธฑเธเนเธกเนเธกเธตเธเธเธฑเธเธเธฒเธเธ—เธตเนเธเธฑเธเธ—เธถเธเธชเนเธเนเธเธขเธฑเธ Center เนเธฅเนเธง
+                              ยังไม่มีพนักงานที่บันทึกส่งไปยัง Center แล้ว
                             </div>
                           ) : null}
                         </div>
@@ -2122,11 +2121,11 @@ export default function TrainingAcceptSurvey() {
                   <div className={styles.workspaceHeader}>
                     <div>
                       <p className={styles.kicker} style={{ color: "#38bdf8" }}>Candidate Approval (Factory Mode)</p>
-                      <h3>เธฃเธฒเธขเธเธฒเธฃเธเธเธฑเธเธเธฒเธเธฅเธเธ—เธฐเน€เธเธตเธขเธ / เธชเธกเธฑเธเธฃเน€เธเนเธฒเธญเธเธฃเธกเนเธฃเธเธเธฒเธเธฃเธญเธเธฒเธฃเธญเธเธธเธกเธฑเธ•เธด ({visibleCandidates.length} เธเธ)</h3>
+                      <h3>รายการพนักงานลงทะเบียน / สมัครเข้าอบรมโรงงานรอการอนุมัติ ({visibleCandidates.length} คน)</h3>
                     </div>
                     <div className={styles.participantActions}>
                       <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#38bdf8", fontWeight: 700, fontSize: "0.82rem" }}>
-                        <span className={styles.glowingDotBlue}></span> เธฃเธญเธญเธเธธเธกเธฑเธ•เธด {approvalQueue.length} เธเธ
+                        <span className={styles.glowingDotBlue}></span> รออนุมัติ {approvalQueue.length} คน
                       </span>
                       <button
                         className={styles.batchApproveBtn}
@@ -2139,14 +2138,14 @@ export default function TrainingAcceptSurvey() {
                               await updateEnrollmentStatus(candidate.id, { action: "approve" });
                             }
                             await reloadEnrollments();
-                            toast.success(`เธญเธเธธเธกเธฑเธ•เธดเธเธเธฑเธเธเธฒเธเธ—เธฑเนเธเธซเธกเธ” ${approvalQueue.length} เธเธเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง / Batch approved ${approvalQueue.length} candidates`);
+                            toast.success(`อนุมัติพนักงานทั้งหมด ${approvalQueue.length} คนเรียบร้อยแล้ว / Batch approved ${approvalQueue.length} candidates`);
                           } catch (err) {
                             console.error("Failed batch approve", err);
-                            toast.error("เน€เธเธดเธ”เธเนเธญเธเธดเธ”เธเธฅเธฒเธ”เนเธเธเธฒเธฃเธญเธเธธเธกเธฑเธ•เธดเธ—เธฑเนเธเธซเธกเธ” / Failed to batch approve");
+                            toast.error("เกิดข้อผิดพลาดในการอนุมัติทั้งหมด / Failed to batch approve");
                           }
                         }}
                       >
-                        โ“ เธญเธเธธเธกเธฑเธ•เธดเธ—เธฑเนเธเธซเธกเธ” ({approvalQueue.length})
+                        ✓ อนุมัติทั้งหมด ({approvalQueue.length})
                       </button>
                     </div>
                   </div>
@@ -2154,19 +2153,19 @@ export default function TrainingAcceptSurvey() {
                   <div className={styles.employeeRows}>
                     {visibleCandidates.length > 0 ? (
                       <div className={`${styles.targetEmployeeHeader} ${styles.participantEmployeeHeader}`}>
-                        <span>เธเธฑเธ”เธเธฒเธฃ</span>
+                        <span>จัดการ</span>
                         <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
-                          <span>เธฃเธซเธฑเธชเธเธเธฑเธเธเธฒเธ</span>
-                          <span>เธชเธ–เธฒเธเธฐ</span>
-                          <span>เธเธณเธเธณเธซเธเนเธฒ</span>
-                          <span>เธเธทเนเธญ</span>
-                          <span>เธเธฒเธกเธชเธเธธเธฅ</span>
-                          <span>เธเธฃเธดเธฉเธฑเธ—</span>
-                          <span>เธชเนเธงเธเธเธฒเธ</span>
-                          <span>เธเนเธฒเธข</span>
-                          <span>เนเธเธเธ</span>
-                          <span>เธ•เธณเนเธซเธเนเธ</span>
-                          <span>เธฃเธฐเธ”เธฑเธ</span>
+                          <span>รหัสพนักงาน</span>
+                          <span>สถานะ</span>
+                          <span>คำนำหน้า</span>
+                          <span>ชื่อ</span>
+                          <span>นามสกุล</span>
+                          <span>บริษัท</span>
+                          <span>ส่วนงาน</span>
+                          <span>ฝ่าย</span>
+                          <span>แผนก</span>
+                          <span>ตำแหน่ง</span>
+                          <span>ระดับ</span>
                         </div>
                       </div>
                     ) : null}
@@ -2192,7 +2191,7 @@ export default function TrainingAcceptSurvey() {
                                 type="button"
                                 onClick={() => void handleApprove(candidate.id)}
                               >
-                                โ“ เธญเธเธธเธกเธฑเธ•เธด
+                                ✓ อนุมัติ
                               </button>
                             ) : null}
                             {canReject ? (
@@ -2201,7 +2200,7 @@ export default function TrainingAcceptSurvey() {
                                 type="button"
                                 onClick={() => void handleReject(candidate.id)}
                               >
-                                โ— เธเธเธดเน€เธชเธ
+                                ✗ ปฏิเสธ
                               </button>
                             ) : null}
                           </div>
@@ -2210,15 +2209,15 @@ export default function TrainingAcceptSurvey() {
                             <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
                               {candidate.status === "Pending Approval" ? (
                                 <span className={styles.badgePending}>
-                                  <span className={styles.glowingDotYellow}></span> เธฃเธญเธญเธเธธเธกเธฑเธ•เธด
+                                  <span className={styles.glowingDotYellow}></span> รออนุมัติ
                                 </span>
                               ) : candidate.status === "Factory Approved" || candidate.status === "Center Approved" ? (
                                 <span className={styles.badgeApproved}>
-                                  <span className={styles.glowingDotGreen}></span> เธญเธเธธเธกเธฑเธ•เธดเนเธฅเนเธง
+                                  <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
                                 </span>
                               ) : candidate.status === "Rejected" ? (
                                 <span className={styles.badgeRejected}>
-                                  <span className={styles.glowingDotRed}></span> เธ–เธนเธเธเธเธดเน€เธชเธ
+                                  <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
                                 </span>
                               ) : (
                                 <span>{candidate.status}</span>
@@ -2239,7 +2238,7 @@ export default function TrainingAcceptSurvey() {
                     })}
                     {visibleCandidates.length === 0 ? (
                       <div className={styles.emptyDraftBox}>
-                        ๐“ เธขเธฑเธเนเธกเนเธกเธตเธฃเธฒเธขเธเธฒเธฃเธเธเธฑเธเธเธฒเธเธฅเธเธ—เธฐเน€เธเธตเธขเธเธฃเธญเธญเธเธธเธกเธฑเธ•เธดเนเธเธเธ“เธฐเธเธตเน
+                        📋 ยังไม่มีรายการพนักงานลงทะเบียนรออนุมัติในขณะนี้
                       </div>
                     ) : null}
                   </div>
@@ -2249,7 +2248,7 @@ export default function TrainingAcceptSurvey() {
           </div>
 
           {isTargetLoading ? (
-            <TypewriterLoader label="เธเธณเธฅเธฑเธเธเธฃเธฐเธกเธงเธฅเธเธฅเนเธฅเธฐเธ”เธถเธเธเนเธญเธกเธนเธฅเธเธฅเธธเนเธกเน€เธเนเธฒเธซเธกเธฒเธข..." />
+            <TypewriterLoader label="กำลังประมวลผลและดึงข้อมูลกลุ่มเป้าหมาย..." />
           ) : canNominateEmployees ? (
             <Fragment>
               <section className={styles.targetPanel}>
@@ -2276,11 +2275,11 @@ export default function TrainingAcceptSurvey() {
                       >
                         <summary className={styles.companyGroupHeader}>
                           <div className={styles.companySectionTitle}>
-                            <span className={styles.companyIcon}>{group.company === "HRD Center" ? "๐ข" : "๐ฌ"}</span>
-                            <h4>เธเธฃเธดเธฉเธฑเธ— {group.company}</h4>
+                            <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
+                            <h4>บริษัท {group.company}</h4>
                             {isUserCompanyCard ? (
                               <span className={styles.ownCompanySectionTag}>
-                                โญ เธเธฃเธดเธฉเธฑเธ—เธเธญเธเธเธฑเธ ({userCompanyCode})
+                                ⭐ บริษัทของฉัน ({userCompanyCode})
                               </span>
                             ) : null}
                           </div>
@@ -2292,7 +2291,7 @@ export default function TrainingAcceptSurvey() {
                           employees={group.employees}
                           targetActionLabel={targetActionLabel}
                           onAddEmployee={handleAddEmployee}
-                          emptyMessage="เนเธกเนเธกเธตเธฃเธฒเธขเธเธทเนเธญเธเธเธฑเธเธเธฒเธเธชเธณเธซเธฃเธฑเธเธเธฃเธดเธฉเธฑเธ—เธเธตเน"
+                          emptyMessage="ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้"
                           enrollments={enrollments}
                           draftSubmittedEmployees={draftSubmittedEmployees}
                         />
@@ -2301,7 +2300,7 @@ export default function TrainingAcceptSurvey() {
                   })}
                   {availableTargetEmployees.length === 0 ? (
                     <div className={styles.emptyCompact}>
-                      เนเธกเนเธกเธตเธเธเธฑเธเธเธฒเธเธเธฅเธธเนเธกเน€เธเนเธฒเธซเธกเธฒเธข Course Standard เธ—เธตเนเน€เธซเธฅเธทเธญเธญเธขเธนเน
+                      ไม่มีพนักงานกลุ่มเป้าหมาย Course Standard ที่เหลืออยู่
                     </div>
                   ) : null}
                 </div>
@@ -2320,7 +2319,7 @@ export default function TrainingAcceptSurvey() {
                       </span>
                     </div>
                     <p className={styles.targetRuleNote}>
-                      ๐’ก เธเธเธฑเธเธเธฒเธเธ—เธตเนเธกเธต Level เธ•เธฃเธเธ•เธฒเธกเธเธณเธซเธเธ” ({[...selectedCourse.targetLevels].sort((a, b) => getLevelRank(b) - getLevelRank(a)).join(", ")}) เนเธ•เนเธ•เธณเนเธซเธเนเธเธญเธขเธนเนเธเธญเธเน€เธซเธเธทเธญเธเธฒเธ {selectedCourse.targetPositions.join(", ")}
+                      💡 พนักงานที่มี Level ตรงตามกำหนด ({[...selectedCourse.targetLevels].sort((a, b) => getLevelRank(b) - getLevelRank(a)).join(", ")}) แต่ตำแหน่งอยู่นอกเหนือจาก {selectedCourse.targetPositions.join(", ")}
                     </p>
                     <div className={styles.companyGroupGrid}>
                       {levelOnlyEmployeeGroups.map((group) => {
@@ -2333,11 +2332,11 @@ export default function TrainingAcceptSurvey() {
                           >
                             <summary className={styles.companyGroupHeader}>
                               <div className={styles.companySectionTitle}>
-                                <span className={styles.companyIcon}>{group.company === "HRD Center" ? "๐ข" : "๐ฌ"}</span>
-                                <h4>เธเธฃเธดเธฉเธฑเธ— {group.company}</h4>
+                                <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
+                                <h4>บริษัท {group.company}</h4>
                                 {isUserCompanyCard ? (
                                   <span className={styles.ownCompanySectionTag}>
-                                    โญ เธเธฃเธดเธฉเธฑเธ—เธเธญเธเธเธฑเธ ({userCompanyCode})
+                                    ⭐ บริษัทของฉัน ({userCompanyCode})
                                   </span>
                                 ) : null}
                               </div>
@@ -2349,7 +2348,7 @@ export default function TrainingAcceptSurvey() {
                               employees={group.employees}
                               targetActionLabel={targetActionLabel}
                               onAddEmployee={handleAddEmployee}
-                              emptyMessage="เนเธกเนเธกเธตเธฃเธฒเธขเธเธทเนเธญเธเธเธฑเธเธเธฒเธเธชเธณเธซเธฃเธฑเธเธเธฃเธดเธฉเธฑเธ—เธเธตเน"
+                              emptyMessage="ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้"
                               enrollments={enrollments}
                               draftSubmittedEmployees={draftSubmittedEmployees}
                             />
@@ -2358,7 +2357,7 @@ export default function TrainingAcceptSurvey() {
                       })}
                       {availableLevelOnlyEmployees.length === 0 ? (
                         <div className={styles.emptyCompact}>
-                          เนเธกเนเธกเธตเธเธเธฑเธเธเธฒเธเธ—เธตเนเธกเธต Level เธ•เธฃเธเธ•เธฒเธกเธเธณเธซเธเธ”เนเธเธ•เธณเนเธซเธเนเธเธญเธทเนเธ
+                          ไม่มีพนักงานที่มี Level ตรงตามกำหนดในตำแหน่งอื่น
                         </div>
                       ) : null}
                     </div>
@@ -2374,7 +2373,7 @@ export default function TrainingAcceptSurvey() {
                   <span>{additionalEmployees.length} available</span>
                 </div>
                 <p className={styles.targetRuleNote}>
-                  ๐’ก เน€เธฅเธทเธญเธเธเธฃเธดเธฉเธฑเธ—เธ”เนเธฒเธเธฅเนเธฒเธเน€เธเธทเนเธญเธ”เธนเนเธฅเธฐเน€เธเธดเนเธกเธเธเธฑเธเธเธฒเธเธ—เธตเนเธ•เธณเนเธซเธเนเธเธซเธฃเธทเธญเธฃเธฐเธ”เธฑเธเนเธกเนเธ•เธฃเธเธ•เธฒเธก Course Standard
+                  💡 เลือกบริษัทด้านล่างเพื่อดูและเพิ่มพนักงานที่ตำแหน่งหรือระดับไม่ตรงตาม Course Standard
                 </p>
                 <div className={styles.companyGroupGrid}>
                   {additionalEmployeeGroups.map((group) => {
@@ -2386,11 +2385,11 @@ export default function TrainingAcceptSurvey() {
                       >
                         <summary className={styles.companyGroupHeader}>
                           <div className={styles.companySectionTitle}>
-                            <span className={styles.companyIcon}>{group.company === "HRD Center" ? "๐ข" : "๐ฌ"}</span>
-                            <h4>เธเธฃเธดเธฉเธฑเธ— {group.company}</h4>
+                            <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
+                            <h4>บริษัท {group.company}</h4>
                             {isUserCompanyCard ? (
                               <span className={styles.ownCompanySectionTag}>
-                                โญ เธเธฃเธดเธฉเธฑเธ—เธเธญเธเธเธฑเธ ({userCompanyCode})
+                                ⭐ บริษัทของฉัน ({userCompanyCode})
                               </span>
                             ) : null}
                           </div>
@@ -2402,7 +2401,7 @@ export default function TrainingAcceptSurvey() {
                           employees={group.employees}
                           targetActionLabel={targetActionLabel}
                           onAddEmployee={handleAddEmployee}
-                          emptyMessage="เนเธกเนเธกเธตเธเธเธฑเธเธเธฒเธเน€เธเธดเนเธกเน€เธ•เธดเธกเธชเธณเธซเธฃเธฑเธเธเธฃเธดเธฉเธฑเธ—เธเธตเน"
+                          emptyMessage="ไม่มีพนักงานเพิ่มเติมสำหรับบริษัทนี้"
                           enrollments={enrollments}
                           draftSubmittedEmployees={draftSubmittedEmployees}
                         />
@@ -2411,7 +2410,7 @@ export default function TrainingAcceptSurvey() {
                   })}
                   {additionalEmployees.length === 0 ? (
                     <div className={styles.emptyCompact}>
-                      เนเธกเนเธกเธตเธเธเธฑเธเธเธฒเธเน€เธเธดเนเธกเน€เธ•เธดเธกเธ—เธตเนเธชเธฒเธกเธฒเธฃเธ–เน€เธฅเธทเธญเธเนเธ”เน
+                      ไม่มีพนักงานเพิ่มเติมที่สามารถเลือกได้
                     </div>
                   ) : null}
                 </div>
@@ -2430,9 +2429,9 @@ export default function TrainingAcceptSurvey() {
           <div className={styles.nominationModal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <div className={styles.modalHeaderTitle}>
-                <span aria-hidden="true">๐”—</span>
+                <span aria-hidden="true">🔗</span>
                 <div>
-                  <h3>เธชเนเธเธ•เนเธญเธฅเธดเนเธเธเนเน€เธชเธเธญเธเธทเนเธญเน€เธเนเธฒเธญเธเธฃเธก</h3>
+                  <h3>ส่งต่อลิ้งก์เสนอชื่อเข้าอบรม</h3>
                   <small style={{ color: "var(--ui-30-muted)" }}>
                     Section Head / Supervisor Nomination Link
                   </small>
@@ -2442,23 +2441,23 @@ export default function TrainingAcceptSurvey() {
                 className={styles.modalCloseBtn}
                 type="button"
                 onClick={() => setShowNominationModal(false)}
-                title="เธเธดเธ”เธซเธเนเธฒเธ•เนเธฒเธ"
+                title="ปิดหน้าต่าง"
               >
-                โ•
+                ✕
               </button>
             </div>
 
             <div className={styles.courseSummaryBadge}>
-              <strong>เธงเธดเธเธฒ: {selectedCourse.title}</strong>
+              <strong>วิชา: {selectedCourse.title}</strong>
               <div className={styles.courseSummaryMeta}>
-                <span>๐—“๏ธ เธงเธฑเธเธ—เธตเน: {selectedCourse.date || "เนเธกเนเธฃเธฐเธเธธ"}</span>
-                <span>โฐ เน€เธงเธฅเธฒ: {selectedCourse.startTime && selectedCourse.endTime ? `${selectedCourse.startTime} - ${selectedCourse.endTime}` : "เนเธกเนเธฃเธฐเธเธธ"}</span>
-                <span>๐‘ฅ เนเธเธงเธ•เนเธฒ: {selectedCourse.capacity} Seats</span>
+                <span>🗓️ วันที่: {selectedCourse.date || "ไม่ระบุ"}</span>
+                <span>⏰ เวลา: {selectedCourse.startTime && selectedCourse.endTime ? `${selectedCourse.startTime} - ${selectedCourse.endTime}` : "ไม่ระบุ"}</span>
+                <span>👥 โควต้า: {selectedCourse.capacity} Seats</span>
               </div>
             </div>
 
             <div className={styles.urlInputContainer}>
-              <label>๐”— เธฅเธดเนเธเธเนเธชเธณเธซเธฃเธฑเธเธชเนเธเธ•เนเธญเนเธซเนเธซเธฑเธงเธซเธเนเธฒเธเธฒเธ (Direct Link):</label>
+              <label>🔗 ลิ้งก์สำหรับส่งต่อให้หัวหน้างาน (Direct Link):</label>
               <div className={styles.urlBoxWrapper}>
                 <input
                   className={styles.urlInputText}
@@ -2476,15 +2475,15 @@ export default function TrainingAcceptSurvey() {
                     setTimeout(() => setCopiedUrlSuccess(false), 2000);
                   }}
                 >
-                  {copiedUrlSuccess ? "โ“ เธเธฑเธ”เธฅเธญเธเนเธฅเนเธง!" : "๐“ เธเธฑเธ”เธฅเธญเธ URL"}
+                  {copiedUrlSuccess ? "✓ คัดลอกแล้ว!" : "📋 คัดลอก URL"}
                 </button>
               </div>
             </div>
 
             <div className={styles.sharePresetContainer}>
-              <label>๐’ฌ เธ•เธฑเธงเธญเธขเนเธฒเธเธเนเธญเธเธงเธฒเธกเธชเธณเน€เธฃเนเธเธฃเธนเธเธชเธณเธซเธฃเธฑเธเธชเนเธเธ•เนเธญ (LINE / Email Preset):</label>
+              <label>💬 ตัวอย่างข้อความสำเร็จรูปสำหรับส่งต่อ (LINE / Email Preset):</label>
               <div className={styles.presetMessageBox}>
-                {`๐“ เธเธญเน€เธฃเธตเธขเธเน€เธเธดเธเธซเธฑเธงเธซเธเนเธฒเธเธฒเธ / Section Head เน€เธชเธเธญเธเธทเนเธญเธเธเธฑเธเธเธฒเธเน€เธเนเธฒเธญเธเธฃเธก\n๐“ เธงเธดเธเธฒ: ${selectedCourse.title}\n๐—“๏ธ เธงเธฑเธเธ—เธตเนเธญเธเธฃเธก: ${selectedCourse.date || "เธ•เธฒเธกเธเธณเธซเธเธ”เธเธฒเธฃ"}\n๐”— เธฅเธดเนเธเธเนเน€เธชเธเธญเธเธทเนเธญเธเธเธฑเธเธเธฒเธ: ${typeof window !== "undefined" ? window.location.origin : ""}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`}
+                {`📌 ขอเรียนเชิญหัวหน้างาน / Section Head เสนอชื่อพนักงานเข้าอบรม\n📚 วิชา: ${selectedCourse.title}\n🗓️ วันที่อบรม: ${selectedCourse.date || "ตามกำหนดการ"}\n🔗 ลิ้งก์เสนอชื่อพนักงาน: ${typeof window !== "undefined" ? window.location.origin : ""}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`}
               </div>
             </div>
 
@@ -2493,7 +2492,7 @@ export default function TrainingAcceptSurvey() {
                 className={styles.copyPresetBtn}
                 type="button"
                 onClick={async () => {
-                  const msg = `๐“ เธเธญเน€เธฃเธตเธขเธเน€เธเธดเธเธซเธฑเธงเธซเธเนเธฒเธเธฒเธ / Section Head เน€เธชเธเธญเธเธทเนเธญเธเธเธฑเธเธเธฒเธเน€เธเนเธฒเธญเธเธฃเธก\n๐“ เธงเธดเธเธฒ: ${selectedCourse.title}\n๐—“๏ธ เธงเธฑเธเธ—เธตเนเธญเธเธฃเธก: ${selectedCourse.date || "เธ•เธฒเธกเธเธณเธซเธเธ”เธเธฒเธฃ"}\n๐”— เธฅเธดเนเธเธเนเน€เธชเธเธญเธเธทเนเธญเธเธเธฑเธเธเธฒเธ: ${window.location.origin}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`;
+                  const msg = `📌 ขอเรียนเชิญหัวหน้างาน / Section Head เสนอชื่อพนักงานเข้าอบรม\n📚 วิชา: ${selectedCourse.title}\n🗓️ วันที่อบรม: ${selectedCourse.date || "ตามกำหนดการ"}\n🔗 ลิ้งก์เสนอชื่อพนักงาน: ${window.location.origin}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`;
                   await copyTextToClipboard(msg);
                   setCopiedPresetSuccess(true);
                   setTimeout(() => setCopiedPresetSuccess(false), 2000);
@@ -2522,7 +2521,7 @@ export default function TrainingAcceptSurvey() {
                     </defs>
                   </svg>
                 </span>
-                {copiedPresetSuccess ? "โ“ เธเธฑเธ”เธฅเธญเธเธเนเธญเธเธงเธฒเธกเนเธฅเนเธง!" : "เธเธฑเธ”เธฅเธญเธเธเนเธญเธเธงเธฒเธกเธชเนเธ LINE / Email"}
+                {copiedPresetSuccess ? "✓ คัดลอกข้อความแล้ว!" : "คัดลอกข้อความส่ง LINE / Email"}
               </button>
             </div>
           </div>

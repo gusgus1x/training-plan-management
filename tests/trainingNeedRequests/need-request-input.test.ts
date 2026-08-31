@@ -85,10 +85,11 @@ describe("training need request input", () => {
 
   it("rejects an unknown action rather than passing it to the database", () => {
     // "review" and "accept" were the old action names; the check constraint refuses the statuses
-    // they mapped to, so they must not survive as silent aliases.
+    // they mapped to, so they must not survive as silent aliases. Matched loosely because the
+    // accepted set grows — "reset" was added later — and only the refusal has to hold.
     for (const action of ["delete", "review", "accept"]) {
       expect(rejectionReason(() => parseUpdateNeedRequest({ action }))).toMatch(
-        /approve or reject/,
+        /Action must be/,
       );
     }
   });
