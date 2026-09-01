@@ -154,13 +154,13 @@ function parseXlsxBuffer(buffer: Buffer): CourseMasterImportRow[] {
       const cells = r.cells;
       const courseCode = cells["B"] || "";
       const courseGroup = cells["C"] || "General";
-      const courseName = cells["K"] || cells["J"] || cells["C"] || "";
+      const courseName = (cells["K"] || cells["J"] || "").trim();
       const targetGroup = cells["M"] || "-";
       const learningContent = cells["Z"] || "-";
       const objective = cells["AA"] || "-";
       const courseType = cells["BU"] || cells["BB"] || "";
 
-      if (!courseName && !courseCode) continue;
+      if (!courseName || courseName === "-" || courseName === "Course Name (TH/EN)" || courseName.toLowerCase().includes("course name")) continue;
 
       // Extract Levels from columns N to Y
       const matchedLevels: string[] = [];

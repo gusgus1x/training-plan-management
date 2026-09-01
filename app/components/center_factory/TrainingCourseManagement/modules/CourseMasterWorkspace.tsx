@@ -637,6 +637,7 @@ function CourseMaster() {
   const [openDetailCourseId, setOpenDetailCourseId] = useState("");
   const [search, setSearch] = useState("");
   const [listCompanyFilter, setListCompanyFilter] = useState("");
+  const [listCourseGroupFilter, setListCourseGroupFilter] = useState("");
   const [standards, setStandards] = useState<CourseStandardRecord[]>([]);
   const [oapPlans, setOapPlans] = useState<OapPlanRecord[]>([]);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
@@ -729,10 +730,11 @@ function CourseMaster() {
     const defaultCourseTypeId = defaultType?.typeId || "";
 
     for (const item of importRows) {
-      if (!item.courseNameTh && !item.courseCode) continue;
+      const rawName = (item.courseNameTh || "").trim();
+      if (!rawName || rawName === "-" || rawName === "(Auto)" || rawName.toLowerCase().includes("course name")) continue;
 
-      const courseNameTh = (item.courseNameTh || item.courseCode).trim();
-      const courseNameEn = (item.courseNameEn || courseNameTh).trim();
+      const courseNameTh = rawName;
+      const courseNameEn = (item.courseNameEn && item.courseNameEn !== "-" ? item.courseNameEn : courseNameTh).trim();
 
       const matchedGroup =
         courseGroupOptions.find(
@@ -1194,11 +1196,15 @@ function CourseMaster() {
         // Company filter for Center users (HRD_CENTER) — use dedicated listCompanyFilter state
         if (!isFactoryUser && listCompanyFilter) {
           const companyCode = course.ownerCompany || '';
-          return companyCode === listCompanyFilter;
+          if (companyCode !== listCompanyFilter) return false;
+        }
+        // Course Group filter
+        if (listCourseGroupFilter) {
+          if (course.courseGroup !== listCourseGroupFilter) return false;
         }
         return true;
       });
-  }, [scopedCourses, search, listCompanyFilter, isFactoryUser]);
+  }, [scopedCourses, search, listCompanyFilter, listCourseGroupFilter, isFactoryUser]);
 
 
   const companySections = useMemo(() => {
@@ -2899,22 +2905,40 @@ function CourseMaster() {
           <span>{filteredCourses.length} {language === 'th' ? 'รายการ' : 'records'}</span>
         </div>
 
-        {/* Company selector – only for Center users */}
-        {!isFactoryUser && (
-          <div style={{ marginBottom: '12px' }}>
+        {/* Filter bar for Company and Course Group */}
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Company selector – only for Center users */}
+          {!isFactoryUser && (
+            <div style={{ flex: '1 1 240px', minWidth: '220px' }}>
+              <SearchableSelect
+                value={listCompanyFilter}
+                options={[
+                  { code: '', name: language === 'th' ? 'ทุกบริษัท (All Companies)' : 'All Companies' },
+                  ...companyRows.map((row) => ({ code: row.code, name: language === 'th' ? row.nameTh || row.name : row.nameEn || row.name })),
+                ]}
+                placeholder={language === 'th' ? 'เลือกบริษัท' : 'Select Company'}
+                onChange={(code) => {
+                  setListCompanyFilter(code);
+                }}
+              />
+            </div>
+          )}
+
+          {/* Course Group selector */}
+          <div style={{ flex: '1 1 240px', minWidth: '220px' }}>
             <SearchableSelect
-              value={listCompanyFilter}
+              value={listCourseGroupFilter}
               options={[
-                { code: '', name: language === 'th' ? 'ทั้งหมด (All)' : 'All' },
-                ...companyRows.map((row) => ({ code: row.code, name: language === 'th' ? row.nameTh || row.name : row.nameEn || row.name })),
+                { code: '', name: language === 'th' ? 'ทุกกลุ่มหลักสูตร (All Course Groups)' : 'All Course Groups' },
+                ...courseGroupOptions.map((g) => ({ code: g.name, name: g.name })),
               ]}
-              placeholder={language === 'th' ? 'เลือกบริษัท' : 'Select Company'}
-              onChange={(code) => {
-                setListCompanyFilter(code);
+              placeholder={language === 'th' ? 'เลือกกลุ่มหลักสูตร (Course Group)' : 'Select Course Group'}
+              onChange={(groupName) => {
+                setListCourseGroupFilter(groupName);
               }}
             />
           </div>
-        )}
+        </div>
 
         <div className={styles.companySectionsContainer}>
           {companySections.length === 0 ? (
@@ -2949,6 +2973,7 @@ function CourseMaster() {
                   <table className={styles.courseTable}>
                     <thead>
                       <tr>
+                        <th style={{ width: "50px", textAlign: "center" }}>#</th>
                         <th>{language === 'th' ? 'รหัสหลักสูตร' : 'Course Code'}</th>
                         <th>{language === 'th' ? 'ชื่อหลักสูตร' : 'Course Name'}</th>
                         <th>{language === 'th' ? 'บริษัท' : 'Company'}</th>
@@ -2959,7 +2984,7 @@ function CourseMaster() {
                       </tr>
                     </thead>
                     <tbody>
-                      {section.courses.map((course) => {
+                      {section.courses.map((course, cIdx) => {
                         const isOpen = openDetailCourseId === course.id && !isNewOpen;
                         const courseStandard = standards.find(
                           (standard) =>
@@ -2975,6 +3000,7 @@ function CourseMaster() {
                               onClick={() => setSelectedCourseId(course.id === selectedCourseId ? "" : course.id)}
                               style={{ cursor: "pointer" }}
                             >
+                              <td style={{ textAlign: "center", fontWeight: 700 }}>{cIdx + 1}</td>
                               <td>{course.courseCode}</td>
                               <td>
                                 <strong>{getCourseDisplayName(course)}</strong>
@@ -3037,7 +3063,7 @@ function CourseMaster() {
                             </tr>
                             {isOpen ? (
                               <tr className={styles.detailRow}>
-                                <td colSpan={7}>
+                                <td colSpan={8}>
                                   <div className={styles.inlinePanel}>
                                     {renderCoursePanel(
                                       `${course.courseCode} — ${getCourseDisplayName(course)}`,

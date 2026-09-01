@@ -81,7 +81,7 @@ const generateCourseCode = async (
     });
 
     const maxSeq = maxCourseCodeSeq(existingCourses);
-    const nextSeq = existingCourses.length === 0 ? 1 : Math.max(maxSeq + 1, (group.last_course_number ?? 0) + 1);
+    const nextSeq = maxSeq + 1;
 
     await tx.course_group.update({
       where: { course_group_id: courseGroupId },
