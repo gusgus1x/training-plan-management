@@ -53,6 +53,10 @@ export type AssessmentStageInfo = {
  * both: the in-system copy is the one this system can read a result from. Lives beside the type
  * because both the enrollment and the training-record repositories resolve stages the same way,
  * and two copies of this rule would drift.
+ *
+ * The "take this form" API routes are keyed by enrollmentId + stage name, not by the underlying
+ * assessment/evaluation_form id, so that id itself never needs to leave the server - it is not
+ * carried on this type.
  */
 export const assessmentStage = (
   formId: bigint | null,
@@ -63,11 +67,47 @@ export const assessmentStage = (
   return { mode: "NONE", link: null };
 };
 
+/** What the employee has done with one FORM stage so far - only meaningful when mode is FORM. */
+export type StageSubmissionSummary = {
+  attemptNo: number;
+  submittedAt: string | null;
+  score: number | null;
+  passStatus: "PENDING" | "PASS" | "FAIL";
+  gradingStatus: "PENDING_REVIEW" | "REVIEWED";
+};
+
+/**
+ * `AssessmentStageInfo` plus the employee-and-plan-specific facts the "take this form" screens
+ * need: when it opens, whether it is open right now, and what the employee has already submitted.
+ * Kept separate from AssessmentStageInfo itself (a pure function of the course row) because these
+ * three facts depend on the plan's dates, the enrollment's own submissions, and HRD's own close
+ * switch - none of which a bare course lookup can answer.
+ */
+export type EnrollmentStageInfo = AssessmentStageInfo & {
+  /** ISO datetime this stage opens at, per the plan's own dates. Meaningless for NONE. */
+  opensAt: string;
+  /** Meaningless for NONE/LINK - the employee acts on those without this system's involvement. */
+  availability: "NOT_YET" | "OPEN" | "CLOSED_BY_HRD";
+  /** Null means never attempted. Evaluations never have more than one (attemptNo is always 1). */
+  submission: StageSubmissionSummary | null;
+};
+
+/** A NONE stage with no plan to derive dates from - screens that build a placeholder
+ *  EnrollmentAssessmentInfo before real data has loaded should use this instead of guessing at
+ *  values for fields that will never be read while mode stays NONE. */
+export const emptyEnrollmentStage: EnrollmentStageInfo = {
+  mode: "NONE",
+  link: null,
+  opensAt: "",
+  availability: "NOT_YET",
+  submission: null,
+};
+
 export type EnrollmentAssessmentInfo = {
-  preTest: AssessmentStageInfo;
-  postTest: AssessmentStageInfo;
-  evaluation: AssessmentStageInfo;
-  evaluationAfter30Day: AssessmentStageInfo;
+  preTest: EnrollmentStageInfo;
+  postTest: EnrollmentStageInfo;
+  evaluation: EnrollmentStageInfo;
+  evaluationAfter30Day: EnrollmentStageInfo;
 };
 
 /** What the employee actually enrolled in. Snapshotted onto the enrollment so the employee

@@ -5,7 +5,7 @@ import {
   type FinanceRollingPlan,
 } from "../../app/lib/trainingFinanceSummary";
 import type { WorkflowCompletedCourse } from "../../app/lib/trainingWorkflow";
-import type { EnrollmentRecord } from "../../app/lib/trainingEnrollment/types";
+import { emptyEnrollmentStage, type EnrollmentRecord } from "../../app/lib/trainingEnrollment/types";
 
 const centerPlan: FinanceRollingPlan = {
   rollingId: "rolling-center-1",
@@ -138,10 +138,10 @@ describe("training finance summary", () => {
         result: null,
         plan: {
           assessment: {
-            preTest: { mode: "NONE", link: null },
-            postTest: { mode: "NONE", link: null },
-            evaluation: { mode: "NONE", link: null },
-            evaluationAfter30Day: { mode: "NONE", link: null },
+            preTest: emptyEnrollmentStage,
+            postTest: emptyEnrollmentStage,
+            evaluation: emptyEnrollmentStage,
+            evaluationAfter30Day: emptyEnrollmentStage,
           },
           validityMonths: null,
           planCode: "PLAN-001",

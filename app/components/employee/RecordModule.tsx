@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
 import type {
-  AssessmentStageInfo,
   EnrollmentAssessmentInfo,
   EnrollmentRecord,
+  EnrollmentStageInfo,
 } from "../../lib/trainingEnrollment/types";
 import {
   profileValue,
@@ -14,6 +14,7 @@ import {
 import { useToast } from "../ToastHost";
 import { useUiLanguage } from "../ThaiUiLocalization";
 import ModuleHeader from "./ModuleHeader";
+import TrainingFormRunner from "./TrainingFormRunner";
 import styles from "./RecordModule.module.css";
 
 export type EmployeeTrainingRecord = {
@@ -30,9 +31,21 @@ export type EmployeeTrainingRecord = {
   location: string;
   note: string;
   assessment: EnrollmentAssessmentInfo;
-  preTestStatus: "Pending" | "Completed";
-  postTestStatus: "Pending" | "Completed";
-  evaluationStatus: "Pending" | "Completed";
+  preTestStatus: "Pending" | "Completed" | "N/A";
+  postTestStatus: "Pending" | "Completed" | "N/A";
+  evaluationStatus: "Pending" | "Completed" | "N/A";
+};
+
+/**
+ * What this exported document can honestly claim about one stage. NONE/LINK are "N/A" rather than
+ * a guessed "Pending" - an external LINK form's completion is invisible to this system, and a
+ * course with no test at all was never pending anything. This value used to be hardcoded
+ * "Pending" for every course regardless of stage, which fed a fake status onto a document
+ * employees use as evidence.
+ */
+const stageExportStatus = (stage: EnrollmentStageInfo): "Pending" | "Completed" | "N/A" => {
+  if (stage.mode !== "FORM") return "N/A";
+  return stage.submission ? "Completed" : "Pending";
 };
 
 type DownloadPurpose = "job_change" | "resignation";
@@ -62,9 +75,9 @@ export const toRecord = (enrollment: EnrollmentRecord): EmployeeTrainingRecord =
   location: enrollment.plan.venue || "-",
   note: enrollment.plan.batchName || "1",
   assessment: enrollment.plan.assessment,
-  preTestStatus: "Pending",
-  postTestStatus: "Pending",
-  evaluationStatus: "Pending",
+  preTestStatus: stageExportStatus(enrollment.plan.assessment.preTest),
+  postTestStatus: stageExportStatus(enrollment.plan.assessment.postTest),
+  evaluationStatus: stageExportStatus(enrollment.plan.assessment.evaluation),
 });
 
 export const buildRecords = (enrollments: EnrollmentRecord[]) =>
@@ -72,6 +85,127 @@ export const buildRecords = (enrollments: EnrollmentRecord[]) =>
     .filter((enrollment) => enrollment.attendance?.status === "PRESENT")
     .map(toRecord)
     .sort((left, right) => right.completedDate.localeCompare(left.completedDate));
+
+type FormRunnerTarget = { enrollmentId: string; courseTitle: string } & (
+  | { kind: "assessment"; stage: "PRE_TEST" | "POST_TEST" }
+  | { kind: "evaluation"; stage: "EVALUATION" | "EVALUATION_30DAY" }
+);
+
+type AssessmentFlowStep = {
+  key: "pre" | "post" | "evaluation" | "evaluation30";
+  title: string;
+  target: FormRunnerTarget;
+  stage: EnrollmentAssessmentInfo["preTest"];
+};
+
+/**
+ * The 4-row "what can I do about this course's tests" panel, shared by both the completed-course
+ * modal and the pending-enrollment modal (previously only the completed one had it at all - a
+ * registered-but-not-yet-attended course gave no way to see, say, that a pre-test was already
+ * open). Every stage always renders a row now, including NONE ("ไม่มี" / "None") - the earlier
+ * version filtered those out entirely, so a course with no test showed nothing rather than saying so.
+ */
+const AssessmentFlowSection = ({
+  assessment,
+  enrollmentId,
+  courseTitle,
+  onOpenForm,
+  t,
+}: {
+  assessment: EnrollmentAssessmentInfo;
+  enrollmentId: string;
+  courseTitle: string;
+  onOpenForm: (target: FormRunnerTarget) => void;
+  t: (th: string, en: string) => string;
+}) => {
+  const steps: AssessmentFlowStep[] = [
+    { key: "pre", title: t("แบบทดสอบก่อนอบรม", "Pre Test"), stage: assessment.preTest, target: { kind: "assessment", stage: "PRE_TEST", enrollmentId, courseTitle } },
+    { key: "post", title: t("แบบทดสอบหลังอบรม", "Post Test"), stage: assessment.postTest, target: { kind: "assessment", stage: "POST_TEST", enrollmentId, courseTitle } },
+    { key: "evaluation", title: t("แบบประเมินผลการอบรม", "Evaluation"), stage: assessment.evaluation, target: { kind: "evaluation", stage: "EVALUATION", enrollmentId, courseTitle } },
+    { key: "evaluation30", title: t("แบบประเมินผลหลัง 30 วัน", "30-Day Evaluation"), stage: assessment.evaluationAfter30Day, target: { kind: "evaluation", stage: "EVALUATION_30DAY", enrollmentId, courseTitle } },
+  ];
+
+  const opensAtLabel = (isoDate: string) =>
+    new Intl.DateTimeFormat(t("th-TH", "en-GB"), { day: "2-digit", month: "short", year: "numeric" }).format(new Date(isoDate));
+
+  return (
+    <section className={styles.assessmentBox} aria-label="Assessment links">
+      <h4 className={styles.assessmentTitle}>
+        📄 {t("แบบทดสอบ & แบบประเมินผล (ASSESSMENT FLOW)", "ASSESSMENT & EVALUATION FLOW")}
+      </h4>
+
+      <div className={styles.assessmentSteps}>
+        {steps.map((step) => (
+          <div className={styles.stepRow} key={step.key}>
+            <div className={styles.stepText}>
+              <span>{step.title}</span>
+              <small>
+                {step.stage.mode === "NONE"
+                  ? t("ไม่มี", "None")
+                  : step.stage.mode === "LINK"
+                    ? t("ทำผ่านลิงก์ภายนอก", "External link")
+                    : step.stage.submission
+                      ? step.stage.submission.gradingStatus === "PENDING_REVIEW"
+                        ? t("ส่งแล้ว รอ HRD ตรวจ", "Submitted - awaiting review")
+                        : t(
+                            `ทำแล้ว: ${step.stage.submission.score ?? "-"}%`,
+                            `Done: ${step.stage.submission.score ?? "-"}%`,
+                          )
+                      : step.stage.availability === "NOT_YET"
+                        ? t(`เปิดวันที่ ${opensAtLabel(step.stage.opensAt)}`, `Opens ${opensAtLabel(step.stage.opensAt)}`)
+                        : step.stage.availability === "CLOSED_BY_HRD"
+                          ? t("HRD ปิดรับแล้ว", "Closed by HRD")
+                          : t("ทำในระบบ", "In-system form")}
+              </small>
+            </div>
+
+            {step.stage.mode === "NONE" ? (
+              <span style={{ fontSize: "0.78rem", color: "var(--ui-30-muted)" }}>—</span>
+            ) : step.stage.mode === "LINK" ? (
+              step.stage.link ? (
+                <a href={step.stage.link} target="_blank" rel="noopener noreferrer" className={styles.openLinkBtn}>
+                  🔗 {t("เปิดทำแบบทดสอบ", "Open Link")}
+                </a>
+              ) : (
+                <button disabled type="button" className={styles.openLinkBtn} style={{ opacity: 0.5, cursor: "not-allowed" }}>
+                  {t("ไม่มีลิงก์", "No link set")}
+                </button>
+              )
+            ) : step.stage.availability === "NOT_YET" || step.stage.availability === "CLOSED_BY_HRD" ? (
+              <button
+                disabled
+                type="button"
+                className={styles.openLinkBtn}
+                style={{ opacity: 0.5, cursor: "not-allowed" }}
+                title={
+                  step.stage.availability === "NOT_YET"
+                    ? t(`เปิดให้ทำวันที่ ${opensAtLabel(step.stage.opensAt)}`, `Opens on ${opensAtLabel(step.stage.opensAt)}`)
+                    : t("HRD ปิดรับคำตอบแล้ว", "HRD has closed this form")
+                }
+              >
+                {step.stage.availability === "NOT_YET" ? t("ยังไม่เปิดให้ทำ", "Not open yet") : t("ปิดรับแล้ว", "Closed")}
+              </button>
+            ) : step.key === "evaluation" || step.key === "evaluation30" ? (
+              step.stage.submission ? (
+                <button disabled type="button" className={styles.openLinkBtn} style={{ opacity: 0.5, cursor: "not-allowed" }}>
+                  {t("ส่งแล้ว", "Submitted")}
+                </button>
+              ) : (
+                <button type="button" className={styles.openLinkBtn} onClick={() => onOpenForm(step.target)}>
+                  {t("ทำแบบประเมิน", "Take Survey")}
+                </button>
+              )
+            ) : (
+              <button type="button" className={styles.openLinkBtn} onClick={() => onOpenForm(step.target)}>
+                {step.stage.submission ? t("ทำอีกครั้ง", "Retake") : t("ทำแบบทดสอบ", "Take Test")}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
 
 const providers = ["all", "HRD Center", "Factory HRD"] as const;
 
@@ -212,13 +346,14 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
   const [downloadPurpose, setDownloadPurpose] = useState<DownloadPurpose>("job_change");
   const [detailModalRecord, setDetailModalRecord] = useState<EmployeeTrainingRecord | null>(null);
   const [detailModalEnrollment, setDetailModalEnrollment] = useState<EnrollmentRecord | null>(null);
+  const [formRunner, setFormRunner] = useState<FormRunnerTarget | null>(null);
 
-  useEffect(() => {
+  const reloadEnrollments = () => {
     setIsLoading(true);
     setLoadError(null);
     // No employee filter is sent: the server scopes an EMPLOYEE caller to themselves. Guarding on
     // employeeId here blanks the page for an account that carries only the durable key.
-    listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
+    return listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
       .then((result) => {
         setEnrollments(result.enrollments || []);
       })
@@ -229,6 +364,11 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
       .finally(() => {
         setIsLoading(false);
       });
+  };
+
+  useEffect(() => {
+    void reloadEnrollments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const pendingEnrollments = useMemo(
@@ -237,6 +377,23 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
   );
 
   const records = useMemo(() => buildRecords(enrollments), [enrollments]);
+
+  // Keeps an open detail modal showing the enrollment's current state (a score just submitted, a
+  // stage HRD just closed) instead of a snapshot frozen at the moment "View Details" was clicked -
+  // otherwise submitting a form and reopening the same modal would still show the old "not done"
+  // button until the whole screen was reloaded.
+  useEffect(() => {
+    if (detailModalRecord) {
+      const fresh = records.find((record) => record.id === detailModalRecord.id);
+      if (fresh) setDetailModalRecord(fresh);
+    }
+    if (detailModalEnrollment) {
+      const fresh = enrollments.find((enrollment) => enrollment.id === detailModalEnrollment.id);
+      if (fresh) setDetailModalEnrollment(fresh);
+    }
+    // Only ever reacts to the source data changing, never to the modal being opened/closed itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enrollments, records]);
 
   const filteredRecords = useMemo(
     () =>
@@ -760,71 +917,13 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
               </div>
             </div>
 
-            {/* Assessment Flow Links Grid */}
-            <section className={styles.assessmentBox} aria-label="Assessment links">
-              <h4 className={styles.assessmentTitle}>
-                📄 {t("แบบทดสอบ & แบบประเมินผล (ASSESSMENT FLOW)", "ASSESSMENT & EVALUATION FLOW")}
-              </h4>
-
-              <div className={styles.assessmentSteps}>
-                {(
-                  [
-                    { key: "pre", title: t("แบบทดสอบก่อนอบรม", "Pre Test"), stage: detailModalRecord.assessment.preTest },
-                    { key: "post", title: t("แบบทดสอบหลังอบรม", "Post Test"), stage: detailModalRecord.assessment.postTest },
-                    { key: "evaluation", title: t("แบบประเมินผลการอบรม", "Evaluation"), stage: detailModalRecord.assessment.evaluation },
-                    {
-                      key: "evaluation30",
-                      title: t("แบบประเมินผลหลัง 30 วัน", "30-Day Evaluation"),
-                      stage: detailModalRecord.assessment.evaluationAfter30Day,
-                    },
-                  ] as Array<{ key: string; title: string; stage: AssessmentStageInfo }>
-                )
-                  .filter((step) => step.stage.mode !== "NONE")
-                  .map((step) => (
-                    <div className={styles.stepRow} key={step.key}>
-                      <div className={styles.stepText}>
-                        <span>{step.title}</span>
-                        <small>
-                          {step.stage.mode === "LINK"
-                            ? t("ทำผ่านลิงก์ภายนอก", "External link")
-                            : t("ทำในระบบ", "In-system form")}
-                        </small>
-                      </div>
-
-                      {step.stage.mode === "LINK" && step.stage.link ? (
-                        <a
-                          href={step.stage.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={styles.openLinkBtn}
-                        >
-                          🔗 {t("เปิดทำแบบทดสอบ", "Open Link")}
-                        </a>
-                      ) : (
-                        <button
-                          disabled
-                          type="button"
-                          className={styles.openLinkBtn}
-                          style={{ opacity: 0.5, cursor: "not-allowed" }}
-                        >
-                          {t("ยังไม่เปิดให้ทำ", "Not available")}
-                        </button>
-                      )}
-                    </div>
-                  ))}
-
-                {[
-                  detailModalRecord.assessment.preTest,
-                  detailModalRecord.assessment.postTest,
-                  detailModalRecord.assessment.evaluation,
-                  detailModalRecord.assessment.evaluationAfter30Day,
-                ].every((stage) => stage.mode === "NONE") ? (
-                  <div className={styles.emptyStateBox} style={{ padding: "12px", fontSize: "0.78rem" }}>
-                    {t("หลักสูตรนี้ไม่มีแบบทดสอบหรือแบบประเมิน", "This course has no test or evaluation form.")}
-                  </div>
-                ) : null}
-              </div>
-            </section>
+            <AssessmentFlowSection
+              assessment={detailModalRecord.assessment}
+              enrollmentId={detailModalRecord.id}
+              courseTitle={detailModalRecord.courseTitle}
+              onOpenForm={setFormRunner}
+              t={t}
+            />
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", paddingTop: "10px" }}>
               {onRequestRefresher ? (
@@ -920,6 +1019,14 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
               </p>
             </div>
 
+            <AssessmentFlowSection
+              assessment={detailModalEnrollment.plan.assessment}
+              enrollmentId={detailModalEnrollment.id}
+              courseTitle={detailModalEnrollment.plan.courseName}
+              onOpenForm={setFormRunner}
+              t={t}
+            />
+
             <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: "10px" }}>
               <button
                 className={styles.exportBtn}
@@ -931,6 +1038,28 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
             </div>
           </div>
         </div>
+      ) : null}
+
+      {formRunner?.kind === "assessment" ? (
+        <TrainingFormRunner
+          key={`${formRunner.enrollmentId}-${formRunner.stage}`}
+          kind="assessment"
+          stage={formRunner.stage}
+          enrollmentId={formRunner.enrollmentId}
+          courseTitle={formRunner.courseTitle}
+          onClose={() => setFormRunner(null)}
+          onSubmitted={() => void reloadEnrollments()}
+        />
+      ) : formRunner?.kind === "evaluation" ? (
+        <TrainingFormRunner
+          key={`${formRunner.enrollmentId}-${formRunner.stage}`}
+          kind="evaluation"
+          stage={formRunner.stage}
+          enrollmentId={formRunner.enrollmentId}
+          courseTitle={formRunner.courseTitle}
+          onClose={() => setFormRunner(null)}
+          onSubmitted={() => void reloadEnrollments()}
+        />
       ) : null}
     </section>
   );

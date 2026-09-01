@@ -11,9 +11,10 @@ import {
   type RollingPlan,
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
 import { listEnrollments, setEnrollmentAttendance } from "../../../../lib/trainingEnrollment/client";
-import type {
-  EnrollmentAssessmentInfo,
-  EnrollmentRecord,
+import {
+  emptyEnrollmentStage,
+  type EnrollmentAssessmentInfo,
+  type EnrollmentRecord,
 } from "../../../../lib/trainingEnrollment/types";
 import {
   getCostBreakdown,
@@ -27,6 +28,8 @@ import {
   expiryFrom,
   type CompletionStatus,
 } from "../../../../lib/trainingRecord/types";
+import { gradeSubmission, listPendingGrading } from "../../../../lib/trainingForms/client";
+import type { PendingGradingSubmission } from "../../../../lib/trainingForms/types";
 import type { CostBreakdown } from "../../../../lib/trainingRecord/types";
 import styles from "./TrainingRecord.module.css";
 
@@ -209,16 +212,142 @@ const isCenterCourse = (course: Pick<ActualCourse, "owner" | "ownerCompany" | "c
   (course.ownerCompany ?? course.company) === "HRD Center" ||
   course.company === "All Companies";
 
+type GradeDraft = Record<string, { scoreAwarded: string; reviewComment: string }>;
+
+/**
+ * The written-answer questions no autograder can score, waiting on an HRD reviewer. Lives here
+ * (not on Training Record's open/close panel) because grading produces a score, and this is
+ * already where HRD enters every other score for the plan.
+ */
+const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (enrollmentId: string) => void }) => {
+  const toast = useToast();
+  const [submissions, setSubmissions] = useState<PendingGradingSubmission[] | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, GradeDraft>>({});
+  const [savingSubmissionId, setSavingSubmissionId] = useState<string | null>(null);
+
+  const load = () => {
+    listPendingGrading(planId)
+      .then((result) => setSubmissions(result.submissions))
+      .catch(() => setSubmissions([]));
+  };
+
+  useEffect(() => {
+    setSubmissions(null);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planId]);
+
+  const setAnswerDraft = (submissionId: string, answerId: string, patch: Partial<GradeDraft[string]>) =>
+    setDrafts((current) => {
+      const existing = current[submissionId]?.[answerId] ?? { scoreAwarded: "0", reviewComment: "" };
+      return {
+        ...current,
+        [submissionId]: { ...current[submissionId], [answerId]: { ...existing, ...patch } },
+      };
+    });
+
+  const handleSave = async (submission: PendingGradingSubmission) => {
+    const draft = drafts[submission.submissionId] ?? {};
+    const answers = submission.pendingAnswers.map((answer) => {
+      const entry = draft[answer.answerId] ?? { scoreAwarded: "0", reviewComment: "" };
+      return {
+        answerId: answer.answerId,
+        scoreAwarded: Number(entry.scoreAwarded) || 0,
+        reviewComment: entry.reviewComment.trim() || null,
+      };
+    });
+
+    setSavingSubmissionId(submission.submissionId);
+    try {
+      await gradeSubmission(planId, submission.submissionId, { answers });
+      toast.success(`บันทึกคะแนนของ ${submission.employeeName} แล้ว`);
+      load();
+      onGraded(submission.enrollmentId);
+    } catch {
+      toast.error("บันทึกคะแนนไม่สำเร็จ กรุณาลองใหม่");
+    } finally {
+      setSavingSubmissionId(null);
+    }
+  };
+
+  if (submissions === null || submissions.length === 0) return null;
+
+  return (
+    <section className={styles.actualResultsPanel} aria-label="Pending written-answer grading" style={{ marginBottom: "16px" }}>
+      <div className={styles.actualResultsHeader}>
+        <div>
+          <span>รอตรวจข้อเขียน</span>
+          <strong>Pending Written-Answer Grading</strong>
+        </div>
+        <small>{submissions.length} รายการ</small>
+      </div>
+
+      <div className={styles.actualResultsRows}>
+        {submissions.map((submission) => (
+          <article key={submission.submissionId} className={styles.actualResultRow} style={{ flexDirection: "column", alignItems: "stretch", gap: "10px" }}>
+            <div className={styles.actualResultWho}>
+              <strong>{submission.employeeName}</strong>
+              <small>
+                {submission.employeeCode || "-"} · {submission.stage === "PRE_TEST" ? "Pre Test" : "Post Test"} · ครั้งที่{" "}
+                {submission.attemptNo}
+              </small>
+            </div>
+
+            {submission.pendingAnswers.map((answer) => {
+              const entry = drafts[submission.submissionId]?.[answer.answerId] ?? { scoreAwarded: "0", reviewComment: "" };
+              return (
+                <div key={answer.answerId} style={{ display: "flex", flexDirection: "column", gap: "6px", padding: "8px 10px", borderRadius: "8px", background: "var(--ui-60-surface-soft)" }}>
+                  <span style={{ fontSize: "0.8rem", fontWeight: 700 }}>{answer.questionText}</span>
+                  <p style={{ margin: 0, fontSize: "0.8rem", whiteSpace: "pre-wrap" }}>{answer.answerText || "(ไม่มีคำตอบ)"}</p>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                    <label style={{ fontSize: "0.76rem" }}>
+                      คะแนน (เต็ม {answer.questionScore})
+                      <input
+                        type="number"
+                        min={0}
+                        max={Number(answer.questionScore)}
+                        value={entry.scoreAwarded}
+                        onChange={(e) => setAnswerDraft(submission.submissionId, answer.answerId, { scoreAwarded: e.target.value })}
+                        style={{ marginLeft: "6px", width: "70px" }}
+                      />
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="ความเห็น (ถ้ามี)"
+                      value={entry.reviewComment}
+                      onChange={(e) => setAnswerDraft(submission.submissionId, answer.answerId, { reviewComment: e.target.value })}
+                      style={{ flex: 1, fontSize: "0.76rem" }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+
+            <button
+              type="button"
+              disabled={savingSubmissionId === submission.submissionId}
+              onClick={() => void handleSave(submission)}
+              style={{ alignSelf: "flex-end" }}
+            >
+              {savingSubmissionId === submission.submissionId ? "กำลังบันทึก..." : "บันทึกคะแนน"}
+            </button>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+};
+
 export default function TrainingActual() {
   const user = useAuthenticatedUser();
   const toast = useToast();
   const [resultDrafts, setResultDrafts] = useState<Record<string, ResultDraft>>({});
   const [isSavingResults, setIsSavingResults] = useState(false);
   const noAssessment: EnrollmentAssessmentInfo = {
-    preTest: { mode: "NONE", link: null },
-    postTest: { mode: "NONE", link: null },
-    evaluation: { mode: "NONE", link: null },
-    evaluationAfter30Day: { mode: "NONE", link: null },
+    preTest: emptyEnrollmentStage,
+    postTest: emptyEnrollmentStage,
+    evaluation: emptyEnrollmentStage,
+    evaluationAfter30Day: emptyEnrollmentStage,
   };
   const { language } = useUiLanguage();
   const [courses, setCourses] = useState<ActualCourse[]>([]);
@@ -515,6 +644,23 @@ export default function TrainingActual() {
       setResultDrafts((current) => ({ ...draftsFromEnrollments(loaded), ...current }));
     } catch (error) {
       console.error("Failed to reload attendees", error);
+    }
+  };
+
+  // The general reload above deliberately keeps whatever HRD already has open in a draft, which
+  // is right for protecting mid-typing edits but wrong here: HRD just graded a written answer and
+  // the score that grading produced would otherwise be masked by whatever training_result held at
+  // the last page load. Overwrite only the one row that changed.
+  const handleGraded = async (enrollmentId: string) => {
+    if (!selectedCourse) return;
+    try {
+      const result = await listEnrollments({ planId: selectedCourse.id, employeeId: null, employeeUserId: null });
+      const loaded = result.enrollments || [];
+      setEnrollments(loaded);
+      const fresh = draftsFromEnrollments(loaded);
+      setResultDrafts((current) => ({ ...current, ...(fresh[enrollmentId] ? { [enrollmentId]: fresh[enrollmentId] } : {}) }));
+    } catch (error) {
+      console.error("Failed to refresh the graded attendee", error);
     }
   };
 
@@ -1030,6 +1176,7 @@ export default function TrainingActual() {
                 </div>
               </div>
             ) : null}
+            {selectedCourse ? <PendingGradingPanel planId={selectedCourse.id} onGraded={(id) => void handleGraded(id)} /> : null}
             <section className={styles.actualResultsPanel} aria-label="Training results">
               <div className={styles.actualResultsHeader}>
                 <div>

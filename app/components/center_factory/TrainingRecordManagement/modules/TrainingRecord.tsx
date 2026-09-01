@@ -11,8 +11,11 @@ import type {
   TrainingRecordSummary,
 } from "../../../../lib/trainingRecord/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
 import { useToast } from "../../../ToastHost";
+import { listPlanStageSettings, setStageClosed } from "../../../../lib/trainingForms/client";
+import type { GradedStage, StageSetting } from "../../../../lib/trainingForms/types";
 import {
   getRollingPlanCompanies,
   loadWorkflowRollingPlans,
@@ -387,6 +390,131 @@ const mapImportRowToUploadedRecord = (
 };
 
 const expenseItems = EXPENSE_ITEMS;
+
+const STAGE_LABEL: Record<GradedStage, string> = {
+  PRE_TEST: "แบบทดสอบก่อนอบรม (Pre Test)",
+  POST_TEST: "แบบทดสอบหลังอบรม (Post Test)",
+};
+
+const opensAtLabel = (isoDate: string) =>
+  new Intl.DateTimeFormat("th-TH", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(isoDate));
+
+/**
+ * HRD's open/close switch for pre/post test - PRE_TEST and POST_TEST only. The evaluation stages
+ * have no switch here at all: evaluation_submission carries a UNIQUE(evaluation_form_id,
+ * enrollment_id), so a submitted evaluation is already un-repeatable by the database itself, and
+ * the user confirmed a close switch would add nothing for those two stages.
+ */
+const FormSettingsPanel = ({ planId, pendingCount }: { planId: string; pendingCount: number }) => {
+  const confirm = useConfirm();
+  const toast = useToast();
+  const [settings, setSettings] = useState<StageSetting[] | null>(null);
+  const [busyStage, setBusyStage] = useState<GradedStage | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSettings(null);
+    listPlanStageSettings(planId)
+      .then((result) => {
+        if (!cancelled) setSettings(result.settings);
+      })
+      .catch(() => {
+        if (!cancelled) setSettings([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [planId]);
+
+  const toggle = async (stage: GradedStage, currentlyClosed: boolean) => {
+    if (!currentlyClosed) {
+      const ok = await confirm({
+        title: { th: "ปิดรับคำตอบ", en: "Close this form" },
+        message: {
+          th: `พนักงานจะกดทำ ${STAGE_LABEL[stage]} ไม่ได้อีกจนกว่าจะเปิดใหม่${
+            pendingCount > 0 ? ` ตอนนี้มี ${pendingCount} คนที่ยังไม่ได้ทำ` : ""
+          } ต้องการปิดหรือไม่?`,
+          en: `Employees will not be able to take ${STAGE_LABEL[stage]} until it is reopened.${
+            pendingCount > 0 ? ` ${pendingCount} people have not taken it yet.` : ""
+          } Close it now?`,
+        },
+        confirmLabel: { th: "ปิดรับคำตอบ", en: "Close" },
+        cancelLabel: { th: "ยกเลิก", en: "Cancel" },
+        danger: true,
+      });
+      if (!ok) return;
+    }
+
+    setBusyStage(stage);
+    try {
+      await setStageClosed(planId, { stage, closed: !currentlyClosed });
+      const result = await listPlanStageSettings(planId);
+      setSettings(result.settings);
+      toast.success(currentlyClosed ? "เปิดรับคำตอบอีกครั้งแล้ว" : "ปิดรับคำตอบแล้ว");
+    } catch {
+      toast.error("บันทึกไม่สำเร็จ กรุณาลองใหม่");
+    } finally {
+      setBusyStage(null);
+    }
+  };
+
+  if (settings === null) return null;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px", margin: "16px 0" }}>
+      <strong style={{ fontSize: "0.85rem" }}>เปิด/ปิดรับแบบทดสอบ</strong>
+      {settings.map((setting) => {
+        const isClosed = setting.closedAt !== null;
+        return (
+          <div
+            key={setting.stage}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "10px",
+              padding: "8px 12px",
+              borderRadius: "10px",
+              border: "1px solid var(--ui-30-border)",
+              background: "var(--ui-60-surface)",
+            }}
+          >
+            <span style={{ fontSize: "0.8rem" }}>
+              <strong>{STAGE_LABEL[setting.stage]}</strong>
+              {setting.mode === "NONE" ? (
+                <span style={{ color: "var(--ui-30-muted)" }}> — ไม่มี</span>
+              ) : setting.mode === "LINK" ? (
+                <span style={{ color: "var(--ui-30-muted)" }}> — ทำผ่านลิงก์ภายนอก ปิดในระบบไม่ได้</span>
+              ) : (
+                <span style={{ color: "var(--ui-30-muted)" }}> — เปิดตั้งแต่ {opensAtLabel(setting.opensAt)}</span>
+              )}
+            </span>
+
+            {setting.mode === "FORM" ? (
+              <button
+                type="button"
+                disabled={busyStage === setting.stage}
+                onClick={() => void toggle(setting.stage, isClosed)}
+                style={{
+                  padding: "5px 14px",
+                  borderRadius: "999px",
+                  border: "1px solid var(--ui-30-border)",
+                  background: isClosed ? "var(--ui-60-surface-soft)" : "var(--ui-30-primary-soft)",
+                  color: isClosed ? "var(--ui-30-muted)" : "var(--ui-30-primary-strong)",
+                  fontSize: "0.76rem",
+                  fontWeight: 800,
+                  cursor: busyStage === setting.stage ? "wait" : "pointer",
+                }}
+              >
+                {isClosed ? "เปิดอีกครั้ง" : "ปิดรับ"}
+              </button>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 export default function TrainingRecord() {
   const user = useAuthenticatedUser();
@@ -903,6 +1031,11 @@ export default function TrainingRecord() {
               </div>
             </div>
           </div>
+
+          <FormSettingsPanel
+            planId={selectedCourse.id}
+            pendingCount={selectedCourse.attendees.filter((attendee) => attendee.prePost === "Pending").length}
+          />
 
           {/* Training Course Master Details Panel */}
           <section className={styles.courseMasterDetailPanel}>

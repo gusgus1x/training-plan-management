@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildRecords, toRecord } from "../../app/components/employee/RecordModule";
-import type { EnrollmentRecord } from "../../app/lib/trainingEnrollment/types";
+import { emptyEnrollmentStage, type EnrollmentRecord } from "../../app/lib/trainingEnrollment/types";
 
 const enrollment = (overrides: Partial<EnrollmentRecord> = {}): EnrollmentRecord => ({
   id: "1",
@@ -8,10 +8,10 @@ const enrollment = (overrides: Partial<EnrollmentRecord> = {}): EnrollmentRecord
   result: null,
   plan: {
     assessment: {
-      preTest: { mode: "NONE", link: null },
-      postTest: { mode: "NONE", link: null },
-      evaluation: { mode: "NONE", link: null },
-      evaluationAfter30Day: { mode: "NONE", link: null },
+      preTest: emptyEnrollmentStage,
+      postTest: emptyEnrollmentStage,
+      evaluation: emptyEnrollmentStage,
+      evaluationAfter30Day: emptyEnrollmentStage,
     },
     validityMonths: null,
     planCode: "PLAN-001",
@@ -90,5 +90,44 @@ describe("employee training record is built from attendance, not from invented d
     const factory = enrollment();
     factory.plan = { ...factory.plan, owner: "FACTORY" };
     expect(toRecord(factory).provider).toBe("Factory HRD");
+  });
+
+  // preTestStatus/postTestStatus/evaluationStatus used to be hardcoded "Pending" for every
+  // enrollment regardless of stage config or submission state, and that literal string was
+  // exported straight into the official training-record document employees hand to employers.
+  it("reads pre/post-test status from the real submission, not a hardcoded Pending", () => {
+    const withScore = enrollment();
+    withScore.plan = {
+      ...withScore.plan,
+      assessment: {
+        ...withScore.plan.assessment,
+        preTest: {
+          mode: "FORM",
+          link: null,
+          opensAt: "2026-05-12T02:00:00.000Z",
+          availability: "OPEN",
+          submission: { attemptNo: 1, submittedAt: "2026-05-12T03:00:00.000Z", score: 90, passStatus: "PASS", gradingStatus: "REVIEWED" },
+        },
+      },
+    };
+    expect(toRecord(withScore).preTestStatus).toBe("Completed");
+  });
+
+  it("reports a FORM stage nobody has attempted yet as Pending, not Completed", () => {
+    const notDone = enrollment();
+    notDone.plan = {
+      ...notDone.plan,
+      assessment: {
+        ...notDone.plan.assessment,
+        preTest: { mode: "FORM", link: null, opensAt: "2026-05-12T02:00:00.000Z", availability: "OPEN", submission: null },
+      },
+    };
+    expect(toRecord(notDone).preTestStatus).toBe("Pending");
+  });
+
+  it("reports a course with no test at all as N/A, not Pending", () => {
+    // A course that never had a pre-test was never "pending" one - the old hardcoded value
+    // claimed otherwise for every single course, tested or not.
+    expect(toRecord(enrollment()).preTestStatus).toBe("N/A");
   });
 });
