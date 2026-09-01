@@ -23,21 +23,16 @@ export interface CourseMasterImportRow {
 export const downloadCsvTemplate = () => {
   const headers = [
     "Course Code",
-    "Course Name TH",
-    "Course Name EN",
-    "Course Group",
-    "Course Type",
+    "Course Name(TH)",
+    "Course Name(EN)",
     "Objective",
     "Learning Content",
     "Target Group",
     "Methodology",
-    "Life Cycle Month",
-    "Pre Test",
-    "Post Test",
-    "Function Code",
-    "Function Name",
-    "Positions",
-    "Levels",
+    "Life Cycle",
+    "Course Type",
+    "Course Group",
+    "Background",
   ];
 
   const sampleRows = [
@@ -45,37 +40,27 @@ export const downloadCsvTemplate = () => {
       "QT-001",
       "ระบบบริหารงานคุณภาพ ISO 9001:2015",
       "ISO 9001:2015 Quality Management System",
-      "Quality",
-      "IN-HOUSE",
       "เพื่อสร้างความเข้าใจในระบบบริหารงานคุณภาพ ISO 9001:2015",
       "1. ข้อกำหนด ISO 9001 2. การตรวจประเมินภายใน 3. การปรับปรุงอย่างต่อเนื่อง",
       "ระดับ Supervisor และ Engineer ขึ้นไป",
       "Lecture / Workshop",
       "12",
-      "Yes",
-      "Yes",
-      "ALL",
-      "All Functions",
-      "Manager, Supervisor, Engineer",
-      "L5, L6, L7",
+      "IN-HOUSE",
+      "Quality",
+      "เพื่อให้พนักงานเข้าใจมาตรฐานคุณภาพ ISO 9001 ในกระบวนการทำงาน",
     ],
     [
       "MGT-001",
       "ทักษะการบริหารจัดการและการสื่อสารสำหรับหัวหน้างาน",
       "Supervisory Management & Communication Skills",
-      "Management",
-      "IN-HOUSE",
-      "เพื่อพัฒนาทักษะภาวะผู้นำและการสื่อสารทีมงาน",
-      "1. การวางแผนงาน 2. การมอบหมายงาน 3. เทคนิคการจูงใจ",
+      "เพื่อพัฒนาทักษะภาวะผู้นำและการสื่อสารทีมงานอย่างมีประสิทธิภาพ",
+      "1. การวางแผนงาน 2. การมอบหมายงาน 3. เทคนิคการจูงใจทีมงาน",
       "ระดับ Supervisor และ Section Head",
       "Workshop / Case Study",
       "24",
-      "No",
-      "Yes",
-      "MFG",
-      "Manufacturing",
-      "Supervisor, Section Head",
-      "L6, L7",
+      "IN-HOUSE",
+      "Management",
+      "พัฒนาศักยภาพภาวะผู้นำสำหรับหัวหน้างานที่ได้รับการแต่งตั้งใหม่",
     ],
   ];
 
@@ -93,7 +78,7 @@ export const downloadCsvTemplate = () => {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.setAttribute("download", "Course_Master_Import_Template.csv");
+  link.setAttribute("download", "Master_Course_Template.csv");
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -130,51 +115,110 @@ export const parseCsvText = (text: string): CourseMasterImportRow[] => {
     return result;
   };
 
-  const headers = parseLine(lines[0]).map((h) => h.toLowerCase());
+  // Check if header row is at row 0 or row 3 (if multi-header template)
+  let headerIndex = 0;
+  for (let i = 0; i < Math.min(6, lines.length); i++) {
+    const parsed = parseLine(lines[i]).map((h) => h.toLowerCase());
+    if (parsed.some((h) => h.includes("code") || h.includes("subject") || h.includes("course") || h.includes("รหัส"))) {
+      headerIndex = i;
+      break;
+    }
+  }
+
+  const rawHeaders = parseLine(lines[headerIndex]);
+  const headers = rawHeaders.map((h) => h.toLowerCase());
   const findIdx = (...keys: string[]) => {
-    return headers.findIndex((h) => keys.some((k) => h.includes(k.toLowerCase())));
+    return headers.findIndex((h) => keys.some((k) => h === k.toLowerCase() || h.includes(k.toLowerCase())));
   };
 
-  const codeIdx = findIdx("course code", "รหัสหลักสูตร", "code");
-  const nameThIdx = findIdx("course name th", "ชื่อหลักสูตร (th)", "ชื่อหลักสูตร ภาษาไทย", "nameth");
-  const nameEnIdx = findIdx("course name en", "ชื่อหลักสูตร (en)", "ชื่อหลักสูตร ภาษาอังกฤษ", "nameen");
-  const groupIdx = findIdx("group", "กลุ่มหลักสูตร");
-  const typeIdx = findIdx("type", "ประเภทหลักสูตร");
+  const codeIdx = findIdx("course code", "code", "รหัสหลักสูตร", "รหัส");
+  const nameThIdx = findIdx("course name(th)", "course name (th)", "course name th", "ชื่อหลักสูตร (th)", "ชื่อหลักสูตร ภาษาไทย", "nameth");
+  const nameEnIdx = findIdx("course name(en)", "course name (en)", "course name en", "ชื่อหลักสูตร (en)", "ชื่อหลักสูตร ภาษาอังกฤษ", "nameen");
+  const courseNameIdx = findIdx("course name", "course", "ชื่อหลักสูตร", "ชื่อคอร์ส");
+  
+  // For group: ensure it does not match target group
+  let groupIdx = findIdx("course group", "กลุ่มหลักสูตร", "หมวดหมู่", "subject");
+  if (groupIdx < 0) {
+    groupIdx = headers.findIndex((h) => h === "group" || (h.includes("group") && !h.includes("target")));
+  }
+
+  const typeIdx = findIdx("course type", "type", "ประเภทหลักสูตร", "ประเภท");
+  const lifeIdx = findIdx("life cycle", "life cycle (month)", "life", "อายุการอบรม");
+  const bgIdx = findIdx("background", "ที่มา", "ที่มา (background)");
   const objIdx = findIdx("objective", "วัตถุประสงค์");
-  const contentIdx = findIdx("content", "เนื้อหา");
-  const targetIdx = findIdx("target", "กลุ่มเป้าหมาย");
+  const contentIdx = findIdx("learning content", "content", "เนื้อหา", "เนื้อหาหลักสูตร");
+  const targetGroupIdx = findIdx("target group", "target", "กลุ่มเป้าหมาย");
   const methodIdx = findIdx("methodology", "วิธีการ");
-  const lifeIdx = findIdx("life", "อายุการอบรม");
-  const preIdx = findIdx("pre test", "pretest");
-  const postIdx = findIdx("post test", "posttest");
-  const fnCodeIdx = findIdx("function code", "รหัสหน่วยงาน");
-  const fnNameIdx = findIdx("function name", "ชื่อหน่วยงาน");
-  const posIdx = findIdx("positions", "ตำแหน่ง");
-  const lvlIdx = findIdx("levels", "ระดับ");
+  const locationIdx = findIdx("location", "สถานที่");
+  const posIdx = findIdx("positions", "position", "ตำแหน่ง");
+  const lvlIdx = findIdx("levels", "level", "ระดับ");
+
+  // Identify Level Columns (O1..O5, S1..S4, M1..M3)
+  const levelColMap: Array<{ colIdx: number; levelName: string }> = [];
+  const levelNames = ["O1", "O2", "O3", "O4", "O5", "S1", "S2", "S3", "S4", "M1", "M2", "M3"];
+  
+  levelNames.forEach((lvl) => {
+    const idx = headers.findIndex((h) => h === lvl.toLowerCase() || h === `[lvl] ${lvl.toLowerCase()}`);
+    if (idx >= 0) {
+      levelColMap.push({ colIdx: idx, levelName: lvl });
+    }
+  });
+
+  const isSelectedVal = (val: string | undefined): boolean => {
+    if (!val) return false;
+    const clean = val.trim().toLowerCase();
+    return clean === "1" || clean === "x" || clean === "y" || clean === "yes" || clean === "✓" || clean === "true";
+  };
 
   const rows: CourseMasterImportRow[] = [];
-  for (let i = 1; i < lines.length; i++) {
+  for (let i = headerIndex + 1; i < lines.length; i++) {
     const cells = parseLine(lines[i]);
     if (!cells.some(Boolean)) continue;
 
+    const courseCode = codeIdx >= 0 ? cells[codeIdx] || "" : "";
+    const courseNameTh = nameThIdx >= 0 && cells[nameThIdx] ? cells[nameThIdx] : (courseNameIdx >= 0 ? cells[courseNameIdx] || "" : cells[1] || "");
+    const courseNameEn = nameEnIdx >= 0 && cells[nameEnIdx] ? cells[nameEnIdx] : courseNameTh;
+    const subjectGroup = groupIdx >= 0 ? cells[groupIdx] || "General" : "General";
+    const courseType = typeIdx >= 0 && cells[typeIdx] ? cells[typeIdx] : "ATA-TC";
+    const lifeCycle = lifeIdx >= 0 && cells[lifeIdx] ? cells[lifeIdx] : "0";
+    const objective = objIdx >= 0 ? cells[objIdx] || "-" : "-";
+    const content = contentIdx >= 0 ? cells[contentIdx] || "-" : "-";
+    const targetGroup = targetGroupIdx >= 0 ? cells[targetGroupIdx] || "-" : "-";
+    const methodology = methodIdx >= 0 && cells[methodIdx] ? cells[methodIdx] : "Lecture / Workshop";
+    const positions = posIdx >= 0 ? cells[posIdx] || "" : "";
+
+    if (!courseNameTh && !courseCode) continue;
+
+    // Collect active levels from 1s in level columns or text level column
+    const matchedLevels: string[] = [];
+    levelColMap.forEach(({ colIdx, levelName }) => {
+      if (isSelectedVal(cells[colIdx])) {
+        matchedLevels.push(levelName);
+      }
+    });
+
+    if (matchedLevels.length === 0 && lvlIdx >= 0 && cells[lvlIdx]) {
+      matchedLevels.push(cells[lvlIdx]);
+    }
+
     rows.push({
       rowNum: i + 1,
-      courseCode: codeIdx >= 0 ? cells[codeIdx] || "" : "",
-      courseNameTh: nameThIdx >= 0 ? cells[nameThIdx] || "" : cells[0] || "",
-      courseNameEn: nameEnIdx >= 0 ? cells[nameEnIdx] || "" : "",
-      courseGroup: groupIdx >= 0 ? cells[groupIdx] || "" : "General",
-      courseType: typeIdx >= 0 ? cells[typeIdx] || "" : "IN-HOUSE",
-      objective: objIdx >= 0 ? cells[objIdx] || "" : "-",
-      learningContent: contentIdx >= 0 ? cells[contentIdx] || "" : "-",
-      targetGroup: targetIdx >= 0 ? cells[targetIdx] || "" : "-",
-      methodology: methodIdx >= 0 ? cells[methodIdx] || "" : "Lecture / Workshop",
-      lifeCycleMonth: lifeIdx >= 0 ? cells[lifeIdx] || "0" : "0",
-      preTest: preIdx >= 0 ? cells[preIdx] || "" : "-",
-      postTest: postIdx >= 0 ? cells[postIdx] || "" : "-",
-      functionCode: fnCodeIdx >= 0 ? cells[fnCodeIdx] || "" : "",
-      functionName: fnNameIdx >= 0 ? cells[fnNameIdx] || "" : "",
-      positions: posIdx >= 0 ? cells[posIdx] || "" : "",
-      levels: lvlIdx >= 0 ? cells[lvlIdx] || "" : "",
+      courseCode,
+      courseNameTh,
+      courseNameEn,
+      courseGroup: subjectGroup || "General",
+      courseType,
+      objective,
+      learningContent: content,
+      targetGroup,
+      methodology,
+      lifeCycleMonth: lifeCycle,
+      preTest: "-",
+      postTest: "-",
+      functionCode: "",
+      functionName: "",
+      positions,
+      levels: matchedLevels.join(", "),
     });
   }
 

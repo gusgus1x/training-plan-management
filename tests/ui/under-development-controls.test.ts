@@ -32,7 +32,6 @@ const loginPage = read("components/LoginPage.tsx");
 describe("controls whose backend does not exist stay disabled", () => {
   it.each([
     ["LINE OA notification", acceptSurvey, "handleSendLineNotification"],
-    ["Course Master Excel import", courseMaster, "handleCommitExcelImport"],
     ["save imported courses", trainingRecord, "handleSaveImportedCourses"],
     ["evaluation form download", trainingRecord, "handleDownload"],
     ["prepare email", scheduleCalendar, "handlePrepareEmail"],
@@ -42,7 +41,7 @@ describe("controls whose backend does not exist stay disabled", () => {
   });
 
   it("says the same thing on every one of them", () => {
-    for (const source of [acceptSurvey, courseMaster, trainingRecord, scheduleCalendar, loginPage]) {
+    for (const source of [acceptSurvey, trainingRecord, scheduleCalendar, loginPage]) {
       expect(source).toContain("UNDER_DEVELOPMENT");
     }
   });

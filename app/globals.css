@@ -275,37 +275,72 @@
 }
 
 /* Table Styling Overrides in Dark Mode */
-[data-theme="dark"] table {
+[data-theme="dark"] table:not(.importPreviewTable) {
   background-color: var(--ui-60-surface) !important;
   color: var(--ui-30-text) !important;
   border-color: var(--ui-30-border) !important;
 }
 
-[data-theme="dark"] th {
+[data-theme="dark"] th:not(.importPreviewTable th) {
   background-color: var(--ui-60-surface-soft) !important;
   color: var(--ui-30-ink) !important;
   border-color: var(--ui-30-border) !important;
 }
 
-[data-theme="dark"] td {
+[data-theme="dark"] td:not(.importPreviewTable td) {
   border-color: var(--ui-30-border) !important;
   color: var(--ui-30-text) !important;
 }
 
-[data-theme="dark"] td strong {
+[data-theme="dark"] td strong:not(.importPreviewTable td strong) {
   color: var(--ui-30-ink) !important;
 }
 
-[data-theme="dark"] td span {
+[data-theme="dark"] td span:not(.importPreviewTable td span) {
   color: var(--ui-30-muted) !important;
 }
 
-[data-theme="dark"] tr:nth-child(even) td {
+[data-theme="dark"] tr:nth-child(even) td:not(.importPreviewTable td) {
   background-color: rgba(255, 255, 255, 0.02) !important;
 }
 
-[data-theme="dark"] tr:hover td {
+[data-theme="dark"] tr:hover td:not(.importPreviewTable td) {
   background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Import Preview Table explicit styling (Always solid high-contrast black) */
+.importPreviewTable {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.importPreviewTable th {
+  background-color: #0f172a !important;
+  color: #ffffff !important;
+  border-bottom: 2px solid #000000 !important;
+  border-right: 1px solid #334155 !important;
+  font-weight: 700 !important;
+}
+
+.importPreviewTable td {
+  color: #000000 !important;
+  border-color: #cbd5e1 !important;
+  background-color: #ffffff !important;
+}
+
+.importPreviewTable tr:nth-child(even) td {
+  background-color: #f8fafc !important;
+}
+
+.importPreviewTable tr:hover td {
+  background-color: #f1f5f9 !important;
+}
+
+.importPreviewTable td span,
+.importPreviewTable td strong,
+.importPreviewTable td div,
+.importPreviewTable td b {
+  color: #000000 !important;
 }
 
 /* Secondary & Action Buttons in Dark Mode */

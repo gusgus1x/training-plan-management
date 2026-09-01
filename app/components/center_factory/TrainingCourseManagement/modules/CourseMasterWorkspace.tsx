@@ -653,112 +653,183 @@ function CourseMaster() {
   const importFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleDownloadExcelTemplate = () => {
-    downloadCsvTemplate();
+    const link = document.createElement("a");
+    link.href = "/api/course-master/download-template";
+    link.setAttribute("download", "Course_Master_Template.xlsx");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  const handleExcelFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExcelFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setImportFileName(file.name);
+    setImportNotice(null);
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const text = String(evt.target?.result || "");
-        const mapped = parseCsvText(text);
-        setImportRows(mapped);
-        setImportNotice(null);
-      } catch (err) {
-        console.error("Excel/CSV parse error:", err);
-        setImportNotice("❌ ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบรูปแบบไฟล์ CSV / Excel");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/course-master/parse-template", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.rows)) {
+          setImportRows(data.rows);
+          return;
+        }
       }
-    };
-    reader.readAsText(file);
+
+      // Fallback to client-side CSV parser
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        try {
+          const text = String(evt.target?.result || "");
+          const mapped = parseCsvText(text);
+          setImportRows(mapped);
+        } catch (err) {
+          console.error("CSV fallback parse error:", err);
+          setImportNotice("❌ ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบรูปแบบไฟล์ CSV / Excel");
+        }
+      };
+      reader.readAsText(file);
+    } catch (err) {
+      console.error("Excel/CSV parse error:", err);
+      setImportNotice("❌ ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบรูปแบบไฟล์ CSV / Excel");
+    }
   };
 
   // NOT REAL. This only pushes rows into React state and then toasts that the import succeeded, so
-  // everything vanishes on reload. The manual form in this same file persists through
-  // createCourse/updateCourse; the import path was never wired to them. Button disabled until it is.
-  const handleCommitExcelImport = () => {
-    if (importRows.length === 0) return;
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleCommitExcelImport = async () => {
+    if (importRows.length === 0 || isImporting) return;
+    setIsImporting(true);
 
     let importedCount = 0;
-    const newCourses: CourseRecord[] = [...courses];
-    const newStandards: CourseStandardRecord[] = [...standards];
+    let failedCount = 0;
+    const standardYear = new Date().getFullYear();
 
-    importRows.forEach((item) => {
-      if (!item.courseNameTh) return;
+    const isFactory = user?.roleCode === "HRD_FACTORY";
+    const defaultTypeName = isFactory ? "IN-HOUSE" : "ATA-TC";
+    const defaultType =
+      courseTypeOptions.find(
+        (t) =>
+          t.name.toUpperCase().includes(defaultTypeName) ||
+          t.typeId.toUpperCase().includes(defaultTypeName),
+      ) ||
+      (isFactory
+        ? courseTypeOptions.find((t) => !t.name.includes("ATA-TC"))
+        : courseTypeOptions.find((t) => t.name.includes("ATA-TC"))) ||
+      courseTypeOptions[0];
+    const defaultCourseTypeId = defaultType?.typeId || "";
 
-      const resolvedGroup = item.courseGroup || "General";
-      const resolvedCode =
-        item.courseCode ||
-        `CRS-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    for (const item of importRows) {
+      if (!item.courseNameTh && !item.courseCode) continue;
 
-      const courseId = `course-${resolvedCode.toLowerCase()}-${Math.random().toString(36).substring(2, 9)}`;
+      const courseNameTh = (item.courseNameTh || item.courseCode).trim();
+      const courseNameEn = (item.courseNameEn || courseNameTh).trim();
 
-      const courseRec: CourseRecord = {
-        id: courseId,
-        courseCode: resolvedCode,
-        courseNameTh: item.courseNameTh,
-        courseNameEn: item.courseNameEn || item.courseNameTh,
-        courseGroup: resolvedGroup,
-        courseType: item.courseType || "IN-HOUSE",
+      const matchedGroup =
+        courseGroupOptions.find(
+          (g) =>
+            g.name.toLowerCase() === (item.courseGroup || "").toLowerCase() ||
+            g.code.toLowerCase() === (item.courseGroup || "").toLowerCase(),
+        ) || courseGroupOptions[0];
+      const courseGroupId = matchedGroup?.groupId || "";
+
+      const resolvedCourseTypeName = item.courseType
+        ? item.courseType
+        : isFactory
+          ? "IN-HOUSE"
+          : "ATA-TC";
+
+      const matchedType =
+        courseTypeOptions.find(
+          (t) =>
+            t.name.toLowerCase() === resolvedCourseTypeName.toLowerCase() ||
+            t.typeId.toLowerCase() === resolvedCourseTypeName.toLowerCase(),
+        ) || defaultType;
+      const courseTypeId = matchedType?.typeId || defaultCourseTypeId;
+
+      const targetLevels = item.levels
+        ? item.levels
+            .split(",")
+            .map((l: string) => normalizeEmployeeLevel(l.trim()))
+            .filter(Boolean)
+        : [];
+
+      const resolvedCompanies =
+        selectedCompanies.length > 0
+          ? selectedCompanies
+          : companyRows.length > 0
+            ? companyRows.map((c) => c.code)
+            : ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"];
+
+      const input = {
+        courseNameTh,
+        courseNameEn,
+        remark: null,
         objective: item.objective || "-",
         learningContent: item.learningContent || "-",
         targetGroup: item.targetGroup || "-",
         methodology: item.methodology || "Lecture / Workshop",
-        preTestId: "",
-        preTest: item.preTest?.toLowerCase() === "yes" ? "Pre Test" : "-",
-        postTestId: "",
-        postTest: item.postTest?.toLowerCase() === "yes" ? "Post Test" : "-",
-        evaluationId: "",
-        evaluation: "After Training Evaluation",
-        evaluationAfter30DayId: "",
-        evaluationAfter30Day: "30-Day Evaluation",
-        lifeCycleMonth: item.lifeCycleMonth !== undefined && item.lifeCycleMonth !== null && item.lifeCycleMonth !== "" ? item.lifeCycleMonth : "0",
-        status: "Active",
-        remark: "",
-        updatedAt: new Date().toISOString().slice(0, 10),
-        owner: user?.roleCode === "HRD_CENTER" ? "CENTER" : "FACTORY",
-        ownerCompany: user?.roleCode === "HRD_CENTER" ? "HRD Center" : (profileValue(user?.companyCode) || "Factory"),
-        createdBy: profileValue(user?.displayName ?? user?.username),
+        durationHours: 1,
+        validityMonths: item.lifeCycleMonth && Number(item.lifeCycleMonth) > 0 ? Number(item.lifeCycleMonth) : null,
+        preAssessmentId: null,
+        postAssessmentId: null,
+        evaluationFormId: null,
+        evaluationFormAfter30DayId: null,
+        preTestLink: null,
+        postTestLink: null,
+        evaluationLink: null,
+        evaluationAfter30DayLink: null,
+        status: "Active" as const,
+        courseTypeId,
+        courseGroupId,
+        standardCode: `STD-${standardYear}-G${courseGroupId}`,
+        standardName: courseNameTh,
+        functionId: null,
+        divisionId: null,
+        departmentId: null,
+        sectionId: null,
+        targetOrgScopes: [],
+        targetCompanies: resolvedCompanies,
+        targetPositions: [],
+        targetLevels,
+        standardYear,
+        prerequisiteCourseIds: [],
       };
 
-      const posArray = item.positions
-        ? item.positions.split(",").map((p: string) => p.trim()).filter(Boolean)
-        : [];
-      const lvlArray = item.levels
-        ? item.levels.split(",").map((l: string) => normalizeEmployeeLevel(l.trim())).filter(Boolean)
-        : [];
+      try {
+        await createCourse(input);
+        importedCount += 1;
+      } catch (err) {
+        console.error(`Failed to import course: ${courseNameTh}`, err);
+        failedCount += 1;
+      }
+    }
 
-      const standardRec: CourseStandardRecord = {
-        id: `standard-${courseId}`,
-        courseId: courseId,
-        courseCode: resolvedCode,
-        courseName: getCourseDisplayName(courseRec),
-        companies: [],
-        functionCode: item.functionCode || "",
-        functionName: item.functionName || allFunctionOption,
-        section: "",
-        department: "",
-        division: "",
-        positions: posArray,
-        levels: lvlArray,
-        owner: courseRec.owner,
-        ownerCompany: courseRec.ownerCompany || "HRD Center",
-      };
-
-      newCourses.unshift(courseRec);
-      newStandards.unshift(standardRec);
-      importedCount += 1;
-    });
-
-    setCourses(newCourses);
-    setStandards(newStandards);
+    await handleRefresh();
+    setIsImporting(false);
     setIsImportModalOpen(false);
     setImportRows([]);
     setImportFileName("");
-    toast.success(`นำเข้าข้อมูล Course Master สำเร็จ ${importedCount} รายการ / Imported ${importedCount} course(s)`);
+
+    if (importedCount > 0) {
+      toast.success(
+        `นำเข้าและบันทึกข้อมูล Course Master สำเร็จ ${importedCount} รายการ / Imported ${importedCount} course(s)` +
+          (failedCount > 0 ? ` (ข้าม ${failedCount} รายการที่ซ้ำหรือไม่ถูกต้อง)` : ""),
+      );
+    } else if (failedCount > 0) {
+      toast.error(
+        `ไม่สามารถนำเข้าข้อมูลได้ กรุณาตรวจสอบชื่อหลักสูตรซ้ำหรือข้อมูลในไฟล์ / Failed to import courses`,
+      );
+    }
   };
 
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -3008,7 +3079,7 @@ function CourseMaster() {
             style={{
               background: "#ffffff",
               borderRadius: "16px",
-              width: "min(860px, 95vw)",
+              width: "min(1240px, 96vw)",
               maxHeight: "90vh",
               display: "flex",
               flexDirection: "column",
@@ -3125,29 +3196,87 @@ function CourseMaster() {
                       ตัวอย่างข้อมูลที่พบ ({importRows.length} รายการ):
                     </h4>
                   </div>
-                  <div style={{ overflowX: "auto", border: "1px solid #e2e8f0", borderRadius: "8px", maxHeight: "280px" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
-                      <thead>
-                        <tr style={{ background: "#f1f5f9", textAlign: "left" }}>
-                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>#</th>
-                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Course Code</th>
-                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Course Name (TH)</th>
-                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Group</th>
-                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Type</th>
-                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Positions</th>
-                          <th style={{ padding: "8px 12px", borderBottom: "1px solid #cbd5e1" }}>Levels</th>
+                  <div
+                    className="importPreviewTable"
+                    style={{
+                      overflowX: "auto",
+                      overflowY: "auto",
+                      border: "1px solid #94a3b8",
+                      borderRadius: "8px",
+                      maxHeight: "420px",
+                      background: "#ffffff",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                    }}
+                  >
+                    <table className="importPreviewTable" style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem", whiteSpace: "nowrap" }}>
+                      <thead style={{ position: "sticky", top: 0, zIndex: 10 }}>
+                        <tr style={{ background: "#0f172a", color: "#ffffff", textAlign: "left" }}>
+                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>#</th>
+                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>Course Code</th>
+                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700, minWidth: "220px" }}>Course Name (TH)</th>
+                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700, minWidth: "220px" }}>Course Name (EN)</th>
+                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>Course Group</th>
+                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>Course Type</th>
+                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>Target Levels (N-Y)</th>
+                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>Target Group</th>
+                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700, minWidth: "250px" }}>Learning Content</th>
+                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700, minWidth: "250px" }}>Objective</th>
+                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>Methodology</th>
+                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", color: "#ffffff", fontWeight: 700 }}>Life Cycle</th>
                         </tr>
                       </thead>
                       <tbody>
                         {importRows.map((row, i) => (
-                          <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                            <td style={{ padding: "8px 12px" }}>{row.rowNum}</td>
-                            <td style={{ padding: "8px 12px", fontWeight: 700, color: "#2563eb" }}>{row.courseCode || "(Auto)"}</td>
-                            <td style={{ padding: "8px 12px" }}>{row.courseNameTh}</td>
-                            <td style={{ padding: "8px 12px" }}>{row.courseGroup || "General"}</td>
-                            <td style={{ padding: "8px 12px" }}>{row.courseType || "IN-HOUSE"}</td>
-                            <td style={{ padding: "8px 12px" }}>{row.positions || "-"}</td>
-                            <td style={{ padding: "8px 12px" }}>{row.levels || "-"}</td>
+                          <tr
+                            key={i}
+                            style={{
+                              background: i % 2 === 0 ? "#ffffff" : "#f8fafc",
+                              borderBottom: "1px solid #cbd5e1",
+                            }}
+                          >
+                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 700 }}>{row.rowNum}</td>
+                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", fontWeight: 800, color: "#000000" }}>{row.courseCode || "(Auto)"}</td>
+                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 700 }}>{row.courseNameTh}</td>
+                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 600 }}>{row.courseNameEn || "-"}</td>
+                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0" }}>
+                              <span style={{ background: "#dbeafe", color: "#000000", border: "1px solid #93c5fd", padding: "4px 9px", borderRadius: "6px", fontSize: "0.8rem", fontWeight: 700 }}>
+                                {row.courseGroup || "General"}
+                              </span>
+                            </td>
+                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0" }}>
+                              <span style={{ background: "#fef3c7", color: "#000000", border: "1px solid #fde68a", padding: "4px 9px", borderRadius: "6px", fontSize: "0.8rem", fontWeight: 700 }}>
+                                {row.courseType || (isFactoryUser ? "IN-HOUSE" : "ATA-TC")}
+                              </span>
+                            </td>
+                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0" }}>
+                              {row.levels ? (
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                                  {row.levels.split(",").map((lvl, lIdx) => (
+                                    <span
+                                      key={lIdx}
+                                      style={{
+                                        background: "#dcfce7",
+                                        color: "#000000",
+                                        fontWeight: 800,
+                                        fontSize: "0.78rem",
+                                        padding: "3px 7px",
+                                        borderRadius: "5px",
+                                        border: "1px solid #86efac",
+                                      }}
+                                    >
+                                      {lvl.trim()}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span style={{ color: "#000000", fontWeight: 600 }}>-</span>
+                              )}
+                            </td>
+                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 600 }}>{row.targetGroup || "-"}</td>
+                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 500, minWidth: "260px", maxWidth: "360px", whiteSpace: "pre-line", wordBreak: "break-word", lineHeight: 1.5 }}>{row.learningContent || "-"}</td>
+                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 500, minWidth: "260px", maxWidth: "360px", whiteSpace: "pre-line", wordBreak: "break-word", lineHeight: 1.5 }}>{row.objective || "-"}</td>
+                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 600 }}>{row.methodology || "Lecture / Workshop"}</td>
+                            <td style={{ padding: "10px 14px", color: "#000000", fontWeight: 600 }}>{row.lifeCycleMonth || "0"}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -3188,23 +3317,25 @@ function CourseMaster() {
               </button>
               <button
                 type="button"
-                disabled
-                title={`${UNDER_DEVELOPMENT.th} / ${UNDER_DEVELOPMENT.en}`}
+                disabled={importRows.length === 0 || isImporting}
                 style={{
-                  background: "#94a3b8",
+                  background: importRows.length === 0 || isImporting ? "#94a3b8" : "var(--ui-30-primary, #007a3d)",
                   color: "#ffffff",
                   border: "none",
                   padding: "8px 22px",
                   borderRadius: "8px",
                   fontWeight: 700,
-                  cursor: "not-allowed",
+                  cursor: importRows.length === 0 || isImporting ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
                 }}
+                onClick={() => void handleCommitExcelImport()}
               >
-                ยืนยันการนำเข้าข้อมูล ({importRows.length} รายการ)
+                {isImporting
+                  ? "กำลังนำเข้าข้อมูล... (Importing...)"
+                  : `ยืนยันการนำเข้าข้อมูล (${importRows.length} รายการ)`}
               </button>
-              <p style={{ margin: "8px 0 0", fontSize: "12px", color: "#64748b" }}>
-                {UNDER_DEVELOPMENT.th} / {UNDER_DEVELOPMENT.en}
-              </p>
             </div>
           </div>
         </div>
