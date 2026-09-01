@@ -709,10 +709,27 @@ function CourseMaster() {
 
   // NOT REAL. This only pushes rows into React state and then toasts that the import succeeded, so
   const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number; currentCourse: string }>({
+    current: 0,
+    total: 0,
+    currentCourse: "",
+  });
 
   const handleCommitExcelImport = async () => {
     if (importRows.length === 0 || isImporting) return;
+
+    const validRows = importRows.filter((item) => {
+      const rawName = (item.courseNameTh || "").trim();
+      return Boolean(rawName && rawName !== "-" && rawName !== "(Auto)" && !rawName.toLowerCase().includes("course name"));
+    });
+
+    if (validRows.length === 0) {
+      toast.error("ไม่พบข้อมูลหลักสูตรที่ถูกต้องสำหรับนำเข้า / No valid course rows found");
+      return;
+    }
+
     setIsImporting(true);
+    setImportProgress({ current: 0, total: validRows.length, currentCourse: "กำลังเตรียมข้อมูล..." });
 
     let importedCount = 0;
     let failedCount = 0;
@@ -732,12 +749,16 @@ function CourseMaster() {
       courseTypeOptions[0];
     const defaultCourseTypeId = defaultType?.typeId || "";
 
-    for (const item of importRows) {
-      const rawName = (item.courseNameTh || "").trim();
-      if (!rawName || rawName === "-" || rawName === "(Auto)" || rawName.toLowerCase().includes("course name")) continue;
-
-      const courseNameTh = rawName;
+    for (let index = 0; index < validRows.length; index++) {
+      const item = validRows[index];
+      const courseNameTh = (item.courseNameTh || "").trim();
       const courseNameEn = (item.courseNameEn && item.courseNameEn !== "-" ? item.courseNameEn : courseNameTh).trim();
+
+      setImportProgress({
+        current: index + 1,
+        total: validRows.length,
+        currentCourse: courseNameTh,
+      });
 
       const matchedGroup =
         courseGroupOptions.find(
@@ -821,6 +842,7 @@ function CourseMaster() {
 
     await handleRefresh();
     setIsImporting(false);
+    setImportProgress({ current: 0, total: 0, currentCourse: "" });
     setIsImportModalOpen(false);
     setImportRows([]);
     setImportFileName("");
@@ -3121,17 +3143,20 @@ function CourseMaster() {
               </div>
               <button
                 type="button"
+                disabled={isImporting}
                 style={{
                   background: "transparent",
                   border: "none",
                   fontSize: "1.2rem",
-                  cursor: "pointer",
-                  color: "#64748b",
+                  cursor: isImporting ? "not-allowed" : "pointer",
+                  color: isImporting ? "#cbd5e1" : "#64748b",
                 }}
                 onClick={() => {
-                  setIsImportModalOpen(false);
-                  setImportRows([]);
-                  setImportFileName("");
+                  if (!isImporting) {
+                    setIsImportModalOpen(false);
+                    setImportRows([]);
+                    setImportFileName("");
+                  }
                 }}
               >
                 ✕
@@ -3139,63 +3164,101 @@ function CourseMaster() {
             </div>
 
             <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>
-              <div
-                style={{
-                  border: "2px dashed #cbd5e1",
-                  borderRadius: "12px",
-                  padding: "24px",
-                  textAlign: "center",
-                  background: "#f8fafc",
-                  marginBottom: "20px",
-                }}
-              >
-                <input
-                  ref={importFileInputRef}
-                  type="file"
-                  accept=".xlsx, .xls, .csv"
-                  style={{ display: "none" }}
-                  onChange={handleExcelFileChange}
-                />
-                <div style={{ fontSize: "2rem", marginBottom: "8px" }}>📊</div>
-                <h4 style={{ margin: "0 0 6px", color: "#1e293b", fontSize: "1rem" }}>
-                  {importFileName ? `ไฟล์ที่เลือก: ${importFileName}` : "ลากไฟล์มาวางที่นี่ หรือคลิกปุ่มเพื่อเลือกไฟล์ Excel"}
-                </h4>
-                <p style={{ margin: "0 0 16px", color: "#64748b", fontSize: "0.82rem" }}>
-                  รองรับไฟล์รูปแบบ .xlsx, .xls และ .csv
-                </p>
-                <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
-                  <button
-                    type="button"
-                    style={{
-                      background: "#3b82f6",
-                      color: "#ffffff",
-                      border: "none",
-                      padding: "8px 18px",
-                      borderRadius: "8px",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
-                    onClick={() => importFileInputRef.current?.click()}
-                  >
-                    📁 Select Excel File
-                  </button>
-                  <button
-                    type="button"
-                    style={{
-                      background: "#f1f5f9",
-                      color: "#334155",
-                      border: "1px solid #cbd5e1",
-                      padding: "8px 18px",
-                      borderRadius: "8px",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
-                    onClick={handleDownloadExcelTemplate}
-                  >
-                    📄 Download Template
-                  </button>
+              {isImporting ? (
+                <div
+                  style={{
+                    padding: "32px 24px",
+                    textAlign: "center",
+                    background: "linear-gradient(135deg, rgba(37, 99, 235, 0.05), rgba(16, 185, 129, 0.05))",
+                    borderRadius: "12px",
+                    border: "1px solid rgba(59, 130, 246, 0.2)",
+                    marginBottom: "20px",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "14px",
+                  }}
+                >
+                  <TypewriterLoader label={`กำลังนำเข้าและบันทึกข้อมูล Course Master... (${importProgress.current}/${importProgress.total})`} />
+                  <div style={{ width: "100%", maxWidth: "480px", background: "#e2e8f0", borderRadius: "999px", height: "12px", overflow: "hidden" }}>
+                    <div
+                      style={{
+                        height: "100%",
+                        background: "linear-gradient(90deg, #2563eb, #10b981)",
+                        width: `${importProgress.total > 0 ? Math.round((importProgress.current / importProgress.total) * 100) : 0}%`,
+                        transition: "width 0.25s ease-out",
+                        borderRadius: "999px",
+                      }}
+                    />
+                  </div>
+                  <div style={{ fontSize: "0.9rem", color: "#334155", fontWeight: 700 }}>
+                    {importProgress.total > 0
+                      ? `${Math.round((importProgress.current / importProgress.total) * 100)}% · กำลังบันทึก: ${importProgress.currentCourse}`
+                      : "กำลังประมวลผลข้อมูล..."}
+                  </div>
+                  <p style={{ margin: 0, fontSize: "0.8rem", color: "#64748b" }}>
+                    กรุณารอสักครู่ ระบบกำลังสร้างรายชื่อหลักสูตรและกำหนดมาตรฐานกลุ่มเป้าหมายลงฐานข้อมูล
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <div
+                  style={{
+                    border: "2px dashed #cbd5e1",
+                    borderRadius: "12px",
+                    padding: "24px",
+                    textAlign: "center",
+                    background: "#f8fafc",
+                    marginBottom: "20px",
+                  }}
+                >
+                  <input
+                    ref={importFileInputRef}
+                    type="file"
+                    accept=".xlsx, .xls, .csv"
+                    style={{ display: "none" }}
+                    onChange={handleExcelFileChange}
+                  />
+                  <div style={{ fontSize: "2rem", marginBottom: "8px" }}>📊</div>
+                  <h4 style={{ margin: "0 0 6px", color: "#1e293b", fontSize: "1rem" }}>
+                    {importFileName ? `ไฟล์ที่เลือก: ${importFileName}` : "ลากไฟล์มาวางที่นี่ หรือคลิกปุ่มเพื่อเลือกไฟล์ Excel"}
+                  </h4>
+                  <p style={{ margin: "0 0 16px", color: "#64748b", fontSize: "0.82rem" }}>
+                    รองรับไฟล์รูปแบบ .xlsx, .xls และ .csv
+                  </p>
+                  <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                    <button
+                      type="button"
+                      style={{
+                        background: "#3b82f6",
+                        color: "#ffffff",
+                        border: "none",
+                        padding: "8px 18px",
+                        borderRadius: "8px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                      onClick={() => importFileInputRef.current?.click()}
+                    >
+                      📁 Select Excel File
+                    </button>
+                    <button
+                      type="button"
+                      style={{
+                        background: "#f1f5f9",
+                        color: "#334155",
+                        border: "1px solid #cbd5e1",
+                        padding: "8px 18px",
+                        borderRadius: "8px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                      onClick={handleDownloadExcelTemplate}
+                    >
+                      📄 Download Template
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {importNotice ? (
                 <div style={{ color: "#ef4444", fontWeight: 700, marginBottom: "16px", fontSize: "0.88rem" }}>
@@ -3312,19 +3375,22 @@ function CourseMaster() {
             >
               <button
                 type="button"
+                disabled={isImporting}
                 style={{
-                  background: "#f1f5f9",
-                  color: "#475569",
+                  background: isImporting ? "#e2e8f0" : "#f1f5f9",
+                  color: isImporting ? "#94a3b8" : "#475569",
                   border: "1px solid #cbd5e1",
                   padding: "8px 18px",
                   borderRadius: "8px",
                   fontWeight: 700,
-                  cursor: "pointer",
+                  cursor: isImporting ? "not-allowed" : "pointer",
                 }}
                 onClick={() => {
-                  setIsImportModalOpen(false);
-                  setImportRows([]);
-                  setImportFileName("");
+                  if (!isImporting) {
+                    setIsImportModalOpen(false);
+                    setImportRows([]);
+                    setImportFileName("");
+                  }
                 }}
               >
                 ยกเลิก (Cancel)

@@ -350,10 +350,40 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         .filter((enrollment) => enrollment.result?.completionStatus === "COMPLETED")
         .map((enrollment) => enrollment.plan.courseCode.trim().toLowerCase()),
     );
-    const missingPrerequisitesFor = (masterCourse: WorkflowCourse | undefined) =>
-      (masterCourse?.prerequisites ?? []).filter(
-        (p) => !completedCourseCodes.has(p.courseCode.trim().toLowerCase()),
-      );
+    const missingPrerequisitesFor = (masterCourse: WorkflowCourse | undefined, ownerComp?: string, isCenterCourse?: boolean) =>
+      (masterCourse?.prerequisites ?? [])
+        .map((p) => {
+          const matchingPlan = rollingPlans.find(
+            (rp) =>
+              (rp.course.id && p.id && String(rp.course.id) === String(p.id)) ||
+              (rp.course.code && p.courseCode && rp.course.code.trim().toLowerCase() === p.courseCode.trim().toLowerCase()) ||
+              (ownerComp && rp.course.code && rp.course.code.trim().toLowerCase() === `${ownerComp.toLowerCase()}-${p.courseCode.trim().toLowerCase()}`) ||
+              (rp.course.name && p.courseName && rp.course.name.trim().toLowerCase() === p.courseName.trim().toLowerCase()),
+          );
+          const matchingCourse = courses.find(
+            (c) =>
+              (ownerComp && c.courseCode && c.courseCode.trim().toLowerCase() === `${ownerComp.toLowerCase()}-${p.courseCode.trim().toLowerCase()}`) ||
+              (c.courseNameTh && p.courseName && c.courseNameTh.trim().toLowerCase() === p.courseName.trim().toLowerCase()),
+          );
+
+          let displayCode = matchingPlan?.course?.code || matchingCourse?.courseCode || p.courseCode;
+          if (!isCenterCourse && ownerComp && ownerComp !== "CENTER" && !displayCode.toLowerCase().startsWith(`${ownerComp.toLowerCase()}-`)) {
+            displayCode = `${ownerComp}-${displayCode}`;
+          }
+
+          const isCompleted =
+            completedCourseCodes.has(p.courseCode.trim().toLowerCase()) ||
+            completedCourseCodes.has(displayCode.trim().toLowerCase()) ||
+            (matchingPlan?.course?.code && completedCourseCodes.has(matchingPlan.course.code.trim().toLowerCase())) ||
+            (matchingCourse?.courseCode && completedCourseCodes.has(matchingCourse.courseCode.trim().toLowerCase()));
+
+          return {
+            courseCode: displayCode,
+            courseName: p.courseName,
+            isCompleted,
+          };
+        })
+        .filter((p) => !p.isCompleted);
 
     // 1. Load from Rolling Plans (Most active scheduled plans)
     for (const rp of rollingPlans) {
@@ -429,7 +459,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         preTestLink: rp.course.preTestLink || masterCourse?.preTestLink,
         postTestLink: rp.course.postTestLink || masterCourse?.postTestLink,
         evaluationLink: rp.course.evaluationLink || masterCourse?.evaluationLink,
-        missingPrerequisites: missingPrerequisitesFor(masterCourse),
+        missingPrerequisites: missingPrerequisitesFor(masterCourse, ownerComp, isCenter),
       });
     }
 
@@ -475,7 +505,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         preTestLink: masterCourse?.preTestLink,
         postTestLink: masterCourse?.postTestLink,
         evaluationLink: masterCourse?.evaluationLink,
-        missingPrerequisites: missingPrerequisitesFor(masterCourse),
+        missingPrerequisites: missingPrerequisitesFor(masterCourse, ownerComp, isCenter),
       });
     }
 
@@ -917,10 +947,9 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                     </button>
                   ) : item.isEnded ? (
                     <button
-                      className={styles.detailBtn}
+                      className={styles.endedBtn}
                       type="button"
                       disabled
-                      style={{ opacity: 0.65, cursor: "not-allowed", color: "var(--ui-30-muted)" }}
                     >
                       {isRegistered
                         ? t("เข้าร่วมอบรมแล้ว", "Attended")
@@ -937,16 +966,18 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                     </button>
                   ) : item.missingPrerequisites.length > 0 ? (
                     <button
-                      className={styles.registerBtn}
+                      className={styles.lockedPrereqBtn}
                       type="button"
                       disabled
-                      style={{ opacity: 0.65, cursor: "not-allowed" }}
                       title={t(
-                        `ต้องผ่านหลักสูตร ${item.missingPrerequisites.map((p) => p.courseName).join(", ")} ก่อน`,
-                        `Requires completing ${item.missingPrerequisites.map((p) => p.courseName).join(", ")} first`,
+                        `ต้องผ่านหลักสูตร ${item.missingPrerequisites.map((p) => `${p.courseCode} (${p.courseName})`).join(", ")} ก่อน`,
+                        `Requires completing ${item.missingPrerequisites.map((p) => `${p.courseCode} (${p.courseName})`).join(", ")} first`,
                       )}
                     >
-                      {t("ต้องผ่านหลักสูตรก่อนหน้าก่อน", "Prerequisite not completed")}
+                      🔒 {t(
+                        `ต้องผ่านหลักสูตร ${item.missingPrerequisites.map((p) => p.courseCode).join(", ")} ก่อน`,
+                        `Must complete ${item.missingPrerequisites.map((p) => p.courseCode).join(", ")} first`,
+                      )}
                     </button>
                   ) : (
                     <button

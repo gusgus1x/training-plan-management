@@ -494,19 +494,27 @@
 
 .detailBtn {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
   border: 1px solid var(--ui-30-border);
   background: var(--ui-60-surface-soft);
   color: var(--ui-30-ink);
-  padding: 6px 14px;
-  border-radius: 999px;
-  font-size: 0.78rem;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.82rem;
   font-weight: 800;
   cursor: pointer;
+  white-space: nowrap;
   transition: all 0.15s ease;
 }
 
 .detailBtn:hover {
-  background: var(--ui-30-border);
+  border-color: var(--ui-30-primary);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-primary);
+  transform: translateY(-1px);
 }
 
 .registerBtn {
@@ -515,22 +523,25 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 7px 18px;
-  border-radius: 999px;
-  border: none;
-  background: var(--ui-30-primary);
+  min-height: 38px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  border: 1px solid var(--ui-30-primary, #10b981);
+  background: var(--ui-30-primary, #10b981);
   color: #ffffff;
-  font-size: 0.8rem;
-  font-weight: 900;
+  font-size: 0.82rem;
+  font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 122, 61, 0.25);
-  transition: all 0.18s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+  transition: all 0.15s ease;
 }
 
 .registerBtn:hover {
+  background: #059669;
+  border-color: #059669;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 122, 61, 0.35);
-  background: #006633;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
 }
 
 .cancelBtn {
@@ -538,20 +549,65 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(239, 68, 68, 0.35);
-  border-radius: 999px;
+  gap: 6px;
+  min-height: 38px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
   background: rgba(239, 68, 68, 0.1);
   color: #ef4444;
-  font-size: 0.78rem;
-  font-weight: 900;
-  padding: 6px 16px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 8px 16px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  white-space: nowrap;
+  transition: all 0.15s ease;
 }
 
 .cancelBtn:hover {
+  border-color: #ef4444;
   background: #ef4444;
   color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+}
+
+.lockedPrereqBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  border-radius: 8px;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.14);
+  color: #f59e0b;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 8px 16px;
+  cursor: not-allowed;
+  box-shadow: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.endedBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  border-radius: 8px;
+  border: 1px solid rgba(100, 116, 139, 0.35);
+  background: rgba(100, 116, 139, 0.12);
+  color: #94a3b8;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 8px 16px;
+  cursor: not-allowed;
+  box-shadow: none;
+  white-space: nowrap;
 }
 
 .registeredBtn {

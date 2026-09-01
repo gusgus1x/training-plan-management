@@ -384,15 +384,20 @@ function PaginatedEmployeeGrid({
             const nameProfile = getEmployeeNameProfile(employee);
 
             const isDraft = draftSubmittedEmployees.some(
-              (emp) => emp.id === employee.id || emp.employeeCode === employee.employeeCode,
+              (emp) =>
+                (employee.id && emp.id === employee.id) ||
+                (employee.employeeCode && emp.employeeCode && emp.employeeCode === employee.employeeCode),
             );
             const enrollment = enrollments.find(
               (c) =>
-                (c.employeeCode === employee.employeeCode || c.employeeId === employee.id) &&
+                ((employee.id && c.employeeId === employee.id) ||
+                  (employee.employeeCode && c.employeeCode && c.employeeCode === employee.employeeCode)) &&
                 c.status !== "Rejected" &&
                 c.status !== "Cancelled",
             ) || enrollments.find(
-              (c) => c.employeeCode === employee.employeeCode || c.employeeId === employee.id,
+              (c) =>
+                (employee.id && c.employeeId === employee.id) ||
+                (employee.employeeCode && c.employeeCode && c.employeeCode === employee.employeeCode),
             );
 
             let statusBadge = <span className={styles.badgeNone}>⚪ ยังไม่ลงทะเบียน</span>;
@@ -1203,11 +1208,14 @@ export default function TrainingAcceptSurvey() {
 
     if (roleMode === "factory" && selectedCourse?.owner === "center") {
       const isAlreadyDraft = draftSubmittedEmployees.some(
-        (emp) => emp.id === employee.id || emp.employeeCode === employee.employeeCode,
+        (emp) =>
+          (employee.id && emp.id === employee.id) ||
+          (employee.employeeCode && emp.employeeCode && emp.employeeCode === employee.employeeCode),
       );
       const isAlreadyEnrolled = enrollments.some(
         (candidate) =>
-          (candidate.employeeCode === employee.employeeCode || candidate.employeeId === employee.id) &&
+          ((employee.id && candidate.employeeId === employee.id) ||
+            (employee.employeeCode && candidate.employeeCode && candidate.employeeCode === employee.employeeCode)) &&
           candidate.status !== "Rejected" &&
           candidate.status !== "Cancelled",
       );
@@ -1501,7 +1509,7 @@ export default function TrainingAcceptSurvey() {
               }}
             >
               <option value="">
-                {selectedCourseGroup ? "เลือกรอบการอบรม" : "⚡ กรุณาเลือกหลักสูตรก่อน"}
+                {selectedCourseGroup ? "เลือกรอบการอบรม" : "กรุณาเลือกหลักสูตรก่อน"}
               </option>
               {availableSessions.map((session) => (
                 <option key={session.id} value={session.id}>
@@ -1661,7 +1669,7 @@ export default function TrainingAcceptSurvey() {
                         </defs>
                       </svg>
                     </span>
-                    คัดลอกลิ้งก์ให้ Section Head
+                    คัดลอกลิ้งก์ให้ Section เพิ่มคนเข้าอบรม
                   </button>
                   <button
                     className={styles.lineNotifyButton}
@@ -1756,10 +1764,19 @@ export default function TrainingAcceptSurvey() {
                 {acceptedParticipants.map((participant) => {
                   const masterEmp = masterEmployees.find(
                     (emp) =>
-                      emp.employeeCode === participant.employeeCode ||
-                      emp.id === participant.employeeId,
+                      (participant.employeeId && emp.id === participant.employeeId) ||
+                      (participant.employeeCode && emp.employeeCode && emp.employeeCode === participant.employeeCode),
                   );
-                  const nameProfile = getEmployeeNameProfile(masterEmp || { name: participant.employeeName });
+                  const nameProfile = getEmployeeNameProfile({
+                    name: participant.employeeName,
+                    prefix: participant.prefix || masterEmp?.prefix,
+                    firstName: participant.firstName || masterEmp?.firstName,
+                    lastName: participant.lastName || masterEmp?.lastName,
+                    titleTh: masterEmp?.titleTh,
+                    titleEn: masterEmp?.titleEn,
+                    firstNameTh: masterEmp?.firstNameTh,
+                    lastNameTh: masterEmp?.lastNameTh,
+                  });
 
                   return (
                     <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={participant.id}>
@@ -1863,12 +1880,19 @@ export default function TrainingAcceptSurvey() {
                     {visibleCandidates.map((candidate) => {
                       const masterEmp = masterEmployees.find(
                         (emp) =>
-                          emp.employeeCode === candidate.employeeCode ||
-                          emp.id === candidate.employeeId,
+                          (candidate.employeeId && emp.id === candidate.employeeId) ||
+                          (candidate.employeeCode && emp.employeeCode && emp.employeeCode === candidate.employeeCode),
                       );
-                      const nameProfile = masterEmp
-                        ? getEmployeeNameProfile(masterEmp)
-                        : getEmployeeNameProfile({ name: candidate.employeeName });
+                      const nameProfile = getEmployeeNameProfile({
+                        name: candidate.employeeName,
+                        prefix: candidate.prefix || masterEmp?.prefix,
+                        firstName: candidate.firstName || masterEmp?.firstName,
+                        lastName: candidate.lastName || masterEmp?.lastName,
+                        titleTh: masterEmp?.titleTh,
+                        titleEn: masterEmp?.titleEn,
+                        firstNameTh: masterEmp?.firstNameTh,
+                        lastNameTh: masterEmp?.lastNameTh,
+                      });
 
                       const canApprove = candidate.status === "Pending Approval";
                       const canReject = candidate.status !== "Rejected";
@@ -2098,12 +2122,19 @@ export default function TrainingAcceptSurvey() {
                           {savedCandidates.map((candidate) => {
                             const masterEmp = masterEmployees.find(
                               (emp) =>
-                                emp.employeeCode === candidate.employeeCode ||
-                                emp.id === candidate.employeeId,
+                                (candidate.employeeId && emp.id === candidate.employeeId) ||
+                                (candidate.employeeCode && emp.employeeCode && emp.employeeCode === candidate.employeeCode),
                             );
-                            const nameProfile = masterEmp
-                              ? getEmployeeNameProfile(masterEmp)
-                              : getEmployeeNameProfile({ name: candidate.employeeName });
+                            const nameProfile = getEmployeeNameProfile({
+                              name: candidate.employeeName,
+                              prefix: candidate.prefix || masterEmp?.prefix,
+                              firstName: candidate.firstName || masterEmp?.firstName,
+                              lastName: candidate.lastName || masterEmp?.lastName,
+                              titleTh: masterEmp?.titleTh,
+                              titleEn: masterEmp?.titleEn,
+                              firstNameTh: masterEmp?.firstNameTh,
+                              lastNameTh: masterEmp?.lastNameTh,
+                            });
 
                             return (
                               <article className={`${styles.employeeRow} ${styles.participantEmployeeRow}`} key={candidate.id}>
@@ -2212,12 +2243,19 @@ export default function TrainingAcceptSurvey() {
                     {visibleCandidates.map((candidate) => {
                       const masterEmp = masterEmployees.find(
                         (emp) =>
-                          emp.employeeCode === candidate.employeeCode ||
-                          emp.id === candidate.employeeId,
+                          (candidate.employeeId && emp.id === candidate.employeeId) ||
+                          (candidate.employeeCode && emp.employeeCode && emp.employeeCode === candidate.employeeCode),
                       );
-                      const nameProfile = masterEmp
-                        ? getEmployeeNameProfile(masterEmp)
-                        : getEmployeeNameProfile({ name: candidate.employeeName });
+                      const nameProfile = getEmployeeNameProfile({
+                        name: candidate.employeeName,
+                        prefix: candidate.prefix || masterEmp?.prefix,
+                        firstName: candidate.firstName || masterEmp?.firstName,
+                        lastName: candidate.lastName || masterEmp?.lastName,
+                        titleTh: masterEmp?.titleTh,
+                        titleEn: masterEmp?.titleEn,
+                        firstNameTh: masterEmp?.firstNameTh,
+                        lastNameTh: masterEmp?.lastNameTh,
+                      });
 
                       const canApprove = candidate.status === "Pending Approval";
                       const canReject = candidate.status !== "Rejected";

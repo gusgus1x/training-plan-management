@@ -292,12 +292,16 @@ export default function RegisterTrainingModule({
   const todayStr = useMemo(() => getLocalDateString(), []);
 
   // Course codes this employee has a COMPLETED training_result for. "Completed" is the only
-  // record this system keeps of a finished course; prerequisites are checked against it.
+  // Course codes this employee has applied for (active enrollment) or completed.
   const completedCourseCodes = useMemo(
     () =>
       new Set(
         enrollments
-          .filter((enrollment) => enrollment.result?.completionStatus === "COMPLETED")
+          .filter(
+            (enrollment) =>
+              ACTIVE_ENROLLMENT_STATUSES.includes(enrollment.status) ||
+              enrollment.result?.completionStatus === "COMPLETED",
+          )
           .map((enrollment) => enrollment.plan.courseCode.trim().toLowerCase()),
       ),
     [enrollments],
@@ -335,9 +339,39 @@ export default function RegisterTrainingModule({
               (plan.course.id && c.id === plan.course.id) ||
               (c.courseCode && plan.course.code && c.courseCode.trim().toLowerCase() === plan.course.code.trim().toLowerCase()),
           );
-          const missingPrerequisites = (apiCourse?.prerequisites ?? []).filter(
-            (p) => !completedCourseCodes.has(p.courseCode.trim().toLowerCase()),
-          );
+          const missingPrerequisites = (apiCourse?.prerequisites ?? [])
+            .map((p) => {
+              const matchingPlan = rollingPlans.find(
+                (rp) =>
+                  (rp.course.id && p.id && String(rp.course.id) === String(p.id)) ||
+                  (rp.course.code && p.courseCode && rp.course.code.trim().toLowerCase() === p.courseCode.trim().toLowerCase()) ||
+                  (ownerCompany && rp.course.code && rp.course.code.trim().toLowerCase() === `${ownerCompany.toLowerCase()}-${p.courseCode.trim().toLowerCase()}`) ||
+                  (rp.course.name && p.courseName && rp.course.name.trim().toLowerCase() === p.courseName.trim().toLowerCase()),
+              );
+              const matchingApiCourse = apiCourses.find(
+                (ac) =>
+                  (ownerCompany && ac.courseCode && ac.courseCode.trim().toLowerCase() === `${ownerCompany.toLowerCase()}-${p.courseCode.trim().toLowerCase()}`) ||
+                  (ac.courseNameTh && p.courseName && ac.courseNameTh.trim().toLowerCase() === p.courseName.trim().toLowerCase()),
+              );
+
+              let displayCode = matchingPlan?.course?.code || matchingApiCourse?.courseCode || p.courseCode;
+              if (courseOwner === "Factory" && ownerCompany && ownerCompany !== "CENTER" && !displayCode.toLowerCase().startsWith(`${ownerCompany.toLowerCase()}-`)) {
+                displayCode = `${ownerCompany}-${displayCode}`;
+              }
+
+              const isCompleted =
+                completedCourseCodes.has(p.courseCode.trim().toLowerCase()) ||
+                completedCourseCodes.has(displayCode.trim().toLowerCase()) ||
+                (matchingPlan?.course?.code && completedCourseCodes.has(matchingPlan.course.code.trim().toLowerCase())) ||
+                (matchingApiCourse?.courseCode && completedCourseCodes.has(matchingApiCourse.courseCode.trim().toLowerCase()));
+
+              return {
+                courseCode: displayCode,
+                courseName: p.courseName,
+                isCompleted,
+              };
+            })
+            .filter((p) => !p.isCompleted);
 
           const stdCompanies = standard?.companies;
           const targetCompanies = (stdCompanies && stdCompanies.length > 0)
@@ -770,7 +804,7 @@ export default function RegisterTrainingModule({
                     {isExpanded ? t("ซ่อนรายละเอียด", "Hide detail") : t("รายละเอียดกลุ่มเป้าหมาย", "Target Group Details")}
                   </button>
                   {isEnded ? (
-                    <button className={styles.detailBtn} type="button" disabled style={{ opacity: 0.65, cursor: "not-allowed", color: "var(--ui-30-muted)" }}>
+                    <button className={styles.endedBtn} type="button" disabled>
                       {isRegistered ? t("เข้าร่วมอบรมแล้ว", "Attended") : t("ผ่านเวลาไปแล้วไม่สามารถลงได้", "Past deadline - Cannot register")}
                     </button>
                   ) : isRegistered ? (
@@ -783,16 +817,18 @@ export default function RegisterTrainingModule({
                     </button>
                   ) : course.missingPrerequisites.length > 0 ? (
                     <button
-                      className={styles.registerBtn}
+                      className={styles.lockedPrereqBtn}
                       type="button"
                       disabled
-                      style={{ opacity: 0.65, cursor: "not-allowed" }}
                       title={t(
-                        `ต้องผ่านหลักสูตร ${course.missingPrerequisites.map((p) => p.courseName).join(", ")} ก่อน`,
-                        `Requires completing ${course.missingPrerequisites.map((p) => p.courseName).join(", ")} first`,
+                        `ต้องผ่านหลักสูตร ${course.missingPrerequisites.map((p) => `${p.courseCode} (${p.courseName})`).join(", ")} ก่อน`,
+                        `Requires completing ${course.missingPrerequisites.map((p) => `${p.courseCode} (${p.courseName})`).join(", ")} first`,
                       )}
                     >
-                      {t("ต้องผ่านหลักสูตรก่อนหน้าก่อน", "Prerequisite not completed")}
+                      🔒 {t(
+                        `ต้องผ่านหลักสูตร ${course.missingPrerequisites.map((p) => p.courseCode).join(", ")} ก่อน`,
+                        `Must complete ${course.missingPrerequisites.map((p) => p.courseCode).join(", ")} first`,
+                      )}
                     </button>
                   ) : (
                     <button

@@ -7,7 +7,7 @@ import { parseCourseListFilters, parseCreateCourse } from "../../../lib/courses/
 
 type Dependencies = { auth?: ProtectedRouteOptions; service?: CourseService };
 
-const readOptions = (auth?: ProtectedRouteOptions) => ({ ...auth, allowedRoles: ["HRD_CENTER", "HRD_FACTORY"] as const });
+const readOptions = (auth?: ProtectedRouteOptions) => ({ ...auth, allowedRoles: ["HRD_CENTER", "HRD_FACTORY", "EMPLOYEE"] as const });
 const writeOptions = (auth?: ProtectedRouteOptions) => ({ ...auth, allowedRoles: ["HRD_CENTER", "HRD_FACTORY"] as const });
 
 export const createListCoursesHandler = (dependencies: Dependencies = {}) => 

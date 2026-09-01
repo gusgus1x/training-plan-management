@@ -740,7 +740,9 @@ export default function TrainingRecord() {
   };
 
   const handleAddAttendee = async () => {
-    const selectedMaster = masterEmployees.find((emp) => emp.employeeCode === selectedEmpCode);
+    const selectedMaster = selectedEmpCode
+      ? masterEmployees.find((emp) => emp.employeeCode === selectedEmpCode)
+      : null;
     const missingFields: string[] = [];
 
     if (!selectedCourse) {
@@ -1278,9 +1280,11 @@ export default function TrainingRecord() {
                         value={selectedEmpCode}
                         onChange={(event) => {
                           setSelectedEmpCode(event.target.value);
-                          const master = masterEmployees.find(
-                            (employee) => employee.employeeCode === event.target.value,
-                          );
+                          const master = event.target.value
+                            ? masterEmployees.find(
+                                (employee) => employee.employeeCode === event.target.value,
+                              )
+                            : null;
 
                           if (master) {
                             setCustomEmpCode(master.employeeCode ?? "");
