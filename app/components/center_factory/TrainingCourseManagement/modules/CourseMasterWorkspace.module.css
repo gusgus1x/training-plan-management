@@ -2921,15 +2921,43 @@
   gap: 12px;
 }
 
+/* A button, not a div: the whole bar folds its company's table away. Styled to look exactly as it
+   did before it became clickable, so only the chevron and the cursor say it is interactive. */
 .companySectionHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  width: 100%;
   padding: 12px 18px;
   border-radius: 10px;
   background: var(--ui-60-surface-soft, rgba(255, 255, 255, 0.04));
   border: 1px solid var(--ui-30-border, rgba(255, 255, 255, 0.12));
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.companySectionHeader:hover {
+  background: var(--ui-60-surface-muted, rgba(255, 255, 255, 0.08));
+}
+
+.companySectionHeader:focus-visible {
+  outline: 2px solid var(--ui-30-primary, #007a3d);
+  outline-offset: 2px;
+}
+
+.sectionChevron {
+  display: inline-block;
+  font-size: 0.7rem;
+  color: var(--ui-30-muted, #94a3b8);
+  transition: transform 140ms ease;
+}
+
+.sectionChevronOpen {
+  transform: rotate(90deg);
 }
 
 .ownCompanySectionHeader {

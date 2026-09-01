@@ -3,13 +3,12 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { toDataURL as generateQrCodeDataUrl } from "qrcode";
-import { downloadCsvTemplate, parseCsvText, type CourseMasterImportRow } from "../../../../lib/excelHelper";
+import { parseCsvText, type CourseMasterImportRow } from "../../../../lib/excelHelper";
 import {
   getCourseDisplayName,
   getCourseSecondaryName,
   isWorkflowOwner,
   type WorkflowCourse,
-  type WorkflowOwner,
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
 import { listCourses, createCourse, updateCourse, deleteCourse } from "../../../../lib/courses/client";
@@ -18,9 +17,6 @@ import {
   courseIdsThatWouldCycle,
   type PrerequisiteGraph,
 } from "../../../../lib/courses/prerequisiteGraph";
-import { listOapPlans } from "../../../../lib/trainingOap/client";
-import type { OapPlanRecord } from "../../../../lib/trainingOap/types";
-import { loadWorkflowRollingPlans, type RollingPlan } from "../../TrainingPlanManagement/modules/TrainingRolling";
 import { getLevelRank, normalizeEmployeeLevel } from "../../../../lib/employeeMasterData";
 import { listAssessments } from "../../../../lib/assessments/client";
 import { listEvaluations } from "../../../../lib/evaluations/client";
@@ -43,7 +39,6 @@ import { listLevels } from "../../../../lib/levels/client";
 import type { LevelRecord } from "../../../../lib/levels/types";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import TypewriterLoader from "../../../TypewriterLoader";
-import { UNDER_DEVELOPMENT } from "../../../../lib/underDevelopment";
 import styles from "./CourseMasterWorkspace.module.css";
 
 export const courseMasterWorkspaceModule = {
@@ -126,7 +121,6 @@ type TrainingEvaluationOption = {
 };
 
 const allFunctionOption = "All Function";
-const allFunctionThaiDisplayName = "ทุกหน่วยงาน";
 const allFunctionCode = "__ALL__";
 
 const normalizeTargetPosition = (position: string) => {
@@ -637,12 +631,21 @@ function CourseMaster() {
   const [openDetailCourseId, setOpenDetailCourseId] = useState("");
   const [search, setSearch] = useState("");
   const [listCompanyFilter, setListCompanyFilter] = useState("");
+  /**
+   * Which company sections are folded shut. Tracking the closed ones rather than the open ones
+   * keeps every section expanded until somebody chooses otherwise - the list was fully expanded
+   * before this, and defaulting to collapsed would hide the courses behind an extra click.
+   */
+  const [collapsedCompanySections, setCollapsedCompanySections] = useState<string[]>([]);
+  const toggleCompanySection = (companyName: string) =>
+    setCollapsedCompanySections((current) =>
+      current.includes(companyName)
+        ? current.filter((name) => name !== companyName)
+        : [...current, companyName],
+    );
   const [listCourseGroupFilter, setListCourseGroupFilter] = useState("");
   const [standards, setStandards] = useState<CourseStandardRecord[]>([]);
-  const [oapPlans, setOapPlans] = useState<OapPlanRecord[]>([]);
-  const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [standardFunctionCode, setStandardFunctionCode] = useState("");
-  const [standardFunctionName, setStandardFunctionName] = useState("");
   const [standardDivisionCode, setStandardDivisionCode] = useState("");
   const [standardDepartmentCode, setStandardDepartmentCode] = useState("");
   const [standardSectionCode, setStandardSectionCode] = useState("");
@@ -913,10 +916,6 @@ function CourseMaster() {
     return () => { active = false; };
   }, []);
 
-  useEffect(() => {
-    void listOapPlans({ search: null, status: null }).then((result) => setOapPlans(result.oapPlans || []));
-    void loadWorkflowRollingPlans().then(setRollingPlans);
-  }, []);
   const [targetOrgScopes, setTargetOrgScopes] = useState<
     Array<{ id: string; functionCode: string; divisionCode: string; departmentCode: string; sectionCode: string }>
   >([{ id: "1", functionCode: "", divisionCode: "", departmentCode: "", sectionCode: "" }]);
@@ -951,10 +950,6 @@ function CourseMaster() {
   const [orgUsage, setOrgUsage] = useState<OrgHierarchyUsageRow[]>([]);
   const [positionRows, setPositionRows] = useState<PositionRecord[]>([]);
   const [levelRows, setLevelRows] = useState<LevelRecord[]>([]);
-  const selectedFunctionId = functionRows.find((row) => row.code === standardFunctionCode)?.id;
-  const selectedDivisionId = divisionRows.find((row) => row.code === standardDivisionCode)?.id;
-  const selectedDepartmentId = departmentRows.find((row) => row.code === standardDepartmentCode)?.id;
-  const selectedSectionId = sectionRows.find((row) => row.code === standardSectionCode)?.id;
 
   const userCompanyCode = profileValue(user?.companyCode);
 
@@ -1076,8 +1071,6 @@ function CourseMaster() {
 
     return matchingFunction ? matchingFunction.name : functionName;
   };
-  const owner: WorkflowOwner = user?.roleCode === "HRD_CENTER" ? "CENTER" : "FACTORY";
-  const ownerCompany = owner === "CENTER" ? "HRD Center" : userCompanyCode;
 
   const companyChecklist = useMemo(() => {
     if (isFactoryUser && userCompanyCode) {
@@ -1163,21 +1156,6 @@ function CourseMaster() {
     ? (selectedCourse.owner === "CENTER" || selectedCourse.ownerCompany === "CENTER" || selectedCourse.ownerCompany === "HRD Center" || !selectedCourse.ownerCompany)
     : false;
   const isSelectedCourseReadOnlyForFactory = isFactoryUser && isSelectedCourseCenter;
-  const selectedStandard =
-    standards.find(
-      (standard) =>
-        standard.courseId === selectedCourse?.id ||
-        standard.courseCode === selectedCourse?.courseCode,
-    ) ?? null;
-  const usedCourseCodes = useMemo(
-    () =>
-      new Set([
-        ...oapPlans.map((plan) => plan.course.courseCode),
-        ...rollingPlans.map((plan) => plan.course.code),
-      ]),
-    [oapPlans, rollingPlans],
-  );
-  const isSelectedCourseLocked = selectedCourse ? usedCourseCodes.has(selectedCourse.courseCode) : false;
   const filteredCourses = useMemo(() => {
     return scopedCourses
       .filter((course) => {
@@ -1242,7 +1220,6 @@ function CourseMaster() {
 
   const resetStandardForm = () => {
     setStandardFunctionCode("");
-    setStandardFunctionName("");
     setStandardDivisionCode("");
     setStandardDepartmentCode("");
     setStandardSectionCode("");
@@ -1768,8 +1745,6 @@ function CourseMaster() {
         ),
       )
       .catch(() => noteMasterListFailed("Course groups", () => setCourseGroupOptions([])));
-    void listOapPlans({ search: null, status: null }).then((result) => setOapPlans(result.oapPlans || []));
-    void loadWorkflowRollingPlans().then(setRollingPlans);
     listPositions()
       .then((result) => setPositionRows(result.items.filter((item) => item.status === "ACTIVE")))
       .catch(() => noteMasterListFailed("Positions", () => setPositionRows([])));
@@ -2681,9 +2656,6 @@ function CourseMaster() {
                       );
                       if (index === 0) {
                         setStandardFunctionCode(nextCode);
-                        setStandardFunctionName(
-                          functionOptions.find((option) => option.code === nextCode)?.name ?? "",
-                        );
                       }
                     }}
                   />
@@ -2946,10 +2918,23 @@ function CourseMaster() {
               {language === 'th' ? 'ไม่พบข้อมูลหลักสูตร' : 'No courses found'}
             </div>
           ) : (
-            companySections.map((section) => (
+            companySections.map((section) => {
+              const isSectionOpen = !collapsedCompanySections.includes(section.companyName);
+              return (
               <div key={section.companyName} className={styles.companySectionBlock}>
-                <div className={`${styles.companySectionHeader} ${section.isUserCompany ? styles.ownCompanySectionHeader : ""}`}>
+                <button
+                  type="button"
+                  className={`${styles.companySectionHeader} ${section.isUserCompany ? styles.ownCompanySectionHeader : ""}`}
+                  aria-expanded={isSectionOpen}
+                  onClick={() => toggleCompanySection(section.companyName)}
+                >
                   <div className={styles.companySectionTitle}>
+                    <span
+                      className={`${styles.sectionChevron} ${isSectionOpen ? styles.sectionChevronOpen : ""}`}
+                      aria-hidden="true"
+                    >
+                      ▶
+                    </span>
                     <span className={styles.companyIcon}>{section.companyName === "HRD Center" ? "🏢" : "🏬"}</span>
                     <h4>
                       {section.companyName === "HRD Center"
@@ -2967,8 +2952,9 @@ function CourseMaster() {
                   <span className={styles.companyCountBadge}>
                     {section.courses.length} {language === 'th' ? 'หลักสูตร' : 'courses'}
                   </span>
-                </div>
+                </button>
 
+                {isSectionOpen ? (
                 <div className={styles.tableWrap}>
                   <table className={styles.courseTable}>
                     <thead>
@@ -3079,8 +3065,10 @@ function CourseMaster() {
                     </tbody>
                   </table>
                 </div>
+                ) : null}
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </section>
