@@ -4,12 +4,34 @@ import { ApiError } from "../api/errors";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
 import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
+import { wouldCreateCycle, type PrerequisiteGraph } from "./prerequisiteGraph";
 import type { CourseListFilters, CreateCourseInput, UpdateCourseInput } from "./types";
 import type { WorkflowCourse, WorkflowStandard } from "../trainingWorkflow";
 
 type DatabaseClient = Pick<PrismaClient, "course" | "course_standard" | "course_standard_course" | "company">;
 
 export const normalizeCourseName = (value: string) => value.trim().replace(/\s+/g, " ").toLowerCase();
+
+// excludeCourseId leaves out a course's own current edges, since update() is about to replace
+// them - checking against the stale edges could reject a change that is actually fine once they
+// are gone.
+const buildPrerequisiteGraph = async (
+  tx: Prisma.TransactionClient,
+  excludeCourseId?: bigint,
+): Promise<PrerequisiteGraph> => {
+  const edges = await tx.course_prerequisite.findMany({
+    where: excludeCourseId ? { course_id: { not: excludeCourseId } } : undefined,
+    select: { course_id: true, prerequisite_course_id: true },
+  });
+  const graph = new Map<string, string[]>();
+  for (const edge of edges) {
+    const key = edge.course_id.toString();
+    const list = graph.get(key) ?? [];
+    list.push(edge.prerequisite_course_id.toString());
+    graph.set(key, list);
+  }
+  return graph;
+};
 
 const safeBigInt = (val: string | null | undefined): bigint | null => {
   if (!val) return null;
@@ -124,6 +146,9 @@ export const createCourseRepository = (client?: DatabaseClient) => {
             evaluation_form_after_30day: true,
             user_account_course_created_byTouser_account: true,
             company: true,
+            prerequisites: {
+              include: { prerequisite_course: { select: { course_id: true, course_code: true, course_name: true } } },
+            },
             course_standard_course: {
               include: {
                 course_standard: true,
@@ -188,7 +213,12 @@ export const createCourseRepository = (client?: DatabaseClient) => {
             updatedAt: (row.updated_at || row.created_at).toISOString(),
             owner,
             ownerCompany,
-            createdBy: row.created_by.toString()
+            createdBy: row.created_by.toString(),
+            prerequisites: row.prerequisites.map((p) => ({
+              id: p.prerequisite_course.course_id.toString(),
+              courseCode: p.prerequisite_course.course_code,
+              courseName: p.prerequisite_course.course_name,
+            })),
           };
 
           (courseItem as unknown as Record<string, unknown>).targetPositions = targetPositions;
@@ -298,6 +328,24 @@ export const createCourseRepository = (client?: DatabaseClient) => {
               created_at: new Date(),
             }
           });
+
+          // 1b. Prerequisites: a brand-new course cannot already appear as someone else's
+          // prerequisite, so a cycle here is only possible via the ids the caller just supplied.
+          const prerequisiteIds = (input.prerequisiteCourseIds ?? [])
+            .map(safeBigInt)
+            .filter((v): v is bigint => v !== null);
+          if (prerequisiteIds.length > 0) {
+            const graph = await buildPrerequisiteGraph(tx);
+            if (wouldCreateCycle(graph, course.course_id.toString(), prerequisiteIds.map((v) => v.toString()))) {
+              throw new ApiError({ code: "PREREQUISITE_CYCLE", message: "This would create a circular prerequisite chain", status: 400 });
+            }
+            await tx.course_prerequisite.createMany({
+              data: prerequisiteIds.map((prerequisiteCourseId) => ({
+                course_id: course.course_id,
+                prerequisite_course_id: prerequisiteCourseId,
+              })),
+            });
+          }
 
           // 2. Find or create standard (unique per year per company)
           let standard = await tx.course_standard.findFirst({
@@ -477,6 +525,27 @@ export const createCourseRepository = (client?: DatabaseClient) => {
             where: { course_id: BigInt(id) },
             data: courseData
           });
+
+          if (input.prerequisiteCourseIds !== undefined) {
+            const prerequisiteIds = input.prerequisiteCourseIds
+              .map(safeBigInt)
+              .filter((v): v is bigint => v !== null);
+            if (prerequisiteIds.length > 0) {
+              const graph = await buildPrerequisiteGraph(tx, BigInt(id));
+              if (wouldCreateCycle(graph, id, prerequisiteIds.map((v) => v.toString()))) {
+                throw new ApiError({ code: "PREREQUISITE_CYCLE", message: "This would create a circular prerequisite chain", status: 400 });
+              }
+            }
+            await tx.course_prerequisite.deleteMany({ where: { course_id: BigInt(id) } });
+            if (prerequisiteIds.length > 0) {
+              await tx.course_prerequisite.createMany({
+                data: prerequisiteIds.map((prerequisiteCourseId) => ({
+                  course_id: BigInt(id),
+                  prerequisite_course_id: prerequisiteCourseId,
+                })),
+              });
+            }
+          }
 
           // Handle Standard Update
           const existingStdCourses = await tx.course_standard_course.findMany({
@@ -684,6 +753,13 @@ export const createCourseRepository = (client?: DatabaseClient) => {
             where: { course_id: courseId },
             data: { course_id: null },
           }).catch(() => undefined);
+
+          // 3b. Prerequisite edges. course_id cascades on its own, but prerequisite_course_id is
+          // NO ACTION (SQL Server allows only one cascade path into dbo.course) - a course other
+          // courses depend on would otherwise block its own deletion.
+          await tx.course_prerequisite.deleteMany({
+            where: { OR: [{ course_id: courseId }, { prerequisite_course_id: courseId }] },
+          });
 
           // 4. Delete the course itself
           await tx.course.delete({

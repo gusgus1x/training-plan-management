@@ -87,6 +87,7 @@ export const parseCreateCourse = (input: InputObject): CreateCourseInput => ({
   targetPositions: arrayString(input, "targetPositions"),
   targetLevels: arrayString(input, "targetLevels"),
   standardYear: readOptionalNumber(input, "standardYear") || new Date().getFullYear(),
+  prerequisiteCourseIds: arrayString(input, "prerequisiteCourseIds"),
 });
 
 export const parseUpdateCourse = (input: InputObject): UpdateCourseInput => {
@@ -127,7 +128,8 @@ export const parseUpdateCourse = (input: InputObject): UpdateCourseInput => {
   if (hasOwn(input, "targetPositions")) update.targetPositions = arrayString(input, "targetPositions");
   if (hasOwn(input, "targetLevels")) update.targetLevels = arrayString(input, "targetLevels");
   if (hasOwn(input, "standardYear")) update.standardYear = readOptionalNumber(input, "standardYear") ?? undefined;
-  
+  if (hasOwn(input, "prerequisiteCourseIds")) update.prerequisiteCourseIds = arrayString(input, "prerequisiteCourseIds");
+
   if (!Object.keys(update).length) throw invalid("body", "At least one editable field is required");
   return update;
 };

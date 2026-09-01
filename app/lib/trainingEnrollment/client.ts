@@ -2,6 +2,16 @@
 
 import type { CreateEnrollmentInput, EnrollmentDeleted, EnrollmentListFilters, EnrollmentRecord, SetAttendanceInput, UpdateEnrollmentInput } from "./types";
 
+// A plain Error threw away the API's error code and details, so a caller could not tell a
+// prerequisite rejection (409 PREREQUISITE_NOT_MET, with the missing courses in `details`) apart
+// from any other failure. Still an Error, so existing `catch { }.message` call sites are unaffected.
+export class EnrollmentApiError extends Error {
+  constructor(message: string, readonly code: string, readonly details: unknown) {
+    super(message);
+    this.name = "EnrollmentApiError";
+  }
+}
+
 const parseApiResponse = async <T>(response: Response): Promise<T> => {
   let json: any;
   try {
@@ -17,7 +27,7 @@ const parseApiResponse = async <T>(response: Response): Promise<T> => {
     const code = json.error?.code || (response.status === 401 ? "UNAUTHENTICATED" : "UNKNOWN");
     const details = json.error?.details ? JSON.stringify(json.error.details) : "";
     console.error(`[API Error] ${response.status} ${code}: ${msg}`, details, json);
-    throw new Error(msg);
+    throw new EnrollmentApiError(msg, code, json.error?.details);
   }
   return json.data as T;
 };

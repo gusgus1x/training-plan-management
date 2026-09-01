@@ -44,6 +44,9 @@ export const createCreateEnrollmentHandler = (dependencies: Dependencies = {}) =
       input.employeeId = principal.employeeId ?? input.employeeId;
       input.employeeUserId = principal.employeeUserId;
       input.source = "EMPLOYEE";
+      // An employee cannot wave their own prerequisite condition through, no matter what the
+      // client sent - only HRD sees the confirmation prompt and resubmits with this set.
+      input.acknowledgePrerequisite = false;
     } else {
       input.source = principal.role;
     }

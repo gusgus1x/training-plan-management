@@ -13,6 +13,11 @@ import {
   type WorkflowStandard,
 } from "../../../../lib/trainingWorkflow";
 import { listCourses, createCourse, updateCourse, deleteCourse } from "../../../../lib/courses/client";
+import {
+  collectTransitivePrerequisites,
+  courseIdsThatWouldCycle,
+  type PrerequisiteGraph,
+} from "../../../../lib/courses/prerequisiteGraph";
 import { listOapPlans } from "../../../../lib/trainingOap/client";
 import type { OapPlanRecord } from "../../../../lib/trainingOap/types";
 import { loadWorkflowRollingPlans, type RollingPlan } from "../../TrainingPlanManagement/modules/TrainingRolling";
@@ -319,6 +324,156 @@ const SearchableSelect = ({
           )}
         </ul>
       )}
+    </div>
+  );
+};
+
+interface PrerequisiteCourseSelectProps {
+  selectedIds: string[];
+  options: Array<{ id: string; code: string; name: string }>;
+  disabled?: boolean;
+  placeholder: string;
+  /** Courses that cannot be picked because they already sit downstream of this one. */
+  blockedIds: Set<string>;
+  blockedReason: (code: string) => string;
+  onToggle: (id: string) => void;
+}
+
+// Same search+dropdown interaction as SearchableSelect above, but multi-select: clicking an item
+// toggles it in/out of `selectedIds` instead of closing the menu, and the chosen courses render as
+// removable chips under the trigger.
+const PrerequisiteCourseSelect = ({
+  selectedIds,
+  options,
+  disabled = false,
+  placeholder,
+  blockedIds,
+  blockedReason,
+  onToggle,
+}: PrerequisiteCourseSelectProps) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  const selectedOptions = options.filter((opt) => selectedIds.includes(opt.id));
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        setSearchQuery("");
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredOptions = useMemo(() => {
+    if (!searchQuery.trim()) return options;
+    const q = searchQuery.trim().toLowerCase();
+    const translatedQ = translateKeyboard(q).toLowerCase();
+    return options.filter((opt) => {
+      const code = opt.code.toLowerCase();
+      const name = opt.name.toLowerCase();
+      return (
+        code.includes(q) || name.includes(q) ||
+        (translatedQ !== q && (code.includes(translatedQ) || name.includes(translatedQ)))
+      );
+    });
+  }, [options, searchQuery]);
+
+  return (
+    <div className={styles.searchableSelectContainer} ref={containerRef}>
+      <div
+        className={`${styles.searchableSelectTrigger} ${disabled ? styles.disabled : ""} ${
+          isOpen ? styles.open : ""
+        }`}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev);
+            setSearchQuery("");
+          }
+        }}
+      >
+        {isOpen ? (
+          <input
+            type="text"
+            className={styles.searchableSelectInput}
+            value={searchQuery}
+            autoFocus
+            disabled={disabled}
+            placeholder={placeholder}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span className={styles.searchableSelectValue} translate="no">
+            {selectedOptions.length > 0
+              ? `${selectedOptions.length} หลักสูตร (${selectedOptions.map((o) => o.code).join(", ")})`
+              : placeholder}
+          </span>
+        )}
+        <span className={styles.searchableSelectArrow}>▼</span>
+      </div>
+
+      {isOpen && !disabled && (
+        <ul className={styles.searchableSelectMenu}>
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((opt) => {
+              const isBlocked = blockedIds.has(opt.id);
+              return (
+                <li
+                  key={opt.id}
+                  className={`${styles.searchableSelectItem} ${selectedIds.includes(opt.id) ? styles.selected : ""}`}
+                  title={isBlocked ? blockedReason(opt.code) : undefined}
+                  style={isBlocked ? { opacity: 0.45, cursor: "not-allowed" } : undefined}
+                  onClick={() => !isBlocked && onToggle(opt.id)}
+                >
+                  <div className={styles.itemMain} translate="no">
+                    {selectedIds.includes(opt.id) ? "✓ " : ""}
+                    {opt.code} — {opt.name}
+                  </div>
+                  {isBlocked ? (
+                    <div className={styles.itemSub}>{blockedReason(opt.code)}</div>
+                  ) : null}
+                </li>
+              );
+            })
+          ) : (
+            <li className={styles.searchableSelectEmpty}>ไม่พบหลักสูตร / No matches found</li>
+          )}
+        </ul>
+      )}
+
+      {selectedOptions.length > 0 ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "4px" }}>
+          {selectedOptions.map((opt) => (
+            <span
+              key={opt.id}
+              translate="no"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: "6px",
+                padding: "4px 10px", borderRadius: "999px",
+                background: "var(--ui-30-primary-soft, rgba(0,122,61,0.12))",
+                color: "var(--ui-30-primary, #007a3d)",
+                fontSize: "0.78rem", fontWeight: 600,
+              }}
+            >
+              {opt.code} — {opt.name}
+              {!disabled ? (
+                <button
+                  type="button"
+                  onClick={() => onToggle(opt.id)}
+                  aria-label={`Remove ${opt.code}`}
+                  style={{ border: 0, background: "transparent", cursor: "pointer", color: "inherit", fontWeight: 900, padding: 0, lineHeight: 1 }}
+                >
+                  ×
+                </button>
+              ) : null}
+            </span>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 };
@@ -695,6 +850,16 @@ function CourseMaster() {
   const [selectedPositions, setSelectedPositions] = useState<string[]>([]);
   const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  // Courses this one requires completed first (continuation courses). Not stored on CourseForm:
+  // an empty list simply means no condition, the same as it means for
+  // selectedCompanies/Positions/Levels.
+  const [selectedPrerequisiteCourseIds, setSelectedPrerequisiteCourseIds] = useState<string[]>([]);
+  // Courses the screen added on the editor's behalf, and which pick triggered each one. The gate
+  // only checks a course's own direct list, so picking B without A leaves a hole; filling it
+  // silently would be worse than the hole, hence keeping the reason to show alongside.
+  const [autoAddedPrerequisites, setAutoAddedPrerequisites] = useState<
+    Array<{ id: string; because: string }>
+  >([]);
   const [companyRows, setCompanyRows] = useState<
     Array<{ id: string; code: string; name: string; nameTh?: string; nameEn?: string }>
   >([]);
@@ -1008,6 +1173,8 @@ function CourseMaster() {
     setSelectedCompanies(isFactoryUser && userCompanyCode ? [userCompanyCode] : []);
     setSelectedPositions([]);
     setSelectedLevels([]);
+    setSelectedPrerequisiteCourseIds([]);
+    setAutoAddedPrerequisites([]);
   };
 
   const loadStandardForm = (course: CourseRecord) => {
@@ -1129,6 +1296,10 @@ function CourseMaster() {
         ),
       ),
     );
+
+    setSelectedPrerequisiteCourseIds((course.prerequisites ?? []).map((p) => p.id));
+    // What was saved is what the editor chose; nothing on screen was filled in for them yet.
+    setAutoAddedPrerequisites([]);
   };
 
   useEffect(() => {
@@ -1147,6 +1318,73 @@ function CourseMaster() {
         ? selectedValues.filter((item) => item !== value)
         : [...selectedValues, value],
     );
+  };
+
+  /**
+   * The whole prerequisite graph as the screen currently understands it: every course's saved
+   * edges, with the course being edited overridden by what is on screen right now.
+   */
+  const prerequisiteGraph = useMemo(() => {
+    const graph: PrerequisiteGraph = new Map(
+      courses.map((course) => [course.id, (course.prerequisites ?? []).map((p) => p.id)]),
+    );
+    if (selectedCourseId) graph.set(selectedCourseId, selectedPrerequisiteCourseIds);
+    return graph;
+  }, [courses, selectedCourseId, selectedPrerequisiteCourseIds]);
+
+  const prerequisiteCandidates = useMemo(
+    () => courses.filter((course) => course.id !== selectedCourseId),
+    [courses, selectedCourseId],
+  );
+
+  // Picking one of these back would close the loop; the save would be rejected anyway, so say so
+  // in the menu rather than after the whole form has been filled in.
+  const blockedPrerequisiteIds = useMemo(
+    () =>
+      selectedCourseId
+        ? courseIdsThatWouldCycle(
+            prerequisiteGraph,
+            selectedCourseId,
+            prerequisiteCandidates.map((course) => course.id),
+          )
+        : new Set<string>(),
+    [prerequisiteGraph, prerequisiteCandidates, selectedCourseId],
+  );
+
+  const courseLabelById = (id: string) => {
+    const course = courses.find((item) => item.id === id);
+    return course ? `${course.courseCode} ${getCourseDisplayName(course)}`.trim() : id;
+  };
+
+  // The course being edited, named the way the editor sees it. A brand new course has no code
+  // until the group is picked, so fall back to whatever identifies it so far.
+  const thisCourseLabel =
+    `${form.courseCode} ${form.courseNameTh || form.courseNameEn}`.trim() ||
+    (language === "th" ? "หลักสูตรนี้" : "this course");
+
+  // Stop explaining an auto-added course once the editor has taken it back out.
+  const visibleAutoAddedPrerequisites = autoAddedPrerequisites.filter((item) =>
+    selectedPrerequisiteCourseIds.includes(item.id),
+  );
+
+  const handleTogglePrerequisite = (id: string) => {
+    if (selectedPrerequisiteCourseIds.includes(id)) {
+      setSelectedPrerequisiteCourseIds(selectedPrerequisiteCourseIds.filter((item) => item !== id));
+      setAutoAddedPrerequisites((prev) => prev.filter((item) => item.id !== id));
+      return;
+    }
+
+    const next = [...selectedPrerequisiteCourseIds, id];
+    const filledIn = collectTransitivePrerequisites(prerequisiteGraph, [id]).filter(
+      (item) => !next.includes(item),
+    );
+    setSelectedPrerequisiteCourseIds([...next, ...filledIn]);
+    if (filledIn.length > 0) {
+      setAutoAddedPrerequisites((prev) => [
+        ...prev.filter((item) => !filledIn.includes(item.id)),
+        ...filledIn.map((addedId) => ({ id: addedId, because: id })),
+      ]);
+    }
   };
 
   const resolveAssessmentId = (
@@ -1684,6 +1922,7 @@ function CourseMaster() {
       targetPositions: selectedPositions,
       targetLevels: selectedLevels,
       standardYear,
+      prerequisiteCourseIds: selectedPrerequisiteCourseIds,
     };
 
     const wasEditing = Boolean(selectedCourseId);
@@ -2229,6 +2468,76 @@ function CourseMaster() {
         </div>
 
         <div style={{ marginTop: "16px", marginBottom: "16px" }}>
+          <span style={{ display: "block", fontSize: "1.05rem", fontWeight: 700, color: "var(--ui-30-ink)" }}>
+            เลือกคอร์สต่อเนื่อง(ถ้ามี)
+          </span>
+          {/* "ต่อเนื่อง" alone does not say which course comes first, and getting that backwards
+              locks employees out of the earlier course instead of the later one. Naming this course
+              inside the sentence settles the direction without anyone having to interpret. */}
+          <small className={styles.fieldHint} style={{ display: "block", marginBottom: "8px" }}>
+            {language === "th"
+              ? `พนักงานต้องผ่านหลักสูตรที่เลือกด้านล่างนี้ก่อน จึงจะสมัคร «${thisCourseLabel}» ได้`
+              : `Employees must complete the courses selected below before they can register for «${thisCourseLabel}»`}
+          </small>
+          <PrerequisiteCourseSelect
+            selectedIds={selectedPrerequisiteCourseIds}
+            options={prerequisiteCandidates.map((c) => ({
+              id: c.id,
+              code: c.courseCode,
+              name: c.courseNameTh || c.courseNameEn,
+            }))}
+            disabled={!isEditing}
+            placeholder="ค้นหาหลักสูตรที่ต้องผ่านมาก่อน... / Search prerequisite courses..."
+            blockedIds={blockedPrerequisiteIds}
+            blockedReason={(code) =>
+              language === "th"
+                ? `เลือกไม่ได้: «${code}» ต้องผ่านหลักสูตรนี้อยู่แล้ว การเลือกกลับจะทำให้วนเป็นวงกลม`
+                : `Unavailable: «${code}» already requires this course, so this would form a loop`
+            }
+            onToggle={handleTogglePrerequisite}
+          />
+
+          {visibleAutoAddedPrerequisites.length > 0 ? (
+            <p
+              style={{
+                margin: "8px 0 0", padding: "8px 10px", borderRadius: "8px",
+                background: "rgba(234, 179, 8, 0.10)", border: "1px solid rgba(234, 179, 8, 0.35)",
+                color: "#854d0e", fontSize: "0.78rem", lineHeight: 1.5,
+              }}
+            >
+              {visibleAutoAddedPrerequisites.map((item) => (
+                <span key={item.id} style={{ display: "block" }}>
+                  {language === "th"
+                    ? `เพิ่ม «${courseLabelById(item.id)}» ให้อัตโนมัติ เพราะ «${courseLabelById(item.because)}» กำหนดให้ต้องผ่านก่อน`
+                    : `Added «${courseLabelById(item.id)}» automatically because «${courseLabelById(item.because)}» requires it first`}
+                </span>
+              ))}
+              <span style={{ display: "block", marginTop: "4px", opacity: 0.85 }}>
+                {language === "th"
+                  ? "หากไม่ต้องการบังคับ กดกากบาทบนชิปเพื่อเอาออกได้"
+                  : "Remove any of them with the × on its chip if you do not want it enforced."}
+              </span>
+            </p>
+          ) : null}
+
+          {/* Reads the saved shape back as a sentence so the direction can be checked at a glance. */}
+          {selectedPrerequisiteCourseIds.length > 0 ? (
+            <p style={{ margin: "8px 0 0", fontSize: "0.8rem", color: "var(--ui-30-text)" }}>
+              <strong>{language === "th" ? "ต้องผ่าน" : "Must complete"}</strong>{" "}
+              <span translate="no">
+                {selectedPrerequisiteCourseIds
+                  .map((id) => courses.find((c) => c.id === id)?.courseCode ?? id)
+                  .join(" · ")}
+              </span>
+              {"  →  "}
+              <strong>{language === "th" ? "จึงจะสมัคร" : "before registering for"}</strong>{" "}
+              <span translate="no">{form.courseCode || thisCourseLabel}</span>{" "}
+              {language === "th" ? "ได้" : ""}
+            </p>
+          ) : null}
+        </div>
+
+        <div style={{ marginTop: "16px", marginBottom: "16px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
             <h4 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "var(--ui-30-ink)" }}>กลุ่มเป้าหมาย (Function, Division, Department, Section)</h4>
             {isEditing ? (
@@ -2574,6 +2883,7 @@ function CourseMaster() {
                         <th>{language === 'th' ? 'บริษัท' : 'Company'}</th>
                         <th>{language === 'th' ? 'Classification' : 'Classification'}</th>
                         <th>{language === 'th' ? 'Course Standard' : 'Course Standard'}</th>
+                        <th>{language === 'th' ? 'คอร์สต่อเนื่อง' : 'Prerequisites'}</th>
                         <th>{language === 'th' ? 'Actions' : 'Actions'}</th>
                       </tr>
                     </thead>
@@ -2621,6 +2931,11 @@ function CourseMaster() {
                                     : "No standard"}
                                 </span>
                               </td>
+                              <td translate="no">
+                                {course.prerequisites && course.prerequisites.length > 0
+                                  ? course.prerequisites.map((p) => p.courseCode).join(" · ")
+                                  : "—"}
+                              </td>
                               <td className={styles.actionCell} onClick={(e) => e.stopPropagation()}>
                                 <button
                                   className={styles.detailButton}
@@ -2651,10 +2966,10 @@ function CourseMaster() {
                             </tr>
                             {isOpen ? (
                               <tr className={styles.detailRow}>
-                                <td colSpan={6}>
+                                <td colSpan={7}>
                                   <div className={styles.inlinePanel}>
                                     {renderCoursePanel(
-                                      isEditing ? "Edit course" : getCourseDisplayName(course),
+                                      `${course.courseCode} — ${getCourseDisplayName(course)}`,
                                       isEditing ? "Editing" : "Read only",
                                     )}
                                   </div>

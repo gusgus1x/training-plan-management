@@ -150,6 +150,12 @@ export type CreateEnrollmentInput = {
   /** Durable employee business key. Preferred; falls back to employeeId when absent. */
   employeeUserId: string | null;
   source: EnrollmentSource;
+  /**
+   * Set once HRD has seen and confirmed the "not completed yet" prompt for a course that has
+   * prerequisites. The route pins this to false for EMPLOYEE callers regardless of what the
+   * client sends - an employee cannot wave their own condition through.
+   */
+  acknowledgePrerequisite?: boolean;
 };
 
 export type EnrollmentAction = "approve" | "reject" | "cancel";

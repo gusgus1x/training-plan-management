@@ -262,8 +262,29 @@ model course {
   course_standard_course                           course_standard_course[]
   training_need_request                            training_need_request[]
   training_plan_oap                                training_plan_oap[]
+  prerequisites                                    course_prerequisite[]    @relation("course_prerequisite_course")
+  required_by                                      course_prerequisite[]    @relation("course_prerequisite_required_by")
 
   @@unique([company_id, course_name_normalized], map: "UX_course_company_name_normalized", where: raw("([company_id] IS NOT NULL)"))
+}
+
+/// Continuation courses: one row means course_id can only be registered for once
+/// prerequisite_course_id has been completed. See prisma/migrations/31_Add_Course_Prerequisite.sql
+/// for why this is a join table and why only one of the two foreign keys cascades.
+///
+/// Hand-written rather than introspected, so the relation fields have readable names. A later
+/// `prisma db pull` will rename them to the generated form and break the repository - check the
+/// diff on this model if you run one.
+model course_prerequisite {
+  course_prerequisite_id BigInt   @id(map: "PK_course_prerequisite") @default(autoincrement())
+  course_id              BigInt
+  prerequisite_course_id BigInt
+  created_at             DateTime @default(dbgenerated("sysdatetime()"), map: "DF_course_prerequisite_created_at")
+  course                 course   @relation("course_prerequisite_course", fields: [course_id], references: [course_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_course_prerequisite_course_id")
+  prerequisite_course    course   @relation("course_prerequisite_required_by", fields: [prerequisite_course_id], references: [course_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_course_prerequisite_prerequisite_course_id")
+
+  @@unique([course_id, prerequisite_course_id], map: "UQ_course_prerequisite")
+  @@index([prerequisite_course_id], map: "IX_course_prerequisite_prerequisite_course_id")
 }
 
 model course_group {

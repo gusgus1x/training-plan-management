@@ -13,7 +13,7 @@ import type {
   EnrollmentStatus,
 } from "./types";
 
-type DatabaseClient = Pick<PrismaClient, "training_enrollment" | "training_plan" | "employee" | "attendance" | "course_standard_course">;
+type DatabaseClient = Pick<PrismaClient, "training_enrollment" | "training_plan" | "employee" | "attendance" | "course_standard_course" | "course_prerequisite" | "training_result">;
 
 const forbidden = (message: string) => new ApiError({ code: "FORBIDDEN", message, status: 403 });
 
@@ -254,6 +254,47 @@ export const computeTargetMatch = async (
   };
 };
 
+/**
+ * Prerequisites for `courseId` the employee has not completed. Empty means clear to register.
+ * "Completed" is training_result.completion_status = COMPLETED - the only record of a finished
+ * course this system keeps. valid_until is deliberately not checked: once passed, always passed.
+ */
+export const missingPrerequisites = async (
+  db: DatabaseClient,
+  courseId: bigint,
+  employeeUserId: string,
+): Promise<Array<{ courseCode: string; courseName: string }>> => {
+  const prerequisites = await db.course_prerequisite.findMany({
+    where: { course_id: courseId },
+    include: { prerequisite_course: { select: { course_code: true, course_name: true } } },
+  });
+  if (prerequisites.length === 0) return [];
+
+  const completed = await db.training_result.findMany({
+    where: {
+      completion_status: "COMPLETED",
+      training_enrollment: {
+        employee_user_id: employeeUserId,
+        training_plan: {
+          training_plan_oap: { course_id: { in: prerequisites.map((p) => p.prerequisite_course_id) } },
+        },
+      },
+    },
+    select: {
+      training_enrollment: {
+        select: { training_plan: { select: { training_plan_oap: { select: { course_id: true } } } } },
+      },
+    },
+  });
+  const completedCourseIds = new Set(
+    completed.map((row) => row.training_enrollment.training_plan.training_plan_oap.course_id.toString()),
+  );
+
+  return prerequisites
+    .filter((p) => !completedCourseIds.has(p.prerequisite_course_id.toString()))
+    .map((p) => ({ courseCode: p.prerequisite_course.course_code, courseName: p.prerequisite_course.course_name }));
+};
+
 const loadPlanScope = async (db: DatabaseClient, planId: bigint) => {
   const plan = await db.training_plan.findUniqueOrThrow({
     where: { plan_id: planId },
@@ -322,6 +363,23 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
         }
 
         const { targetMatchStatus, levelMatchStatus, standardCourseId } = await computeTargetMatch(db(), courseId, employee);
+
+        if (!input.acknowledgePrerequisite) {
+          const missing = await missingPrerequisites(db(), courseId, employee.user_id);
+          if (missing.length > 0) {
+            throw new ApiError({
+              code: "PREREQUISITE_NOT_MET",
+              message: `This employee has not completed ${missing.map((c) => c.courseCode).join(", ")} yet`,
+              status: 409,
+              // ApiErrorDetails only allows scalars, so the missing list rides as two parallel
+              // comma-joined strings - the UI zips them back together to build the confirm prompt.
+              details: {
+                missingCourseCodes: missing.map((c) => c.courseCode).join(","),
+                missingCourseNames: missing.map((c) => c.courseName).join(","),
+              },
+            });
+          }
+        }
 
         const isOwnFactoryPlan = planCompanyId !== null && companyId !== null && planCompanyId.toString() === companyId;
         const autoApprove = role === "HRD_CENTER" || (role === "HRD_FACTORY" && isOwnFactoryPlan);

@@ -30,6 +30,9 @@ export type WorkflowCourse = {
   owner: WorkflowOwner;
   ownerCompany?: string;
   createdBy?: string;
+  /** Courses that must be completed before this one can be registered for. Empty/undefined means
+   *  no condition. See app/lib/courses/repository.ts and prisma/migrations/31_Add_Course_Prerequisite.sql. */
+  prerequisites?: Array<{ id: string; courseCode: string; courseName: string }>;
 };
 
 export const getCourseDisplayName = (course?: WorkflowCourse | null): string => {

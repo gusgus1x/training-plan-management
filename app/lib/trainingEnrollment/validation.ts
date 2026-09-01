@@ -32,6 +32,8 @@ export const parseCreateEnrollment = (input: InputObject): CreateEnrollmentInput
     employeeId: readRequiredString(input, "employeeId"),
     employeeUserId: employeeUserId || null,
     source: source(input.source),
+    // Read as sent; the route pins this to false for EMPLOYEE callers regardless of this value.
+    acknowledgePrerequisite: input.acknowledgePrerequisite === true,
   };
 };
 

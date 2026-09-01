@@ -23,7 +23,7 @@ import { UNDER_DEVELOPMENT } from "../../../../lib/underDevelopment";
 import { listCourses } from "../../../../lib/courses/client";
 import { listEmployees } from "../../../../lib/employees/client";
 import type { EmployeeRecord } from "../../../../lib/employees/types";
-import { createEnrollment, listEnrollments, updateEnrollmentStatus } from "../../../../lib/trainingEnrollment/client";
+import { createEnrollment, EnrollmentApiError, listEnrollments, updateEnrollmentStatus } from "../../../../lib/trainingEnrollment/client";
 import type { EnrollmentRecord, EnrollmentSource, EnrollmentStatus } from "../../../../lib/trainingEnrollment/types";
 import { defaultFunctionRows } from "../../MasterDataManagement/modules/FunctionData";
 import { listPositions } from "../../../../lib/positions/client";
@@ -1166,6 +1166,39 @@ export default function TrainingAcceptSurvey() {
         : "+ Submit"
       : "+ Add";
 
+  // Tries the enrollment as usual; if the server refuses because the employee has not completed a
+  // prerequisite course, asks HRD to confirm by name before resending with the override flag.
+  // Returns false when HRD cancels (nothing was created) or true once the enrolment exists.
+  // Any other failure is rethrown so the caller's own catch block handles it as before.
+  const enrollWithPrerequisiteCheck = async (
+    employee: SurveyEmployee,
+    planId: string,
+    source: EnrollmentSource,
+    courseTitle: string,
+  ): Promise<boolean> => {
+    try {
+      await createEnrollment({ planId, employeeId: employee.id, employeeUserId: null, source });
+      return true;
+    } catch (error) {
+      if (!(error instanceof EnrollmentApiError) || error.code !== "PREREQUISITE_NOT_MET") throw error;
+      const details = error.details as { missingCourseNames?: string } | undefined;
+      const missingNames = (details?.missingCourseNames || "").split(",").filter(Boolean).join(", ");
+      const ok = await confirm({
+        title: { th: "ยังไม่ผ่านหลักสูตรก่อนหน้า", en: "Prerequisite not completed" },
+        message: {
+          th: `พนักงาน ${employee.name} (${employee.employeeCode}) ยังไม่ผ่านการอบรมหลักสูตร ${missingNames}\nยืนยันที่จะให้เข้าร่วมหลักสูตร ${courseTitle} หรือไม่?`,
+          en: `${employee.name} (${employee.employeeCode}) has not completed ${missingNames}. Enrol them in ${courseTitle} anyway?`,
+        },
+        confirmLabel: { th: "ยืนยันให้เข้าร่วม", en: "Enrol anyway" },
+        cancelLabel: { th: "ยกเลิก", en: "Cancel" },
+        danger: true,
+      });
+      if (!ok) return false;
+      await createEnrollment({ planId, employeeId: employee.id, employeeUserId: null, source, acknowledgePrerequisite: true });
+      return true;
+    }
+  };
+
   const handleAddEmployee = async (employee: SurveyEmployee) => {
     if (!selectedCourse) return;
 
@@ -1191,12 +1224,13 @@ export default function TrainingAcceptSurvey() {
     }
 
     try {
-      await createEnrollment({
-        planId: selectedCourse.id,
-        employeeId: employee.id,
-        employeeUserId: null,
-        source: roleMode === "center" ? "HRD_CENTER" : "HRD_FACTORY",
-      });
+      const enrolled = await enrollWithPrerequisiteCheck(
+        employee,
+        selectedCourse.id,
+        roleMode === "center" ? "HRD_CENTER" : "HRD_FACTORY",
+        selectedCourse.title,
+      );
+      if (!enrolled) return;
       await reloadEnrollments();
       toast.success(
         `เพิ่ม ${employee.name} (${employee.employeeCode}) เข้าอบรมแล้ว / Added ${employee.employeeCode} to this course`,
@@ -1919,21 +1953,33 @@ export default function TrainingAcceptSurvey() {
                           onClick={async () => {
                             if (!selectedCourse) return;
                             if (draftSubmittedEmployees.length === 0) return;
+                            // HRD is asked once per employee who has not completed a prerequisite;
+                            // anyone they decline stays in the draft list rather than being
+                            // silently dropped from the batch.
+                            const skipped: SurveyEmployee[] = [];
+                            let submittedCount = 0;
                             try {
                               for (const emp of draftSubmittedEmployees) {
-                                await createEnrollment({
-                                  planId: selectedCourse.id,
-                                  employeeId: emp.id,
-                                  employeeUserId: null,
-                                  source: "HRD_FACTORY",
-                                });
+                                const enrolled = await enrollWithPrerequisiteCheck(
+                                  emp,
+                                  selectedCourse.id,
+                                  "HRD_FACTORY",
+                                  selectedCourse.title,
+                                );
+                                if (enrolled) submittedCount += 1;
+                                else skipped.push(emp);
                               }
-                              const submittedCount = draftSubmittedEmployees.length;
-                              setDraftSubmittedEmployees([]);
+                              setDraftSubmittedEmployees(skipped);
                               await reloadEnrollments();
-                              toast.success(
-                                `บันทึกและยืนยันส่งรายชื่อพนักงานเข้าอบรมกลางเรียบร้อยแล้ว รวม ${submittedCount} คน / Submitted ${submittedCount} employee(s) to HRD Center`,
-                              );
+                              if (submittedCount > 0) {
+                                toast.success(
+                                  skipped.length > 0
+                                    ? `ส่งรายชื่อพนักงานเข้าอบรมกลางแล้ว ${submittedCount} คน (ข้าม ${skipped.length} คน) / Submitted ${submittedCount}, skipped ${skipped.length}`
+                                    : `บันทึกและยืนยันส่งรายชื่อพนักงานเข้าอบรมกลางเรียบร้อยแล้ว รวม ${submittedCount} คน / Submitted ${submittedCount} employee(s) to HRD Center`,
+                                );
+                              } else if (skipped.length > 0) {
+                                toast.info("ไม่มีรายชื่อถูกส่ง / No candidates were submitted");
+                              }
                             } catch (error) {
                               console.error("Failed to submit candidates to center", error);
                               toast.error("เกิดข้อผิดพลาดในการบันทึก / Failed to submit candidates to center");

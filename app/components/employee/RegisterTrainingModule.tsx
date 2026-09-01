@@ -6,6 +6,7 @@ import {
   TRAINING_WORKFLOW_EVENT,
   TRAINING_WORKFLOW_KEYS,
   readWorkflowCollection,
+  type WorkflowCourse,
   type WorkflowStandard,
 } from "../../lib/trainingWorkflow";
 import {
@@ -72,6 +73,8 @@ export type AvailableCourseItem = {
   remarks: string;
   isEnded: boolean;
   isPending: boolean;
+  /** Prerequisite courses this employee has not completed yet. Empty means clear to register. */
+  missingPrerequisites: Array<{ courseCode: string; courseName: string }>;
 };
 
 export type RegisterTrainingModuleProps = {
@@ -220,6 +223,9 @@ export default function RegisterTrainingModule({
 
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [apiStandards, setApiStandards] = useState<WorkflowStandard[]>([]);
+  // Carries each course's prerequisites list, so the register button can be gated without a
+  // separate API call per course.
+  const [apiCourses, setApiCourses] = useState<WorkflowCourse[]>([]);
   const [localStandards, setLocalStandards] = useState<WorkflowStandard[]>([]);
   // Registrations live in training_enrollment, not localStorage. Until now this screen wrote only
   // to the browser, so an employee saw their registration stick and HRD never received it.
@@ -244,11 +250,14 @@ export default function RegisterTrainingModule({
     void reloadEnrollments();
     setLocalStandards(readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards));
 
-    // Fetch live API standards
+    // Fetch live API standards and courses (courses carry the prerequisites list)
     void listCourses({ search: null, status: null })
       .then((res) => {
         if (res && res.standards && res.standards.length > 0) {
           setApiStandards(res.standards);
+        }
+        if (res && res.courses) {
+          setApiCourses(res.courses);
         }
       })
       .catch(() => {});
@@ -290,6 +299,18 @@ export default function RegisterTrainingModule({
 
   const todayStr = useMemo(() => getLocalDateString(), []);
 
+  // Course codes this employee has a COMPLETED training_result for. "Completed" is the only
+  // record this system keeps of a finished course; prerequisites are checked against it.
+  const completedCourseCodes = useMemo(
+    () =>
+      new Set(
+        enrollments
+          .filter((enrollment) => enrollment.result?.completionStatus === "COMPLETED")
+          .map((enrollment) => enrollment.plan.courseCode.trim().toLowerCase()),
+      ),
+    [enrollments],
+  );
+
   // Compute Available Courses strictly matching TrainingRolling.tsx logic
   const allAvailableCourses: AvailableCourseItem[] = useMemo(
     () =>
@@ -313,6 +334,17 @@ export default function RegisterTrainingModule({
               (s.id && plan.course.id && String(s.id).trim() === String(plan.course.id).trim()) ||
               (s.id && plan.course.code && String(s.id).trim().toLowerCase() === String(plan.course.code).trim().toLowerCase()) ||
               (s.courseName && plan.course.name && s.courseName.trim().toLowerCase() === plan.course.name.trim().toLowerCase())
+          );
+
+          // Same flexible id/code matching as `standard` above - the rolling plan's course is a
+          // separate read, not the same WorkflowCourse object the prerequisites live on.
+          const apiCourse = apiCourses.find(
+            (c) =>
+              (plan.course.id && c.id === plan.course.id) ||
+              (c.courseCode && plan.course.code && c.courseCode.trim().toLowerCase() === plan.course.code.trim().toLowerCase()),
+          );
+          const missingPrerequisites = (apiCourse?.prerequisites ?? []).filter(
+            (p) => !completedCourseCodes.has(p.courseCode.trim().toLowerCase()),
           );
 
           const stdCompanies = standard?.companies;
@@ -440,9 +472,10 @@ export default function RegisterTrainingModule({
                 : t("จัดโดย HRD โรงงาน", "Managed by Factory HRD")),
             isEnded,
             isPending: false,
+            missingPrerequisites,
           };
         }),
-    [employeeCompany, isThai, enrollments, rollingPlans, standards, t, todayStr],
+    [employeeCompany, isThai, enrollments, rollingPlans, standards, apiCourses, completedCourseCodes, t, todayStr],
   );
 
   // Filtered courses - strictly hide ended courses unless showCompleted is checked
@@ -506,6 +539,9 @@ export default function RegisterTrainingModule({
 
   const handleRegistration = async (course: AvailableCourseItem) => {
     if (course.isEnded || isSubmitting) return;
+    // The button is disabled for this case already; this only guards a stale click. The real gate
+    // is the server, which rejects the request regardless of what the client believes.
+    if (course.trainingStatus !== "Registered" && course.missingPrerequisites.length > 0) return;
 
     if (course.trainingStatus === "Registered" && course.registrationId) {
       const confirmed = window.confirm(
@@ -752,6 +788,19 @@ export default function RegisterTrainingModule({
                       onClick={() => void handleRegistration(course)}
                     >
                       {t("ยกเลิกการลงทะเบียน", "Cancel registration")}
+                    </button>
+                  ) : course.missingPrerequisites.length > 0 ? (
+                    <button
+                      className={styles.registerBtn}
+                      type="button"
+                      disabled
+                      style={{ opacity: 0.65, cursor: "not-allowed" }}
+                      title={t(
+                        `ต้องผ่านหลักสูตร ${course.missingPrerequisites.map((p) => p.courseName).join(", ")} ก่อน`,
+                        `Requires completing ${course.missingPrerequisites.map((p) => p.courseName).join(", ")} first`,
+                      )}
+                    >
+                      {t("ต้องผ่านหลักสูตรก่อนหน้าก่อน", "Prerequisite not completed")}
                     </button>
                   ) : (
                     <button

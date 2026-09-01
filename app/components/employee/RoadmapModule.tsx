@@ -344,7 +344,20 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
       preTestLink?: string;
       postTestLink?: string;
       evaluationLink?: string;
+      missingPrerequisites: Array<{ courseCode: string; courseName: string }>;
     }>();
+
+    // Course codes this employee has a COMPLETED training_result for. "Completed" is the only
+    // record this system keeps of a finished course; prerequisites are checked against it.
+    const completedCourseCodes = new Set(
+      enrollments
+        .filter((enrollment) => enrollment.result?.completionStatus === "COMPLETED")
+        .map((enrollment) => enrollment.plan.courseCode.trim().toLowerCase()),
+    );
+    const missingPrerequisitesFor = (masterCourse: WorkflowCourse | undefined) =>
+      (masterCourse?.prerequisites ?? []).filter(
+        (p) => !completedCourseCodes.has(p.courseCode.trim().toLowerCase()),
+      );
 
     // 1. Load from Rolling Plans (Most active scheduled plans)
     for (const rp of rollingPlans) {
@@ -423,6 +436,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         preTestLink: rp.course.preTestLink || masterCourse?.preTestLink,
         postTestLink: rp.course.postTestLink || masterCourse?.postTestLink,
         evaluationLink: rp.course.evaluationLink || masterCourse?.evaluationLink,
+        missingPrerequisites: missingPrerequisitesFor(masterCourse),
       });
     }
 
@@ -492,6 +506,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         preTestLink: oap.course.preTestLink || masterCourse?.preTestLink,
         postTestLink: oap.course.postTestLink || masterCourse?.postTestLink,
         evaluationLink: oap.course.evaluationLink || masterCourse?.evaluationLink,
+        missingPrerequisites: missingPrerequisitesFor(masterCourse),
       });
     }
 
@@ -537,6 +552,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         preTestLink: masterCourse?.preTestLink,
         postTestLink: masterCourse?.postTestLink,
         evaluationLink: masterCourse?.evaluationLink,
+        missingPrerequisites: missingPrerequisitesFor(masterCourse),
       });
     }
 
@@ -564,7 +580,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         isRelevantForRoadmap,
       };
     });
-  }, [courses, employeeCompany, employeeFunction, employeeLevel, employeePosition, oapPlans, rollingPlans, standards, t]);
+  }, [courses, employeeCompany, employeeFunction, employeeLevel, employeePosition, enrollments, oapPlans, rollingPlans, standards, t]);
 
   // Filter items based on selected scope tab, category group, search query, and availability
   const filteredRoadmapItems = useMemo(() => {
@@ -726,6 +742,10 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
       }
       return;
     }
+
+    // The button is disabled for this case already; this only guards a stale click. The real gate
+    // is the server, which rejects the request regardless of what the client believes.
+    if (item.missingPrerequisites.length > 0) return;
 
     const confirmed = window.confirm(
       t(
@@ -991,6 +1011,19 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                       title={t("คลิกเพื่อยกเลิกการสมัคร", "Click to cancel registration")}
                     >
                       {t("ยกเลิกการลงทะเบียน", "Cancel registration")}
+                    </button>
+                  ) : item.missingPrerequisites.length > 0 ? (
+                    <button
+                      className={styles.registerBtn}
+                      type="button"
+                      disabled
+                      style={{ opacity: 0.65, cursor: "not-allowed" }}
+                      title={t(
+                        `ต้องผ่านหลักสูตร ${item.missingPrerequisites.map((p) => p.courseName).join(", ")} ก่อน`,
+                        `Requires completing ${item.missingPrerequisites.map((p) => p.courseName).join(", ")} first`,
+                      )}
+                    >
+                      {t("ต้องผ่านหลักสูตรก่อนหน้าก่อน", "Prerequisite not completed")}
                     </button>
                   ) : (
                     <button

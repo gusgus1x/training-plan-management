@@ -77,6 +77,7 @@ describe("Multi-Target Scope in Course Master & Target Match Engine", () => {
           targetPositions: [],
           targetLevels: [],
           standardYear: new Date().getFullYear(),
+          prerequisiteCourseIds: [],
         },
         validUser!.user_id.toString(), // valid userId
         null, // Center scope

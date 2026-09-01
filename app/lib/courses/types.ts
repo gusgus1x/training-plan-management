@@ -39,6 +39,9 @@ export type CreateCourseInput = {
   targetPositions: string[];
   targetLevels: string[];
   standardYear: number;
+  /** Course ids that must be completed (training_result.completion_status = COMPLETED) before this
+   *  course can be registered for. Empty means no condition. */
+  prerequisiteCourseIds: string[];
 };
 
 export type UpdateCourseInput = Partial<CreateCourseInput>;
