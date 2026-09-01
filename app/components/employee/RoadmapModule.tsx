@@ -829,19 +829,19 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                   {/* Target Match Badge */}
                   {item.isBothPositionAndLevelMatch ? (
                     <span className={`${styles.targetMatchPill} ${styles.exactTargetPill}`}>
-                      🎯 {t("ตรงกลุ่มเป้าหมายหลัก", "Direct Target Match")}
+                      🎯 Direct Target Match
                     </span>
                   ) : item.matchLevel ? (
                     <span className={`${styles.targetMatchPill} ${styles.levelMatchPill}`}>
-                      ⭐ {t("ตรงระดับงาน", "Level Match")}: {employeeLevel}
+                      ⭐ Level Match: {toEnglishText(employeeLevel)}
                     </span>
                   ) : item.matchPosition ? (
                     <span className={`${styles.targetMatchPill} ${styles.positionMatchPill}`}>
-                      💼 {t("ตรงตำแหน่งงาน", "Position Match")}: {employeePosition}
+                      💼 Position Match: {toEnglishText(employeePosition)}
                     </span>
                   ) : (
                     <span className={`${styles.targetMatchPill} ${styles.generalMatchPill}`}>
-                      🏢 {t("หลักสูตรทั่วไป", "General Course")}
+                      🏢 General Course
                     </span>
                   )}
                 </div>
