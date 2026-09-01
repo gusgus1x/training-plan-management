@@ -51,10 +51,10 @@ type Draft = {
   status: AssessmentStatus;
 };
 type DraftChoice = AssessmentChoiceInput & { id: string };
-type MockQuestionType = "Choice" | "Text";
+type AssessmentQuestionType = "Choice" | "Text";
 type DraftQuestion = Omit<AssessmentQuestionInput, "choices" | "questionType"> & {
   id: string;
-  questionType: MockQuestionType;
+  questionType: AssessmentQuestionType;
   choices: DraftChoice[];
 };
 
@@ -89,7 +89,7 @@ const blankQuestion = (): DraftQuestion => ({
 
 const toDraftQuestions = (record: AssessmentRecord): DraftQuestion[] =>
   record.questions.map((question) => {
-    const questionType: MockQuestionType = question.questionType === "SHORT_ANSWER" ? "Text" : "Choice";
+    const questionType: AssessmentQuestionType = question.questionType === "SHORT_ANSWER" ? "Text" : "Choice";
     const storedChoices = question.choices.slice(0, 4).map((choice, index) => ({
       id: choice.choiceId,
       choiceText: choice.choiceText,
@@ -370,7 +370,7 @@ export default function Assessment() {
     setMode("version");
   };
 
-  const setQuestionType = (questionType: MockQuestionType) => {
+  const setQuestionType = (questionType: AssessmentQuestionType) => {
     setQuestion((current) => ({
       ...current,
       questionType,
@@ -743,7 +743,7 @@ export default function Assessment() {
             <span>ประเภทคำถาม (Type)</span>
             <select
               value={question.questionType}
-              onChange={(event) => setQuestionType(event.target.value as MockQuestionType)}
+              onChange={(event) => setQuestionType(event.target.value as AssessmentQuestionType)}
             >
               <option value="Choice">Choice (ปรนัย - 4 ตัวเลือก)</option>
               <option value="Text">Text (อัตนัย / เติมคำ)</option>

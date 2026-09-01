@@ -1158,8 +1158,8 @@ export default function TrainingActual() {
             <div className={styles.actualCostHeader}>
               <div>
                 <p className={styles.kicker}>Expense Calculation</p>
-                <h3>ทดสอบระบบคำนวณเงิน</h3>
-                <span>บันทึกและทดสอบค่าใช้จ่ายจริงที่เกิดขึ้นในการอบรม</span>
+                <h3>บันทึกค่าใช้จ่ายจริง</h3>
+                <span>บันทึกค่าใช้จ่ายจริงที่เกิดขึ้นในการอบรม</span>
               </div>
             </div>
 

@@ -31,10 +31,10 @@ export const evaluationManagementModule = {
 } as const;
 
 type Mode = "idle" | "new" | "edit";
-type MockTiming = "After Training" | "30-Day Follow-up";
-type MockRespondent = "Employee" | "Manager";
-type MockStatus = "Draft" | "Published" | "Inactive";
-type MockQuestionType = "Rating" | "Single Choice" | "Text";
+type TimingLabel = "After Training" | "30-Day Follow-up";
+type RespondentLabel = "Employee" | "Manager";
+type StatusLabel = "Draft" | "Published" | "Inactive";
+type QuestionTypeLabel = "Rating" | "Single Choice" | "Text";
 type EvaluationSection = "Course Content" | "Instructor" | "Learning Experience" | "Application & Impact" | "Comments";
 type Feedback = { tone: "success" | "error" | "info"; message: string };
 type FormErrors = Partial<Record<"name" | "companyId" | "questions" | "question", string>>;
@@ -43,15 +43,15 @@ type Draft = {
   formName: string;
   scope: EvaluationScope;
   companyId: string;
-  timing: MockTiming;
-  respondent: MockRespondent;
+  timing: TimingLabel;
+  respondent: RespondentLabel;
   anonymous: boolean;
-  status: MockStatus;
+  status: StatusLabel;
 };
 type DraftQuestion = {
   id: string;
   prompt: string;
-  type: MockQuestionType;
+  type: QuestionTypeLabel;
   section: EvaluationSection;
   required: boolean;
   options: string[];
@@ -79,14 +79,17 @@ const blankQuestion = (): DraftQuestion => ({
   options: ["", "", "", ""],
 });
 
-const timingToApi = (value: MockTiming): EvaluationTiming => value === "After Training" ? "AFTER_TRAINING" : "FOLLOW_UP_30_DAYS";
-const timingFromApi = (value: EvaluationTiming): MockTiming => value === "AFTER_TRAINING" ? "After Training" : "30-Day Follow-up";
-const respondentToApi = (value: MockRespondent): EvaluationRespondent => value === "Employee" ? "EMPLOYEE" : "MANAGER";
-const respondentFromApi = (value: EvaluationRespondent): MockRespondent => value === "EMPLOYEE" ? "Employee" : "Manager";
-const statusToApi = (value: MockStatus): EvaluationStatus => value.toUpperCase() as EvaluationStatus;
-const statusFromApi = (value: EvaluationStatus): MockStatus => value === "DRAFT" ? "Draft" : value === "PUBLISHED" ? "Published" : "Inactive";
-const typeToApi = (value: MockQuestionType): EvaluationQuestionType => value === "Rating" ? "RATING" : value === "Single Choice" ? "SINGLE_CHOICE" : "SHORT_TEXT";
-const typeFromApi = (value: EvaluationQuestionType): MockQuestionType => value === "RATING" ? "Rating" : value === "SINGLE_CHOICE" || value === "MULTIPLE_CHOICE" ? "Single Choice" : "Text";
+// The *Label types are what the form shows; the Evaluation* types are what the API stores. These
+// pairs are the only place the two vocabularies meet, so each side is typed for the direction it
+// actually carries.
+const timingToApi = (value: TimingLabel): EvaluationTiming => value === "After Training" ? "AFTER_TRAINING" : "FOLLOW_UP_30_DAYS";
+const timingFromApi = (value: EvaluationTiming): TimingLabel => value === "AFTER_TRAINING" ? "After Training" : "30-Day Follow-up";
+const respondentToApi = (value: RespondentLabel): EvaluationRespondent => value === "Employee" ? "EMPLOYEE" : "MANAGER";
+const respondentFromApi = (value: EvaluationRespondent): RespondentLabel => value === "EMPLOYEE" ? "Employee" : "Manager";
+const statusToApi = (value: StatusLabel): EvaluationStatus => value.toUpperCase() as EvaluationStatus;
+const statusFromApi = (value: EvaluationStatus): StatusLabel => value === "DRAFT" ? "Draft" : value === "PUBLISHED" ? "Published" : "Inactive";
+const typeToApi = (value: QuestionTypeLabel): EvaluationQuestionType => value === "Rating" ? "RATING" : value === "Single Choice" ? "SINGLE_CHOICE" : "SHORT_TEXT";
+const typeFromApi = (value: EvaluationQuestionType): QuestionTypeLabel => value === "RATING" ? "Rating" : value === "SINGLE_CHOICE" || value === "MULTIPLE_CHOICE" ? "Single Choice" : "Text";
 
 const toDraftQuestions = (record: EvaluationRecord): DraftQuestion[] => record.questions.map((question) => ({
   id: question.evaluationQuestionId,
@@ -117,12 +120,7 @@ const createEvaluationCsv = (items: EvaluationRecord[]) => [
   ]),
 ].map((row) => row.map(csvCell).join(",")).join("\r\n");
 
-const allowedStatuses = (current?: EvaluationStatus): MockStatus[] => {
-  if (!current || current === "DRAFT") return ["Draft", "Published"];
-  return current === "PUBLISHED" ? ["Published", "Inactive"] : ["Inactive", "Published"];
-};
-
-const generateNextEvaluationCode = (timing: MockTiming, existingItems: EvaluationRecord[]) => {
+const generateNextEvaluationCode = (timing: TimingLabel, existingItems: EvaluationRecord[]) => {
   const prefix = timing === "After Training" ? "EVL-AFTER" : "EVL-30DAY";
   let maxSeq = 0;
   existingItems.forEach((item) => {
@@ -209,7 +207,7 @@ export default function EvaluationManagement() {
     setSelectedId("");
     setOpenDetailId("");
     setFeedback(null);
-    const initialTiming: MockTiming = "After Training";
+    const initialTiming: TimingLabel = "After Training";
     const initialDraft = blankDraft(user?.companyId ?? "", isFactory);
     initialDraft.formCode = generateNextEvaluationCode(initialTiming, items);
     setDraft(initialDraft);
@@ -472,7 +470,7 @@ export default function EvaluationManagement() {
         <select
           value={draft.timing}
           onChange={(event) => {
-            const nextTiming = event.target.value as MockTiming;
+            const nextTiming = event.target.value as TimingLabel;
             setDraft((current) => ({
               ...current,
               timing: nextTiming,
@@ -487,7 +485,7 @@ export default function EvaluationManagement() {
       <label>Respondent
         <select
           value={draft.respondent}
-          onChange={(event) => setDraft({ ...draft, respondent: event.target.value as MockRespondent })}
+          onChange={(event) => setDraft({ ...draft, respondent: event.target.value as RespondentLabel })}
         >
           <option>Employee</option>
           <option>Manager</option>
@@ -509,7 +507,7 @@ export default function EvaluationManagement() {
     <div className={styles.questionBuilder}><div className={styles.panelHeader}><div><p className={styles.kicker}>Question builder</p><h3>{editingQuestionId ? "Edit question" : "Add evaluation question"}</h3></div><span>{questions.length} questions</span></div>
       <div className={styles.questionGrid}><label className={styles.fullWidth}>Question<textarea aria-invalid={Boolean(errors.question)} className={errors.question ? styles.inputError : undefined} value={questionDraft.prompt} onChange={(event) => { setQuestionDraft({ ...questionDraft, prompt: event.target.value }); setErrors((current) => ({ ...current, question: undefined })); }} placeholder="Enter the question shown to respondents" /></label>
         <label>Section<select value={questionDraft.section} onChange={(event) => setQuestionDraft({ ...questionDraft, section: event.target.value as EvaluationSection })}>{sections.map((section) => <option key={section}>{section}</option>)}</select></label>
-        <label>Answer Type<select value={questionDraft.type} onChange={(event) => setQuestionDraft({ ...questionDraft, type: event.target.value as MockQuestionType })}><option>Rating</option><option>Single Choice</option><option>Text</option></select></label>
+        <label>Answer Type<select value={questionDraft.type} onChange={(event) => setQuestionDraft({ ...questionDraft, type: event.target.value as QuestionTypeLabel })}><option>Rating</option><option>Single Choice</option><option>Text</option></select></label>
         <label className={styles.toggleLabel}><input checked={questionDraft.required} type="checkbox" onChange={(event) => setQuestionDraft({ ...questionDraft, required: event.target.checked })} />Required question</label>
         {questionDraft.type === "Single Choice" ? questionDraft.options.map((option, index) => <label key={`choice-${index}`}>Choice {index + 1}<input value={option} onChange={(event) => setQuestionDraft({ ...questionDraft, options: questionDraft.options.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} /></label>) : null}
       </div>

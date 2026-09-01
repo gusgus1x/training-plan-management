@@ -67,36 +67,6 @@ export const functionDataModule = {
     "Maintain the shared function catalog, divisions, departments, and sections used across companies.",
 } as const;
 
-const mockFunctions = [
-  ["FNC0001", "การขาย", ""],
-  ["FNC0002", "วางแผนการขาย", "Sale Planing"],
-  ["FNC0003", "บัญชีและการเงิน", "Account and Financial"],
-  ["FNC0004", "ทรัพยากรมนุษย์", "Human Resource"],
-  ["FNC0005", "ธุรการ", ""],
-  ["FNC0006", "ล่ามและเลขานุการ", ""],
-  ["FNC0007", "จัดซื้อ", "Purchase"],
-  ["FNC0008", "เทคโนโลยีสารสนเทศ", "IT Promotion"],
-  ["FNC0009", "คลังสินค้า", ""],
-  ["FNC0010", "ผลิต", "Production"],
-  ["FNC0011", "วางแผนการผลิต", "Production Planing"],
-  ["FNC0012", "วิศวกรรมและซ่อมบำรุง", "Engineering and Maintenance"],
-  ["FNC0013", "คุณภาพ", "Quality"],
-  ["FNC0014", "ความปลอดภัยและสิ่งแวดล้อม", "Safety and Environment"],
-  ["FNC0015", "วิศวกรรมโครงการ", "Project Engineering"],
-  ["FNC0016", "สำนักงานกรรมการผู้จัดการ", "President Office"],
-  ["FNC0017", "อื่นๆ", "Other"],
-] as const;
-
-// Temporary compatibility export for mock consumers awaiting API migration.
-export const defaultFunctionRows: FunctionRecord[] = mockFunctions.map(
-  ([functionCode, functionNameTh, functionNameEn], index) => ({
-    id: `function-${String(index + 1).padStart(4, "0")}`,
-    functionCode,
-    functionNameTh,
-    functionNameEn,
-  }),
-);
-
 type GenericForm = {
   code: string;
   nameTh: string;

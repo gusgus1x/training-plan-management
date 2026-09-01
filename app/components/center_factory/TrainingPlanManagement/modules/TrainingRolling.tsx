@@ -157,7 +157,25 @@ export const monthOptions = [
   { value: "11", label: "November" },
   { value: "12", label: "December" },
 ] as const;
-export const yearOptions = ["2026", "2025", "2024"] as const;
+/**
+ * The year filter used to be the literal list ["2026", "2025", "2024"], with "2026" also hardcoded
+ * as the initial and reset value. That works until it does not: come January the filter defaults to
+ * a year in the past and the dropdown offers no way to reach the current one, so every plan in it
+ * is simply invisible - with no error to notice.
+ *
+ * Derived from the plans on screen plus the current year instead, so it always covers exactly the
+ * years that have something in them.
+ */
+export const currentYear = () => String(new Date().getFullYear());
+
+export const rollingYearOptions = (plans: Array<{ trainingDate?: string }>) => {
+  const years = new Set<string>([currentYear()]);
+  for (const plan of plans) {
+    const year = plan.trainingDate?.slice(0, 4);
+    if (year && /^\d{4}$/.test(year)) years.add(year);
+  }
+  return [...years].sort((a, b) => b.localeCompare(a));
+};
 
 const mapCourseDetail = (course: WorkflowCourse): RollingCourseDetail => ({
   id: course.id,
@@ -320,7 +338,7 @@ export default function TrainingRolling() {
   const [openDetailId, setOpenDetailId] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [search, setSearch] = useState("");
-  const [selectedYear, setSelectedYear] = useState("2026");
+  const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | RollingStatus>("all");
   const [companyFilter, setCompanyFilter] = useState<string>("all");
@@ -405,6 +423,7 @@ export default function TrainingRolling() {
       }),
     [rollingPlans, isFactoryUser, user?.roleCode, userCompanyCode],
   );
+  const yearOptions = useMemo(() => rollingYearOptions(scopedRollingPlans), [scopedRollingPlans]);
   const selectedMonthLabel =
     selectedMonth === "all"
       ? "All Year"
@@ -961,7 +980,7 @@ export default function TrainingRolling() {
     setOpenDetailId("");
     setSelectedGroupId("");
     setSearch("");
-    setSelectedYear("2026");
+    setSelectedYear(currentYear());
     setSelectedMonth("all");
     setStatusFilter("all");
   };

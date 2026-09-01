@@ -52,4 +52,23 @@ describe("controls whose backend does not exist stay disabled", () => {
     // export consulted the same list when resolving names by employee code.
     expect(acceptSurvey).not.toContain("readEmployeeMasterData");
   });
+
+  it("no longer carries a fake employee master anywhere in the module", () => {
+    // Removing the one caller left the generator sitting there exported, so the next person to
+    // need "the employee list" could wire it back in and print invented people again. Guard the
+    // source of the data, not just the screen that used to read it.
+    const employeeMasterData = read("lib/employeeMasterData.ts");
+    for (const gone of [
+      "defaultEmployeeRows",
+      "readEmployeeMasterData",
+      "writeEmployeeMasterData",
+      "thaiGivenNames",
+      "thaiSurnames",
+      "companySlots",
+    ]) {
+      expect(employeeMasterData).not.toContain(`const ${gone}`);
+    }
+    // The invented id-card prefix every generated row shared.
+    expect(employeeMasterData).not.toContain("1101700");
+  });
 });

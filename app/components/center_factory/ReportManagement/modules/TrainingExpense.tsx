@@ -10,7 +10,8 @@ export const trainingExpenseModule = {
   description: "Training expense summary by course, company, and date range",
 } as const;
 
-const initialRows = [["OAP-001","Leadership Essentials","THB 45,000","ATFB","Approved"],["OAP-022","Safety Basics","THB 28,500","SNF","Submitted"],["OAP-014","Service Mind","THB 18,000","SATI","Draft"]] as const;
+// No seeded rows. This screen has no backend yet, and courses with budgets and approval states
+// attached read as real spending to anyone who opens it.
 const formFields = ["Course code","Expense type","Amount","Cost center"] as const;
 
 const fieldLabels = [
@@ -27,7 +28,7 @@ export default function TrainingExpense() {
   const [draftRows, setDraftRows] = useState<string[][]>([]);
   const [formValues, setFormValues] = useState(() => formFields.map(() => ""));
 
-  const rows = useMemo(() => [...draftRows, ...initialRows.map((row) => [...row])], [draftRows]);
+  const rows = useMemo(() => draftRows.map((row) => [...row]), [draftRows]);
   const statuses = useMemo(() => Array.from(new Set(rows.map((row) => row[4]))), [rows]);
   const visibleRows = rows.filter((row) => {
     const matchesSearch = row.join(" ").toLowerCase().includes(search.toLowerCase());

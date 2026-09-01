@@ -39,32 +39,9 @@ type EmployeeReport = {
 
 const companyRecipients = ["All Companies", "ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] as const;
 
-const initialReports: EmployeeReport[] = [
-  {
-    id: "employee-report-001",
-    senderEmail: "employee.test@attg.local",
-    subject: "Training record follow up",
-    recipientType: "Person",
-    recipientTarget: "factory.hr@attg.local",
-    sendDate: "2026-07-24",
-    message: "Please review my training record status and approval result.",
-    attachments: [],
-    status: "Sent",
-    sentAt: "18 Jul 2026, 09:40",
-  },
-  {
-    id: "employee-report-002",
-    senderEmail: "employee.test@attg.local",
-    subject: "Certificate request",
-    recipientType: "Person",
-    recipientTarget: "hrd.center@attg.local",
-    sendDate: "2026-07-24",
-    message: "Please support a certificate copy for my completed 5S Awareness training.",
-    attachments: [],
-    status: "Ready",
-    sentAt: "-",
-  },
-];
+// No seeded history. These were two invented messages shown as this employee's own sent mail,
+// one of them stamped "Sent" - correspondence they never wrote, on a screen that cannot send.
+const initialReports: EmployeeReport[] = [];
 
 const createInitialMessage = (completedHours: number, completedCount: number) =>
   `Please review my training records. I have completed ${completedHours} training hours and ${completedCount} records are available.`;

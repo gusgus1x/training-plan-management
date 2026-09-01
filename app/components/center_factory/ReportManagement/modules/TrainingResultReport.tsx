@@ -12,7 +12,8 @@ export const trainingResultReportModule = {
 
 export const resultReportTitle = trainingResultReportModule.title;
 
-const initialRows = [["OAP-001","Leadership Essentials","Pre 72% / Post 88%","4.6 / 5","Closed"],["OAP-022","Safety Basics","Pre 68% / Post 91%","4.4 / 5","Closed"],["OAP-014","Service Mind","Pre 75% / Post 86%","4.7 / 5","Review"]] as const;
+// No seeded rows. This screen has no backend yet, and invented pre/post scores are exactly the
+// kind of figure someone would quote in a meeting without checking where it came from.
 const formFields = ["Course code","Period","Company","Export format"] as const;
 
 const fieldLabels = [
@@ -29,7 +30,7 @@ export default function TrainingResultReport() {
   const [draftRows, setDraftRows] = useState<string[][]>([]);
   const [formValues, setFormValues] = useState(() => formFields.map(() => ""));
 
-  const rows = useMemo(() => [...draftRows, ...initialRows.map((row) => [...row])], [draftRows]);
+  const rows = useMemo(() => draftRows.map((row) => [...row]), [draftRows]);
   const statuses = useMemo(() => Array.from(new Set(rows.map((row) => row[4]))), [rows]);
   const visibleRows = rows.filter((row) => {
     const matchesSearch = row.join(" ").toLowerCase().includes(search.toLowerCase());

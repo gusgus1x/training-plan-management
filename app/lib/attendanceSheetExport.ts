@@ -36,13 +36,18 @@ export type AttendancePositionMaster = {
   positionNameEn: string;
 };
 
+/**
+ * An unknown title stays blank rather than defaulting to "นาย". This lands on a sheet that gets
+ * printed and signed, and guessing gets it wrong for every woman whose record is missing a title -
+ * a blank is honest and someone can write it in by hand.
+ */
 const getThaiTitle = (title?: string | null) => {
   const normalized = (title || "").trim().toLocaleLowerCase();
   if (["mr", "mr.", "mr. ", "นาย"].includes(normalized)) return "นาย";
   if (["mrs", "mrs.", "mrs. ", "นาง"].includes(normalized)) return "นาง";
   if (["ms", "ms.", "ms. ", "miss", "น.ส.", "น.ส", "นางสาว"].includes(normalized)) return "น.ส.";
-  if (!normalized || normalized === "-") return "นาย";
-  return title || "นาย";
+  if (!normalized || normalized === "-") return "";
+  return title || "";
 };
 
 const companyAndEmployeeCollator = new Intl.Collator("th", {

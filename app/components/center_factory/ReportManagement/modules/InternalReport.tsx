@@ -46,65 +46,25 @@ export const internalReportTitle = internalReportModule.title;
 const recipientTypes = ["Person", "Company"] as const;
 const companyRecipients = ["All Companies", "ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] as const;
 
+// Blank, not prefilled. The old defaults carried a real-looking recipient address and fixed 2026
+// dates, so whoever unlocks this screen would be one click from sending to an address they never
+// chose.
 const createInitialForm = (): ComposeForm => ({
-  subject: "Monthly training summary",
+  subject: "",
   reportType: "Monthly Training Summary",
   recipientType: "Person",
-  recipientTarget: "factory.hr@attg.local",
-  recipientGroup: "factory.hr@attg.local",
+  recipientTarget: "",
+  recipientGroup: "",
   companyScope: "All Companies",
-  period: "2026-07-24",
-  dueDate: "2026-07-31",
-  summary: "Please review the attached training report and confirm any required follow-up actions.",
+  period: "",
+  dueDate: "",
+  summary: "",
 });
 
-const initialReports: ReportRecord[] = [
-  {
-    id: "report-001",
-    senderEmail: "center.hrd@attg.local",
-    subject: "Monthly training summary",
-    reportType: "Monthly Training Summary",
-    recipientType: "Company",
-    recipientTarget: "All Companies",
-    recipientGroup: "Factory HR",
-    companyScope: "All Companies",
-    period: "2026-07-01",
-    dueDate: "2026-06-30",
-    summary: "Monthly training status, participant completion, and expense overview.",
-    status: "Sent",
-    sentAt: "2026-07-01 09:30",
-  },
-  {
-    id: "report-002",
-    senderEmail: "factory.hr@attg.local",
-    subject: "Evaluation follow up",
-    reportType: "Evaluation Follow Up",
-    recipientType: "Person",
-    recipientTarget: "department.owner@attg.local",
-    recipientGroup: "department.owner@attg.local",
-    companyScope: "SNF",
-    period: "2026-07-24",
-    dueDate: "2026-07-25",
-    summary: "Pending 30-day evaluations by department owner.",
-    status: "Ready",
-    sentAt: "-",
-  },
-  {
-    id: "report-003",
-    senderEmail: "finance.coordinator@attg.local",
-    subject: "Budget clarification",
-    reportType: "Training Expense Summary",
-    recipientType: "Person",
-    recipientTarget: "finance@attg.local",
-    recipientGroup: "finance@attg.local",
-    companyScope: "All Companies",
-    period: "2026-07-15",
-    dueDate: "2026-07-15",
-    summary: "Training expense detail for finance review.",
-    status: "Draft",
-    sentAt: "-",
-  },
-];
+// No seeded history. These were three invented reports complete with sender addresses and a "Sent"
+// timestamp - a record of correspondence that never happened, on a screen whose send button does
+// not send anything yet.
+const initialReports: ReportRecord[] = [];
 
 const statusClass: Record<ReportStatus, string> = {
   Draft: "statusDraft",
@@ -231,8 +191,8 @@ export default function InternalReport({ preparedDraft }: InternalReportProps = 
       subject: "",
       reportType: "Monthly Training Summary",
       recipientType: "Person",
-      recipientTarget: "factory.hr@attg.local",
-      recipientGroup: "factory.hr@attg.local",
+      recipientTarget: "",
+      recipientGroup: "",
       companyScope: "All Companies",
       period: "",
       dueDate: "",

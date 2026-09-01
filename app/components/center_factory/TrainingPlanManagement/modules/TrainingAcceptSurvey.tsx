@@ -25,7 +25,6 @@ import { listEmployees } from "../../../../lib/employees/client";
 import type { EmployeeRecord } from "../../../../lib/employees/types";
 import { createEnrollment, EnrollmentApiError, listEnrollments, updateEnrollmentStatus } from "../../../../lib/trainingEnrollment/client";
 import type { EnrollmentRecord, EnrollmentSource, EnrollmentStatus } from "../../../../lib/trainingEnrollment/types";
-import { defaultFunctionRows } from "../../MasterDataManagement/modules/FunctionData";
 import { listPositions } from "../../../../lib/positions/client";
 import { getCurrentCalendarDate } from "../../../../lib/calendarDate";
 import styles from "./TrainingAcceptSurvey.module.css";

@@ -134,18 +134,6 @@ export type WorkflowRollingPlan = {
   updatedAt: string;
 };
 
-export type WorkflowRegistration = {
-  id: string;
-  rollingId: string;
-  employeeCode: string;
-  employeeName: string;
-  company: string;
-  department: string;
-  position: string;
-  level: string;
-  registeredAt: string;
-};
-
 export type WorkflowCompletedCourse = {
   id: string;
   rollingId: string;
@@ -183,25 +171,17 @@ export type WorkflowCompletedCourse = {
   savedAt: string;
 };
 
-// Only these three are still referenced. rollingPlans, registrations, acceptances and
-// completedCourses had no reader and no writer left; registrations went when employee sign-up moved
-// onto training_enrollment. Their raw strings stay in LEGACY_TRANSACTION_KEYS below so browsers
-// that still hold the old values get them cleared.
-export const TRAINING_WORKFLOW_KEYS = {
-  courses: "tpm_workflow_courses",
-  standards: "tpm_workflow_standards",
-  oapPlans: "tpm_workflow_oap_plans",
-} as const;
-
-export const TRAINING_WORKFLOW_EVENT = "training-workflow-changed";
-// Every master list except employees moved to the API; the other seven keys had no reader or writer.
-export const TRAINING_MASTER_KEYS = {
-  employees: "tpm_master_employees",
-} as const;
-export const TRAINING_MASTER_EVENT = "training-master-changed";
-
+/**
+ * Every one of these stores is gone from the code. Courses, standards, OAP plans, rolling plans,
+ * registrations, acceptances, completed courses and the employee master all come from the API now,
+ * and the last writer to any of them was removed long before the last reader was - so the readers
+ * had been folding empty arrays into their lists for a while.
+ *
+ * The names survive only to clear them out of browsers that still hold the old values, some of
+ * which is a sizeable blob of invented employees. Bump WORKFLOW_VERSION to re-run the sweep.
+ */
 const WORKFLOW_VERSION_KEY = "tpm_mock_workflow_version";
-const WORKFLOW_VERSION = "2026-08-13-wipe-all-transactions-v1";
+const WORKFLOW_VERSION = "2026-09-01-drop-workflow-storage-v2";
 const LEGACY_TRANSACTION_KEYS = [
   "training-plan.employee-training-requests",
   "training-plan.approved-training-need",
@@ -215,6 +195,8 @@ const LEGACY_TRANSACTION_KEYS = [
   "tpm_workflow_registrations",
   "tpm_workflow_acceptances",
   "tpm_workflow_completed_courses",
+  "tpm_master_employees",
+  "tpm_master_employees_seed_version",
 ];
 
 const initializeWorkflow = () => {
@@ -228,60 +210,11 @@ const initializeWorkflow = () => {
   }
 
   LEGACY_TRANSACTION_KEYS.forEach((key) => window.localStorage.removeItem(key));
-  Object.values(TRAINING_WORKFLOW_KEYS).forEach((key) =>
-    window.localStorage.removeItem(key),
-  );
   window.localStorage.setItem(WORKFLOW_VERSION_KEY, WORKFLOW_VERSION);
 };
 
 export const initializeTrainingWorkflow = () => {
   initializeWorkflow();
-};
-
-export const readWorkflowCollection = <T,>(key: string): T[] => {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  initializeWorkflow();
-
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T[]) : [];
-  } catch {
-    return [];
-  }
-};
-
-export const writeWorkflowCollection = <T,>(key: string, items: T[]) => {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.localStorage.setItem(key, JSON.stringify(items));
-  window.dispatchEvent(new CustomEvent(TRAINING_WORKFLOW_EVENT));
-};
-
-export const readMasterCollection = <T,>(key: string, fallback: T[]): T[] => {
-  if (typeof window === "undefined") {
-    return fallback;
-  }
-
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T[]) : fallback;
-  } catch {
-    return fallback;
-  }
-};
-
-export const writeMasterCollection = <T,>(key: string, items: T[]) => {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.localStorage.setItem(key, JSON.stringify(items));
-  window.dispatchEvent(new CustomEvent(TRAINING_MASTER_EVENT));
 };
 
 export const isWorkflowOwner = (

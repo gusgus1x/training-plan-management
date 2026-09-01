@@ -3,9 +3,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { listCourses } from "../../lib/courses/client";
 import {
-  TRAINING_WORKFLOW_EVENT,
-  TRAINING_WORKFLOW_KEYS,
-  readWorkflowCollection,
   type WorkflowCourse,
   type WorkflowStandard,
 } from "../../lib/trainingWorkflow";
@@ -226,7 +223,6 @@ export default function RegisterTrainingModule({
   // Carries each course's prerequisites list, so the register button can be gated without a
   // separate API call per course.
   const [apiCourses, setApiCourses] = useState<WorkflowCourse[]>([]);
-  const [localStandards, setLocalStandards] = useState<WorkflowStandard[]>([]);
   // Registrations live in training_enrollment, not localStorage. Until now this screen wrote only
   // to the browser, so an employee saw their registration stick and HRD never received it.
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
@@ -244,11 +240,10 @@ export default function RegisterTrainingModule({
       .then((result) => setEnrollments(result.enrollments || []))
       .catch(() => undefined);
 
-  // Load Rolling Plans, Standards, and Registrations dynamically from API & Storage
+  // Load Rolling Plans, Standards, and Registrations from the API
   useEffect(() => {
     void loadWorkflowRollingPlans().then(setRollingPlans);
     void reloadEnrollments();
-    setLocalStandards(readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards));
 
     // Fetch live API standards and courses (courses carry the prerequisites list)
     void listCourses({ search: null, status: null })
@@ -263,24 +258,21 @@ export default function RegisterTrainingModule({
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    const syncData = () => {
-      setLocalStandards(readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards));
-    };
-
-    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncData);
-    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncData);
-  }, []);
-
-  // Merge local & API standards into a flat list, preserving exact courseId and courseCode matches
+  // Fold the API standards into a flat list, preserving exact courseId and courseCode matches.
+  // A browser-storage copy used to be merged in ahead of these; nothing had written that store for
+  // a long time, so it only ever contributed an empty array.
   const standards = useMemo(() => {
-    const combined: WorkflowStandard[] = [...localStandards];
+    const combined: WorkflowStandard[] = [];
     for (const apiStd of apiStandards) {
+      // Match on the course, never on `id`: that is the course_standard document id, and
+      // course_standard is unique per (company, year) - so every course added in the same year
+      // shares one. Folding on it collapsed the whole year into a single entry carrying the last
+      // course's code, and every other course then failed the lookup below and fell back to
+      // "All Positions" / "All Levels".
       const idx = combined.findIndex(
         (s) =>
           (s.courseCode && apiStd.courseCode && s.courseCode.trim().toLowerCase() === apiStd.courseCode.trim().toLowerCase()) ||
-          (s.courseId && apiStd.courseId && String(s.courseId) === String(apiStd.courseId)) ||
-          (s.id && apiStd.id && String(s.id) === String(apiStd.id))
+          (s.courseId && apiStd.courseId && String(s.courseId) === String(apiStd.courseId))
       );
       if (idx >= 0) {
         combined[idx] = {
@@ -295,7 +287,7 @@ export default function RegisterTrainingModule({
       }
     }
     return combined;
-  }, [apiStandards, localStandards]);
+  }, [apiStandards]);
 
   const todayStr = useMemo(() => getLocalDateString(), []);
 
@@ -352,7 +344,7 @@ export default function RegisterTrainingModule({
             ? stdCompanies
             : ((plan.relatedCompanies && plan.relatedCompanies.length > 0)
               ? plan.relatedCompanies
-              : (plan.owner === "CENTER" ? ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] : [ownerCompany]));
+              : (plan.owner === "CENTER" ? ["All Companies"] : [ownerCompany]));
 
           const rawPositions = (plan.course as unknown as Record<string, unknown>)?.targetPositions as string[] | undefined;
           const rawLevels = (plan.course as unknown as Record<string, unknown>)?.targetLevels as string[] | undefined;

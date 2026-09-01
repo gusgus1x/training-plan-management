@@ -961,19 +961,20 @@ export default function TrainingRecord() {
             <div className={styles.masterMetaChips}>
               <div className={styles.metaChip}>
                 <span>หมวดหมู่หลักสูตร:</span>
-                <strong>{selectedCourse.courseType || "Functional Competency"}</strong>
+                <strong>{selectedCourse.courseType || "ยังไม่ระบุ"}</strong>
               </div>
               <div className={styles.metaChip}>
                 <span>กลุ่มหลักสูตร:</span>
-                <strong>{selectedCourse.courseGroup || "มาตรฐานการปฏิบัติงาน"}</strong>
+                <strong>{selectedCourse.courseGroup || "ยังไม่ระบุ"}</strong>
               </div>
               <div className={styles.metaChip}>
                 <span>สถาบัน/ผู้จัด:</span>
-                <strong>{selectedCourse.instituteProvider || "ภายในองค์กร (Internal)"}</strong>
+                <strong>{selectedCourse.instituteProvider || "ยังไม่ระบุ"}</strong>
               </div>
               <div className={styles.metaChip}>
                 <span>ระยะเวลา:</span>
-                <strong>{selectedCourse.durationHours ?? 6} ชั่วโมง</strong>
+                {/* No invented hour count: this panel is what HRD reads back when recording results. */}
+                <strong>{selectedCourse.durationHours != null ? `${selectedCourse.durationHours} ชั่วโมง` : "ยังไม่ระบุ"}</strong>
               </div>
               <div className={styles.metaChip}>
                 <span>อายุการสะสมผล:</span>

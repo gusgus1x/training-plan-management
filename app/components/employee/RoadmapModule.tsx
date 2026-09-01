@@ -3,13 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { listCourses } from "../../lib/courses/client";
 import {
-  TRAINING_WORKFLOW_EVENT,
-  TRAINING_WORKFLOW_KEYS,
   getCourseDisplayName,
   getCourseSecondaryName,
-  readWorkflowCollection,
   type WorkflowCourse,
-  type WorkflowOapPlan,
   type WorkflowStandard,
 } from "../../lib/trainingWorkflow";
 import {
@@ -192,6 +188,13 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
   const { language } = useUiLanguage();
   const isThai = language === "th";
   const t = (th: string, en: string) => (isThai ? th : en);
+  /**
+   * Shown where HRD has not filled a field in yet. These slots used to carry invented stand-ins -
+   * an instructor called "กัส เอฟ", room "212224", and "ทดสอบระบบการทำงานจริง" as the course
+   * content - on the screen an employee reads to decide whether to sign up, with nothing marking
+   * them as placeholders.
+   */
+  const notSpecified = t("ยังไม่ระบุ", "Not specified");
 
   const toast = useToast();
   const authenticatedUser = useAuthenticatedUser();
@@ -204,9 +207,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
   const employeeLevel = profileValue(authenticatedUser?.levelName);
 
   const [courses, setCourses] = useState<WorkflowCourse[]>([]);
-  const [localStandards, setLocalStandards] = useState<WorkflowStandard[]>([]);
   const [apiStandards, setApiStandards] = useState<WorkflowStandard[]>([]);
-  const [oapPlans, setOapPlans] = useState<WorkflowOapPlan[]>([]);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   // Registrations live in training_enrollment, not localStorage. This screen used to write only to
   // the browser, so a registration made here never reached HRD.
@@ -272,27 +273,22 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    const syncWorkflow = () => {
-      setCourses(readWorkflowCollection<WorkflowCourse>(TRAINING_WORKFLOW_KEYS.courses));
-      setLocalStandards(readWorkflowCollection<WorkflowStandard>(TRAINING_WORKFLOW_KEYS.standards));
-      setOapPlans(readWorkflowCollection<WorkflowOapPlan>(TRAINING_WORKFLOW_KEYS.oapPlans));
-    };
-
-    syncWorkflow();
-    window.addEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflow);
-    return () => window.removeEventListener(TRAINING_WORKFLOW_EVENT, syncWorkflow);
-  }, []);
-
-  // Merge local & API standards
+  // A browser-storage copy of courses, standards and OAP plans used to be merged in here. Nothing
+  // had written that store for a long time, so it only ever supplied empty arrays - and the sync it
+  // ran on mount raced the API fetch above, blanking the course list whenever it landed second.
   const standards = useMemo(() => {
-    const combined: WorkflowStandard[] = [...localStandards];
+    const combined: WorkflowStandard[] = [];
     for (const apiStd of apiStandards) {
+      // Match on the course, never on `id`: that is the course_standard document id, and
+      // course_standard is unique per (company, year) - so every course added in the same year
+      // shares one. Folding on it collapsed the whole year into a single entry, which dropped the
+      // rest of the year's courses out of the roadmap entirely: with no standard to read targets
+      // from they fell back to "All Positions", and isTargetMatch deliberately refuses to treat
+      // "All" as a match, so isRelevantForRoadmap came out false and the item was filtered away.
       const idx = combined.findIndex(
         (s) =>
           (s.courseCode && apiStd.courseCode && s.courseCode.trim().toLowerCase() === apiStd.courseCode.trim().toLowerCase()) ||
-          (s.courseId && apiStd.courseId && String(s.courseId) === String(apiStd.courseId)) ||
-          (s.id && apiStd.id && String(s.id) === String(apiStd.id))
+          (s.courseId && apiStd.courseId && String(s.courseId) === String(apiStd.courseId))
       );
       if (idx >= 0) {
         combined[idx] = {
@@ -307,7 +303,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
       }
     }
     return combined;
-  }, [apiStandards, localStandards]);
+  }, [apiStandards]);
 
   // Compute all standard courses combining ALL 4 SOURCES (Rolling, OAP, Standard, Master)
   const allRoadmapItems = useMemo(() => {
@@ -370,9 +366,6 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
           (s.courseCode && s.courseCode.trim().toLowerCase() === code.trim().toLowerCase()) ||
           (s.courseId && String(s.courseId) === String(rp.course.id))
       );
-      const oapPlan = oapPlans.find(
-        (p) => (p.course?.id === rp.course.id || p.course?.courseCode === code) && p.status === "Planned"
-      );
       const masterCourse = courses.find(
         (c) => c.id === rp.course.id || c.courseCode === code
       );
@@ -410,102 +403,32 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         titleEn: masterCourse ? getCourseSecondaryName(masterCourse) : "",
         category: rp.course.courseGroup || masterCourse?.courseGroup || t("ทั่วไป", "General"),
         objective: rp.course.objective || masterCourse?.objective || t("ไม่มีคำอธิบายเป้าหมาย", "No objective provided"),
-        learningContent: rp.course.learningContent || masterCourse?.learningContent || t("ทดสอบระบบการทำงานจริง", "Real system workflow content"),
-        methodology: rp.course.methodology || masterCourse?.methodology || t("ทดสอบระบบการทำงานจริง", "Real system workflow methodology"),
-        courseType: rp.course.courseType || masterCourse?.courseType || "ATA-TC / ระบบ",
+        learningContent: rp.course.learningContent || masterCourse?.learningContent || notSpecified,
+        methodology: rp.course.methodology || masterCourse?.methodology || notSpecified,
+        courseType: rp.course.courseType || masterCourse?.courseType || notSpecified,
         ownerCompany: ownerComp,
         courseOwner: isCenter ? "CENTER" : "FACTORY",
         targetGroupDesc: rp.course.targetGroup || masterCourse?.targetGroup || t("พนักงานระดับบังคับบัญชาและระดับปฏิบัติการที่เกี่ยวข้อง", "Targeted Employees & Related Groups"),
-        targetCompanies: (rawCompanies.length > 0) ? rawCompanies : (isCenter ? ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] : [ownerComp]),
+        targetCompanies: (rawCompanies.length > 0) ? rawCompanies : (isCenter ? ["All Companies"] : [ownerComp]),
         targetFunctions: std?.functionName ? [std.functionName] : ["All Function"],
         targetPositions: (rawPositions.length > 0) ? rawPositions : ["All Positions"],
         targetLevels: (rawLevels.length > 0) ? rawLevels : ["All Levels"],
         round: rp.batch || "-",
         trainingDate: rp.trainingDate || "-",
         trainingStatus,
-        hours: rp.hours || oapPlan?.hours || "6",
+        hours: rp.hours || notSpecified,
         budget: rp.budget ? `THB ${Number(rp.budget).toLocaleString("en-US")}` : "-",
-        trainer: rp.trainer || oapPlan?.trainer || "กัส เอฟ",
+        trainer: rp.trainer || notSpecified,
         provider: rp.provider || ownerComp,
-        place: rp.location || "212224",
+        place: rp.location || notSpecified,
         approvalFlow: isCenter ? t("พนักงาน > HRD Center", "Employee > HRD Center") : t("พนักงาน > Factory HRD", "Employee > Factory HRD"),
         contact: isCenter ? t("HRD ส่วนกลาง", "HRD Center") : `${ownerComp} HRD`,
-        remarks: rp.course.remark || t("ทดสอบระบบการทำงานจริง", "Real system workflow testing"),
+        remarks: rp.course.remark || notSpecified,
         isRollingOpen,
         isEnded,
         preTestLink: rp.course.preTestLink || masterCourse?.preTestLink,
         postTestLink: rp.course.postTestLink || masterCourse?.postTestLink,
         evaluationLink: rp.course.evaluationLink || masterCourse?.evaluationLink,
-        missingPrerequisites: missingPrerequisitesFor(masterCourse),
-      });
-    }
-
-    // 2. Load from OAP Plans
-    for (const oap of oapPlans) {
-      if (!oap.course || !oap.course.courseCode) continue;
-      const code = oap.course.courseCode;
-      if (itemMap.has(code)) continue;
-
-      const std = standards.find(
-        (s) =>
-          (s.courseCode && s.courseCode.trim().toLowerCase() === code.trim().toLowerCase()) ||
-          (s.courseId && String(s.courseId) === String(oap.course.id))
-      );
-      const masterCourse = courses.find(
-        (c) => c.id === oap.course.id || c.courseCode === code
-      );
-
-      const ownerComp = oap.ownerCompany || employeeCompany;
-      const rawPositions = (oap.course as unknown as Record<string, unknown>)?.targetPositions as string[] | undefined
-        || (masterCourse as unknown as Record<string, unknown>)?.targetPositions as string[] | undefined
-        || std?.positions
-        || [];
-
-      const rawLevels = (oap.course as unknown as Record<string, unknown>)?.targetLevels as string[] | undefined
-        || (masterCourse as unknown as Record<string, unknown>)?.targetLevels as string[] | undefined
-        || std?.levels
-        || [];
-
-      const rawCompanies = (oap.course as unknown as Record<string, unknown>)?.targetCompanies as string[] | undefined
-        || (masterCourse as unknown as Record<string, unknown>)?.targetCompanies as string[] | undefined
-        || std?.companies
-        || [];
-
-      const isCenter = oap.owner === "CENTER";
-
-      itemMap.set(code, {
-        id: oap.id,
-        code,
-        title: getCourseDisplayName(oap.course) || (masterCourse ? getCourseDisplayName(masterCourse) : code),
-        titleEn: getCourseSecondaryName(oap.course) || (masterCourse ? getCourseSecondaryName(masterCourse) : ""),
-        category: oap.course.courseGroup || masterCourse?.courseGroup || t("ทั่วไป", "General"),
-        objective: oap.course.objective || masterCourse?.objective || t("ไม่มีคำอธิบายเป้าหมาย", "No objective provided"),
-        learningContent: oap.course.learningContent || masterCourse?.learningContent || t("ทดสอบระบบการทำงานจริง", "Real system workflow content"),
-        methodology: oap.course.methodology || masterCourse?.methodology || t("ทดสอบระบบการทำงานจริง", "Real system workflow methodology"),
-        courseType: oap.course.courseType || masterCourse?.courseType || "ATA-TC / ระบบ",
-        ownerCompany: ownerComp,
-        courseOwner: isCenter ? "CENTER" : "FACTORY",
-        targetGroupDesc: oap.course.targetGroup || masterCourse?.targetGroup || t("พนักงานระดับบังคับบัญชาและระดับปฏิบัติการที่เกี่ยวข้อง", "Targeted Employees & Related Groups"),
-        targetCompanies: (rawCompanies.length > 0) ? rawCompanies : (isCenter ? ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] : [ownerComp]),
-        targetFunctions: std?.functionName ? [std.functionName] : ["All Function"],
-        targetPositions: (rawPositions.length > 0) ? rawPositions : ["All Positions"],
-        targetLevels: (rawLevels.length > 0) ? rawLevels : ["All Levels"],
-        round: "-",
-        trainingDate: "-",
-        trainingStatus: t("อยู่ในแผนประจำปี", "Annual plan pending"),
-        hours: oap.hours || "6",
-        budget: oap.budget ? `THB ${Number(oap.budget).toLocaleString("en-US")}` : "-",
-        trainer: oap.trainer || "กัส เอฟ",
-        provider: oap.provider || ownerComp,
-        place: "212224",
-        approvalFlow: isCenter ? t("พนักงาน > HRD Center", "Employee > HRD Center") : t("พนักงาน > Factory HRD", "Employee > Factory HRD"),
-        contact: isCenter ? t("HRD ส่วนกลาง", "HRD Center") : `${ownerComp} HRD`,
-        remarks: oap.course.remark || t("ทดสอบระบบการทำงานจริง", "Real system workflow testing"),
-        isRollingOpen: false,
-        isEnded: false,
-        preTestLink: oap.course.preTestLink || masterCourse?.preTestLink,
-        postTestLink: oap.course.postTestLink || masterCourse?.postTestLink,
-        evaluationLink: oap.course.evaluationLink || masterCourse?.evaluationLink,
         missingPrerequisites: missingPrerequisitesFor(masterCourse),
       });
     }
@@ -526,27 +449,27 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         titleEn: masterCourse ? getCourseSecondaryName(masterCourse) : "",
         category: masterCourse?.courseGroup || t("ทั่วไป", "General"),
         objective: masterCourse?.objective || t("ไม่มีคำอธิบายเป้าหมาย", "No objective provided"),
-        learningContent: masterCourse?.learningContent || t("ทดสอบระบบการทำงานจริง", "Real system workflow content"),
-        methodology: masterCourse?.methodology || t("ทดสอบระบบการทำงานจริง", "Real system workflow methodology"),
-        courseType: masterCourse?.courseType || "ATA-TC / ระบบ",
+        learningContent: masterCourse?.learningContent || notSpecified,
+        methodology: masterCourse?.methodology || notSpecified,
+        courseType: masterCourse?.courseType || notSpecified,
         ownerCompany: ownerComp,
         courseOwner: isCenter ? "CENTER" : "FACTORY",
         targetGroupDesc: masterCourse?.targetGroup || t("พนักงานระดับบังคับบัญชาและระดับปฏิบัติการที่เกี่ยวข้อง", "Targeted Employees & Related Groups"),
-        targetCompanies: (standard.companies && standard.companies.length > 0) ? standard.companies : (isCenter ? ["ATA", "TEP", "ATFB", "NIC", "SATI", "SNF"] : [ownerComp]),
+        targetCompanies: (standard.companies && standard.companies.length > 0) ? standard.companies : (isCenter ? ["All Companies"] : [ownerComp]),
         targetFunctions: standard.functionName ? [standard.functionName] : ["All Function"],
         targetPositions: (standard.positions && standard.positions.length > 0) ? standard.positions : ["All Positions"],
         targetLevels: (standard.levels && standard.levels.length > 0) ? standard.levels : ["All Levels"],
         round: "-",
         trainingDate: "-",
         trainingStatus: t("อยู่ในแผนประจำปี", "Annual plan pending"),
-        hours: "6",
+        hours: notSpecified,
         budget: "-",
-        trainer: "กัส เอฟ",
+        trainer: notSpecified,
         provider: ownerComp,
-        place: "212224",
+        place: notSpecified,
         approvalFlow: isCenter ? t("พนักงาน > HRD Center", "Employee > HRD Center") : t("พนักงาน > Factory HRD", "Employee > Factory HRD"),
         contact: isCenter ? t("HRD ส่วนกลาง", "HRD Center") : `${ownerComp} HRD`,
-        remarks: masterCourse?.remark || t("ทดสอบระบบการทำงานจริง", "Real system workflow testing"),
+        remarks: masterCourse?.remark || notSpecified,
         isRollingOpen: false,
         isEnded: false,
         preTestLink: masterCourse?.preTestLink,
@@ -580,7 +503,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         isRelevantForRoadmap,
       };
     });
-  }, [courses, employeeCompany, employeeFunction, employeeLevel, employeePosition, enrollments, oapPlans, rollingPlans, standards, t]);
+  }, [courses, employeeCompany, employeeFunction, employeeLevel, employeePosition, enrollments, rollingPlans, standards, t]);
 
   // Filter items based on selected scope tab, category group, search query, and availability
   const filteredRoadmapItems = useMemo(() => {
