@@ -463,52 +463,6 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
       });
     }
 
-    // 3. Load from standards
-    for (const standard of standards) {
-      const code = standard.courseCode;
-      if (!code || itemMap.has(code)) continue;
-
-      const masterCourse = courses.find((c) => c.id === standard.courseId || c.courseCode === standard.courseCode);
-      const ownerComp = standard.ownerCompany || masterCourse?.ownerCompany || employeeCompany;
-      const isCenter = standard.owner === "CENTER";
-
-      itemMap.set(code, {
-        id: standard.id,
-        code,
-        title: masterCourse ? getCourseDisplayName(masterCourse) : standard.courseName,
-        titleEn: masterCourse ? getCourseSecondaryName(masterCourse) : "",
-        category: masterCourse?.courseGroup || t("ทั่วไป", "General"),
-        objective: masterCourse?.objective || t("ไม่มีคำอธิบายเป้าหมาย", "No objective provided"),
-        learningContent: masterCourse?.learningContent || notSpecified,
-        methodology: masterCourse?.methodology || notSpecified,
-        courseType: masterCourse?.courseType || notSpecified,
-        ownerCompany: ownerComp,
-        courseOwner: isCenter ? "CENTER" : "FACTORY",
-        targetGroupDesc: masterCourse?.targetGroup || t("พนักงานระดับบังคับบัญชาและระดับปฏิบัติการที่เกี่ยวข้อง", "Targeted Employees & Related Groups"),
-        targetCompanies: (standard.companies && standard.companies.length > 0) ? standard.companies : (isCenter ? ["All Companies"] : [ownerComp]),
-        targetFunctions: standard.functionName ? [standard.functionName] : ["All Function"],
-        targetPositions: (standard.positions && standard.positions.length > 0) ? standard.positions : ["All Positions"],
-        targetLevels: (standard.levels && standard.levels.length > 0) ? standard.levels : ["All Levels"],
-        round: "-",
-        trainingDate: "-",
-        trainingStatus: t("อยู่ในแผนประจำปี", "Annual plan pending"),
-        hours: notSpecified,
-        budget: "-",
-        trainer: notSpecified,
-        provider: ownerComp,
-        place: notSpecified,
-        approvalFlow: isCenter ? t("พนักงาน > HRD Center", "Employee > HRD Center") : t("พนักงาน > Factory HRD", "Employee > Factory HRD"),
-        contact: isCenter ? t("HRD ส่วนกลาง", "HRD Center") : `${ownerComp} HRD`,
-        remarks: masterCourse?.remark || notSpecified,
-        isRollingOpen: false,
-        isEnded: false,
-        preTestLink: masterCourse?.preTestLink,
-        postTestLink: masterCourse?.postTestLink,
-        evaluationLink: masterCourse?.evaluationLink,
-        missingPrerequisites: missingPrerequisitesFor(masterCourse, ownerComp, isCenter),
-      });
-    }
-
     // 4. Compute matching & visibility for each item (Only specifically targeted courses)
     return Array.from(itemMap.values()).map((item) => {
       const isCompanyTargeted = item.courseOwner === "CENTER"
