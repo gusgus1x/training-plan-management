@@ -11,6 +11,7 @@ const record = {
   telephone: "081-234-5678",
   email: null,
   education: "M.B.A. Human Resource Management",
+  university: null,
   organizationName: null,
   status: "ACTIVE" as const,
 };
@@ -46,6 +47,7 @@ describe("instructor validation and service", () => {
       telephone: "081-234-5678",
       email: null,
       education: "M.B.A. Human Resource Management",
+      university: null,
       organizationName: null,
       status: "ACTIVE",
     });

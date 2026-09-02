@@ -68,6 +68,7 @@ export const parseCreateInstructor = (
   telephone: readOptionalString(input, "telephone", { maxLength: 30 }),
   email: email(input),
   education: readOptionalString(input, "education", { maxLength: 500 }),
+  university: readOptionalString(input, "university", { maxLength: 255 }),
   organizationName: readOptionalString(input, "organizationName", {
     maxLength: 255,
   }),
@@ -98,6 +99,11 @@ export const parseUpdateInstructor = (
   if (hasOwn(input, "education")) {
     update.education = readOptionalString(input, "education", {
       maxLength: 500,
+    });
+  }
+  if (hasOwn(input, "university")) {
+    update.university = readOptionalString(input, "university", {
+      maxLength: 255,
     });
   }
   if (hasOwn(input, "organizationName")) {

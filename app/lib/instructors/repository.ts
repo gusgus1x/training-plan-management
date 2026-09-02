@@ -18,6 +18,7 @@ const select = {
   telephone: true,
   email: true,
   education: true,
+  university: true,
   organization_name: true,
   status: true,
 } satisfies Prisma.instructorSelect;
@@ -30,6 +31,7 @@ const map = (row: Row): InstructorRecord => ({
   telephone: row.telephone,
   email: row.email,
   education: row.education,
+  university: row.university,
   organizationName: row.organization_name,
   status: row.status as InstructorRecord["status"],
 });
@@ -50,6 +52,7 @@ export const createInstructorRepository = (client?: DatabaseClient) => {
           { telephone: { contains: filters.search } },
           { email: { contains: filters.search } },
           { education: { contains: filters.search } },
+          { university: { contains: filters.search } },
           { organization_name: { contains: filters.search } },
         ];
       }
@@ -76,11 +79,11 @@ export const createInstructorRepository = (client?: DatabaseClient) => {
         return row ? map(row) : null;
       });
     },
-    async findByCode(instructorCode: string, excludeId?: string) {
+    async findByCode(code: string, excludeId?: string) {
       return withDatabaseErrorMapping(async () => {
         const row = await database().instructor.findFirst({
           where: {
-            instructor_code: instructorCode,
+            instructor_code: code,
             ...(excludeId
               ? { NOT: { instructor_id: BigInt(excludeId) } }
               : {}),
@@ -101,6 +104,7 @@ export const createInstructorRepository = (client?: DatabaseClient) => {
               telephone: input.telephone,
               email: input.email,
               education: input.education,
+              university: input.university,
               organization_name: input.organizationName,
               status: input.status,
             },
@@ -130,6 +134,9 @@ export const createInstructorRepository = (client?: DatabaseClient) => {
               ...(input.email !== undefined ? { email: input.email } : {}),
               ...(input.education !== undefined
                 ? { education: input.education }
+                : {}),
+              ...(input.university !== undefined
+                ? { university: input.university }
                 : {}),
               ...(input.organizationName !== undefined
                 ? { organization_name: input.organizationName }

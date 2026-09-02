@@ -33,6 +33,7 @@ type InstructorForm = {
   telephone: string;
   email: string;
   education: string;
+  university: string;
   organizationName: string;
   status: InstructorStatus;
 };
@@ -44,6 +45,7 @@ const blankForm = (): InstructorForm => ({
   telephone: "",
   email: "",
   education: "",
+  university: "",
   organizationName: "",
   status: "ACTIVE",
 });
@@ -55,6 +57,7 @@ const toForm = (record: InstructorRecord): InstructorForm => ({
   telephone: record.telephone ?? "",
   email: record.email ?? "",
   education: record.education ?? "",
+  university: record.university ?? "",
   organizationName: record.organizationName ?? "",
   status: record.status,
 });
@@ -95,6 +98,7 @@ export default function InstructorData() {
         row.telephone,
         row.email,
         row.education,
+        row.university,
         row.organizationName,
         row.status,
       ]
@@ -200,6 +204,7 @@ export default function InstructorData() {
         telephone: form.telephone.trim() || null,
         email: form.email.trim() || null,
         education: form.education.trim() || null,
+        university: form.university.trim() || null,
         organizationName: form.organizationName.trim() || null,
         status: form.status,
       };
@@ -418,6 +423,23 @@ export default function InstructorData() {
               />
             </label>
             <label>
+              Education
+              <input
+                value={form.education}
+                maxLength={500}
+                onChange={(event) => change("education", event.target.value)}
+              />
+            </label>
+            <label>
+              University
+              <input
+                value={form.university}
+                maxLength={255}
+                placeholder="มหาวิทยาลัย / University"
+                onChange={(event) => change("university", event.target.value)}
+              />
+            </label>
+            <label>
               Organization
               <input
                 value={form.organizationName}
@@ -425,14 +447,6 @@ export default function InstructorData() {
                 onChange={(event) =>
                   change("organizationName", event.target.value)
                 }
-              />
-            </label>
-            <label>
-              Education
-              <input
-                value={form.education}
-                maxLength={500}
-                onChange={(event) => change("education", event.target.value)}
               />
             </label>
             <label>
@@ -491,6 +505,7 @@ export default function InstructorData() {
                 <th>Telephone</th>
                 <th>Email</th>
                 <th>Education</th>
+                <th>University</th>
                 <th>Organization</th>
                 <th>Status</th>
               </tr>
@@ -513,6 +528,7 @@ export default function InstructorData() {
                   <td>{row.telephone ?? "-"}</td>
                   <td>{row.email ?? "-"}</td>
                   <td>{row.education ?? "-"}</td>
+                  <td>{row.university ?? "-"}</td>
                   <td>{row.organizationName ?? "-"}</td>
                   <td>
                     <span className={styles.statusPill}>{row.status}</span>
@@ -521,7 +537,7 @@ export default function InstructorData() {
               ))}
               {!isLoading && visibleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={9}>No instructor data found.</td>
+                  <td colSpan={10}>No instructor data found.</td>
                 </tr>
               ) : null}
             </tbody>
