@@ -274,7 +274,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isUpcomingSectionOpen, setIsUpcomingSectionOpen] = useState(true);
+  const [isUpcomingSectionOpen, setIsUpcomingSectionOpen] = useState(false);
   const employeeCompany = profileValue(authenticatedUser?.companyCode);
 
   useEffect(() => {

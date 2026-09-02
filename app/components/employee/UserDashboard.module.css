@@ -1803,9 +1803,9 @@
   gap: 6px;
   padding: 3px 12px;
   border-radius: 999px;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.32);
-  color: #059669;
+  background: var(--ui-30-primary-soft);
+  border: 1px solid var(--ui-30-primary-border);
+  color: var(--ui-30-primary-strong);
   font-size: 0.78rem;
   font-weight: 800;
 }
@@ -1814,7 +1814,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #10b981;
+  background: var(--ui-30-primary);
   box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
   animation: pulseDot 2s infinite;
 }
@@ -1921,7 +1921,7 @@
   width: 58px;
   overflow: hidden;
   border-radius: 12px;
-  border: 1px solid rgba(0, 122, 61, 0.3);
+  border: 1px solid var(--ui-30-border);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
   background: var(--ui-60-surface);
 }
@@ -1963,7 +1963,7 @@
   font-weight: 800;
   white-space: nowrap;
   background: var(--ui-30-primary-soft);
-  border: 1px solid rgba(0, 122, 61, 0.3);
+  border: 1px solid var(--ui-30-primary-border);
   color: var(--ui-30-primary-strong);
 }
 
@@ -1993,6 +1993,11 @@
   background: rgba(234, 179, 8, 0.16);
   border: 1px solid rgba(234, 179, 8, 0.45);
   color: #b45309;
+}
+
+:global([data-theme="dark"]) .countdownBadgeOngoing,
+:global(.dark) .countdownBadgeOngoing {
+  color: #fbbf24;
 }
 
 .upcomingCardBody {
@@ -2028,9 +2033,9 @@
   font-weight: 800;
   padding: 2px 8px;
   border-radius: 6px;
-  background: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.28);
-  color: #059669;
+  background: var(--ui-30-primary-soft);
+  border: 1px solid var(--ui-30-primary-border);
+  color: var(--ui-30-primary-strong);
 }
 
 .upcomingOwnerTag {
