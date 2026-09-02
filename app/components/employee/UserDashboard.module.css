@@ -1494,6 +1494,234 @@
   white-space: nowrap;
 }
 
+.nextTrainingActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.detailsToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  min-height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 122, 61, 0.4);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.detailsToggleBtn:hover {
+  background: var(--ui-30-primary);
+  color: #ffffff;
+  border-color: var(--ui-30-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 122, 61, 0.25);
+}
+
+.detailsToggleBtnActive {
+  background: var(--ui-30-primary);
+  color: #ffffff;
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 2px 6px rgba(0, 122, 61, 0.25);
+}
+
+.trainingDetailsCard {
+  margin-top: 10px;
+  padding: 16px 18px;
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-lg);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  animation: fadeIn 0.2s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.trainingDetailsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ui-30-border);
+}
+
+.trainingDetailsTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--ui-30-ink);
+}
+
+.trainingDetailsCloseBtn {
+  background: none;
+  border: none;
+  color: var(--ui-30-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.trainingDetailsCloseBtn:hover {
+  color: var(--ui-30-ink);
+  background: var(--ui-60-surface-soft);
+}
+
+.trainingDetailsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.trainingDetailItem {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  border: 1px solid var(--ui-30-border);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.trainingDetailLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--ui-30-muted);
+  text-transform: uppercase;
+}
+
+.trainingDetailValue {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--ui-30-ink);
+  word-break: break-word;
+}
+
+.otherTrainingsToggleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  border: 1px dashed var(--ui-30-border);
+  color: var(--ui-30-ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.otherTrainingsToggleBtn:hover {
+  background: var(--ui-30-primary-soft);
+  border-color: var(--ui-30-primary);
+  color: var(--ui-30-primary-strong);
+}
+
+.otherTrainingsList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.otherTrainingRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  border: 1px solid var(--ui-30-border);
+}
+
+.otherTrainingDate {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--ui-30-primary-strong);
+  white-space: nowrap;
+}
+
+.otherTrainingInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.otherTrainingName {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--ui-30-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.otherTrainingMeta {
+  font-size: 0.72rem;
+  color: var(--ui-30-muted);
+}
+
+.trainingDetailsActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ui-30-border);
+}
+
+.detailsActionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  min-height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.detailsActionBtn:hover {
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+  border-color: var(--ui-30-primary);
+}
+
 .calendarToggleButton:hover {
   border-color: rgba(215, 25, 32, 0.34);
   background: var(--ui-10-accent-soft);

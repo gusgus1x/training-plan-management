@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import zlib from "zlib";
-import { CourseMasterImportRow, parseCsvText } from "@/app/lib/excelHelper";
+import { CourseMasterImportRow, parseCsvText } from "../../../lib/excelHelper";
 
 function decodeXmlEntities(str: string): string {
   if (!str) return "";
@@ -22,7 +22,7 @@ function formatMultiline(str: string | undefined): string {
   return cleaned.trim() || "-";
 }
 
-function parseXlsxBuffer(buffer: Buffer): CourseMasterImportRow[] {
+export function parseXlsxBuffer(buffer: Buffer): CourseMasterImportRow[] {
   const entries: Record<string, string> = {};
   let offset = 0;
 

@@ -665,6 +665,61 @@ function CourseMaster() {
     document.body.removeChild(link);
   };
 
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportForCompany = async (companyCode: string) => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      let url = "/api/course-master/export";
+      if (companyCode && companyCode !== "ALL") {
+        url = `/api/course-master/export?companyCode=${encodeURIComponent(companyCode)}`;
+      }
+
+      const res = await fetch(url);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "ไม่สามารถ Export ข้อมูลได้");
+      }
+
+      const blob = await res.blob();
+      const disposition = res.headers.get("content-disposition");
+      let downloadFilename = "";
+      if (disposition) {
+        const match = disposition.match(/filename="?([^";]+)"?/);
+        if (match) downloadFilename = match[1];
+      }
+      if (!downloadFilename) {
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const codeTag = companyCode && companyCode !== "ALL" ? `_${companyCode}` : "_All";
+        downloadFilename = `Master_Course_Export${codeTag}_${dateStr}.xlsx`;
+      }
+
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.setAttribute("download", downloadFilename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+
+      const targetLabel = companyCode && companyCode !== "ALL" ? companyCode : (language === "th" ? "ทุกบริษัท" : "All Companies");
+      toast.success(
+        language === "th"
+          ? `📤 Export ข้อมูลหลักสูตร (${targetLabel}) เรียบร้อยแล้ว`
+          : `📤 Course Master exported successfully (${downloadFilename})`,
+      );
+    } catch (err) {
+      console.error("Export error:", err);
+      toast.error(
+        err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการ Export ข้อมูล",
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const handleExcelFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -2932,6 +2987,35 @@ function CourseMaster() {
               }}
             />
           </div>
+
+          {/* Export button aligned to the far right */}
+          <div style={{ marginLeft: 'auto' }}>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => void handleExportForCompany(listCompanyFilter || (!isFactoryUser ? "ALL" : userCompanyCode || "ALL"))}
+              disabled={isExporting}
+              title={
+                listCompanyFilter
+                  ? (language === 'th' ? `Export ข้อมูลหลักสูตรของบริษัท ${listCompanyFilter}` : `Export courses for ${listCompanyFilter}`)
+                  : (language === 'th' ? 'Export ข้อมูลหลักสูตรทุกบริษัท' : 'Export all courses')
+              }
+              style={{
+                whiteSpace: 'nowrap',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              {isExporting
+                ? '⏳ กำลังส่งออก...'
+                : listCompanyFilter
+                ? `📤 Export ${listCompanyFilter}`
+                : isFactoryUser && userCompanyCode
+                ? `📤 Export ${userCompanyCode}`
+                : (language === 'th' ? '📤 Export ทุกบริษัท' : '📤 Export All')}
+            </button>
+          </div>
         </div>
 
         <div className={styles.companySectionsContainer}>
@@ -2971,9 +3055,30 @@ function CourseMaster() {
                       </span>
                     ) : null}
                   </div>
-                  <span className={styles.companyCountBadge}>
-                    {section.courses.length} {language === 'th' ? 'หลักสูตร' : 'courses'}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '0.78rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        minHeight: '28px',
+                      }}
+                      title={`Export ข้อมูลหลักสูตรของ ${section.companyName}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        void handleExportForCompany(section.companyName === 'HRD Center' ? 'CENTER' : section.companyName);
+                      }}
+                    >
+                      📤 Export
+                    </button>
+                    <span className={styles.companyCountBadge}>
+                      {section.courses.length} {language === 'th' ? 'หลักสูตร' : 'courses'}
+                    </span>
+                  </div>
                 </button>
 
                 {isSectionOpen ? (
