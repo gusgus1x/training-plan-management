@@ -602,6 +602,27 @@
   color: var(--ui-30-muted);
 }
 
+.stepText .visitedCheckbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 7px;
+  border: 1.5px solid var(--ui-30-border);
+  border-radius: 3px;
+  background: var(--ui-60-surface);
+  font-size: 0.62rem;
+  font-weight: 900;
+  color: var(--ui-30-primary-strong);
+  vertical-align: middle;
+}
+
+.stepText .visitedCheckboxChecked {
+  background: var(--ui-30-primary-soft);
+  border-color: var(--ui-30-primary-border);
+}
+
 .openLinkBtn {
   appearance: none;
   border: 1px solid var(--ui-30-primary-border);
