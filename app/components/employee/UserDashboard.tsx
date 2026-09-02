@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useSearchParams } from "next/navigation";
 import { useUiLanguage, type UiLanguage } from "../ThaiUiLocalization";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
 import {
@@ -158,6 +159,17 @@ export const countdownLabel = (days: number, language: UiLanguage) => {
   return isThai ? `อีก ${days} วัน` : `in ${days} days`;
 };
 
+/** Enrollments whose 30-day follow-up evaluation has opened and is still unanswered - the set the
+ *  dashboard's reminder banner nags about. A pure function of the list the page already loads, so
+ *  it is testable without rendering the whole dashboard. */
+export const pendingFollowUpEvaluationsOf = (enrollments: EnrollmentRecord[]) =>
+  enrollments.filter(
+    (enrollment) =>
+      enrollment.plan.assessment.evaluationAfter30Day.mode === "FORM" &&
+      enrollment.plan.assessment.evaluationAfter30Day.availability === "OPEN" &&
+      enrollment.plan.assessment.evaluationAfter30Day.submission === null,
+  );
+
 export default function UserDashboard({ username, onHome, onLogout }: UserDashboardProps) {
   const authenticatedUser = useAuthenticatedUser();
   const { language } = useUiLanguage();
@@ -207,7 +219,14 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
       },
     ];
   }, [authenticatedUser, username, isThai]);
-  const [activeModule, setActiveModule] = useState<UserModule | null>(null);
+  const searchParams = useSearchParams();
+  // Read once, as the initial value only - a page returning from /training-form links back to
+  // "/?module=record" so the employee lands on My Record instead of the bare dashboard home.
+  // Switching modules afterward does not sync back into the URL; this only covers the return trip.
+  const [activeModule, setActiveModule] = useState<UserModule | null>(() => {
+    const requested = searchParams.get("module");
+    return moduleCards.some((module) => module.key === requested) ? (requested as UserModule) : null;
+  });
   const [trainingNeed, setTrainingNeed] = useState("");
   const [reason, setReason] = useState("");
   const [requestCourseId, setRequestCourseId] = useState("");
@@ -334,6 +353,9 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
       .sort((left, right) => left.plan.startAt.localeCompare(right.plan.startAt));
   }, [enrollments]);
   const nextTraining = upcomingApprovedTrainings[0] ?? null;
+  // Everything this needs already rides on the same enrollments list (Phase 3.1) - no extra
+  // request just to know whether to nag someone about a survey.
+  const pendingFollowUpEvaluations = useMemo(() => pendingFollowUpEvaluationsOf(enrollments), [enrollments]);
   const employeeCalendarTrainings = useMemo<CalendarTraining[]>(
     () =>
       availableRollingPlans.map((plan) => ({
@@ -575,6 +597,40 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
               <span className={styles.actionChevron} aria-hidden="true">›</span>
             </button>
           </div>
+
+          {pendingFollowUpEvaluations.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setActiveModule("record")}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                width: "100%",
+                textAlign: "left",
+                margin: "0 0 16px",
+                padding: "12px 16px",
+                borderRadius: "12px",
+                background: "rgba(234, 179, 8, 0.12)",
+                border: "1px solid rgba(234, 179, 8, 0.35)",
+                color: "#854d0e",
+                cursor: "pointer",
+                font: "inherit",
+              }}
+              aria-label="30-day follow-up evaluation reminder"
+            >
+              <span aria-hidden="true" style={{ fontSize: "1.1rem" }}>📋</span>
+              <span style={{ fontSize: "0.84rem", fontWeight: 700 }}>
+                {isThai
+                  ? `มีแบบประเมินหลัง 30 วันรอทำ ${pendingFollowUpEvaluations.length} รายการ: ${pendingFollowUpEvaluations
+                      .map((e) => e.plan.courseName)
+                      .join(", ")} — กดเพื่อไปทำ`
+                  : `${pendingFollowUpEvaluations.length} 30-day follow-up evaluation${pendingFollowUpEvaluations.length > 1 ? "s" : ""} waiting: ${pendingFollowUpEvaluations
+                      .map((e) => e.plan.courseName)
+                      .join(", ")} — tap to complete`}
+              </span>
+            </button>
+          ) : null}
 
           <div className={styles.topRow}>
             <section className={styles.employeePanel} aria-label="My employee information">

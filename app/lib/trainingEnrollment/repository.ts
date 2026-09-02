@@ -3,6 +3,7 @@ import { Prisma } from "../../generated/prisma/client";
 import { ApiError } from "../api/errors";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
+import { CLOSABLE_STAGES, stageAvailability, type FormStageKey } from "../trainingForms/availability";
 import { assessmentStage } from "./types";
 import type {
   AttendanceStatus,
@@ -10,7 +11,9 @@ import type {
   EnrollmentAction,
   EnrollmentListFilters,
   EnrollmentSource,
+  EnrollmentStageInfo,
   EnrollmentStatus,
+  StageSubmissionSummary,
 } from "./types";
 
 type DatabaseClient = Pick<PrismaClient, "training_enrollment" | "training_plan" | "employee" | "attendance" | "course_standard_course" | "course_prerequisite" | "training_result">;
@@ -33,8 +36,20 @@ const enrollmentInclude = {
   employee: { include: employeeInclude },
   attendance: true,
   training_result: true,
+  // Every attempt/submission this enrollment has ever made, across all four stages - small tables,
+  // and reading them here means the "take this form" screens never need a second request just to
+  // know whether the employee has already attempted or submitted something.
+  assessment_submission: {
+    select: { assessment_id: true, assessment_stage: true, attempt_no: true, submitted_at: true, score: true, pass_status: true, grading_status: true },
+  },
+  evaluation_submission: {
+    select: { evaluation_form_id: true, submitted_at: true },
+  },
   training_plan: {
     include: {
+      // HRD's close switch for PRE_TEST/POST_TEST (see trainingForms/availability.ts - the two
+      // evaluation stages never have a row here, they cannot be closed).
+      training_plan_assessment_setting: { select: { assessment_stage: true, close_at: true } },
       training_plan_oap: {
         select: {
           company_id: true,
@@ -84,11 +99,61 @@ const mapStatus = (approvalStatus: string, planOwnerIsFactory: boolean): Enrollm
       return "Pending Approval";
   }
 };
+/**
+ * Layers plan dates, HRD's close switch and the enrollment's own submission history onto a bare
+ * AssessmentStageInfo. `latestSubmission` is pre-filtered to the rows for this stage (PRE_TEST vs
+ * POST_TEST assessment_submission rows are told apart by assessment_stage; the single evaluation
+ * row for a stage is told apart by which evaluation_form_id it targets).
+ */
+const withEnrollmentStageInfo = (
+  base: ReturnType<typeof assessmentStage>,
+  stage: FormStageKey,
+  startAt: Date,
+  endAt: Date,
+  closedAt: Date | null,
+  latestSubmission: StageSubmissionSummary | null,
+): EnrollmentStageInfo => {
+  const availability = stageAvailability(
+    stage,
+    startAt.toISOString(),
+    endAt.toISOString(),
+    CLOSABLE_STAGES.includes(stage) ? closedAt?.toISOString() ?? null : null,
+    new Date(),
+  );
+  return { ...base, opensAt: availability.opensAt, availability: availability.state, submission: latestSubmission };
+};
+
 const mapEnrollment = (row: EnrollmentWithRelations) => {
   const plan = row.training_plan;
   const oap = plan.training_plan_oap;
   const planOwnerIsFactory = oap.company_id !== null;
   const employee = row.employee;
+
+  const closedAtByStage = new Map(plan.training_plan_assessment_setting.map((s) => [s.assessment_stage, s.close_at]));
+  const latestAssessmentSubmission = (assessmentId: bigint | null, stage: "PRE_TEST" | "POST_TEST"): StageSubmissionSummary | null => {
+    if (assessmentId === null) return null;
+    const attempts = row.assessment_submission
+      .filter((s) => s.assessment_id === assessmentId && s.assessment_stage === stage)
+      .sort((a, b) => b.attempt_no - a.attempt_no);
+    const latest = attempts[0];
+    if (!latest) return null;
+    return {
+      attemptNo: latest.attempt_no,
+      submittedAt: latest.submitted_at?.toISOString() ?? null,
+      score: latest.score === null ? null : Number(latest.score),
+      passStatus: latest.pass_status as StageSubmissionSummary["passStatus"],
+      gradingStatus: latest.grading_status as StageSubmissionSummary["gradingStatus"],
+    };
+  };
+  const evaluationSubmission = (formId: bigint | null): StageSubmissionSummary | null => {
+    if (formId === null) return null;
+    const submitted = row.evaluation_submission.find((s) => s.evaluation_form_id === formId);
+    if (!submitted) return null;
+    // Evaluations are never graded and never repeated - these three fields exist only because the
+    // shape is shared with assessments, and "submitted" is the only fact worth carrying here.
+    return { attemptNo: 1, submittedAt: submitted.submitted_at?.toISOString() ?? null, score: null, passStatus: "PENDING", gradingStatus: "REVIEWED" };
+  };
+
   return {
     id: row.enrollment_id.toString(),
     planId: row.plan_id.toString(),
@@ -109,12 +174,37 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
       : null,
     plan: {
       assessment: {
-        preTest: assessmentStage(oap.course.pre_assessment_id, oap.course.pre_test_link),
-        postTest: assessmentStage(oap.course.post_assessment_id, oap.course.post_test_link),
-        evaluation: assessmentStage(oap.course.evaluation_form_id, oap.course.evaluation_link),
-        evaluationAfter30Day: assessmentStage(
-          oap.course.evaluation_form_after_30day_id,
-          oap.course.evaluation_after_30day_link,
+        preTest: withEnrollmentStageInfo(
+          assessmentStage(oap.course.pre_assessment_id, oap.course.pre_test_link),
+          "PRE_TEST",
+          plan.start_datetime,
+          plan.end_datetime,
+          closedAtByStage.get("PRE_TEST") ?? null,
+          latestAssessmentSubmission(oap.course.pre_assessment_id, "PRE_TEST"),
+        ),
+        postTest: withEnrollmentStageInfo(
+          assessmentStage(oap.course.post_assessment_id, oap.course.post_test_link),
+          "POST_TEST",
+          plan.start_datetime,
+          plan.end_datetime,
+          closedAtByStage.get("POST_TEST") ?? null,
+          latestAssessmentSubmission(oap.course.post_assessment_id, "POST_TEST"),
+        ),
+        evaluation: withEnrollmentStageInfo(
+          assessmentStage(oap.course.evaluation_form_id, oap.course.evaluation_link),
+          "EVALUATION",
+          plan.start_datetime,
+          plan.end_datetime,
+          null,
+          evaluationSubmission(oap.course.evaluation_form_id),
+        ),
+        evaluationAfter30Day: withEnrollmentStageInfo(
+          assessmentStage(oap.course.evaluation_form_after_30day_id, oap.course.evaluation_after_30day_link),
+          "EVALUATION_30DAY",
+          plan.start_datetime,
+          plan.end_datetime,
+          null,
+          evaluationSubmission(oap.course.evaluation_form_after_30day_id),
         ),
       },
       // 0 is stored the same as null elsewhere in the codebase: "no validity period".

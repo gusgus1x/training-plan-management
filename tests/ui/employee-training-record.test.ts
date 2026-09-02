@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildRecords, toRecord } from "../../app/components/employee/RecordModule";
-import type { EnrollmentRecord } from "../../app/lib/trainingEnrollment/types";
+import { buildRecords, resolveStageState, toRecord } from "../../app/components/employee/RecordModule";
+import { emptyEnrollmentStage, type EnrollmentRecord, type EnrollmentStageInfo } from "../../app/lib/trainingEnrollment/types";
 
 const enrollment = (overrides: Partial<EnrollmentRecord> = {}): EnrollmentRecord => ({
   id: "1",
@@ -8,10 +8,10 @@ const enrollment = (overrides: Partial<EnrollmentRecord> = {}): EnrollmentRecord
   result: null,
   plan: {
     assessment: {
-      preTest: { mode: "NONE", link: null },
-      postTest: { mode: "NONE", link: null },
-      evaluation: { mode: "NONE", link: null },
-      evaluationAfter30Day: { mode: "NONE", link: null },
+      preTest: emptyEnrollmentStage,
+      postTest: emptyEnrollmentStage,
+      evaluation: emptyEnrollmentStage,
+      evaluationAfter30Day: emptyEnrollmentStage,
     },
     validityMonths: null,
     planCode: "PLAN-001",
@@ -90,5 +90,89 @@ describe("employee training record is built from attendance, not from invented d
     const factory = enrollment();
     factory.plan = { ...factory.plan, owner: "FACTORY" };
     expect(toRecord(factory).provider).toBe("Factory HRD");
+  });
+
+  // preTestStatus/postTestStatus/evaluationStatus used to be hardcoded "Pending" for every
+  // enrollment regardless of stage config or submission state, and that literal string was
+  // exported straight into the official training-record document employees hand to employers.
+  it("reads pre/post-test status from the real submission, not a hardcoded Pending", () => {
+    const withScore = enrollment();
+    withScore.plan = {
+      ...withScore.plan,
+      assessment: {
+        ...withScore.plan.assessment,
+        preTest: {
+          mode: "FORM",
+          link: null,
+          opensAt: "2026-05-12T02:00:00.000Z",
+          availability: "OPEN",
+          submission: { attemptNo: 1, submittedAt: "2026-05-12T03:00:00.000Z", score: 90, passStatus: "PASS", gradingStatus: "REVIEWED" },
+        },
+      },
+    };
+    expect(toRecord(withScore).preTestStatus).toBe("Completed");
+  });
+
+  it("reports a FORM stage nobody has attempted yet as Pending, not Completed", () => {
+    const notDone = enrollment();
+    notDone.plan = {
+      ...notDone.plan,
+      assessment: {
+        ...notDone.plan.assessment,
+        preTest: { mode: "FORM", link: null, opensAt: "2026-05-12T02:00:00.000Z", availability: "OPEN", submission: null },
+      },
+    };
+    expect(toRecord(notDone).preTestStatus).toBe("Pending");
+  });
+
+  it("reports a course with no test at all as N/A, not Pending", () => {
+    // A course that never had a pre-test was never "pending" one - the old hardcoded value
+    // claimed otherwise for every single course, tested or not.
+    expect(toRecord(enrollment()).preTestStatus).toBe("N/A");
+  });
+});
+
+describe("resolveStageState - the assessment/evaluation button and label state", () => {
+  const stage = (overrides: Partial<EnrollmentStageInfo>): EnrollmentStageInfo => ({
+    ...emptyEnrollmentStage,
+    mode: "FORM",
+    availability: "OPEN",
+    ...overrides,
+  });
+
+  it("refuses a LINK stage before its opening date, the same as a FORM stage", () => {
+    // The bug this guards: the LINK branch used to be checked before availability, so an external
+    // link was clickable regardless of the 25-day (or any) date rule.
+    const notYetLink = stage({ mode: "LINK", link: "https://forms.example.com/x", availability: "NOT_YET" });
+    expect(resolveStageState(notYetLink)).toBe("NOT_YET");
+  });
+
+  it("refuses a LINK stage HRD has closed, the same as a FORM stage", () => {
+    const closedLink = stage({ mode: "LINK", link: "https://forms.example.com/x", availability: "CLOSED_BY_HRD" });
+    expect(resolveStageState(closedLink)).toBe("CLOSED_BY_HRD");
+  });
+
+  it("only reaches LINK once the stage is actually open", () => {
+    const openLink = stage({ mode: "LINK", link: "https://forms.example.com/x", availability: "OPEN" });
+    expect(resolveStageState(openLink)).toBe("LINK");
+  });
+
+  it("reports NONE regardless of availability", () => {
+    expect(resolveStageState(stage({ mode: "NONE", availability: "NOT_YET" }))).toBe("NONE");
+  });
+
+  it("distinguishes a graded submission from one still awaiting HRD review", () => {
+    const reviewed = stage({
+      submission: { attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: 80, passStatus: "PASS", gradingStatus: "REVIEWED" },
+    });
+    const pending = stage({
+      submission: { attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: null, passStatus: "PENDING", gradingStatus: "PENDING_REVIEW" },
+    });
+    expect(resolveStageState(reviewed)).toBe("DONE");
+    expect(resolveStageState(pending)).toBe("REVIEW_PENDING");
+  });
+
+  it("reports TODO for an open FORM stage nobody has attempted", () => {
+    expect(resolveStageState(stage({}))).toBe("TODO");
   });
 });
