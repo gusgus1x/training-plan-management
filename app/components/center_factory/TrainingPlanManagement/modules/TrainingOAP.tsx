@@ -133,6 +133,12 @@ const emptyForm = {
   budgetMaterial: "",
   budgetFoodBeverage: "",
   trainer: "",
+  instructorId: "",
+  instructorUniversity: "",
+  instructorEducation: "",
+  instructorOrganization: "",
+  instructorTelephone: "",
+  instructorEmail: "",
   provider: "",
 };
 
@@ -231,6 +237,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const [statusFilter, setStatusFilter] = useState<"all" | OapStatus>("all");
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [instructors, setInstructors] = useState<InstructorRecord[]>([]);
+  const [isCustomInstructor, setIsCustomInstructor] = useState(false);
   const [providers, setProviders] = useState<InstituteProviderRecord[]>([]);
   const userCompanyCode = profileValue(user?.companyCode);
 
@@ -533,11 +540,83 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   };
 
   const resolveInstructorId = (trainerName: string) => {
+    if (form.instructorId) return form.instructorId;
     const trimmed = trainerName.trim();
+    if (!trimmed) return null;
     const matched = instructors.find(
-      (instructor) => `${instructor.firstName} ${instructor.lastName}`.trim() === trimmed,
+      (instructor) =>
+        `${instructor.firstName} ${instructor.lastName}`.trim().toLowerCase() === trimmed.toLowerCase() ||
+        instructor.instructorCode.toLowerCase() === trimmed.toLowerCase(),
     );
     return matched?.instructorId ?? null;
+  };
+
+  const selectedInstructor = useMemo(() => {
+    if (form.instructorId) {
+      const byId = instructors.find((ins) => ins.instructorId === form.instructorId);
+      if (byId) return byId;
+    }
+    if (!form.trainer.trim()) return null;
+    const t = form.trainer.trim().toLowerCase();
+    return (
+      instructors.find(
+        (ins) =>
+          `${ins.firstName} ${ins.lastName}`.trim().toLowerCase() === t ||
+          ins.instructorCode.toLowerCase() === t,
+      ) ?? null
+    );
+  }, [form.instructorId, form.trainer, instructors]);
+
+  const instructorOptions = useMemo(() => {
+    const list = instructors.map((ins) => {
+      const fullName = `${ins.firstName} ${ins.lastName}`.trim();
+      const details = [ins.university, ins.education, ins.organizationName].filter(Boolean).join(" • ");
+      return {
+        value: ins.instructorId,
+        label: `[${ins.instructorCode}] ${fullName}`,
+        secondaryLabel: details || "ไม่มีข้อมูลสังกัด/มหาวิทยาลัย",
+        badge: ins.university || ins.organizationName || "Master",
+      };
+    });
+    list.push({
+      value: "__CUSTOM__",
+      label: "✏️ วิทยากรภายนอก / ระบุข้อมูลเอง (External Instructor)",
+      secondaryLabel: "กรอกข้อมูลวิทยากรใหม่ที่ยังไม่มีในระบบ",
+      badge: "ภายนอก",
+    });
+    return list;
+  }, [instructors]);
+
+  const handleSelectInstructor = (value: string) => {
+    if (value === "__CUSTOM__") {
+      setIsCustomInstructor(true);
+      setForm((current) => ({
+        ...current,
+        instructorId: "",
+        trainer: "",
+        instructorUniversity: "",
+        instructorEducation: "",
+        instructorOrganization: "",
+        instructorTelephone: "",
+        instructorEmail: "",
+      }));
+      return;
+    }
+    const ins = instructors.find((item) => item.instructorId === value);
+    if (ins) {
+      setIsCustomInstructor(false);
+      const fullName = `${ins.firstName} ${ins.lastName}`.trim();
+      setForm((current) => ({
+        ...current,
+        instructorId: ins.instructorId,
+        trainer: fullName,
+        instructorUniversity: ins.university ?? "",
+        instructorEducation: ins.education ?? "",
+        instructorOrganization: ins.organizationName ?? "",
+        instructorTelephone: ins.telephone ?? "",
+        instructorEmail: ins.email ?? "",
+      }));
+    }
   };
 
   const resolveProviderId = (providerName: string) => {
@@ -620,6 +699,11 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       return;
     }
     setEditingId(plan.id);
+    const matched = instructors.find(
+      (ins) =>
+        `${ins.firstName} ${ins.lastName}`.trim().toLowerCase() === plan.trainer.trim().toLowerCase() ||
+        ins.instructorCode.toLowerCase() === plan.trainer.trim().toLowerCase(),
+    );
     setForm({
       courseCode: plan.course.courseCode,
       participants: plan.participants,
@@ -632,8 +716,15 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       budgetMaterial: plan.budgetMaterial,
       budgetFoodBeverage: plan.budgetFoodBeverage,
       trainer: plan.trainer,
+      instructorId: matched?.instructorId ?? "",
+      instructorUniversity: matched?.university ?? "",
+      instructorEducation: matched?.education ?? "",
+      instructorOrganization: matched?.organizationName ?? "",
+      instructorTelephone: matched?.telephone ?? "",
+      instructorEmail: matched?.email ?? "",
       provider: plan.providerName,
     });
+    setIsCustomInstructor(!matched && Boolean(plan.trainer));
     setIsNewOpen(true);
     setOpenDetailId("");
   };
@@ -1054,30 +1145,188 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                   value={form.budget ? Number(form.budget).toLocaleString("en-US") : "0"}
                 />
               </label>
-              <label>
-                Trainer Name
-                <input
-                  list="instructor-master-options"
-                  disabled={!selectedCourse}
-                  value={form.trainer}
-                  onChange={(event) => updateForm("trainer", event.target.value)}
-                  placeholder="Select from Instructor Master or enter another name"
-                />
-                <datalist id="instructor-master-options">
-                  {instructors.map((instructor) => {
-                    const fullName = `${instructor.firstName} ${instructor.lastName}`.trim();
-                    return <option key={instructor.instructorId} value={fullName}>{instructor.education}</option>;
-                  })}
-                </datalist>
-              </label>
-              <label>
-                Institute / Provider
+              {/* === INSTRUCTOR SECTION === */}
+              <div className={styles.instructorSectionContainer}>
+                <div className={styles.instructorSectionHeader}>
+                  <div className={styles.instructorSectionTitle}>
+                    <span className={styles.instructorHeaderIcon}>👨‍🏫</span>
+                    <div>
+                      <strong>ข้อมูลวิทยากร (Instructor / Trainer)</strong>
+                      <p>เลือกวิทยากรจากทะเบียน Master Data หรือระบุข้อมูลวิทยากรภายนอก</p>
+                    </div>
+                  </div>
+                  {selectedInstructor && !isCustomInstructor ? (
+                    <button
+                      type="button"
+                      className={styles.instructorSwitchBtn}
+                      onClick={() => {
+                        setIsCustomInstructor(true);
+                      }}
+                    >
+                      ✏️ ระบุข้อมูลเอง / วิทยากรภายนอก
+                    </button>
+                  ) : isCustomInstructor ? (
+                    <button
+                      type="button"
+                      className={styles.instructorSwitchBtn}
+                      onClick={() => setIsCustomInstructor(false)}
+                    >
+                      🔍 เลือกจาก Instructor Master
+                    </button>
+                  ) : null}
+                </div>
+
+                {!isCustomInstructor ? (
+                  <div className={styles.instructorSelectorWrap}>
+                    <label>
+                      <span>เลือกวิทยากร (Select Instructor)</span>
+                      <SearchableSelect
+                        options={instructorOptions}
+                        value={form.instructorId || (selectedInstructor ? selectedInstructor.instructorId : "")}
+                        onChange={handleSelectInstructor}
+                        placeholder="🔍 ค้นหาวิทยากรด้วยชื่อ, รหัส, มหาวิทยาลัย หรือสังกัด..."
+                        disabled={!selectedCourse}
+                      />
+                    </label>
+                  </div>
+                ) : null}
+
+                {selectedInstructor && !isCustomInstructor ? (
+                  <div className={styles.instructorProfileBox}>
+                    <div className={styles.instructorProfileTopRow}>
+                      <div className={styles.instructorIdentity}>
+                        <div className={styles.instructorAvatarCircle}>👨‍🏫</div>
+                        <div>
+                          <div className={styles.instructorNameLine}>
+                            <strong>{selectedInstructor.firstName} {selectedInstructor.lastName}</strong>
+                            <span className={styles.instructorCodePill}>{selectedInstructor.instructorCode}</span>
+                            <span className={styles.masterSourceTag}>✓ ทะเบียน Master</span>
+                          </div>
+                          <div className={styles.instructorSubLine}>
+                            {selectedInstructor.organizationName ? <span>🏢 {selectedInstructor.organizationName}</span> : null}
+                            {selectedInstructor.university ? <span>🏛️ {selectedInstructor.university}</span> : null}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.instructorClearBtn}
+                        onClick={() => {
+                          setForm((curr) => ({
+                            ...curr,
+                            instructorId: "",
+                            trainer: "",
+                            instructorUniversity: "",
+                            instructorEducation: "",
+                            instructorOrganization: "",
+                            instructorTelephone: "",
+                            instructorEmail: "",
+                          }));
+                        }}
+                      >
+                        ✕ เปลี่ยนวิทยากร
+                      </button>
+                    </div>
+
+                    <div className={styles.instructorDetailsGrid}>
+                      <div className={styles.instructorDetailCol}>
+                        <span className={styles.detailLabel}>🏛️ มหาวิทยาลัย (University):</span>
+                        <span className={styles.detailValue}>{selectedInstructor.university || "-"}</span>
+                      </div>
+                      <div className={styles.instructorDetailCol}>
+                        <span className={styles.detailLabel}>🎓 ระดับการศึกษา / วุฒิ (Education):</span>
+                        <span className={styles.detailValue}>{selectedInstructor.education || "-"}</span>
+                      </div>
+                      <div className={styles.instructorDetailCol}>
+                        <span className={styles.detailLabel}>🏢 หน่วยงาน / สังกัด (Organization):</span>
+                        <span className={styles.detailValue}>{selectedInstructor.organizationName || "-"}</span>
+                      </div>
+                      <div className={styles.instructorDetailCol}>
+                        <span className={styles.detailLabel}>📞 เบอร์โทรศัพท์ (Telephone):</span>
+                        <span className={styles.detailValue}>{selectedInstructor.telephone || "-"}</span>
+                      </div>
+                      <div className={styles.instructorDetailCol}>
+                        <span className={styles.detailLabel}>✉️ อีเมล (Email):</span>
+                        <span className={styles.detailValue}>{selectedInstructor.email || "-"}</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+
+                {(!selectedInstructor || isCustomInstructor) ? (
+                  <div className={styles.externalInstructorBox}>
+                    <div className={styles.externalBoxBanner}>
+                      <span>📝 กรอกรายละเอียดวิทยากร (External Instructor Details):</span>
+                    </div>
+                    <div className={styles.externalFieldsGrid}>
+                      <label>
+                        <span>ชื่อ - นามสกุล วิทยากร (Trainer Name) *</span>
+                        <input
+                          disabled={!selectedCourse}
+                          placeholder="เช่น อ.สมชาย ใจดี"
+                          value={form.trainer}
+                          onChange={(e) => updateForm("trainer", e.target.value)}
+                        />
+                      </label>
+                      <label>
+                        <span>มหาวิทยาลัย (University)</span>
+                        <input
+                          disabled={!selectedCourse}
+                          placeholder="เช่น จุฬาลงกรณ์มหาวิทยาลัย"
+                          value={form.instructorUniversity}
+                          onChange={(e) => updateForm("instructorUniversity", e.target.value)}
+                        />
+                      </label>
+                      <label>
+                        <span>ระดับการศึกษา / วุฒิ (Education)</span>
+                        <input
+                          disabled={!selectedCourse}
+                          placeholder="เช่น ปริญญาโท วิศวกรรมศาสตร์"
+                          value={form.instructorEducation}
+                          onChange={(e) => updateForm("instructorEducation", e.target.value)}
+                        />
+                      </label>
+                      <label>
+                        <span>หน่วยงาน / บริษัท / สังกัด (Organization)</span>
+                        <input
+                          disabled={!selectedCourse}
+                          placeholder="เช่น บริษัท นวัตกรรม จำกัด หรือ สถาบันวิจัย"
+                          value={form.instructorOrganization}
+                          onChange={(e) => updateForm("instructorOrganization", e.target.value)}
+                        />
+                      </label>
+                      <label>
+                        <span>เบอร์โทรศัพท์ (Telephone)</span>
+                        <input
+                          disabled={!selectedCourse}
+                          placeholder="เช่น 081-234-5678"
+                          value={form.instructorTelephone}
+                          onChange={(e) => updateForm("instructorTelephone", e.target.value)}
+                        />
+                      </label>
+                      <label>
+                        <span>อีเมล (Email)</span>
+                        <input
+                          type="email"
+                          disabled={!selectedCourse}
+                          placeholder="เช่น trainer@example.com"
+                          value={form.instructorEmail}
+                          onChange={(e) => updateForm("instructorEmail", e.target.value)}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className={styles.fullField} style={{ gridColumn: "span 6" }}>
+                <span>สถาบัน / ผู้ให้บริการฝึกอบรม (Institute / Provider)</span>
                 <input
                   list="institute-provider-options"
                   disabled={!selectedCourse}
                   value={form.provider}
                   onChange={(event) => updateForm("provider", event.target.value)}
-                  placeholder="Select from Institute/Provider Master or enter another name"
+                  placeholder="เลือกจาก Institute/Provider Master หรือพิมพ์ระบุเอง"
                 />
                 <datalist id="institute-provider-options">
                   {providers.map((provider) => (
@@ -1086,7 +1335,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                     </option>
                   ))}
                 </datalist>
-              </label>
+              </div>
             </div>
             {selectedCourse ? (
               <div className={styles.coursePreview}>
@@ -1224,6 +1473,60 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                     <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>30-Day Follow-Up</span>
                       <span className={styles.previewFieldValue}>{selectedCourse.evaluationAfter30Day || selectedCourse.evaluationAfter30DayLink || "None"}</span>
+                    </div>
+                  </div>
+
+                  <div className={styles.previewCard}>
+                    <div className={styles.previewCardHeader}>
+                      <span>👨‍🏫 รายละเอียดวิทยากร (Instructor Details)</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>ชื่อวิทยากร</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedInstructor
+                          ? `${selectedInstructor.firstName} ${selectedInstructor.lastName}`
+                          : form.trainer.trim() || "-"}
+                      </span>
+                    </div>
+                    {selectedInstructor?.instructorCode ? (
+                      <div className={styles.previewFieldRow}>
+                        <span className={styles.previewFieldLabel}>รหัสวิทยากร</span>
+                        <span className={styles.previewFieldValue}>{selectedInstructor.instructorCode}</span>
+                      </div>
+                    ) : null}
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>มหาวิทยาลัย</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedInstructor?.university || form.instructorUniversity || "-"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>วุฒิการศึกษา</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedInstructor?.education || form.instructorEducation || "-"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>หน่วยงาน / สังกัด</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedInstructor?.organizationName || form.instructorOrganization || "-"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>เบอร์โทรศัพท์</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedInstructor?.telephone || form.instructorTelephone || "-"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>อีเมล</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedInstructor?.email || form.instructorEmail || "-"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>สถาบัน / ผู้ให้บริการ</span>
+                      <span className={styles.previewFieldValue}>{form.provider || "-"}</span>
                     </div>
                   </div>
                 </div>
@@ -1440,6 +1743,30 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                       );
                                     })()}
 
+                                    {(() => {
+                                      const matchedPlanInstructor = instructors.find(
+                                        (ins) =>
+                                          `${ins.firstName} ${ins.lastName}`.trim().toLowerCase() === plan.trainer.trim().toLowerCase() ||
+                                          ins.instructorCode.toLowerCase() === plan.trainer.trim().toLowerCase(),
+                                      );
+                                      return (
+                                        <div className={styles.previewCard}>
+                                          <div className={styles.previewCardHeader}><span>👨‍🏫 ข้อมูลวิทยากร &amp; สถาบัน (Instructor &amp; Provider)</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ชื่อวิทยากร</span><span className={styles.previewFieldValue}>{plan.trainer || "-"}</span></div>
+                                          {matchedPlanInstructor?.instructorCode ? (
+                                            <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>รหัสวิทยากร</span><span className={styles.previewFieldValue}>{matchedPlanInstructor.instructorCode}</span></div>
+                                          ) : null}
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>มหาวิทยาลัย</span><span className={styles.previewFieldValue}>{matchedPlanInstructor?.university || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>วุฒิการศึกษา</span><span className={styles.previewFieldValue}>{matchedPlanInstructor?.education || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>หน่วยงาน / สังกัด</span><span className={styles.previewFieldValue}>{matchedPlanInstructor?.organizationName || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>เบอร์โทรศัพท์</span><span className={styles.previewFieldValue}>{matchedPlanInstructor?.telephone || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>อีเมล</span><span className={styles.previewFieldValue}>{matchedPlanInstructor?.email || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ผู้ให้บริการ</span><span className={styles.previewFieldValue}>{plan.providerName || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>Created By</span><span className={styles.previewFieldValue}>{plan.owner === "CENTER" ? "Center" : plan.ownerCompany}</span></div>
+                                        </div>
+                                      );
+                                    })()}
+
                                     <div className={styles.previewCard}>
                                       <div className={styles.previewCardHeader}><span>📝 แบบทดสอบ / แบบประเมิน</span></div>
                                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>แบบทดสอบก่อนเรียน</span><span className={styles.previewFieldValue}>{plan.course.preTest || plan.course.preTestLink || "-"}</span></div>
@@ -1459,12 +1786,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewTotalRow}`}><span className={styles.previewFieldLabel}>Total Budget</span><span className={styles.previewFieldValue}>฿{Number(plan.budget).toLocaleString("en-US")}</span></div>
                                     </div>
 
-                                    <div className={styles.previewCard}>
-                                      <div className={styles.previewCardHeader}><span>🏫 Institute / Provider</span></div>
-                                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>วิทยากร</span><span className={styles.previewFieldValue}>{plan.trainer || "-"}</span></div>
-                                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ผู้ให้บริการ</span><span className={styles.previewFieldValue}>{plan.providerName || "-"}</span></div>
-                                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>Created By</span><span className={styles.previewFieldValue}>{plan.owner === "CENTER" ? "Center" : plan.ownerCompany}</span></div>
-                                    </div>
 
                                     {(() => {
                                       const std = standards.find((item) => item.courseId === plan.course.id);
