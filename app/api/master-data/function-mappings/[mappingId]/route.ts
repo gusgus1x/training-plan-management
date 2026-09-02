@@ -1,4 +1,5 @@
 import { apiSuccess } from "../../../../lib/api/response";
+import { recordDeleteAudit } from "../../../../lib/audit";
 import {
   readJsonObject,
   readPositiveId,
@@ -25,7 +26,7 @@ const id = async (context: Context) =>
 
 export const createGetMappingHandler = (dependencies: Dependencies = {}) =>
   createProtectedRoute<Context>(
-    async (_request, principal, context) => {
+    async (request, principal, context) => {
       const mapping = await (
         dependencies.service ?? functionService
       ).getMapping(await id(context));
@@ -54,14 +55,14 @@ export const createUpdateMappingHandler = (dependencies: Dependencies = {}) =>
 
 export const createDeleteMappingHandler = (dependencies: Dependencies = {}) =>
   createProtectedRoute<Context>(
-    async (_request, principal, context) => {
+    async (request, principal, context) => {
       const mappingId = await id(context);
       const service = dependencies.service ?? functionService;
       const current = await service.getMapping(mappingId);
       requireMappingScope(principal, current);
-      return apiSuccess({
-        mapping: await service.deleteMapping(mappingId),
-      });
+      const mapping = await service.deleteMapping(mappingId);
+      await recordDeleteAudit(request, principal, "function_mapping", mappingId);
+      return apiSuccess({ mapping });
     },
     options(dependencies.auth),
   );

@@ -13,6 +13,7 @@
     "prisma:pull": "prisma db pull",
     "prisma:validate": "prisma validate",
     "national-id:generate-keys": "node scripts/generate-national-id-keys.mjs",
+    "account:seed": "node scripts/seed-development-account.mjs",
     "employee:seed": "node scripts/seed-employee-master.mjs",
     "employee:backfill-thai-titles": "node scripts/backfill-employee-thai-titles.mjs",
     "type-check": "tsc --noEmit --incremental false",

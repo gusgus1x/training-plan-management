@@ -1,4 +1,4 @@
-export const ROLE_CODES = ["EMPLOYEE", "HRD_FACTORY", "HRD_CENTER"] as const;
+export const ROLE_CODES = ["EMPLOYEE", "HRD_FACTORY", "HRD_CENTER", "ADMIN"] as const;
 
 export type RoleCode = (typeof ROLE_CODES)[number];
 
