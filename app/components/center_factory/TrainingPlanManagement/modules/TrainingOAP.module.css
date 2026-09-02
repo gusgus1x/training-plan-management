@@ -524,6 +524,138 @@
   cursor: pointer;
 }
 
+.incompleteCourseAlert {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-left: 4px solid #f59e0b;
+  border-radius: 10px;
+  margin-top: 8px;
+}
+
+.incompleteAlertHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.incompleteAlertIcon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.incompleteAlertTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.incompleteAlertTitle strong {
+  color: #d97706;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.incompleteAlertTitle span {
+  color: var(--ui-30-ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.missingPillsList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.missingPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 6px;
+  color: #b45309;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.incompleteAlertFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(245, 158, 11, 0.3);
+}
+
+.incompleteAlertQuestion {
+  margin: 0;
+  color: var(--ui-30-ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.incompleteAlertActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.goToCourseMasterBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 14px;
+  background: #f59e0b;
+  border: 1px solid #d97706;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25);
+}
+
+.goToCourseMasterBtn:hover {
+  background: #d97706;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+}
+
+.orDivider {
+  color: var(--ui-30-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.proceedNote {
+  color: var(--ui-30-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.completeCourseBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+  color: #059669;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
 .coursePreview {
   display: grid;
   gap: 12px;

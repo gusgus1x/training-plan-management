@@ -13,6 +13,7 @@ import { initializeTrainingWorkflow } from "../lib/trainingWorkflow";
 import LoginPage, { type PreviewCompanyCode } from "./LoginPage";
 import { AuthenticatedUserProvider } from "./AuthenticatedUserContext";
 import { AuthActionsProvider } from "./AuthActionsContext";
+import { useToast } from "./ToastHost";
 import styles from "./AuthGate.module.css";
 
 const LOGOUT_ERROR = "Unable to sign out. Please try again.";
@@ -115,6 +116,7 @@ export default function AuthGate({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const toast = useToast();
   const [previewUser, setPreviewUser] = useState<ClientSessionUser | null>(null);
   // The user the login response already handed back. Without it there is a window between
   // router.push and the refreshed server layout where the session is real but this component still
@@ -150,6 +152,8 @@ export default function AuthGate({
     const loggedUser = await loginWithCredentials(username, password);
     setSessionUser(loggedUser);
     setLogoutMessage(null);
+    const displayName = loggedUser.displayName || loggedUser.username;
+    toast.success(`🎉 ยินดีต้อนรับคุณ ${displayName} เข้าสู่ระบบ / Welcome ${displayName}!`);
     const dest = getSanitizedDestination(targetReturnUrl, loggedUser.roleCode);
     setTargetReturnUrl(null);
     router.push(dest);
@@ -180,11 +184,15 @@ export default function AuthGate({
             positionName: null,
             functionCode: null,
             functionName: null,
+            levelCode: null,
+            levelName: null,
           }
         : DEVELOPMENT_PREVIEW_USERS[roleCode];
 
     setLogoutMessage(null);
     setPreviewUser(nextPreviewUser);
+    const displayName = nextPreviewUser.displayName || nextPreviewUser.username;
+    toast.success(`🎉 ยินดีต้อนรับคุณ ${displayName} เข้าสู่ระบบ / Welcome ${displayName}!`);
     const dest = getSanitizedDestination(targetReturnUrl, nextPreviewUser.roleCode);
     setTargetReturnUrl(null);
     router.push(dest);

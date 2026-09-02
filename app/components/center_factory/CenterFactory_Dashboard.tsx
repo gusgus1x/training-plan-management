@@ -181,9 +181,7 @@ export default function Dashboard({
   const isCenterDashboard = authenticatedUser?.roleCode === "HRD_CENTER";
   const userCompanyCode = profileValue(authenticatedUser?.companyCode);
   const dashboardScope = isCenterDashboard ? "Center" : "Factory";
-  const dashboardTitle = isThai
-    ? `${dashboardScope === "Center" ? "ศูนย์ฝึกอบรม" : "โรงงาน"} แดชบอร์ด`
-    : `${dashboardScope} Dashboard`;
+  const dashboardTitle = `${dashboardScope} Dashboard`;
   const [calendarToday] = useState(getCurrentCalendarDate);
   const [selectedCalendarYear, setSelectedCalendarYear] = useState(
     calendarToday.year,
@@ -454,7 +452,7 @@ export default function Dashboard({
       <section className={styles.heroPanel} aria-label="Dashboard overview">
         <div className={styles.heroCopy}>
           <span>{isThai ? "ระบบบริหารจัดการการฝึกอบรม HRD" : `HRD Training ${dashboardScope}`}</span>
-          <h1>{dashboardTitle}</h1>
+          <h1 translate="no">{dashboardTitle}</h1>
           <p>
             {isThai
               ? "จัดการแผนการอบรม ข้อมูลหลักสูตร ประวัติการฝึกอบรม และรายงานวิเคราะห์ผล ทั้งกลุ่มบริษัท AISIN TAKAOKA Thailand"

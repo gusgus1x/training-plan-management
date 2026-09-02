@@ -277,6 +277,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpcomingSectionOpen, setIsUpcomingSectionOpen] = useState(false);
   const employeeCompany = profileValue(authenticatedUser?.companyCode);
 
   useEffect(() => {
@@ -343,9 +344,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
     () => enrollments.filter((enrollment) => enrollment.status === "Pending Approval"),
     [enrollments],
   );
-  // The soonest approved training that has not finished yet. Sorted rather than reduced so a tie
-  // resolves the same way every render.
-  const nextTraining = useMemo(() => {
+  const upcomingApprovedTrainings = useMemo(() => {
     const now = Date.now();
     return enrollments
       .filter(
@@ -353,7 +352,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
           APPROVED_ENROLLMENT_STATUSES.includes(enrollment.status) &&
           Date.parse(enrollment.plan.endAt) >= now,
       )
-      .sort((left, right) => left.plan.startAt.localeCompare(right.plan.startAt))[0];
+      .sort((left, right) => left.plan.startAt.localeCompare(right.plan.startAt));
   }, [enrollments]);
   // Everything this needs already rides on the same enrollments list (Phase 3.1) - no extra
   // request just to know whether to nag someone about a survey.
@@ -691,38 +690,6 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                 </div>
               </div>
 
-              {nextTraining ? (
-                <div className={styles.nextTraining}>
-                  <div className={styles.nextTrainingDate}>
-                    <strong>{new Date(nextTraining.plan.startAt).getDate()}</strong>
-                    <span>
-                      {new Date(nextTraining.plan.startAt).toLocaleDateString(locale, {
-                        month: "short",
-                      })}
-                    </span>
-                  </div>
-                  <div className={styles.nextTrainingCopy}>
-                    <span>{isThai ? "อบรมครั้งถัดไป" : "Next training"}</span>
-                    <strong title={nextTraining.plan.courseName}>
-                      {nextTraining.plan.courseName}
-                    </strong>
-                    <small>
-                      {nextTraining.plan.venue || "-"} • {nextTraining.plan.hours} hrs
-                    </small>
-                  </div>
-                  {(() => {
-                    const days = daysUntil(nextTraining.plan.startAt);
-                    if (days === null) return null;
-                    return (
-                      <span
-                        className={days <= 3 ? styles.countdownPillSoon : styles.countdownPill}
-                      >
-                        {countdownLabel(days, language)}
-                      </span>
-                    );
-                  })()}
-                </div>
-              ) : null}
             </section>
 
             <section className={styles.calendarPanel} aria-label="Employee training calendar">
@@ -939,6 +906,158 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
               ) : null}
             </section>
           </div>
+
+          {upcomingApprovedTrainings.length > 0 ? (
+            <section className={styles.upcomingTrainingsSection} aria-label="Upcoming approved trainings">
+              <div
+                className={styles.upcomingSectionHeader}
+                onClick={() => setIsUpcomingSectionOpen((prev) => !prev)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setIsUpcomingSectionOpen((prev) => !prev);
+                  }
+                }}
+              >
+                <div className={styles.upcomingSectionTitleBox}>
+                  <span className={styles.upcomingSectionIcon} aria-hidden="true">📅</span>
+                  <div>
+                    <div className={styles.upcomingSectionTitleRow}>
+                      <h3 className={styles.upcomingSectionTitle}>
+                        {isThai ? "หลักสูตรที่ต้องเข้าอบรม" : "Upcoming Scheduled Trainings"}
+                      </h3>
+                      <span className={styles.upcomingCountBadge}>
+                        <span className={styles.badgePulseDot} aria-hidden="true" />
+                        {upcomingApprovedTrainings.length} {isThai ? "หลักสูตร" : "courses"}
+                      </span>
+                    </div>
+                    <p className={styles.upcomingSectionSubtitle}>
+                      {isThai
+                        ? "หลักสูตรที่ได้รับการอนุมัติแล้ว พร้อมกำหนดการและห้องอบรม"
+                        : "Approved courses with schedules, venue, and examination links"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className={styles.upcomingAccordionBtn}
+                  aria-expanded={isUpcomingSectionOpen}
+                  title={isThai ? "ย่อ / ขยายรายการ" : "Toggle list"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsUpcomingSectionOpen((prev) => !prev);
+                  }}
+                >
+                  <span>{isUpcomingSectionOpen ? (isThai ? "ย่อรายการ" : "Collapse") : (isThai ? "ดูรายการ" : "Expand")}</span>
+                  <span style={{ fontSize: "0.75rem", transition: "transform 0.2s ease", transform: isUpcomingSectionOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                    ▼
+                  </span>
+                </button>
+              </div>
+
+              {isUpcomingSectionOpen ? (
+                <div className={styles.upcomingItemsList}>
+                  {upcomingApprovedTrainings.map((enrollment) => {
+                    const startDate = new Date(enrollment.plan.startAt);
+                    const endDate = new Date(enrollment.plan.endAt);
+                    const days = daysUntil(enrollment.plan.startAt);
+                    const isTodayOrSoon = days !== null && days <= 3;
+
+                    return (
+                      <article key={enrollment.id} className={styles.upcomingCourseRow}>
+                        <div className={styles.upcomingDateColumn}>
+                          <div className={styles.upcomingDateBadge}>
+                            <div className={styles.upcomingDateMonthBanner}>
+                              {startDate.toLocaleDateString(locale, { month: "short" })}
+                            </div>
+                            <div className={styles.upcomingDateDayNumber}>
+                              {startDate.getDate()}
+                            </div>
+                            <div className={styles.upcomingDateYear}>
+                              {startDate.getFullYear()}
+                            </div>
+                          </div>
+                          {days !== null ? (
+                            <span
+                              className={
+                                days < 0
+                                  ? styles.countdownBadgeOngoing
+                                  : isTodayOrSoon
+                                    ? styles.countdownBadgeSoon
+                                    : styles.countdownBadgeNormal
+                              }
+                            >
+                              <span className={styles.badgePulseDot} style={{ width: 5, height: 5 }} aria-hidden="true" />
+                              {countdownLabel(days, language)}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <div className={styles.upcomingMainInfo}>
+                          <div className={styles.upcomingHeaderRow}>
+                            <div className={styles.upcomingCourseMetaTop}>
+                              <span className={styles.upcomingCourseCode}>
+                                {enrollment.plan.courseCode || "TR-COURSE"}
+                              </span>
+                              <span className={styles.upcomingStatusTag}>
+                                ✓ {isThai ? "อนุมัติแล้ว" : "Approved"}
+                              </span>
+                              <span className={styles.upcomingOwnerTag}>
+                                🏢 {enrollment.plan.owner === "CENTER" ? "HRD Center" : `${employeeCompany || "Factory"}`}
+                              </span>
+                            </div>
+                            <h4 className={styles.upcomingCourseName} title={enrollment.plan.courseName}>
+                              {enrollment.plan.courseName}
+                            </h4>
+                          </div>
+
+                          <div className={styles.upcomingDetailsRow}>
+                            <div className={styles.upcomingDetailChip}>
+                              <span className={styles.upcomingDetailChipLabel}>🕒 {isThai ? "เวลา" : "Time"}:</span>
+                              <span className={styles.upcomingDetailChipValue}>
+                                {startDate.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })} -{" "}
+                                {endDate.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}{" "}
+                                ({enrollment.plan.hours} {isThai ? "ชม." : "hrs"})
+                              </span>
+                            </div>
+                            <div className={styles.upcomingDetailChip}>
+                              <span className={styles.upcomingDetailChipLabel}>📍 {isThai ? "สถานที่" : "Venue"}:</span>
+                              <span className={styles.upcomingDetailChipValue}>{enrollment.plan.venue || "-"}</span>
+                            </div>
+                            <div className={styles.upcomingDetailChip}>
+                              <span className={styles.upcomingDetailChipLabel}>👤 {isThai ? "วิทยากร" : "Instructor"}:</span>
+                              <span className={styles.upcomingDetailChipValue}>{enrollment.plan.instructor || "-"}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className={styles.upcomingControls}>
+                          <button
+                            type="button"
+                            className={styles.upcomingActionPrimaryBtn}
+                            onClick={() => setActiveModule("record")}
+                            title={isThai ? "ไปที่หน้าประวัติและแบบทดสอบ" : "Go to My Record & Tests"}
+                          >
+                            📝 {isThai ? "แบบทดสอบ & ผล" : "Tests & Record"}
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.upcomingActionSecondaryBtn}
+                            onClick={() => setActiveModule("calendar")}
+                            title={isThai ? "ดูตารางในปฏิทิน" : "View in Calendar"}
+                          >
+                            📅 {isThai ? "ดูในปฏิทิน" : "Calendar"}
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </section>
+          ) : null}
 
           <section className={styles.menuPanel} aria-label="Main workspace menu">
             <div className={styles.menuHeader}>

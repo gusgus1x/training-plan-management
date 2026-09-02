@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { APPROVED_TRAINING_NEED_STORAGE_KEY } from "../../../../lib/trainingRequests";
 import type { NeedRequestRecord } from "../../../../lib/trainingNeedRequests/types";
 import {
@@ -39,6 +40,85 @@ type OapPlan = OapPlanRecord;
 
 type TrainingOAPProps = {
   username?: string;
+};
+
+export type MissingCourseField = {
+  key: string;
+  labelTh: string;
+  labelEn: string;
+  icon: string;
+};
+
+const getMissingCourseFields = (
+  course: WorkflowCourse | null,
+  standard: WorkflowStandard | null,
+): MissingCourseField[] => {
+  if (!course) return [];
+  const missing: MissingCourseField[] = [];
+
+  // 1. ที่มา (Background / Reason for training)
+  if (!course.remark?.trim()) {
+    missing.push({ key: "remark", labelTh: "ที่มา (Background / Reason)", labelEn: "Background / Reason", icon: "📜" });
+  }
+
+  // 2. วัตถุประสงค์การเรียนรู้ (Objective)
+  if (!course.objective?.trim()) {
+    missing.push({ key: "objective", labelTh: "วัตถุประสงค์การเรียนรู้ (Objective)", labelEn: "Learning Objective", icon: "🎯" });
+  }
+
+  // 3. หัวข้อการเรียนรู้ (Learning Content)
+  if (!course.learningContent?.trim()) {
+    missing.push({ key: "learningContent", labelTh: "หัวข้อการเรียนรู้ (Learning Content)", labelEn: "Learning Content", icon: "📚" });
+  }
+
+  // 4. กลุ่มผู้เข้าอบรม (Target Group)
+  if (!course.targetGroup?.trim()) {
+    missing.push({ key: "targetGroup", labelTh: "กลุ่มผู้เข้าอบรม (Target Group)", labelEn: "Target Group", icon: "👥" });
+  }
+
+  // 5. วิธีการอบรม (Methodology)
+  if (!course.methodology?.trim()) {
+    missing.push({ key: "methodology", labelTh: "วิธีการอบรม (Methodology)", labelEn: "Methodology", icon: "🛠️" });
+  }
+
+  // 6. ตำแหน่งกลุ่มเป้าหมาย (Target Positions)
+  const hasPositions = standard?.positions && standard.positions.length > 0;
+  if (!hasPositions) {
+    missing.push({ key: "positions", labelTh: "ตำแหน่งกลุ่มเป้าหมาย (Target Positions)", labelEn: "Target Positions", icon: "💼" });
+  }
+
+  // 7. ระดับกลุ่มเป้าหมาย (Target Levels)
+  const hasLevels = standard?.levels && standard.levels.length > 0;
+  if (!hasLevels) {
+    missing.push({ key: "levels", labelTh: "ระดับกลุ่มเป้าหมาย (Target Levels)", labelEn: "Target Levels", icon: "⭐" });
+  }
+
+  // 8. สายงานกลุ่มเป้าหมาย (Target Function)
+  const hasFunction = Boolean(standard?.functionName?.trim() || standard?.functionCode?.trim());
+  if (!hasFunction) {
+    missing.push({ key: "function", labelTh: "สายงานกลุ่มเป้าหมาย (Target Function)", labelEn: "Target Function", icon: "🏢" });
+  }
+
+  // 9. กลุ่มและประเภทหลักสูตร
+  if (!course.courseGroup?.trim()) {
+    missing.push({ key: "courseGroup", labelTh: "กลุ่มหลักสูตร (Course Group)", labelEn: "Course Group", icon: "🏷️" });
+  }
+  if (!course.courseType?.trim()) {
+    missing.push({ key: "courseType", labelTh: "ประเภทหลักสูตร (Course Type)", labelEn: "Course Type", icon: "📂" });
+  }
+
+  // 10. แบบทดสอบและแบบประเมิน
+  if (!course.preTestId && !course.preTestLink && !course.preTest?.trim()) {
+    missing.push({ key: "preTest", labelTh: "แบบทดสอบก่อนเรียน (Pre-Test)", labelEn: "Pre-Test Form", icon: "📝" });
+  }
+  if (!course.postTestId && !course.postTestLink && !course.postTest?.trim()) {
+    missing.push({ key: "postTest", labelTh: "แบบทดสอบหลังเรียน (Post-Test)", labelEn: "Post-Test Form", icon: "📋" });
+  }
+  if (!course.evaluationId && !course.evaluationLink && !course.evaluation?.trim()) {
+    missing.push({ key: "evaluation", labelTh: "แบบประเมินผลการอบรม (Evaluation Form)", labelEn: "Evaluation Form", icon: "🌟" });
+  }
+
+  return missing;
 };
 
 const emptyForm = {
@@ -118,6 +198,7 @@ const RequiredIndicator = ({ isFilled }: { isFilled: boolean }) => (
 );
 
 export default function TrainingOAP({ username = "Current user" }: TrainingOAPProps) {
+  const router = useRouter();
   const { language } = useUiLanguage();
   const t = (th: string, en: string) => (language === "th" ? th : en);
   const user = useAuthenticatedUser();
@@ -304,6 +385,11 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       ) ?? null
     );
   }, [selectedCourse, standards]);
+
+  const missingCourseFields = useMemo(
+    () => getMissingCourseFields(selectedCourse, selectedCourseStandard),
+    [selectedCourse, selectedCourseStandard],
+  );
   const scopedPlans = useMemo(
     () =>
       plans.filter((plan) =>
@@ -829,6 +915,55 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                       </p>
                     </div>
                   </div>
+
+                  {/* Course Master Completeness Notification */}
+                  {missingCourseFields.length > 0 ? (
+                    <div className={styles.incompleteCourseAlert}>
+                      <div className={styles.incompleteAlertHeader}>
+                        <span className={styles.incompleteAlertIcon}>⚠️</span>
+                        <div className={styles.incompleteAlertTitle}>
+                          <strong>{t("ข้อมูลใน Course Master ยังไม่ครบถ้วน", "Course Master Information Incomplete")}</strong>
+                          <span>
+                            {t(
+                              `หลักสูตร [${selectedCourse.courseCode}] ยังขาดข้อมูล ${missingCourseFields.length} ส่วน:`,
+                              `Course [${selectedCourse.courseCode}] is missing ${missingCourseFields.length} field(s):`,
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className={styles.missingPillsList}>
+                        {missingCourseFields.map((field) => (
+                          <span key={field.key} className={styles.missingPill}>
+                            {field.icon} {t(field.labelTh, field.labelEn)}
+                          </span>
+                        ))}
+                      </div>
+
+                      <div className={styles.incompleteAlertFooter}>
+                        <p className={styles.incompleteAlertQuestion}>
+                          💬 {t("ต้องการไปกรอกข้อมูลใน Course Master ก่อน หรือสร้างแผน OAP ต่อได้เลย?", "Would you like to complete the Course Master details first, or proceed with OAP anyway?")}
+                        </p>
+                        <div className={styles.incompleteAlertActions}>
+                          <button
+                            type="button"
+                            className={styles.goToCourseMasterBtn}
+                            onClick={() => router.push("/training-course")}
+                          >
+                            ✏️ {t("ไปกรอกข้อมูลใน Course Master ก่อน", "Go to Course Master")}
+                          </button>
+                          <span className={styles.orDivider}>{t("หรือ", "or")}</span>
+                          <span className={styles.proceedNote}>
+                            👇 {t("กรอกข้อมูลด้านล่างแล้วสร้างแผน OAP ต่อได้เลย", "Fill in details below and create OAP plan directly")}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={styles.completeCourseBadge}>
+                      <span>✅ {t("ข้อมูลใน Course Master ครบถ้วนสมบูรณ์แล้ว", "Course Master information is complete")}</span>
+                    </div>
+                  )}
                 </div>
               ) : null}
               <label>
