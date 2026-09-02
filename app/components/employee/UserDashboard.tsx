@@ -955,7 +955,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
               </div>
 
               {isUpcomingSectionOpen ? (
-                <div className={styles.upcomingCardsGrid}>
+                <div className={styles.upcomingItemsList}>
                   {upcomingApprovedTrainings.map((enrollment) => {
                     const startDate = new Date(enrollment.plan.startAt);
                     const endDate = new Date(enrollment.plan.endAt);
@@ -963,7 +963,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                     const isTodayOrSoon = days !== null && days <= 3;
 
                     return (
-                      <article key={enrollment.id} className={styles.upcomingCourseCard}>
+                      <article key={enrollment.id} className={styles.upcomingCourseRow}>
                         <div className={styles.upcomingDateColumn}>
                           <div className={styles.upcomingDateBadge}>
                             <div className={styles.upcomingDateMonthBanner}>
@@ -992,8 +992,8 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                           ) : null}
                         </div>
 
-                        <div className={styles.upcomingCardBody}>
-                          <div className={styles.upcomingCardHeader}>
+                        <div className={styles.upcomingMainInfo}>
+                          <div className={styles.upcomingHeaderRow}>
                             <div className={styles.upcomingCourseMetaTop}>
                               <span className={styles.upcomingCourseCode}>
                                 {enrollment.plan.courseCode || "TR-COURSE"}
@@ -1030,7 +1030,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                           </div>
                         </div>
 
-                        <div className={styles.upcomingCardActions}>
+                        <div className={styles.upcomingControls}>
                           <button
                             type="button"
                             className={styles.upcomingActionPrimaryBtn}

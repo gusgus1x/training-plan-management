@@ -1864,7 +1864,7 @@
   box-shadow: 0 3px 8px rgba(0, 122, 61, 0.2);
 }
 
-.upcomingCardsGrid {
+.upcomingItemsList {
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -1884,7 +1884,7 @@
   }
 }
 
-.upcomingCourseCard {
+.upcomingCourseRow {
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: 18px;
@@ -1893,16 +1893,16 @@
   border: 1px solid var(--ui-30-border);
   border-left: 4px solid var(--ui-30-primary);
   border-radius: var(--ui-radius-lg);
-  background: var(--ui-60-surface-soft);
+  background: var(--ui-60-surface-soft) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
   transition: all 0.2s ease;
 }
 
-.upcomingCourseCard:hover {
+.upcomingCourseRow:hover {
   transform: translateY(-2px);
   border-color: var(--ui-30-primary);
   border-left-color: var(--ui-30-primary-strong);
-  background: var(--ui-60-surface);
+  background: var(--ui-60-surface-soft) !important;
   box-shadow: 0 6px 20px rgba(0, 122, 61, 0.12);
 }
 
@@ -1912,6 +1912,7 @@
   align-items: center;
   gap: 8px;
   min-width: 68px;
+  background: transparent !important;
 }
 
 .upcomingDateBadge {
@@ -1944,6 +1945,7 @@
   font-weight: 900;
   line-height: 1;
   color: var(--ui-30-ink);
+  background: transparent !important;
 }
 
 .upcomingDateYear {
@@ -1951,6 +1953,7 @@
   font-size: 0.62rem;
   font-weight: 700;
   color: var(--ui-30-muted);
+  background: transparent !important;
 }
 
 .countdownBadgeNormal {
@@ -2000,11 +2003,22 @@
   color: #fbbf24;
 }
 
-.upcomingCardBody {
+.upcomingMainInfo {
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.upcomingHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: transparent !important;
 }
 
 .upcomingCourseMetaTop {
@@ -2012,6 +2026,7 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  background: transparent !important;
 }
 
 .upcomingCourseCode {
@@ -2041,6 +2056,7 @@
 .upcomingOwnerTag {
   font-size: 0.74rem;
   color: var(--ui-30-muted);
+  background: transparent !important;
 }
 
 .upcomingCourseName {
@@ -2051,6 +2067,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  background: transparent !important;
 }
 
 .upcomingDetailsRow {
@@ -2058,6 +2075,7 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  background: transparent !important;
 }
 
 .upcomingDetailChip {
@@ -2075,17 +2093,22 @@
 .upcomingDetailChipLabel {
   color: var(--ui-30-muted);
   font-weight: 600;
+  background: transparent !important;
 }
 
 .upcomingDetailChipValue {
   font-weight: 700;
+  background: transparent !important;
 }
 
-.upcomingCardActions {
+.upcomingControls {
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 .upcomingActionPrimaryBtn {
@@ -2138,7 +2161,7 @@
 }
 
 @media (max-width: 860px) {
-  .upcomingCourseCard {
+  .upcomingCourseRow {
     grid-template-columns: 1fr;
     gap: 14px;
   }
@@ -2146,7 +2169,7 @@
     flex-direction: row;
     justify-content: flex-start;
   }
-  .upcomingCardActions {
+  .upcomingControls {
     flex-direction: row;
   }
 }
