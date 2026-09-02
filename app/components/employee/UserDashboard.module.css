@@ -1722,6 +1722,58 @@
   border-color: var(--ui-30-primary);
 }
 
+.nextTrainingDismissBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-muted);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+.nextTrainingDismissBtn:hover {
+  background: var(--ui-10-accent-soft);
+  color: var(--ui-10-accent-strong);
+  border-color: var(--ui-10-accent-border);
+}
+
+.nextTrainingDismissedBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  border: 1px dashed var(--ui-30-border);
+  font-size: 0.8rem;
+  color: var(--ui-30-muted);
+}
+
+.nextTrainingReopenBtn {
+  background: transparent;
+  border: none;
+  color: var(--ui-30-primary-strong);
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: underline;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nextTrainingReopenBtn:hover {
+  filter: brightness(1.15);
+}
+
 .calendarToggleButton:hover {
   border-color: rgba(215, 25, 32, 0.34);
   background: var(--ui-10-accent-soft);

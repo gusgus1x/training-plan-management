@@ -276,6 +276,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
   const [isLoading, setIsLoading] = useState(true);
   const [isTrainingDetailsOpen, setIsTrainingDetailsOpen] = useState(false);
   const [showAllUpcomingTrainings, setShowAllUpcomingTrainings] = useState(false);
+  const [isNextTrainingDismissed, setIsNextTrainingDismissed] = useState(false);
   const employeeCompany = profileValue(authenticatedUser?.companyCode);
 
   useEffect(() => {
@@ -690,58 +691,87 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
               </div>
 
               {nextTraining ? (
-                <>
-                  <div className={styles.nextTraining}>
-                    <div className={styles.nextTrainingDate}>
-                      <strong>{new Date(nextTraining.plan.startAt).getDate()}</strong>
-                      <span>
-                        {new Date(nextTraining.plan.startAt).toLocaleDateString(locale, {
-                          month: "short",
-                        })}
-                      </span>
-                    </div>
-                    <div className={styles.nextTrainingCopy}>
-                      <span>{isThai ? "อบรมครั้งถัดไป" : "Next training"}</span>
-                      <strong title={nextTraining.plan.courseName}>
-                        {nextTraining.plan.courseName}
-                      </strong>
-                      <small>
-                        {nextTraining.plan.venue || "-"} • {nextTraining.plan.hours} hrs
-                      </small>
-                    </div>
-                    <div className={styles.nextTrainingActions}>
-                      {(() => {
-                        const days = daysUntil(nextTraining.plan.startAt);
-                        if (days === null) return null;
-                        return (
-                          <span
-                            className={days <= 3 ? styles.countdownPillSoon : styles.countdownPill}
-                          >
-                            {countdownLabel(days, language)}
-                          </span>
-                        );
-                      })()}
-                      <button
-                        type="button"
-                        className={`${styles.detailsToggleBtn} ${isTrainingDetailsOpen ? styles.detailsToggleBtnActive : ""}`}
-                        onClick={() => setIsTrainingDetailsOpen((prev) => !prev)}
-                        aria-expanded={isTrainingDetailsOpen}
-                        title={isThai ? "เปิด/ปิดดูรายละเอียดสิ่งที่ต้องอบรม" : "Toggle training details"}
-                      >
-                        {isTrainingDetailsOpen ? (
-                          <>
-                            <span>{isThai ? "ซ่อน" : "Hide"}</span>
-                            <span aria-hidden="true">▲</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>{isThai ? "ดูสิ่งที่ต้องอบรม" : "View Details"}</span>
-                            <span aria-hidden="true">▼</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
+                isNextTrainingDismissed ? (
+                  <div className={styles.nextTrainingDismissedBar}>
+                    <span>
+                      📅 {isThai
+                        ? `ซ่อนการ์ดอบรมครั้งถัดไป (${upcomingApprovedTrainings.length} รายการ)`
+                        : `Upcoming training hidden (${upcomingApprovedTrainings.length})`}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.nextTrainingReopenBtn}
+                      onClick={() => setIsNextTrainingDismissed(false)}
+                      title={isThai ? "คลิกเพื่อแสดงการ์ดอบรม" : "Click to show card"}
+                    >
+                      {isThai ? "แสดงการ์ดอบรม" : "Show card"} ▼
+                    </button>
                   </div>
+                ) : (
+                  <>
+                    <div className={styles.nextTraining}>
+                      <div className={styles.nextTrainingDate}>
+                        <strong>{new Date(nextTraining.plan.startAt).getDate()}</strong>
+                        <span>
+                          {new Date(nextTraining.plan.startAt).toLocaleDateString(locale, {
+                            month: "short",
+                          })}
+                        </span>
+                      </div>
+                      <div className={styles.nextTrainingCopy}>
+                        <span>{isThai ? "อบรมครั้งถัดไป" : "Next training"}</span>
+                        <strong title={nextTraining.plan.courseName}>
+                          {nextTraining.plan.courseName}
+                        </strong>
+                        <small>
+                          {nextTraining.plan.venue || "-"} • {nextTraining.plan.hours} hrs
+                        </small>
+                      </div>
+                      <div className={styles.nextTrainingActions}>
+                        {(() => {
+                          const days = daysUntil(nextTraining.plan.startAt);
+                          if (days === null) return null;
+                          return (
+                            <span
+                              className={days <= 3 ? styles.countdownPillSoon : styles.countdownPill}
+                            >
+                              {countdownLabel(days, language)}
+                            </span>
+                          );
+                        })()}
+                        <button
+                          type="button"
+                          className={`${styles.detailsToggleBtn} ${isTrainingDetailsOpen ? styles.detailsToggleBtnActive : ""}`}
+                          onClick={() => setIsTrainingDetailsOpen((prev) => !prev)}
+                          aria-expanded={isTrainingDetailsOpen}
+                          title={isThai ? "เปิด/ปิดดูรายละเอียดสิ่งที่ต้องอบรม" : "Toggle training details"}
+                        >
+                          {isTrainingDetailsOpen ? (
+                            <>
+                              <span>{isThai ? "ซ่อน" : "Hide"}</span>
+                              <span aria-hidden="true">▲</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>{isThai ? "ดูสิ่งที่ต้องอบรม" : "View Details"}</span>
+                              <span aria-hidden="true">▼</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.nextTrainingDismissBtn}
+                          onClick={() => {
+                            setIsNextTrainingDismissed(true);
+                            setIsTrainingDetailsOpen(false);
+                          }}
+                          title={isThai ? "ปิด / ซ่อนการ์ดนี้" : "Close / Hide this card"}
+                          aria-label={isThai ? "ปิดการ์ด" : "Close card"}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
 
                   {isTrainingDetailsOpen ? (
                     <div className={styles.trainingDetailsCard} role="region" aria-label="Training details">
@@ -863,7 +893,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                     </div>
                   ) : null}
                 </>
-              ) : null}
+              )) : null}
             </section>
 
             <section className={styles.calendarPanel} aria-label="Employee training calendar">
