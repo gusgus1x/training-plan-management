@@ -182,4 +182,43 @@ describe("authentication service", () => {
       companyId: null,
     });
   });
+
+  it("allows ADMIN with no employee or company binding", () => {
+    expect(
+      resolveActivePrincipal(
+        activeEmployeeAccount({
+          roleCode: "ADMIN",
+          username: "system.admin",
+          employeeId: null,
+          employeeStatus: null,
+          employeeCompanyId: null,
+          employeeCompanyStatus: null,
+          accountCompanyId: null,
+          accountCompanyStatus: null,
+        }),
+      ),
+    ).toMatchObject({
+      role: "ADMIN",
+      username: "system.admin",
+      employeeId: null,
+      companyId: null,
+    });
+  });
+
+  it("rejects an ADMIN whose role row is inactive", () => {
+    expect(
+      resolveActivePrincipal(
+        activeEmployeeAccount({
+          roleCode: "ADMIN",
+          roleStatus: "INACTIVE",
+          employeeId: null,
+          employeeStatus: null,
+          employeeCompanyId: null,
+          employeeCompanyStatus: null,
+          accountCompanyId: null,
+          accountCompanyStatus: null,
+        }),
+      ),
+    ).toBeNull();
+  });
 });

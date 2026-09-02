@@ -1,5 +1,6 @@
 import type { PrismaClient } from "../../generated/prisma/client";
 import { Prisma } from "../../generated/prisma/client";
+import type { AuditActor } from "../audit";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
 import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
@@ -327,7 +328,7 @@ let oapCode = baseCode;
       });
     },
 
-    async delete(id: string, companyId: string | null = null) {
+    async delete(id: string, companyId: string | null = null, actor?: AuditActor) {
       return withDatabaseErrorMapping(async () => {
         await assertOwnedByCompany(db(), id, companyId, "delete");
 
@@ -341,7 +342,11 @@ let oapCode = baseCode;
           const planIds = plans.map((p) => p.plan_id);
 
           if (planIds.length > 0) {
-            await cascadeDeleteTrainingPlans(tx, planIds);
+            await cascadeDeleteTrainingPlans(tx, planIds, actor && {
+              actor,
+              entityType: "oap_plan",
+              entityId: id,
+            });
           }
 
           await tx.training_plan_oap.delete({

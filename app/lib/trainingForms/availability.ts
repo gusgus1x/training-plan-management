@@ -6,7 +6,8 @@
  *
  * Opening dates are computed from the plan, not stored: pre-test, post-test and the after-training
  * evaluation open the moment the course starts; the 30-day follow-up evaluation opens
- * FOLLOW_UP_OPENS_AFTER_DAYS days after the course ends.
+ * FOLLOW_UP_OPENS_AFTER_DAYS days after the course ends. The dashboard reminder banner nags earlier,
+ * from FOLLOW_UP_REMINDER_AFTER_DAYS, so employees see it coming before the form actually unlocks.
  *
  * Closing is HRD-controlled, but only for PRE_TEST and POST_TEST - training_plan_assessment_setting
  * only exists to carry those two (CK_RC2_training_plan_assessment_setting_assessment_stage_enum
@@ -16,7 +17,18 @@
  * the database itself, and the user confirmed a close switch would add nothing.
  */
 
-export const FOLLOW_UP_OPENS_AFTER_DAYS = 25;
+export const FOLLOW_UP_OPENS_AFTER_DAYS = 30;
+
+/** Days after the course ends that the dashboard reminder banner starts nagging - before the form
+ *  itself opens (FOLLOW_UP_OPENS_AFTER_DAYS), so employees get a heads-up. */
+export const FOLLOW_UP_REMINDER_AFTER_DAYS = 25;
+
+/** ISO datetime the dashboard reminder banner should start showing for this enrollment. */
+export const followUpReminderAt = (endAt: string): string => {
+  const end = new Date(endAt);
+  end.setUTCDate(end.getUTCDate() + FOLLOW_UP_REMINDER_AFTER_DAYS);
+  return end.toISOString();
+};
 
 export type FormStageKey = "PRE_TEST" | "POST_TEST" | "EVALUATION" | "EVALUATION_30DAY";
 

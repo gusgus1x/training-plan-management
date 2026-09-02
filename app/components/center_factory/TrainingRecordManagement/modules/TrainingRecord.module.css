@@ -237,6 +237,7 @@
 
 .panelHeader {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px;
   align-items: flex-start;
@@ -269,9 +270,10 @@
 .recordTable th,
 .recordTable td {
   border-bottom: 1px solid var(--ui-30-border);
-  padding: 10px 12px;
+  padding: 12px 16px;
   text-align: left;
   vertical-align: top;
+  line-height: 1.5;
 }
 
 .recordTable th {
@@ -919,6 +921,7 @@
 
 .attendanceHeaderActions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
@@ -958,9 +961,11 @@
 }
 
 .attendeeFirstName {
+  display: block;
   color: var(--ui-30-ink);
   font-size: 0.86rem;
   font-weight: 900;
+  white-space: nowrap;
 }
 
 .attendeeLastName {
@@ -1011,7 +1016,7 @@
 .deptCell {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 5px;
 }
 
 .orgSubText,
@@ -1040,7 +1045,8 @@
   color: #d97706;
   font-size: 0.74rem;
   font-weight: 900;
-  padding: 2px 8px;
+  padding: 3px 9px;
+  white-space: nowrap;
 }
 
 [data-theme="dark"] .levelBadge {
@@ -3035,6 +3041,7 @@
   font-size: 0.72rem;
   font-weight: 700;
   margin-top: 1px;
+  white-space: nowrap;
 }
 
 .companyPillBadge {
@@ -3046,6 +3053,7 @@
   font-size: 0.72rem;
   font-weight: 900;
   padding: 2px 7px;
+  white-space: nowrap;
 }
 
 .passBadge,
@@ -3764,6 +3772,34 @@
   box-shadow: 0 6px 16px rgba(0, 122, 61, 0.38);
 }
 
+.removeDraftAttendeeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.removeDraftAttendeeButton:hover {
+  background: rgba(220, 38, 38, 0.1);
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+[data-theme="dark"] .removeDraftAttendeeButton {
+  color: #f87171;
+}
+
+[data-theme="dark"] .removeDraftAttendeeButton:hover {
+  background: rgba(248, 113, 113, 0.15);
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
 @media (max-width: 640px) {
   .chartPanel {
     grid-template-columns: 1fr;
@@ -4328,6 +4364,29 @@
 
 .actualResultRow label:nth-of-type(4) {
   flex: 2 1 140px;
+}
+
+/* The pass/fail checkbox borrows attendanceCheckLabel's flex-row layout wholesale - it must win
+   over the grid/uppercase styling every other label in this row gets, hence the extra specificity. */
+.actualResultRow .attendanceCheckLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 auto;
+  color: var(--ui-30-text);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.actualResultRow .attendanceCheckLabel input {
+  min-height: 0;
+  width: 18px;
+  height: 18px;
+  border: none;
+  padding: 0;
+  accent-color: var(--ui-30-primary);
 }
 
 .actualResultRow input,

@@ -1,6 +1,12 @@
 import { apiSuccess } from "../../../../lib/api/response"; import { readJsonObject, readPositiveId } from "../../../../lib/api/validation"; import { createProtectedRoute, type ProtectedRouteOptions } from "../../../../lib/auth/guard"; import { courseTypeService, type CourseTypeService } from "../../../../lib/courseTypes/service"; import { parseUpdateCourseType } from "../../../../lib/courseTypes/validation";
+import { recordDeleteAudit } from "../../../../lib/audit";
 type Context = { params: Promise<{ courseTypeId: string }> }; type Dependencies = { auth?: ProtectedRouteOptions; service?: CourseTypeService }; const readOptions = (auth?: ProtectedRouteOptions) => ({ ...auth, allowedRoles: ["HRD_CENTER", "HRD_FACTORY"] as const }); const writeOptions = (auth?: ProtectedRouteOptions) => ({ ...auth, allowedRoles: ["HRD_CENTER"] as const }); const id = async (context: Context) => readPositiveId((await context.params).courseTypeId, "courseTypeId");
-export const createGetCourseTypeHandler = (dependencies: Dependencies = {}) => createProtectedRoute<Context>(async (_request, _principal, context) => apiSuccess({ courseType: await (dependencies.service ?? courseTypeService).getCourseType(await id(context)) }), readOptions(dependencies.auth));
+export const createGetCourseTypeHandler = (dependencies: Dependencies = {}) => createProtectedRoute<Context>(async (request, principal, context) => {
+      const entityId = await id(context);
+      const payload = { courseType: await (dependencies.service ?? courseTypeService).getCourseType(entityId) };
+      await recordDeleteAudit(request, principal, "course_type", entityId);
+      return apiSuccess(payload);
+    }, readOptions(dependencies.auth));
 export const createUpdateCourseTypeHandler = (dependencies: Dependencies = {}) => createProtectedRoute<Context>(async (request, principal, context) => apiSuccess({ courseType: await (dependencies.service ?? courseTypeService).updateCourseType(await id(context), parseUpdateCourseType(await readJsonObject(request)), principal.userId) }), writeOptions(dependencies.auth));
 export const createDeleteCourseTypeHandler = (dependencies: Dependencies = {}) => createProtectedRoute<Context>(async (_request, _principal, context) => apiSuccess(await (dependencies.service ?? courseTypeService).deleteCourseType(await id(context))), writeOptions(dependencies.auth));
 export const GET = createGetCourseTypeHandler(); export const PATCH = createUpdateCourseTypeHandler(); export const DELETE = createDeleteCourseTypeHandler();

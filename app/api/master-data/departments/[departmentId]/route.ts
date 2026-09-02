@@ -1,4 +1,5 @@
 import { apiSuccess } from "../../../../lib/api/response";
+import { recordDeleteAudit } from "../../../../lib/audit";
 import {
   readJsonObject,
   readPositiveId,
@@ -28,12 +29,16 @@ const id = async (context: Context) =>
 
 export const createGetDepartmentHandler = (dependencies: Dependencies = {}) =>
   createProtectedRoute<Context>(
-    async (_request, _principal, context) =>
-      apiSuccess({
+    async (request, principal, context) => {
+      const entityId = await id(context);
+      const payload = {
         department: await (
           dependencies.service ?? departmentService
-        ).getDepartment(await id(context)),
-      }),
+        ).getDepartment(entityId),
+      };
+      await recordDeleteAudit(request, principal, "department", entityId);
+      return apiSuccess(payload);
+    },
     readOptions(dependencies.auth),
   );
 

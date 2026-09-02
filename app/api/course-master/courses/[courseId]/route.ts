@@ -22,7 +22,11 @@ export const createDeleteCourseHandler = (dependencies: Dependencies = {}) =>
   createProtectedRoute(async (request: NextRequest, principal, { params }: { params: Promise<{ courseId: string }> }) => {
     const { courseId } = await params;
     const companyId = principal.role === "HRD_FACTORY" ? principal.companyId : null;
-    const result = await (dependencies.service ?? courseService).deleteCourse(courseId, principal.userId, companyId);
+    const result = await (dependencies.service ?? courseService).deleteCourse(courseId, principal.userId, companyId, {
+      userId: principal.userId,
+      username: principal.username,
+      role: principal.role,
+    });
     return apiSuccess(result);
   }, writeOptions(dependencies.auth));
 

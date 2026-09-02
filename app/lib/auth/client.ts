@@ -4,6 +4,7 @@ export const CLIENT_ROLE_CODES = [
   "EMPLOYEE",
   "HRD_FACTORY",
   "HRD_CENTER",
+  "ADMIN",
 ] as const;
 
 export type ClientRoleCode = (typeof CLIENT_ROLE_CODES)[number];

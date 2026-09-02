@@ -1,3 +1,4 @@
+import type { AuditActor } from "../audit";
 import { rollingPlanRepository, type RollingPlanRepository } from "./repository";
 import type { CreateRollingPlanInput, RollingPlanListFilters, UpdateRollingPlanInput } from "./types";
 
@@ -10,8 +11,8 @@ export const createRollingPlanService = (repository: RollingPlanRepository = rol
   async updateRollingPlan(id: string, input: UpdateRollingPlanInput, userId: string, companyId: string | null) {
     return repository.update(id, input, userId, companyId);
   },
-  async deleteRollingPlan(id: string, companyId?: string | null) {
-    return repository.delete(id, companyId ?? null);
+  async deleteRollingPlan(id: string, companyId?: string | null, actor?: AuditActor) {
+    return repository.delete(id, companyId ?? null, actor);
   },
 });
 

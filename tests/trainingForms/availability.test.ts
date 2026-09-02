@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   FOLLOW_UP_OPENS_AFTER_DAYS,
+  FOLLOW_UP_REMINDER_AFTER_DAYS,
+  followUpReminderAt,
   stageAvailability,
   stageOpensAt,
 } from "../../app/lib/trainingForms/availability";
@@ -16,12 +18,22 @@ describe("stageOpensAt", () => {
     expect(stageOpensAt("EVALUATION", START, END)).toBe(START);
   });
 
-  it("opens EVALUATION_30DAY 25 days after the plan's end, not its start", () => {
+  it("opens EVALUATION_30DAY FOLLOW_UP_OPENS_AFTER_DAYS after the plan's end, not its start", () => {
     const opensAt = stageOpensAt("EVALUATION_30DAY", START, END);
     const expected = new Date(END);
     expected.setUTCDate(expected.getUTCDate() + FOLLOW_UP_OPENS_AFTER_DAYS);
     expect(opensAt).toBe(expected.toISOString());
     expect(opensAt).not.toBe(stageOpensAt("EVALUATION_30DAY", START, START));
+  });
+});
+
+describe("followUpReminderAt", () => {
+  it("fires FOLLOW_UP_REMINDER_AFTER_DAYS after the plan's end, earlier than the form itself opens", () => {
+    const reminderAt = followUpReminderAt(END);
+    const expected = new Date(END);
+    expected.setUTCDate(expected.getUTCDate() + FOLLOW_UP_REMINDER_AFTER_DAYS);
+    expect(reminderAt).toBe(expected.toISOString());
+    expect(new Date(reminderAt).getTime()).toBeLessThan(new Date(stageOpensAt("EVALUATION_30DAY", START, END)).getTime());
   });
 });
 
@@ -35,14 +47,14 @@ describe("stageAvailability - date boundaries", () => {
     expect(stageAvailability("PRE_TEST", START, END, null, new Date(START)).state).toBe("OPEN");
   });
 
-  it("EVALUATION_30DAY is NOT_YET at end+24 days and OPEN at end+25 days", () => {
-    const at24Days = new Date(END);
-    at24Days.setUTCDate(at24Days.getUTCDate() + 24);
-    expect(stageAvailability("EVALUATION_30DAY", START, END, null, at24Days).state).toBe("NOT_YET");
+  it("EVALUATION_30DAY is NOT_YET the day before it opens and OPEN on the opening day", () => {
+    const dayBefore = new Date(END);
+    dayBefore.setUTCDate(dayBefore.getUTCDate() + FOLLOW_UP_OPENS_AFTER_DAYS - 1);
+    expect(stageAvailability("EVALUATION_30DAY", START, END, null, dayBefore).state).toBe("NOT_YET");
 
-    const at25Days = new Date(END);
-    at25Days.setUTCDate(at25Days.getUTCDate() + FOLLOW_UP_OPENS_AFTER_DAYS);
-    expect(stageAvailability("EVALUATION_30DAY", START, END, null, at25Days).state).toBe("OPEN");
+    const openingDay = new Date(END);
+    openingDay.setUTCDate(openingDay.getUTCDate() + FOLLOW_UP_OPENS_AFTER_DAYS);
+    expect(stageAvailability("EVALUATION_30DAY", START, END, null, openingDay).state).toBe("OPEN");
   });
 });
 

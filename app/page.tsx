@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useAuthenticatedUser } from "./components/AuthenticatedUserContext";
 import { useAuthActions } from "./components/AuthActionsContext";
+import AdminWorkspace from "./components/admin/AdminWorkspace";
 import CenterFactoryDashboard from "./components/center_factory/CenterFactory_Dashboard";
 import UserDashboard from "./components/employee/UserDashboard";
 import { slugify } from "./lib/slug";
@@ -20,6 +21,12 @@ export default function Home() {
 
   if (user.roleCode === "EMPLOYEE") {
     return <UserDashboard onHome={goHome} onLogout={logout} username={user.username} />;
+  }
+
+  // Administrators hold none of the HRD roles the dashboard's data calls require, so sending them
+  // there would render a screen where every request comes back 403.
+  if (user.roleCode === "ADMIN") {
+    return <AdminWorkspace />;
   }
 
   return (

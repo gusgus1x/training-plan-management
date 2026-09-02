@@ -1013,3 +1013,25 @@ model company_section_mapping {
   @@unique([company_id, plant_section_code], map: "UQ_company_section_mapping_company_id_plant_section_code")
   @@index([section_id], map: "IX_company_section_mapping_section_id")
 }
+
+model audit_log {
+  audit_log_id   BigInt   @id(map: "PK_audit_log") @default(autoincrement())
+  occurred_at    DateTime
+  category       String   @db.NVarChar(20)
+  action         String   @db.NVarChar(60)
+  actor_user_id  BigInt?
+  actor_username String?  @db.NVarChar(100)
+  actor_role     String?  @db.NVarChar(30)
+  entity_type    String?  @db.NVarChar(60)
+  entity_id      String?  @db.NVarChar(50)
+  entity_label   String?  @db.NVarChar(255)
+  detail         String?  @db.NVarChar(Max)
+  ip_address     String?  @db.NVarChar(45)
+  user_agent     String?  @db.NVarChar(400)
+  retain_until   DateTime @db.Date
+
+  @@index([actor_user_id], map: "IX_audit_log_actor_user_id")
+  @@index([category, occurred_at(sort: Desc)], map: "IX_audit_log_category_occurred_at")
+  @@index([occurred_at(sort: Desc)], map: "IX_audit_log_occurred_at")
+  @@index([retain_until], map: "IX_audit_log_retain_until")
+}

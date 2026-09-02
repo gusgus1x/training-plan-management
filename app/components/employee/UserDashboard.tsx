@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";
 import { useUiLanguage, type UiLanguage } from "../ThaiUiLocalization";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
+import { followUpReminderAt } from "../../lib/trainingForms/availability";
 import {
   ACTIVE_ENROLLMENT_STATUSES,
   type EnrollmentRecord,
@@ -159,15 +160,17 @@ export const countdownLabel = (days: number, language: UiLanguage) => {
   return isThai ? `อีก ${days} วัน` : `in ${days} days`;
 };
 
-/** Enrollments whose 30-day follow-up evaluation has opened and is still unanswered - the set the
- *  dashboard's reminder banner nags about. A pure function of the list the page already loads, so
- *  it is testable without rendering the whole dashboard. */
-export const pendingFollowUpEvaluationsOf = (enrollments: EnrollmentRecord[]) =>
+/** Enrollments whose 30-day follow-up evaluation is due for a reminder and still unanswered - the
+ *  set the dashboard's reminder banner nags about. Fires from FOLLOW_UP_REMINDER_AFTER_DAYS, which
+ *  is earlier than the form itself opens (FOLLOW_UP_OPENS_AFTER_DAYS), so employees see it coming.
+ *  A pure function of the list the page already loads, so it is testable without rendering the
+ *  whole dashboard. */
+export const pendingFollowUpEvaluationsOf = (enrollments: EnrollmentRecord[], now: Date = new Date()) =>
   enrollments.filter(
     (enrollment) =>
       enrollment.plan.assessment.evaluationAfter30Day.mode === "FORM" &&
-      enrollment.plan.assessment.evaluationAfter30Day.availability === "OPEN" &&
-      enrollment.plan.assessment.evaluationAfter30Day.submission === null,
+      enrollment.plan.assessment.evaluationAfter30Day.submission === null &&
+      now.getTime() >= new Date(followUpReminderAt(enrollment.plan.endAt)).getTime(),
   );
 
 export default function UserDashboard({ username, onHome, onLogout }: UserDashboardProps) {

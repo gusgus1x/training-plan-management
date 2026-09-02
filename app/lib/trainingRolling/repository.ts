@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { PrismaClient } from "../../generated/prisma/client";
 import { Prisma } from "../../generated/prisma/client";
 import { ApiError } from "../api/errors";
+import type { AuditActor } from "../audit";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
 import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
@@ -309,7 +310,7 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
       });
     },
 
-    async delete(id: string, companyId: string | null = null) {
+    async delete(id: string, companyId: string | null = null, actor?: AuditActor) {
       return withDatabaseErrorMapping(async () => {
         const planId = BigInt(id);
         if (companyId) {
@@ -321,8 +322,23 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
             throw new ApiError({ code: "FORBIDDEN", message: "Factory users cannot delete plans created by HRD Center or other factories", status: 403 });
           }
         }
+        // Read the label before the row goes, so the audit line still names it afterwards.
+        const label = actor
+          ? await db().training_plan.findUnique({
+              where: { plan_id: planId },
+              select: { batch_name: true, start_datetime: true },
+            })
+          : null;
+
         await db().$transaction(async (tx) => {
-          await cascadeDeleteTrainingPlans(tx, [planId]);
+          await cascadeDeleteTrainingPlans(tx, [planId], actor && {
+            actor,
+            entityType: "rolling_plan",
+            entityId: id,
+            entityLabel: [label?.batch_name, label?.start_datetime?.toISOString().slice(0, 10)]
+              .filter(Boolean)
+              .join(" · ") || undefined,
+          });
         });
 
         return { rollingPlanId: id, outcome: "DELETED" as const };

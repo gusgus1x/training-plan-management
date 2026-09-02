@@ -1,8 +1,6 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState, type CSSProperties } from "react";
-import { listEmployees } from "../../../../lib/employees/client";
-import type { EmployeeRecord } from "../../../../lib/employees/types";
 import { listTrainingRecords } from "../../../../lib/trainingRecord/client";
 import type { AssessmentStageInfo } from "../../../../lib/trainingEnrollment/types";
 import { EXPENSE_ITEMS } from "../../../../lib/trainingRecord/types";
@@ -12,7 +10,6 @@ import type {
 } from "../../../../lib/trainingRecord/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
-import { useNotice } from "../../../NoticeDialog";
 import { useToast } from "../../../ToastHost";
 import { listPlanStageSettings, setStageClosed } from "../../../../lib/trainingForms/client";
 import type { GradedStage, StageSetting } from "../../../../lib/trainingForms/types";
@@ -518,7 +515,6 @@ const FormSettingsPanel = ({ planId, pendingCount }: { planId: string; pendingCo
 
 export default function TrainingRecord() {
   const user = useAuthenticatedUser();
-  const notice = useNotice();
   const toast = useToast();
   const [courses, setCourses] = useState<CompletedCourse[]>([]);
   const [selectedCourseGroupId, setSelectedCourseGroupId] = useState("");
@@ -531,29 +527,17 @@ export default function TrainingRecord() {
   const [importFileName, setImportFileName] = useState("");
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [isCourseDetailOpen, setIsCourseDetailOpen] = useState(false);
-  const [isAddingAttendee, setIsAddingAttendee] = useState(false);
-  const [selectedEmpCode, setSelectedEmpCode] = useState("");
-  const [customEmpCode, setCustomEmpCode] = useState("");
-  const [customEmpName, setCustomEmpName] = useState("");
-  const [customCompany, setCustomCompany] = useState("");
-  const [customDepartment, setCustomDepartment] = useState("");
-  const [addAttendeeMessage, setAddAttendeeMessage] = useState("");
-  const [masterEmployees, setMasterEmployees] = useState<EmployeeRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [attendeeSearchQuery, setAttendeeSearchQuery] = useState("");
   const [selectedAttendeeCompanyFilter, setSelectedAttendeeCompanyFilter] = useState("ALL");
 
-  useEffect(() => {
-    let active = true;
+  const reloadCourses = () => {
     setIsLoading(true);
-    void Promise.all([
+    return Promise.all([
       loadWorkflowRollingPlans().catch(() => []),
-      listEmployees().catch(() => ({ items: [] as EmployeeRecord[] })),
       listTrainingRecords().catch(() => ({ trainingRecords: [] as TrainingRecordSummary[] })),
-    ]).then(([plans, empResult, recordResult]) => {
-      if (!active) return;
+    ]).then(([plans, recordResult]) => {
       setRollingPlans(plans);
-      setMasterEmployees(empResult.items || []);
 
       const percent = (count: number, total: number) => (total > 0 ? Math.round((count / total) * 100) : 0);
       const nextCourses = (recordResult.trainingRecords || []).map<CompletedCourse>((record: TrainingRecordSummary) => {
@@ -611,13 +595,11 @@ export default function TrainingRecord() {
       });
 
       setCourses(nextCourses);
-    }).finally(() => {
-      if (active) {
-        setIsLoading(false);
-      }
-    });
+    }).finally(() => setIsLoading(false));
+  };
 
-    return () => { active = false; };
+  useEffect(() => {
+    void reloadCourses();
   }, []);
 
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
@@ -867,81 +849,6 @@ export default function TrainingRecord() {
     );
   };
 
-  const handleAddAttendee = async () => {
-    const selectedMaster = selectedEmpCode
-      ? masterEmployees.find((emp) => emp.employeeCode === selectedEmpCode)
-      : null;
-    const missingFields: string[] = [];
-
-    if (!selectedCourse) {
-      missingFields.push("หลักสูตร (Course) — เลือกหลักสูตรจากตารางก่อน");
-    }
-    if (!selectedMaster) {
-      // No master employee picked, so the manual code/name fields become the required pair
-      // instead of silently falling back to a generated "EMP-0001 / New Participant" row.
-      if (!customEmpCode.trim()) {
-        missingFields.push("รหัสพนักงาน (Employee Code) — เลือกจากข้อมูลพนักงาน หรือกรอกเอง");
-      }
-      if (!customEmpName.trim()) {
-        missingFields.push("ชื่อพนักงาน (Employee Name) — เลือกจากข้อมูลพนักงาน หรือกรอกเอง");
-      }
-    }
-
-    if (missingFields.length > 0) {
-      await notice({ missingFields });
-      return;
-    }
-    if (!selectedCourse) {
-      return;
-    }
-
-    const addSequence = selectedCourse.attendees.length + 1;
-
-    const empCode =
-      selectedMaster?.employeeCode ||
-      customEmpCode.trim() ||
-      `EMP-${String(addSequence).padStart(4, "0")}`;
-    const empName = selectedMaster
-      ? `${selectedMaster.titleEn || ""} ${selectedMaster.firstNameEn || selectedMaster.firstNameTh} ${selectedMaster.lastNameEn || selectedMaster.lastNameTh}`.trim()
-      : customEmpName.trim() || "New Participant";
-    const company = selectedMaster?.companyCode || customCompany.trim() || selectedCourse.company || "SNF";
-    const department = selectedMaster?.functionName || customDepartment.trim() || "General";
-
-    const newAttendeeObj: CompletedCourse["attendees"][number] = {
-      id: `att-add-${selectedCourse.id}-${empCode}-${addSequence}`,
-      company,
-      employeeCode: empCode,
-      name: empName,
-      department,
-      prePost: "Pending",
-      evaluation: "Pending",
-    };
-
-    setCourses((current) =>
-      current.map((course) =>
-        course.id === selectedCourse.id
-          ? {
-              ...course,
-              actualAttendees: course.actualAttendees + 1,
-              registeredAttendees: course.registeredAttendees + 1,
-              attendees: [...course.attendees, newAttendeeObj],
-            }
-          : course,
-      ),
-    );
-    setAddAttendeeMessage(
-      `Added ${empName} (${empCode}) to ${selectedCourse.code} for this view — this manual addition is not saved to the server yet.`,
-    );
-    toast.warning(
-      `เพิ่ม ${empName} (${empCode}) ในหน้าจอแล้ว แต่ยังไม่ได้บันทึกลงเซิร์ฟเวอร์ / Added on screen only, not saved to the server yet`,
-    );
-    setSelectedEmpCode("");
-    setCustomEmpCode("");
-    setCustomEmpName("");
-    setCustomDepartment("");
-    setCustomCompany("");
-    setIsAddingAttendee(false);
-  };
 
   const renderSelectedCourseDetail = () => {
     if (!selectedCourse) {
@@ -1391,119 +1298,6 @@ export default function TrainingRecord() {
               </div>
             </article>
           </section>
-
-          {!isFactoryUser || selectedCourse.owner !== "CENTER" ? (
-            <section className={styles.addAttendeePanel} aria-label="Add attendee to recorded course">
-              <div className={styles.panelHeader}>
-                <div>
-                  <p className={styles.kicker}>Post-Record Registration</p>
-                  <h3>Add Attendee</h3>
-                </div>
-                <button type="button" onClick={() => setIsAddingAttendee(!isAddingAttendee)}>
-                  {isAddingAttendee ? "Cancel" : "+ Add Attendee"}
-                </button>
-              </div>
-
-              {isAddingAttendee ? (
-                <div className={styles.addAttendeeWorkspace}>
-                  <div className={styles.addAttendeeControls}>
-                    <label>
-                      Select Employee from Master Data
-                      <select
-                        value={selectedEmpCode}
-                        onChange={(event) => {
-                          setSelectedEmpCode(event.target.value);
-                          const master = event.target.value
-                            ? masterEmployees.find(
-                                (employee) => employee.employeeCode === event.target.value,
-                              )
-                            : null;
-
-                          if (master) {
-                            setCustomEmpCode(master.employeeCode ?? "");
-                            setCustomEmpName(
-                              `${master.titleEn || ""} ${
-                                master.firstNameEn || master.firstNameTh
-                              } ${master.lastNameEn || master.lastNameTh}`.trim(),
-                            );
-                            setCustomCompany(master.companyCode);
-                            setCustomDepartment(master.functionName || "");
-                          }
-                        }}
-                      >
-                        <option value="">Select Employee (Optional)</option>
-                        {masterEmployees.map((employee) => (
-                          <option key={employee.employeeId} value={employee.employeeCode ?? ""}>
-                            {employee.employeeCode} / {employee.firstNameEn || employee.firstNameTh}{" "}
-                            {employee.lastNameEn || employee.lastNameTh} / {employee.companyCode} /{" "}
-                            {employee.functionName}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label>
-                      Employee Code
-                      <input
-                        value={customEmpCode}
-                        onChange={(event) => setCustomEmpCode(event.target.value)}
-                        placeholder="e.g. ATA-1001"
-                      />
-                    </label>
-
-                    <label>
-                      Full Name
-                      <input
-                        value={customEmpName}
-                        onChange={(event) => setCustomEmpName(event.target.value)}
-                        placeholder="e.g. Mr. Somchai Promjai"
-                      />
-                    </label>
-
-                    <label>
-                      Company
-                      <input
-                        value={customCompany}
-                        onChange={(event) => setCustomCompany(event.target.value)}
-                        placeholder="e.g. ATA / SNF"
-                      />
-                    </label>
-
-                    <label>
-                      Department / Function
-                      <input
-                        value={customDepartment}
-                        onChange={(event) => setCustomDepartment(event.target.value)}
-                        placeholder="e.g. Production"
-                      />
-                    </label>
-
-                    <div className={styles.addAttendeeActions}>
-                      <button type="button" onClick={() => void handleAddAttendee()}>
-                        Save & Add Attendee
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              {addAttendeeMessage ? (
-                <p className={styles.downloadMessage}>{addAttendeeMessage}</p>
-              ) : null}
-            </section>
-          ) : (
-            <section className={styles.addAttendeePanel} style={{ opacity: 0.85, background: "rgba(241, 245, 249, 0.6)", border: "1px dashed #cbd5e1" }}>
-              <div className={styles.panelHeader}>
-                <div>
-                  <p className={styles.kicker}>Center Training Record Scope</p>
-                  <h3 style={{ color: "#475569" }}>🔒 หลักสูตรของส่วนกลาง (Center Training Record)</h3>
-                </div>
-                <span style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: 500 }}>
-                  ไม่อนุญาตให้โรงงานเพิ่มผู้เข้าร่วมในหลักสูตรของ Center ย้อนหลัง / Only HRD Center can manage attendees for Center records
-                </span>
-              </div>
-            </section>
-          )}
 
           {/* Executive Actual Attendees Workspace */}
           <section className={styles.evaluationDownloadPanel} aria-label="Actual attendees list">

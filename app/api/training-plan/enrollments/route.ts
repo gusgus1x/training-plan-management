@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { ApiError } from "../../../lib/api/errors";
 import { apiSuccess } from "../../../lib/api/response";
 import { readJsonObject } from "../../../lib/api/validation";
 import { createProtectedRoute, type ProtectedRouteOptions } from "../../../lib/auth/guard";
@@ -47,6 +48,14 @@ export const createCreateEnrollmentHandler = (dependencies: Dependencies = {}) =
       // An employee cannot wave their own prerequisite condition through, no matter what the
       // client sent - only HRD sees the confirmation prompt and resubmits with this set.
       input.acknowledgePrerequisite = false;
+    } else if (principal.role === "ADMIN") {
+      // Enrolling people is HRD work, not system administration; allRoles already excludes ADMIN,
+      // so this only fires if someone widens that list without revisiting the decision.
+      throw new ApiError({
+        code: "FORBIDDEN",
+        message: "Administrators cannot enrol participants",
+        status: 403,
+      });
     } else {
       input.source = principal.role;
     }

@@ -114,25 +114,30 @@ const enrollmentWithFollowUp = (overrides: Partial<EnrollmentRecord["plan"]["ass
 });
 
 describe("30-day follow-up evaluation reminder", () => {
-  it("flags an open, unanswered follow-up evaluation", () => {
+  // endAt is 2026-05-12; the reminder fires 25 days later (2026-06-06), five days before the form
+  // itself opens at 30 days (2026-06-11).
+  const atOrAfterReminder = new Date("2026-06-06T09:00:00.000Z");
+  const beforeReminder = new Date("2026-06-05T09:00:00.000Z");
+
+  it("flags an unanswered follow-up evaluation once the reminder date has passed", () => {
     const enrollment = enrollmentWithFollowUp();
-    expect(pendingFollowUpEvaluationsOf([enrollment])).toEqual([enrollment]);
+    expect(pendingFollowUpEvaluationsOf([enrollment], atOrAfterReminder)).toEqual([enrollment]);
   });
 
   it("does not flag one that has already been submitted", () => {
     const enrollment = enrollmentWithFollowUp({
       submission: { attemptNo: 1, submittedAt: "2026-06-10T00:00:00.000Z", score: null, passStatus: "PENDING", gradingStatus: "REVIEWED" },
     });
-    expect(pendingFollowUpEvaluationsOf([enrollment])).toEqual([]);
+    expect(pendingFollowUpEvaluationsOf([enrollment], atOrAfterReminder)).toEqual([]);
   });
 
-  it("does not flag one that has not opened yet", () => {
+  it("does not flag one before the reminder date, even though the form isn't open yet either", () => {
     const enrollment = enrollmentWithFollowUp({ availability: "NOT_YET" });
-    expect(pendingFollowUpEvaluationsOf([enrollment])).toEqual([]);
+    expect(pendingFollowUpEvaluationsOf([enrollment], beforeReminder)).toEqual([]);
   });
 
   it("does not flag a course with no follow-up evaluation configured", () => {
     const enrollment = enrollmentWithFollowUp({ mode: "NONE", availability: "NOT_YET" });
-    expect(pendingFollowUpEvaluationsOf([enrollment])).toEqual([]);
+    expect(pendingFollowUpEvaluationsOf([enrollment], atOrAfterReminder)).toEqual([]);
   });
 });

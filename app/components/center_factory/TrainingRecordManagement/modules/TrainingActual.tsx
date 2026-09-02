@@ -2,15 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useConfirm } from "../../../ConfirmDialog";
 import { useToast } from "../../../ToastHost";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
+import SearchableSelect from "../../../SearchableSelect";
 import {
   formatRollingPlanCompanies,
   getRollingPlanCompanies,
   loadWorkflowRollingPlans,
   type RollingPlan,
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
-import { listEnrollments, setEnrollmentAttendance } from "../../../../lib/trainingEnrollment/client";
+import { listEmployees } from "../../../../lib/employees/client";
+import type { EmployeeRecord } from "../../../../lib/employees/types";
+import { createEnrollment, EnrollmentApiError, listEnrollments, setEnrollmentAttendance } from "../../../../lib/trainingEnrollment/client";
 import {
   emptyEnrollmentStage,
   type EnrollmentAssessmentInfo,
@@ -22,7 +26,6 @@ import {
   saveTrainingResults,
 } from "../../../../lib/trainingRecord/client";
 import {
-  COMPLETION_STATUSES,
   EXPENSE_ITEMS,
   completionStatusLabel,
   expiryFrom,
@@ -39,6 +42,20 @@ export const trainingActualModule = {
   description:
     "Check actual attendance, record real training expenses, and save the completed actual record.",
 } as const;
+
+/** One master-data employee as a SearchableSelect option for the "add attendee" search - the
+ *  component filters on label, secondaryLabel and badge together, so code, English name, Thai
+ *  name, company and department are all searchable even though only the Thai name is shown as
+ *  the main label. */
+const employeeSelectOption = (employee: EmployeeRecord) => {
+  const nameEn = `${employee.firstNameEn || ""} ${employee.lastNameEn || ""}`.trim();
+  return {
+    value: employee.employeeId,
+    label: `${employee.firstNameTh} ${employee.lastNameTh}`.trim(),
+    secondaryLabel: [employee.employeeCode, nameEn, employee.functionName].filter(Boolean).join(" • "),
+    badge: employee.companyCode,
+  };
+};
 
 type ExpenseKey =
   | "instructor"
@@ -341,6 +358,11 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
 export default function TrainingActual() {
   const user = useAuthenticatedUser();
   const toast = useToast();
+  const confirm = useConfirm();
+  const [masterEmployees, setMasterEmployees] = useState<EmployeeRecord[]>([]);
+  const [isAddingAttendee, setIsAddingAttendee] = useState(false);
+  const [draftAttendees, setDraftAttendees] = useState<EmployeeRecord[]>([]);
+  const [isSavingDraftAttendees, setIsSavingDraftAttendees] = useState(false);
   const [resultDrafts, setResultDrafts] = useState<Record<string, ResultDraft>>({});
   const [isSavingResults, setIsSavingResults] = useState(false);
   const noAssessment: EnrollmentAssessmentInfo = {
@@ -378,6 +400,20 @@ export default function TrainingActual() {
     void loadWorkflowRollingPlans().then((plans) => {
       if (active) setRollingPlans(plans);
     });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void listEmployees()
+      .then((result) => {
+        if (active) setMasterEmployees(result.items || []);
+      })
+      .catch(() => {
+        if (active) setMasterEmployees([]);
+      });
     return () => {
       active = false;
     };
@@ -632,6 +668,10 @@ export default function TrainingActual() {
   const allAttended = Boolean(
     attendees.length && attendees.every((attendee) => attendee.attended),
   );
+  const allPassed = Boolean(
+    attendees.length &&
+      attendees.every((attendee) => (resultDrafts[attendee.id] ?? emptyResultDraft).completionStatus === "COMPLETED"),
+  );
   const companyCostBreakdown = costBreakdown?.companyBreakdown ?? [];
 
   const reloadEnrollments = async () => {
@@ -692,6 +732,96 @@ export default function TrainingActual() {
     }
   };
 
+  /** Picking a search result adds them to the draft basket instead of saving immediately, so HRD
+   *  can gather several people before committing them all at once. */
+  const addEmployeeToDraft = (employeeId: string) => {
+    const master = masterEmployees.find((employee) => employee.employeeId === employeeId);
+    if (!master) return;
+    setDraftAttendees((current) =>
+      current.some((employee) => employee.employeeId === master.employeeId)
+        ? current
+        : [...current, master],
+    );
+  };
+
+  const removeDraftAttendee = (employeeId: string) => {
+    setDraftAttendees((current) => current.filter((employee) => employee.employeeId !== employeeId));
+  };
+
+  /** Enrols one employee for real; if the plan has a prerequisite they have not completed, asks
+   *  HRD to confirm by name before overriding it. Mirrors TrainingAcceptSurvey's own version of
+   *  this same override flow. Returns null only when HRD cancels that override prompt. */
+  const enrollAttendeeWithPrerequisiteCheck = async (employee: EmployeeRecord, planId: string, source: "HRD_CENTER" | "HRD_FACTORY") => {
+    const employeeLabel = `${employee.firstNameTh} ${employee.lastNameTh} (${employee.employeeCode})`;
+    try {
+      return await createEnrollment({ planId, employeeId: employee.employeeId, employeeUserId: employee.userId, source });
+    } catch (error) {
+      if (!(error instanceof EnrollmentApiError) || error.code !== "PREREQUISITE_NOT_MET") throw error;
+      const details = error.details as { missingCourseNames?: string } | undefined;
+      const missingNames = (details?.missingCourseNames || "").split(",").filter(Boolean).join(", ");
+      const ok = await confirm({
+        title: { th: "ยังไม่ผ่านหลักสูตรก่อนหน้า", en: "Prerequisite not completed" },
+        message: {
+          th: `${employeeLabel} ยังไม่ผ่านการอบรมหลักสูตร ${missingNames}\nยืนยันที่จะเพิ่มเข้าหลักสูตรนี้หรือไม่?`,
+          en: `${employeeLabel} has not completed ${missingNames}. Add them anyway?`,
+        },
+        confirmLabel: { th: "ยืนยันให้เพิ่ม", en: "Add anyway" },
+        cancelLabel: { th: "ข้ามคนนี้", en: "Skip" },
+        danger: true,
+      });
+      if (!ok) return null;
+      return createEnrollment({ planId, employeeId: employee.employeeId, employeeUserId: employee.userId, source, acknowledgePrerequisite: true });
+    }
+  };
+
+  /** Commits the draft basket for real: creates (and auto-approves, since HRD is adding them
+   *  directly) an enrollment per person, then reloads the attendance checklist so they land in it
+   *  like anyone else - HRD checks them present and grades them from there, same as usual. Once
+   *  saved there is no undo from this screen, which is why the confirm prompt says so up front. */
+  const saveDraftAttendees = async () => {
+    if (!selectedCourse) return;
+    if (draftAttendees.length === 0) {
+      toast.error("กรุณาค้นหาและเลือกพนักงานอย่างน้อย 1 คน / Search and select at least one employee");
+      return;
+    }
+
+    const ok = await confirm({
+      title: { th: "ยืนยันการเพิ่มผู้เข้าอบรม", en: "Confirm adding attendees" },
+      message: {
+        th: `เมื่อบันทึกแล้วจะแก้ไขไม่ได้ ยืนยันที่จะเพิ่ม ${draftAttendees.length} คนเข้า ${selectedCourse.code} หรือไม่?`,
+        en: `Once saved this cannot be edited. Add ${draftAttendees.length} attendee(s) to ${selectedCourse.code}?`,
+      },
+      confirmLabel: { th: "ยืนยันบันทึก", en: "Confirm & Save" },
+      cancelLabel: { th: "ยกเลิก", en: "Cancel" },
+      danger: true,
+    });
+    if (!ok) return;
+
+    setIsSavingDraftAttendees(true);
+    const source = isFactoryUser ? "HRD_FACTORY" : "HRD_CENTER";
+    const added: string[] = [];
+    const skipped: string[] = [];
+    try {
+      for (const employee of draftAttendees) {
+        const employeeLabel = `${employee.firstNameTh} ${employee.lastNameTh}`;
+        const enrollment = await enrollAttendeeWithPrerequisiteCheck(employee, selectedCourse.id, source);
+        if (!enrollment) {
+          skipped.push(employeeLabel);
+          continue;
+        }
+        added.push(employeeLabel);
+      }
+      await reloadEnrollments();
+      setDraftAttendees([]);
+      setIsAddingAttendee(false);
+      toast.success(`เพิ่มผู้เข้าอบรม ${added.length} คน เข้า ${selectedCourse.code} แล้ว / Added ${added.length} attendee(s)`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save attendees");
+    } finally {
+      setIsSavingDraftAttendees(false);
+    }
+  };
+
   const updateExpense = (key: ExpenseKey, value: string) => {
     setExpenses((current) => ({ ...current, [key]: value }));
   };
@@ -707,6 +837,16 @@ export default function TrainingActual() {
       ...current,
       [enrollmentId]: { ...(current[enrollmentId] ?? emptyResultDraft), [field]: value },
     }));
+  };
+
+  const setAllCompletion = (status: CompletionStatus) => {
+    setResultDrafts((current) => {
+      const next = { ...current };
+      attendees.forEach((attendee) => {
+        next[attendee.id] = { ...(next[attendee.id] ?? emptyResultDraft), completionStatus: status };
+      });
+      return next;
+    });
   };
 
   // Every enrollment on one plan shares the same course, so the configuration is the plan's.
@@ -979,8 +1119,106 @@ export default function TrainingActual() {
                   >
                     {allAttended ? "✕ ยกเลิกเช็คชื่อทั้งหมด" : "✓ เลือกเช็คชื่อทั้งหมด"}
                   </button>
+                  <button
+                    type="button"
+                    className={isAddingAttendee ? styles.activeActionButton : styles.actionButton}
+                    disabled={isSelectedCourseReadOnlyForFactory}
+                    onClick={() => setIsAddingAttendee(!isAddingAttendee)}
+                  >
+                    {isAddingAttendee ? "✕ ยกเลิก" : "+ เพิ่มรายชื่อผู้เข้าอบรมเพิ่มเติม"}
+                  </button>
                 </div>
               </div>
+
+              {isAddingAttendee ? (
+                <div className={styles.addAttendeeWorkspace}>
+                  <div className={styles.addAttendeeControls}>
+                    <label style={{ gridColumn: "1 / -1" }}>
+                      ค้นหารายชื่อพนักงาน (Search Employee)
+                      <SearchableSelect
+                        options={masterEmployees.map(employeeSelectOption)}
+                        value=""
+                        onChange={addEmployeeToDraft}
+                        placeholder="🔍 พิมพ์ชื่อ รหัสพนักงาน หรือบริษัท / Type name, code, or company..."
+                        emptyText="ไม่พบพนักงานที่ตรงกัน / No matching employee"
+                      />
+                    </label>
+                  </div>
+
+                  {draftAttendees.length > 0 ? (
+                    <div className={styles.tableWrap} style={{ marginTop: 14 }}>
+                      <table className={styles.recordTable}>
+                        <thead>
+                          <tr>
+                            <th>พนักงาน</th>
+                            <th>บริษัท / สำนักงาน</th>
+                            <th>หน่วยงาน</th>
+                            <th>เลเวล</th>
+                            <th></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {draftAttendees.map((employee) => (
+                            <tr key={employee.employeeId}>
+                              <td>
+                                <div>
+                                  <strong className={styles.attendeeFirstName}>
+                                    {`${employee.firstNameTh} ${employee.lastNameTh}`.trim()}
+                                  </strong>
+                                  <span className={styles.attendeeCodeTag}>{employee.employeeCode}</span>
+                                </div>
+                              </td>
+                              <td>
+                                <div className={styles.deptCell}>
+                                  <span className={styles.companyPillBadge}>{employee.companyCode}</span>
+                                  <span className={styles.attendeeDeptText}>{employee.functionName || "-"}</span>
+                                </div>
+                              </td>
+                              <td>
+                                <div className={styles.orgCell}>
+                                  <span className={styles.orgText}>{employee.divisionName || "-"}</span>
+                                  <span className={styles.orgSubText}>
+                                    {[employee.departmentName, employee.sectionName].filter(Boolean).join(" • ") || "-"}
+                                  </span>
+                                </div>
+                              </td>
+                              <td>
+                                <span className={styles.levelBadge}>{employee.levelCode || employee.levelKey || "-"}</span>
+                              </td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className={styles.removeDraftAttendeeButton}
+                                  title="เอาออกจากรายชื่อ / Remove"
+                                  onClick={() => removeDraftAttendee(employee.employeeId)}
+                                >
+                                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 6h18" />
+                                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                    <path d="M10 11v6" />
+                                    <path d="M14 11v6" />
+                                  </svg>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+
+                  <div className={styles.addAttendeeActions}>
+                    <button
+                      type="button"
+                      disabled={draftAttendees.length === 0 || isSavingDraftAttendees}
+                      onClick={() => void saveDraftAttendees()}
+                    >
+                      {isSavingDraftAttendees ? "กำลังบันทึก..." : `บันทึก (${draftAttendees.length})`}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
 
               {/* Attendance Toolbar: Company Filters, Status Filters, & Real-Time Search */}
               <div className={styles.attendeeFilterToolbar}>
@@ -1183,7 +1421,17 @@ export default function TrainingActual() {
                   <span>ผลการอบรม</span>
                   <strong>Training Result</strong>
                 </div>
-                <small>{attendees.filter((a) => a.attended).length} attended</small>
+                <div className={styles.attendanceHeaderActions}>
+                  <small>{attendees.filter((a) => a.attended).length} attended</small>
+                  <button
+                    type="button"
+                    className={allPassed ? styles.activeActionButton : styles.actionButton}
+                    disabled={attendees.length === 0 || isSelectedCourseReadOnlyForFactory}
+                    onClick={() => setAllCompletion(allPassed ? "NOT_COMPLETED" : "COMPLETED")}
+                  >
+                    {allPassed ? "✕ ยกเลิกผ่านทั้งหมด" : "✓ เลือกผ่านทั้งหมด"}
+                  </button>
+                </div>
               </div>
 
               {assessment.preTest.mode === "NONE" && assessment.postTest.mode === "NONE" ? (
@@ -1247,20 +1495,31 @@ export default function TrainingActual() {
                             />
                           </label>
                         )}
-                        <label>
-                          ผลการอบรม
-                          <select
-                            value={draft.completionStatus}
-                            onChange={(event) =>
-                              setResultField(attendee.id, "completionStatus", event.target.value)
+                        <label className={styles.attendanceCheckLabel}>
+                          <input
+                            type="checkbox"
+                            checked={draft.completionStatus === "COMPLETED"}
+                            disabled={isSelectedCourseReadOnlyForFactory}
+                            onChange={() =>
+                              setResultField(
+                                attendee.id,
+                                "completionStatus",
+                                draft.completionStatus === "COMPLETED" ? "NOT_COMPLETED" : "COMPLETED",
+                              )
                             }
-                          >
-                            {COMPLETION_STATUSES.map((status) => (
-                              <option key={status} value={status}>
-                                {completionStatusLabel(status, language)}
-                              </option>
-                            ))}
-                          </select>
+                          />
+                          <span className={draft.completionStatus === "COMPLETED" ? styles.passBadge : styles.failBadge}>
+                            {draft.completionStatus === "COMPLETED" ? (
+                              <>
+                                <span className={styles.glowingDotGreen} /> ผ่าน
+                              </>
+                            ) : (
+                              <>
+                                <span className={styles.glowingDotRed} />{" "}
+                                {draft.completionStatus === "PENDING" ? "ยังไม่ระบุ" : "ไม่ผ่าน"}
+                              </>
+                            )}
+                          </span>
                         </label>
                         {/* The certificate number is not entered here for now. The draft still
                             carries whatever is stored, so a save leaves an existing number

@@ -101,6 +101,36 @@ type AssessmentFlowStep = {
 export type StageDisplayState = "NONE" | "NOT_YET" | "CLOSED_BY_HRD" | "LINK" | "REVIEW_PENDING" | "DONE" | "TODO";
 
 /**
+ * Whether the employee has clicked an external (LINK-mode) assessment at least once. This system
+ * never sees what happens on someone else's form, so there is no real "done" signal to show for
+ * LINK stages the way there is for in-system ones - this is a per-browser memory aid only, not a
+ * completion record, and intentionally lives in localStorage rather than the server for that reason.
+ */
+const VISITED_LINK_STORAGE_KEY = "training-form:visited-links";
+
+const visitedLinkKey = (enrollmentId: string, stageKey: string) => `${enrollmentId}:${stageKey}`;
+
+const loadVisitedLinks = (): Record<string, true> => {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(VISITED_LINK_STORAGE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+};
+
+const markLinkVisited = (enrollmentId: string, stageKey: string) => {
+  if (typeof window === "undefined") return;
+  const current = loadVisitedLinks();
+  current[visitedLinkKey(enrollmentId, stageKey)] = true;
+  try {
+    window.localStorage.setItem(VISITED_LINK_STORAGE_KEY, JSON.stringify(current));
+  } catch {
+    // Private browsing or a full quota - the checkbox just won't persist, nothing to recover from.
+  }
+};
+
+/**
  * Single source of truth for "what state is this stage in" - the label text and the action button
  * both switch on this instead of each running its own mode/availability checks. They used to be
  * two independent ternary chains that happened to agree on ordering; a real bug shipped from that
@@ -139,6 +169,8 @@ const AssessmentFlowSection = ({
   onOpenForm: (target: FormRunnerTarget) => void;
   t: (th: string, en: string) => string;
 }) => {
+  const [visitedLinks, setVisitedLinks] = useState<Record<string, true>>(() => loadVisitedLinks());
+
   const steps: AssessmentFlowStep[] = [
     { key: "pre", title: t("แบบทดสอบก่อนอบรม", "Pre Test"), stage: assessment.preTest, target: { kind: "assessment", stage: "PRE_TEST", enrollmentId } },
     { key: "post", title: t("แบบทดสอบหลังอบรม", "Post Test"), stage: assessment.postTest, target: { kind: "assessment", stage: "POST_TEST", enrollmentId } },
@@ -159,11 +191,23 @@ const AssessmentFlowSection = ({
         {steps.map((step) => {
           const state = resolveStageState(step.stage);
           const isEvaluation = step.key === "evaluation" || step.key === "evaluation30";
+          const visited = state === "LINK" && Boolean(visitedLinks[visitedLinkKey(enrollmentId, step.key)]);
 
           return (
             <div className={styles.stepRow} key={step.key}>
               <div className={styles.stepText}>
-                <span>{step.title}</span>
+                <span>
+                  {step.title}
+                  {state === "LINK" ? (
+                    <span
+                      className={visited ? `${styles.visitedCheckbox} ${styles.visitedCheckboxChecked}` : styles.visitedCheckbox}
+                      title={t("เคยกดเข้าไปทำแล้ว", "Previously opened")}
+                      aria-label={t("เคยกดเข้าไปทำแล้ว", "Previously opened")}
+                    >
+                      {visited ? "✓" : ""}
+                    </span>
+                  ) : null}
+                </span>
                 <small>
                   {state === "NONE"
                     ? t("ไม่มี", "None")
@@ -202,7 +246,16 @@ const AssessmentFlowSection = ({
                 </button>
               ) : state === "LINK" ? (
                 step.stage.link ? (
-                  <a href={step.stage.link} target="_blank" rel="noopener noreferrer" className={styles.openLinkBtn}>
+                  <a
+                    href={step.stage.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.openLinkBtn}
+                    onClick={() => {
+                      markLinkVisited(enrollmentId, step.key);
+                      setVisitedLinks((current) => ({ ...current, [visitedLinkKey(enrollmentId, step.key)]: true }));
+                    }}
+                  >
                     🔗 {t("เปิดทำแบบทดสอบ", "Open Link")}
                   </a>
                 ) : (

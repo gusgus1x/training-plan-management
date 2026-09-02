@@ -25,7 +25,11 @@ export const createUpdateOapPlanHandler = (dependencies: Dependencies = {}) =>
 export const createDeleteOapPlanHandler = (dependencies: Dependencies = {}) =>
   createProtectedRoute(async (request: NextRequest, principal, { params }: { params: Promise<{ oapPlanId: string }> }) => {
     const { oapPlanId } = await params;
-    const result = await (dependencies.service ?? oapPlanService).deleteOapPlan(oapPlanId, scopeOf(principal));
+    const result = await (dependencies.service ?? oapPlanService).deleteOapPlan(oapPlanId, scopeOf(principal), {
+      userId: principal.userId,
+      username: principal.username,
+      role: principal.role,
+    });
     return apiSuccess(result);
   }, writeOptions(dependencies.auth));
 
