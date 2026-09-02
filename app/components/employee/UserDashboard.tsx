@@ -926,13 +926,14 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                         {isThai ? "หลักสูตรที่ต้องเข้าอบรม" : "Upcoming Scheduled Trainings"}
                       </h3>
                       <span className={styles.upcomingCountBadge}>
+                        <span className={styles.badgePulseDot} aria-hidden="true" />
                         {upcomingApprovedTrainings.length} {isThai ? "หลักสูตร" : "courses"}
                       </span>
                     </div>
                     <p className={styles.upcomingSectionSubtitle}>
                       {isThai
-                        ? "หลักสูตรที่ได้รับการอนุมัติแล้ว พร้อมกำหนดการเข้าอบรม"
-                        : "Approved courses with upcoming training schedules"}
+                        ? "หลักสูตรที่ได้รับการอนุมัติแล้ว พร้อมกำหนดการและห้องอบรม"
+                        : "Approved courses with schedules, venue, and examination links"}
                     </p>
                   </div>
                 </div>
@@ -947,7 +948,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                   }}
                 >
                   <span>{isUpcomingSectionOpen ? (isThai ? "ย่อรายการ" : "Collapse") : (isThai ? "ดูรายการ" : "Expand")}</span>
-                  <span style={{ transition: "transform 0.2s ease", transform: isUpcomingSectionOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                  <span style={{ fontSize: "0.75rem", transition: "transform 0.2s ease", transform: isUpcomingSectionOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
                     ▼
                   </span>
                 </button>
@@ -965,10 +966,15 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                       <article key={enrollment.id} className={styles.upcomingCourseCard}>
                         <div className={styles.upcomingDateColumn}>
                           <div className={styles.upcomingDateBadge}>
-                            <span className={styles.upcomingDateDay}>{startDate.getDate()}</span>
-                            <span className={styles.upcomingDateMonth}>
+                            <div className={styles.upcomingDateMonthBanner}>
                               {startDate.toLocaleDateString(locale, { month: "short" })}
-                            </span>
+                            </div>
+                            <div className={styles.upcomingDateDayNumber}>
+                              {startDate.getDate()}
+                            </div>
+                            <div className={styles.upcomingDateYear}>
+                              {startDate.getFullYear()}
+                            </div>
                           </div>
                           {days !== null ? (
                             <span
@@ -980,6 +986,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                                     : styles.countdownBadgeNormal
                               }
                             >
+                              <span className={styles.badgePulseDot} style={{ width: 5, height: 5 }} aria-hidden="true" />
                               {countdownLabel(days, language)}
                             </span>
                           ) : null}
@@ -995,7 +1002,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                                 ✓ {isThai ? "อนุมัติแล้ว" : "Approved"}
                               </span>
                               <span className={styles.upcomingOwnerTag}>
-                                {enrollment.plan.owner === "CENTER" ? "HRD Center" : `${employeeCompany || "Factory"}`}
+                                🏢 {enrollment.plan.owner === "CENTER" ? "HRD Center" : `${employeeCompany || "Factory"}`}
                               </span>
                             </div>
                             <h4 className={styles.upcomingCourseName} title={enrollment.plan.courseName}>
@@ -1004,21 +1011,21 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                           </div>
 
                           <div className={styles.upcomingDetailsRow}>
-                            <div className={styles.upcomingDetailItem}>
-                              <span className={styles.upcomingDetailLabel}>🕐 {isThai ? "เวลาอบรม" : "Time"}</span>
-                              <span className={styles.upcomingDetailValue}>
+                            <div className={styles.upcomingDetailChip}>
+                              <span className={styles.upcomingDetailChipLabel}>🕒 {isThai ? "เวลา" : "Time"}:</span>
+                              <span className={styles.upcomingDetailChipValue}>
                                 {startDate.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })} -{" "}
                                 {endDate.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}{" "}
                                 ({enrollment.plan.hours} {isThai ? "ชม." : "hrs"})
                               </span>
                             </div>
-                            <div className={styles.upcomingDetailItem}>
-                              <span className={styles.upcomingDetailLabel}>📍 {isThai ? "สถานที่" : "Venue"}</span>
-                              <span className={styles.upcomingDetailValue}>{enrollment.plan.venue || "-"}</span>
+                            <div className={styles.upcomingDetailChip}>
+                              <span className={styles.upcomingDetailChipLabel}>📍 {isThai ? "สถานที่" : "Venue"}:</span>
+                              <span className={styles.upcomingDetailChipValue}>{enrollment.plan.venue || "-"}</span>
                             </div>
-                            <div className={styles.upcomingDetailItem}>
-                              <span className={styles.upcomingDetailLabel}>👤 {isThai ? "วิทยากร" : "Instructor"}</span>
-                              <span className={styles.upcomingDetailValue}>{enrollment.plan.instructor || "-"}</span>
+                            <div className={styles.upcomingDetailChip}>
+                              <span className={styles.upcomingDetailChipLabel}>👤 {isThai ? "วิทยากร" : "Instructor"}:</span>
+                              <span className={styles.upcomingDetailChipValue}>{enrollment.plan.instructor || "-"}</span>
                             </div>
                           </div>
                         </div>
@@ -1028,9 +1035,17 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                             type="button"
                             className={styles.upcomingActionPrimaryBtn}
                             onClick={() => setActiveModule("record")}
-                            title={isThai ? "ไปที่หน้าประวัติและแบบทดสอบ" : "Go to My Record"}
+                            title={isThai ? "ไปที่หน้าประวัติและแบบทดสอบ" : "Go to My Record & Tests"}
                           >
-                            📝 {isThai ? "แบบทดสอบ / ผล" : "Tests & Record"}
+                            📝 {isThai ? "แบบทดสอบ & ผล" : "Tests & Record"}
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.upcomingActionSecondaryBtn}
+                            onClick={() => setActiveModule("calendar")}
+                            title={isThai ? "ดูตารางในปฏิทิน" : "View in Calendar"}
+                          >
+                            📅 {isThai ? "ดูในปฏิทิน" : "Calendar"}
                           </button>
                         </div>
                       </article>
