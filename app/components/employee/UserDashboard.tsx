@@ -274,6 +274,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpcomingSectionOpen, setIsUpcomingSectionOpen] = useState(true);
   const employeeCompany = profileValue(authenticatedUser?.companyCode);
 
   useEffect(() => {
@@ -902,6 +903,143 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
               ) : null}
             </section>
           </div>
+
+          {upcomingApprovedTrainings.length > 0 ? (
+            <section className={styles.upcomingTrainingsSection} aria-label="Upcoming approved trainings">
+              <div
+                className={styles.upcomingSectionHeader}
+                onClick={() => setIsUpcomingSectionOpen((prev) => !prev)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setIsUpcomingSectionOpen((prev) => !prev);
+                  }
+                }}
+              >
+                <div className={styles.upcomingSectionTitleBox}>
+                  <span className={styles.upcomingSectionIcon} aria-hidden="true">📅</span>
+                  <div>
+                    <div className={styles.upcomingSectionTitleRow}>
+                      <h3 className={styles.upcomingSectionTitle}>
+                        {isThai ? "หลักสูตรที่ต้องเข้าอบรม" : "Upcoming Scheduled Trainings"}
+                      </h3>
+                      <span className={styles.upcomingCountBadge}>
+                        {upcomingApprovedTrainings.length} {isThai ? "หลักสูตร" : "courses"}
+                      </span>
+                    </div>
+                    <p className={styles.upcomingSectionSubtitle}>
+                      {isThai
+                        ? "หลักสูตรที่ได้รับการอนุมัติแล้ว พร้อมกำหนดการเข้าอบรม"
+                        : "Approved courses with upcoming training schedules"}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className={styles.upcomingAccordionBtn}
+                  aria-expanded={isUpcomingSectionOpen}
+                  title={isThai ? "ย่อ / ขยายรายการ" : "Toggle list"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsUpcomingSectionOpen((prev) => !prev);
+                  }}
+                >
+                  <span>{isUpcomingSectionOpen ? (isThai ? "ย่อรายการ" : "Collapse") : (isThai ? "ดูรายการ" : "Expand")}</span>
+                  <span style={{ transition: "transform 0.2s ease", transform: isUpcomingSectionOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                    ▼
+                  </span>
+                </button>
+              </div>
+
+              {isUpcomingSectionOpen ? (
+                <div className={styles.upcomingCardsGrid}>
+                  {upcomingApprovedTrainings.map((enrollment) => {
+                    const startDate = new Date(enrollment.plan.startAt);
+                    const endDate = new Date(enrollment.plan.endAt);
+                    const days = daysUntil(enrollment.plan.startAt);
+                    const isTodayOrSoon = days !== null && days <= 3;
+
+                    return (
+                      <article key={enrollment.id} className={styles.upcomingCourseCard}>
+                        <div className={styles.upcomingDateColumn}>
+                          <div className={styles.upcomingDateBadge}>
+                            <span className={styles.upcomingDateDay}>{startDate.getDate()}</span>
+                            <span className={styles.upcomingDateMonth}>
+                              {startDate.toLocaleDateString(locale, { month: "short" })}
+                            </span>
+                          </div>
+                          {days !== null ? (
+                            <span
+                              className={
+                                days < 0
+                                  ? styles.countdownBadgeOngoing
+                                  : isTodayOrSoon
+                                    ? styles.countdownBadgeSoon
+                                    : styles.countdownBadgeNormal
+                              }
+                            >
+                              {countdownLabel(days, language)}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        <div className={styles.upcomingCardBody}>
+                          <div className={styles.upcomingCardHeader}>
+                            <div className={styles.upcomingCourseMetaTop}>
+                              <span className={styles.upcomingCourseCode}>
+                                {enrollment.plan.courseCode || "TR-COURSE"}
+                              </span>
+                              <span className={styles.upcomingStatusTag}>
+                                ✓ {isThai ? "อนุมัติแล้ว" : "Approved"}
+                              </span>
+                              <span className={styles.upcomingOwnerTag}>
+                                {enrollment.plan.owner === "CENTER" ? "HRD Center" : `${employeeCompany || "Factory"}`}
+                              </span>
+                            </div>
+                            <h4 className={styles.upcomingCourseName} title={enrollment.plan.courseName}>
+                              {enrollment.plan.courseName}
+                            </h4>
+                          </div>
+
+                          <div className={styles.upcomingDetailsRow}>
+                            <div className={styles.upcomingDetailItem}>
+                              <span className={styles.upcomingDetailLabel}>🕐 {isThai ? "เวลาอบรม" : "Time"}</span>
+                              <span className={styles.upcomingDetailValue}>
+                                {startDate.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })} -{" "}
+                                {endDate.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}{" "}
+                                ({enrollment.plan.hours} {isThai ? "ชม." : "hrs"})
+                              </span>
+                            </div>
+                            <div className={styles.upcomingDetailItem}>
+                              <span className={styles.upcomingDetailLabel}>📍 {isThai ? "สถานที่" : "Venue"}</span>
+                              <span className={styles.upcomingDetailValue}>{enrollment.plan.venue || "-"}</span>
+                            </div>
+                            <div className={styles.upcomingDetailItem}>
+                              <span className={styles.upcomingDetailLabel}>👤 {isThai ? "วิทยากร" : "Instructor"}</span>
+                              <span className={styles.upcomingDetailValue}>{enrollment.plan.instructor || "-"}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className={styles.upcomingCardActions}>
+                          <button
+                            type="button"
+                            className={styles.upcomingActionPrimaryBtn}
+                            onClick={() => setActiveModule("record")}
+                            title={isThai ? "ไปที่หน้าประวัติและแบบทดสอบ" : "Go to My Record"}
+                          >
+                            📝 {isThai ? "แบบทดสอบ / ผล" : "Tests & Record"}
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </section>
+          ) : null}
 
           <section className={styles.menuPanel} aria-label="Main workspace menu">
             <div className={styles.menuHeader}>
