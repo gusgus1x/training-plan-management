@@ -8,6 +8,7 @@ import {
   type ClientRoleCode,
   type ClientSessionUser,
 } from "../lib/auth/client";
+import { isEmployeeAllowedPath } from "../lib/auth/route-guard";
 import { initializeTrainingWorkflow } from "../lib/trainingWorkflow";
 import LoginPage, { type PreviewCompanyCode } from "./LoginPage";
 import { AuthenticatedUserProvider } from "./AuthenticatedUserContext";
@@ -214,7 +215,7 @@ export default function AuthGate({
       const dest = getSanitizedDestination(targetReturnUrl, effectiveUser.roleCode);
       setTargetReturnUrl(null);
       router.replace(dest);
-    } else if (effectiveUser && effectiveUser.roleCode === "EMPLOYEE" && pathname !== "/") {
+    } else if (effectiveUser && effectiveUser.roleCode === "EMPLOYEE" && !isEmployeeAllowedPath(pathname)) {
       // Employees do not access Center/Factory sub-routes; redirect to their personal dashboard
       router.replace("/");
     }

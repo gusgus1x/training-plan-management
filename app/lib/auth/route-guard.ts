@@ -10,3 +10,22 @@ export const shouldRedirectToLogin = (
   hasValidSession: boolean,
   nodeEnv: string,
 ) => nodeEnv === "production" && pathname !== "/login" && !hasValidSession;
+
+/**
+ * Where an EMPLOYEE is allowed to be. Everything else — the Center/Factory sub-routes — bounces
+ * them back to their own dashboard at "/".
+ *
+ * "/training-form" is here because taking a pre/post-test or an evaluation is a real page with its
+ * own URL, not a dialog: without this entry AuthGate would redirect the employee off the form the
+ * instant it opened.
+ */
+const EMPLOYEE_ALLOWED_BASE_PATHS = ["/", "/training-form"];
+
+export const isEmployeeAllowedPath = (pathname: string) =>
+  EMPLOYEE_ALLOWED_BASE_PATHS.some(
+    (base) =>
+      pathname === base ||
+      // Compare against "<base>/" so a look-alike prefix such as "/training-formx" is refused.
+      // "/" is skipped here: every path starts with it, and the equality check above covers it.
+      (base !== "/" && pathname.startsWith(`${base}/`)),
+  );

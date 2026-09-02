@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
 import type {
   EnrollmentAssessmentInfo,
@@ -14,7 +15,6 @@ import {
 import { useToast } from "../ToastHost";
 import { useUiLanguage } from "../ThaiUiLocalization";
 import ModuleHeader from "./ModuleHeader";
-import TrainingFormRunner from "./TrainingFormRunner";
 import styles from "./RecordModule.module.css";
 
 export type EmployeeTrainingRecord = {
@@ -86,7 +86,7 @@ export const buildRecords = (enrollments: EnrollmentRecord[]) =>
     .map(toRecord)
     .sort((left, right) => right.completedDate.localeCompare(left.completedDate));
 
-type FormRunnerTarget = { enrollmentId: string; courseTitle: string } & (
+type FormRunnerTarget = { enrollmentId: string } & (
   | { kind: "assessment"; stage: "PRE_TEST" | "POST_TEST" }
   | { kind: "evaluation"; stage: "EVALUATION" | "EVALUATION_30DAY" }
 );
@@ -96,6 +96,29 @@ type AssessmentFlowStep = {
   title: string;
   target: FormRunnerTarget;
   stage: EnrollmentAssessmentInfo["preTest"];
+};
+
+export type StageDisplayState = "NONE" | "NOT_YET" | "CLOSED_BY_HRD" | "LINK" | "REVIEW_PENDING" | "DONE" | "TODO";
+
+/**
+ * Single source of truth for "what state is this stage in" - the label text and the action button
+ * both switch on this instead of each running its own mode/availability checks. They used to be
+ * two independent ternary chains that happened to agree on ordering; a real bug shipped from that
+ * exact shape (the button's LINK branch short-circuited before its availability check, so a
+ * link-mode 30-day evaluation was clickable from day one). One function means there is only one
+ * place left for that class of bug to hide.
+ *
+ * NOT_YET/CLOSED_BY_HRD are checked before mode: an external LINK is exactly as date-gated as an
+ * in-system FORM - the UI is the only lever this app has over someone else's form.
+ */
+export const resolveStageState = (stage: EnrollmentStageInfo): StageDisplayState => {
+  if (stage.mode === "NONE") return "NONE";
+  if (stage.availability === "NOT_YET") return "NOT_YET";
+  if (stage.availability === "CLOSED_BY_HRD") return "CLOSED_BY_HRD";
+  if (stage.mode === "LINK") return "LINK";
+  if (stage.submission?.gradingStatus === "PENDING_REVIEW") return "REVIEW_PENDING";
+  if (stage.submission) return "DONE";
+  return "TODO";
 };
 
 /**
@@ -108,21 +131,19 @@ type AssessmentFlowStep = {
 const AssessmentFlowSection = ({
   assessment,
   enrollmentId,
-  courseTitle,
   onOpenForm,
   t,
 }: {
   assessment: EnrollmentAssessmentInfo;
   enrollmentId: string;
-  courseTitle: string;
   onOpenForm: (target: FormRunnerTarget) => void;
   t: (th: string, en: string) => string;
 }) => {
   const steps: AssessmentFlowStep[] = [
-    { key: "pre", title: t("แบบทดสอบก่อนอบรม", "Pre Test"), stage: assessment.preTest, target: { kind: "assessment", stage: "PRE_TEST", enrollmentId, courseTitle } },
-    { key: "post", title: t("แบบทดสอบหลังอบรม", "Post Test"), stage: assessment.postTest, target: { kind: "assessment", stage: "POST_TEST", enrollmentId, courseTitle } },
-    { key: "evaluation", title: t("แบบประเมินผลการอบรม", "Evaluation"), stage: assessment.evaluation, target: { kind: "evaluation", stage: "EVALUATION", enrollmentId, courseTitle } },
-    { key: "evaluation30", title: t("แบบประเมินผลหลัง 30 วัน", "30-Day Evaluation"), stage: assessment.evaluationAfter30Day, target: { kind: "evaluation", stage: "EVALUATION_30DAY", enrollmentId, courseTitle } },
+    { key: "pre", title: t("แบบทดสอบก่อนอบรม", "Pre Test"), stage: assessment.preTest, target: { kind: "assessment", stage: "PRE_TEST", enrollmentId } },
+    { key: "post", title: t("แบบทดสอบหลังอบรม", "Post Test"), stage: assessment.postTest, target: { kind: "assessment", stage: "POST_TEST", enrollmentId } },
+    { key: "evaluation", title: t("แบบประเมินผลการอบรม", "Evaluation"), stage: assessment.evaluation, target: { kind: "evaluation", stage: "EVALUATION", enrollmentId } },
+    { key: "evaluation30", title: t("แบบประเมินผลหลัง 30 วัน", "30-Day Evaluation"), stage: assessment.evaluationAfter30Day, target: { kind: "evaluation", stage: "EVALUATION_30DAY", enrollmentId } },
   ];
 
   const opensAtLabel = (isoDate: string) =>
@@ -135,73 +156,78 @@ const AssessmentFlowSection = ({
       </h4>
 
       <div className={styles.assessmentSteps}>
-        {steps.map((step) => (
-          <div className={styles.stepRow} key={step.key}>
-            <div className={styles.stepText}>
-              <span>{step.title}</span>
-              <small>
-                {step.stage.mode === "NONE"
-                  ? t("ไม่มี", "None")
-                  : step.stage.mode === "LINK"
-                    ? t("ทำผ่านลิงก์ภายนอก", "External link")
-                    : step.stage.submission
-                      ? step.stage.submission.gradingStatus === "PENDING_REVIEW"
-                        ? t("ส่งแล้ว รอ HRD ตรวจ", "Submitted - awaiting review")
-                        : t(
-                            `ทำแล้ว: ${step.stage.submission.score ?? "-"}%`,
-                            `Done: ${step.stage.submission.score ?? "-"}%`,
-                          )
-                      : step.stage.availability === "NOT_YET"
-                        ? t(`เปิดวันที่ ${opensAtLabel(step.stage.opensAt)}`, `Opens ${opensAtLabel(step.stage.opensAt)}`)
-                        : step.stage.availability === "CLOSED_BY_HRD"
-                          ? t("HRD ปิดรับแล้ว", "Closed by HRD")
-                          : t("ทำในระบบ", "In-system form")}
-              </small>
-            </div>
+        {steps.map((step) => {
+          const state = resolveStageState(step.stage);
+          const isEvaluation = step.key === "evaluation" || step.key === "evaluation30";
 
-            {step.stage.mode === "NONE" ? (
-              <span style={{ fontSize: "0.78rem", color: "var(--ui-30-muted)" }}>—</span>
-            ) : step.stage.mode === "LINK" ? (
-              step.stage.link ? (
-                <a href={step.stage.link} target="_blank" rel="noopener noreferrer" className={styles.openLinkBtn}>
-                  🔗 {t("เปิดทำแบบทดสอบ", "Open Link")}
-                </a>
-              ) : (
-                <button disabled type="button" className={styles.openLinkBtn} style={{ opacity: 0.5, cursor: "not-allowed" }}>
-                  {t("ไม่มีลิงก์", "No link set")}
+          return (
+            <div className={styles.stepRow} key={step.key}>
+              <div className={styles.stepText}>
+                <span>{step.title}</span>
+                <small>
+                  {state === "NONE"
+                    ? t("ไม่มี", "None")
+                    : state === "NOT_YET"
+                      ? t(`เปิดวันที่ ${opensAtLabel(step.stage.opensAt)}`, `Opens ${opensAtLabel(step.stage.opensAt)}`)
+                      : state === "CLOSED_BY_HRD"
+                        ? t("HRD ปิดรับแล้ว", "Closed by HRD")
+                        : state === "LINK"
+                          ? t("ทำผ่านลิงก์ภายนอก", "External link")
+                          : state === "REVIEW_PENDING"
+                            ? t("ส่งแล้ว รอ HRD ตรวจ", "Submitted - awaiting review")
+                            : state === "DONE"
+                              ? t(
+                                  `ทำแล้ว: ${step.stage.submission?.score ?? "-"}%`,
+                                  `Done: ${step.stage.submission?.score ?? "-"}%`,
+                                )
+                              : t("ทำในระบบ", "In-system form")}
+                </small>
+              </div>
+
+              {state === "NONE" ? (
+                <span style={{ fontSize: "0.78rem", color: "var(--ui-30-muted)" }}>—</span>
+              ) : state === "NOT_YET" || state === "CLOSED_BY_HRD" ? (
+                <button
+                  disabled
+                  type="button"
+                  className={styles.openLinkBtn}
+                  style={{ opacity: 0.5, cursor: "not-allowed" }}
+                  title={
+                    state === "NOT_YET"
+                      ? t(`เปิดให้ทำวันที่ ${opensAtLabel(step.stage.opensAt)}`, `Opens on ${opensAtLabel(step.stage.opensAt)}`)
+                      : t("HRD ปิดรับคำตอบแล้ว", "HRD has closed this form")
+                  }
+                >
+                  {state === "NOT_YET" ? t("ยังไม่เปิดให้ทำ", "Not open yet") : t("ปิดรับแล้ว", "Closed")}
                 </button>
-              )
-            ) : step.stage.availability === "NOT_YET" || step.stage.availability === "CLOSED_BY_HRD" ? (
-              <button
-                disabled
-                type="button"
-                className={styles.openLinkBtn}
-                style={{ opacity: 0.5, cursor: "not-allowed" }}
-                title={
-                  step.stage.availability === "NOT_YET"
-                    ? t(`เปิดให้ทำวันที่ ${opensAtLabel(step.stage.opensAt)}`, `Opens on ${opensAtLabel(step.stage.opensAt)}`)
-                    : t("HRD ปิดรับคำตอบแล้ว", "HRD has closed this form")
-                }
-              >
-                {step.stage.availability === "NOT_YET" ? t("ยังไม่เปิดให้ทำ", "Not open yet") : t("ปิดรับแล้ว", "Closed")}
-              </button>
-            ) : step.key === "evaluation" || step.key === "evaluation30" ? (
-              step.stage.submission ? (
-                <button disabled type="button" className={styles.openLinkBtn} style={{ opacity: 0.5, cursor: "not-allowed" }}>
-                  {t("ส่งแล้ว", "Submitted")}
-                </button>
+              ) : state === "LINK" ? (
+                step.stage.link ? (
+                  <a href={step.stage.link} target="_blank" rel="noopener noreferrer" className={styles.openLinkBtn}>
+                    🔗 {t("เปิดทำแบบทดสอบ", "Open Link")}
+                  </a>
+                ) : (
+                  <button disabled type="button" className={styles.openLinkBtn} style={{ opacity: 0.5, cursor: "not-allowed" }}>
+                    {t("ไม่มีลิงก์", "No link set")}
+                  </button>
+                )
+              ) : isEvaluation ? (
+                state === "DONE" || state === "REVIEW_PENDING" ? (
+                  <button disabled type="button" className={styles.openLinkBtn} style={{ opacity: 0.5, cursor: "not-allowed" }}>
+                    {t("ส่งแล้ว", "Submitted")}
+                  </button>
+                ) : (
+                  <button type="button" className={styles.openLinkBtn} onClick={() => onOpenForm(step.target)}>
+                    {t("ทำแบบประเมิน", "Take Survey")}
+                  </button>
+                )
               ) : (
                 <button type="button" className={styles.openLinkBtn} onClick={() => onOpenForm(step.target)}>
-                  {t("ทำแบบประเมิน", "Take Survey")}
+                  {state === "DONE" || state === "REVIEW_PENDING" ? t("ทำอีกครั้ง", "Retake") : t("ทำแบบทดสอบ", "Take Test")}
                 </button>
-              )
-            ) : (
-              <button type="button" className={styles.openLinkBtn} onClick={() => onOpenForm(step.target)}>
-                {step.stage.submission ? t("ทำอีกครั้ง", "Retake") : t("ทำแบบทดสอบ", "Take Test")}
-              </button>
-            )}
-          </div>
-        ))}
+              )}
+            </div>
+          );
+        })}
       </div>
     </section>
   );
@@ -328,6 +354,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
   const { language } = useUiLanguage();
   const isThai = language === "th";
   const t = (th: string, en: string) => (isThai ? th : en);
+  const router = useRouter();
 
   const authenticatedUser = useAuthenticatedUser();
   const employeeId = authenticatedUser?.employeeId ?? null;
@@ -344,9 +371,21 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
   const [query, setQuery] = useState("");
   const [selectedProvider, setSelectedProvider] = useState<(typeof providers)[number]>("all");
   const [downloadPurpose, setDownloadPurpose] = useState<DownloadPurpose>("job_change");
-  const [detailModalRecord, setDetailModalRecord] = useState<EmployeeTrainingRecord | null>(null);
-  const [detailModalEnrollment, setDetailModalEnrollment] = useState<EnrollmentRecord | null>(null);
-  const [formRunner, setFormRunner] = useState<FormRunnerTarget | null>(null);
+  // Cards start expanded (nothing in this set) - it holds the ids the employee explicitly folded,
+  // the same "remember what's collapsed" shape CourseMasterWorkspace uses for its company
+  // sections, chosen there for the identical reason: the default is "show everything", so tracking
+  // the minority (collapsed) is the smaller, more honest piece of state.
+  const [collapsedCardIds, setCollapsedCardIds] = useState<Set<string>>(new Set());
+  const toggleCard = (id: string) =>
+    setCollapsedCardIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const openTrainingForm = (target: FormRunnerTarget) =>
+    router.push(`/training-form/${target.enrollmentId}/${target.stage}`);
 
   const reloadEnrollments = () => {
     setIsLoading(true);
@@ -377,23 +416,6 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
   );
 
   const records = useMemo(() => buildRecords(enrollments), [enrollments]);
-
-  // Keeps an open detail modal showing the enrollment's current state (a score just submitted, a
-  // stage HRD just closed) instead of a snapshot frozen at the moment "View Details" was clicked -
-  // otherwise submitting a form and reopening the same modal would still show the old "not done"
-  // button until the whole screen was reloaded.
-  useEffect(() => {
-    if (detailModalRecord) {
-      const fresh = records.find((record) => record.id === detailModalRecord.id);
-      if (fresh) setDetailModalRecord(fresh);
-    }
-    if (detailModalEnrollment) {
-      const fresh = enrollments.find((enrollment) => enrollment.id === detailModalEnrollment.id);
-      if (fresh) setDetailModalEnrollment(fresh);
-    }
-    // Only ever reacts to the source data changing, never to the modal being opened/closed itself.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enrollments, records]);
 
   const filteredRecords = useMemo(
     () =>
@@ -587,6 +609,8 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                     ? t("ถูกปฏิเสธการลงทะเบียน", "Registration Rejected")
                     : enrollment.status;
 
+              const isExpanded = !collapsedCardIds.has(enrollment.id);
+
               return (
                 <div className={styles.recordCard} key={enrollment.id}>
                   {/* Top row matching Image 2 */}
@@ -608,9 +632,10 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                       <button
                         className={styles.viewDetailBtn}
                         type="button"
-                        onClick={() => setDetailModalEnrollment(enrollment)}
+                        aria-expanded={isExpanded}
+                        onClick={() => toggleCard(enrollment.id)}
                       >
-                        🔍 {t("แสดงรายละเอียด", "View Details")}
+                        {isExpanded ? `▲ ${t("ซ่อนรายละเอียด", "Hide Details")}` : `🔍 ${t("แสดงรายละเอียด", "View Details")}`}
                       </button>
                     </div>
                   </div>
@@ -639,6 +664,34 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                       <span className={styles.infoBarValue}>⏱️ {enrollment.plan.hours} {t("ชม.", "hrs")}</span>
                     </div>
                   </div>
+
+                  {isExpanded ? (
+                    <>
+                      <div className={styles.metaBox} style={{ gap: "6px" }}>
+                        <span className={styles.metaBoxLabel}>{t("สถานะการพิจารณาอนุมัติ", "Approval Status")}</span>
+                        <strong className={styles.metaBoxValue} style={{ color: "#10b981", fontSize: "0.95rem" }}>
+                          🟢 {enrollment.status}
+                        </strong>
+                      </div>
+
+                      <div className={styles.metaBox} style={{ gap: "6px" }}>
+                        <span className={styles.metaBoxLabel}>{t("รายละเอียดการเข้าร่วม", "Training Guidelines")}</span>
+                        <p style={{ margin: 0, fontSize: "0.83rem", color: "var(--ui-30-text)", lineHeight: 1.4 }}>
+                          {t(
+                            "เมื่อถึงกำหนดวันอบรม ให้พนักงานเข้ารายงานตัว ณ สถานที่อบรมที่ระบุ และทำการลงทะเบียนเช็กชื่อผ่านระบบ จากนั้นจะสามารถทำแบบทดสอบ Pre-test และ Post-test เพื่อรับใบรับรอง",
+                            "On the scheduled training date, please check in at the designated venue. Completing attendance will enable pre/post-tests for certificate issuance.",
+                          )}
+                        </p>
+                      </div>
+
+                      <AssessmentFlowSection
+                        assessment={enrollment.plan.assessment}
+                        enrollmentId={enrollment.id}
+                        onOpenForm={openTrainingForm}
+                        t={t}
+                      />
+                    </>
+                  ) : null}
                 </div>
               );
             })}
@@ -695,67 +748,120 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
 
           {/* Cards List matching Image 2 Design */}
           <div className={styles.cardList}>
-            {filteredRecords.map((record) => (
-              <div className={styles.recordCard} key={record.id}>
-                {/* Top Row matching Image 2 with Completed status dot */}
-                <div className={styles.cardHeaderRow}>
-                  <span className={`${styles.statusPill} ${styles.statusCompleted}`}>
-                    <span className={styles.statusDot} />
-                    {t("ผ่านการอบรมเสร็จสมบูรณ์", "Completed")}
-                  </span>
-
-                  <div className={styles.cardRightHeaderGroup}>
-                    <span className={styles.providerTag}>
-                      {record.provider === "HRD Center" ? "🏛️ HRD Center" : "🏭 Factory HRD"}
+            {filteredRecords.map((record) => {
+              const isExpanded = !collapsedCardIds.has(record.id);
+              return (
+                <div className={styles.recordCard} key={record.id}>
+                  {/* Top Row matching Image 2 with Completed status dot */}
+                  <div className={styles.cardHeaderRow}>
+                    <span className={`${styles.statusPill} ${styles.statusCompleted}`}>
+                      <span className={styles.statusDot} />
+                      {t("ผ่านการอบรมเสร็จสมบูรณ์", "Completed")}
                     </span>
 
-                    {onRequestRefresher ? (
+                    <div className={styles.cardRightHeaderGroup}>
+                      <span className={styles.providerTag}>
+                        {record.provider === "HRD Center" ? "🏛️ HRD Center" : "🏭 Factory HRD"}
+                      </span>
+
+                      {onRequestRefresher ? (
+                        <button
+                          className={styles.requestRetrainBtn}
+                          type="button"
+                          title={t("ขอให้เปิดอบรมทบทวนหลักสูตรนี้ใหม่", "Request refresher for this course")}
+                          onClick={() => onRequestRefresher(record)}
+                        >
+                          🔄 {t("ขออบรมทบทวน", "Request Refresher")}
+                        </button>
+                      ) : null}
+
                       <button
-                        className={styles.requestRetrainBtn}
+                        className={styles.viewDetailBtn}
                         type="button"
-                        title={t("ขอให้เปิดอบรมทบทวนหลักสูตรนี้ใหม่", "Request refresher for this course")}
-                        onClick={() => onRequestRefresher(record)}
+                        aria-expanded={isExpanded}
+                        onClick={() => toggleCard(record.id)}
                       >
-                        🔄 {t("ขออบรมทบทวน", "Request Refresher")}
+                        {isExpanded ? `▲ ${t("ซ่อนรายละเอียด", "Hide Details")}` : `🔍 ${t("แสดงรายละเอียด", "View Details")}`}
                       </button>
-                    ) : null}
-
-                    <button
-                      className={styles.viewDetailBtn}
-                      type="button"
-                      onClick={() => setDetailModalRecord(record)}
-                    >
-                      🔍 {t("แสดงรายละเอียด", "View Details")}
-                    </button>
+                    </div>
                   </div>
+
+                  {/* Course Title matching Image 2 */}
+                  <h4 className={styles.courseTitleText}>
+                    {record.courseTitle} ({record.courseCode})
+                  </h4>
+
+                  {/* Horizontal Info Bar matching Image 2 */}
+                  <div className={styles.infoBarGrid}>
+                    <div className={styles.infoBarItem}>
+                      <span className={styles.infoBarLabel}>{t("วันที่สำเร็จอบรม", "Completed Date")}</span>
+                      <span className={styles.infoBarValue}>📅 {formatDate(record.completedDate)}</span>
+                    </div>
+                    <div className={styles.infoBarItem}>
+                      <span className={styles.infoBarLabel}>{t("สถานที่อบรม", "Venue")}</span>
+                      <span className={styles.infoBarValue}>📍 {record.location || "-"}</span>
+                    </div>
+                    <div className={styles.infoBarItem}>
+                      <span className={styles.infoBarLabel}>{t("วิทยากรผู้สอน", "Instructor")}</span>
+                      <span className={styles.infoBarValue}>👨‍🏫 {record.instructor || "-"}</span>
+                    </div>
+                    <div className={styles.infoBarItem}>
+                      <span className={styles.infoBarLabel}>{t("ระยะเวลาเรียน", "Duration")}</span>
+                      <span className={styles.infoBarValue}>⏱️ {record.hours} {t("ชม.", "hrs")}</span>
+                    </div>
+                  </div>
+
+                  {isExpanded ? (
+                    <>
+                      <div className={styles.modalMetricBox}>
+                        <div className={styles.metricCol}>
+                          <span className={styles.metricLabel}>{t("ระยะเวลา", "Duration")}</span>
+                          <strong className={styles.metricValue}>{record.hours} {t("ชม.", "hrs")}</strong>
+                        </div>
+                        <div className={styles.metricCol}>
+                          <span className={styles.metricLabel}>{t("คะแนนสอบ", "Score")}</span>
+                          <strong className={styles.metricValue}>{record.score ? `${record.score}%` : "-"}</strong>
+                        </div>
+                        <div className={styles.metricCol}>
+                          <span className={styles.metricLabel}>{t("รุ่น / รอบ", "Batch / Round")}</span>
+                          <strong className={styles.metricValue}>{record.note}</strong>
+                        </div>
+                        <div className={styles.metricCol}>
+                          <span className={styles.metricLabel}>{t("ผลการอบรม", "Result")}</span>
+                          <strong className={styles.metricValue}>{t("เสร็จสิ้น", "Completed")}</strong>
+                        </div>
+                      </div>
+
+                      <div className={styles.modalMetaGrid}>
+                        <div className={styles.metaBox}>
+                          <span className={styles.metaBoxLabel}>{t("เลขที่ใบรับรอง", "Certificate No.")}</span>
+                          <strong className={styles.metaBoxValue}>{record.certificateNo}</strong>
+                        </div>
+                        <div className={styles.metaBox}>
+                          <span className={styles.metaBoxLabel}>{t("วิทยากรผู้สอน", "Instructor")}</span>
+                          <strong className={styles.metaBoxValue}>{record.instructor}</strong>
+                        </div>
+                        <div className={styles.metaBox}>
+                          <span className={styles.metaBoxLabel}>{t("สถานที่อบรม", "Location")}</span>
+                          <strong className={styles.metaBoxValue}>{record.location}</strong>
+                        </div>
+                        <div className={styles.metaBox}>
+                          <span className={styles.metaBoxLabel}>{t("หน่วยงานผู้จัด", "Provider")}</span>
+                          <strong className={styles.metaBoxValue}>{record.provider}</strong>
+                        </div>
+                      </div>
+
+                      <AssessmentFlowSection
+                        assessment={record.assessment}
+                        enrollmentId={record.id}
+                        onOpenForm={openTrainingForm}
+                        t={t}
+                      />
+                    </>
+                  ) : null}
                 </div>
-
-                {/* Course Title matching Image 2 */}
-                <h4 className={styles.courseTitleText}>
-                  {record.courseTitle} ({record.courseCode})
-                </h4>
-
-                {/* Horizontal Info Bar matching Image 2 */}
-                <div className={styles.infoBarGrid}>
-                  <div className={styles.infoBarItem}>
-                    <span className={styles.infoBarLabel}>{t("วันที่สำเร็จอบรม", "Completed Date")}</span>
-                    <span className={styles.infoBarValue}>📅 {formatDate(record.completedDate)}</span>
-                  </div>
-                  <div className={styles.infoBarItem}>
-                    <span className={styles.infoBarLabel}>{t("สถานที่อบรม", "Venue")}</span>
-                    <span className={styles.infoBarValue}>📍 {record.location || "-"}</span>
-                  </div>
-                  <div className={styles.infoBarItem}>
-                    <span className={styles.infoBarLabel}>{t("วิทยากรผู้สอน", "Instructor")}</span>
-                    <span className={styles.infoBarValue}>👨‍🏫 {record.instructor || "-"}</span>
-                  </div>
-                  <div className={styles.infoBarItem}>
-                    <span className={styles.infoBarLabel}>{t("ระยะเวลาเรียน", "Duration")}</span>
-                    <span className={styles.infoBarValue}>⏱️ {record.hours} {t("ชม.", "hrs")}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
 
             {filteredRecords.length === 0 ? (
               <div className={styles.emptyStateBox}>
@@ -843,223 +949,6 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
             </button>
           </div>
         </section>
-      ) : null}
-
-      {/* Detailed Modal Overlay when clicking "View Details" on Completed Record */}
-      {detailModalRecord ? (
-        <div
-          className={styles.modalOverlay}
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setDetailModalRecord(null)}
-        >
-          <div className={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <div>
-                <span className={styles.inspectorProvider}>
-                  {detailModalRecord.provider === "HRD Center" ? "🏛️ HRD Center" : "🏭 Factory HRD"}
-                </span>
-                <h3 className={styles.inspectorTitle} style={{ margin: "4px 0" }}>
-                  {detailModalRecord.courseTitle}
-                </h3>
-                <span className={styles.inspectorSub}>
-                  {detailModalRecord.courseCode} • {formatDate(detailModalRecord.completedDate)}
-                </span>
-              </div>
-
-              <button
-                className={styles.modalCloseBtn}
-                type="button"
-                onClick={() => setDetailModalRecord(null)}
-                aria-label="Close modal"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* 4-Column Metric Box */}
-            <div className={styles.modalMetricBox}>
-              <div className={styles.metricCol}>
-                <span className={styles.metricLabel}>{t("ระยะเวลา", "Duration")}</span>
-                <strong className={styles.metricValue}>{detailModalRecord.hours} {t("ชม.", "hrs")}</strong>
-              </div>
-              <div className={styles.metricCol}>
-                <span className={styles.metricLabel}>{t("คะแนนสอบ", "Score")}</span>
-                <strong className={styles.metricValue}>{detailModalRecord.score ? `${detailModalRecord.score}%` : "-"}</strong>
-              </div>
-              <div className={styles.metricCol}>
-                <span className={styles.metricLabel}>{t("รุ่น / รอบ", "Batch / Round")}</span>
-                <strong className={styles.metricValue}>{detailModalRecord.note}</strong>
-              </div>
-              <div className={styles.metricCol}>
-                <span className={styles.metricLabel}>{t("ผลการอบรม", "Result")}</span>
-                <strong className={styles.metricValue}>{t("เสร็จสิ้น", "Completed")}</strong>
-              </div>
-            </div>
-
-            {/* 2x2 Metadata Grid */}
-            <div className={styles.modalMetaGrid}>
-              <div className={styles.metaBox}>
-                <span className={styles.metaBoxLabel}>{t("เลขที่ใบรับรอง", "Certificate No.")}</span>
-                <strong className={styles.metaBoxValue}>{detailModalRecord.certificateNo}</strong>
-              </div>
-              <div className={styles.metaBox}>
-                <span className={styles.metaBoxLabel}>{t("วิทยากรผู้สอน", "Instructor")}</span>
-                <strong className={styles.metaBoxValue}>{detailModalRecord.instructor}</strong>
-              </div>
-              <div className={styles.metaBox}>
-                <span className={styles.metaBoxLabel}>{t("สถานที่อบรม", "Location")}</span>
-                <strong className={styles.metaBoxValue}>{detailModalRecord.location}</strong>
-              </div>
-              <div className={styles.metaBox}>
-                <span className={styles.metaBoxLabel}>{t("หน่วยงานผู้จัด", "Provider")}</span>
-                <strong className={styles.metaBoxValue}>{detailModalRecord.provider}</strong>
-              </div>
-            </div>
-
-            <AssessmentFlowSection
-              assessment={detailModalRecord.assessment}
-              enrollmentId={detailModalRecord.id}
-              courseTitle={detailModalRecord.courseTitle}
-              onOpenForm={setFormRunner}
-              t={t}
-            />
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", paddingTop: "10px" }}>
-              {onRequestRefresher ? (
-                <button
-                  className={styles.requestRetrainBtn}
-                  type="button"
-                  onClick={() => {
-                    const rec = detailModalRecord;
-                    setDetailModalRecord(null);
-                    onRequestRefresher(rec);
-                  }}
-                >
-                  🔄 {t("ขออบรมทบทวนหลักสูตรนี้", "Request Refresher")}
-                </button>
-              ) : null}
-              <button
-                className={styles.exportBtn}
-                type="button"
-                onClick={() => setDetailModalRecord(null)}
-              >
-                {t("ปิดหน้าต่าง", "Close")}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {/* Detailed Modal Overlay when clicking "View Details" on Pending Enrollment */}
-      {detailModalEnrollment ? (
-        <div
-          className={styles.modalOverlay}
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setDetailModalEnrollment(null)}
-        >
-          <div className={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <div>
-                <span className={styles.providerTag}>
-                  {detailModalEnrollment.plan.owner === "CENTER" ? "🏛️ HRD Center" : "🏭 Factory HRD"}
-                </span>
-                <h3 className={styles.courseTitleText} style={{ margin: "4px 0" }}>
-                  {detailModalEnrollment.plan.courseName}
-                </h3>
-                <span style={{ fontSize: "0.82rem", color: "var(--ui-30-muted)" }}>
-                  {detailModalEnrollment.plan.courseCode} • {detailModalEnrollment.plan.batchName || "Batch 1"}
-                </span>
-              </div>
-
-              <button
-                className={styles.modalCloseBtn}
-                type="button"
-                onClick={() => setDetailModalEnrollment(null)}
-                aria-label="Close modal"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className={styles.infoBarGrid}>
-              <div className={styles.infoBarItem}>
-                <span>{t("วันที่อบรม", "Training Date")}</span>
-                <strong>📅 {detailModalEnrollment.plan.startAt.slice(0, 10)}</strong>
-              </div>
-              <div className={styles.infoBarItem}>
-                <span>{t("สถานที่อบรม", "Venue")}</span>
-                <strong>📍 {detailModalEnrollment.plan.venue || "-"}</strong>
-              </div>
-              <div className={styles.infoBarItem}>
-                <span>{t("วิทยากรผู้สอน", "Instructor")}</span>
-                <strong>👨‍🏫 {detailModalEnrollment.plan.instructor || "-"}</strong>
-              </div>
-              <div className={styles.infoBarItem}>
-                <span>{t("ระยะเวลาเรียน", "Duration")}</span>
-                <strong>⏱️ {detailModalEnrollment.plan.hours} {t("ชม.", "hrs")}</strong>
-              </div>
-            </div>
-
-            <div className={styles.metaBox} style={{ gap: "6px" }}>
-              <span className={styles.metaBoxLabel}>{t("สถานะการพิจารณาอนุมัติ", "Approval Status")}</span>
-              <strong className={styles.metaBoxValue} style={{ color: "#10b981", fontSize: "0.95rem" }}>
-                🟢 {detailModalEnrollment.status}
-              </strong>
-            </div>
-
-            <div className={styles.metaBox} style={{ gap: "6px" }}>
-              <span className={styles.metaBoxLabel}>{t("รายละเอียดการเข้าร่วม", "Training Guidelines")}</span>
-              <p style={{ margin: 0, fontSize: "0.83rem", color: "var(--ui-30-text)", lineHeight: 1.4 }}>
-                {t(
-                  "เมื่อถึงกำหนดวันอบรม ให้พนักงานเข้ารายงานตัว ณ สถานที่อบรมที่ระบุ และทำการลงทะเบียนเช็กชื่อผ่านระบบ จากนั้นจะสามารถทำแบบทดสอบ Pre-test และ Post-test เพื่อรับใบรับรอง",
-                  "On the scheduled training date, please check in at the designated venue. Completing attendance will enable pre/post-tests for certificate issuance.",
-                )}
-              </p>
-            </div>
-
-            <AssessmentFlowSection
-              assessment={detailModalEnrollment.plan.assessment}
-              enrollmentId={detailModalEnrollment.id}
-              courseTitle={detailModalEnrollment.plan.courseName}
-              onOpenForm={setFormRunner}
-              t={t}
-            />
-
-            <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: "10px" }}>
-              <button
-                className={styles.exportBtn}
-                type="button"
-                onClick={() => setDetailModalEnrollment(null)}
-              >
-                {t("ปิดหน้าต่าง", "Close")}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {formRunner?.kind === "assessment" ? (
-        <TrainingFormRunner
-          key={`${formRunner.enrollmentId}-${formRunner.stage}`}
-          kind="assessment"
-          stage={formRunner.stage}
-          enrollmentId={formRunner.enrollmentId}
-          courseTitle={formRunner.courseTitle}
-          onClose={() => setFormRunner(null)}
-          onSubmitted={() => void reloadEnrollments()}
-        />
-      ) : formRunner?.kind === "evaluation" ? (
-        <TrainingFormRunner
-          key={`${formRunner.enrollmentId}-${formRunner.stage}`}
-          kind="evaluation"
-          stage={formRunner.stage}
-          enrollmentId={formRunner.enrollmentId}
-          courseTitle={formRunner.courseTitle}
-          onClose={() => setFormRunner(null)}
-          onSubmitted={() => void reloadEnrollments()}
-        />
       ) : null}
     </section>
   );

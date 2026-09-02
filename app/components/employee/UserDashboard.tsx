@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useSearchParams } from "next/navigation";
 import { useUiLanguage, type UiLanguage } from "../ThaiUiLocalization";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
 import {
@@ -218,7 +219,14 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
       },
     ];
   }, [authenticatedUser, username, isThai]);
-  const [activeModule, setActiveModule] = useState<UserModule | null>(null);
+  const searchParams = useSearchParams();
+  // Read once, as the initial value only - a page returning from /training-form links back to
+  // "/?module=record" so the employee lands on My Record instead of the bare dashboard home.
+  // Switching modules afterward does not sync back into the URL; this only covers the return trip.
+  const [activeModule, setActiveModule] = useState<UserModule | null>(() => {
+    const requested = searchParams.get("module");
+    return moduleCards.some((module) => module.key === requested) ? (requested as UserModule) : null;
+  });
   const [trainingNeed, setTrainingNeed] = useState("");
   const [reason, setReason] = useState("");
   const [requestCourseId, setRequestCourseId] = useState("");
