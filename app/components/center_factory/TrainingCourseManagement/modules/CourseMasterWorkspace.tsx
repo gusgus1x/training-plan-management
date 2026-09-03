@@ -3086,14 +3086,14 @@ function CourseMaster() {
                   <table className={styles.courseTable}>
                     <thead>
                       <tr>
-                        <th style={{ width: "50px", textAlign: "center" }}>#</th>
-                        <th>{language === 'th' ? 'รหัสหลักสูตร' : 'Course Code'}</th>
-                        <th>{language === 'th' ? 'ชื่อหลักสูตร' : 'Course Name'}</th>
-                        <th>{language === 'th' ? 'บริษัท' : 'Company'}</th>
-                        <th>{language === 'th' ? 'Classification' : 'Classification'}</th>
-                        <th>{language === 'th' ? 'Course Standard' : 'Course Standard'}</th>
-                        <th>{language === 'th' ? 'คอร์สต่อเนื่อง' : 'Prerequisites'}</th>
-                        <th>{language === 'th' ? 'Actions' : 'Actions'}</th>
+                        <th style={{ width: "48px", textAlign: "center" }}>#</th>
+                        <th style={{ width: "135px", whiteSpace: "nowrap" }}>{language === 'th' ? 'รหัสหลักสูตร' : 'Course Code'}</th>
+                        <th style={{ minWidth: "220px" }}>{language === 'th' ? 'ชื่อหลักสูตร' : 'Course Name'}</th>
+                        <th style={{ width: "110px", whiteSpace: "nowrap" }}>{language === 'th' ? 'บริษัท' : 'Company'}</th>
+                        <th style={{ width: "160px" }}>{language === 'th' ? 'ประเภทและกลุ่มหลักสูตร' : 'Classification'}</th>
+                        <th style={{ width: "185px" }}>{language === 'th' ? 'มาตรฐานหลักสูตร' : 'Course Standard'}</th>
+                        <th style={{ width: "130px", whiteSpace: "nowrap" }}>{language === 'th' ? 'คอร์สต่อเนื่อง' : 'Prerequisites'}</th>
+                        <th style={{ width: "200px", textAlign: "center", whiteSpace: "nowrap" }}>{language === 'th' ? 'การดำเนินการ' : 'Actions'}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3113,65 +3113,90 @@ function CourseMaster() {
                               onClick={() => setSelectedCourseId(course.id === selectedCourseId ? "" : course.id)}
                               style={{ cursor: "pointer" }}
                             >
-                              <td style={{ textAlign: "center", fontWeight: 700 }}>{cIdx + 1}</td>
-                              <td>{course.courseCode}</td>
-                              <td>
-                                <strong>{getCourseDisplayName(course)}</strong>
-                                {getCourseSecondaryName(course) ? (
-                                  <span>{getCourseSecondaryName(course)}</span>
-                                ) : null}
-                              </td>
-                              <td>{course.ownerCompany || (language === 'th' ? 'ไม่ระบุ' : 'N/A')}</td>
-                              <td>
-                                <strong translate="no">{course.courseType}</strong>
-                                <span>{course.courseGroup}</span>
+                              <td style={{ textAlign: "center", fontWeight: 700, color: "var(--ui-30-muted)" }}>{cIdx + 1}</td>
+                              <td style={{ whiteSpace: "nowrap" }}>
+                                <span className={styles.courseCodeBadge}>{course.courseCode}</span>
                               </td>
                               <td>
-                                <strong translate={courseStandard ? "no" : undefined}>
-                                  {courseStandard
-                                    ? getFunctionDisplayName(
-                                        courseStandard.functionCode,
-                                        courseStandard.functionName,
-                                      )
-                                    : "Not set"}
-                                </strong>
-                                <span>
-                                  {courseStandard
-                                    ? `${courseStandard.positions.length} positions · ${courseStandard.levels.length} levels`
-                                    : "No standard"}
+                                <div className={styles.courseNameWrap}>
+                                  <strong className={styles.courseNamePrimary}>{getCourseDisplayName(course)}</strong>
+                                  {getCourseSecondaryName(course) ? (
+                                    <span className={styles.courseNameSecondary}>{getCourseSecondaryName(course)}</span>
+                                  ) : null}
+                                </div>
+                              </td>
+                              <td style={{ whiteSpace: "nowrap" }}>
+                                <span className={course.ownerCompany === "CENTER" || !course.ownerCompany ? styles.centerCompanyBadge : styles.factoryCompanyBadge}>
+                                  {course.ownerCompany || (language === 'th' ? 'ส่วนกลาง' : 'CENTER')}
                                 </span>
                               </td>
-                              <td translate="no">
-                                {course.prerequisites && course.prerequisites.length > 0
-                                  ? course.prerequisites.map((p) => p.courseCode).join(" · ")
-                                  : "—"}
+                              <td>
+                                <div className={styles.classificationWrap}>
+                                  <strong className={styles.typeText} translate="no">{course.courseType || "—"}</strong>
+                                  <span className={styles.groupSubText}>{course.courseGroup || "—"}</span>
+                                </div>
+                              </td>
+                              <td>
+                                <div className={styles.standardCellWrap}>
+                                  <strong className={styles.standardFunctionText} translate={courseStandard ? "no" : undefined}>
+                                    {courseStandard
+                                      ? getFunctionDisplayName(
+                                          courseStandard.functionCode,
+                                          courseStandard.functionName,
+                                        )
+                                      : (language === 'th' ? "ยังไม่กำหนด" : "Not set")}
+                                  </strong>
+                                  <span className={styles.standardMetaTag}>
+                                    {courseStandard
+                                      ? (language === 'th'
+                                          ? `${courseStandard.positions.length} ตำแหน่ง · ${courseStandard.levels.length} ระดับ`
+                                          : `${courseStandard.positions.length} positions · ${courseStandard.levels.length} levels`)
+                                      : (language === 'th' ? "ไม่มีมาตรฐาน" : "No standard")}
+                                  </span>
+                                </div>
+                              </td>
+                              <td>
+                                {course.prerequisites && course.prerequisites.length > 0 ? (
+                                  <div className={styles.prereqList}>
+                                    {course.prerequisites.map((p) => (
+                                      <span key={p.courseCode} className={styles.prereqBadge} translate="no">
+                                        {p.courseCode}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className={styles.mutedDash}>—</span>
+                                )}
                               </td>
                               <td className={styles.actionCell} onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  className={styles.detailButton}
-                                  type="button"
-                                  onClick={() => handleShowDetails(course)}
-                                >
-                                  {isOpen && !isEditing ? "Hide" : "Details"}
-                                </button>
-                                <button
-                                  className={styles.secondaryButton}
-                                  type="button"
-                                  disabled={isRowReadOnlyForFactory}
-                                  title={isRowReadOnlyForFactory ? "หลักสูตรของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้" : undefined}
-                                  onClick={() => !isRowReadOnlyForFactory && openCourseEditor(course)}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  className={styles.dangerButton}
-                                  type="button"
-                                  disabled={isRowReadOnlyForFactory}
-                                  title={isRowReadOnlyForFactory ? "หลักสูตรของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
-                                  onClick={() => !isRowReadOnlyForFactory && void handleDeleteCourse(course)}
-                                >
-                                  Delete
-                                </button>
+                                <div className={styles.actionButtonsWrap}>
+                                  <button
+                                    className={styles.detailButton}
+                                    type="button"
+                                    onClick={() => handleShowDetails(course)}
+                                    title={isOpen && !isEditing ? (language === 'th' ? "ซ่อนรายละเอียด" : "Hide details") : (language === 'th' ? "ดูรายละเอียด" : "Show details")}
+                                  >
+                                    {isOpen && !isEditing ? (language === 'th' ? "ซ่อน" : "Hide") : (language === 'th' ? "รายละเอียด" : "Details")}
+                                  </button>
+                                  <button
+                                    className={styles.secondaryButton}
+                                    type="button"
+                                    disabled={isRowReadOnlyForFactory}
+                                    title={isRowReadOnlyForFactory ? "หลักสูตรของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้" : undefined}
+                                    onClick={() => !isRowReadOnlyForFactory && openCourseEditor(course)}
+                                  >
+                                    {language === 'th' ? "แก้ไข" : "Edit"}
+                                  </button>
+                                  <button
+                                    className={styles.dangerButton}
+                                    type="button"
+                                    disabled={isRowReadOnlyForFactory}
+                                    title={isRowReadOnlyForFactory ? "หลักสูตรของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
+                                    onClick={() => !isRowReadOnlyForFactory && void handleDeleteCourse(course)}
+                                  >
+                                    {language === 'th' ? "ลบ" : "Delete"}
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                             {isOpen ? (

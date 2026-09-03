@@ -1038,105 +1038,124 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                   )}
                 </div>
               ) : null}
-              <label>
-                <span>Participants / Group <RequiredIndicator isFilled={Boolean(form.participants.trim())} /></span>
-                <input
-                  disabled={!selectedCourse}
-                  inputMode="numeric"
-                  placeholder="Enter participants per group, e.g. 20"
-                  value={form.participants}
-                  onChange={(event) => updateForm("participants", event.target.value)}
-                />
-              </label>
-              <label>
-                <span>Training Hours <RequiredIndicator isFilled={Boolean(form.hours.trim())} /></span>
-                <input
-                  disabled={!selectedCourse}
-                  inputMode="numeric"
-                  placeholder="Enter total training hours, e.g. 6"
-                  value={form.hours}
-                  onChange={(event) => updateForm("hours", event.target.value)}
-                />
-              </label>
-              <label>
-                <span>Instructor Budget</span>
-                <input
-                  disabled={!selectedCourse}
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={form.budgetInstructor}
-                  onChange={(event) => updateBudgetPart("budgetInstructor", event.target.value)}
-                />
-              </label>
-              <label>
-                <span>Traveling Budget</span>
-                <input
-                  disabled={!selectedCourse}
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={form.budgetTraveling}
-                  onChange={(event) => updateBudgetPart("budgetTraveling", event.target.value)}
-                />
-              </label>
-              <label>
-                <span>Seminar Room Budget</span>
-                <input
-                  disabled={!selectedCourse}
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={form.budgetSeminarRoom}
-                  onChange={(event) => updateBudgetPart("budgetSeminarRoom", event.target.value)}
-                />
-              </label>
-              <label>
-                <span>Accommodation Budget</span>
-                <input
-                  disabled={!selectedCourse}
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={form.budgetAccommodation}
-                  onChange={(event) => updateBudgetPart("budgetAccommodation", event.target.value)}
-                />
-              </label>
-              <label>
-                <span>Material Budget</span>
-                <input
-                  disabled={!selectedCourse}
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={form.budgetMaterial}
-                  onChange={(event) => updateBudgetPart("budgetMaterial", event.target.value)}
-                />
-              </label>
-              <label>
-                <span>Food &amp; Beverage Budget</span>
-                <input
-                  disabled={!selectedCourse}
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={form.budgetFoodBeverage}
-                  onChange={(event) => updateBudgetPart("budgetFoodBeverage", event.target.value)}
-                />
-              </label>
-              <label className={styles.totalBudgetField}>
-                <span>Total Budget <span className={styles.required}>*</span></span>
-                <input
-                  disabled
-                  readOnly
-                  value={form.budget ? Number(form.budget).toLocaleString("en-US") : "0"}
-                />
-              </label>
+              {/* === CAPACITY & BUDGET SECTION === */}
+              <div className={styles.budgetSectionContainer}>
+                <div className={styles.budgetSectionHeader}>
+                  <div className={styles.budgetSectionTitle}>
+                    <div>
+                      <strong>ประมาณการงบประมาณและจำนวนผู้เข้าอบรม (Capacity & Budget Planning)</strong>
+                      <p>กำหนดจำนวนผู้เข้าอบรม ชั่วโมง และแจกแจงค่าใช้จ่ายเพื่อคำนวณงบประมาณรวมอัตโนมัติ (THB)</p>
+                    </div>
+                  </div>
+                  <div className={styles.budgetTotalBadge}>
+                    <span className={styles.budgetTotalBadgeLabel}>Total Budget:</span>
+                    <span className={styles.budgetTotalBadgeValue}>
+                      ฿{form.budget ? Number(form.budget).toLocaleString("en-US") : "0"}
+                    </span>
+                    {Number(form.participants) > 0 && Number(form.budget) > 0 ? (
+                      <span className={styles.budgetPerHeadBadge}>
+                        (~฿{Math.round(Number(form.budget) / Number(form.participants)).toLocaleString("en-US")} / คน)
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className={styles.budgetCapacityRow}>
+                  <label>
+                    <span>ผู้เข้าอบรม / รุ่น (Participants / Group) <RequiredIndicator isFilled={Boolean(form.participants.trim())} /></span>
+                    <input
+                      disabled={!selectedCourse}
+                      inputMode="numeric"
+                      placeholder="ใส่จำนวนผู้เข้าอบรมต่อรุ่น เช่น 20 คน"
+                      value={form.participants}
+                      onChange={(event) => updateForm("participants", event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>ชั่วโมงอบรม (Training Hours) <RequiredIndicator isFilled={Boolean(form.hours.trim())} /></span>
+                    <input
+                      disabled={!selectedCourse}
+                      inputMode="numeric"
+                      placeholder="ใส่จำนวนชั่วโมงอบรมทั้งหมด เช่น 6 ชั่วโมง"
+                      value={form.hours}
+                      onChange={(event) => updateForm("hours", event.target.value)}
+                    />
+                  </label>
+                </div>
+
+                <div className={styles.budgetInputsGrid}>
+                  <label>
+                    <span>ค่าวิทยากร (Instructor Budget)</span>
+                    <input
+                      disabled={!selectedCourse}
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={form.budgetInstructor}
+                      onChange={(event) => updateBudgetPart("budgetInstructor", event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>ค่าเดินทาง (Traveling Budget)</span>
+                    <input
+                      disabled={!selectedCourse}
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={form.budgetTraveling}
+                      onChange={(event) => updateBudgetPart("budgetTraveling", event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>ค่าห้องสัมมนา / สถานที่ (Seminar Room)</span>
+                    <input
+                      disabled={!selectedCourse}
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={form.budgetSeminarRoom}
+                      onChange={(event) => updateBudgetPart("budgetSeminarRoom", event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>ค่าที่พัก (Accommodation Budget)</span>
+                    <input
+                      disabled={!selectedCourse}
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={form.budgetAccommodation}
+                      onChange={(event) => updateBudgetPart("budgetAccommodation", event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>ค่าเอกสารและอุปกรณ์ (Material)</span>
+                    <input
+                      disabled={!selectedCourse}
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={form.budgetMaterial}
+                      onChange={(event) => updateBudgetPart("budgetMaterial", event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>ค่าอาหารและเครื่องดื่ม (Food &amp; Beverage)</span>
+                    <input
+                      disabled={!selectedCourse}
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={form.budgetFoodBeverage}
+                      onChange={(event) => updateBudgetPart("budgetFoodBeverage", event.target.value)}
+                    />
+                  </label>
+                </div>
+              </div>
               {/* === INSTRUCTOR SECTION === */}
               <div className={styles.instructorSectionContainer}>
                 <div className={styles.instructorSectionHeader}>
                   <div className={styles.instructorSectionTitle}>
-                    <span className={styles.instructorHeaderIcon}>👨‍🏫</span>
                     <div>
-                      <strong>ข้อมูลวิทยากร (Instructor / Trainer)</strong>
-                      <p>เลือกวิทยากรจากทะเบียน Master Data เพื่อดึงข้อมูลอัตโนมัติ หรือกรอกข้อมูลด้วยตนเอง</p>
+                      <strong>ข้อมูลวิทยากรและสถาบันฝึกอบรม (Instructor &amp; Provider)</strong>
+                      <p>เลือกวิทยากรจากทะเบียน Master Data เพื่อดึงข้อมูลอัตโนมัติ หรือกรอกข้อมูลวิทยากรและสถาบันผู้ให้บริการ</p>
                     </div>
                   </div>
-                  {form.trainer || form.instructorUniversity || form.instructorEducation || form.instructorOrganization || form.instructorTelephone || form.instructorEmail ? (
+                  {form.trainer || form.instructorUniversity || form.instructorEducation || form.instructorOrganization || form.instructorTelephone || form.instructorEmail || form.provider ? (
                     <button
                       type="button"
                       className={styles.instructorClearBtn}
@@ -1150,6 +1169,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                           instructorOrganization: "",
                           instructorTelephone: "",
                           instructorEmail: "",
+                          provider: "",
                         }));
                       }}
                     >
@@ -1164,13 +1184,13 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                     options={instructorOptions}
                     value={form.instructorId}
                     onChange={handleSelectInstructor}
-                    placeholder="🔍 ค้นหาวิทยากรด้วยชื่อ, รหัส, มหาวิทยาลัย หรือสังกัดเพื่อดึงข้อมูลอัตโนมัติ..."
+                    placeholder="ค้นหาวิทยากรด้วยชื่อ, รหัส, มหาวิทยาลัย หรือสังกัดเพื่อดึงข้อมูลอัตโนมัติ..."
                     disabled={!selectedCourse}
                   />
                 </div>
 
                 <div className={styles.externalFieldsGrid}>
-                  <label>
+                  <label className={styles.spanFullOrHalf}>
                     <span>ชื่อ - นามสกุล วิทยากร (Trainer Name) *</span>
                     <input
                       disabled={!selectedCourse}
@@ -1178,6 +1198,23 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                       value={form.trainer}
                       onChange={(e) => updateForm("trainer", e.target.value)}
                     />
+                  </label>
+                  <label className={styles.spanFullOrHalf}>
+                    <span>สถาบัน / ผู้ให้บริการฝึกอบรม (Institute / Provider)</span>
+                    <input
+                      list="institute-provider-options"
+                      disabled={!selectedCourse}
+                      value={form.provider}
+                      onChange={(event) => updateForm("provider", event.target.value)}
+                      placeholder="เลือกจาก Institute/Provider Master หรือพิมพ์ระบุเอง"
+                    />
+                    <datalist id="institute-provider-options">
+                      {providers.map((provider) => (
+                        <option key={provider.instituteProviderId} value={provider.instituteProviderName}>
+                          {provider.instituteProviderCode}
+                        </option>
+                      ))}
+                    </datalist>
                   </label>
                   <label>
                     <span>มหาวิทยาลัย (University)</span>
@@ -1226,24 +1263,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                     />
                   </label>
                 </div>
-              </div>
-
-              <div className={styles.fullField} style={{ gridColumn: "span 6" }}>
-                <span>สถาบัน / ผู้ให้บริการฝึกอบรม (Institute / Provider)</span>
-                <input
-                  list="institute-provider-options"
-                  disabled={!selectedCourse}
-                  value={form.provider}
-                  onChange={(event) => updateForm("provider", event.target.value)}
-                  placeholder="เลือกจาก Institute/Provider Master หรือพิมพ์ระบุเอง"
-                />
-                <datalist id="institute-provider-options">
-                  {providers.map((provider) => (
-                    <option key={provider.instituteProviderId} value={provider.instituteProviderName}>
-                      {provider.instituteProviderCode}
-                    </option>
-                  ))}
-                </datalist>
               </div>
             </div>
             {selectedCourse ? (
@@ -1436,6 +1455,73 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                     <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>สถาบัน / ผู้ให้บริการ</span>
                       <span className={styles.previewFieldValue}>{form.provider || "-"}</span>
+                    </div>
+                  </div>
+
+                  <div className={styles.previewCard}>
+                    <div className={styles.previewCardHeader}>
+                      <span>ประมาณการงบประมาณและการจัด (Budget & Capacity)</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>ผู้เข้าอบรมต่อรุ่น</span>
+                      <span className={styles.previewFieldValue}>
+                        {form.participants.trim() ? `${form.participants} คน / รุ่น` : "-"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>ชั่วโมงการอบรม</span>
+                      <span className={styles.previewFieldValue}>
+                        {form.hours.trim() ? `${form.hours} ชั่วโมง` : "-"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>ค่าวิทยากร</span>
+                      <span className={styles.previewFieldValue}>
+                        {form.budgetInstructor ? `฿${Number(form.budgetInstructor).toLocaleString("en-US")}` : "฿0"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>ค่าเดินทาง</span>
+                      <span className={styles.previewFieldValue}>
+                        {form.budgetTraveling ? `฿${Number(form.budgetTraveling).toLocaleString("en-US")}` : "฿0"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>ค่าห้องสัมมนา</span>
+                      <span className={styles.previewFieldValue}>
+                        {form.budgetSeminarRoom ? `฿${Number(form.budgetSeminarRoom).toLocaleString("en-US")}` : "฿0"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>ค่าที่พัก</span>
+                      <span className={styles.previewFieldValue}>
+                        {form.budgetAccommodation ? `฿${Number(form.budgetAccommodation).toLocaleString("en-US")}` : "฿0"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>ค่าเอกสาร/อุปกรณ์</span>
+                      <span className={styles.previewFieldValue}>
+                        {form.budgetMaterial ? `฿${Number(form.budgetMaterial).toLocaleString("en-US")}` : "฿0"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>ค่าอาหาร/เครื่องดื่ม</span>
+                      <span className={styles.previewFieldValue}>
+                        {form.budgetFoodBeverage ? `฿${Number(form.budgetFoodBeverage).toLocaleString("en-US")}` : "฿0"}
+                      </span>
+                    </div>
+                    <div className={`${styles.previewFieldRow} ${styles.previewBudgetTotalRow}`}>
+                      <span className={styles.previewFieldLabel}><strong>งบประมาณรวม (Total Budget)</strong></span>
+                      <span className={styles.previewFieldValue}>
+                        <strong className={styles.previewBudgetTotalText}>
+                          ฿{form.budget ? Number(form.budget).toLocaleString("en-US") : "0"}
+                        </strong>
+                        {Number(form.participants) > 0 && Number(form.budget) > 0 ? (
+                          <span className={styles.previewBudgetPerHead}>
+                            (~฿{Math.round(Number(form.budget) / Number(form.participants)).toLocaleString("en-US")} / คน)
+                          </span>
+                        ) : null}
+                      </span>
                     </div>
                   </div>
                 </div>

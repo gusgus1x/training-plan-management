@@ -2043,6 +2043,172 @@ padding: 10px;
   gap: 6px;
 }
 
+/* ==========================================================================
+   Budget Section in Training OAP Form
+   ========================================================================== */
+.budgetSectionContainer {
+  grid-column: span 6;
+  background: var(--ui-60-surface-soft, rgba(255, 255, 255, 0.03));
+  border: 1.5px solid var(--ui-30-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.budgetSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--ui-30-border);
+  padding-bottom: 12px;
+}
+
+.budgetSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.budgetHeaderIcon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.budgetSectionTitle strong {
+  display: block;
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--ui-30-ink);
+}
+
+.budgetSectionTitle p {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  color: var(--ui-30-muted);
+}
+
+.budgetTotalBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 122, 61, 0.1);
+  border: 1.5px solid rgba(0, 122, 61, 0.35);
+  border-radius: 8px;
+  padding: 6px 14px;
+}
+
+:global([data-theme="dark"]) .budgetTotalBadge,
+:global(.dark) .budgetTotalBadge {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+}
+
+.budgetTotalBadgeLabel {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--ui-30-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.budgetTotalBadgeValue {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #007a3d;
+}
+
+:global([data-theme="dark"]) .budgetTotalBadgeValue,
+:global(.dark) .budgetTotalBadgeValue {
+  color: #34d399 !important;
+}
+
+.budgetPerHeadBadge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ui-30-muted);
+  padding-left: 6px;
+  border-left: 1px solid var(--ui-30-border);
+}
+
+.budgetInputsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.budgetInputsGrid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.budgetInputsGrid label span {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ui-30-ink);
+}
+
+.budgetInputsGrid input {
+  height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface, #ffffff);
+  color: var(--ui-30-ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 120ms ease;
+}
+
+:global([data-theme="dark"]) .budgetInputsGrid input,
+:global(.dark) .budgetInputsGrid input {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.budgetInputsGrid input:focus {
+  outline: none;
+  border-color: var(--ui-30-primary, #007a3d);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.15);
+}
+
+.previewBudgetTotalRow {
+  background: rgba(0, 122, 61, 0.08);
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-top: 6px;
+}
+
+:global([data-theme="dark"]) .previewBudgetTotalRow,
+:global(.dark) .previewBudgetTotalRow {
+  background: rgba(16, 185, 129, 0.12) !important;
+}
+
+.previewBudgetTotalText {
+  color: #007a3d;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+:global([data-theme="dark"]) .previewBudgetTotalText,
+:global(.dark) .previewBudgetTotalText {
+  color: #34d399 !important;
+}
+
+.previewBudgetPerHead {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ui-30-muted);
+  margin-left: 6px;
+}
+
 .instructorSelectorWrap label {
   display: flex;
   flex-direction: column;
@@ -2190,24 +2356,110 @@ padding: 10px;
   color: var(--ui-30-primary);
 }
 
+.budgetCapacityRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px dashed var(--ui-30-border);
+}
+
+.budgetCapacityRow label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.budgetCapacityRow label span {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ui-30-ink);
+}
+
+.budgetCapacityRow input {
+  height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface, #ffffff);
+  color: var(--ui-30-ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 120ms ease;
+}
+
+:global([data-theme="dark"]) .budgetCapacityRow input,
+:global(.dark) .budgetCapacityRow input {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.budgetCapacityRow input:focus {
+  outline: none;
+  border-color: var(--ui-30-primary, #007a3d);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.15);
+}
+
 .externalFieldsGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px 14px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
 }
 
 .externalFieldsGrid label {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   font-weight: 700;
   color: var(--ui-30-ink);
 }
 
+.externalFieldsGrid input {
+  height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface, #ffffff);
+  color: var(--ui-30-ink);
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 120ms ease;
+}
+
+:global([data-theme="dark"]) .externalFieldsGrid input,
+:global(.dark) .externalFieldsGrid input {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+.externalFieldsGrid input:focus {
+  outline: none;
+  border-color: var(--ui-30-primary, #007a3d);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.15);
+}
+
+.spanFullOrHalf {
+  grid-column: span 1;
+}
+
+@media (min-width: 900px) {
+  .spanFullOrHalf {
+    grid-column: span 2;
+  }
+}
+
 @media (max-width: 860px) {
+  .budgetCapacityRow {
+    grid-template-columns: 1fr;
+  }
   .externalFieldsGrid {
     grid-template-columns: 1fr;
+  }
+  .spanFullOrHalf {
+    grid-column: span 1;
   }
 }
 

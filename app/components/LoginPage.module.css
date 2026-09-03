@@ -308,6 +308,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: color 0.18s ease;
+}
+
+.inputWrapper:focus-within .fieldIcon {
+  color: var(--ui-30-primary);
 }
 
 .fieldInput {

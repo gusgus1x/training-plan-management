@@ -1368,39 +1368,74 @@ export default function TrainingRolling() {
 
                   <div className={styles.previewCard}>
                     <div className={styles.previewCardHeader}>
-                      <span>👥 ข้อมูลการจัดอบรม (Planning Details)</span>
+                      <span>ประมาณการงบประมาณและการจัด (Budget & Capacity)</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>ผู้เข้าอบรม</span>
-                      <span className={styles.previewFieldValue}>{selectedOap.participants} ท่าน</span>
-                    </div>
-                    <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>ชั่วโมงอบรม</span>
-                      <span className={styles.previewFieldValue}>{selectedOap.hours} ชม.</span>
-                    </div>
-                    <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>งบประมาณ</span>
+                      <span className={styles.previewFieldLabel}>ผู้เข้าอบรมต่อรุ่น</span>
                       <span className={styles.previewFieldValue}>
-                        ฿{Number(selectedOap.budget).toLocaleString("en-US")}
+                        {selectedOap.participants ? `${selectedOap.participants} ท่าน` : "-"}
                       </span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>วิทยากร</span>
-                      <span className={styles.previewFieldValue}>{selectedOap.trainer || "-"}</span>
+                      <span className={styles.previewFieldLabel}>ชั่วโมงการอบรม</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedOap.hours ? `${selectedOap.hours} ชม.` : "-"}
+                      </span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>สถาบัน / ผู้ให้บริการ</span>
-                      <span className={styles.previewFieldValue}>{selectedOap.providerName || "-"}</span>
+                      <span className={styles.previewFieldLabel}>ค่าวิทยากร</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedOap.budgetInstructor ? `฿${Number(selectedOap.budgetInstructor).toLocaleString("en-US")}` : "฿0"}
+                      </span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>ขอบเขต</span>
-                      <span className={styles.previewFieldValue}>{selectedOap.owner === "CENTER" ? "ทุกบริษัท (All Companies)" : selectedOap.ownerCompany}</span>
+                      <span className={styles.previewFieldLabel}>ค่าเดินทาง</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedOap.budgetTraveling ? `฿${Number(selectedOap.budgetTraveling).toLocaleString("en-US")}` : "฿0"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>ค่าห้องสัมมนา</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedOap.budgetSeminarRoom ? `฿${Number(selectedOap.budgetSeminarRoom).toLocaleString("en-US")}` : "฿0"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>ค่าที่พัก</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedOap.budgetAccommodation ? `฿${Number(selectedOap.budgetAccommodation).toLocaleString("en-US")}` : "฿0"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>ค่าเอกสาร/อุปกรณ์</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedOap.budgetMaterial ? `฿${Number(selectedOap.budgetMaterial).toLocaleString("en-US")}` : "฿0"}
+                      </span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>ค่าอาหาร/เครื่องดื่ม</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedOap.budgetFoodBeverage ? `฿${Number(selectedOap.budgetFoodBeverage).toLocaleString("en-US")}` : "฿0"}
+                      </span>
+                    </div>
+                    <div className={`${styles.previewFieldRow} ${styles.previewBudgetTotalRow}`}>
+                      <span className={styles.previewFieldLabel}><strong>งบประมาณรวม (Total Budget)</strong></span>
+                      <span className={styles.previewFieldValue}>
+                        <strong className={styles.previewBudgetTotalText}>
+                          ฿{selectedOap.budget ? Number(selectedOap.budget).toLocaleString("en-US") : "0"}
+                        </strong>
+                        {Number(selectedOap.participants) > 0 && Number(selectedOap.budget) > 0 ? (
+                          <span className={styles.previewBudgetPerHead}>
+                            (~฿{Math.round(Number(selectedOap.budget) / Number(selectedOap.participants)).toLocaleString("en-US")} / ท่าน)
+                          </span>
+                        ) : null}
+                      </span>
                     </div>
                   </div>
 
                   <div className={styles.previewCard}>
                     <div className={styles.previewCardHeader}>
-                      <span>👨‍🏫 รายละเอียดวิทยากร (Instructor Details)</span>
+                      <span>รายละเอียดวิทยากรและสถาบัน (Instructor & Provider)</span>
                     </div>
                     <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>ชื่อวิทยากร</span>
@@ -1412,6 +1447,10 @@ export default function TrainingRolling() {
                         <span className={styles.previewFieldValue}>{selectedOapInstructor.instructorCode}</span>
                       </div>
                     ) : null}
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>สถาบัน / ผู้ให้บริการ</span>
+                      <span className={styles.previewFieldValue}>{selectedOap.providerName || selectedOap.providerId || "-"}</span>
+                    </div>
                     <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>มหาวิทยาลัย</span>
                       <span className={styles.previewFieldValue}>{selectedOapInstructor?.university || "-"}</span>
@@ -1433,8 +1472,10 @@ export default function TrainingRolling() {
                       <span className={styles.previewFieldValue}>{selectedOapInstructor?.email || "-"}</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>สถาบัน / ผู้ให้บริการ</span>
-                      <span className={styles.previewFieldValue}>{selectedOap.providerName || "-"}</span>
+                      <span className={styles.previewFieldLabel}>ขอบเขตแผน</span>
+                      <span className={styles.previewFieldValue}>
+                        {selectedOap.owner === "CENTER" ? "ทุกบริษัท (All Companies)" : selectedOap.ownerCompany}
+                      </span>
                     </div>
                   </div>
 

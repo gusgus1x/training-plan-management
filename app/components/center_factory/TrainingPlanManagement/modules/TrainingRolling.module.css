@@ -698,6 +698,84 @@
   font-weight: 900;
 }
 
+.previewBudgetTotalRow {
+  background: rgba(0, 122, 61, 0.08);
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-top: 6px;
+}
+
+:global([data-theme="dark"]) .previewBudgetTotalRow,
+:global(.dark) .previewBudgetTotalRow {
+  background: rgba(16, 185, 129, 0.12) !important;
+}
+
+.previewBudgetTotalText {
+  color: #007a3d;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+:global([data-theme="dark"]) .previewBudgetTotalText,
+:global(.dark) .previewBudgetTotalText {
+  color: #34d399 !important;
+}
+
+.previewBudgetPerHead {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ui-30-muted);
+  margin-left: 6px;
+}
+
+:global([data-theme="dark"]) .coursePreview,
+:global(.dark) .coursePreview {
+  background: #131b2e !important;
+  border-color: #334155 !important;
+  border-left-color: var(--ui-30-primary, #10b981) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+:global([data-theme="dark"]) .previewCard,
+:global(.dark) .previewCard {
+  background: #182234 !important;
+  border-color: #2e3d58 !important;
+}
+
+:global([data-theme="dark"]) .previewCardHeader,
+:global(.dark) .previewCardHeader {
+  border-bottom-color: #2e3d58 !important;
+  color: #34d399 !important;
+}
+
+:global([data-theme="dark"]) .previewFieldRow,
+:global(.dark) .previewFieldRow {
+  border-bottom-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+:global([data-theme="dark"]) .previewFieldLabel,
+:global(.dark) .previewFieldLabel {
+  color: #94a3b8 !important;
+}
+
+:global([data-theme="dark"]) .previewFieldValue,
+:global(.dark) .previewFieldValue {
+  color: #f8fafc !important;
+}
+
+:global([data-theme="dark"]) .previewFieldColumn,
+:global(.dark) .previewFieldColumn {
+  background: #131b2e !important;
+  border-color: #2e3d58 !important;
+}
+
+:global([data-theme="dark"]) .previewBadge,
+:global(.dark) .previewBadge {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
 .assessmentGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

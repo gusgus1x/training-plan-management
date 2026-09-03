@@ -415,31 +415,188 @@
   font-weight: 800;
 }
 
-.actionCell {
-  text-align: right;
-  white-space: nowrap;
+.courseCodeBadge {
+  display: inline-flex !important;
+  align-items: center;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.3px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: rgba(0, 122, 61, 0.08);
+  color: var(--ui-30-primary, #007a3d);
+  border: 1px solid rgba(0, 122, 61, 0.22);
+  white-space: nowrap !important;
+  margin-top: 0 !important;
 }
 
-.selectionHint {
-  margin: -6px 0 16px;
+:global([data-theme="dark"]) .courseCodeBadge,
+:global(.dark) .courseCodeBadge {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+.centerCompanyBadge {
+  display: inline-flex !important;
+  align-items: center;
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.08);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  white-space: nowrap !important;
+  margin-top: 0 !important;
+}
+
+:global([data-theme="dark"]) .centerCompanyBadge,
+:global(.dark) .centerCompanyBadge {
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #60a5fa !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+.factoryCompanyBadge {
+  display: inline-flex !important;
+  align-items: center;
+  font-weight: 700;
+  font-size: 0.78rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(100, 116, 139, 0.08);
+  color: #475569;
+  border: 1px solid rgba(100, 116, 139, 0.2);
+  white-space: nowrap !important;
+  margin-top: 0 !important;
+}
+
+:global([data-theme="dark"]) .factoryCompanyBadge,
+:global(.dark) .factoryCompanyBadge {
+  background: rgba(148, 163, 184, 0.12) !important;
+  color: #cbd5e1 !important;
+  border-color: rgba(148, 163, 184, 0.25) !important;
+}
+
+.courseNameWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.courseNamePrimary {
+  font-size: 0.94rem !important;
+  font-weight: 700 !important;
+  color: var(--ui-30-ink) !important;
+  line-height: 1.4 !important;
+  display: block;
+}
+
+.courseNameSecondary {
+  font-size: 0.8rem !important;
+  color: var(--ui-30-muted) !important;
+  display: block;
+  margin-top: 2px !important;
+}
+
+.classificationWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.typeText {
+  font-size: 0.88rem !important;
+  font-weight: 700 !important;
+  color: var(--ui-30-ink) !important;
+  display: block;
+}
+
+.groupSubText {
+  font-size: 0.78rem !important;
+  color: var(--ui-30-muted) !important;
+  line-height: 1.3 !important;
+  display: block;
+  margin-top: 2px !important;
+}
+
+.standardCellWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.standardFunctionText {
+  font-size: 0.88rem !important;
+  font-weight: 700 !important;
+  color: var(--ui-30-ink) !important;
+  display: block;
+}
+
+.standardMetaTag {
+  font-size: 0.78rem !important;
+  color: var(--ui-30-muted) !important;
+  font-weight: 500 !important;
+  display: block;
+  margin-top: 2px !important;
+}
+
+.prereqList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.prereqBadge {
+  display: inline-flex !important;
+  align-items: center;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  font-family: monospace;
+  padding: 2px 6px !important;
+  border-radius: 4px;
+  background: rgba(234, 88, 12, 0.08);
+  color: #ea580c;
+  border: 1px solid rgba(234, 88, 12, 0.2);
+  margin-top: 0 !important;
+  white-space: nowrap !important;
+}
+
+:global([data-theme="dark"]) .prereqBadge,
+:global(.dark) .prereqBadge {
+  background: rgba(249, 115, 22, 0.15) !important;
+  color: #fb923c !important;
+  border-color: rgba(249, 115, 22, 0.3) !important;
+}
+
+.mutedDash {
   color: var(--ui-30-muted);
-  font-size: 0.9rem;
   font-weight: 600;
+  display: inline-block !important;
+  margin-top: 0 !important;
 }
 
-.actionCell button + button {
-  margin-left: 6px;
+.actionButtonsWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
 }
 
-.actionCell .secondaryButton,
-.actionCell .dangerButton,
-.detailButton {
-  border-radius: 8px;
-  min-height: 38px;
-  padding: 6px 14px;
-  font-weight: 800;
-  font-size: 0.88rem;
+.actionButtonsWrap button {
+  min-height: 32px !important;
+  padding: 5px 10px !important;
+  font-size: 0.8rem !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   cursor: pointer;
+  transition: all 120ms ease;
+  white-space: nowrap;
 }
 
 .detailButton {
