@@ -31,7 +31,7 @@ import {
   expiryFrom,
   type CompletionStatus,
 } from "../../../../lib/trainingRecord/types";
-import { gradeSubmission, listPendingGrading } from "../../../../lib/trainingForms/client";
+import { gradeSubmission, listPendingGrading, publishSubmissionResults } from "../../../../lib/trainingForms/client";
 import type { PendingGradingSubmission } from "../../../../lib/trainingForms/types";
 import type { CostBreakdown } from "../../../../lib/trainingRecord/types";
 import styles from "./TrainingRecord.module.css";
@@ -287,14 +287,28 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
     }
   };
 
+  const handlePublish = async (submission: PendingGradingSubmission) => {
+    setSavingSubmissionId(submission.submissionId);
+    try {
+      await publishSubmissionResults(planId, submission.submissionId);
+      toast.success(`ประกาศผลของ ${submission.employeeName} แล้ว`);
+      load();
+      onGraded(submission.enrollmentId);
+    } catch {
+      toast.error("ประกาศผลไม่สำเร็จ กรุณาลองใหม่");
+    } finally {
+      setSavingSubmissionId(null);
+    }
+  };
+
   if (submissions === null || submissions.length === 0) return null;
 
   return (
     <section className={styles.actualResultsPanel} aria-label="Pending written-answer grading" style={{ marginBottom: "16px" }}>
       <div className={styles.actualResultsHeader}>
         <div>
-          <span>รอตรวจข้อเขียน</span>
-          <strong>Pending Written-Answer Grading</strong>
+          <span>รอตรวจ / รอประกาศผล</span>
+          <strong>Pending Grading &amp; Release</strong>
         </div>
         <small>{submissions.length} รายการ</small>
       </div>
@@ -306,7 +320,7 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
               <strong>{submission.employeeName}</strong>
               <small>
                 {submission.employeeCode || "-"} · {submission.stage === "PRE_TEST" ? "Pre Test" : "Post Test"} · ครั้งที่{" "}
-                {submission.attemptNo}
+                {submission.attemptNo} · {submission.awaitingPublication ? "ตรวจแล้ว รอประกาศผล" : "รอตรวจข้อเขียน"}
               </small>
             </div>
 
@@ -340,14 +354,25 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
               );
             })}
 
-            <button
-              type="button"
-              disabled={savingSubmissionId === submission.submissionId}
-              onClick={() => void handleSave(submission)}
-              style={{ alignSelf: "flex-end" }}
-            >
-              {savingSubmissionId === submission.submissionId ? "กำลังบันทึก..." : "บันทึกคะแนน"}
-            </button>
+            {submission.awaitingPublication ? (
+              <button
+                type="button"
+                disabled={savingSubmissionId === submission.submissionId}
+                onClick={() => void handlePublish(submission)}
+                style={{ alignSelf: "flex-end" }}
+              >
+                {savingSubmissionId === submission.submissionId ? "กำลังประกาศผล..." : "ประกาศผลให้พนักงาน"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={savingSubmissionId === submission.submissionId}
+                onClick={() => void handleSave(submission)}
+                style={{ alignSelf: "flex-end" }}
+              >
+                {savingSubmissionId === submission.submissionId ? "กำลังบันทึก..." : "บันทึกคะแนน"}
+              </button>
+            )}
           </article>
         ))}
       </div>

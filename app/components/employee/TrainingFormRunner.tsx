@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useConfirm } from "../ConfirmDialog";
 import { useToast } from "../ToastHost";
@@ -51,6 +51,45 @@ const emptyAnswer: AnswerState = { choiceIds: [], text: "", rating: null };
 
 /** Stable DOM id per question, so the submit handler can scroll to the first unanswered one. */
 const questionDomId = (questionId: string) => `training-form-q-${questionId}`;
+
+/** Half-finished answers used to die with the tab; only a "you will lose your answers" dialog stood
+ *  between the employee and a lost form. Google Forms keeps a draft per respondent instead.
+ *  ponytail: localStorage, so the draft is per browser, not per account - move it to
+ *  assessment_submission (status IN_PROGRESS + started_at already exist) if resuming on another
+ *  device is ever asked for. */
+const DRAFT_STORAGE_PREFIX = "training-form:draft";
+type StoredDraft = { answers: Record<string, AnswerState>; deadlineAt: number | null };
+const draftKey = (enrollmentId: string, stage: string) => `${DRAFT_STORAGE_PREFIX}:${enrollmentId}:${stage}`;
+
+const loadDraft = (key: string): StoredDraft | null => {
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredDraft;
+    return parsed && typeof parsed === "object" && parsed.answers ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+const saveDraft = (key: string, draft: StoredDraft) => {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(draft));
+  } catch {
+    // A full or blocked store must never stop someone from finishing the form.
+  }
+};
+const clearDraft = (key: string) => {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // as above
+  }
+};
+
+const countdownLabel = (msLeft: number) => {
+  const total = Math.max(0, Math.ceil(msLeft / 1000));
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+};
 
 const isAnswered = (question: RunnerQuestion, answer: AnswerState | undefined) => {
   if (!answer) return false;
@@ -122,6 +161,12 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
   const [answers, setAnswers] = useState<Record<string, AnswerState>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissing, setShowMissing] = useState(false);
+  const [instructions, setInstructions] = useState<string | null>(null);
+  const [deadlineAt, setDeadlineAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  const storageKey = stage ? draftKey(enrollmentId, stage) : "";
 
   const goBackToRecord = () => router.push("/?module=record");
 
@@ -147,18 +192,33 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
       .then(([title, form]) => {
         if (cancelled) return;
         setCourseTitle(title);
+        let timeLimitMinutes: number | null = null;
         if (kind === "assessment") {
           const assessmentForm = form as AssessmentForEmployee;
           setFormTitle(assessmentForm.seriesName);
           setQuestions(fromAssessment(assessmentForm));
           setPriorAttempts(assessmentForm.submissions);
           setAlreadySubmitted(false);
+          setInstructions(assessmentForm.instructions);
+          timeLimitMinutes = assessmentForm.timeLimitMinutes;
         } else {
           const evaluationForm = form as EvaluationForEmployee;
           setFormTitle(evaluationForm.formName);
           setQuestions(fromEvaluation(evaluationForm));
           setPriorAttempts([]);
           setAlreadySubmitted(evaluationForm.alreadySubmitted);
+          setInstructions(evaluationForm.description);
+        }
+
+        // Draft and deadline are restored together: reopening the tab must not hand back a fresh
+        // clock on a timed test.
+        const draft = loadDraft(draftKey(enrollmentId, stage));
+        if (draft?.answers && Object.keys(draft.answers).length > 0) {
+          setAnswers(draft.answers);
+          setDraftRestored(true);
+        }
+        if (timeLimitMinutes !== null && timeLimitMinutes > 0) {
+          setDeadlineAt(draft?.deadlineAt ?? Date.now() + timeLimitMinutes * 60_000);
         }
       })
       .catch((error) => {
@@ -206,6 +266,24 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
     });
   };
 
+  // Autosave. Skipped while nothing has been typed, so merely opening a form does not leave a
+  // draft behind that would later restore an empty answer set over a fresh start.
+  useEffect(() => {
+    if (!storageKey || alreadySubmitted) return;
+    if (!hasStartedAnswering && deadlineAt === null) return;
+    saveDraft(storageKey, { answers, deadlineAt });
+  }, [storageKey, answers, deadlineAt, hasStartedAnswering, alreadySubmitted]);
+
+  // One ticker drives the countdown; it stops itself once the deadline passes.
+  useEffect(() => {
+    if (deadlineAt === null) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [deadlineAt]);
+
+  const msLeft = deadlineAt === null ? null : deadlineAt - now;
+  const timeIsUp = msLeft !== null && msLeft <= 0;
+
   const handleBack = async () => {
     if (hasStartedAnswering && !alreadySubmitted) {
       const ok = await confirm({
@@ -220,12 +298,15 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
       });
       if (!ok) return;
     }
+    if (storageKey) clearDraft(storageKey);
     goBackToRecord();
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (auto = false) => {
     if (!questions || !stage || !kind) return;
-    if (missingRequiredIds.length > 0) {
+    // An expired timer sends whatever is there. Blocking on a required question the employee ran
+    // out of time to answer would mean the attempt is never recorded at all.
+    if (!auto && missingRequiredIds.length > 0) {
       setShowMissing(true);
       toast.error(t("กรุณาตอบคำถามที่จำเป็นให้ครบก่อนส่ง", "Please answer every required question before submitting"));
       // A toast at the top of the screen says nothing about WHERE the gap is - on a long form the
@@ -247,8 +328,8 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
             text: q.kind === "text" ? answers[q.questionId]?.text ?? null : null,
           })),
         });
-        if (result.gradingStatus === "PENDING_REVIEW") {
-          toast.success(t("ส่งคำตอบแล้ว รอ HRD ตรวจข้อเขียน", "Submitted - waiting for HRD to grade the written answers"));
+        if (!result.resultsPublished) {
+          toast.success(t("ส่งคำตอบแล้ว รอ HRD ตรวจและประกาศผล", "Submitted - waiting for HRD to grade and release the result"));
         } else {
           toast.success(
             t(
@@ -268,6 +349,7 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
         });
         toast.success(t("ส่งแบบประเมินเรียบร้อยแล้ว ขอบคุณครับ", "Evaluation submitted - thank you"));
       }
+      if (storageKey) clearDraft(storageKey);
       goBackToRecord();
     } catch (error) {
       toast.error(errorMessage(error, t));
@@ -275,6 +357,16 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
       setIsSubmitting(false);
     }
   };
+
+  // Fires exactly once - the ref survives the re-render the submit itself causes.
+  const autoSubmitted = useRef(false);
+  useEffect(() => {
+    if (!timeIsUp || autoSubmitted.current || isSubmitting || alreadySubmitted || !questions) return;
+    autoSubmitted.current = true;
+    toast.error(t("หมดเวลาทำแบบทดสอบ ระบบส่งคำตอบให้อัตโนมัติ", "Time is up - your answers were submitted automatically"));
+    void handleSubmit(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeIsUp, isSubmitting, alreadySubmitted, questions]);
 
   if (!stage || !kind) {
     return (
@@ -321,6 +413,26 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
           </div>
         ) : (
           <>
+            {instructions?.trim() ? (
+              <div className={styles.instructionsBox}>
+                <strong>{t("คำชี้แจง", "Instructions")}</strong>
+                <p>{instructions}</p>
+              </div>
+            ) : null}
+
+            {msLeft !== null ? (
+              <div className={styles.timerBox} data-urgent={msLeft <= 60_000}>
+                <span>{t("เวลาที่เหลือ", "Time remaining")}</span>
+                <strong>{countdownLabel(msLeft)}</strong>
+              </div>
+            ) : null}
+
+            {draftRestored ? (
+              <p className={styles.draftNote}>
+                {t("กู้คำตอบที่ค้างไว้จากครั้งก่อนแล้ว", "Restored the answers you left unfinished")}
+              </p>
+            ) : null}
+
             {priorAttempts.length > 0 ? (
               <div className={styles.priorAttempts}>
                 <strong>{t("ครั้งก่อนหน้า", "Previous attempts")}</strong>
@@ -328,8 +440,8 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
                   <div className={styles.priorAttemptRow} key={attempt.submissionId}>
                     <span>
                       {t(`ครั้งที่ ${attempt.attemptNo}`, `Attempt ${attempt.attemptNo}`)}:{" "}
-                      {attempt.gradingStatus === "PENDING_REVIEW"
-                        ? t("รอตรวจ", "Awaiting review")
+                      {!attempt.resultsPublished
+                        ? t("รอตรวจ/ประกาศผล", "Awaiting review")
                         : attempt.score !== null
                           ? `${attempt.score}% (${passStatusLabel(attempt.passStatus, t)})`
                           : "-"}
@@ -436,7 +548,7 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
           <button
             className={styles.primaryBtn}
             type="button"
-            disabled={isSubmitting || (questions ?? []).length === 0}
+            disabled={isSubmitting || timeIsUp || (questions ?? []).length === 0}
             onClick={() => void handleSubmit()}
           >
             {isSubmitting ? t("กำลังส่ง...", "Submitting...") : t("ส่งคำตอบ", "Submit")}

@@ -49,6 +49,10 @@ export type SubmissionSummary = {
   passStatus: PassStatus;
   status: SubmissionLifecycleStatus;
   gradingStatus: GradingStatus;
+  /** Google Forms' "release grades" gate. An auto-graded attempt publishes at submit time; one that
+   *  needed a human to read a written answer stays unpublished until HRD releases it, and the score
+   *  is withheld from the employee (and from the official training_result) until then. */
+  resultsPublished: boolean;
 };
 
 export type AssessmentChoiceForEmployee = {
@@ -148,4 +152,7 @@ export type PendingGradingSubmission = {
   attemptNo: number;
   submittedAt: string | null;
   pendingAnswers: PendingGradingAnswer[];
+  /** Already graded, waiting only for HRD to release the score. `pendingAnswers` is empty on these
+   *  rows - the panel shows a publish button instead of score inputs. */
+  awaitingPublication: boolean;
 };

@@ -105,6 +105,11 @@ export const gradeSubmission = async (
     await fetcher(`/api/training-plan/training-records/${planId}/submissions/${submissionId}`, json("PUT", input)),
   );
 
+export const publishSubmissionResults = async (planId: string, submissionId: string, fetcher: Fetcher = fetch) =>
+  read<{ published: true }>(
+    await fetcher(`/api/training-plan/training-records/${planId}/submissions/${submissionId}`, json("POST", {})),
+  );
+
 export const listPlanStageSettings = async (planId: string, fetcher: Fetcher = fetch) =>
   read<{ settings: StageSetting[] }>(
     await fetcher(`/api/training-plan/training-records/${planId}/form-settings`, { credentials: "include", cache: "no-store" }),

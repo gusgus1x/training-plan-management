@@ -106,7 +106,7 @@ describe("employee training record is built from attendance, not from invented d
           link: null,
           opensAt: "2026-05-12T02:00:00.000Z",
           availability: "OPEN",
-          submission: { attemptNo: 1, submittedAt: "2026-05-12T03:00:00.000Z", score: 90, passStatus: "PASS", gradingStatus: "REVIEWED" },
+          submission: { attemptNo: 1, submittedAt: "2026-05-12T03:00:00.000Z", score: 90, passStatus: "PASS", gradingStatus: "REVIEWED", resultsPublished: true },
         },
       },
     };
@@ -163,13 +163,22 @@ describe("resolveStageState - the assessment/evaluation button and label state",
 
   it("distinguishes a graded submission from one still awaiting HRD review", () => {
     const reviewed = stage({
-      submission: { attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: 80, passStatus: "PASS", gradingStatus: "REVIEWED" },
+      submission: { attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: 80, passStatus: "PASS", gradingStatus: "REVIEWED", resultsPublished: true },
     });
     const pending = stage({
-      submission: { attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: null, passStatus: "PENDING", gradingStatus: "PENDING_REVIEW" },
+      submission: { attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: null, passStatus: "PENDING", gradingStatus: "PENDING_REVIEW", resultsPublished: false },
     });
     expect(resolveStageState(reviewed)).toBe("DONE");
     expect(resolveStageState(pending)).toBe("REVIEW_PENDING");
+  });
+
+  it("keeps a graded submission hidden until HRD releases the result", () => {
+    // Grading and releasing are separate acts: a REVIEWED submission HRD has not published yet
+    // must not show up as Completed with a score the employee is not supposed to see.
+    const held = stage({
+      submission: { attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: null, passStatus: "PENDING", gradingStatus: "REVIEWED", resultsPublished: false },
+    });
+    expect(resolveStageState(held)).toBe("REVIEW_PENDING");
   });
 
   it("reports TODO for an open FORM stage nobody has attempted", () => {

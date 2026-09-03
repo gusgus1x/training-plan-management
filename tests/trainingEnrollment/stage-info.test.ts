@@ -15,7 +15,7 @@ const END = new Date(NOW - 12 * 60 * 60 * 1000).toISOString();
 
 const buildRow = (overrides: {
   closedSettings?: Array<{ assessment_stage: string; close_at: Date }>;
-  assessmentSubmissions?: Array<{ assessment_id: bigint; assessment_stage: string; attempt_no: number; submitted_at: Date | null; score: Prisma.Decimal | null; pass_status: string; grading_status: string }>;
+  assessmentSubmissions?: Array<{ assessment_id: bigint; assessment_stage: string; attempt_no: number; submitted_at: Date | null; score: Prisma.Decimal | null; pass_status: string; grading_status: string; publication_status: string }>;
   evaluationSubmissions?: Array<{ evaluation_form_id: bigint; submitted_at: Date | null }>;
   preAssessmentId?: bigint | null;
   postAssessmentId?: bigint | null;
@@ -106,8 +106,8 @@ describe("mapEnrollment stage info", () => {
   it("picks the highest attempt_no as the latest submission, not the first row", async () => {
     const row = buildRow({
       assessmentSubmissions: [
-        { assessment_id: BigInt(501), assessment_stage: "PRE_TEST", attempt_no: 1, submitted_at: new Date(START), score: new Prisma.Decimal(40), pass_status: "FAIL", grading_status: "REVIEWED" },
-        { assessment_id: BigInt(501), assessment_stage: "PRE_TEST", attempt_no: 2, submitted_at: new Date(START), score: new Prisma.Decimal(90), pass_status: "PASS", grading_status: "REVIEWED" },
+        { assessment_id: BigInt(501), assessment_stage: "PRE_TEST", attempt_no: 1, submitted_at: new Date(START), score: new Prisma.Decimal(40), pass_status: "FAIL", grading_status: "REVIEWED", publication_status: "PUBLISHED" },
+        { assessment_id: BigInt(501), assessment_stage: "PRE_TEST", attempt_no: 2, submitted_at: new Date(START), score: new Prisma.Decimal(90), pass_status: "PASS", grading_status: "REVIEWED", publication_status: "PUBLISHED" },
       ],
     });
     const repo = repoWithRow(row);
@@ -116,10 +116,23 @@ describe("mapEnrollment stage info", () => {
     expect(enrollment.plan.assessment.preTest.submission?.score).toBe(90);
   });
 
+  it("withholds the score of a graded submission HRD has not released yet", async () => {
+    const row = buildRow({
+      assessmentSubmissions: [
+        { assessment_id: BigInt(501), assessment_stage: "PRE_TEST", attempt_no: 1, submitted_at: new Date(START), score: new Prisma.Decimal(90), pass_status: "PASS", grading_status: "REVIEWED", publication_status: "UNPUBLISHED" },
+      ],
+    });
+    const repo = repoWithRow(row);
+    const [enrollment] = await repo.list({ planId: null, employeeId: null, employeeUserId: null }, null);
+    expect(enrollment.plan.assessment.preTest.submission?.resultsPublished).toBe(false);
+    expect(enrollment.plan.assessment.preTest.submission?.score).toBeNull();
+    expect(enrollment.plan.assessment.preTest.submission?.passStatus).toBe("PENDING");
+  });
+
   it("does not cross-attribute a PRE_TEST submission to POST_TEST even when both use the same assessment", async () => {
     const row = buildRow({
       assessmentSubmissions: [
-        { assessment_id: BigInt(501), assessment_stage: "PRE_TEST", attempt_no: 1, submitted_at: new Date(START), score: new Prisma.Decimal(100), pass_status: "PASS", grading_status: "REVIEWED" },
+        { assessment_id: BigInt(501), assessment_stage: "PRE_TEST", attempt_no: 1, submitted_at: new Date(START), score: new Prisma.Decimal(100), pass_status: "PASS", grading_status: "REVIEWED", publication_status: "PUBLISHED" },
       ],
     });
     const repo = repoWithRow(row);

@@ -40,7 +40,7 @@ const enrollmentInclude = {
   // and reading them here means the "take this form" screens never need a second request just to
   // know whether the employee has already attempted or submitted something.
   assessment_submission: {
-    select: { assessment_id: true, assessment_stage: true, attempt_no: true, submitted_at: true, score: true, pass_status: true, grading_status: true },
+    select: { assessment_id: true, assessment_stage: true, attempt_no: true, submitted_at: true, score: true, pass_status: true, grading_status: true, publication_status: true },
   },
   evaluation_submission: {
     select: { evaluation_form_id: true, submitted_at: true },
@@ -137,12 +137,16 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
       .sort((a, b) => b.attempt_no - a.attempt_no);
     const latest = attempts[0];
     if (!latest) return null;
+    // Same publication gate as trainingForms' mapSubmission: an unreleased score never leaves the
+    // server, so My Record cannot show a grade the runner is still hiding.
+    const resultsPublished = latest.publication_status === "PUBLISHED";
     return {
       attemptNo: latest.attempt_no,
       submittedAt: latest.submitted_at?.toISOString() ?? null,
-      score: latest.score === null ? null : Number(latest.score),
-      passStatus: latest.pass_status as StageSubmissionSummary["passStatus"],
+      score: !resultsPublished || latest.score === null ? null : Number(latest.score),
+      passStatus: resultsPublished ? (latest.pass_status as StageSubmissionSummary["passStatus"]) : "PENDING",
       gradingStatus: latest.grading_status as StageSubmissionSummary["gradingStatus"],
+      resultsPublished,
     };
   };
   const evaluationSubmission = (formId: bigint | null): StageSubmissionSummary | null => {
@@ -151,7 +155,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
     if (!submitted) return null;
     // Evaluations are never graded and never repeated - these three fields exist only because the
     // shape is shared with assessments, and "submitted" is the only fact worth carrying here.
-    return { attemptNo: 1, submittedAt: submitted.submitted_at?.toISOString() ?? null, score: null, passStatus: "PENDING", gradingStatus: "REVIEWED" };
+    return { attemptNo: 1, submittedAt: submitted.submitted_at?.toISOString() ?? null, score: null, passStatus: "PENDING", gradingStatus: "REVIEWED", resultsPublished: true };
   };
 
   return {

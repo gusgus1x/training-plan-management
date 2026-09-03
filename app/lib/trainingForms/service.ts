@@ -41,6 +41,9 @@ export const createTrainingFormsService = (repository: TrainingFormsRepository =
   gradeSubmission: (submissionId: string, input: GradeSubmissionInput, gradedByUserId: string, companyId: string | null) =>
     repository.gradeSubmission(submissionId, input, gradedByUserId, companyId),
 
+  publishSubmissionResults: (submissionId: string, publishedByUserId: string, companyId: string | null) =>
+    repository.publishSubmissionResults(submissionId, publishedByUserId, companyId),
+
   listPlanStageSettings: (planId: string, companyId: string | null) => repository.listPlanStageSettings(planId, companyId),
 
   setStageClosed: (planId: string, input: SetStageClosedInput, userId: string, companyId: string | null) =>

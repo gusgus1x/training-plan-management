@@ -74,6 +74,8 @@ export type StageSubmissionSummary = {
   score: number | null;
   passStatus: "PENDING" | "PASS" | "FAIL";
   gradingStatus: "PENDING_REVIEW" | "REVIEWED";
+  /** False while HRD has graded but not yet released the score - `score` is null in that state. */
+  resultsPublished: boolean;
 };
 
 /**

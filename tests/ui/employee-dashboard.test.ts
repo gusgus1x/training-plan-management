@@ -126,7 +126,7 @@ describe("30-day follow-up evaluation reminder", () => {
 
   it("does not flag one that has already been submitted", () => {
     const enrollment = enrollmentWithFollowUp({
-      submission: { attemptNo: 1, submittedAt: "2026-06-10T00:00:00.000Z", score: null, passStatus: "PENDING", gradingStatus: "REVIEWED" },
+      submission: { attemptNo: 1, submittedAt: "2026-06-10T00:00:00.000Z", score: null, passStatus: "PENDING", gradingStatus: "REVIEWED", resultsPublished: true },
     });
     expect(pendingFollowUpEvaluationsOf([enrollment], atOrAfterReminder)).toEqual([]);
   });

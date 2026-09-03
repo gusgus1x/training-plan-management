@@ -159,20 +159,27 @@ const assessmentDetailSelect = {
   },
 } satisfies Prisma.assessmentSelect;
 
+/** The employee never sees a score the publication gate has not opened yet. Withheld here rather
+ *  than in the component: this projection is what leaves the server, so a screen that forgets the
+ *  check cannot leak a held-back grade. */
 const mapSubmission = (
   row: Pick<
     Prisma.assessment_submissionGetPayload<Record<string, never>>,
-    "submission_id" | "attempt_no" | "submitted_at" | "score" | "pass_status" | "status" | "grading_status"
+    "submission_id" | "attempt_no" | "submitted_at" | "score" | "pass_status" | "status" | "grading_status" | "publication_status"
   >,
-): SubmissionSummary => ({
-  submissionId: row.submission_id.toString(),
-  attemptNo: row.attempt_no,
-  submittedAt: row.submitted_at?.toISOString() ?? null,
-  score: row.score === null ? null : Number(row.score),
-  passStatus: row.pass_status as SubmissionSummary["passStatus"],
-  status: row.status as SubmissionSummary["status"],
-  gradingStatus: row.grading_status as SubmissionSummary["gradingStatus"],
-});
+): SubmissionSummary => {
+  const resultsPublished = row.publication_status === "PUBLISHED";
+  return {
+    submissionId: row.submission_id.toString(),
+    attemptNo: row.attempt_no,
+    submittedAt: row.submitted_at?.toISOString() ?? null,
+    score: !resultsPublished || row.score === null ? null : Number(row.score),
+    passStatus: resultsPublished ? (row.pass_status as SubmissionSummary["passStatus"]) : "PENDING",
+    status: row.status as SubmissionSummary["status"],
+    gradingStatus: row.grading_status as SubmissionSummary["gradingStatus"],
+    resultsPublished,
+  };
+};
 
 export type TrainingFormsRepository = ReturnType<typeof createTrainingFormsRepository>;
 
@@ -216,6 +223,7 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
             pass_status: true,
             status: true,
             grading_status: true,
+            publication_status: true,
           },
         });
 
@@ -366,6 +374,11 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
               pass_status: passStatus,
               status: hasPendingReview ? "SUBMITTED" : "GRADED",
               grading_status: hasPendingReview ? "PENDING_REVIEW" : "REVIEWED",
+              // Nothing for a human to add means the score is final at submit time, so it is
+              // released immediately - the same "grades shown right after submitting" behaviour a
+              // fully auto-graded Google Forms quiz has. Anything holding a written answer waits
+              // for HRD to grade it AND release it (publishSubmissionResults).
+              publication_status: hasPendingReview ? "UNPUBLISHED" : "PUBLISHED",
             },
           });
 
@@ -531,8 +544,9 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
       });
     },
 
-    /** Every submission still waiting on a human to grade a SHORT_ANSWER question, for one plan.
-     *  HRD_FACTORY only ever sees plans their own company owns. */
+    /** Everything on one plan still waiting on HRD: submissions with an ungraded SHORT_ANSWER, and
+     *  submissions already graded but not yet released to the employee. HRD_FACTORY only ever sees
+     *  plans their own company owns. */
     async listPendingGrading(planId: string, companyId: string | null) {
       return withDatabaseErrorMapping(async () => {
         const plan = await db().training_plan.findUniqueOrThrow({
@@ -544,7 +558,11 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
         }
 
         const rows = await db().assessment_submission.findMany({
-          where: { grading_status: "PENDING_REVIEW", training_enrollment: { plan_id: BigInt(planId) } },
+          where: {
+            training_enrollment: { plan_id: BigInt(planId) },
+            publication_status: "UNPUBLISHED",
+            submitted_at: { not: null },
+          },
           orderBy: { submitted_at: "asc" },
           select: {
             submission_id: true,
@@ -552,6 +570,7 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
             assessment_stage: true,
             attempt_no: true,
             submitted_at: true,
+            grading_status: true,
             training_enrollment: {
               select: { employee: { select: { employee_code: true, first_name_th: true, last_name_th: true, first_name_en: true, last_name_en: true } } },
             },
@@ -580,6 +599,7 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
             stage: row.assessment_stage as GradedStage,
             attemptNo: row.attempt_no,
             submittedAt: row.submitted_at?.toISOString() ?? null,
+            awaitingPublication: row.grading_status === "REVIEWED",
             pendingAnswers: row.assessment_answer.map((answer) => ({
               answerId: answer.answer_id.toString(),
               questionText: answer.assessment_question.question_text,
@@ -669,10 +689,52 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
             data: { score: scorePercent, pass_status: passStatus, status: "GRADED", grading_status: "REVIEWED" },
           });
 
-          await writeOfficialAssessmentResult(tx, submission.enrollment_id, submission.assessment_stage as GradedStage);
+          // training_result is deliberately NOT written here. Grading and releasing are two acts:
+          // the official record and the employee's view of the score both wait for
+          // publishSubmissionResults, so HRD can finish marking without the grade going out.
         });
 
         return { graded: true as const };
+      });
+    },
+
+    /** Releases one graded submission to the employee: the score becomes visible and the official
+     *  training_result row is written from it. Idempotent - publishing twice changes nothing. */
+    async publishSubmissionResults(submissionId: string, publishedByUserId: string, companyId: string | null) {
+      return withDatabaseErrorMapping(async () => {
+        const submission = await db().assessment_submission.findUniqueOrThrow({
+          where: { submission_id: BigInt(submissionId) },
+          select: {
+            submission_id: true,
+            enrollment_id: true,
+            assessment_stage: true,
+            grading_status: true,
+            publication_status: true,
+            training_enrollment: { select: { training_plan: { select: { training_plan_oap: { select: { company_id: true } } } } } },
+          },
+        });
+
+        if (companyId && submission.training_enrollment.training_plan.training_plan_oap.company_id?.toString() !== companyId) {
+          throw forbidden("This training plan is outside your permitted scope");
+        }
+        if (submission.grading_status !== "REVIEWED") {
+          throw new ApiError({
+            code: "GRADING_INCOMPLETE",
+            message: "Grade every written answer before releasing the result",
+            status: 400,
+          });
+        }
+        if (submission.publication_status === "PUBLISHED") return { published: true as const };
+
+        await db().$transaction(async (tx) => {
+          await tx.assessment_submission.update({
+            where: { submission_id: submission.submission_id },
+            data: { publication_status: "PUBLISHED", published_by: BigInt(publishedByUserId), published_at: new Date() },
+          });
+          await writeOfficialAssessmentResult(tx, submission.enrollment_id, submission.assessment_stage as GradedStage);
+        });
+
+        return { published: true as const };
       });
     },
 

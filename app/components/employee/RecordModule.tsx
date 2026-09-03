@@ -146,7 +146,9 @@ export const resolveStageState = (stage: EnrollmentStageInfo): StageDisplayState
   if (stage.availability === "NOT_YET") return "NOT_YET";
   if (stage.availability === "CLOSED_BY_HRD") return "CLOSED_BY_HRD";
   if (stage.mode === "LINK") return "LINK";
-  if (stage.submission?.gradingStatus === "PENDING_REVIEW") return "REVIEW_PENDING";
+  // Graded but not released reads the same to the employee as not yet graded: the score is not
+  // theirs to see until HRD publishes it.
+  if (stage.submission && (stage.submission.gradingStatus === "PENDING_REVIEW" || !stage.submission.resultsPublished)) return "REVIEW_PENDING";
   if (stage.submission) return "DONE";
   return "TODO";
 };
@@ -218,7 +220,7 @@ const AssessmentFlowSection = ({
                         : state === "LINK"
                           ? t("ทำผ่านลิงก์ภายนอก", "External link")
                           : state === "REVIEW_PENDING"
-                            ? t("ส่งแล้ว รอ HRD ตรวจ", "Submitted - awaiting review")
+                            ? t("ส่งแล้ว รอ HRD ตรวจ/ประกาศผล", "Submitted - awaiting review")
                             : state === "DONE"
                               ? t(
                                   `ทำแล้ว: ${step.stage.submission?.score ?? "-"}%`,
