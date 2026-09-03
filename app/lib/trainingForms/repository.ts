@@ -639,12 +639,23 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
           const questionScoreById = new Map(
             submission.assessment.assessment_question.map((q) => [q.question_id.toString(), q.question_score]),
           );
+          // The denominator is per QUESTION, matching submitAssessment. Summing it per answer row
+          // instead counted a multi-select question once per selected choice (three ticks tripled
+          // its weight) and dropped an unanswered question entirely, since that stores no rows at
+          // all - so a regrade could move the percentage in either direction against the score the
+          // same submission was given at submit time.
           let totalPossible = new Prisma.Decimal(0);
+          for (const question of submission.assessment.assessment_question) {
+            totalPossible = totalPossible.add(question.question_score);
+          }
+
+          // The numerator stays per row: submitAssessment puts a question's whole award on its
+          // first row only, and each graded SHORT_ANSWER carries its own. Rows whose question is
+          // no longer on the assessment are skipped so they cannot award marks the denominator
+          // has no room for.
           let totalAwarded = new Prisma.Decimal(0);
           for (const answer of submission.assessment_answer) {
-            const questionScore = questionScoreById.get(answer.question_id.toString());
-            if (questionScore === undefined) continue;
-            totalPossible = totalPossible.add(questionScore);
+            if (!questionScoreById.has(answer.question_id.toString())) continue;
             const awarded = scoreByQuestion.has(answer.answer_id.toString())
               ? new Prisma.Decimal(scoreByQuestion.get(answer.answer_id.toString())!)
               : (answer.score_awarded ?? new Prisma.Decimal(0));

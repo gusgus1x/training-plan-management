@@ -242,7 +242,9 @@ const buildFakeDb = (opts: {
     $transaction: async (cb: (tx: unknown) => Promise<unknown>) => cb(tx),
   } as any;
 
-  return { db };
+  // `submissions` is handed back so a regrade test can read the score that was written -
+  // gradeSubmission itself only answers { graded: true }.
+  return { db, submissions };
 };
 
 describe("readAssessmentForEmployee - no answer-key leak", () => {
@@ -471,6 +473,78 @@ describe("gradeSubmission", () => {
     await repo.submitAssessment("1", "PRE_TEST", { answers: [{ questionId: "3", choiceIds: [], text: "answer" }] }, OWNER.employeeId, OWNER.employeeUserId);
     const graded = await repo.gradeSubmission("9001", { answers: [{ answerId: "9001", scoreAwarded: 80, reviewComment: "Good" }] }, "1", null);
     expect(graded.graded).toBe(true);
+  });
+
+  // Both of these assert the regraded percentage matches what the same answers scored at submit
+  // time. The denominator used to be summed per answer row, which a multi-select question inflates
+  // (one row per tick) and an unanswered question shrinks (no rows at all).
+  it("counts a multi-select question once in the total, not once per selected choice", async () => {
+    const questions: Question[] = [
+      { question_id: BigInt(3), question_order: 1, question_text: "Explain", question_type: "SHORT_ANSWER", question_score: new Prisma.Decimal(50), is_required: true, assessment_choice: [] },
+      {
+        question_id: BigInt(4),
+        question_order: 2,
+        question_text: "Pick both even numbers",
+        question_type: "MULTIPLE_CHOICE",
+        question_score: new Prisma.Decimal(50),
+        is_required: true,
+        assessment_choice: [
+          { choice_id: BigInt(41), choice_order: 1, choice_text: "2", is_correct: true },
+          { choice_id: BigInt(42), choice_order: 2, choice_text: "4", is_correct: true },
+          { choice_id: BigInt(43), choice_order: 3, choice_text: "5", is_correct: false },
+        ],
+      },
+    ];
+    const { db, submissions } = buildFakeDb({ questions, passingScorePercent: 60 });
+    const repo = createTrainingFormsRepository(db);
+    await repo.submitAssessment(
+      "1",
+      "PRE_TEST",
+      { answers: [{ questionId: "3", choiceIds: [], text: "an answer" }, { questionId: "4", choiceIds: ["41", "42"], text: null }] },
+      OWNER.employeeId,
+      OWNER.employeeUserId,
+    );
+
+    // Short answer graded full marks; the multi-select was already right, so this is 100/100.
+    await repo.gradeSubmission("9001", { answers: [{ answerId: "9001", scoreAwarded: 50, reviewComment: null }] }, "1", null);
+
+    const submission = submissions.find((s) => s.submission_id === BigInt(9001))!;
+    expect(Number(submission.score)).toBe(100);
+    expect(submission.pass_status).toBe("PASS");
+  });
+
+  it("keeps an unanswered question in the total when regrading", async () => {
+    const questions: Question[] = [
+      { question_id: BigInt(3), question_order: 1, question_text: "Explain", question_type: "SHORT_ANSWER", question_score: new Prisma.Decimal(50), is_required: true, assessment_choice: [] },
+      {
+        question_id: BigInt(5),
+        question_order: 2,
+        question_text: "2 + 2 = ?",
+        question_type: "SINGLE_CHOICE",
+        question_score: new Prisma.Decimal(50),
+        is_required: true,
+        assessment_choice: [
+          { choice_id: BigInt(51), choice_order: 1, choice_text: "4", is_correct: true },
+          { choice_id: BigInt(52), choice_order: 2, choice_text: "5", is_correct: false },
+        ],
+      },
+    ];
+    const { db, submissions } = buildFakeDb({ questions, passingScorePercent: 60 });
+    const repo = createTrainingFormsRepository(db);
+    await repo.submitAssessment(
+      "1",
+      "PRE_TEST",
+      { answers: [{ questionId: "3", choiceIds: [], text: "an answer" }] }, // question 5 never answered
+      OWNER.employeeId,
+      OWNER.employeeUserId,
+    );
+
+    await repo.gradeSubmission("9001", { answers: [{ answerId: "9001", scoreAwarded: 50, reviewComment: null }] }, "1", null);
+
+    // 50 of a possible 100 - the skipped question still counts against the employee.
+    const submission = submissions.find((s) => s.submission_id === BigInt(9001))!;
+    expect(Number(submission.score)).toBe(50);
+    expect(submission.pass_status).toBe("FAIL");
   });
 });
 
