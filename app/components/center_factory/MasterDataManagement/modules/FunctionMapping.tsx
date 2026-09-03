@@ -659,7 +659,7 @@ export default function FunctionMapping() {
             onClick={() => void load()}
             disabled={isLoading || isSaving}
           >
-            Refresh
+            รีเฟรช
           </button>
         </div>
       </section>

@@ -571,6 +571,7 @@ model instructor {
   telephone         String?             @db.NVarChar(30)
   email             String?             @db.NVarChar(255)
   education         String?             @db.NVarChar(500)
+  university        String?             @db.NVarChar(255)
   organization_name String?             @db.NVarChar(255)
   status            String              @default("N'ACTIVE'", map: "DF_instructor_status") @db.NVarChar(20)
   training_plan_oap training_plan_oap[]

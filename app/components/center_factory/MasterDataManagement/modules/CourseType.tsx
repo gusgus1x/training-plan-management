@@ -71,7 +71,7 @@ export default function CourseType() {
                 setMessage("");
               }}
             >
-              New
+              เพิ่ม
             </button>
             <button
               className={styles.secondaryButton}
@@ -90,7 +90,7 @@ export default function CourseType() {
                 }
               }}
             >
-              Edit
+              แก้ไข
             </button>
             <button
               className={styles.dangerButton}
@@ -98,7 +98,7 @@ export default function CourseType() {
               disabled={!canWrite || !selected || busy}
               onClick={() => void remove()}
             >
-              Delete
+              ลบ
             </button>
             <button
               className={styles.secondaryButton}
@@ -106,7 +106,7 @@ export default function CourseType() {
               disabled={busy}
               onClick={() => void load()}
             >
-              Refresh
+              รีเฟรช
             </button>
             <button
               className={styles.secondaryButton}

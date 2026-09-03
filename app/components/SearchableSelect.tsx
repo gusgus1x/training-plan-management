@@ -91,6 +91,7 @@ export default function SearchableSelect({
   const handleSelectOption = (optValue: string) => {
     setIsOpen(false);
     setSearchQuery("");
+    inputRef.current?.blur();
     onChange(optValue);
   };
 
@@ -99,6 +100,7 @@ export default function SearchableSelect({
     onChange("");
     setSearchQuery("");
     setIsOpen(false);
+    inputRef.current?.blur();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -113,6 +115,7 @@ export default function SearchableSelect({
     if (e.key === "Escape") {
       setIsOpen(false);
       setSearchQuery("");
+      inputRef.current?.blur();
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
       setHighlightedIndex((prev) => (prev + 1) % Math.max(1, filteredOptions.length));
@@ -149,7 +152,7 @@ export default function SearchableSelect({
             setHighlightedIndex(0);
             if (!isOpen) openDropdown();
           }}
-          onClick={() => {
+          onFocus={() => {
             if (!disabled && !isOpen) {
               handleOpen();
             }
@@ -168,7 +171,22 @@ export default function SearchableSelect({
           </button>
         ) : null}
 
-        <span className={`${styles.arrowIcon} ${isOpen ? styles.arrowIconOpen : ""}`}>
+        <span
+          className={`${styles.arrowIcon} ${isOpen ? styles.arrowIconOpen : ""}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!disabled) {
+              if (isOpen) {
+                setIsOpen(false);
+                setSearchQuery("");
+                inputRef.current?.blur();
+              } else {
+                handleOpen();
+                inputRef.current?.focus();
+              }
+            }
+          }}
+        >
           ▼
         </span>
       </div>
@@ -189,7 +207,12 @@ export default function SearchableSelect({
                   }`}
                   role="option"
                   aria-selected={isSelected}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                   onClick={(e) => {
+                    e.preventDefault();
                     e.stopPropagation();
                     handleSelectOption(opt.value);
                   }}

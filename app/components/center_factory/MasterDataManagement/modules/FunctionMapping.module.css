@@ -323,9 +323,30 @@
 .saveButton {
   border: 0;
   border-radius: 8px;
-  background: var(--ui-10-accent);
-  color: #ffffff;
-  box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
+  background: #1e7e44;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(30, 126, 68, 0.25);
+  min-height: 36px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 8px 16px;
+  transition: transform 140ms ease, background 140ms ease, box-shadow 140ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.primaryButton:hover,
+.actionButton:hover,
+.newButton:hover,
+.saveButton:hover {
+  background: #15803d;
+  box-shadow: 0 6px 16px rgba(21, 128, 61, 0.35);
+  transform: translateY(-1px);
 }
 
 .secondaryButton,
@@ -335,56 +356,23 @@
 .cancelButton,
 .detailButton,
 .closeButton {
-  border: 1px solid var(--ui-30-border);
+  border: 0;
   border-radius: 8px;
-  background: var(--ui-60-surface);
-  color: var(--ui-30-ink);
-}
-
-.dangerButton,
-.deleteButton {
-  border: 1px solid var(--ui-10-accent-border);
-  border-radius: 8px;
-  background: var(--ui-10-accent-soft);
-  color: var(--ui-10-accent-strong);
-}
-
-.primaryButton,
-.actionButton,
-.newButton,
-.saveButton,
-.secondaryButton,
-.editButton,
-.refreshButton,
-.exportButton,
-.cancelButton,
-.detailButton,
-.closeButton,
-.dangerButton,
-.deleteButton {
-  min-height: 34px;
+  background: #3b4859;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  min-height: 36px;
   cursor: pointer;
   font: inherit;
-  font-size: 0.76rem;
-  font-weight: 900;
-  padding: 7px 11px;
-  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
-}
-
-.primaryButton:hover,
-.actionButton:hover,
-.newButton:hover,
-.saveButton:hover,
-.secondaryButton:hover,
-.editButton:hover,
-.refreshButton:hover,
-.exportButton:hover,
-.cancelButton:hover,
-.detailButton:hover,
-.closeButton:hover,
-.dangerButton:hover,
-.deleteButton:hover {
-  transform: translateY(-1px);
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 8px 16px;
+  transition: transform 140ms ease, background 140ms ease, box-shadow 140ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .secondaryButton:hover,
@@ -394,8 +382,37 @@
 .cancelButton:hover,
 .detailButton:hover,
 .closeButton:hover {
-  border-color: #8aa4cc;
-  background: var(--ui-60-surface-soft);
+  background: #475569;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  transform: translateY(-1px);
+}
+
+.dangerButton,
+.deleteButton {
+  border: 0;
+  border-radius: 8px;
+  background: #c0262d;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(192, 38, 45, 0.25);
+  min-height: 36px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 8px 16px;
+  transition: transform 140ms ease, background 140ms ease, box-shadow 140ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.dangerButton:hover,
+.deleteButton:hover {
+  background: #dc2626;
+  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.35);
+  transform: translateY(-1px);
 }
 
 .tableWrap {

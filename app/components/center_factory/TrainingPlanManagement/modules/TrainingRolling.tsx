@@ -20,6 +20,8 @@ import {
   updateRollingPlan,
 } from "../../../../lib/trainingRolling/client";
 import type { RollingPlanRecord } from "../../../../lib/trainingRolling/types";
+import { listInstructors } from "../../../../lib/instructors/client";
+import type { InstructorRecord } from "../../../../lib/instructors/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
@@ -333,6 +335,7 @@ export default function TrainingRolling() {
   const [oapPlans, setOapPlans] = useState<OapPlanRecord[]>([]);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [standards, setStandards] = useState<WorkflowStandard[]>([]);
+  const [instructors, setInstructors] = useState<InstructorRecord[]>([]);
   const [form, setForm] = useState<RollingForm>(createEmptyForm);
   const [isNewOpen, setIsNewOpen] = useState(false);
   const [openDetailId, setOpenDetailId] = useState("");
@@ -360,19 +363,22 @@ export default function TrainingRolling() {
   const loadWorkspace = async () => {
     setIsLoading(true);
     try {
-      const [oapData, rollingData, courseData] = await Promise.all([
+      const [oapData, rollingData, courseData, instructorData] = await Promise.all([
         listOapPlans({ search: null, status: null }),
         loadWorkflowRollingPlans(),
         listCourses({ search: "", status: null }),
+        listInstructors({ status: "ACTIVE" }).catch(() => ({ items: [] })),
       ]);
       setOapPlans(oapData.oapPlans || []);
       setRollingPlans(rollingData);
       setStandards(courseData.standards || []);
+      setInstructors(instructorData.items || []);
     } catch (error) {
       console.error("Failed to load Training Rolling workspace", error);
       setOapPlans([]);
       setRollingPlans([]);
       setStandards([]);
+      setInstructors([]);
     } finally {
       setIsLoading(false);
     }
@@ -410,6 +416,17 @@ export default function TrainingRolling() {
     [oapPlans, user?.roleCode, userCompanyCode, isFactoryUser, isCenterUser],
   );
   const selectedOap = oapSources.find((source) => source.id === form.oapId) ?? null;
+  const selectedOapInstructor = useMemo(() => {
+    if (!selectedOap?.trainer?.trim()) return null;
+    const t = selectedOap.trainer.trim().toLowerCase();
+    return (
+      instructors.find(
+        (ins) =>
+          `${ins.firstName} ${ins.lastName}`.trim().toLowerCase() === t ||
+          ins.instructorCode.toLowerCase() === t,
+      ) ?? null
+    );
+  }, [selectedOap, instructors]);
   const scopedRollingPlans = useMemo(
     () =>
       rollingPlans.filter((plan) => {
@@ -1383,6 +1400,46 @@ export default function TrainingRolling() {
 
                   <div className={styles.previewCard}>
                     <div className={styles.previewCardHeader}>
+                      <span>👨‍🏫 รายละเอียดวิทยากร (Instructor Details)</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>ชื่อวิทยากร</span>
+                      <span className={styles.previewFieldValue}>{selectedOap.trainer || "-"}</span>
+                    </div>
+                    {selectedOapInstructor?.instructorCode ? (
+                      <div className={styles.previewFieldRow}>
+                        <span className={styles.previewFieldLabel}>รหัสวิทยากร</span>
+                        <span className={styles.previewFieldValue}>{selectedOapInstructor.instructorCode}</span>
+                      </div>
+                    ) : null}
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>มหาวิทยาลัย</span>
+                      <span className={styles.previewFieldValue}>{selectedOapInstructor?.university || "-"}</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>วุฒิการศึกษา</span>
+                      <span className={styles.previewFieldValue}>{selectedOapInstructor?.education || "-"}</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>หน่วยงาน / สังกัด</span>
+                      <span className={styles.previewFieldValue}>{selectedOapInstructor?.organizationName || "-"}</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>เบอร์โทรศัพท์</span>
+                      <span className={styles.previewFieldValue}>{selectedOapInstructor?.telephone || "-"}</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>อีเมล</span>
+                      <span className={styles.previewFieldValue}>{selectedOapInstructor?.email || "-"}</span>
+                    </div>
+                    <div className={styles.previewFieldRow}>
+                      <span className={styles.previewFieldLabel}>สถาบัน / ผู้ให้บริการ</span>
+                      <span className={styles.previewFieldValue}>{selectedOap.providerName || "-"}</span>
+                    </div>
+                  </div>
+
+                  <div className={styles.previewCard}>
+                    <div className={styles.previewCardHeader}>
                       <span>👥 กลุ่มเป้าหมายมาตรฐาน (Standard Target)</span>
                     </div>
                     {(() => {
@@ -1763,11 +1820,28 @@ export default function TrainingRolling() {
                                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewTotalRow}`}><span className={styles.previewFieldLabel}>Total Budget</span><span className={styles.previewFieldValue}>฿{Number(plan.budget).toLocaleString("en-US")}</span></div>
                                     </div>
 
-                                    <div className={styles.previewCard}>
-                                      <div className={styles.previewCardHeader}><span>🏫 Institute / Provider</span></div>
-                                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>วิทยากร</span><span className={styles.previewFieldValue}>{plan.trainer || "-"}</span></div>
-                                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ผู้ให้บริการ</span><span className={styles.previewFieldValue}>{plan.provider || "-"}</span></div>
-                                    </div>
+                                    {(() => {
+                                      const matchedRollingInstructor = instructors.find(
+                                        (ins) =>
+                                          `${ins.firstName} ${ins.lastName}`.trim().toLowerCase() === plan.trainer?.trim().toLowerCase() ||
+                                          ins.instructorCode.toLowerCase() === plan.trainer?.trim().toLowerCase(),
+                                      );
+                                      return (
+                                        <div className={styles.previewCard}>
+                                          <div className={styles.previewCardHeader}><span>👨‍🏫 ข้อมูลวิทยากร &amp; สถาบัน (Instructor &amp; Provider)</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>วิทยากร</span><span className={styles.previewFieldValue}>{plan.trainer || "-"}</span></div>
+                                          {matchedRollingInstructor?.instructorCode ? (
+                                            <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>รหัสวิทยากร</span><span className={styles.previewFieldValue}>{matchedRollingInstructor.instructorCode}</span></div>
+                                          ) : null}
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>มหาวิทยาลัย</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.university || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>วุฒิการศึกษา</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.education || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>หน่วยงาน / สังกัด</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.organizationName || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>เบอร์โทรศัพท์</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.telephone || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>อีเมล</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.email || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ผู้ให้บริการ</span><span className={styles.previewFieldValue}>{plan.provider || "-"}</span></div>
+                                        </div>
+                                      );
+                                    })()}
 
                                     {(() => {
                                       const std = standards.find((item) => item.courseId === plan.course.id);

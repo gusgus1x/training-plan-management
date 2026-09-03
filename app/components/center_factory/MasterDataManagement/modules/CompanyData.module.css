@@ -160,21 +160,81 @@
 .actionButton {
   border: 0;
   border-radius: 8px;
-  background: var(--ui-30-primary-strong);
-  color: #ffffff;
-  min-height: 38px;
-  padding: 9px 14px;
+  background: #1e7e44;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(30, 126, 68, 0.25);
+  min-height: 36px;
+  padding: 8px 16px;
   font-weight: 800;
   cursor: pointer;
   transition:
     background 140ms ease,
     box-shadow 140ms ease,
     transform 140ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .actionButton:hover {
-  background: var(--ui-30-primary);
-  box-shadow: 0 10px 22px rgba(0, 122, 61, 0.2);
+  background: #15803d;
+  box-shadow: 0 6px 16px rgba(21, 128, 61, 0.35);
+  transform: translateY(-1px);
+}
+
+.secondaryButton {
+  border: 0;
+  border-radius: 8px;
+  background: #3b4859;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  min-height: 36px;
+  padding: 8px 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.secondaryButton:hover {
+  background: #475569;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  transform: translateY(-1px);
+}
+
+.dangerButton {
+  border: 0;
+  border-radius: 8px;
+  background: #c0262d;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(192, 38, 45, 0.25);
+  min-height: 36px;
+  padding: 8px 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.dangerButton:hover {
+  background: #dc2626;
+  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.35);
   transform: translateY(-1px);
 }
 
@@ -182,49 +242,9 @@
 .secondaryButton:disabled,
 .dangerButton:disabled {
   cursor: not-allowed;
-  opacity: 0.48;
-}
-
-.secondaryButton {
-  border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
-  color: var(--ui-30-text);
-  min-height: 38px;
-  padding: 9px 14px;
-  font-weight: 800;
-  cursor: pointer;
-  transition:
-    background 140ms ease,
-    border-color 140ms ease,
-    transform 140ms ease;
-}
-
-.secondaryButton:hover {
-  border-color: #94a3b8;
-  background: var(--ui-60-surface-soft);
-  transform: translateY(-1px);
-}
-
-.dangerButton {
-  border: 1px solid #f4b9b9;
-  border-radius: 8px;
-  background: #fff7f7;
-  color: #b42318;
-  min-height: 38px;
-  padding: 9px 14px;
-  font-weight: 800;
-  cursor: pointer;
-  transition:
-    background 140ms ease,
-    border-color 140ms ease,
-    transform 140ms ease;
-}
-
-.dangerButton:hover {
-  border-color: var(--ui-10-accent);
-  background: var(--ui-10-accent-soft);
-  transform: translateY(-1px);
+  opacity: 0.5;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 .tableWrap {

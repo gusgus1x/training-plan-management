@@ -1971,6 +1971,247 @@ padding: 10px;
   }
 }
 
+/* ==========================================================================
+   Instructor Section in Training OAP Form
+   ========================================================================== */
+.instructorSectionContainer {
+  grid-column: span 6;
+  background: var(--ui-60-surface-soft, rgba(255, 255, 255, 0.03));
+  border: 1.5px solid var(--ui-30-border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.instructorSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--ui-30-border);
+  padding-bottom: 10px;
+}
+
+.instructorSectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.instructorHeaderIcon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.instructorSectionTitle strong {
+  display: block;
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--ui-30-ink);
+}
+
+.instructorSectionTitle p {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  color: var(--ui-30-muted);
+}
+
+.instructorSwitchBtn {
+  background: transparent;
+  border: 1px solid var(--ui-30-primary);
+  color: var(--ui-30-primary);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.instructorSwitchBtn:hover {
+  background: var(--ui-30-primary-soft, rgba(16, 185, 129, 0.12));
+}
+
+.instructorSelectorWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.instructorSelectorWrap label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ui-30-ink);
+}
+
+/* Instructor Profile Box */
+.instructorProfileBox {
+  background: var(--ui-60-surface);
+  border: 1.5px solid var(--ui-30-primary);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.08);
+}
+
+.instructorProfileTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.instructorIdentity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.instructorAvatarCircle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--ui-30-primary-soft, rgba(16, 185, 129, 0.15));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.instructorNameLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.instructorNameLine strong {
+  font-size: 1.05rem;
+  color: var(--ui-30-ink);
+}
+
+.instructorCodePill {
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--ui-30-border);
+  color: var(--ui-30-ink);
+}
+
+.masterSourceTag {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #10b981;
+  color: #ffffff;
+}
+
+.instructorSubLine {
+  display: flex;
+  gap: 12px;
+  font-size: 0.82rem;
+  color: var(--ui-30-muted);
+  margin-top: 2px;
+}
+
+.instructorClearBtn {
+  background: transparent;
+  border: 1px solid var(--ui-30-border);
+  color: var(--ui-30-muted);
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.instructorClearBtn:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.instructorDetailsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px 16px;
+  border-top: 1px dashed var(--ui-30-border);
+  padding-top: 12px;
+}
+
+.instructorDetailCol {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detailLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ui-30-muted);
+}
+
+.detailValue {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ui-30-ink);
+  word-break: break-word;
+}
+
+/* External Instructor Box */
+.externalInstructorBox {
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.externalBoxBanner {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--ui-30-primary);
+}
+
+.externalFieldsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+
+.externalFieldsGrid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ui-30-ink);
+}
+
+@media (max-width: 860px) {
+  .externalFieldsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
 
 
 

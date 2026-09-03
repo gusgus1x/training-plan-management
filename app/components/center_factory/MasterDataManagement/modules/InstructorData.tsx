@@ -33,6 +33,7 @@ type InstructorForm = {
   telephone: string;
   email: string;
   education: string;
+  university: string;
   organizationName: string;
   status: InstructorStatus;
 };
@@ -44,6 +45,7 @@ const blankForm = (): InstructorForm => ({
   telephone: "",
   email: "",
   education: "",
+  university: "",
   organizationName: "",
   status: "ACTIVE",
 });
@@ -55,6 +57,7 @@ const toForm = (record: InstructorRecord): InstructorForm => ({
   telephone: record.telephone ?? "",
   email: record.email ?? "",
   education: record.education ?? "",
+  university: record.university ?? "",
   organizationName: record.organizationName ?? "",
   status: record.status,
 });
@@ -63,6 +66,35 @@ const errorText = (error: unknown) =>
   error instanceof InstructorClientError
     ? error.message
     : "Unable to load instructor data. Please try again.";
+
+const CODE_PATTERN = /^([A-Za-z]+)(\d+)$/;
+const nextAutoCode = (existingCodes: string[], fallbackPrefix: string) => {
+  const prefixCounts = new Map<string, number>();
+  for (const code of existingCodes) {
+    const match = code.trim().match(CODE_PATTERN);
+    if (match) prefixCounts.set(match[1], (prefixCounts.get(match[1]) ?? 0) + 1);
+  }
+  let activePrefix = fallbackPrefix;
+  let topCount = 0;
+  for (const [prefix, count] of prefixCounts) {
+    if (count > topCount) {
+      topCount = count;
+      activePrefix = prefix;
+    }
+  }
+  let maxNumber = 0;
+  let width = 4;
+  for (const code of existingCodes) {
+    const match = code.trim().match(CODE_PATTERN);
+    if (!match || match[1] !== activePrefix) continue;
+    const value = parseInt(match[2], 10);
+    if (value > maxNumber) {
+      maxNumber = value;
+      width = match[2].length;
+    }
+  }
+  return `${activePrefix}${String(maxNumber + 1).padStart(width, "0")}`;
+};
 
 export default function InstructorData() {
   const user = useAuthenticatedUser();
@@ -95,6 +127,7 @@ export default function InstructorData() {
         row.telephone,
         row.email,
         row.education,
+        row.university,
         row.organizationName,
         row.status,
       ]
@@ -145,7 +178,13 @@ export default function InstructorData() {
   const startNew = () => {
     if (!isCenter) return;
     setEditingInstructorId(null);
-    setForm(blankForm());
+    setForm({
+      ...blankForm(),
+      instructorCode: nextAutoCode(
+        rows.map((item) => item.instructorCode),
+        "INS",
+      ),
+    });
     setFormMode("new");
     setError(null);
   };
@@ -200,6 +239,7 @@ export default function InstructorData() {
         telephone: form.telephone.trim() || null,
         email: form.email.trim() || null,
         education: form.education.trim() || null,
+        university: form.university.trim() || null,
         organizationName: form.organizationName.trim() || null,
         status: form.status,
       };
@@ -316,33 +356,25 @@ export default function InstructorData() {
             aria-label="Search instructor records"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search code, name, contact, organization, or status"
+            placeholder="ค้นหาด้วย รหัส, ชื่อ, นามสกุล, เบอร์โทร, มหาวิทยาลัย, สังกัด..."
           />
           {isCenter ? (
             <>
               <button
-                className={
-                  formMode === "new"
-                    ? styles.actionButton
-                    : styles.secondaryButton
-                }
+                className={styles.newButton}
                 type="button"
                 onClick={startNew}
                 disabled={isSaving}
               >
-                New
+                เพิ่ม
               </button>
               <button
-                className={
-                  formMode === "edit"
-                    ? styles.actionButton
-                    : styles.secondaryButton
-                }
+                className={styles.editButton}
                 disabled={!selected || isSaving}
                 type="button"
                 onClick={startEdit}
               >
-                Edit
+                แก้ไข
               </button>
               <button
                 className={styles.deleteButton}
@@ -350,17 +382,17 @@ export default function InstructorData() {
                 type="button"
                 onClick={() => void remove()}
               >
-                Delete
+                ลบ
               </button>
             </>
           ) : null}
           <button
-            className={styles.secondaryButton}
+            className={styles.refreshButton}
             type="button"
             onClick={refresh}
             disabled={isLoading || isSaving}
           >
-            Refresh
+            รีเฟรช
           </button>
         </div>
         {error ? <p role="alert">{error}</p> : null}
@@ -370,100 +402,103 @@ export default function InstructorData() {
         <section className={styles.formPanel}>
           <h3>
             {formMode === "new"
-              ? "Add Instructor - creates a new record"
-              : `Edit Instructor - ${form.instructorCode}`}
+              ? "เพิ่มข้อมูลวิทยากร (Add Instructor)"
+              : `แก้ไขข้อมูลวิทยากร (Edit Instructor) - ${form.instructorCode}`}
           </h3>
           <div className={styles.formGrid}>
             <label>
-              Instructor Code
+              รหัสวิทยากร (Instructor Code)
               <input
                 value={form.instructorCode}
                 maxLength={30}
+                placeholder="เช่น INS0001 (สร้างให้อัตโนมัติ)"
                 onChange={(event) =>
                   change("instructorCode", event.target.value)
                 }
               />
             </label>
             <label>
-              First Name
+              ชื่อ (First Name)
               <input
                 value={form.firstName}
                 maxLength={150}
+                placeholder="เช่น สมชาย"
                 onChange={(event) => change("firstName", event.target.value)}
               />
             </label>
             <label>
-              Last Name
+              นามสกุล (Last Name)
               <input
                 value={form.lastName}
                 maxLength={150}
+                placeholder="เช่น ใจดี"
                 onChange={(event) => change("lastName", event.target.value)}
               />
             </label>
             <label>
-              Telephone
+              เบอร์โทรศัพท์ (Telephone)
               <input
                 value={form.telephone}
                 maxLength={30}
+                placeholder="เช่น 081-234-5678"
                 onChange={(event) => change("telephone", event.target.value)}
               />
             </label>
             <label>
-              Email
+              อีเมล (Email)
               <input
                 type="email"
                 value={form.email}
                 maxLength={255}
+                placeholder="เช่น somchai@example.com"
                 onChange={(event) => change("email", event.target.value)}
               />
             </label>
             <label>
-              Organization
+              ระดับการศึกษา / วุฒิ (Education)
+              <input
+                value={form.education}
+                maxLength={500}
+                placeholder="เช่น ปริญญาโท วิศวกรรมศาสตร์"
+                onChange={(event) => change("education", event.target.value)}
+              />
+            </label>
+            <label>
+              มหาวิทยาลัย (University)
+              <input
+                value={form.university}
+                maxLength={255}
+                placeholder="เช่น จุฬาลงกรณ์มหาวิทยาลัย"
+                onChange={(event) => change("university", event.target.value)}
+              />
+            </label>
+            <label>
+              หน่วยงาน / สังกัด (Organization)
               <input
                 value={form.organizationName}
                 maxLength={255}
+                placeholder="เช่น บริษัท เอบีซี จำกัด หรือ คณะวิศวกรรมศาสตร์"
                 onChange={(event) =>
                   change("organizationName", event.target.value)
                 }
               />
             </label>
-            <label>
-              Education
-              <input
-                value={form.education}
-                maxLength={500}
-                onChange={(event) => change("education", event.target.value)}
-              />
-            </label>
-            <label>
-              Status
-              <select
-                value={form.status}
-                onChange={(event) =>
-                  change("status", event.target.value as InstructorStatus)
-                }
-              >
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="INACTIVE">INACTIVE</option>
-              </select>
-            </label>
+            {/* สถานะเอาออกตามคำขอ: บันทึกค่าเริ่มต้น ACTIVE ใน background โดยไม่ต้องแสดงในฟอร์ม */}
             <div className={styles.fullWidth}>
               <button
-                className={styles.actionButton}
+                className={styles.saveButton}
                 type="button"
                 onClick={() => void save()}
                 disabled={isSaving}
               >
                 {isSaving
-                  ? formMode === "new"
-                    ? "Creating..."
-                    : "Saving..."
+                  ? "Saving..."
                   : formMode === "new"
-                    ? "Create"
+                    ? "Add Instructor"
                     : "Save Changes"}
               </button>
               <button
-                className={styles.secondaryButton}
+                className={styles.cancelButton}
                 type="button"
                 onClick={() => {
                   setEditingInstructorId(null);
@@ -479,20 +514,22 @@ export default function InstructorData() {
       ) : null}
 
       <section className={styles.panel}>
-        <h3>Instructor Records</h3>
+        <div className={styles.panelHeader}>
+          <h3>รายชื่อวิทยากร (Instructor Records)</h3>
+          <span className={styles.itemCount}>{visibleRows.length} รายการ</span>
+        </div>
         <div className={styles.tableWrap}>
           <table className={styles.dataTable}>
             <thead>
               <tr>
-                <th>No.</th>
-                <th>Code</th>
-                <th>First Name</th>
-                <th>Last Name</th>
-                <th>Telephone</th>
-                <th>Email</th>
-                <th>Education</th>
-                <th>Organization</th>
-                <th>Status</th>
+                <th className={styles.colIndex}>ลำดับ</th>
+                <th className={styles.colCode}>รหัสวิทยากร</th>
+                <th className={styles.colName}>ชื่อ - นามสกุล</th>
+                <th className={styles.colPhone}>เบอร์โทรศัพท์</th>
+                <th className={styles.colEmail}>อีเมล</th>
+                <th className={styles.colEdu}>วุฒิการศึกษา</th>
+                <th className={styles.colUni}>มหาวิทยาลัย</th>
+                <th className={styles.colOrg}>หน่วยงาน / สังกัด</th>
               </tr>
             </thead>
             <tbody translate="no">
@@ -505,23 +542,30 @@ export default function InstructorData() {
                   }
                   key={row.instructorId}
                   onClick={() => setSelectedId(row.instructorId)}
+                  onDoubleClick={() => {
+                    if (isCenter) startEdit();
+                  }}
+                  title={isCenter ? "คลิกเลือก หรือดับเบิลคลิกเพื่อแก้ไข" : undefined}
                 >
-                  <td>{index + 1}</td>
-                  <td>{row.instructorCode}</td>
-                  <td>{row.firstName}</td>
-                  <td>{row.lastName}</td>
-                  <td>{row.telephone ?? "-"}</td>
-                  <td>{row.email ?? "-"}</td>
-                  <td>{row.education ?? "-"}</td>
-                  <td>{row.organizationName ?? "-"}</td>
-                  <td>
-                    <span className={styles.statusPill}>{row.status}</span>
+                  <td className={styles.colIndex}>{index + 1}</td>
+                  <td className={styles.colCode}>
+                    <span className={styles.codeBadge}>{row.instructorCode}</span>
                   </td>
+                  <td className={styles.colName}>
+                    <strong>{row.firstName} {row.lastName}</strong>
+                  </td>
+                  <td className={styles.colPhone}>{row.telephone || "-"}</td>
+                  <td className={styles.colEmail}>{row.email || "-"}</td>
+                  <td className={styles.colEdu}>{row.education || "-"}</td>
+                  <td className={styles.colUni}>{row.university || "-"}</td>
+                  <td className={styles.colOrg}>{row.organizationName || "-"}</td>
                 </tr>
               ))}
               {!isLoading && visibleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={9}>No instructor data found.</td>
+                  <td colSpan={8} style={{ textAlign: "center", padding: "24px", color: "var(--ui-30-muted)" }}>
+                    ไม่พบข้อมูลวิทยากร (No instructor data found.)
+                  </td>
                 </tr>
               ) : null}
             </tbody>

@@ -678,7 +678,7 @@ export default function EmployeeData() {
               setMode("new");
             }}
           >
-            New
+            เพิ่ม
           </button>
           <button
             className={styles.editButton}
@@ -686,7 +686,7 @@ export default function EmployeeData() {
             disabled={!selected || saving || loadingEditor}
             onClick={() => void edit()}
           >
-            {loadingEditor ? "Loading..." : "Edit"}
+            {loadingEditor ? "Loading..." : "แก้ไข"}
           </button>
           <button
             className={styles.deleteButton}
@@ -694,7 +694,7 @@ export default function EmployeeData() {
             disabled={!selected || saving || loadingEditor}
             onClick={() => void remove()}
           >
-            Delete
+            ลบ
           </button>
           <button
             className={styles.refreshButton}
@@ -702,7 +702,7 @@ export default function EmployeeData() {
             disabled={saving || loadingEditor}
             onClick={refresh}
           >
-            Refresh
+            รีเฟรช
           </button>
           <button
             className={styles.refreshButton}

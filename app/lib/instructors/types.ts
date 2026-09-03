@@ -9,6 +9,7 @@ export type InstructorRecord = {
   telephone: string | null;
   email: string | null;
   education: string | null;
+  university: string | null;
   organizationName: string | null;
   status: InstructorStatus;
 };
@@ -27,6 +28,7 @@ export type CreateInstructorInput = {
   telephone: string | null;
   email: string | null;
   education: string | null;
+  university: string | null;
   organizationName: string | null;
   status: InstructorStatus;
 };

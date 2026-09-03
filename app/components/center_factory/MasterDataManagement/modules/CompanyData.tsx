@@ -344,7 +344,7 @@ export default function CompanyData() {
                 onClick={handleNew}
                 disabled={isSaving}
               >
-                New
+                เพิ่ม
               </button>
             ) : null}
             <button
@@ -353,7 +353,7 @@ export default function CompanyData() {
               onClick={handleEdit}
               disabled={!canModifySelected || isSaving}
             >
-              Edit
+              แก้ไข
             </button>
             <button
               className={styles.dangerButton}
@@ -361,7 +361,7 @@ export default function CompanyData() {
               onClick={() => void handleDelete()}
               disabled={!canModifySelected || isSaving}
             >
-              Delete
+              ลบ
             </button>
             <button
               className={styles.secondaryButton}
@@ -369,7 +369,7 @@ export default function CompanyData() {
               onClick={handleRefresh}
               disabled={isLoading || isSaving}
             >
-              Refresh
+              รีเฟรช
             </button>
           </div>
         </div>

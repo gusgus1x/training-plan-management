@@ -272,12 +272,12 @@ export default function LevelData() {
           />
           {isCenter ? (
             <>
-              <button className={styles.newButton} type="button" onClick={startNew} disabled={isSaving}>New</button>
-              <button className={styles.editButton} type="button" onClick={startEdit} disabled={!selected || isSaving}>Edit</button>
-              <button className={styles.deleteButton} type="button" onClick={() => void remove()} disabled={!selected || isSaving}>Delete</button>
+              <button className={styles.newButton} type="button" onClick={startNew} disabled={isSaving}>เพิ่ม</button>
+              <button className={styles.editButton} type="button" onClick={startEdit} disabled={!selected || isSaving}>แก้ไข</button>
+              <button className={styles.deleteButton} type="button" onClick={() => void remove()} disabled={!selected || isSaving}>ลบ</button>
             </>
           ) : null}
-          <button className={styles.refreshButton} type="button" onClick={refresh} disabled={isLoading || isSaving}>Refresh</button>
+          <button className={styles.refreshButton} type="button" onClick={refresh} disabled={isLoading || isSaving}>รีเฟรช</button>
         </div>
 
         {error ? <p role="alert">{error}</p> : null}
