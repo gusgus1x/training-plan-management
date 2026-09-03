@@ -361,28 +361,20 @@ export default function InstructorData() {
           {isCenter ? (
             <>
               <button
-                className={
-                  formMode === "new"
-                    ? styles.actionButton
-                    : styles.secondaryButton
-                }
+                className={styles.newButton}
                 type="button"
                 onClick={startNew}
                 disabled={isSaving}
               >
-                + เพิ่มวิทยากร (New)
+                เพิ่ม
               </button>
               <button
-                className={
-                  formMode === "edit"
-                    ? styles.actionButton
-                    : styles.secondaryButton
-                }
+                className={styles.editButton}
                 disabled={!selected || isSaving}
                 type="button"
                 onClick={startEdit}
               >
-                แก้ไข (Edit)
+                แก้ไข
               </button>
               <button
                 className={styles.deleteButton}
@@ -390,17 +382,17 @@ export default function InstructorData() {
                 type="button"
                 onClick={() => void remove()}
               >
-                ลบ (Delete)
+                ลบ
               </button>
             </>
           ) : null}
           <button
-            className={styles.secondaryButton}
+            className={styles.refreshButton}
             type="button"
             onClick={refresh}
             disabled={isLoading || isSaving}
           >
-            รีเฟรช (Refresh)
+            รีเฟรช
           </button>
         </div>
         {error ? <p role="alert">{error}</p> : null}
@@ -494,21 +486,19 @@ export default function InstructorData() {
             {/* สถานะเอาออกตามคำขอ: บันทึกค่าเริ่มต้น ACTIVE ใน background โดยไม่ต้องแสดงในฟอร์ม */}
             <div className={styles.fullWidth}>
               <button
-                className={styles.actionButton}
+                className={styles.saveButton}
                 type="button"
                 onClick={() => void save()}
                 disabled={isSaving}
               >
                 {isSaving
-                  ? formMode === "new"
-                    ? "กำลังบันทึก..."
-                    : "กำลังบันทึกการแก้ไข..."
+                  ? "Saving..."
                   : formMode === "new"
-                    ? "บันทึกข้อมูล (Create)"
-                    : "บันทึกการแก้ไข (Save Changes)"}
+                    ? "Add Instructor"
+                    : "Save Changes"}
               </button>
               <button
-                className={styles.secondaryButton}
+                className={styles.cancelButton}
                 type="button"
                 onClick={() => {
                   setEditingInstructorId(null);
@@ -516,7 +506,7 @@ export default function InstructorData() {
                 }}
                 disabled={isSaving}
               >
-                ยกเลิก (Cancel)
+                Cancel
               </button>
             </div>
           </div>
@@ -524,21 +514,22 @@ export default function InstructorData() {
       ) : null}
 
       <section className={styles.panel}>
-        <h3>รายชื่อวิทยากร (Instructor Records)</h3>
+        <div className={styles.panelHeader}>
+          <h3>รายชื่อวิทยากร (Instructor Records)</h3>
+          <span className={styles.itemCount}>{visibleRows.length} รายการ</span>
+        </div>
         <div className={styles.tableWrap}>
           <table className={styles.dataTable}>
             <thead>
               <tr>
-                <th>ลำดับ</th>
-                <th>รหัสวิทยากร</th>
-                <th>ชื่อ</th>
-                <th>นามสกุล</th>
-                <th>เบอร์โทรศัพท์</th>
-                <th>อีเมล</th>
-                <th>วุฒิการศึกษา</th>
-                <th>มหาวิทยาลัย</th>
-                <th>หน่วยงาน/สังกัด</th>
-                <th>สถานะ</th>
+                <th className={styles.colIndex}>ลำดับ</th>
+                <th className={styles.colCode}>รหัสวิทยากร</th>
+                <th className={styles.colName}>ชื่อ - นามสกุล</th>
+                <th className={styles.colPhone}>เบอร์โทรศัพท์</th>
+                <th className={styles.colEmail}>อีเมล</th>
+                <th className={styles.colEdu}>วุฒิการศึกษา</th>
+                <th className={styles.colUni}>มหาวิทยาลัย</th>
+                <th className={styles.colOrg}>หน่วยงาน / สังกัด</th>
               </tr>
             </thead>
             <tbody translate="no">
@@ -551,26 +542,30 @@ export default function InstructorData() {
                   }
                   key={row.instructorId}
                   onClick={() => setSelectedId(row.instructorId)}
+                  onDoubleClick={() => {
+                    if (isCenter) startEdit();
+                  }}
+                  title={isCenter ? "คลิกเลือก หรือดับเบิลคลิกเพื่อแก้ไข" : undefined}
                 >
-                  <td>{index + 1}</td>
-                  <td>{row.instructorCode}</td>
-                  <td>{row.firstName}</td>
-                  <td>{row.lastName}</td>
-                  <td>{row.telephone ?? "-"}</td>
-                  <td>{row.email ?? "-"}</td>
-                  <td>{row.education ?? "-"}</td>
-                  <td>{row.university ?? "-"}</td>
-                  <td>{row.organizationName ?? "-"}</td>
-                  <td>
-                    <span className={styles.statusPill}>
-                      {row.status === "ACTIVE" ? "ใช้งาน" : "ไม่ใช้งาน"}
-                    </span>
+                  <td className={styles.colIndex}>{index + 1}</td>
+                  <td className={styles.colCode}>
+                    <span className={styles.codeBadge}>{row.instructorCode}</span>
                   </td>
+                  <td className={styles.colName}>
+                    <strong>{row.firstName} {row.lastName}</strong>
+                  </td>
+                  <td className={styles.colPhone}>{row.telephone || "-"}</td>
+                  <td className={styles.colEmail}>{row.email || "-"}</td>
+                  <td className={styles.colEdu}>{row.education || "-"}</td>
+                  <td className={styles.colUni}>{row.university || "-"}</td>
+                  <td className={styles.colOrg}>{row.organizationName || "-"}</td>
                 </tr>
               ))}
               {!isLoading && visibleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={10}>ไม่พบข้อมูลวิทยากร (No instructor data found.)</td>
+                  <td colSpan={8} style={{ textAlign: "center", padding: "24px", color: "var(--ui-30-muted)" }}>
+                    ไม่พบข้อมูลวิทยากร (No instructor data found.)
+                  </td>
                 </tr>
               ) : null}
             </tbody>

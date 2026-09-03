@@ -54,7 +54,7 @@ export default function CourseGroup() {
               setMessage("");
             }}
           >
-            New
+            เพิ่ม
           </button>
           <button
             className={styles.editButton}
@@ -68,7 +68,7 @@ export default function CourseGroup() {
               }
             }}
           >
-            Edit
+            แก้ไข
           </button>
           <button
             className={styles.deleteButton}
@@ -76,7 +76,7 @@ export default function CourseGroup() {
             disabled={!canWrite || !selected || busy}
             onClick={() => void remove()}
           >
-            Delete
+            ลบ
           </button>
           <button
             className={styles.refreshButton}
@@ -84,7 +84,7 @@ export default function CourseGroup() {
             disabled={busy}
             onClick={() => void load()}
           >
-            Refresh
+            รีเฟรช
           </button>
           <button
             className={styles.exportButton}

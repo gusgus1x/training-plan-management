@@ -181,31 +181,48 @@
 
 .newButton {
   border: 0;
-  background: var(--ui-30-primary);
-  color: #ffffff;
-  box-shadow: 0 8px 18px rgba(0, 122, 61, 0.16);
+  border-radius: 8px;
+  background: #1e7e44;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(30, 126, 68, 0.25);
+  min-height: 36px;
+  padding: 8px 16px;
+  font-weight: 800;
 }
 
 .editButton,
 .refreshButton,
 .cancelButton {
-  border: 1px solid var(--ui-30-border);
-  background: var(--ui-60-surface);
-  color: var(--ui-30-ink);
+  border: 0;
+  border-radius: 8px;
+  background: #3b4859;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  min-height: 36px;
+  padding: 8px 16px;
+  font-weight: 800;
 }
 
 .deleteButton {
-  min-width: 78px;
-  border: 1px solid var(--ui-10-accent-border);
-  background: var(--ui-10-accent-soft);
-  color: var(--ui-10-accent-strong);
+  border: 0;
+  border-radius: 8px;
+  background: #c0262d;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(192, 38, 45, 0.25);
+  min-height: 36px;
+  padding: 8px 16px;
+  font-weight: 800;
 }
 
 .saveButton {
   border: 0;
-  background: var(--ui-10-accent);
-  color: #ffffff;
-  box-shadow: 0 8px 18px rgba(215, 25, 32, 0.18);
+  border-radius: 8px;
+  background: #1e7e44;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(30, 126, 68, 0.25);
+  min-height: 36px;
+  padding: 8px 16px;
+  font-weight: 800;
 }
 
 .newButton:hover,
@@ -217,27 +234,22 @@
   transform: translateY(-1px);
 }
 
-.newButton:hover {
-  background: var(--ui-30-primary-strong);
-  box-shadow: 0 12px 24px rgba(0, 122, 61, 0.22);
+.newButton:hover,
+.saveButton:hover {
+  background: #15803d;
+  box-shadow: 0 6px 16px rgba(21, 128, 61, 0.35);
 }
 
 .editButton:hover,
 .refreshButton:hover,
 .cancelButton:hover {
-  border-color: #8aa4cc;
-  background: var(--ui-60-surface-soft);
+  background: #475569;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
 }
 
 .deleteButton:hover {
-  border-color: var(--ui-10-accent);
-  background: var(--ui-10-accent-soft);
-  color: var(--ui-10-accent-strong);
-}
-
-.saveButton:hover {
-  background: var(--ui-10-accent-strong);
-  box-shadow: 0 12px 24px rgba(215, 25, 32, 0.24);
+  background: #dc2626;
+  box-shadow: 0 6px 16px rgba(220, 38, 38, 0.35);
 }
 
 .toolbar button:disabled,

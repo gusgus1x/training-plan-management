@@ -237,7 +237,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const [statusFilter, setStatusFilter] = useState<"all" | OapStatus>("all");
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [instructors, setInstructors] = useState<InstructorRecord[]>([]);
-  const [isCustomInstructor, setIsCustomInstructor] = useState(false);
   const [providers, setProviders] = useState<InstituteProviderRecord[]>([]);
   const userCompanyCode = profileValue(user?.companyCode);
 
@@ -568,7 +567,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   }, [form.instructorId, form.trainer, instructors]);
 
   const instructorOptions = useMemo(() => {
-    const list = instructors.map((ins) => {
+    return instructors.map((ins) => {
       const fullName = `${ins.firstName} ${ins.lastName}`.trim();
       const details = [ins.university, ins.education, ins.organizationName].filter(Boolean).join(" • ");
       return {
@@ -578,33 +577,11 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
         badge: ins.university || ins.organizationName || "Master",
       };
     });
-    list.push({
-      value: "__CUSTOM__",
-      label: "✏️ วิทยากรภายนอก / ระบุข้อมูลเอง (External Instructor)",
-      secondaryLabel: "กรอกข้อมูลวิทยากรใหม่ที่ยังไม่มีในระบบ",
-      badge: "ภายนอก",
-    });
-    return list;
   }, [instructors]);
 
   const handleSelectInstructor = (value: string) => {
-    if (value === "__CUSTOM__") {
-      setIsCustomInstructor(true);
-      setForm((current) => ({
-        ...current,
-        instructorId: "",
-        trainer: "",
-        instructorUniversity: "",
-        instructorEducation: "",
-        instructorOrganization: "",
-        instructorTelephone: "",
-        instructorEmail: "",
-      }));
-      return;
-    }
     const ins = instructors.find((item) => item.instructorId === value);
     if (ins) {
-      setIsCustomInstructor(false);
       const fullName = `${ins.firstName} ${ins.lastName}`.trim();
       setForm((current) => ({
         ...current,
@@ -615,6 +592,11 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
         instructorOrganization: ins.organizationName ?? "",
         instructorTelephone: ins.telephone ?? "",
         instructorEmail: ins.email ?? "",
+      }));
+    } else {
+      setForm((current) => ({
+        ...current,
+        instructorId: "",
       }));
     }
   };
@@ -724,7 +706,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       instructorEmail: matched?.email ?? "",
       provider: plan.providerName,
     });
-    setIsCustomInstructor(!matched && Boolean(plan.trainer));
     setIsNewOpen(true);
     setOpenDetailId("");
   };
@@ -1152,171 +1133,99 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                     <span className={styles.instructorHeaderIcon}>👨‍🏫</span>
                     <div>
                       <strong>ข้อมูลวิทยากร (Instructor / Trainer)</strong>
-                      <p>เลือกวิทยากรจากทะเบียน Master Data หรือระบุข้อมูลวิทยากรภายนอก</p>
+                      <p>เลือกวิทยากรจากทะเบียน Master Data เพื่อดึงข้อมูลอัตโนมัติ หรือกรอกข้อมูลด้วยตนเอง</p>
                     </div>
                   </div>
-                  {selectedInstructor && !isCustomInstructor ? (
+                  {form.trainer || form.instructorUniversity || form.instructorEducation || form.instructorOrganization || form.instructorTelephone || form.instructorEmail ? (
                     <button
                       type="button"
-                      className={styles.instructorSwitchBtn}
+                      className={styles.instructorClearBtn}
                       onClick={() => {
-                        setIsCustomInstructor(true);
+                        setForm((curr) => ({
+                          ...curr,
+                          instructorId: "",
+                          trainer: "",
+                          instructorUniversity: "",
+                          instructorEducation: "",
+                          instructorOrganization: "",
+                          instructorTelephone: "",
+                          instructorEmail: "",
+                        }));
                       }}
                     >
-                      ✏️ ระบุข้อมูลเอง / วิทยากรภายนอก
-                    </button>
-                  ) : isCustomInstructor ? (
-                    <button
-                      type="button"
-                      className={styles.instructorSwitchBtn}
-                      onClick={() => setIsCustomInstructor(false)}
-                    >
-                      🔍 เลือกจาก Instructor Master
+                      ✕ ล้างข้อมูลวิทยากร
                     </button>
                   ) : null}
                 </div>
 
-                {!isCustomInstructor ? (
-                  <div className={styles.instructorSelectorWrap}>
-                    <label>
-                      <span>เลือกวิทยากร (Select Instructor)</span>
-                      <SearchableSelect
-                        options={instructorOptions}
-                        value={form.instructorId || (selectedInstructor ? selectedInstructor.instructorId : "")}
-                        onChange={handleSelectInstructor}
-                        placeholder="🔍 ค้นหาวิทยากรด้วยชื่อ, รหัส, มหาวิทยาลัย หรือสังกัด..."
-                        disabled={!selectedCourse}
-                      />
-                    </label>
-                  </div>
-                ) : null}
+                <div className={styles.instructorSelectorWrap}>
+                  <span className={styles.fieldLabel}>เลือกจากทะเบียนวิทยากร (Select from Instructor Master)</span>
+                  <SearchableSelect
+                    options={instructorOptions}
+                    value={form.instructorId}
+                    onChange={handleSelectInstructor}
+                    placeholder="🔍 ค้นหาวิทยากรด้วยชื่อ, รหัส, มหาวิทยาลัย หรือสังกัดเพื่อดึงข้อมูลอัตโนมัติ..."
+                    disabled={!selectedCourse}
+                  />
+                </div>
 
-                {selectedInstructor && !isCustomInstructor ? (
-                  <div className={styles.instructorProfileBox}>
-                    <div className={styles.instructorProfileTopRow}>
-                      <div className={styles.instructorIdentity}>
-                        <div className={styles.instructorAvatarCircle}>👨‍🏫</div>
-                        <div>
-                          <div className={styles.instructorNameLine}>
-                            <strong>{selectedInstructor.firstName} {selectedInstructor.lastName}</strong>
-                            <span className={styles.instructorCodePill}>{selectedInstructor.instructorCode}</span>
-                            <span className={styles.masterSourceTag}>✓ ทะเบียน Master</span>
-                          </div>
-                          <div className={styles.instructorSubLine}>
-                            {selectedInstructor.organizationName ? <span>🏢 {selectedInstructor.organizationName}</span> : null}
-                            {selectedInstructor.university ? <span>🏛️ {selectedInstructor.university}</span> : null}
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        className={styles.instructorClearBtn}
-                        onClick={() => {
-                          setForm((curr) => ({
-                            ...curr,
-                            instructorId: "",
-                            trainer: "",
-                            instructorUniversity: "",
-                            instructorEducation: "",
-                            instructorOrganization: "",
-                            instructorTelephone: "",
-                            instructorEmail: "",
-                          }));
-                        }}
-                      >
-                        ✕ เปลี่ยนวิทยากร
-                      </button>
-                    </div>
-
-                    <div className={styles.instructorDetailsGrid}>
-                      <div className={styles.instructorDetailCol}>
-                        <span className={styles.detailLabel}>🏛️ มหาวิทยาลัย (University):</span>
-                        <span className={styles.detailValue}>{selectedInstructor.university || "-"}</span>
-                      </div>
-                      <div className={styles.instructorDetailCol}>
-                        <span className={styles.detailLabel}>🎓 ระดับการศึกษา / วุฒิ (Education):</span>
-                        <span className={styles.detailValue}>{selectedInstructor.education || "-"}</span>
-                      </div>
-                      <div className={styles.instructorDetailCol}>
-                        <span className={styles.detailLabel}>🏢 หน่วยงาน / สังกัด (Organization):</span>
-                        <span className={styles.detailValue}>{selectedInstructor.organizationName || "-"}</span>
-                      </div>
-                      <div className={styles.instructorDetailCol}>
-                        <span className={styles.detailLabel}>📞 เบอร์โทรศัพท์ (Telephone):</span>
-                        <span className={styles.detailValue}>{selectedInstructor.telephone || "-"}</span>
-                      </div>
-                      <div className={styles.instructorDetailCol}>
-                        <span className={styles.detailLabel}>✉️ อีเมล (Email):</span>
-                        <span className={styles.detailValue}>{selectedInstructor.email || "-"}</span>
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-
-                {(!selectedInstructor || isCustomInstructor) ? (
-                  <div className={styles.externalInstructorBox}>
-                    <div className={styles.externalBoxBanner}>
-                      <span>📝 กรอกรายละเอียดวิทยากร (External Instructor Details):</span>
-                    </div>
-                    <div className={styles.externalFieldsGrid}>
-                      <label>
-                        <span>ชื่อ - นามสกุล วิทยากร (Trainer Name) *</span>
-                        <input
-                          disabled={!selectedCourse}
-                          placeholder="เช่น อ.สมชาย ใจดี"
-                          value={form.trainer}
-                          onChange={(e) => updateForm("trainer", e.target.value)}
-                        />
-                      </label>
-                      <label>
-                        <span>มหาวิทยาลัย (University)</span>
-                        <input
-                          disabled={!selectedCourse}
-                          placeholder="เช่น จุฬาลงกรณ์มหาวิทยาลัย"
-                          value={form.instructorUniversity}
-                          onChange={(e) => updateForm("instructorUniversity", e.target.value)}
-                        />
-                      </label>
-                      <label>
-                        <span>ระดับการศึกษา / วุฒิ (Education)</span>
-                        <input
-                          disabled={!selectedCourse}
-                          placeholder="เช่น ปริญญาโท วิศวกรรมศาสตร์"
-                          value={form.instructorEducation}
-                          onChange={(e) => updateForm("instructorEducation", e.target.value)}
-                        />
-                      </label>
-                      <label>
-                        <span>หน่วยงาน / บริษัท / สังกัด (Organization)</span>
-                        <input
-                          disabled={!selectedCourse}
-                          placeholder="เช่น บริษัท นวัตกรรม จำกัด หรือ สถาบันวิจัย"
-                          value={form.instructorOrganization}
-                          onChange={(e) => updateForm("instructorOrganization", e.target.value)}
-                        />
-                      </label>
-                      <label>
-                        <span>เบอร์โทรศัพท์ (Telephone)</span>
-                        <input
-                          disabled={!selectedCourse}
-                          placeholder="เช่น 081-234-5678"
-                          value={form.instructorTelephone}
-                          onChange={(e) => updateForm("instructorTelephone", e.target.value)}
-                        />
-                      </label>
-                      <label>
-                        <span>อีเมล (Email)</span>
-                        <input
-                          type="email"
-                          disabled={!selectedCourse}
-                          placeholder="เช่น trainer@example.com"
-                          value={form.instructorEmail}
-                          onChange={(e) => updateForm("instructorEmail", e.target.value)}
-                        />
-                      </label>
-                    </div>
-                  </div>
-                ) : null}
+                <div className={styles.externalFieldsGrid}>
+                  <label>
+                    <span>ชื่อ - นามสกุล วิทยากร (Trainer Name) *</span>
+                    <input
+                      disabled={!selectedCourse}
+                      placeholder="เช่น อ.สมชาย ใจดี"
+                      value={form.trainer}
+                      onChange={(e) => updateForm("trainer", e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>มหาวิทยาลัย (University)</span>
+                    <input
+                      disabled={!selectedCourse}
+                      placeholder="เช่น จุฬาลงกรณ์มหาวิทยาลัย"
+                      value={form.instructorUniversity}
+                      onChange={(e) => updateForm("instructorUniversity", e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>ระดับการศึกษา / วุฒิ (Education)</span>
+                    <input
+                      disabled={!selectedCourse}
+                      placeholder="เช่น ปริญญาโท วิศวกรรมศาสตร์"
+                      value={form.instructorEducation}
+                      onChange={(e) => updateForm("instructorEducation", e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>หน่วยงาน / บริษัท / สังกัด (Organization)</span>
+                    <input
+                      disabled={!selectedCourse}
+                      placeholder="เช่น บริษัท นวัตกรรม จำกัด หรือ สถาบันวิจัย"
+                      value={form.instructorOrganization}
+                      onChange={(e) => updateForm("instructorOrganization", e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>เบอร์โทรศัพท์ (Telephone)</span>
+                    <input
+                      disabled={!selectedCourse}
+                      placeholder="เช่น 081-234-5678"
+                      value={form.instructorTelephone}
+                      onChange={(e) => updateForm("instructorTelephone", e.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>อีเมล (Email)</span>
+                    <input
+                      type="email"
+                      disabled={!selectedCourse}
+                      placeholder="เช่น trainer@example.com"
+                      value={form.instructorEmail}
+                      onChange={(e) => updateForm("instructorEmail", e.target.value)}
+                    />
+                  </label>
+                </div>
               </div>
 
               <div className={styles.fullField} style={{ gridColumn: "span 6" }}>

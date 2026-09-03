@@ -264,7 +264,7 @@ export default function InstituteProviderData() {
                 onClick={startNew}
                 disabled={isSaving}
               >
-                New
+                เพิ่ม
               </button>
               <button
                 className={styles.editButton}
@@ -272,7 +272,7 @@ export default function InstituteProviderData() {
                 onClick={startEdit}
                 disabled={!selected || isSaving}
               >
-                Edit
+                แก้ไข
               </button>
               <button
                 className={styles.deleteButton}
@@ -280,7 +280,7 @@ export default function InstituteProviderData() {
                 onClick={() => void remove()}
                 disabled={!selected || isSaving}
               >
-                Delete
+                ลบ
               </button>
             </>
           ) : null}
@@ -290,7 +290,7 @@ export default function InstituteProviderData() {
             onClick={refresh}
             disabled={isLoading || isSaving}
           >
-            Refresh
+            รีเฟรช
           </button>
         </div>
       </section>

@@ -257,7 +257,7 @@ export default function PositionData() {
           {isCenter ? (
             <>
               <button className={styles.newButton} type="button" onClick={startNew} disabled={isSaving}>
-                New
+                เพิ่ม
               </button>
               <button
                 className={styles.editButton}
@@ -265,7 +265,7 @@ export default function PositionData() {
                 onClick={startEdit}
                 disabled={!selected || isSaving}
               >
-                Edit
+                แก้ไข
               </button>
               <button
                 className={styles.deleteButton}
@@ -273,7 +273,7 @@ export default function PositionData() {
                 onClick={() => void remove()}
                 disabled={!selected || isSaving}
               >
-                Delete
+                ลบ
               </button>
             </>
           ) : null}
@@ -283,7 +283,7 @@ export default function PositionData() {
             onClick={refresh}
             disabled={isLoading || isSaving}
           >
-            Refresh
+            รีเฟรช
           </button>
         </div>
 
