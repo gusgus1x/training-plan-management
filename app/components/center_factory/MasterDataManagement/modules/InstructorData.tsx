@@ -5,6 +5,7 @@ import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
 import { useToast } from "../../../ToastHost";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import {
   InstructorClientError,
   createInstructor,
@@ -101,6 +102,8 @@ export default function InstructorData() {
   const confirm = useConfirm();
   const notice = useNotice();
   const toast = useToast();
+  const { language } = useUiLanguage();
+  const isThai = language === "th";
   const isCenter = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<InstructorRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -366,7 +369,7 @@ export default function InstructorData() {
                 onClick={startNew}
                 disabled={isSaving}
               >
-                เพิ่ม
+                {isThai ? "เพิ่ม" : "Add"}
               </button>
               <button
                 className={styles.editButton}
@@ -374,7 +377,7 @@ export default function InstructorData() {
                 type="button"
                 onClick={startEdit}
               >
-                แก้ไข
+                {isThai ? "แก้ไข" : "Edit"}
               </button>
               <button
                 className={styles.deleteButton}
@@ -382,7 +385,7 @@ export default function InstructorData() {
                 type="button"
                 onClick={() => void remove()}
               >
-                ลบ
+                {isThai ? "ลบ" : "Delete"}
               </button>
             </>
           ) : null}
@@ -392,7 +395,7 @@ export default function InstructorData() {
             onClick={refresh}
             disabled={isLoading || isSaving}
           >
-            รีเฟรช
+            {isThai ? "รีเฟรช" : "Refresh"}
           </button>
         </div>
         {error ? <p role="alert">{error}</p> : null}
@@ -492,10 +495,10 @@ export default function InstructorData() {
                 disabled={isSaving}
               >
                 {isSaving
-                  ? "Saving..."
+                  ? (isThai ? "กำลังบันทึก..." : "Saving...")
                   : formMode === "new"
-                    ? "Add Instructor"
-                    : "Save Changes"}
+                    ? (isThai ? "เพิ่มวิทยากร" : "Add Instructor")
+                    : (isThai ? "บันทึกการเปลี่ยนแปลง" : "Save Changes")}
               </button>
               <button
                 className={styles.cancelButton}
@@ -506,7 +509,7 @@ export default function InstructorData() {
                 }}
                 disabled={isSaving}
               >
-                Cancel
+                {isThai ? "ยกเลิก" : "Cancel"}
               </button>
             </div>
           </div>

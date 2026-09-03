@@ -5,6 +5,7 @@ import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
 import { useToast } from "../../../ToastHost";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import {
   LevelClientError,
   createLevel,
@@ -69,6 +70,8 @@ export default function LevelData() {
   const confirm = useConfirm();
   const notice = useNotice();
   const toast = useToast();
+  const { language } = useUiLanguage();
+  const isThai = language === "th";
   const isCenter = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<ApiLevelRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -272,12 +275,12 @@ export default function LevelData() {
           />
           {isCenter ? (
             <>
-              <button className={styles.newButton} type="button" onClick={startNew} disabled={isSaving}>เพิ่ม</button>
-              <button className={styles.editButton} type="button" onClick={startEdit} disabled={!selected || isSaving}>แก้ไข</button>
-              <button className={styles.deleteButton} type="button" onClick={() => void remove()} disabled={!selected || isSaving}>ลบ</button>
+              <button className={styles.newButton} type="button" onClick={startNew} disabled={isSaving}>{isThai ? "เพิ่ม" : "Add"}</button>
+              <button className={styles.editButton} type="button" onClick={startEdit} disabled={!selected || isSaving}>{isThai ? "แก้ไข" : "Edit"}</button>
+              <button className={styles.deleteButton} type="button" onClick={() => void remove()} disabled={!selected || isSaving}>{isThai ? "ลบ" : "Delete"}</button>
             </>
           ) : null}
-          <button className={styles.refreshButton} type="button" onClick={refresh} disabled={isLoading || isSaving}>รีเฟรช</button>
+          <button className={styles.refreshButton} type="button" onClick={refresh} disabled={isLoading || isSaving}>{isThai ? "รีเฟรช" : "Refresh"}</button>
         </div>
 
         {error ? <p role="alert">{error}</p> : null}
@@ -301,8 +304,8 @@ export default function LevelData() {
               <label className={styles.fullWidth}>Remark.<textarea maxLength={500} value={form.remark ?? ""} onChange={(event) => change("remark", event.target.value)} /></label>
             </div>
             <div className={styles.formActions}>
-              <button className={styles.saveButton} type="button" onClick={() => void save()} disabled={isSaving}>{isSaving ? "Saving..." : "Save"}</button>
-              <button className={styles.cancelButton} type="button" onClick={() => setFormMode(null)} disabled={isSaving}>Cancel</button>
+              <button className={styles.saveButton} type="button" onClick={() => void save()} disabled={isSaving}>{isSaving ? (isThai ? "กำลังบันทึก..." : "Saving...") : (isThai ? "บันทึก" : "Save")}</button>
+              <button className={styles.cancelButton} type="button" onClick={() => setFormMode(null)} disabled={isSaving}>{isThai ? "ยกเลิก" : "Cancel"}</button>
             </div>
           </section>
         ) : null}

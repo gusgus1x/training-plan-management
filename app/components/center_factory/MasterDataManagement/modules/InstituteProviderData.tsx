@@ -5,6 +5,7 @@ import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
 import { useToast } from "../../../ToastHost";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import {
   InstituteProviderClientError,
   createInstituteProvider,
@@ -54,6 +55,8 @@ export default function InstituteProviderData() {
   const confirm = useConfirm();
   const notice = useNotice();
   const toast = useToast();
+  const { language } = useUiLanguage();
+  const isThai = language === "th";
   const isCenter = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<ApiInstituteProviderRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -264,7 +267,7 @@ export default function InstituteProviderData() {
                 onClick={startNew}
                 disabled={isSaving}
               >
-                เพิ่ม
+                {isThai ? "เพิ่ม" : "Add"}
               </button>
               <button
                 className={styles.editButton}
@@ -272,7 +275,7 @@ export default function InstituteProviderData() {
                 onClick={startEdit}
                 disabled={!selected || isSaving}
               >
-                แก้ไข
+                {isThai ? "แก้ไข" : "Edit"}
               </button>
               <button
                 className={styles.deleteButton}
@@ -280,7 +283,7 @@ export default function InstituteProviderData() {
                 onClick={() => void remove()}
                 disabled={!selected || isSaving}
               >
-                ลบ
+                {isThai ? "ลบ" : "Delete"}
               </button>
             </>
           ) : null}
@@ -290,7 +293,7 @@ export default function InstituteProviderData() {
             onClick={refresh}
             disabled={isLoading || isSaving}
           >
-            รีเฟรช
+            {isThai ? "รีเฟรช" : "Refresh"}
           </button>
         </div>
       </section>
@@ -353,7 +356,7 @@ export default function InstituteProviderData() {
                 onClick={() => void save()}
                 disabled={isSaving}
               >
-                {isSaving ? "Saving..." : formMode === "new" ? "Add Provider" : "Save Changes"}
+                {isSaving ? (isThai ? "กำลังบันทึก..." : "Saving...") : formMode === "new" ? (isThai ? "เพิ่มผู้ให้บริการ" : "Add Provider") : (isThai ? "บันทึกการเปลี่ยนแปลง" : "Save Changes")}
               </button>
               <button
                 className={styles.cancelButton}
@@ -364,7 +367,7 @@ export default function InstituteProviderData() {
                 }}
                 disabled={isSaving}
               >
-                Cancel
+                {isThai ? "ยกเลิก" : "Cancel"}
               </button>
             </div>
           </div>

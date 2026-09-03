@@ -5,6 +5,7 @@ import { useAuthActions } from "../../AuthActionsContext";
 import { useAuthenticatedUser } from "../../AuthenticatedUserContext";
 import { useSectionNavigation } from "../../../lib/useSectionNavigation";
 import Navbar from "../../Navbar";
+import { useUiLanguage } from "../../ThaiUiLocalization";
 import styles from "./CenterFactory_MasterDataManagement.module.css";
 import { masterDataItems } from "./modules";
 
@@ -17,6 +18,8 @@ export default function MasterDataManagement({
 }: MasterDataManagementProps) {
   const router = useRouter();
   const { logout } = useAuthActions();
+  const { language } = useUiLanguage();
+  const isThai = language === "th";
   const username = useAuthenticatedUser()?.username ?? "";
   const { selectedItem, openSection, goToGrid } = useSectionNavigation(
     "/master-data",
@@ -100,7 +103,7 @@ export default function MasterDataManagement({
                   <h3 translate="no">{item.title}</h3>
                   <p>{item.description}</p>
                 </div>
-                <strong>Open</strong>
+                <strong>{isThai ? "เปิด" : "Open"}</strong>
               </button>
             ))}
           </div>

@@ -5,6 +5,7 @@ import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
 import { useToast } from "../../../ToastHost";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import {
   FunctionClientError,
   createFunction,
@@ -185,6 +186,8 @@ export default function FunctionData() {
   const confirm = useConfirm();
   const notice = useNotice();
   const toast = useToast();
+  const { language } = useUiLanguage();
+  const isThai = language === "th";
   const isCenter = user?.roleCode === "HRD_CENTER";
 
   // --- 1. Function State ---
@@ -1092,7 +1095,7 @@ export default function FunctionData() {
               onClick={deleteSelected}
               disabled={!selectedLevel || isBusy}
             >
-              Delete
+              {isThai ? "ลบ" : "Delete"}
             </button>
           ) : null}
           <button
@@ -1101,7 +1104,7 @@ export default function FunctionData() {
             onClick={refresh}
             disabled={isBusyLoading || isBusy}
           >
-            Refresh
+            {isThai ? "รีเฟรช" : "Refresh"}
           </button>
         </div>
 
@@ -1181,7 +1184,7 @@ export default function FunctionData() {
                 onClick={() => void save()}
                 disabled={isSaving}
               >
-                {isSaving ? "Saving..." : "Save"}
+                {isSaving ? (isThai ? "กำลังบันทึก..." : "Saving...") : (isThai ? "บันทึก" : "Save")}
               </button>
               <button
                 className={styles.cancelButton}
@@ -1189,7 +1192,7 @@ export default function FunctionData() {
                 onClick={() => setFormMode(null)}
                 disabled={isSaving}
               >
-                Cancel
+                {isThai ? "ยกเลิก" : "Cancel"}
               </button>
             </div>
           </section>
@@ -1262,7 +1265,7 @@ export default function FunctionData() {
                 onClick={() => void saveDivision()}
                 disabled={isSavingDivision}
               >
-                {isSavingDivision ? "Saving..." : "Save"}
+                {isSavingDivision ? (isThai ? "กำลังบันทึก..." : "Saving...") : (isThai ? "บันทึก" : "Save")}
               </button>
               <button
                 className={styles.cancelButton}
@@ -1270,7 +1273,7 @@ export default function FunctionData() {
                 onClick={() => setDivisionFormMode(null)}
                 disabled={isSavingDivision}
               >
-                Cancel
+                {isThai ? "ยกเลิก" : "Cancel"}
               </button>
             </div>
           </section>
@@ -1343,7 +1346,7 @@ export default function FunctionData() {
                 onClick={() => void saveDepartment()}
                 disabled={isSavingDepartment}
               >
-                {isSavingDepartment ? "Saving..." : "Save"}
+                {isSavingDepartment ? (isThai ? "กำลังบันทึก..." : "Saving...") : (isThai ? "บันทึก" : "Save")}
               </button>
               <button
                 className={styles.cancelButton}
@@ -1351,7 +1354,7 @@ export default function FunctionData() {
                 onClick={() => setDepartmentFormMode(null)}
                 disabled={isSavingDepartment}
               >
-                Cancel
+                {isThai ? "ยกเลิก" : "Cancel"}
               </button>
             </div>
           </section>
@@ -1424,7 +1427,7 @@ export default function FunctionData() {
                 onClick={() => void saveSection()}
                 disabled={isSavingSection}
               >
-                {isSavingSection ? "Saving..." : "Save"}
+                {isSavingSection ? (isThai ? "กำลังบันทึก..." : "Saving...") : (isThai ? "บันทึก" : "Save")}
               </button>
               <button
                 className={styles.cancelButton}
@@ -1432,7 +1435,7 @@ export default function FunctionData() {
                 onClick={() => setSectionFormMode(null)}
                 disabled={isSavingSection}
               >
-                Cancel
+                {isThai ? "ยกเลิก" : "Cancel"}
               </button>
             </div>
           </section>

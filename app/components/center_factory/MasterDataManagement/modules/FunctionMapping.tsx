@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useToast } from "../../../ToastHost";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { listCompanies } from "../../../../lib/companies/client";
 import type { CompanyRecord } from "../../../../lib/companies/types";
 import {
@@ -142,6 +143,8 @@ export default function FunctionMapping() {
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
   const toast = useToast();
+  const { language } = useUiLanguage();
+  const isThai = language === "th";
   const isCenter = user?.roleCode === "HRD_CENTER";
 
   const [companies, setCompanies] = useState<CompanyRecord[]>([]);
@@ -630,14 +633,14 @@ export default function FunctionMapping() {
               className={viewTab === "hierarchy" ? styles.primaryButton : styles.secondaryButton}
               onClick={() => setViewTab("hierarchy")}
             >
-              📊 Hierarchy Mapping Matrix
+              Hierarchy Mapping Matrix
             </button>
             <button
               type="button"
               className={viewTab === "mappings" ? styles.primaryButton : styles.secondaryButton}
               onClick={() => setViewTab("mappings")}
             >
-              ⚙️ Plant Code Mappings ({plantMappingRows.length})
+              Plant Code Mappings ({plantMappingRows.length})
             </button>
           </div>
           <div className={styles.newGroup}>
@@ -659,7 +662,7 @@ export default function FunctionMapping() {
             onClick={() => void load()}
             disabled={isLoading || isSaving}
           >
-            รีเฟรช
+            {isThai ? "รีเฟรช" : "Refresh"}
           </button>
         </div>
       </section>
@@ -758,7 +761,7 @@ export default function FunctionMapping() {
                 onClick={() => void save()}
                 disabled={isSaving}
               >
-                {isSaving ? "Saving..." : "Save"}
+                {isSaving ? (isThai ? "กำลังบันทึก..." : "Saving...") : (isThai ? "บันทึก" : "Save")}
               </button>
               <button
                 className={styles.secondaryButton}
@@ -769,7 +772,7 @@ export default function FunctionMapping() {
                 }}
                 disabled={isSaving}
               >
-                Cancel
+                {isThai ? "ยกเลิก" : "Cancel"}
               </button>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
 import { useToast } from "../../../ToastHost";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { createCourseType, deleteCourseType, listCourseTypes, updateCourseType } from "../../../../lib/courseTypes/client";
 import type { CourseTypeRecord, CourseTypeStatus } from "../../../../lib/courseTypes/types";
@@ -11,6 +12,7 @@ export const courseTypeModule = { title: "Course Type", subtitle: "Course catego
 type Mode = "idle" | "new" | "edit"; type Draft = { code: string; name: string; description: string; status: CourseTypeStatus }; const emptyDraft: Draft = { code: "", name: "", description: "", status: "ACTIVE" };
 export default function CourseType() {
   const user = useAuthenticatedUser(); const canWrite = user?.roleCode === "HRD_CENTER"; const confirm = useConfirm(); const notice = useNotice(); const toast = useToast();
+  const { language } = useUiLanguage(); const isThai = language === "th";
   const [items, setItems] = useState<CourseTypeRecord[]>([]); const [selectedId, setSelectedId] = useState(""); const [draft, setDraft] = useState<Draft>(emptyDraft); const [query, setQuery] = useState(""); const [mode, setMode] = useState<Mode>("idle"); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
   const selected = useMemo(() => items.find((item) => item.courseTypeId === selectedId) ?? null, [items, selectedId]);
   const filtered = useMemo(() => { const q = query.trim().toLowerCase(); return q ? items.filter((item) => `${item.code} ${item.name} ${item.status}`.toLowerCase().includes(q)) : items; }, [items, query]);
@@ -71,7 +73,7 @@ export default function CourseType() {
                 setMessage("");
               }}
             >
-              เพิ่ม
+              {isThai ? "เพิ่ม" : "Add"}
             </button>
             <button
               className={styles.secondaryButton}
@@ -90,7 +92,7 @@ export default function CourseType() {
                 }
               }}
             >
-              แก้ไข
+              {isThai ? "แก้ไข" : "Edit"}
             </button>
             <button
               className={styles.dangerButton}
@@ -98,7 +100,7 @@ export default function CourseType() {
               disabled={!canWrite || !selected || busy}
               onClick={() => void remove()}
             >
-              ลบ
+              {isThai ? "ลบ" : "Delete"}
             </button>
             <button
               className={styles.secondaryButton}
@@ -106,7 +108,7 @@ export default function CourseType() {
               disabled={busy}
               onClick={() => void load()}
             >
-              รีเฟรช
+              {isThai ? "รีเฟรช" : "Refresh"}
             </button>
             <button
               className={styles.secondaryButton}
@@ -168,10 +170,10 @@ export default function CourseType() {
             </label>
             <div className={styles.formActions}>
               <button className={styles.saveButton} type="button" disabled={busy} onClick={() => void save()}>
-                Save
+                {busy ? (isThai ? "กำลังบันทึก..." : "Saving...") : (isThai ? "บันทึก" : "Save")}
               </button>
               <button className={styles.cancelButton} type="button" disabled={busy} onClick={() => setMode("idle")}>
-                Cancel
+                {isThai ? "ยกเลิก" : "Cancel"}
               </button>
             </div>
           </div>

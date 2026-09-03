@@ -5,6 +5,7 @@ import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
 import { useToast } from "../../../ToastHost";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { listCompanies } from "../../../../lib/companies/client";
 import type { CompanyRecord } from "../../../../lib/companies/types";
 import {
@@ -153,6 +154,8 @@ export default function EmployeeData() {
   const confirm = useConfirm();
   const notice = useNotice();
   const toast = useToast();
+  const { language } = useUiLanguage();
+  const isThai = language === "th";
   const center = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<EmployeeRecord[]>([]);
   const [companies, setCompanies] = useState<CompanyRecord[]>([]);
@@ -678,7 +681,7 @@ export default function EmployeeData() {
               setMode("new");
             }}
           >
-            เพิ่ม
+            {isThai ? "เพิ่ม" : "Add"}
           </button>
           <button
             className={styles.editButton}
@@ -686,7 +689,7 @@ export default function EmployeeData() {
             disabled={!selected || saving || loadingEditor}
             onClick={() => void edit()}
           >
-            {loadingEditor ? "Loading..." : "แก้ไข"}
+            {loadingEditor ? (isThai ? "กำลังโหลด..." : "Loading...") : (isThai ? "แก้ไข" : "Edit")}
           </button>
           <button
             className={styles.deleteButton}
@@ -694,7 +697,7 @@ export default function EmployeeData() {
             disabled={!selected || saving || loadingEditor}
             onClick={() => void remove()}
           >
-            ลบ
+            {isThai ? "ลบ" : "Delete"}
           </button>
           <button
             className={styles.refreshButton}
@@ -702,7 +705,7 @@ export default function EmployeeData() {
             disabled={saving || loadingEditor}
             onClick={refresh}
           >
-            รีเฟรช
+            {isThai ? "รีเฟรช" : "Refresh"}
           </button>
           <button
             className={styles.refreshButton}
@@ -716,10 +719,10 @@ export default function EmployeeData() {
             onClick={() => void revealAll()}
           >
             {revealingNationalIds
-              ? "Revealing..."
+              ? (isThai ? "กำลังแสดงข้อมูล..." : "Revealing...")
               : Object.keys(revealedNationalIds).length > 0
-                ? "Hide All IDs"
-                : "Reveal All IDs"}
+                ? (isThai ? "ซ่อนเลขบัตรทั้งหมด" : "Hide All IDs")
+                : (isThai ? "แสดงเลขบัตรทั้งหมด" : "Reveal All IDs")}
           </button>
         </div>
 
@@ -1038,7 +1041,7 @@ export default function EmployeeData() {
                 disabled={saving}
                 onClick={() => void save()}
               >
-                {saving ? "Saving..." : "Save"}
+                {saving ? (isThai ? "กำลังบันทึก..." : "Saving...") : (isThai ? "บันทึก" : "Save")}
               </button>
               <button
                 className={styles.cancelButton}
@@ -1046,7 +1049,7 @@ export default function EmployeeData() {
                 disabled={saving}
                 onClick={() => setMode(null)}
               >
-                Cancel
+                {isThai ? "ยกเลิก" : "Cancel"}
               </button>
             </div>
           </section>

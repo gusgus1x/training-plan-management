@@ -5,6 +5,7 @@ import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
 import { useToast } from "../../../ToastHost";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import {
   PositionClientError,
   createPosition,
@@ -65,6 +66,8 @@ export default function PositionData() {
   const confirm = useConfirm();
   const notice = useNotice();
   const toast = useToast();
+  const { language } = useUiLanguage();
+  const isThai = language === "th";
   const isCenter = user?.roleCode === "HRD_CENTER";
   const [rows, setRows] = useState<ApiPositionRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -75,16 +78,18 @@ export default function PositionData() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const selected = rows.find((row) => row.positionId === selectedId) ?? null;
+  const selected = rows.find((item) => item.positionId === selectedId) ?? null;
+
   const visibleRows = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return rows;
-    return rows.filter((row) =>
-      [row.positionCode, row.positionNameTh, row.positionNameEn, row.status]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(query),
+    const term = search.trim().toLowerCase();
+    if (!term) {
+      return rows;
+    }
+    return rows.filter(
+      (item) =>
+        item.positionCode.toLowerCase().includes(term) ||
+        item.positionNameTh.toLowerCase().includes(term) ||
+        (item.positionNameEn ?? "").toLowerCase().includes(term),
     );
   }, [rows, search]);
 
@@ -92,12 +97,12 @@ export default function PositionData() {
     setIsLoading(true);
     setError(null);
     try {
-      const items = (await listPositions()).items;
-      setRows(items);
+      const result = await listPositions();
+      setRows(result.items);
       setSelectedId((current) =>
-        current && items.some((item) => item.positionId === current)
+        result.items.some((item) => item.positionId === current)
           ? current
-          : items[0]?.positionId ?? null,
+          : result.items[0]?.positionId ?? null,
       );
     } catch (caught: unknown) {
       setError(errorText(caught));
@@ -107,82 +112,70 @@ export default function PositionData() {
   };
 
   useEffect(() => {
-    let current = true;
-    listPositions()
-      .then((result) => {
-        if (!current) return;
-        setRows(result.items);
-        setSelectedId(result.items[0]?.positionId ?? null);
-      })
-      .catch((caught: unknown) => {
-        if (current) setError(errorText(caught));
-      })
-      .finally(() => {
-        if (current) setIsLoading(false);
-      });
-    return () => {
-      current = false;
-    };
+    void loadRows();
   }, []);
 
   const startNew = () => {
-    if (!isCenter) return;
     setForm(blankForm());
     setFormMode("new");
     setError(null);
   };
 
   const startEdit = () => {
-    if (!isCenter || !selected) return;
+    if (!selected) {
+      return;
+    }
     setForm(toForm(selected));
     setFormMode("edit");
     setError(null);
   };
 
   const save = async () => {
-    if (!isCenter || isSaving || !formMode) return;
-    const savingMode = formMode;
-    const editingPositionId = selected?.positionId ?? null;
-    if (savingMode === "edit" && !editingPositionId) {
-      setError("Select a Position before saving changes.");
+    if (!isCenter) {
       return;
     }
     const missingFields: string[] = [];
     if (!form.positionCode.trim()) missingFields.push("รหัสตำแหน่ง (Position Code)");
-    if (!form.positionNameTh.trim()) missingFields.push("ชื่อตำแหน่ง ภาษาไทย (Position Name TH)");
+    if (!form.positionNameTh.trim()) missingFields.push("ชื่อตำแหน่ง TH (Position Name TH)");
     if (missingFields.length > 0) {
       await notice({ missingFields });
       return;
     }
+
     setIsSaving(true);
     setError(null);
     try {
-      const input = {
-        positionCode: form.positionCode.trim().toUpperCase(),
-        positionNameTh: form.positionNameTh.trim(),
-        positionNameEn: form.positionNameEn.trim() || null,
-        status: form.status,
-      };
-      const result =
-        savingMode === "edit" && editingPositionId
-          ? await updatePosition(editingPositionId, input)
-          : await createPosition(input);
-      setRows((current) =>
-        savingMode === "edit"
-          ? current.map((item) =>
-              item.positionId === result.position.positionId
-                ? result.position
-                : item,
-            )
-          : [...current, result.position],
-      );
+      if (formMode === "new") {
+        const result = await createPosition({
+          positionCode: form.positionCode.trim().toUpperCase(),
+          positionNameTh: form.positionNameTh.trim(),
+          positionNameEn: form.positionNameEn.trim() || null,
+          status: form.status,
+        });
+        const nextRows = [...rows, result.position].sort((a, b) =>
+          a.positionCode.localeCompare(b.positionCode),
+        );
+        setRows(nextRows);
+        setSelectedId(result.position.positionId);
+        toast.success(`เพิ่มตำแหน่ง ${result.position.positionCode} แล้ว / Created`);
+      } else if (formMode === "edit" && selected) {
+        const result = await updatePosition(selected.positionId, {
+          positionCode: form.positionCode.trim().toUpperCase(),
+          positionNameTh: form.positionNameTh.trim(),
+          positionNameEn: form.positionNameEn.trim() || null,
+          status: form.status,
+        });
+        const nextRows = rows.map((item) =>
+          item.positionId === result.position.positionId ? result.position : item,
+        );
+        setRows(nextRows);
+        setSelectedId(result.position.positionId);
+        toast.success(`แก้ไขตำแหน่ง ${result.position.positionCode} แล้ว / Updated`);
+      }
+      setFormMode(null);
       void listPositions()
         .then((refreshed) => setRows(refreshed.items))
         .catch(() => undefined);
-      setSelectedId(result.position.positionId);
-      setFormMode(null);
-      setForm(blankForm());
-      toast.success(`บันทึก ${result.position.positionCode} แล้ว / Saved`);
     } catch (caught: unknown) {
       setError(errorText(caught));
     } finally {
@@ -257,7 +250,7 @@ export default function PositionData() {
           {isCenter ? (
             <>
               <button className={styles.newButton} type="button" onClick={startNew} disabled={isSaving}>
-                เพิ่ม
+                {isThai ? "เพิ่ม" : "Add"}
               </button>
               <button
                 className={styles.editButton}
@@ -265,7 +258,7 @@ export default function PositionData() {
                 onClick={startEdit}
                 disabled={!selected || isSaving}
               >
-                แก้ไข
+                {isThai ? "แก้ไข" : "Edit"}
               </button>
               <button
                 className={styles.deleteButton}
@@ -273,7 +266,7 @@ export default function PositionData() {
                 onClick={() => void remove()}
                 disabled={!selected || isSaving}
               >
-                ลบ
+                {isThai ? "ลบ" : "Delete"}
               </button>
             </>
           ) : null}
@@ -283,7 +276,7 @@ export default function PositionData() {
             onClick={refresh}
             disabled={isLoading || isSaving}
           >
-            รีเฟรช
+            {isThai ? "รีเฟรช" : "Refresh"}
           </button>
         </div>
 
@@ -355,7 +348,7 @@ export default function PositionData() {
                 onClick={() => void save()}
                 disabled={isSaving}
               >
-                {isSaving ? "Saving..." : "Save"}
+                {isSaving ? (isThai ? "กำลังบันทึก..." : "Saving...") : (isThai ? "บันทึก" : "Save")}
               </button>
               <button
                 className={styles.cancelButton}
@@ -363,7 +356,7 @@ export default function PositionData() {
                 onClick={() => setFormMode(null)}
                 disabled={isSaving}
               >
-                Cancel
+                {isThai ? "ยกเลิก" : "Cancel"}
               </button>
             </div>
           </section>

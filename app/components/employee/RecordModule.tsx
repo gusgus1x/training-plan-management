@@ -426,13 +426,10 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
   const [query, setQuery] = useState("");
   const [selectedProvider, setSelectedProvider] = useState<(typeof providers)[number]>("all");
   const [downloadPurpose, setDownloadPurpose] = useState<DownloadPurpose>("job_change");
-  // Cards start expanded (nothing in this set) - it holds the ids the employee explicitly folded,
-  // the same "remember what's collapsed" shape CourseMasterWorkspace uses for its company
-  // sections, chosen there for the identical reason: the default is "show everything", so tracking
-  // the minority (collapsed) is the smaller, more honest piece of state.
-  const [collapsedCardIds, setCollapsedCardIds] = useState<Set<string>>(new Set());
+  // Cards start closed by default as requested. expandedCardIds holds the IDs the employee explicitly opened.
+  const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(new Set());
   const toggleCard = (id: string) =>
-    setCollapsedCardIds((current) => {
+    setExpandedCardIds((current) => {
       const next = new Set(current);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -664,7 +661,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                     ? t("ถูกปฏิเสธการลงทะเบียน", "Registration Rejected")
                     : enrollment.status;
 
-              const isExpanded = !collapsedCardIds.has(enrollment.id);
+              const isExpanded = expandedCardIds.has(enrollment.id);
 
               return (
                 <div className={styles.recordCard} key={enrollment.id}>
@@ -690,7 +687,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                         aria-expanded={isExpanded}
                         onClick={() => toggleCard(enrollment.id)}
                       >
-                        {isExpanded ? `▲ ${t("ซ่อนรายละเอียด", "Hide Details")}` : `🔍 ${t("แสดงรายละเอียด", "View Details")}`}
+                        {isExpanded ? `▲ ${t("ซ่อนรายละเอียด", "Hide Details")}` : `▼ ${t("แสดงรายละเอียด", "View Details")}`}
                       </button>
                     </div>
                   </div>
@@ -804,7 +801,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
           {/* Cards List matching Image 2 Design */}
           <div className={styles.cardList}>
             {filteredRecords.map((record) => {
-              const isExpanded = !collapsedCardIds.has(record.id);
+              const isExpanded = expandedCardIds.has(record.id);
               return (
                 <div className={styles.recordCard} key={record.id}>
                   {/* Top Row matching Image 2 with Completed status dot */}
@@ -836,7 +833,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                         aria-expanded={isExpanded}
                         onClick={() => toggleCard(record.id)}
                       >
-                        {isExpanded ? `▲ ${t("ซ่อนรายละเอียด", "Hide Details")}` : `🔍 ${t("แสดงรายละเอียด", "View Details")}`}
+                        {isExpanded ? `▲ ${t("ซ่อนรายละเอียด", "Hide Details")}` : `▼ ${t("แสดงรายละเอียด", "View Details")}`}
                       </button>
                     </div>
                   </div>

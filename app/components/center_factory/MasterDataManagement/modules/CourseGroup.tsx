@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
 import { useToast } from "../../../ToastHost";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { createCourseGroup, deleteCourseGroup, listCourseGroups, updateCourseGroup } from "../../../../lib/courseGroups/client";
 import type { CourseGroupRecord, CourseGroupStatus } from "../../../../lib/courseGroups/types";
@@ -11,6 +12,7 @@ export const courseGroupModule = { title: "Course Group", subtitle: "Course grou
 type Mode = "idle" | "new" | "edit"; type Draft = { code: string; name: string; status: CourseGroupStatus }; const emptyDraft: Draft = { code: "", name: "", status: "ACTIVE" };
 export default function CourseGroup() {
   const user = useAuthenticatedUser(); const canWrite = user?.roleCode === "HRD_CENTER"; const confirm = useConfirm(); const notice = useNotice(); const toast = useToast();
+  const { language } = useUiLanguage(); const isThai = language === "th";
   const [items, setItems] = useState<CourseGroupRecord[]>([]); const [selectedId, setSelectedId] = useState(""); const [draft, setDraft] = useState<Draft>(emptyDraft); const [mode, setMode] = useState<Mode>("idle"); const [message, setMessage] = useState(""); const [busy, setBusy] = useState(false);
   const selected = useMemo(() => items.find((item) => item.courseGroupId === selectedId) ?? null, [items, selectedId]);
   const load = useCallback(async () => { setBusy(true); setMessage(""); try { const result = await listCourseGroups(); setItems(result.items); setSelectedId((current) => result.items.some((item) => item.courseGroupId === current) ? current : ""); } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to load course groups"); } finally { setBusy(false); } }, []);
@@ -54,7 +56,7 @@ export default function CourseGroup() {
               setMessage("");
             }}
           >
-            เพิ่ม
+            {isThai ? "เพิ่ม" : "Add"}
           </button>
           <button
             className={styles.editButton}
@@ -68,7 +70,7 @@ export default function CourseGroup() {
               }
             }}
           >
-            แก้ไข
+            {isThai ? "แก้ไข" : "Edit"}
           </button>
           <button
             className={styles.deleteButton}
@@ -76,7 +78,7 @@ export default function CourseGroup() {
             disabled={!canWrite || !selected || busy}
             onClick={() => void remove()}
           >
-            ลบ
+            {isThai ? "ลบ" : "Delete"}
           </button>
           <button
             className={styles.refreshButton}
@@ -84,7 +86,7 @@ export default function CourseGroup() {
             disabled={busy}
             onClick={() => void load()}
           >
-            รีเฟรช
+            {isThai ? "รีเฟรช" : "Refresh"}
           </button>
           <button
             className={styles.exportButton}
@@ -136,10 +138,10 @@ export default function CourseGroup() {
               </label>
             ) : null}
             <button className={styles.saveButton} type="button" disabled={busy} onClick={() => void save()}>
-              Save
+              {busy ? (isThai ? "กำลังบันทึก..." : "Saving...") : (isThai ? "บันทึก" : "Save")}
             </button>
             <button className={styles.cancelButton} type="button" disabled={busy} onClick={() => setMode("idle")}>
-              Cancel
+              {isThai ? "ยกเลิก" : "Cancel"}
             </button>
           </div>
         ) : null}

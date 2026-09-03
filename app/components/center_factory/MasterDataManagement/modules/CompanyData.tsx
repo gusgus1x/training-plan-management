@@ -12,6 +12,7 @@ import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
 import { useToast } from "../../../ToastHost";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import type {
   CompanyRecord,
   CompanyStatus,
@@ -71,6 +72,8 @@ export default function CompanyData() {
   const notice = useNotice();
   const toast = useToast();
   const canCreateCompany = authenticatedUser?.roleCode === "HRD_CENTER";
+  const { language } = useUiLanguage();
+  const isThai = language === "th";
   const [rows, setRows] = useState<CompanyRecord[]>([]);
   const [search, setSearch] = useState("");
   const [selectedCode, setSelectedCode] = useState<string>("all");
@@ -344,7 +347,7 @@ export default function CompanyData() {
                 onClick={handleNew}
                 disabled={isSaving}
               >
-                เพิ่ม
+                {isThai ? "เพิ่ม" : "Add"}
               </button>
             ) : null}
             <button
@@ -353,7 +356,7 @@ export default function CompanyData() {
               onClick={handleEdit}
               disabled={!canModifySelected || isSaving}
             >
-              แก้ไข
+              {isThai ? "แก้ไข" : "Edit"}
             </button>
             <button
               className={styles.dangerButton}
@@ -361,7 +364,7 @@ export default function CompanyData() {
               onClick={() => void handleDelete()}
               disabled={!canModifySelected || isSaving}
             >
-              ลบ
+              {isThai ? "ลบ" : "Delete"}
             </button>
             <button
               className={styles.secondaryButton}
@@ -369,7 +372,7 @@ export default function CompanyData() {
               onClick={handleRefresh}
               disabled={isLoading || isSaving}
             >
-              รีเฟรช
+              {isThai ? "รีเฟรช" : "Refresh"}
             </button>
           </div>
         </div>
@@ -528,7 +531,7 @@ export default function CompanyData() {
                 onClick={() => void handleSave()}
                 disabled={isSaving}
               >
-                {isSaving ? "Saving..." : "Save"}
+                {isSaving ? (isThai ? "กำลังบันทึก..." : "Saving...") : (isThai ? "บันทึก" : "Save")}
               </button>
               <button
                 className={styles.secondaryButton}
@@ -536,7 +539,7 @@ export default function CompanyData() {
                 onClick={() => setFormMode(null)}
                 disabled={isSaving}
               >
-                Cancel
+                {isThai ? "ยกเลิก" : "Cancel"}
               </button>
             </div>
           </div>

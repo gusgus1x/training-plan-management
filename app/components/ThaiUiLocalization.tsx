@@ -622,6 +622,7 @@ const thaiUiDictionary: Record<string, string> = {
   "No uploaded Excel record rows are linked with this course yet.":
     "ยังไม่มีข้อมูลจาก Excel ที่เชื่อมกับหลักสูตรนี้",
   Option: "ตัวเลือก",
+  "Saving...": "กำลังบันทึก...",
   "Options are loaded from Assessment and Evaluation Management.":
     "ระบบดึงตัวเลือกจากหน้า Assessment และ Evaluation Management",
   "Post test opens after pre test is completed. Evaluation opens after post test is completed.":
