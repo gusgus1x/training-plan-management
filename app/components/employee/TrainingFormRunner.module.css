@@ -110,6 +110,61 @@
   margin: 0;
 }
 
+.progressBox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: var(--ui-radius-lg, 14px);
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
+  position: sticky;
+  top: 12px;
+  z-index: 2;
+}
+
+.progressText {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--ui-30-muted);
+}
+
+.progressText strong {
+  color: var(--ui-30-ink);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.progressTrack {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--ui-60-surface-muted, var(--ui-30-border));
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--ui-30-primary) 0%, var(--ui-30-primary-strong) 100%);
+  transition: width 0.25s ease;
+}
+
+/* Section name as its own divider, the way Google Forms breaks a long form into named parts -
+   it used to be repeated as a small grey line inside every question card in the section. */
+.sectionHeader {
+  margin: 10px 0 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--ui-30-primary-border, var(--ui-30-border));
+  color: var(--ui-30-primary-strong, var(--ui-30-ink));
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
 .questionCard {
   padding: 14px 16px;
   border-radius: var(--ui-radius-lg, 14px);
@@ -118,6 +173,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  scroll-margin-top: 90px;
 }
 
 .questionCard[data-missing="true"] {

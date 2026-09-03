@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useConfirm } from "../ConfirmDialog";
 import { useToast } from "../ToastHost";
@@ -48,6 +48,9 @@ type RunnerQuestion = {
 type AnswerState = { choiceIds: string[]; text: string; rating: number | null };
 
 const emptyAnswer: AnswerState = { choiceIds: [], text: "", rating: null };
+
+/** Stable DOM id per question, so the submit handler can scroll to the first unanswered one. */
+const questionDomId = (questionId: string) => `training-form-q-${questionId}`;
 
 const isAnswered = (question: RunnerQuestion, answer: AnswerState | undefined) => {
   if (!answer) return false;
@@ -183,6 +186,11 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
 
   const hasStartedAnswering = useMemo(() => Object.values(answers).some((a) => a.text.trim().length > 0 || a.choiceIds.length > 0 || a.rating !== null), [answers]);
 
+  const answeredCount = useMemo(
+    () => (questions ?? []).filter((q) => isAnswered(q, answers[q.questionId])).length,
+    [questions, answers],
+  );
+
   const setAnswer = (questionId: string, patch: Partial<AnswerState>) =>
     setAnswers((prev) => ({ ...prev, [questionId]: { ...(prev[questionId] ?? emptyAnswer), ...patch } }));
 
@@ -220,6 +228,12 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
     if (missingRequiredIds.length > 0) {
       setShowMissing(true);
       toast.error(t("กรุณาตอบคำถามที่จำเป็นให้ครบก่อนส่ง", "Please answer every required question before submitting"));
+      // A toast at the top of the screen says nothing about WHERE the gap is - on a long form the
+      // employee is left scrolling to hunt for it. Google Forms jumps to the first unanswered
+      // required question instead, so do the same.
+      document
+        .getElementById(questionDomId(missingRequiredIds[0]))
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
@@ -325,12 +339,43 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
               </div>
             ) : null}
 
-            {(questions ?? []).map((question) => {
+            {(questions ?? []).length > 0 ? (
+              <div className={styles.progressBox}>
+                <div className={styles.progressText}>
+                  <span>{t("ความคืบหน้า", "Progress")}</span>
+                  <strong>
+                    {t(
+                      `ตอบแล้ว ${answeredCount} จาก ${(questions ?? []).length} ข้อ`,
+                      `${answeredCount} of ${(questions ?? []).length} answered`,
+                    )}
+                  </strong>
+                </div>
+                <div
+                  className={styles.progressTrack}
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={(questions ?? []).length}
+                  aria-valuenow={answeredCount}
+                >
+                  <div
+                    className={styles.progressFill}
+                    style={{ width: `${Math.round((answeredCount / Math.max(1, (questions ?? []).length)) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            {(questions ?? []).map((question, index) => {
               const answer = answers[question.questionId];
               const missing = showMissing && missingRequiredIds.includes(question.questionId);
+              // A section's name used to be a small grey line inside every question card, which
+              // repeated it per question and never actually separated one section from the next.
+              const previousSection = index > 0 ? (questions ?? [])[index - 1].sectionName : null;
+              const startsSection = question.sectionName !== null && question.sectionName !== previousSection;
               return (
-                <div className={styles.questionCard} data-missing={missing} key={question.questionId}>
-                  {question.sectionName ? <small style={{ color: "var(--ui-30-muted)" }}>{question.sectionName}</small> : null}
+                <Fragment key={question.questionId}>
+                  {startsSection ? <h3 className={styles.sectionHeader}>{question.sectionName}</h3> : null}
+                <div className={styles.questionCard} data-missing={missing} id={questionDomId(question.questionId)}>
                   <div className={styles.questionHeader}>
                     <span className={styles.questionOrder}>{question.order}.</span>
                     <span>{question.text}</span>
@@ -376,6 +421,7 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
 
                   {missing ? <p className={styles.missingNote}>{t("ต้องตอบข้อนี้", "This question is required")}</p> : null}
                 </div>
+                </Fragment>
               );
             })}
           </>
