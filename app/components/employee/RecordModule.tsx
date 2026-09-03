@@ -8,6 +8,8 @@ import type {
   EnrollmentRecord,
   EnrollmentStageInfo,
 } from "../../lib/trainingEnrollment/types";
+import { readAssessmentReview } from "../../lib/trainingForms/client";
+import type { AssessmentReview, GradedStage } from "../../lib/trainingForms/types";
 import {
   profileValue,
   useAuthenticatedUser,
@@ -164,11 +166,13 @@ const AssessmentFlowSection = ({
   assessment,
   enrollmentId,
   onOpenForm,
+  onOpenReview,
   t,
 }: {
   assessment: EnrollmentAssessmentInfo;
   enrollmentId: string;
   onOpenForm: (target: FormRunnerTarget) => void;
+  onOpenReview: (enrollmentId: string, stage: GradedStage, title: string) => void;
   t: (th: string, en: string) => string;
 }) => {
   const [visitedLinks, setVisitedLinks] = useState<Record<string, true>>(() => loadVisitedLinks());
@@ -192,6 +196,9 @@ const AssessmentFlowSection = ({
       <div className={styles.assessmentSteps}>
         {steps.map((step) => {
           const state = resolveStageState(step.stage);
+          // A const binding, so the discriminant narrowing below survives into the click handler -
+          // reading step.target.stage inside the closure loses it and stops compiling.
+          const target = step.target;
           const isEvaluation = step.key === "evaluation" || step.key === "evaluation30";
           const visited = state === "LINK" && Boolean(visitedLinks[visitedLinkKey(enrollmentId, step.key)]);
 
@@ -276,9 +283,23 @@ const AssessmentFlowSection = ({
                   </button>
                 )
               ) : (
-                <button type="button" className={styles.openLinkBtn} onClick={() => onOpenForm(step.target)}>
-                  {state === "DONE" || state === "REVIEW_PENDING" ? t("ทำอีกครั้ง", "Retake") : t("ทำแบบทดสอบ", "Take Test")}
-                </button>
+                <div className={styles.stepActions}>
+                  {/* Their own marked paper, once HRD has released it. Shown next to Retake on
+                      purpose: knowing which questions were missed is what makes a second attempt
+                      worth taking. */}
+                  {state === "DONE" && target.kind === "assessment" ? (
+                    <button
+                      type="button"
+                      className={styles.reviewBtn}
+                      onClick={() => onOpenReview(enrollmentId, target.stage, step.title)}
+                    >
+                      {t("ดูข้อที่ผิด", "Missed questions")}
+                    </button>
+                  ) : null}
+                  <button type="button" className={styles.openLinkBtn} onClick={() => onOpenForm(step.target)}>
+                    {state === "DONE" || state === "REVIEW_PENDING" ? t("ทำอีกครั้ง", "Retake") : t("ทำแบบทดสอบ", "Take Test")}
+                  </button>
+                </div>
               )}
             </div>
           );
@@ -438,6 +459,19 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
 
   const openTrainingForm = (target: FormRunnerTarget) =>
     router.push(`/training-form/${target.enrollmentId}/${target.stage}`);
+
+  /** The employee's own marked paper. Loaded on demand rather than with the record list: most
+   *  people never open it, and it is one request per test per course. */
+  const [reviewPanel, setReviewPanel] = useState<
+    { title: string; loading: boolean; review: AssessmentReview | null; failed: boolean } | null
+  >(null);
+
+  const openReview = (targetEnrollmentId: string, stage: GradedStage, title: string) => {
+    setReviewPanel({ title, loading: true, review: null, failed: false });
+    readAssessmentReview(targetEnrollmentId, stage)
+      .then((result) => setReviewPanel({ title, loading: false, review: result.review, failed: false }))
+      .catch(() => setReviewPanel({ title, loading: false, review: null, failed: true }));
+  };
 
   const reloadEnrollments = () => {
     setIsLoading(true);
@@ -740,6 +774,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                         assessment={enrollment.plan.assessment}
                         enrollmentId={enrollment.id}
                         onOpenForm={openTrainingForm}
+                        onOpenReview={openReview}
                         t={t}
                       />
                     </>
@@ -907,6 +942,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                         assessment={record.assessment}
                         enrollmentId={record.id}
                         onOpenForm={openTrainingForm}
+                        onOpenReview={openReview}
                         t={t}
                       />
                     </>
@@ -1001,6 +1037,74 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
             </button>
           </div>
         </section>
+      ) : null}
+
+      {reviewPanel ? (
+        <div className={styles.reviewOverlay} role="dialog" aria-modal="true" onClick={() => setReviewPanel(null)}>
+          <div className={styles.reviewDialog} onClick={(event) => event.stopPropagation()}>
+            <div className={styles.reviewHeader}>
+              <h4>{reviewPanel.title}</h4>
+              <button type="button" className={styles.reviewClose} onClick={() => setReviewPanel(null)}>
+                ✕
+              </button>
+            </div>
+
+            {reviewPanel.loading ? (
+              <p className={styles.reviewNote}>{t("กำลังโหลด...", "Loading...")}</p>
+            ) : reviewPanel.failed ? (
+              <p className={styles.reviewNote}>{t("โหลดผลไม่สำเร็จ กรุณาลองใหม่", "Could not load the result")}</p>
+            ) : !reviewPanel.review ? (
+              <p className={styles.reviewNote}>
+                {t("ยังไม่มีผลที่ประกาศสำหรับแบบทดสอบนี้", "No released result for this test yet")}
+              </p>
+            ) : (
+              <>
+                <div className={styles.reviewScore}>
+                  <strong>
+                    {reviewPanel.review.totalAwarded} / {reviewPanel.review.totalPossible}
+                  </strong>
+                  <span>
+                    {reviewPanel.review.scorePercent ?? 0}% ·{" "}
+                    {t(`เกณฑ์ผ่าน ${reviewPanel.review.passingScorePercent}%`, `Pass mark ${reviewPanel.review.passingScorePercent}%`)}
+                  </span>
+                  <em data-pass={reviewPanel.review.passStatus === "PASS"}>
+                    {reviewPanel.review.passStatus === "PASS" ? t("ผ่าน", "Pass") : t("ไม่ผ่าน", "Fail")}
+                  </em>
+                </div>
+
+                {reviewPanel.review.missedQuestions.length === 0 ? (
+                  <p className={styles.reviewNote}>🎉 {t("ตอบถูกทุกข้อ", "Every question correct")}</p>
+                ) : (
+                  <>
+                    <p className={styles.reviewNote}>
+                      {t(
+                        `ข้อที่ยังได้ไม่เต็ม ${reviewPanel.review.missedQuestions.length} ข้อ — ทบทวนแล้วลองทำอีกครั้งได้`,
+                        `${reviewPanel.review.missedQuestions.length} questions below full marks — review them and try again`,
+                      )}
+                    </p>
+                    <ul className={styles.reviewList}>
+                      {reviewPanel.review.missedQuestions.map((question) => (
+                        <li key={question.questionId}>
+                          <div className={styles.reviewQuestionHead}>
+                            <span>
+                              {question.questionOrder}. {question.questionText}
+                            </span>
+                            <strong>
+                              {question.scoreAwarded} / {question.questionScore}
+                            </strong>
+                          </div>
+                          {question.reviewComment ? (
+                            <p className={styles.reviewComment}>💬 {question.reviewComment}</p>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        </div>
       ) : null}
     </section>
   );

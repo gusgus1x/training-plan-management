@@ -630,6 +630,163 @@
   border-color: var(--ui-30-primary-border);
 }
 
+/* Retake sits next to "see what I missed" - the two belong together, since knowing which questions
+   were wrong is the reason to take the test again. Wraps on a narrow screen. */
+.stepActions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.reviewBtn {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 7px 12px;
+  white-space: nowrap;
+}
+
+.reviewBtn:hover {
+  border-color: var(--ui-30-primary);
+  color: var(--ui-30-primary);
+}
+
+.reviewOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.5);
+  padding: 16px;
+}
+
+.reviewDialog {
+  width: min(560px, 100%);
+  max-height: min(80vh, 720px);
+  overflow-y: auto;
+  border-radius: 14px;
+  background: var(--ui-60-surface);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.32);
+  padding: 18px 20px 20px;
+}
+
+.reviewHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.reviewHeader h4 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.reviewClose {
+  border: 0;
+  background: transparent;
+  color: var(--ui-30-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 2px 6px;
+}
+
+.reviewScore {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 10px;
+  background: var(--ui-60-surface-soft);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.reviewScore strong {
+  font-size: 1.35rem;
+}
+
+.reviewScore span {
+  color: var(--ui-30-muted);
+  font-size: 0.78rem;
+}
+
+.reviewScore em {
+  margin-left: auto;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.74rem;
+  font-style: normal;
+  font-weight: 800;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.reviewScore em[data-pass="true"] {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.reviewNote {
+  margin: 0 0 10px;
+  color: var(--ui-30-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.reviewList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.reviewList li {
+  border: 1px solid var(--ui-30-border);
+  border-left: 3px solid #f97316;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.reviewQuestionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.reviewQuestionHead strong {
+  white-space: nowrap;
+  color: #c2410c;
+}
+
+.reviewComment {
+  margin: 8px 0 0;
+  border-radius: 6px;
+  background: var(--ui-60-surface-soft);
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
 .openLinkBtn {
   appearance: none;
   border: 1px solid var(--ui-30-primary-border);

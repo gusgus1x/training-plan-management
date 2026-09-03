@@ -105,6 +105,34 @@ const emptyResultDraft: ResultDraft = {
  * save, and editing one person's score rebuilt their whole row from the blank draft - so saving
  * again wiped the certificate number, expiry and status that had been recorded for them.
  */
+/** What the system already knows about one person's in-system tests, when the stage is a FORM the
+ *  server has graded AND released. An unreleased score is deliberately invisible here too - the
+ *  projections null it out, so `score` simply arrives empty. */
+const systemScores = (record: EnrollmentRecord) => {
+  const pre = record.plan.assessment.preTest;
+  const post = record.plan.assessment.postTest;
+  const scoreOf = (stage: typeof pre) =>
+    stage.mode === "FORM" && stage.submission?.resultsPublished && stage.submission.score !== null
+      ? stage.submission.score
+      : null;
+
+  // The post-test is what decides completion when a course has one; a course with only a pre-test
+  // falls back to that. passStatus was computed on the server against the assessment's own
+  // passing_score_percent, so the threshold is never re-implemented (or re-typed) here.
+  const deciding = post.mode === "FORM" ? post : pre.mode === "FORM" ? pre : null;
+  const decidingStatus =
+    deciding?.submission?.resultsPublished && deciding.submission.passStatus !== "PENDING"
+      ? deciding.submission.passStatus
+      : null;
+
+  return {
+    preScore: scoreOf(pre),
+    postScore: scoreOf(post),
+    suggestedCompletion:
+      decidingStatus === null ? null : decidingStatus === "PASS" ? ("COMPLETED" as const) : ("NOT_COMPLETED" as const),
+  };
+};
+
 const draftsFromEnrollments = (records: EnrollmentRecord[]): Record<string, ResultDraft> => {
   const drafts: Record<string, ResultDraft> = {};
   for (const record of records) {
@@ -112,17 +140,36 @@ const draftsFromEnrollments = (records: EnrollmentRecord[]): Record<string, Resu
     // in rather than asked for. HRD can still change it; what they cannot do is get it wrong on
     // thirty rows by hand.
     const derivedExpiry = expiryFrom(record.plan.startAt, record.plan.validityMonths) ?? "";
+    // Tests taken inside the system already produced a score and a pass/fail verdict. Retyping
+    // them by hand is both wasted work and a chance to mistype a mark onto a document the employee
+    // hands to an employer. HRD still owns the final say: these are prefilled draft values that
+    // nothing writes until Save, and every box stays editable.
+    const system = systemScores(record);
 
     if (!record.result) {
-      // Only worth a draft when there is something to prefill.
-      if (derivedExpiry) drafts[record.id] = { ...emptyResultDraft, validUntil: derivedExpiry };
+      const hasSomethingToPrefill =
+        derivedExpiry || system.preScore !== null || system.postScore !== null || system.suggestedCompletion;
+      if (hasSomethingToPrefill) {
+        drafts[record.id] = {
+          ...emptyResultDraft,
+          preScore: system.preScore === null ? "" : String(system.preScore),
+          postScore: system.postScore === null ? "" : String(system.postScore),
+          completionStatus: system.suggestedCompletion ?? emptyResultDraft.completionStatus,
+          validUntil: derivedExpiry,
+        };
+      }
       continue;
     }
 
     drafts[record.id] = {
-      preScore: record.result.preScore === null ? "" : String(record.result.preScore),
-      postScore: record.result.postScore === null ? "" : String(record.result.postScore),
-      completionStatus: record.result.completionStatus,
+      // A stored score wins: HRD may have corrected it deliberately, and overwriting that from the
+      // submission every reload would undo their edit in front of them.
+      preScore: record.result.preScore !== null ? String(record.result.preScore) : system.preScore === null ? "" : String(system.preScore),
+      postScore: record.result.postScore !== null ? String(record.result.postScore) : system.postScore === null ? "" : String(system.postScore),
+      completionStatus:
+        record.result.completionStatus === "PENDING" && system.suggestedCompletion
+          ? system.suggestedCompletion
+          : record.result.completionStatus,
       validUntil: record.result.validUntil ?? derivedExpiry,
       certificateNo: record.result.certificateNo ?? "",
     };
@@ -241,6 +288,9 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
   const [submissions, setSubmissions] = useState<PendingGradingSubmission[] | null>(null);
   const [drafts, setDrafts] = useState<Record<string, GradeDraft>>({});
   const [savingSubmissionId, setSavingSubmissionId] = useState<string | null>(null);
+  /** Employee code (or name) of the one open row. One at a time: HRD grades one person, saves,
+   *  moves on - keeping every row open is what made this panel unreadable. */
+  const [openEmployee, setOpenEmployee] = useState("");
 
   const load = () => {
     listPendingGrading(planId)
@@ -303,6 +353,18 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
 
   if (submissions === null || submissions.length === 0) return null;
 
+  // One person, all their outstanding submissions. The panel used to be a flat list, so an employee
+  // with both a pre-test and a post-test to mark appeared as two unrelated cards with the same name
+  // - and a wide row per answer pushed the score box off the side of the screen.
+  const byEmployee = new Map<string, { name: string; code: string; rows: PendingGradingSubmission[] }>();
+  for (const submission of submissions) {
+    const groupKey = submission.employeeCode || submission.employeeName;
+    const group = byEmployee.get(groupKey);
+    if (group) group.rows.push(submission);
+    else byEmployee.set(groupKey, { name: submission.employeeName, code: submission.employeeCode, rows: [submission] });
+  }
+  const groups = [...byEmployee.entries()].map(([groupKey, group]) => ({ groupKey, ...group }));
+
   return (
     <section className={styles.actualResultsPanel} aria-label="Pending written-answer grading" style={{ marginBottom: "16px" }}>
       <div className={styles.actualResultsHeader}>
@@ -310,44 +372,69 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
           <span>รอตรวจ / รอประกาศผล</span>
           <strong>Pending Grading &amp; Release</strong>
         </div>
-        <small>{submissions.length} รายการ</small>
+        <small>{groups.length} คน · {submissions.length} รายการ</small>
       </div>
 
-      <div className={styles.actualResultsRows}>
-        {submissions.map((submission) => (
-          <article key={submission.submissionId} className={styles.actualResultRow} style={{ flexDirection: "column", alignItems: "stretch", gap: "10px" }}>
+      {/* Not .actualResultsRows: that one caps at 420px and scrolls inside itself, which suited a
+          flat list of short rows. An expanded person is taller than the cap, and an inner
+          scrollbar competing with the page's own is worse than simply letting the panel grow. */}
+      <div className={styles.gradingQueue}>
+        {groups.map((group) => {
+          const isOpen = openEmployee === group.groupKey;
+          const toGrade = group.rows.filter((row) => !row.awaitingPublication).length;
+          const toRelease = group.rows.length - toGrade;
+          return (
+        <article key={group.groupKey} className={styles.gradingGroup}>
+          <button
+            type="button"
+            className={styles.gradingGroupHeader}
+            aria-expanded={isOpen}
+            onClick={() => setOpenEmployee(isOpen ? "" : group.groupKey)}
+          >
+            <span className={styles.gradingChevron} data-open={isOpen} aria-hidden="true" />
+            <span>
+              <strong>{group.name}</strong>
+              <small>{group.code || "-"}</small>
+            </span>
+            <span className={styles.gradingGroupTags}>
+              {toGrade > 0 ? <em data-tone="grade">รอตรวจ {toGrade}</em> : null}
+              {toRelease > 0 ? <em data-tone="release">รอประกาศผล {toRelease}</em> : null}
+            </span>
+          </button>
+
+          {isOpen ? group.rows.map((submission) => (
+          <div key={submission.submissionId} className={styles.gradingSubmission}>
             <div className={styles.actualResultWho}>
-              <strong>{submission.employeeName}</strong>
+              <strong>{submission.stage === "PRE_TEST" ? "แบบทดสอบก่อนอบรม (Pre Test)" : "แบบทดสอบหลังอบรม (Post Test)"}</strong>
               <small>
-                {submission.employeeCode || "-"} · {submission.stage === "PRE_TEST" ? "Pre Test" : "Post Test"} · ครั้งที่{" "}
-                {submission.attemptNo} · {submission.awaitingPublication ? "ตรวจแล้ว รอประกาศผล" : "รอตรวจข้อเขียน"}
+                ครั้งที่ {submission.attemptNo} ·{" "}
+                {submission.awaitingPublication ? "ตรวจแล้ว รอประกาศผล" : `รอตรวจ ${submission.pendingAnswers.length} ข้อ`}
               </small>
             </div>
 
             {submission.pendingAnswers.map((answer) => {
               const entry = drafts[submission.submissionId]?.[answer.answerId] ?? { scoreAwarded: "0", reviewComment: "" };
               return (
-                <div key={answer.answerId} style={{ display: "flex", flexDirection: "column", gap: "6px", padding: "8px 10px", borderRadius: "8px", background: "var(--ui-60-surface-soft)" }}>
-                  <span style={{ fontSize: "0.8rem", fontWeight: 700 }}>{answer.questionText}</span>
-                  <p style={{ margin: 0, fontSize: "0.8rem", whiteSpace: "pre-wrap" }}>{answer.answerText || "(ไม่มีคำตอบ)"}</p>
-                  <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                    <label style={{ fontSize: "0.76rem" }}>
-                      คะแนน (เต็ม {answer.questionScore})
+                <div key={answer.answerId} className={styles.gradingAnswer}>
+                  <span className={styles.gradingQuestion}>{answer.questionText}</span>
+                  <p className={styles.gradingAnswerText}>{answer.answerText || "(ไม่มีคำตอบ)"}</p>
+                  <div className={styles.gradingInputs}>
+                    <label>
+                      <span>คะแนน</span>
                       <input
                         type="number"
                         min={0}
                         max={Number(answer.questionScore)}
                         value={entry.scoreAwarded}
                         onChange={(e) => setAnswerDraft(submission.submissionId, answer.answerId, { scoreAwarded: e.target.value })}
-                        style={{ marginLeft: "6px", width: "70px" }}
                       />
+                      <small>/ {answer.questionScore}</small>
                     </label>
                     <input
                       type="text"
-                      placeholder="ความเห็น (ถ้ามี)"
+                      placeholder="ความเห็นถึงผู้เรียน (ถ้ามี)"
                       value={entry.reviewComment}
                       onChange={(e) => setAnswerDraft(submission.submissionId, answer.answerId, { reviewComment: e.target.value })}
-                      style={{ flex: 1, fontSize: "0.76rem" }}
                     />
                   </div>
                 </div>
@@ -357,24 +444,27 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
             {submission.awaitingPublication ? (
               <button
                 type="button"
+                className={styles.gradingSaveButton}
                 disabled={savingSubmissionId === submission.submissionId}
                 onClick={() => void handlePublish(submission)}
-                style={{ alignSelf: "flex-end" }}
               >
-                {savingSubmissionId === submission.submissionId ? "กำลังประกาศผล..." : "ประกาศผลให้พนักงาน"}
+                {savingSubmissionId === submission.submissionId ? "กำลังประกาศผล..." : "📣 ประกาศผลให้พนักงาน"}
               </button>
             ) : (
               <button
                 type="button"
+                className={styles.gradingSaveButton}
                 disabled={savingSubmissionId === submission.submissionId}
                 onClick={() => void handleSave(submission)}
-                style={{ alignSelf: "flex-end" }}
               >
                 {savingSubmissionId === submission.submissionId ? "กำลังบันทึก..." : "บันทึกคะแนน"}
               </button>
             )}
-          </article>
-        ))}
+          </div>
+          )) : null}
+        </article>
+          );
+        })}
       </div>
     </section>
   );
@@ -1481,6 +1571,8 @@ export default function TrainingActual() {
                   {attendees.map((attendee) => {
                     const saved = enrollments.find((e) => e.id === attendee.id);
                     const draft = resultDrafts[attendee.id] ?? emptyResultDraft;
+                    const system = saved ? systemScores(saved) : null;
+                    const fromSystem = Boolean(system && (system.preScore !== null || system.postScore !== null));
                     return (
                       <article key={attendee.id} className={styles.actualResultRow}>
                         <div className={styles.actualResultWho}>
@@ -1488,6 +1580,7 @@ export default function TrainingActual() {
                           <small>
                             {attendee.employeeCode || "-"} · {attendee.company}
                             {attendee.attended ? "" : " · ไม่ได้เข้าอบรม / absent"}
+                            {fromSystem ? " · คะแนนจากแบบทดสอบในระบบ" : ""}
                           </small>
                         </div>
 
