@@ -1,5 +1,6 @@
 import { trainingFormsRepository, type TrainingFormsRepository } from "./repository";
 import type {
+  EvaluationTimingStage,
   GradedStage,
   GradeSubmissionInput,
   SetStageClosedInput,
@@ -21,6 +22,13 @@ export const createTrainingFormsService = (repository: TrainingFormsRepository =
     employeeUserId: string | null,
   ) => repository.submitAssessment(enrollmentId, stage, input, employeeId, employeeUserId),
 
+  readAssessmentReview: (
+    enrollmentId: string,
+    stage: GradedStage,
+    employeeId: string | null,
+    employeeUserId: string | null,
+  ) => repository.readAssessmentReviewForEmployee(enrollmentId, stage, employeeId, employeeUserId),
+
   readEvaluation: (
     enrollmentId: string,
     timing: "EVALUATION" | "EVALUATION_30DAY",
@@ -37,6 +45,9 @@ export const createTrainingFormsService = (repository: TrainingFormsRepository =
   ) => repository.submitEvaluation(enrollmentId, timing, input, employeeId, employeeUserId),
 
   listPendingGrading: (planId: string, companyId: string | null) => repository.listPendingGrading(planId, companyId),
+
+  readEvaluationSummary: (planId: string, timing: EvaluationTimingStage, companyId: string | null) =>
+    repository.readEvaluationSummary(planId, timing, companyId),
 
   gradeSubmission: (submissionId: string, input: GradeSubmissionInput, gradedByUserId: string, companyId: string | null) =>
     repository.gradeSubmission(submissionId, input, gradedByUserId, companyId),

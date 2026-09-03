@@ -4,9 +4,14 @@ import { ApiError } from "../api/errors";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
 import { CLOSABLE_STAGES, stageAvailability, stageOpensAt, type FormStageKey } from "./availability";
+import { FREE_TEXT_MIN_RESPONDENTS } from "./types";
 import type {
   AssessmentForEmployee,
+  AssessmentReview,
   EvaluationForEmployee,
+  EvaluationSummary,
+  EvaluationSummaryQuestion,
+  EvaluationTimingStage,
   GradeSubmissionInput,
   GradedStage,
   SetStageClosedInput,
@@ -247,6 +252,105 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
             })),
           })),
           submissions: submissions.map(mapSubmission),
+        };
+      });
+    },
+
+    /** The employee's own marked paper for one stage: their latest RELEASED attempt, reduced to the
+     *  questions they did not get full marks on.
+     *
+     *  Never includes which choice was correct. Attempts are repeatable, so handing back the answer
+     *  key would turn a retake into a memory test - the employee is meant to go back to the
+     *  material. Returns null while nothing has been released, which is the same thing the score
+     *  projections already do. */
+    async readAssessmentReviewForEmployee(
+      enrollmentId: string,
+      stage: GradedStage,
+      employeeId: string | null,
+      employeeUserId: string | null,
+    ): Promise<AssessmentReview | null> {
+      return withDatabaseErrorMapping(async () => {
+        const enrollment = await loadOwnedEnrollment(db(), enrollmentId, employeeId, employeeUserId);
+        const assessmentId = formIdForStage(enrollment.training_plan, stage);
+        if (assessmentId === null) return null;
+
+        const submission = await db().assessment_submission.findFirst({
+          where: {
+            enrollment_id: enrollment.enrollment_id,
+            assessment_id: assessmentId,
+            assessment_stage: stage,
+            publication_status: "PUBLISHED",
+          },
+          orderBy: { attempt_no: "desc" },
+          select: {
+            submission_id: true,
+            attempt_no: true,
+            submitted_at: true,
+            score: true,
+            pass_status: true,
+            assessment: {
+              select: {
+                passing_score_percent: true,
+                assessment_question: {
+                  orderBy: { question_order: "asc" },
+                  select: { question_id: true, question_order: true, question_text: true, question_score: true },
+                },
+              },
+            },
+            assessment_answer: {
+              select: { question_id: true, score_awarded: true, review_comment: true },
+            },
+          },
+        });
+        if (!submission) return null;
+
+        // submitAssessment puts a question's whole award on its first answer row only, so summing
+        // rows per question is right and does not multiply a multi-select answer.
+        const awardedByQuestion = new Map<string, Prisma.Decimal>();
+        const commentByQuestion = new Map<string, string>();
+        for (const answer of submission.assessment_answer) {
+          const questionId = answer.question_id.toString();
+          awardedByQuestion.set(
+            questionId,
+            (awardedByQuestion.get(questionId) ?? new Prisma.Decimal(0)).add(answer.score_awarded ?? new Prisma.Decimal(0)),
+          );
+          if (answer.review_comment) commentByQuestion.set(questionId, answer.review_comment);
+        }
+
+        let totalAwarded = new Prisma.Decimal(0);
+        let totalPossible = new Prisma.Decimal(0);
+        const missedQuestions: AssessmentReview["missedQuestions"] = [];
+
+        for (const question of submission.assessment.assessment_question) {
+          const questionId = question.question_id.toString();
+          const awarded = awardedByQuestion.get(questionId) ?? new Prisma.Decimal(0);
+          totalAwarded = totalAwarded.add(awarded);
+          totalPossible = totalPossible.add(question.question_score);
+
+          // "Missed" means anything short of full marks - a partially credited written answer is
+          // exactly the kind of question worth going back to.
+          if (awarded.lt(question.question_score)) {
+            missedQuestions.push({
+              questionId,
+              questionOrder: question.question_order,
+              questionText: question.question_text,
+              scoreAwarded: Number(awarded),
+              questionScore: Number(question.question_score),
+              reviewComment: commentByQuestion.get(questionId) ?? null,
+            });
+          }
+        }
+
+        return {
+          submissionId: submission.submission_id.toString(),
+          attemptNo: submission.attempt_no,
+          submittedAt: submission.submitted_at?.toISOString() ?? null,
+          scorePercent: submission.score === null ? null : Number(submission.score),
+          passStatus: submission.pass_status as AssessmentReview["passStatus"],
+          passingScorePercent: Number(submission.assessment.passing_score_percent),
+          totalAwarded: Number(totalAwarded),
+          totalPossible: Number(totalPossible),
+          missedQuestions,
         };
       });
     },
@@ -544,6 +648,168 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
       });
     },
 
+    /** Aggregated answers for one evaluation on one plan.
+     *
+     *  Deliberately returns counts and text only - never a submission id, an enrollment id, or
+     *  anything else that maps an answer back to a person. The form's is_anonymous flag is a
+     *  promise made to the employee before they answered, and the safe way to keep it is to build
+     *  a projection that cannot break it rather than one a screen must remember not to show. */
+    async readEvaluationSummary(
+      planId: string,
+      timing: EvaluationTimingStage,
+      companyId: string | null,
+    ): Promise<EvaluationSummary | null> {
+      return withDatabaseErrorMapping(async () => {
+        const plan = await db().training_plan.findUniqueOrThrow({
+          where: { plan_id: BigInt(planId) },
+          include: planWithCourseInclude,
+        });
+        if (companyId && plan.training_plan_oap.company_id?.toString() !== companyId) {
+          throw forbidden("This training plan is outside your permitted scope");
+        }
+
+        const formId = formIdForStage(plan, timing);
+        if (formId === null) return null;
+
+        const form = await db().evaluation_form.findUniqueOrThrow({
+          where: { evaluation_form_id: formId },
+          select: {
+            evaluation_form_id: true,
+            form_name: true,
+            description: true,
+            is_anonymous: true,
+            evaluation_question: {
+              orderBy: { question_order: "asc" },
+              select: {
+                evaluation_question_id: true,
+                question_order: true,
+                question_text: true,
+                question_type: true,
+                section_name: true,
+                evaluation_option: {
+                  orderBy: { option_order: "asc" },
+                  select: { evaluation_option_id: true, option_text: true },
+                },
+              },
+            },
+          },
+        });
+
+        const enrolledCount = await db().training_enrollment.count({ where: { plan_id: BigInt(planId) } });
+
+        const submissions = await db().evaluation_submission.findMany({
+          where: {
+            evaluation_form_id: formId,
+            submitted_at: { not: null },
+            training_enrollment: { plan_id: BigInt(planId) },
+          },
+          select: {
+            evaluation_submission_id: true,
+            evaluation_answer: {
+              select: {
+                evaluation_question_id: true,
+                evaluation_option_id: true,
+                rating_value: true,
+                answer_text: true,
+              },
+            },
+          },
+        });
+
+        const submittedCount = submissions.length;
+        const enoughForFreeText = submittedCount >= FREE_TEXT_MIN_RESPONDENTS;
+
+        // Everything below counts PEOPLE. evaluation_answer holds one row per selected option, so
+        // a three-tick MULTIPLE_CHOICE answer arrives as three rows from one respondent; a Set of
+        // submission ids per bucket is what keeps that person counted once.
+        const respondentsByQuestion = new Map<string, Set<bigint>>();
+        const respondentsByOption = new Map<string, Set<bigint>>();
+        const ratingsByQuestion = new Map<string, number[]>();
+        const textsByQuestion = new Map<string, string[]>();
+
+        const addTo = (map: Map<string, Set<bigint>>, key: string, submissionId: bigint) => {
+          const bucket = map.get(key);
+          if (bucket) bucket.add(submissionId);
+          else map.set(key, new Set([submissionId]));
+        };
+
+        for (const submission of submissions) {
+          for (const answer of submission.evaluation_answer) {
+            const questionId = answer.evaluation_question_id.toString();
+            const answered =
+              answer.evaluation_option_id !== null ||
+              answer.rating_value !== null ||
+              (answer.answer_text !== null && answer.answer_text.trim().length > 0);
+            if (!answered) continue;
+
+            addTo(respondentsByQuestion, questionId, submission.evaluation_submission_id);
+
+            if (answer.evaluation_option_id !== null) {
+              addTo(respondentsByOption, answer.evaluation_option_id.toString(), submission.evaluation_submission_id);
+            }
+            if (answer.rating_value !== null) {
+              const values = ratingsByQuestion.get(questionId);
+              if (values) values.push(Number(answer.rating_value));
+              else ratingsByQuestion.set(questionId, [Number(answer.rating_value)]);
+            }
+            if (answer.answer_text !== null && answer.answer_text.trim().length > 0) {
+              const texts = textsByQuestion.get(questionId);
+              if (texts) texts.push(answer.answer_text.trim());
+              else textsByQuestion.set(questionId, [answer.answer_text.trim()]);
+            }
+          }
+        }
+
+        const percent = (part: number, whole: number) =>
+          whole === 0 ? 0 : Math.round((part / whole) * 1000) / 10;
+
+        return {
+          evaluationFormId: form.evaluation_form_id.toString(),
+          formName: form.form_name,
+          description: form.description,
+          isAnonymous: form.is_anonymous,
+          timing,
+          enrolledCount,
+          submittedCount,
+          responseRatePercent: percent(submittedCount, enrolledCount),
+          questions: form.evaluation_question.map((question) => {
+            const questionId = question.evaluation_question_id.toString();
+            const answeredBy = respondentsByQuestion.get(questionId)?.size ?? 0;
+            const ratings = ratingsByQuestion.get(questionId) ?? [];
+            const texts = textsByQuestion.get(questionId) ?? [];
+
+            return {
+              questionId,
+              questionOrder: question.question_order,
+              questionText: question.question_text,
+              questionType: question.question_type as EvaluationSummaryQuestion["questionType"],
+              sectionName: question.section_name,
+              answeredBy,
+              averageRating: ratings.length
+                ? Math.round((ratings.reduce((sum, value) => sum + value, 0) / ratings.length) * 100) / 100
+                : null,
+              ratingDistribution: ratings.length
+                ? [1, 2, 3, 4, 5].map((value) => ({ value, count: ratings.filter((entry) => entry === value).length }))
+                : [],
+              options: question.evaluation_option.map((option) => {
+                const count = respondentsByOption.get(option.evaluation_option_id.toString())?.size ?? 0;
+                return {
+                  optionId: option.evaluation_option_id.toString(),
+                  optionText: option.option_text,
+                  count,
+                  percent: percent(count, answeredBy),
+                };
+              }),
+              // Order is deliberately not preserved: on a small batch, "the third comment" lines up
+              // with "the third person to submit" for anyone who can see the attendance list.
+              textAnswers: enoughForFreeText ? [...texts].sort((a, b) => a.localeCompare(b)) : [],
+              textAnswersWithheld: texts.length > 0 && !enoughForFreeText,
+            };
+          }),
+        };
+      });
+    },
+
     /** Everything on one plan still waiting on HRD: submissions with an ungraded SHORT_ANSWER, and
      *  submissions already graded but not yet released to the employee. HRD_FACTORY only ever sees
      *  plans their own company owns. */
@@ -829,8 +1095,16 @@ const writeOfficialAssessmentResult = async (
   enrollmentId: bigint,
   stage: GradedStage,
 ) => {
+  // Published attempts only. A graded-but-unreleased attempt already carries a score, and picking
+  // the best across every attempt let that held-back score become the official pre/post result -
+  // which My Record shows - defeating the publication gate the projections enforce.
   const best = await tx.assessment_submission.findFirst({
-    where: { enrollment_id: enrollmentId, assessment_stage: stage, score: { not: null } },
+    where: {
+      enrollment_id: enrollmentId,
+      assessment_stage: stage,
+      score: { not: null },
+      publication_status: "PUBLISHED",
+    },
     orderBy: [{ score: "desc" }, { submitted_at: "desc" }],
     select: { submission_id: true, score: true },
   });

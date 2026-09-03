@@ -113,6 +113,77 @@ export type EvaluationForEmployee = {
   submittedAt: string | null;
 };
 
+/** Free-text answers are hidden until this many people have answered the form. Even on an anonymous
+ *  form a written comment can identify its author when the batch is small enough. */
+export const FREE_TEXT_MIN_RESPONDENTS = 3;
+
+export type EvaluationSummaryOption = {
+  optionId: string;
+  optionText: string;
+  /** Respondents who picked this option - people, not answer rows. A MULTIPLE_CHOICE question
+   *  stores one row per tick, so counting rows would count one person several times. */
+  count: number;
+  percent: number;
+};
+
+export type EvaluationSummaryQuestion = {
+  questionId: string;
+  questionOrder: number;
+  questionText: string;
+  questionType: EvaluationQuestionForEmployee["questionType"];
+  sectionName: string | null;
+  /** How many people answered THIS question (a question nobody answered is not the same as one
+   *  everybody scored badly). */
+  answeredBy: number;
+  /** RATING only: mean of the 1-5 values, and how many people gave each value. */
+  averageRating: number | null;
+  ratingDistribution: { value: number; count: number }[];
+  /** Choice questions only. */
+  options: EvaluationSummaryOption[];
+  /** Free-text only, and only once the form clears FREE_TEXT_MIN_RESPONDENTS. */
+  textAnswers: string[];
+  textAnswersWithheld: boolean;
+};
+
+export type EvaluationSummary = {
+  evaluationFormId: string;
+  formName: string;
+  description: string | null;
+  isAnonymous: boolean;
+  timing: EvaluationTimingStage;
+  /** Enrolled people, submitted people, and the rate between them. Everything else here is
+   *  meaningless without knowing how many of the class actually answered. */
+  enrolledCount: number;
+  submittedCount: number;
+  responseRatePercent: number;
+  questions: EvaluationSummaryQuestion[];
+};
+
+/** One question the employee did not get full marks on, as shown back to them after the result is
+ *  released. Deliberately carries NO correct answer and no choice list: the point is to send them
+ *  back to the material before another attempt, not to hand them the answer key. */
+export type MissedQuestion = {
+  questionId: string;
+  questionOrder: number;
+  questionText: string;
+  scoreAwarded: number;
+  questionScore: number;
+  /** HRD's note on a written answer, when they left one. */
+  reviewComment: string | null;
+};
+
+export type AssessmentReview = {
+  submissionId: string;
+  attemptNo: number;
+  submittedAt: string | null;
+  scorePercent: number | null;
+  passStatus: PassStatus;
+  passingScorePercent: number;
+  totalAwarded: number;
+  totalPossible: number;
+  missedQuestions: MissedQuestion[];
+};
+
 export type GradeAnswerInput = {
   answerId: string;
   scoreAwarded: number;

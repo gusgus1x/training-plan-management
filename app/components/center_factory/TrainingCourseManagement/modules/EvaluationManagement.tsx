@@ -55,6 +55,9 @@ type FormErrors = Partial<Record<"name" | "companyId" | "questions" | "question"
 type Draft = {
   formCode: string;
   formName: string;
+  /** Shown to the respondent above the questions, the way an assessment's `instructions` are. The
+   *  column and the API always accepted it; only this form never sent anything but null. */
+  description: string;
   scope: EvaluationScope;
   companyId: string;
   timing: TimingLabel;
@@ -77,6 +80,7 @@ const key = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const blankDraft = (companyId = "", factory = false): Draft => ({
   formCode: "",
   formName: "",
+  description: "",
   scope: factory ? "COMPANY" : "CENTRAL",
   companyId,
   timing: "After Training",
@@ -291,6 +295,7 @@ export default function EvaluationManagement() {
     setDraft({
       formCode: item.formCode,
       formName: item.formName,
+      description: item.description ?? "",
       scope: item.scope,
       companyId: item.companyId ?? "",
       timing: timingFromApi(item.timing),
@@ -394,7 +399,7 @@ export default function EvaluationManagement() {
     companyId: isFactory ? user?.companyId ?? null : sourceDraft.scope === "COMPANY" ? sourceDraft.companyId : null,
     formCode: sourceDraft.formCode,
     formName: sourceDraft.formName,
-    description: null,
+    description: sourceDraft.description.trim() || null,
     timing: timingToApi(sourceDraft.timing),
     respondentType: respondentToApi(sourceDraft.respondent),
     isAnonymous: sourceDraft.anonymous,
@@ -452,6 +457,7 @@ export default function EvaluationManagement() {
     setDraft((current) => ({
       ...current,
       formName: `${source.formName} (Copy)`,
+      description: source.description ?? "",
       timing: timingFromApi(source.timing),
       respondent: respondentFromApi(source.respondentType),
       anonymous: source.isAnonymous,
@@ -586,6 +592,14 @@ export default function EvaluationManagement() {
           placeholder="e.g. Standard Course Evaluation"
         />
         {errors.name ? <small>{errors.name}</small> : null}
+      </label>
+      <label className={styles.fullWidth}>คำชี้แจงสำหรับผู้ตอบ (Instructions for respondents)
+        <textarea
+          value={draft.description}
+          onChange={(event) => setDraft({ ...draft, description: event.target.value })}
+          placeholder="เช่น แบบประเมินนี้ใช้เวลาประมาณ 5 นาที คำตอบของท่านจะไม่ถูกเปิดเผยรายบุคคล (ไม่บังคับ)"
+          rows={3}
+        />
       </label>
       {!isFactory ? (
         <label>Scope

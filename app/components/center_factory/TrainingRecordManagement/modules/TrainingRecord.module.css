@@ -4308,6 +4308,200 @@
   overflow-y: auto;
 }
 
+/* Pending grading, grouped one block per person. The flat list put every answer on its own wide
+   row, so the score box was pushed off the side of the panel; collapsing to a name per row keeps
+   the whole queue readable and only opens the person being marked. */
+.gradingQueue {
+  display: grid;
+  gap: 10px;
+}
+
+.gradingGroup {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 10px;
+  background: var(--ui-60-surface);
+  overflow: hidden;
+}
+
+.gradingGroupHeader {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  border: 0;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
+  cursor: pointer;
+  font: inherit;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.gradingGroupHeader strong {
+  display: block;
+  font-size: 0.84rem;
+}
+
+.gradingGroupHeader small {
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+}
+
+.gradingChevron {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 6px solid var(--ui-30-muted);
+  transition: transform 140ms ease;
+}
+
+.gradingChevron[data-open="true"] {
+  transform: rotate(90deg);
+}
+
+.gradingGroupTags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.gradingGroupTags em {
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 0.7rem;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.gradingGroupTags em[data-tone="grade"] {
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.gradingGroupTags em[data-tone="release"] {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.gradingSubmission {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--ui-30-border);
+  padding: 12px;
+}
+
+.gradingAnswer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--ui-30-border);
+  border-left: 3px solid var(--ui-30-primary);
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  padding: 12px;
+}
+
+.gradingQuestion {
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+/* The employee's own words, set apart from the card so it is never mistaken for form chrome. */
+.gradingAnswerText {
+  margin: 0;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 6px;
+  background: var(--ui-60-surface);
+  padding: 9px 11px;
+  color: var(--ui-30-ink);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+/* Wraps: the comment box and the score box share a line on a wide panel and stack on a narrow
+   one, rather than the comment box shoving the score off the edge. */
+.gradingInputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  border-top: 1px dashed var(--ui-30-border);
+  padding-top: 10px;
+}
+
+.gradingInputs label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.gradingInputs label small {
+  color: var(--ui-30-muted);
+  font-weight: 600;
+}
+
+/* These inherited no styling at all, so both boxes vanished into the card behind them. */
+.gradingInputs input {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 6px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font: inherit;
+  font-size: 0.78rem;
+  min-height: 32px;
+  padding: 6px 10px;
+  outline: none;
+}
+
+.gradingInputs input:focus {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.16);
+}
+
+.gradingInputs label input {
+  width: 68px;
+  text-align: center;
+  font-weight: 800;
+}
+
+.gradingInputs > input[type="text"] {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.gradingSaveButton {
+  align-self: flex-end;
+  border: 0;
+  border-radius: 8px;
+  background: var(--ui-30-primary);
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  min-height: 34px;
+  padding: 8px 16px;
+}
+
+.gradingSaveButton:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.gradingSaveButton:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 /* Wraps rather than tracks fixed columns. A six-column grid needed ~770px, which does not fit the
  * main column at any realistic window size, and the panel's overflow:hidden ancestor silently
  * clipped the certificate and expiry fields off the right edge. */

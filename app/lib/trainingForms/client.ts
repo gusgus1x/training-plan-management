@@ -2,7 +2,9 @@
 
 import type {
   AssessmentForEmployee,
+  AssessmentReview,
   EvaluationForEmployee,
+  EvaluationSummary,
   GradeSubmissionInput,
   GradedStage,
   PendingGradingSubmission,
@@ -58,6 +60,14 @@ export const readAssessment = async (enrollmentId: string, stage: GradedStage, f
     }),
   );
 
+export const readAssessmentReview = async (enrollmentId: string, stage: GradedStage, fetcher: Fetcher = fetch) =>
+  read<{ review: AssessmentReview | null }>(
+    await fetcher(`/api/training-plan/enrollments/${enrollmentId}/assessments/${stage}/review`, {
+      credentials: "include",
+      cache: "no-store",
+    }),
+  );
+
 export const submitAssessment = async (
   enrollmentId: string,
   stage: GradedStage,
@@ -103,6 +113,18 @@ export const gradeSubmission = async (
 ) =>
   read<{ graded: true }>(
     await fetcher(`/api/training-plan/training-records/${planId}/submissions/${submissionId}`, json("PUT", input)),
+  );
+
+export const readEvaluationSummary = async (
+  planId: string,
+  timing: "EVALUATION" | "EVALUATION_30DAY",
+  fetcher: Fetcher = fetch,
+) =>
+  read<{ summary: EvaluationSummary | null }>(
+    await fetcher(`/api/training-plan/training-records/${planId}/evaluations/${timing}`, {
+      credentials: "include",
+      cache: "no-store",
+    }),
   );
 
 export const publishSubmissionResults = async (planId: string, submissionId: string, fetcher: Fetcher = fetch) =>
