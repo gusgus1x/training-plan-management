@@ -51,7 +51,18 @@ type Draft = {
   status: AssessmentStatus;
 };
 type DraftChoice = AssessmentChoiceInput & { id: string };
-type AssessmentQuestionType = "Choice" | "Text";
+/**
+ * The stored value itself, not a UI-only label. The editor used to carry "Choice" | "Text" and map
+ * both ways, which quietly rewrote every MULTIPLE_CHOICE and TRUE_FALSE question as SINGLE_CHOICE
+ * (and dropped all but the first correct answer) the moment somebody edited and saved it. The DB
+ * has always allowed all four - CK_RC2_assessment_question_question_type_enum - so the draft now
+ * holds exactly what will be written back.
+ */
+type AssessmentQuestionType = AssessmentQuestionInput["questionType"];
+
+const CHOICE_TYPES: AssessmentQuestionType[] = ["SINGLE_CHOICE", "MULTIPLE_CHOICE", "TRUE_FALSE"];
+const isChoiceType = (type: AssessmentQuestionType) => CHOICE_TYPES.includes(type);
+
 type DraftQuestion = Omit<AssessmentQuestionInput, "choices" | "questionType"> & {
   id: string;
   questionType: AssessmentQuestionType;
@@ -72,16 +83,32 @@ const blankDraft = (companyId = "", factory = false): Draft => ({
 });
 
 const key = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-const blankChoices = (): DraftChoice[] => [
-  { id: key(), choiceText: "", isCorrect: true, optionScore: "1" },
-  { id: key(), choiceText: "", isCorrect: false, optionScore: "0" },
-  { id: key(), choiceText: "", isCorrect: false, optionScore: "0" },
-  { id: key(), choiceText: "", isCorrect: false, optionScore: "0" },
+
+/** The server (app/lib/assessments/validation.ts) accepts any choice count from two upwards, and
+ *  the DB stores them as ordered rows with no cap - the old fixed four was a UI-only rule that
+ *  forced a true/false question to carry two empty options. */
+const MIN_CHOICES = 2;
+const DEFAULT_CHOICE_COUNT = 4;
+
+const blankChoice = (isCorrect = false): DraftChoice => ({
+  id: key(),
+  choiceText: "",
+  isCorrect,
+  optionScore: isCorrect ? "1" : "0",
+});
+const blankChoices = (count = DEFAULT_CHOICE_COUNT): DraftChoice[] =>
+  Array.from({ length: count }, (_, index) => blankChoice(index === 0));
+
+/** TRUE_FALSE is stored as an ordinary two-choice question; the DB check constraint accepts the
+ *  type, and the runner renders it as a single-answer question like SINGLE_CHOICE. */
+const trueFalseChoices = (): DraftChoice[] => [
+  { id: key(), choiceText: "True", isCorrect: true, optionScore: "1" },
+  { id: key(), choiceText: "False", isCorrect: false, optionScore: "0" },
 ];
 const blankQuestion = (): DraftQuestion => ({
   id: key(),
   questionText: "",
-  questionType: "Choice",
+  questionType: "SINGLE_CHOICE",
   questionScore: "1",
   isRequired: true,
   choices: blankChoices(),
@@ -89,19 +116,31 @@ const blankQuestion = (): DraftQuestion => ({
 
 const toDraftQuestions = (record: AssessmentRecord): DraftQuestion[] =>
   record.questions.map((question) => {
-    const questionType: AssessmentQuestionType = question.questionType === "SHORT_ANSWER" ? "Text" : "Choice";
-    const storedChoices = question.choices.slice(0, 4).map((choice, index) => ({
+    // The stored type is kept as-is. It used to be squashed into "Choice"/"Text" here and written
+    // back as SINGLE_CHOICE/SHORT_ANSWER, so editing a MULTIPLE_CHOICE or TRUE_FALSE question
+    // silently changed its type. Choices are no longer truncated to 4 either.
+    const questionType = question.questionType;
+    const storedChoices = question.choices.map((choice) => ({
       id: choice.choiceId,
       choiceText: choice.choiceText,
-      isCorrect: questionType === "Choice" && index === question.choices.findIndex((candidate) => candidate.isCorrect),
+      // Every correct flag survives now. The old version kept only the first one, which quietly
+      // destroyed the other correct answers of a MULTIPLE_CHOICE question.
+      isCorrect: isChoiceType(questionType) && choice.isCorrect,
       optionScore: choice.optionScore,
     }));
-    const choices = questionType === "Choice"
-      ? [...storedChoices, ...blankChoices()].slice(0, 4)
+    const choices = isChoiceType(questionType)
+      ? storedChoices.length >= MIN_CHOICES
+        ? storedChoices
+        : [...storedChoices, ...blankChoices()].slice(0, MIN_CHOICES)
       : [];
-    if (questionType === "Choice") {
-      const correctIndex = Math.max(0, choices.findIndex((choice) => choice.isCorrect));
-      choices.forEach((choice, index) => { choice.isCorrect = index === correctIndex; });
+    // A single-answer question with nothing marked correct cannot be saved, so fall back to the
+    // first option rather than handing the editor a state its own validation rejects.
+    if (
+      (questionType === "SINGLE_CHOICE" || questionType === "TRUE_FALSE") &&
+      choices.length > 0 &&
+      !choices.some((choice) => choice.isCorrect)
+    ) {
+      choices[0] = { ...choices[0], isCorrect: true };
     }
     return {
       id: question.questionId,
@@ -371,14 +410,52 @@ export default function Assessment() {
   };
 
   const setQuestionType = (questionType: AssessmentQuestionType) => {
+    setQuestion((current) => {
+      if (questionType === "SHORT_ANSWER") return { ...current, questionType, choices: [] };
+      if (questionType === "TRUE_FALSE") return { ...current, questionType, choices: trueFalseChoices() };
+
+      const choices = current.choices.length >= MIN_CHOICES ? [...current.choices] : blankChoices();
+      // Switching from multiple- to single-answer has to leave exactly one correct choice, which
+      // is what the server requires for SINGLE_CHOICE.
+      if (questionType === "SINGLE_CHOICE") {
+        const firstCorrect = Math.max(0, choices.findIndex((choice) => choice.isCorrect));
+        return {
+          ...current,
+          questionType,
+          choices: choices.map((choice, index) => ({ ...choice, isCorrect: index === firstCorrect })),
+        };
+      }
+      return { ...current, questionType, choices };
+    });
+  };
+
+  /** Single-answer types behave like radio buttons; MULTIPLE_CHOICE toggles each choice on its own. */
+  const toggleCorrect = (index: number) =>
     setQuestion((current) => ({
       ...current,
-      questionType,
-      choices: questionType === "Text"
-        ? []
-        : [...current.choices, ...blankChoices()].slice(0, 4),
+      choices: current.choices.map((choice, idx) =>
+        current.questionType === "MULTIPLE_CHOICE"
+          ? idx === index
+            ? { ...choice, isCorrect: !choice.isCorrect }
+            : choice
+          : { ...choice, isCorrect: idx === index },
+      ),
     }));
-  };
+
+  const addChoice = () =>
+    setQuestion((current) => ({ ...current, choices: [...current.choices, blankChoice()] }));
+
+  const removeChoice = (choiceId: string) =>
+    setQuestion((current) => {
+      if (current.choices.length <= MIN_CHOICES) return current;
+      const choices = current.choices.filter((choice) => choice.id !== choiceId);
+      // Dropping the row that held the correct answer would leave the question with none, which
+      // the save validation rejects - hand it to the first remaining option instead.
+      if (!choices.some((choice) => choice.isCorrect)) {
+        choices[0] = { ...choices[0], isCorrect: true };
+      }
+      return { ...current, choices };
+    });
 
   const saveQuestion = () => {
     if (!question.questionText.trim() || Number(question.questionScore) <= 0) {
@@ -386,15 +463,32 @@ export default function Assessment() {
       setFeedback({ tone: "error", message: "Question text and a positive score are required." });
       return;
     }
-    if (question.questionType === "Choice" && (question.choices.length !== 4 || question.choices.some((choice) => !choice.choiceText.trim()))) {
-      setFormErrors((current) => ({ ...current, question: "Choice questions require Option A, B, C, and D." }));
-      setFeedback({ tone: "error", message: "Complete all four answer options." });
+    const choiceQuestion = isChoiceType(question.questionType);
+    if (choiceQuestion && question.choices.length < MIN_CHOICES) {
+      setFormErrors((current) => ({ ...current, question: `Choice questions need at least ${MIN_CHOICES} options.` }));
+      setFeedback({ tone: "error", message: `Add at least ${MIN_CHOICES} answer options.` });
       return;
     }
+    if (choiceQuestion && question.choices.some((choice) => !choice.choiceText.trim())) {
+      setFormErrors((current) => ({ ...current, question: "Every answer option needs text - remove the ones you do not need." }));
+      setFeedback({ tone: "error", message: "Fill in every answer option, or remove the empty ones." });
+      return;
+    }
+    // These mirror app/lib/assessments/validation.ts so the editor rejects what the server would.
     const correctCount = question.choices.filter((choice) => choice.isCorrect).length;
-    if (question.questionType === "Choice" && correctCount !== 1) {
+    if (question.questionType === "TRUE_FALSE" && question.choices.length !== 2) {
+      setFormErrors((current) => ({ ...current, question: "True/False questions have exactly two options." }));
+      setFeedback({ tone: "error", message: "True/False questions have exactly two options." });
+      return;
+    }
+    if ((question.questionType === "SINGLE_CHOICE" || question.questionType === "TRUE_FALSE") && correctCount !== 1) {
       setFormErrors((current) => ({ ...current, question: "Select exactly one correct answer." }));
       setFeedback({ tone: "error", message: "Select exactly one correct answer." });
+      return;
+    }
+    if (question.questionType === "MULTIPLE_CHOICE" && correctCount < 2) {
+      setFormErrors((current) => ({ ...current, question: "Multiple choice questions need at least two correct answers." }));
+      setFeedback({ tone: "error", message: "Mark at least two correct answers, or switch the type to Single Choice." });
       return;
     }
     const next = { ...question, questionText: question.questionText.trim() };
@@ -406,6 +500,21 @@ export default function Assessment() {
     setFormErrors((current) => ({ ...current, question: undefined, questions: undefined }));
     setFeedback({ tone: "success", message: editingQuestionId ? "Question updated." : "Question added." });
   };
+
+  /** Copies a question in place, right below the original - writing several near-identical
+   *  questions is the common case when building a test, and retyping every option was the only
+   *  way to do it before. Fresh ids so the copy edits independently of its source. */
+  const duplicateQuestion = (index: number) =>
+    setQuestions((current) => {
+      const source = current[index];
+      if (!source) return current;
+      const copy: DraftQuestion = {
+        ...source,
+        id: key(),
+        choices: source.choices.map((choice) => ({ ...choice, id: key() })),
+      };
+      return [...current.slice(0, index + 1), copy, ...current.slice(index + 1)];
+    });
 
   const moveQuestion = (index: number, direction: -1 | 1) => {
     setQuestions((current) => {
@@ -430,10 +539,11 @@ export default function Assessment() {
     status: draft.status,
     questions: questions.map(({ questionText, questionType, questionScore, isRequired, choices }) => ({
       questionText,
-      questionType: questionType === "Choice" ? "SINGLE_CHOICE" : "SHORT_ANSWER",
+      // The draft already holds the stored value - no lossy round trip through a UI-only label.
+      questionType,
       questionScore,
       isRequired,
-      choices: questionType === "Choice"
+      choices: isChoiceType(questionType)
         ? choices.map(({ choiceText, isCorrect }) => ({
             choiceText,
             isCorrect,
@@ -745,8 +855,10 @@ export default function Assessment() {
               value={question.questionType}
               onChange={(event) => setQuestionType(event.target.value as AssessmentQuestionType)}
             >
-              <option value="Choice">Choice (ปรนัย - 4 ตัวเลือก)</option>
-              <option value="Text">Text (อัตนัย / เติมคำ)</option>
+              <option value="SINGLE_CHOICE">Single Choice (ปรนัย - ตอบได้ 1 ข้อ)</option>
+              <option value="MULTIPLE_CHOICE">Multiple Choice (ปรนัย - ตอบได้หลายข้อ)</option>
+              <option value="TRUE_FALSE">True / False (ถูก - ผิด)</option>
+              <option value="SHORT_ANSWER">Short Answer (อัตนัย / เติมคำ)</option>
             </select>
           </label>
 
@@ -772,7 +884,7 @@ export default function Assessment() {
             </select>
           </label>
 
-          {question.questionType === "Choice" ? (
+          {isChoiceType(question.questionType) ? (
             <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px", marginTop: "8px" }}>
               {question.choices.map((choice, index) => {
                 const letter = String.fromCharCode(65 + index);
@@ -793,20 +905,36 @@ export default function Assessment() {
                       <span style={{ fontWeight: 800, fontSize: "0.84rem", color: choice.isCorrect ? "#10b981" : "var(--ui-30-ink)" }}>
                         Option {letter} {choice.isCorrect ? "(Correct Answer)" : ""}
                       </span>
-                      <label style={{ display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}>
-                        <input
-                          type="radio"
-                          name={`correct-${question.id}`}
-                          checked={choice.isCorrect}
-                          onChange={() => {
-                            setQuestion({
-                              ...question,
-                              choices: question.choices.map((item, idx) => ({ ...item, isCorrect: idx === index })),
-                            });
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "10px" }}>
+                        <label style={{ display: "inline-flex", alignItems: "center", gap: "4px", cursor: "pointer", fontSize: "0.78rem", fontWeight: 700 }}>
+                          <input
+                            type={question.questionType === "MULTIPLE_CHOICE" ? "checkbox" : "radio"}
+                            name={`correct-${question.id}`}
+                            checked={choice.isCorrect}
+                            onChange={() => toggleCorrect(index)}
+                          />
+                          <span style={{ color: choice.isCorrect ? "#10b981" : "var(--ui-30-muted)" }}>Correct</span>
+                        </label>
+                        <button
+                          type="button"
+                          title="ลบตัวเลือกนี้ / Remove this option"
+                          disabled={question.choices.length <= MIN_CHOICES || question.questionType === "TRUE_FALSE"}
+                          onClick={() => removeChoice(choice.id)}
+                          style={{
+                            appearance: "none",
+                            border: "none",
+                            background: "transparent",
+                            color: question.choices.length <= MIN_CHOICES || question.questionType === "TRUE_FALSE" ? "var(--ui-30-muted)" : "#dc2626",
+                            cursor: question.choices.length <= MIN_CHOICES || question.questionType === "TRUE_FALSE" ? "not-allowed" : "pointer",
+                            fontSize: "0.9rem",
+                            fontWeight: 900,
+                            lineHeight: 1,
+                            padding: "2px 4px",
                           }}
-                        />
-                        <span style={{ color: choice.isCorrect ? "#10b981" : "var(--ui-30-muted)" }}>Correct</span>
-                      </label>
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
                     <input
                       value={choice.choiceText}
@@ -823,6 +951,16 @@ export default function Assessment() {
                   </div>
                 );
               })}
+              {question.questionType === "TRUE_FALSE" ? null : (
+                <button
+                  className={styles.secondaryButton}
+                  type="button"
+                  onClick={addChoice}
+                  style={{ gridColumn: "1 / -1", justifySelf: "start" }}
+                >
+                  + เพิ่มตัวเลือก / Add option
+                </button>
+              )}
             </div>
           ) : null}
         </div>
@@ -890,6 +1028,13 @@ export default function Assessment() {
                     }}
                   >
                     Edit
+                  </button>
+                  <button
+                    className={styles.secondaryButton}
+                    type="button"
+                    onClick={() => duplicateQuestion(index)}
+                  >
+                    Duplicate
                   </button>
                   <button
                     className={styles.dangerButton}

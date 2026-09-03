@@ -70,13 +70,19 @@ const blankDraft = (companyId = "", factory = false): Draft => ({
   anonymous: true,
   status: "Draft",
 });
+/** Choice questions accept any option count from two upwards (see handleAddQuestion's check and
+ *  app/lib/evaluations validation); four is only the count a brand-new question starts with. */
+const MIN_OPTIONS = 2;
+const DEFAULT_OPTION_COUNT = 4;
+const blankOptions = (count = DEFAULT_OPTION_COUNT) => Array.from({ length: count }, () => "");
+
 const blankQuestion = (): DraftQuestion => ({
   id: key(),
   prompt: "",
   type: "Rating",
   section: "Course Content",
   required: true,
-  options: ["", "", "", ""],
+  options: blankOptions(),
 });
 
 // The *Label types are what the form shows; the Evaluation* types are what the API stores. These
@@ -97,9 +103,14 @@ const toDraftQuestions = (record: EvaluationRecord): DraftQuestion[] => record.q
   type: typeFromApi(question.questionType),
   section: sections.includes(question.sectionName as EvaluationSection) ? question.sectionName as EvaluationSection : "Comments",
   required: question.isRequired,
+  // Not truncated to 4 any more: a question stored with more options used to lose the extras as
+  // soon as it was opened here, and saving wrote the shortened list back.
   options: question.questionType === "SINGLE_CHOICE" || question.questionType === "MULTIPLE_CHOICE"
-    ? [...question.options.map((option) => option.optionText), "", "", "", ""].slice(0, 4)
-    : ["", "", "", ""],
+    ? (() => {
+        const stored = question.options.map((option) => option.optionText);
+        return stored.length >= MIN_OPTIONS ? stored : [...stored, ...blankOptions()].slice(0, MIN_OPTIONS);
+      })()
+    : blankOptions(),
 }));
 
 const csvCell = (value: string | number | boolean) => `"${String(value).replaceAll('"', '""')}"`;
@@ -372,14 +383,25 @@ export default function EvaluationManagement() {
     const cleanOptions = questionDraft.options.map((option) => option.trim());
     if (!questionDraft.prompt.trim()) return setErrors((current) => ({ ...current, question: "Enter an evaluation question." }));
     if (questionDraft.type === "Single Choice" && cleanOptions.filter(Boolean).length < 2) return setErrors((current) => ({ ...current, question: "Single Choice questions need at least two options." }));
-    const next: DraftQuestion = { ...questionDraft, prompt: questionDraft.prompt.trim(), options: questionDraft.type === "Single Choice" ? cleanOptions : ["", "", "", ""] };
+    const next: DraftQuestion = { ...questionDraft, prompt: questionDraft.prompt.trim(), options: questionDraft.type === "Single Choice" ? cleanOptions : blankOptions() };
     setQuestions((current) => editingQuestionId ? current.map((item) => item.id === editingQuestionId ? next : item) : [...current, next]);
     setErrors((current) => ({ ...current, question: undefined, questions: undefined }));
     setFeedback({ tone: "success", message: editingQuestionId ? "Question updated." : "Question added." });
     setPreviewAnswers({}); resetQuestionEditor();
   };
-  const handleEditQuestion = (question: DraftQuestion) => { setQuestionDraft({ ...question, options: [...question.options, "", "", "", ""].slice(0, 4) }); setEditingQuestionId(question.id); setErrors((current) => ({ ...current, question: undefined })); };
+  const handleEditQuestion = (question: DraftQuestion) => { setQuestionDraft({ ...question, options: question.options.length >= MIN_OPTIONS ? [...question.options] : [...question.options, ...blankOptions()].slice(0, MIN_OPTIONS) }); setEditingQuestionId(question.id); setErrors((current) => ({ ...current, question: undefined })); };
   const handleRemoveQuestion = (id: string) => { setQuestions((current) => current.filter((item) => item.id !== id)); if (editingQuestionId === id) resetQuestionEditor(); setPreviewAnswers({}); };
+
+  const handleAddOption = () => setQuestionDraft((current) => ({ ...current, options: [...current.options, ""] }));
+  const handleRemoveOption = (index: number) => setQuestionDraft((current) => current.options.length <= MIN_OPTIONS ? current : ({ ...current, options: current.options.filter((_, itemIndex) => itemIndex !== index) }));
+
+  /** Copies a question in place, right below the original - the common case when writing a set of
+   *  near-identical rating questions for one section. */
+  const handleDuplicateQuestion = (index: number) => setQuestions((current) => {
+    const source = current[index];
+    if (!source) return current;
+    return [...current.slice(0, index + 1), { ...source, id: key(), options: [...source.options] }, ...current.slice(index + 1)];
+  });
   const handleMoveQuestion = (index: number, direction: -1 | 1) => setQuestions((current) => {
     const destination = index + direction; if (destination < 0 || destination >= current.length) return current;
     const reordered = [...current]; [reordered[index], reordered[destination]] = [reordered[destination], reordered[index]]; return reordered;
@@ -414,7 +436,7 @@ export default function EvaluationManagement() {
     const options = item.type === "Rating" ? ratingOptions : item.options.filter(Boolean);
     return <article key={item.id}><div className={styles.questionHeading}><div><span>{item.section}</span><strong>{index + 1}. {item.prompt}{item.required ? <em className={styles.requiredMark}> *</em> : null}</strong></div><b>{item.type}</b></div>
       {item.type === "Text" ? <textarea aria-label={`Preview answer for question ${index + 1}`} placeholder="Type a preview response" value={previewAnswers[answerKey] ?? ""} onChange={(event) => setPreviewAnswers((current) => ({ ...current, [answerKey]: event.target.value }))} /> : <div className={styles.previewOptions}>{options.map((option) => <label key={`${item.id}-${option}`}><input checked={previewAnswers[answerKey] === option} name={answerKey} type="radio" value={option} onChange={(event) => setPreviewAnswers((current) => ({ ...current, [answerKey]: event.target.value }))} /><span>{option}</span></label>)}</div>}
-      {editable ? <div className={styles.questionActions}><button className={styles.secondaryButton} type="button" disabled={index === 0} onClick={() => handleMoveQuestion(index, -1)}>Up</button><button className={styles.secondaryButton} type="button" disabled={index === previewQuestions.length - 1} onClick={() => handleMoveQuestion(index, 1)}>Down</button><button className={styles.secondaryButton} type="button" onClick={() => handleEditQuestion(item)}>Edit</button><button className={styles.dangerButton} type="button" onClick={() => handleRemoveQuestion(item.id)}>Remove</button></div> : null}
+      {editable ? <div className={styles.questionActions}><button className={styles.secondaryButton} type="button" disabled={index === 0} onClick={() => handleMoveQuestion(index, -1)}>Up</button><button className={styles.secondaryButton} type="button" disabled={index === previewQuestions.length - 1} onClick={() => handleMoveQuestion(index, 1)}>Down</button><button className={styles.secondaryButton} type="button" onClick={() => handleEditQuestion(item)}>Edit</button><button className={styles.secondaryButton} type="button" onClick={() => handleDuplicateQuestion(index)}>Duplicate</button><button className={styles.dangerButton} type="button" onClick={() => handleRemoveQuestion(item.id)}>Remove</button></div> : null}
     </article>;
   })}</div> : <div className={styles.emptyState}>No questions yet. Add a question to preview the evaluation form.</div>;
 
@@ -509,7 +531,8 @@ export default function EvaluationManagement() {
         <label>Section<select value={questionDraft.section} onChange={(event) => setQuestionDraft({ ...questionDraft, section: event.target.value as EvaluationSection })}>{sections.map((section) => <option key={section}>{section}</option>)}</select></label>
         <label>Answer Type<select value={questionDraft.type} onChange={(event) => setQuestionDraft({ ...questionDraft, type: event.target.value as QuestionTypeLabel })}><option>Rating</option><option>Single Choice</option><option>Text</option></select></label>
         <label className={styles.toggleLabel}><input checked={questionDraft.required} type="checkbox" onChange={(event) => setQuestionDraft({ ...questionDraft, required: event.target.checked })} />Required question</label>
-        {questionDraft.type === "Single Choice" ? questionDraft.options.map((option, index) => <label key={`choice-${index}`}>Choice {index + 1}<input value={option} onChange={(event) => setQuestionDraft({ ...questionDraft, options: questionDraft.options.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} /></label>) : null}
+        {questionDraft.type === "Single Choice" ? questionDraft.options.map((option, index) => <label key={`choice-${index}`}>Choice {index + 1}<span style={{ display: "flex", alignItems: "center", gap: "6px" }}><input style={{ flex: 1, minWidth: 0 }} value={option} onChange={(event) => setQuestionDraft({ ...questionDraft, options: questionDraft.options.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} /><button type="button" title="ลบตัวเลือกนี้ / Remove this option" disabled={questionDraft.options.length <= MIN_OPTIONS} onClick={() => handleRemoveOption(index)} style={{ appearance: "none", border: "none", background: "transparent", color: questionDraft.options.length <= MIN_OPTIONS ? "var(--ui-30-muted)" : "#dc2626", cursor: questionDraft.options.length <= MIN_OPTIONS ? "not-allowed" : "pointer", fontSize: "0.9rem", fontWeight: 900, lineHeight: 1, padding: "2px 4px" }}>✕</button></span></label>) : null}
+        {questionDraft.type === "Single Choice" ? <div className={styles.fullWidth}><button className={styles.secondaryButton} type="button" onClick={handleAddOption}>+ เพิ่มตัวเลือก / Add option</button></div> : null}
       </div>
       {questionDraft.type === "Rating" ? <p className={styles.helperText}>Rating uses the standard five-point scale from Strongly disagree to Strongly agree.</p> : null}
       {errors.question ? <p className={styles.validationMessage} role="alert">{errors.question}</p> : null}
