@@ -658,7 +658,7 @@
 
 :global([data-theme="dark"]) .panelHeader,
 :global(.dark) .panelHeader {
-  background: #182234 !important;
+  background: #1e293b !important;
   border-bottom-color: #334155 !important;
   color: #f8fafc !important;
 }
@@ -1002,7 +1002,7 @@
 
 :global([data-theme="dark"]) .filterItem label,
 :global(.dark) .filterItem label {
-  color: #f1f5f9 !important;
+  color: #cbd5e1 !important;
 }
 
 .filterInput,
@@ -1025,7 +1025,7 @@
 :global(.dark) .filterInput,
 :global(.dark) .filterSelect {
   background: #0f172a !important;
-  border-color: #475569 !important;
+  border-color: #334155 !important;
   color: #f8fafc !important;
 }
 

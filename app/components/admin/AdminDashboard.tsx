@@ -124,6 +124,7 @@ export default function AdminDashboard() {
   const [auditPage, setAuditPage] = useState(1);
   const [auditTotalPages, setAuditTotalPages] = useState(1);
   const [auditCategory, setAuditCategory] = useState("all");
+  const [auditRole, setAuditRole] = useState("all");
   const [auditSearch, setAuditSearch] = useState("");
   const [auditFrom, setAuditFrom] = useState("");
   const [auditTo, setAuditTo] = useState("");
@@ -154,6 +155,7 @@ export default function AdminDashboard() {
         page: auditPage,
         limit: 15,
         category: auditCategory,
+        role: auditRole,
         search: auditSearch,
         from: auditFrom || undefined,
         to: auditTo || undefined,
@@ -211,7 +213,7 @@ export default function AdminDashboard() {
       void loadAuditLogs();
       void loadActiveUsers();
     }
-  }, [activeTab, auditPage, auditCategory]);
+  }, [activeTab, auditPage, auditCategory, auditRole]);
 
   // Periodic poll for active users every 10 seconds when on audit tab
   useEffect(() => {
@@ -711,7 +713,6 @@ export default function AdminDashboard() {
                       disabled={isLoading}
                       onClick={() => void loadAccounts()}
                     >
-                      <span>🔄</span>
                       <span>{isLoading ? "กำลังโหลด..." : "รีเฟรช"}</span>
                     </button>
                   </div>
@@ -722,7 +723,7 @@ export default function AdminDashboard() {
               <div className={styles.filterCard}>
                 <div className={`${styles.filterItem} ${styles.filterSearchInput}`}>
                   <label htmlFor="user-search">
-                    <span>🔍 ค้นหา (Search):</span>
+                    <span>ค้นหา (Search):</span>
                   </label>
                   <input
                     id="user-search"
@@ -736,7 +737,7 @@ export default function AdminDashboard() {
 
                 <div className={styles.filterItem}>
                   <label htmlFor="user-role-filter">
-                    <span>👤 บทบาท (Role):</span>
+                    <span>บทบาท (Role):</span>
                   </label>
                   <select
                     id="user-role-filter"
@@ -755,7 +756,7 @@ export default function AdminDashboard() {
 
                 <div className={styles.filterItem}>
                   <label htmlFor="user-status-filter">
-                    <span>⚡ สถานะ (Status):</span>
+                    <span>สถานะ (Status):</span>
                   </label>
                   <select
                     id="user-status-filter"
@@ -777,7 +778,6 @@ export default function AdminDashboard() {
               <article className={styles.panelCard}>
                 <header className={styles.panelHeader}>
                   <div className={styles.panelHeaderLeft}>
-                    <span style={{ fontSize: "1.15rem" }}>👥</span>
                     <span>รายการบัญชีผู้ใช้ในระบบ</span>
                     <span className={styles.headerCountBadge}>{visibleAccounts.length} บัญชี</span>
                   </div>
@@ -844,7 +844,7 @@ export default function AdminDashboard() {
                                     title="แก้ไขข้อมูล (Edit)"
                                     onClick={() => handleOpenEdit(acc)}
                                   >
-                                    ✏️ แก้ไข
+                                    แก้ไข
                                   </button>
                                   <button
                                     className={`${styles.actionIconBtn} ${styles.keyBtn}`}
@@ -852,7 +852,7 @@ export default function AdminDashboard() {
                                     title="รีเซ็ตรหัสผ่าน (Reset Password)"
                                     onClick={() => handleOpenReset(acc)}
                                   >
-                                    🔑 รหัส
+                                    รีเซ็ตรหัส
                                   </button>
                                   <button
                                     className={`${styles.actionIconBtn} ${styles.deleteBtn}`}
@@ -860,7 +860,7 @@ export default function AdminDashboard() {
                                     title="ลบบัญชีผู้ใช้ (Delete)"
                                     onClick={() => handleOpenDelete(acc)}
                                   >
-                                    🗑️ ลบ
+                                    ลบ
                                   </button>
                                 </div>
                               </td>
@@ -937,7 +937,7 @@ export default function AdminDashboard() {
                         void loadAuditLogs();
                       }}
                     >
-                      <span>🔄 รีเฟรชข้อมูล</span>
+                      <span>รีเฟรชข้อมูล</span>
                     </button>
                   </div>
                 </div>
@@ -1000,7 +1000,7 @@ export default function AdminDashboard() {
               {/* ── Section 2: Audit Logs Table ── */}
               <article className={styles.panel}>
                 <div className={styles.panelHeader}>
-                  <h2 className={styles.panelTitle}>📜 ประวัติการทำงานทั้งหมด (Audit Trail)</h2>
+                  <h2 className={styles.panelTitle}>ประวัติการทำงานทั้งหมด (Audit Trail)</h2>
                 </div>
 
                 <div className={styles.panelBody}>
@@ -1018,11 +1018,31 @@ export default function AdminDashboard() {
                         }}
                       >
                         <option value="all">ทั้งหมด (All Categories)</option>
-                        <option value="AUTH">🔐 AUTH (เข้าสู่ระบบ/ออก)</option>
-                        <option value="CREATE">＋ CREATE (สร้างข้อมูล)</option>
-                        <option value="UPDATE">✏️ UPDATE (แก้ไขข้อมูล)</option>
-                        <option value="DELETE">🗑️ DELETE (ลบข้อมูล)</option>
-                        <option value="ACCOUNT">👤 ACCOUNT (จัดการผู้ใช้)</option>
+                        <option value="AUTH">AUTH (เข้าสู่ระบบ/ออก)</option>
+                        <option value="CREATE">CREATE (สร้างข้อมูล)</option>
+                        <option value="UPDATE">UPDATE (แก้ไขข้อมูล)</option>
+                        <option value="DELETE">DELETE (ลบข้อมูล)</option>
+                        <option value="ACCOUNT">ACCOUNT (จัดการผู้ใช้)</option>
+                      </select>
+                    </div>
+
+                    <div className={styles.filterItem}>
+                      <label htmlFor="auditRole">บทบาท (Role):</label>
+                      <select
+                        id="auditRole"
+                        className={styles.filterSelect}
+                        value={auditRole}
+                        onChange={(e) => {
+                          setAuditRole(e.target.value);
+                          setAuditPage(1);
+                        }}
+                      >
+                        <option value="all">ทั้งหมด (All Roles)</option>
+                        <option value="ADMIN">ADMIN (ผู้ดูแลระบบ)</option>
+                        <option value="HRD_CENTER">HRD_CENTER (ส่วนกลาง)</option>
+                        <option value="HRD_FACTORY">HRD_FACTORY (โรงงาน)</option>
+                        <option value="EMPLOYEE">EMPLOYEE (พนักงาน)</option>
+                        <option value="SYSTEM">SYSTEM (ระบบ/ไม่ระบุ)</option>
                       </select>
                     </div>
 
@@ -1054,7 +1074,7 @@ export default function AdminDashboard() {
                           void loadAuditLogs();
                         }}
                       >
-                        🔍 ค้นหา
+                        ค้นหา
                       </button>
                     </div>
                   </div>
@@ -1132,7 +1152,7 @@ export default function AdminDashboard() {
                                   type="button"
                                   onClick={() => setSelectedAuditLog(log)}
                                 >
-                                  👁️ รายละเอียด
+                                  รายละเอียด
                                 </button>
                               </td>
                             </tr>
@@ -1553,7 +1573,7 @@ export default function AdminDashboard() {
         <div className={styles.modalOverlay} onClick={() => setIsCreateOpen(false)}>
           <div className={styles.modalDialog} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h3>＋ เพิ่มบัญชีผู้ใช้งานใหม่</h3>
+              <h3>เพิ่มบัญชีผู้ใช้งานใหม่</h3>
               <button
                 className={styles.modalCloseBtn}
                 type="button"
@@ -1685,7 +1705,7 @@ export default function AdminDashboard() {
         <div className={styles.modalOverlay} onClick={() => setEditingAccount(null)}>
           <div className={styles.modalDialog} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h3>✏️ แก้ไขข้อมูลผู้ใช้: {editingAccount.username}</h3>
+              <h3>แก้ไขข้อมูลผู้ใช้: {editingAccount.username}</h3>
               <button
                 className={styles.modalCloseBtn}
                 type="button"
@@ -1810,7 +1830,7 @@ export default function AdminDashboard() {
         <div className={styles.modalOverlay} onClick={() => setResetAccount(null)}>
           <div className={styles.modalDialog} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h3>🔑 รีเซ็ตรหัสผ่าน: {resetAccount.username}</h3>
+              <h3>รีเซ็ตรหัสผ่าน: {resetAccount.username}</h3>
               <button
                 className={styles.modalCloseBtn}
                 type="button"
@@ -1877,7 +1897,7 @@ export default function AdminDashboard() {
         <div className={styles.modalOverlay} onClick={() => setDeleteAccount(null)}>
           <div className={styles.modalDialog} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h3 style={{ color: "#dc2626" }}>🗑️ ยืนยันการลบบัญชีผู้ใช้</h3>
+              <h3 style={{ color: "#dc2626" }}>ยืนยันการลบบัญชีผู้ใช้</h3>
               <button
                 className={styles.modalCloseBtn}
                 type="button"
@@ -1893,7 +1913,7 @@ export default function AdminDashboard() {
                 {deleteAccount.roleCode}) ?
               </p>
               <div className={styles.deleteWarningBox}>
-                ⚠️ <strong>ข้อควรระวัง:</strong> การลบข้อมูลจะไม่สามารถกู้คืนได้
+                <strong>ข้อควรระวัง:</strong> การลบข้อมูลจะไม่สามารถกู้คืนได้
                 หากผู้ใช้รายนี้มีประวัติการสร้างเอกสารในระบบ
                 แนะนำให้แก้ไขสถานะเป็น <strong>INACTIVE</strong> หรือ <strong>LOCKED</strong> แทน
               </div>
@@ -1925,7 +1945,7 @@ export default function AdminDashboard() {
         <div className={styles.modalOverlay} onClick={() => setSelectedAuditLog(null)}>
           <div className={styles.modalDialog} style={{ maxWidth: "640px" }} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h3>🔍 รายละเอียด Audit Log #{selectedAuditLog.id}</h3>
+              <h3>รายละเอียด Audit Log #{selectedAuditLog.id}</h3>
               <button
                 className={styles.modalCloseBtn}
                 type="button"

@@ -7,6 +7,7 @@ export type AuditLogFilters = {
   page?: number;
   limit?: number;
   category?: string;
+  role?: string;
   search?: string;
   from?: string;
   to?: string;
@@ -64,6 +65,7 @@ export const listAuditLogs = async (filters: AuditLogFilters = {}): Promise<Audi
   if (filters.page) params.set("page", filters.page.toString());
   if (filters.limit) params.set("limit", filters.limit.toString());
   if (filters.category && filters.category !== "all") params.set("category", filters.category);
+  if (filters.role && filters.role !== "all") params.set("role", filters.role);
   if (filters.search) params.set("search", filters.search);
   if (filters.from) params.set("from", filters.from);
   if (filters.to) params.set("to", filters.to);

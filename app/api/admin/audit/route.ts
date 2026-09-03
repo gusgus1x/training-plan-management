@@ -30,6 +30,7 @@ export const GET = createProtectedRoute(
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const limit = Math.min(100, Math.max(5, parseInt(searchParams.get("limit") || "25", 10)));
     const category = searchParams.get("category");
+    const role = searchParams.get("role");
     const search = searchParams.get("search")?.trim();
     const from = searchParams.get("from");
     const to = searchParams.get("to");
@@ -38,6 +39,14 @@ export const GET = createProtectedRoute(
 
     if (category && category !== "all") {
       where.category = category;
+    }
+
+    if (role && role !== "all") {
+      if (role === "SYSTEM") {
+        where.actor_role = null;
+      } else {
+        where.actor_role = role;
+      }
     }
 
     if (from || to) {
@@ -58,6 +67,7 @@ export const GET = createProtectedRoute(
     if (search) {
       where.OR = [
         { actor_username: { contains: search } },
+        { actor_role: { contains: search } },
         { action: { contains: search } },
         { entity_label: { contains: search } },
         { ip_address: { contains: search } },
