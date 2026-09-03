@@ -359,13 +359,12 @@
   background: var(--ui-60-surface);
   border: 1px solid var(--ui-30-border);
   box-shadow: var(--ui-shadow-sm);
-  flex-wrap: nowrap;
-}
-
-@media (max-width: 640px) {
-  .toolbar {
-    flex-wrap: wrap;
-  }
+  /* Was nowrap-until-640px: a native <select> with no width cap can size itself past its
+     200px min-width to fit its widest option, and with flex-shrink:1 (the default) on
+     .searchInputBox that squeezed the search box down toward zero width - only its
+     absolutely-positioned icon was left, poking out past the toolbar's own border. Wrapping
+     unconditionally means the search box drops to its own line instead of being crushed. */
+  flex-wrap: wrap;
 }
 
 .selectFilter {
@@ -380,6 +379,7 @@
   font-weight: 800;
   cursor: pointer;
   min-width: 200px;
+  max-width: 260px;
   flex-shrink: 0;
 }
 
@@ -388,6 +388,7 @@
   display: flex;
   align-items: center;
   flex: 1;
+  min-width: 200px;
   max-width: 420px;
 }
 
@@ -497,6 +498,12 @@
   border-radius: var(--ui-radius-lg, 14px);
   background: var(--ui-60-surface-soft);
   border: 1px solid var(--ui-30-border);
+}
+
+@media (max-width: 480px) {
+  .modalMetricBox {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .metricCol {

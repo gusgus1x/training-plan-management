@@ -1,7 +1,9 @@
 .demoBadge {
   position: fixed;
   right: 20px;
-  bottom: 20px;
+  /* 76px, not 20px: ScrollToTop's button sits fixed at bottom:20px/right:20px on every page,
+     and this preview-only badge would otherwise stack directly on top of it. */
+  bottom: 76px;
   z-index: 1000;
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-full);

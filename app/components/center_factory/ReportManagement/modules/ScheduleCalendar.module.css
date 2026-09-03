@@ -82,6 +82,7 @@
 
 .heroMetrics {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 16px;
 }
@@ -206,6 +207,7 @@
 
 .actionGroup {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
@@ -481,8 +483,10 @@
 
 .calendarHeader {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   margin-bottom: 20px;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--ui-30-border);
@@ -591,6 +595,73 @@
   gap: 3px;
   font-size: 0.74rem;
   transition: all 0.18s ease;
+}
+
+/* The 7-column month grid otherwise runs the exact same cell size from desktop down to phone -
+   this is the one real density knob it needs at tablet and phone widths. */
+@media (max-width: 900px) {
+  .calendarPanel {
+    padding: 16px;
+  }
+
+  .calendarDayCell {
+    min-height: 92px;
+    padding: 6px;
+    gap: 4px;
+  }
+
+  .calendarWeekHeader {
+    height: 32px;
+    font-size: 0.68rem;
+  }
+
+  .dayNumber {
+    width: 24px;
+    height: 24px;
+    font-size: 0.76rem;
+  }
+
+  .calendarEventCard {
+    padding: 5px 6px;
+    font-size: 0.66rem;
+  }
+
+  .calendarEventCard strong {
+    font-size: 0.68rem;
+  }
+
+  .calendarEventCard small {
+    font-size: 0.6rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .calendarDayCell {
+    min-height: 68px;
+    padding: 4px;
+  }
+
+  .calendarWeekHeader {
+    height: 26px;
+    font-size: 0.6rem;
+  }
+
+  .dayNumber {
+    width: 20px;
+    height: 20px;
+    font-size: 0.68rem;
+  }
+
+  /* Below phone width there is no room left to show event text inside a cell at all - the day
+     stays tappable/scrollable via calendarEventsList's own overflow, but cards shrink to a dot
+     row rather than clipping mid-word. */
+  .calendarEventCard {
+    padding: 3px 4px;
+  }
+
+  .calendarEventCard small {
+    display: none;
+  }
 }
 
 .calendarEventCard:hover {
@@ -867,6 +938,7 @@
 
 .courseCardMain {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
@@ -961,6 +1033,7 @@
 
 .courseCardActions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   flex-shrink: 0;

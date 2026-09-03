@@ -25,6 +25,17 @@
   padding: 40px 0;
 }
 
+/* The second column's 380px floor is wider than most phones. .loginCard is the only in-flow
+   grid item (.visualPanel is position:fixed, out of flow) so collapsing to one column and
+   re-homing the card into it is enough - nothing else in this grid needs to reflow. */
+@media (max-width: 640px) {
+  .loginSection {
+    grid-template-columns: minmax(0, 1fr);
+    width: min(480px, calc(100% - 32px));
+    padding: 24px 0;
+  }
+}
+
 .visualPanel {
   position: fixed;
   inset: 0;
@@ -191,6 +202,14 @@
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
   animation: cardEntrance 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (max-width: 640px) {
+  .loginCard {
+    grid-column: 1;
+    justify-self: stretch;
+    padding: 28px 22px;
+  }
 }
 
 @keyframes cardEntrance {

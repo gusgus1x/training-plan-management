@@ -608,6 +608,12 @@
   .formGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  /* Without this, the search column between 681-920px gets crushed by the 4 fixed-width
+     buttons sharing its row - not broken, but close to unusable. */
+  .toolbar {
+    grid-template-columns: minmax(140px, 1fr) auto auto auto auto;
+  }
 }
 
 @media (max-width: 680px) {

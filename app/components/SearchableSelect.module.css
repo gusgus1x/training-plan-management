@@ -93,6 +93,13 @@
   padding: 6px;
 }
 
+/* Flipped up when the field sits too close to the bottom of the viewport for the menu to open
+   downward without being clipped - see openDropdown() in SearchableSelect.tsx. */
+.dropdownMenuUp {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
 .noOptions {
   padding: 12px 14px;
   font-size: 0.84rem;

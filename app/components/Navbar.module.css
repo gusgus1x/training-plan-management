@@ -795,7 +795,13 @@
   }
 
   .topActions {
+    /* .userArea's width:100% below only means anything once its row-mates (the collapse
+       chevron, the Settings button) can drop to their own line instead of still sharing this
+       one - without wrap they were squeezing userArea's content and getting clipped
+       themselves. */
+    flex-wrap: wrap;
     align-items: flex-end;
+    justify-content: flex-end;
   }
 
   .userArea {

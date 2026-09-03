@@ -34,8 +34,13 @@ export default function SearchableSelect({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  // The dropdown defaults to opening downward; on a short phone viewport with the field near
+  // the bottom (very common once the on-screen keyboard shrinks it further) that pushes most of
+  // the menu off-screen, so this flips it upward when there isn't enough room below.
+  const [openUpward, setOpenUpward] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const DROPDOWN_MAX_HEIGHT = 280;
 
   const selectedOption = useMemo(
     () => options.find((opt) => opt.value === value) ?? null,
@@ -66,9 +71,19 @@ export default function SearchableSelect({
     });
   }, [options, searchQuery]);
 
+  const openDropdown = () => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (rect) {
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      setOpenUpward(spaceBelow < DROPDOWN_MAX_HEIGHT && spaceAbove > spaceBelow);
+    }
+    setIsOpen(true);
+  };
+
   const handleOpen = () => {
     if (disabled) return;
-    setIsOpen(true);
+    openDropdown();
     setSearchQuery("");
     setHighlightedIndex(0);
   };
@@ -132,7 +147,7 @@ export default function SearchableSelect({
           onChange={(e) => {
             setSearchQuery(e.target.value);
             setHighlightedIndex(0);
-            if (!isOpen) setIsOpen(true);
+            if (!isOpen) openDropdown();
           }}
           onClick={() => {
             if (!disabled && !isOpen) {
@@ -159,7 +174,7 @@ export default function SearchableSelect({
       </div>
 
       {isOpen && !disabled ? (
-        <div className={styles.dropdownMenu} role="listbox">
+        <div className={`${styles.dropdownMenu} ${openUpward ? styles.dropdownMenuUp : ""}`} role="listbox">
           {filteredOptions.length === 0 ? (
             <div className={styles.noOptions}>{emptyText}</div>
           ) : (
