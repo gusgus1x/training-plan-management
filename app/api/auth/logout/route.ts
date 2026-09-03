@@ -1,5 +1,6 @@
 import { apiSuccess } from "../../../lib/api/response";
 import { auditRequestContext, recordAuditQuietly } from "../../../lib/audit";
+import { removeUserSession } from "../../../lib/auth/activeSessions";
 import {
   clearSessionCookie,
   isSecureRequest,
@@ -44,6 +45,9 @@ export const createLogoutHandler = (
 
     response.headers.set("Cache-Control", "no-store");
     clearSessionCookie(response, dependencies.production ?? isSecureRequest(request));
+    if (actor?.userId) {
+      removeUserSession(actor.userId);
+    }
 
     await recordAuditQuietly({
       category: "AUTH",

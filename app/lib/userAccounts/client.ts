@@ -85,3 +85,14 @@ export const resetUserAccountPassword = async (
   read<{ account: UserAccountRecord }>(
     await fetcher(`/api/admin/users/${userId}/password`, json("POST", { password })),
   );
+
+export const deleteUserAccount = async (
+  userId: string,
+  fetcher: Fetcher = fetch,
+) =>
+  read<{ success: boolean }>(
+    await fetcher(`/api/admin/users/${userId}`, {
+      method: "DELETE",
+      credentials: "include",
+    }),
+  );

@@ -50,7 +50,15 @@ export default async function RootLayout({
     <html
       lang="th"
       className={`${geistSans.variable} ${geistMono.variable} ${notoSansThai.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("theme");if(t==="light"){document.documentElement.setAttribute("data-theme","light");document.documentElement.classList.remove("dark");}else{document.documentElement.setAttribute("data-theme","dark");document.documentElement.classList.add("dark");}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <ThaiUiLocalization>
           <AuthGate user={user}>{children}</AuthGate>

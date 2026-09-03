@@ -170,6 +170,15 @@ export const createUserAccountRepository = (client?: DatabaseClient) => {
         return map(row);
       });
     },
+
+    async delete(userId: string) {
+      return withDatabaseErrorMapping(async () => {
+        await db().user_account.delete({
+          where: { user_id: BigInt(userId) },
+        });
+        return true;
+      });
+    },
   };
 };
 

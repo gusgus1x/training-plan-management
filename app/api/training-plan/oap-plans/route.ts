@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { apiSuccess } from "../../../lib/api/response";
 import { readJsonObject } from "../../../lib/api/validation";
+import { recordCreateAudit } from "../../../lib/audit";
 import { createProtectedRoute, type ProtectedRouteOptions } from "../../../lib/auth/guard";
 import { oapPlanService, type OapPlanService } from "../../../lib/trainingOap/service";
 import { parseCreateOapPlan, parseOapPlanListFilters } from "../../../lib/trainingOap/validation";
@@ -27,6 +28,16 @@ export const createCreateOapPlanHandler = (dependencies: Dependencies = {}) =>
       principal.userId,
       principal.role === "HRD_FACTORY" ? principal.companyId : null
     );
+
+    await recordCreateAudit(
+      request,
+      principal,
+      "oap_plan",
+      oapPlan.id,
+      oapPlan.course?.courseNameTh || oapPlan.course?.courseNameEn || undefined,
+      { planYear: input.planYear }
+    );
+
     return apiSuccess({ oapPlan }, 201);
   }, writeOptions(dependencies.auth));
 

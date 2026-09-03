@@ -133,11 +133,19 @@ export default function AuthGate({
   const getSanitizedDestination = (targetUrl: string | null, roleCode?: ClientRoleCode): string => {
     // Employees always land directly on their personal UserDashboard at "/"
     if (roleCode === "EMPLOYEE") return "/";
+    // Admins land on the Admin Dashboard at "/admin"
+    if (roleCode === "ADMIN") {
+      if (targetUrl && (targetUrl === "/admin" || targetUrl.startsWith("/admin/"))) {
+        return targetUrl;
+      }
+      return "/admin";
+    }
     if (!targetUrl || typeof targetUrl !== "string") return "/";
     if (targetUrl === "/login" || !targetUrl.startsWith("/")) return "/";
     const path = targetUrl.split("?")[0];
     const validBasePaths = [
       "/",
+      "/admin",
       "/master-data",
       "/training-course",
       "/training-plan",

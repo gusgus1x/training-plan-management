@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { ApiError } from "../../../lib/api/errors";
 import { apiFailure, apiSuccess } from "../../../lib/api/response";
 import { auditRequestContext, recordAuditQuietly } from "../../../lib/audit";
+import { trackUserSession } from "../../../lib/auth/activeSessions";
 import { authenticateCredentials } from "../../../lib/auth/authentication";
 import {
   createSessionToken,
@@ -80,6 +81,16 @@ export const createLoginHandler = (
 
       response.headers.set("Cache-Control", "no-store");
       setSessionCookie(response, token, dependencies.production ?? isSecureRequest(request));
+
+      trackUserSession({
+        userId: principal.userId,
+        username: principal.username,
+        role: principal.role,
+        companyCode: principal.companyCode ?? null,
+        ipAddress: context.ipAddress,
+        userAgent: context.userAgent,
+        currentPage: "เข้าสู่ระบบ (Login)",
+      });
 
       await recordAuditQuietly({
         category: "AUTH",

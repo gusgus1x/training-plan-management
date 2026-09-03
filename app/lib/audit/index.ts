@@ -13,6 +13,9 @@ const RETENTION_DAYS = {
   DELETE: 730,
   ACCOUNT: 730,
   EXPORT: 730,
+  CREATE: 730,
+  UPDATE: 730,
+  ACTIVITY: 30,
 } as const;
 
 export type AuditCategory = keyof typeof RETENTION_DAYS;
@@ -147,5 +150,72 @@ export const recordDeleteAudit = async (
     entityLabel,
     ...auditRequestContext(request),
   });
+
+export const recordCreateAudit = async (
+  request: { headers: { get(name: string): string | null } },
+  principal: { userId: string; username: string; role: string },
+  entityType: string,
+  entityId: string,
+  entityLabel?: string,
+  detail?: unknown,
+) =>
+  recordAuditQuietly({
+    category: "CREATE",
+    action: `${entityType.toUpperCase()}_CREATED`,
+    actor: {
+      userId: principal.userId,
+      username: principal.username,
+      role: principal.role,
+    },
+    entityType,
+    entityId,
+    entityLabel,
+    detail,
+    ...auditRequestContext(request),
+  });
+
+export const recordUpdateAudit = async (
+  request: { headers: { get(name: string): string | null } },
+  principal: { userId: string; username: string; role: string },
+  entityType: string,
+  entityId: string,
+  entityLabel?: string,
+  detail?: unknown,
+) =>
+  recordAuditQuietly({
+    category: "UPDATE",
+    action: `${entityType.toUpperCase()}_UPDATED`,
+    actor: {
+      userId: principal.userId,
+      username: principal.username,
+      role: principal.role,
+    },
+    entityType,
+    entityId,
+    entityLabel,
+    detail,
+    ...auditRequestContext(request),
+  });
+
+export const recordActivityAudit = async (
+  request: { headers: { get(name: string): string | null } },
+  principal: { userId: string; username: string; role: string },
+  pageOrModule: string,
+  detail?: unknown,
+) =>
+  recordAuditQuietly({
+    category: "ACTIVITY",
+    action: "USER_ACTIVE",
+    actor: {
+      userId: principal.userId,
+      username: principal.username,
+      role: principal.role,
+    },
+    entityType: "page",
+    entityLabel: pageOrModule,
+    detail,
+    ...auditRequestContext(request),
+  });
+
 
 export const AUDIT_RETENTION_DAYS = RETENTION_DAYS;

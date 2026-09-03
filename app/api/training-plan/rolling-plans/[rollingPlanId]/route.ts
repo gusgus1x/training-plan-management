@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { apiSuccess } from "../../../../lib/api/response";
 import { readJsonObject } from "../../../../lib/api/validation";
+import { recordDeleteAudit } from "../../../../lib/audit";
 import { createProtectedRoute, type ProtectedRouteOptions } from "../../../../lib/auth/guard";
 import { rollingPlanService, type RollingPlanService } from "../../../../lib/trainingRolling/service";
 import { parseUpdateRollingPlan } from "../../../../lib/trainingRolling/validation";
@@ -31,6 +32,9 @@ export const createDeleteRollingPlanHandler = (dependencies: Dependencies = {}) 
       username: principal.username,
       role: principal.role,
     });
+    
+    await recordDeleteAudit(request, principal, "rolling_plan", rollingPlanId);
+
     return apiSuccess(result);
   }, writeOptions(dependencies.auth));
 

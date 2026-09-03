@@ -120,6 +120,17 @@ export const createUserAccountService = (
       await requireExisting(userId);
       return repository.setPassword(userId, await hashPassword(password));
     },
+
+    async delete(principal: AuthenticatedPrincipal, userId: string): Promise<boolean> {
+      const current = await requireExisting(userId);
+      if (principal.userId === userId) {
+        throw conflict("You cannot delete your own account");
+      }
+      if (current.roleCode === "ADMIN" && (await repository.countActiveAdmins(userId)) === 0) {
+        throw conflict("At least one active administrator must remain");
+      }
+      return repository.delete(userId);
+    },
   };
 };
 

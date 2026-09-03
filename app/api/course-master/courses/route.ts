@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { apiSuccess } from "../../../lib/api/response";
 import { readJsonObject } from "../../../lib/api/validation";
+import { recordCreateAudit } from "../../../lib/audit";
 import { createProtectedRoute, type ProtectedRouteOptions } from "../../../lib/auth/guard";
 import { courseService, type CourseService } from "../../../lib/courses/service";
 import { parseCourseListFilters, parseCreateCourse } from "../../../lib/courses/validation";
@@ -27,6 +28,16 @@ export const createCreateCourseHandler = (dependencies: Dependencies = {}) =>
       principal.userId,
       principal.role === "HRD_FACTORY" ? principal.companyId : null
     );
+
+    await recordCreateAudit(
+      request,
+      principal,
+      "course",
+      result.courseId,
+      input.courseNameTh || input.courseNameEn || undefined,
+      { code: result.courseCode }
+    );
+
     return apiSuccess(result, 201);
   }, writeOptions(dependencies.auth));
 

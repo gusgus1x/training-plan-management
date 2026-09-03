@@ -61,5 +61,35 @@ export const createUpdateUserAccountHandler = (dependencies: Dependencies = {}) 
     adminOnly(dependencies.auth),
   );
 
+export const createDeleteUserAccountHandler = (dependencies: Dependencies = {}) =>
+  createProtectedRoute<Context>(
+    async (request: NextRequest, principal, context) => {
+      const userId = await id(context);
+      const service = dependencies.service ?? userAccountService;
+      const targetUser = await service.get(userId);
+
+      await service.delete(principal, userId);
+
+      await recordAudit({
+        category: "DELETE",
+        action: "USER_ACCOUNT_DELETED",
+        actor: {
+          userId: principal.userId,
+          username: principal.username,
+          role: principal.role,
+        },
+        entityType: "user_account",
+        entityId: userId,
+        entityLabel: targetUser.username,
+        detail: { roleCode: targetUser.roleCode },
+        ...auditRequestContext(request),
+      });
+
+      return apiSuccess({ success: true });
+    },
+    adminOnly(dependencies.auth),
+  );
+
 export const GET = createGetUserAccountHandler();
 export const PATCH = createUpdateUserAccountHandler();
+export const DELETE = createDeleteUserAccountHandler();
