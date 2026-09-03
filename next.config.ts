@@ -1,7 +1,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["10.123.23.163", "10.123.23.237", "10.123.23.38", "10.123.23.220", "172.20.10.4"],
+  // Every address a teammate might type to reach this dev server. The Wi-Fi address is handed out
+  // by DHCP, so it changes: when a colleague gets a blocked/blank page over the LAN, check
+  // `ipconfig` on the host and add the current IPv4 address here.
+  allowedDevOrigins: [
+    "10.123.23.100",
+    "10.123.23.163",
+    "10.123.23.237",
+    "10.123.23.38",
+    "10.123.23.220",
+    "172.20.10.4",
+  ],
   outputFileTracingIncludes: {
     "/*": ["./app/Excel/*.xlsx"],
   },
