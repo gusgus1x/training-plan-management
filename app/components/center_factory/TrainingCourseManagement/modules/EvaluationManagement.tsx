@@ -10,8 +10,10 @@ import {
   createEvaluation,
   deleteEvaluation,
   listEvaluations,
+  setEvaluationStatus,
   updateEvaluation,
 } from "../../../../lib/evaluations/client";
+import { EVALUATION_QUESTION_TYPES } from "../../../../lib/evaluations/types";
 import type {
   EvaluationQuestionType,
   EvaluationRecord,
@@ -21,6 +23,7 @@ import type {
   EvaluationTiming,
   EvaluationWriteInput,
 } from "../../../../lib/evaluations/types";
+import SearchableSelect from "../../../SearchableSelect";
 import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./EvaluationManagement.module.css";
 
@@ -34,7 +37,18 @@ type Mode = "idle" | "new" | "edit";
 type TimingLabel = "After Training" | "30-Day Follow-up";
 type RespondentLabel = "Employee" | "Manager";
 type StatusLabel = "Draft" | "Published" | "Inactive";
-type QuestionTypeLabel = "Rating" | "Single Choice" | "Text";
+/** The question type is stored as the API value, not a display label. The old label vocabulary had
+ *  only three entries and mapped both ways, so MULTIPLE_CHOICE and LONG_TEXT were rewritten as
+ *  SINGLE_CHOICE/SHORT_TEXT the moment a stored question was opened here and saved again. */
+const QUESTION_TYPE_LABELS: Record<EvaluationQuestionType, string> = {
+  RATING: "Rating (1-5)",
+  SINGLE_CHOICE: "Single Choice (ตอบได้ 1 ข้อ)",
+  MULTIPLE_CHOICE: "Multiple Choice (ตอบได้หลายข้อ)",
+  SHORT_TEXT: "Short Text (ข้อความสั้น)",
+  LONG_TEXT: "Long Text (ข้อความยาว)",
+};
+const isChoiceType = (value: EvaluationQuestionType) => value === "SINGLE_CHOICE" || value === "MULTIPLE_CHOICE";
+const isTextType = (value: EvaluationQuestionType) => value === "SHORT_TEXT" || value === "LONG_TEXT";
 type EvaluationSection = "Course Content" | "Instructor" | "Learning Experience" | "Application & Impact" | "Comments";
 type Feedback = { tone: "success" | "error" | "info"; message: string };
 type FormErrors = Partial<Record<"name" | "companyId" | "questions" | "question", string>>;
@@ -51,7 +65,7 @@ type Draft = {
 type DraftQuestion = {
   id: string;
   prompt: string;
-  type: QuestionTypeLabel;
+  type: EvaluationQuestionType;
   section: EvaluationSection;
   required: boolean;
   options: string[];
@@ -70,6 +84,12 @@ const blankDraft = (companyId = "", factory = false): Draft => ({
   anonymous: true,
   status: "Draft",
 });
+/** The editor sits above the question list, so pressing Edit on a question further down moved the
+ *  form off-screen. Scrolling to it is the cheap version of editing the question in place. */
+const QUESTION_BUILDER_ID = "evaluation-question-builder";
+const scrollToQuestionBuilder = () =>
+  document.getElementById(QUESTION_BUILDER_ID)?.scrollIntoView({ behavior: "smooth", block: "start" });
+
 /** Choice questions accept any option count from two upwards (see handleAddQuestion's check and
  *  app/lib/evaluations validation); four is only the count a brand-new question starts with. */
 const MIN_OPTIONS = 2;
@@ -79,7 +99,7 @@ const blankOptions = (count = DEFAULT_OPTION_COUNT) => Array.from({ length: coun
 const blankQuestion = (): DraftQuestion => ({
   id: key(),
   prompt: "",
-  type: "Rating",
+  type: "RATING",
   section: "Course Content",
   required: true,
   options: blankOptions(),
@@ -94,24 +114,25 @@ const respondentToApi = (value: RespondentLabel): EvaluationRespondent => value 
 const respondentFromApi = (value: EvaluationRespondent): RespondentLabel => value === "EMPLOYEE" ? "Employee" : "Manager";
 const statusToApi = (value: StatusLabel): EvaluationStatus => value.toUpperCase() as EvaluationStatus;
 const statusFromApi = (value: EvaluationStatus): StatusLabel => value === "DRAFT" ? "Draft" : value === "PUBLISHED" ? "Published" : "Inactive";
-const typeToApi = (value: QuestionTypeLabel): EvaluationQuestionType => value === "Rating" ? "RATING" : value === "Single Choice" ? "SINGLE_CHOICE" : "SHORT_TEXT";
-const typeFromApi = (value: EvaluationQuestionType): QuestionTypeLabel => value === "RATING" ? "Rating" : value === "SINGLE_CHOICE" || value === "MULTIPLE_CHOICE" ? "Single Choice" : "Text";
 
 const toDraftQuestions = (record: EvaluationRecord): DraftQuestion[] => record.questions.map((question) => ({
   id: question.evaluationQuestionId,
   prompt: question.questionText,
-  type: typeFromApi(question.questionType),
+  type: question.questionType,
   section: sections.includes(question.sectionName as EvaluationSection) ? question.sectionName as EvaluationSection : "Comments",
   required: question.isRequired,
   // Not truncated to 4 any more: a question stored with more options used to lose the extras as
   // soon as it was opened here, and saving wrote the shortened list back.
-  options: question.questionType === "SINGLE_CHOICE" || question.questionType === "MULTIPLE_CHOICE"
+  options: isChoiceType(question.questionType)
     ? (() => {
         const stored = question.options.map((option) => option.optionText);
         return stored.length >= MIN_OPTIONS ? stored : [...stored, ...blankOptions()].slice(0, MIN_OPTIONS);
       })()
     : blankOptions(),
 }));
+
+/** Turned off at the user's request, matching Assessment. Flip to true to bring the button back. */
+const SHOW_CSV_EXPORT = false;
 
 const csvCell = (value: string | number | boolean) => `"${String(value).replaceAll('"', '""')}"`;
 const createEvaluationCsv = (items: EvaluationRecord[]) => [
@@ -160,6 +181,15 @@ export default function EvaluationManagement() {
   const [editingQuestionId, setEditingQuestionId] = useState("");
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
+  /** Company code, or "CENTRAL". Center users only - a Factory list is already narrowed server-side. */
+  const [companyFilter, setCompanyFilter] = useState("");
+  /** Tracks the CLOSED groups: a block that has just appeared should be open, which an "open list"
+   *  would get backwards. */
+  const [closedGroups, setClosedGroups] = useState<string[]>([]);
+  /** Which existing form the new-evaluation form was filled from. Display only - a one-time copy. */
+  const [templateSourceId, setTemplateSourceId] = useState("");
+  const toggleGroup = (code: string) =>
+    setClosedGroups((current) => current.includes(code) ? current.filter((entry) => entry !== code) : [...current, code]);
   const [errors, setErrors] = useState<FormErrors>({});
   const toast = useToast();
   const setFeedback = useCallback(
@@ -174,8 +204,32 @@ export default function EvaluationManagement() {
   const selected = useMemo(() => items.find((item) => item.evaluationFormId === selectedId) ?? null, [items, selectedId]);
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return query ? items.filter((item) => [item.formCode, item.formName, item.companyCode, timingFromApi(item.timing), respondentFromApi(item.respondentType), statusFromApi(item.status)].filter(Boolean).join(" ").toLowerCase().includes(query)) : items;
-  }, [items, search]);
+    const bySearch = query ? items.filter((item) => [item.formCode, item.formName, item.companyCode, timingFromApi(item.timing), respondentFromApi(item.respondentType), statusFromApi(item.status)].filter(Boolean).join(" ").toLowerCase().includes(query)) : items;
+    // "CENTRAL" is its own bucket rather than a company - a central form has no companyCode.
+    return companyFilter
+      ? bySearch.filter((item) => companyFilter === "CENTRAL" ? item.companyCode === null : item.companyCode === companyFilter)
+      : bySearch;
+  }, [items, search, companyFilter]);
+
+  /** Central first, then one block per company - the same grouping Course Master uses. */
+  const groupedVisible = useMemo(() => {
+    const groups = new Map<string, EvaluationRecord[]>();
+    for (const item of visible) {
+      const key = item.companyCode ?? "CENTRAL";
+      const bucket = groups.get(key);
+      if (bucket) bucket.push(item); else groups.set(key, [item]);
+    }
+    return [...groups.entries()]
+      .sort(([a], [b]) => a === "CENTRAL" ? -1 : b === "CENTRAL" ? 1 : a.localeCompare(b))
+      .map(([code, rows]) => ({
+        code,
+        label: code === "CENTRAL"
+          ? "แบบประเมินส่วนกลาง (HRD Center)"
+          : `แบบประเมินบริษัท ${companies.find((company) => company.companyCode === code)?.companyNameTh ?? code}`,
+        isOwn: code === "CENTRAL" ? !isFactory : code === user?.companyCode,
+        rows,
+      }));
+  }, [visible, companies, isFactory, user?.companyCode]);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -225,6 +279,7 @@ export default function EvaluationManagement() {
     setQuestions([]);
     setPreviewAnswers({});
     setErrors({});
+    setTemplateSourceId("");
     resetQuestionEditor();
     setMode("new");
   };
@@ -346,51 +401,92 @@ export default function EvaluationManagement() {
     status: statusToApi(sourceDraft.status),
     questions: sourceQuestions.map((question) => ({
       questionText: question.prompt,
-      questionType: typeToApi(question.type),
+      questionType: question.type,
       sectionName: question.section,
       isRequired: question.required,
-      options: question.type === "Rating"
+      options: question.type === "RATING"
         ? ratingOptions.map((option, index) => ({ optionText: option, optionValue: String(index + 1) }))
-        : question.type === "Single Choice"
+        : isChoiceType(question.type)
           ? question.options.filter((option) => option.trim()).map((option) => ({ optionText: option, optionValue: null }))
           : [],
     })),
   });
 
-  const handleDuplicate = async () => {
-    if (!selected?.canDuplicate) return;
-    setBusy(true); setFeedback(null);
+  /** Whether this user owns the form, independent of whether it is in use. canModify folds the two
+   *  together, but retiring a form is allowed on one already in use. */
+  const canOwn = (item: EvaluationRecord) =>
+    !isFactory || (item.companyId !== null && item.companyId === (user?.companyId ?? null));
+
+  /** Retiring or re-publishing. Allowed on a form already in use - it changes no content, and a
+   *  form published by mistake must not be permanent. */
+  const changeStatus = async (item: EvaluationRecord, status: EvaluationStatus) => {
+    const retiring = status === "INACTIVE";
+    if (!(await confirm({
+      message: {
+        th: retiring
+          ? `ยืนยันที่จะปิดใช้งานแบบประเมิน "${item.formName}" หรือไม่? หลักสูตรจะเลือกใช้ชุดนี้ใหม่ไม่ได้ คำตอบที่มีอยู่ยังอยู่ครบ`
+          : `ยืนยันที่จะเปิดใช้งานแบบประเมิน "${item.formName}" อีกครั้งหรือไม่?`,
+        en: retiring ? `Retire evaluation "${item.formName}"?` : `Re-publish evaluation "${item.formName}"?`,
+      },
+      danger: retiring,
+    }))) return;
+    setBusy(true);
     try {
-      const duplicateDraft: Draft = {
-        formCode: "",
-        formName: `${selected.formName} (Copy)`,
-        scope: selected.scope,
-        companyId: selected.companyId ?? "",
-        timing: timingFromApi(selected.timing),
-        respondent: respondentFromApi(selected.respondentType),
-        anonymous: selected.isAnonymous,
-        status: "Draft",
-      };
-      const result = await createEvaluation(payload(duplicateDraft, toDraftQuestions(selected)));
-      setItems((current) => [result.evaluation, ...current]);
-      setSelectedId(result.evaluation.evaluationFormId);
-      setFeedback({ tone: "success", message: "Evaluation duplicated as a new draft." });
-    } catch (error) { setFeedback({ tone: "error", message: error instanceof Error ? error.message : "Unable to duplicate evaluation" }); }
-    finally { setBusy(false); }
+      const saved = (await setEvaluationStatus(item.evaluationFormId, status)).evaluation;
+      setItems((current) => current.map((row) => row.evaluationFormId === saved.evaluationFormId ? saved : row));
+      setFeedback({ tone: "success", message: retiring ? "ปิดใช้งานแบบประเมินแล้ว" : "เปิดใช้งานแบบประเมินแล้ว" });
+    } catch (error) {
+      setFeedback({ tone: "error", message: error instanceof Error ? error.message : "เปลี่ยนสถานะไม่สำเร็จ" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Fills the new-evaluation form from an existing one, the way Course Master pulls details from a
+   *  Center course template. Nothing is written until Save, so the source form is never touched. */
+  const applyTemplate = (evaluationFormId: string) => {
+    setTemplateSourceId(evaluationFormId);
+    if (!evaluationFormId) return;
+    const source = items.find((item) => item.evaluationFormId === evaluationFormId);
+    if (!source) return;
+    setDraft((current) => ({
+      ...current,
+      formName: `${source.formName} (Copy)`,
+      timing: timingFromApi(source.timing),
+      respondent: respondentFromApi(source.respondentType),
+      anonymous: source.isAnonymous,
+    }));
+    setQuestions(toDraftQuestions(source).map((question) => ({ ...question, id: key() })));
+    setPreviewAnswers({});
+    resetQuestionEditor();
+    setFeedback({ tone: "success", message: `ดึงคำถาม ${source.questions.length} ข้อจาก "${source.formName}" มาแล้ว แก้ไขได้ตามต้องการ` });
   };
 
   const handleAddQuestion = () => {
     const cleanOptions = questionDraft.options.map((option) => option.trim());
     if (!questionDraft.prompt.trim()) return setErrors((current) => ({ ...current, question: "Enter an evaluation question." }));
-    if (questionDraft.type === "Single Choice" && cleanOptions.filter(Boolean).length < 2) return setErrors((current) => ({ ...current, question: "Single Choice questions need at least two options." }));
-    const next: DraftQuestion = { ...questionDraft, prompt: questionDraft.prompt.trim(), options: questionDraft.type === "Single Choice" ? cleanOptions : blankOptions() };
+    if (isChoiceType(questionDraft.type) && cleanOptions.filter(Boolean).length < MIN_OPTIONS) return setErrors((current) => ({ ...current, question: "Choice questions need at least two options." }));
+    const next: DraftQuestion = { ...questionDraft, prompt: questionDraft.prompt.trim(), options: isChoiceType(questionDraft.type) ? cleanOptions : blankOptions() };
     setQuestions((current) => editingQuestionId ? current.map((item) => item.id === editingQuestionId ? next : item) : [...current, next]);
     setErrors((current) => ({ ...current, question: undefined, questions: undefined }));
     setFeedback({ tone: "success", message: editingQuestionId ? "Question updated." : "Question added." });
     setPreviewAnswers({}); resetQuestionEditor();
   };
-  const handleEditQuestion = (question: DraftQuestion) => { setQuestionDraft({ ...question, options: question.options.length >= MIN_OPTIONS ? [...question.options] : [...question.options, ...blankOptions()].slice(0, MIN_OPTIONS) }); setEditingQuestionId(question.id); setErrors((current) => ({ ...current, question: undefined })); };
+  const handleEditQuestion = (question: DraftQuestion) => { setQuestionDraft({ ...question, options: question.options.length >= MIN_OPTIONS ? [...question.options] : [...question.options, ...blankOptions()].slice(0, MIN_OPTIONS) }); setEditingQuestionId(question.id); setErrors((current) => ({ ...current, question: undefined })); scrollToQuestionBuilder(); };
   const handleRemoveQuestion = (id: string) => { setQuestions((current) => current.filter((item) => item.id !== id)); if (editingQuestionId === id) resetQuestionEditor(); setPreviewAnswers({}); };
+
+  // Native HTML5 drag and drop - no library. Up/Down stay as the keyboard path.
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const dropQuestionOn = (targetIndex: number) => {
+    setQuestions((current) => {
+      if (dragIndex === null || dragIndex === targetIndex) return current;
+      const reordered = [...current];
+      const [moved] = reordered.splice(dragIndex, 1);
+      reordered.splice(targetIndex, 0, moved);
+      return reordered;
+    });
+    setDragIndex(null);
+  };
 
   const handleAddOption = () => setQuestionDraft((current) => ({ ...current, options: [...current.options, ""] }));
   const handleRemoveOption = (index: number) => setQuestionDraft((current) => current.options.length <= MIN_OPTIONS ? current : ({ ...current, options: current.options.filter((_, itemIndex) => itemIndex !== index) }));
@@ -431,17 +527,52 @@ export default function EvaluationManagement() {
     const link = document.createElement("a"); link.href = url; link.download = `evaluation-export-${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
   };
 
+  // The preview keeps one string per question, so a multi-select answer is stored as a newline-joined
+  // list rather than a second state shape.
+  const selectedPreviewOptions = (answerKey: string) => new Set((previewAnswers[answerKey] ?? "").split("\n").filter(Boolean));
+  const togglePreviewOption = (answerKey: string, option: string, multiple: boolean) => setPreviewAnswers((current) => {
+    if (!multiple) return { ...current, [answerKey]: option };
+    const chosen = new Set((current[answerKey] ?? "").split("\n").filter(Boolean));
+    if (chosen.has(option)) chosen.delete(option); else chosen.add(option);
+    return { ...current, [answerKey]: [...chosen].join("\n") };
+  });
+
   const renderQuestionPreview = (previewQuestions: DraftQuestion[], previewKey: string, editable: boolean) => previewQuestions.length ? <div className={styles.questionList}>{previewQuestions.map((item, index) => {
     const answerKey = `${previewKey}-${item.id}`;
-    const options = item.type === "Rating" ? ratingOptions : item.options.filter(Boolean);
-    return <article key={item.id}><div className={styles.questionHeading}><div><span>{item.section}</span><strong>{index + 1}. {item.prompt}{item.required ? <em className={styles.requiredMark}> *</em> : null}</strong></div><b>{item.type}</b></div>
-      {item.type === "Text" ? <textarea aria-label={`Preview answer for question ${index + 1}`} placeholder="Type a preview response" value={previewAnswers[answerKey] ?? ""} onChange={(event) => setPreviewAnswers((current) => ({ ...current, [answerKey]: event.target.value }))} /> : <div className={styles.previewOptions}>{options.map((option) => <label key={`${item.id}-${option}`}><input checked={previewAnswers[answerKey] === option} name={answerKey} type="radio" value={option} onChange={(event) => setPreviewAnswers((current) => ({ ...current, [answerKey]: event.target.value }))} /><span>{option}</span></label>)}</div>}
+    const options = item.type === "RATING" ? ratingOptions : item.options.filter(Boolean);
+    const multiple = item.type === "MULTIPLE_CHOICE";
+    return <article key={item.id} draggable={editable} onDragStart={() => editable && setDragIndex(index)} onDragEnd={() => setDragIndex(null)} onDragOver={(event) => editable && event.preventDefault()} onDrop={() => editable && dropQuestionOn(index)} data-dragging={dragIndex === index}><div className={styles.questionHeading}><div><span>{item.section}</span><strong>{editable ? <span className={styles.dragHandle} aria-hidden="true" title="ลากเพื่อสลับลำดับ / Drag to reorder">⠿</span> : null}{index + 1}. {item.prompt}{item.required ? <em className={styles.requiredMark}> *</em> : null}</strong></div><b>{QUESTION_TYPE_LABELS[item.type]}</b></div>
+      {isTextType(item.type) ? <textarea aria-label={`Preview answer for question ${index + 1}`} placeholder="Type a preview response" rows={item.type === "LONG_TEXT" ? 4 : 2} value={previewAnswers[answerKey] ?? ""} onChange={(event) => setPreviewAnswers((current) => ({ ...current, [answerKey]: event.target.value }))} /> : <div className={styles.previewOptions}>{options.map((option) => <label key={`${item.id}-${option}`}><input checked={selectedPreviewOptions(answerKey).has(option)} name={answerKey} type={multiple ? "checkbox" : "radio"} value={option} onChange={() => togglePreviewOption(answerKey, option, multiple)} /><span>{option}</span></label>)}</div>}
       {editable ? <div className={styles.questionActions}><button className={styles.secondaryButton} type="button" disabled={index === 0} onClick={() => handleMoveQuestion(index, -1)}>Up</button><button className={styles.secondaryButton} type="button" disabled={index === previewQuestions.length - 1} onClick={() => handleMoveQuestion(index, 1)}>Down</button><button className={styles.secondaryButton} type="button" onClick={() => handleEditQuestion(item)}>Edit</button><button className={styles.secondaryButton} type="button" onClick={() => handleDuplicateQuestion(index)}>Duplicate</button><button className={styles.dangerButton} type="button" onClick={() => handleRemoveQuestion(item.id)}>Remove</button></div> : null}
     </article>;
   })}</div> : <div className={styles.emptyState}>No questions yet. Add a question to preview the evaluation form.</div>;
 
   const renderEditor = () => <section className={styles.editorPanel}>
     <div className={styles.panelHeader}><div><p className={styles.kicker}>{mode === "new" ? "New evaluation" : "Edit evaluation"}</p><h3>Evaluation form settings</h3></div><button className={styles.closeButton} type="button" onClick={closeEditor}>Close</button></div>
+    {mode === "new" ? (
+      <div className={styles.templatePicker}>
+        <span className={styles.templatePickerLabel}>
+          📋 สร้างจากแบบประเมินที่มีอยู่ (Use an existing evaluation as a template)
+        </span>
+        <SearchableSelect
+          value={templateSourceId}
+          onChange={applyTemplate}
+          placeholder="🔍 ค้นหารหัสหรือชื่อแบบประเมิน..."
+          options={[
+            { value: "", label: "-- ไม่ใช้แม่แบบ (เริ่มจากหน้าว่าง) --" },
+            ...items.map((item) => ({
+              value: item.evaluationFormId,
+              label: `[${item.formCode}] ${item.formName}`,
+              secondaryLabel: `${item.companyCode ?? "ส่วนกลาง"} · ${timingFromApi(item.timing)} · ${item.questions.length} ข้อ`,
+            })),
+          ]}
+        />
+        <small className={styles.templatePickerHint}>
+          * ดึงคำถาม ตัวเลือก หัวข้อ ช่วงเวลา และกลุ่มผู้ตอบมาให้ทั้งหมด
+          รหัสแบบประเมินจะสร้างใหม่เสมอ และแบบประเมินต้นทางไม่ถูกแตะต้อง
+        </small>
+      </div>
+    ) : null}
     <div className={styles.formGrid}>
       <label className={styles.fullWidth}>Evaluation Name
         <input
@@ -526,15 +657,15 @@ export default function EvaluationManagement() {
         <small>Hide the respondent identity in evaluation results.</small>
       </label>
     </div>
-    <div className={styles.questionBuilder}><div className={styles.panelHeader}><div><p className={styles.kicker}>Question builder</p><h3>{editingQuestionId ? "Edit question" : "Add evaluation question"}</h3></div><span>{questions.length} questions</span></div>
+    <div className={styles.questionBuilder} id={QUESTION_BUILDER_ID}><div className={styles.panelHeader}><div><p className={styles.kicker}>Question builder</p><h3>{editingQuestionId ? "Edit question" : "Add evaluation question"}</h3></div><span>{questions.length} questions</span></div>
       <div className={styles.questionGrid}><label className={styles.fullWidth}>Question<textarea aria-invalid={Boolean(errors.question)} className={errors.question ? styles.inputError : undefined} value={questionDraft.prompt} onChange={(event) => { setQuestionDraft({ ...questionDraft, prompt: event.target.value }); setErrors((current) => ({ ...current, question: undefined })); }} placeholder="Enter the question shown to respondents" /></label>
         <label>Section<select value={questionDraft.section} onChange={(event) => setQuestionDraft({ ...questionDraft, section: event.target.value as EvaluationSection })}>{sections.map((section) => <option key={section}>{section}</option>)}</select></label>
-        <label>Answer Type<select value={questionDraft.type} onChange={(event) => setQuestionDraft({ ...questionDraft, type: event.target.value as QuestionTypeLabel })}><option>Rating</option><option>Single Choice</option><option>Text</option></select></label>
+        <label>Answer Type<select value={questionDraft.type} onChange={(event) => setQuestionDraft({ ...questionDraft, type: event.target.value as EvaluationQuestionType })}>{EVALUATION_QUESTION_TYPES.map((type) => <option key={type} value={type}>{QUESTION_TYPE_LABELS[type]}</option>)}</select></label>
         <label className={styles.toggleLabel}><input checked={questionDraft.required} type="checkbox" onChange={(event) => setQuestionDraft({ ...questionDraft, required: event.target.checked })} />Required question</label>
-        {questionDraft.type === "Single Choice" ? questionDraft.options.map((option, index) => <label key={`choice-${index}`}>Choice {index + 1}<span style={{ display: "flex", alignItems: "center", gap: "6px" }}><input style={{ flex: 1, minWidth: 0 }} value={option} onChange={(event) => setQuestionDraft({ ...questionDraft, options: questionDraft.options.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} /><button type="button" title="ลบตัวเลือกนี้ / Remove this option" disabled={questionDraft.options.length <= MIN_OPTIONS} onClick={() => handleRemoveOption(index)} style={{ appearance: "none", border: "none", background: "transparent", color: questionDraft.options.length <= MIN_OPTIONS ? "var(--ui-30-muted)" : "#dc2626", cursor: questionDraft.options.length <= MIN_OPTIONS ? "not-allowed" : "pointer", fontSize: "0.9rem", fontWeight: 900, lineHeight: 1, padding: "2px 4px" }}>✕</button></span></label>) : null}
-        {questionDraft.type === "Single Choice" ? <div className={styles.fullWidth}><button className={styles.secondaryButton} type="button" onClick={handleAddOption}>+ เพิ่มตัวเลือก / Add option</button></div> : null}
+        {isChoiceType(questionDraft.type) ? questionDraft.options.map((option, index) => <label key={`choice-${index}`}>Choice {index + 1}<span style={{ display: "flex", alignItems: "center", gap: "6px" }}><input style={{ flex: 1, minWidth: 0 }} value={option} onChange={(event) => setQuestionDraft({ ...questionDraft, options: questionDraft.options.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} /><button type="button" title="ลบตัวเลือกนี้ / Remove this option" disabled={questionDraft.options.length <= MIN_OPTIONS} onClick={() => handleRemoveOption(index)} style={{ appearance: "none", border: "none", background: "transparent", color: questionDraft.options.length <= MIN_OPTIONS ? "var(--ui-30-muted)" : "#dc2626", cursor: questionDraft.options.length <= MIN_OPTIONS ? "not-allowed" : "pointer", fontSize: "0.9rem", fontWeight: 900, lineHeight: 1, padding: "2px 4px" }}>✕</button></span></label>) : null}
+        {isChoiceType(questionDraft.type) ? <div className={styles.fullWidth}><button className={styles.secondaryButton} type="button" onClick={handleAddOption}>+ เพิ่มตัวเลือก / Add option</button></div> : null}
       </div>
-      {questionDraft.type === "Rating" ? <p className={styles.helperText}>Rating uses the standard five-point scale from Strongly disagree to Strongly agree.</p> : null}
+      {questionDraft.type === "RATING" ? <p className={styles.helperText}>Rating uses the standard five-point scale from Strongly disagree to Strongly agree.</p> : null}
       {errors.question ? <p className={styles.validationMessage} role="alert">{errors.question}</p> : null}
       <div className={styles.formActions}><button className={styles.secondaryButton} type="button" onClick={handleAddQuestion}>{editingQuestionId ? "Update question" : "Add question"}</button>{editingQuestionId ? <button className={styles.closeButton} type="button" onClick={resetQuestionEditor}>Cancel question edit</button> : null}</div>
     </div>
@@ -571,18 +702,61 @@ export default function EvaluationManagement() {
             onChange={(event) => setSearch(event.target.value)}
             placeholder="ค้นหารหัส, ชื่อแบบประเมิน, ช่วงเวลา, ผู้ตอบ, ขอบเขต, สถานะ..."
           />
+          {!isFactory ? (
+            <div style={{ flex: "1 1 240px", minWidth: "220px" }}>
+              <SearchableSelect
+                value={companyFilter}
+                onChange={setCompanyFilter}
+                placeholder="เลือกบริษัท / Select company"
+                options={[
+                  { value: "", label: "ทุกบริษัท (All companies)" },
+                  { value: "CENTRAL", label: "ส่วนกลาง (Central)" },
+                  ...companies.map((company) => ({
+                    value: company.companyCode,
+                    label: company.companyCode,
+                    secondaryLabel: company.companyNameTh,
+                  })),
+                ]}
+              />
+            </div>
+          ) : null}
           <button className={styles.primaryButton} type="button" disabled={busy} onClick={handleNew}>
             + เพิ่มแบบประเมิน
           </button>
           <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void load()}>
             รีเฟรช
           </button>
-          <button className={styles.secondaryButton} type="button" onClick={handleExport}>
-            ส่งออก CSV
-          </button>
+          {SHOW_CSV_EXPORT ? (
+            <button className={styles.secondaryButton} type="button" onClick={handleExport}>
+              ส่งออก CSV
+            </button>
+          ) : null}
         </div>
         {mode !== "idle" ? renderEditor() : null}
-        <div className={styles.tableWrap}>
+        {!visible.length ? (
+          <div className={styles.emptyState}>
+            {busy ? "Loading evaluations..." : "No evaluations yet. Select New to create the first form."}
+          </div>
+        ) : null}
+        <div className={styles.companyDirectory}>
+          {groupedVisible.map((group) => {
+            const groupOpen = !closedGroups.includes(group.code);
+            return (
+            <section className={`${styles.companyGroup} ${groupOpen ? styles.openGroup : ""}`} key={`group-${group.code}`}>
+              <button
+                className={styles.companyHeader}
+                type="button"
+                aria-expanded={groupOpen}
+                onClick={() => toggleGroup(group.code)}
+              >
+                <span className={styles.chevron} aria-hidden="true" />
+                <span aria-hidden="true">{group.code === "CENTRAL" ? "🏢" : "🏬"}</span>
+                <strong>{group.label}</strong>
+                {group.isOwn ? <em className={styles.ownCompanyTag}>⭐ ของฉัน</em> : <span />}
+                <small>{group.rows.length} ชุด</small>
+              </button>
+              {groupOpen ? (
+              <div className={styles.tableWrap}>
           <table className={styles.evaluationTable}>
             <thead>
               <tr>
@@ -597,14 +771,7 @@ export default function EvaluationManagement() {
               </tr>
             </thead>
             <tbody>
-              {!visible.length ? (
-                <tr>
-                  <td className={styles.emptyTableCell} colSpan={8}>
-                    {busy ? "Loading evaluations..." : "No evaluations yet. Select New to create the first form."}
-                  </td>
-                </tr>
-              ) : null}
-              {visible.map((item) => {
+                  {group.rows.map((item) => {
                 const isSelected = item.evaluationFormId === selectedId;
                 const isOpen = item.evaluationFormId === openDetailId;
                 const draftQuestions = toDraftQuestions(item);
@@ -639,8 +806,28 @@ export default function EvaluationManagement() {
                       <td>{respondentFromApi(item.respondentType)}</td>
                       <td>{item.scope === "CENTRAL" ? "Central" : `Company · ${item.companyCode}`}</td>
                       <td>{item.questions.length}</td>
-                      <td>
-                        <span className={`${styles.statusPill} ${statusClass}`}>{status}</span>
+                      {/* The pill IS the switch - see Assessment. A DRAFT keeps the plain badge. */}
+                      <td onClick={(event) => event.stopPropagation()}>
+                        {item.status !== "DRAFT" && canOwn(item) ? (
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={item.status === "PUBLISHED"}
+                            aria-label={item.status === "PUBLISHED" ? "ปิดใช้งานแบบประเมินนี้" : "เปิดใช้งานแบบประเมินนี้"}
+                            title={item.status === "PUBLISHED" ? "กดเพื่อปิดใช้งาน" : "กดเพื่อเปิดใช้งาน"}
+                            className={`${styles.statusPill} ${statusClass} ${styles.statusToggle}`}
+                            disabled={busy}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void changeStatus(item, item.status === "PUBLISHED" ? "INACTIVE" : "PUBLISHED");
+                            }}
+                          >
+                            <span className={styles.statusToggleKnob} aria-hidden="true" />
+                            <span>{status}</span>
+                          </button>
+                        ) : (
+                          <span className={`${styles.statusPill} ${statusClass}`}>{status}</span>
+                        )}
                       </td>
                       <td className={styles.actionCell} onClick={(event) => event.stopPropagation()}>
                         <div style={{ display: "flex", gap: "6px", alignItems: "center", justifyContent: "flex-end" }}>
@@ -674,6 +861,7 @@ export default function EvaluationManagement() {
                             type="button"
                             style={{ whiteSpace: "nowrap", padding: "3px 8px", fontSize: "0.74rem" }}
                             disabled={busy || !item.canModify}
+                            title={item.canModify ? "" : item.isUsed ? "ถูกใช้งานแล้ว แก้ไขไม่ได้ — ปิดใช้งานหรือใช้เป็นแม่แบบแทน" : "แบบประเมินของส่วนกลาง ดูได้อย่างเดียว"}
                             onClick={(event) => {
                               event.stopPropagation();
                               openEditForItem(item);
@@ -686,6 +874,7 @@ export default function EvaluationManagement() {
                             type="button"
                             style={{ whiteSpace: "nowrap", padding: "3px 8px", fontSize: "0.74rem" }}
                             disabled={busy || !item.canModify}
+                            title={item.canModify ? "" : item.isUsed ? "ถูกผูกกับหลักสูตร/แผนอบรม หรือมีพนักงานตอบไปแล้ว ลบไม่ได้" : "แบบประเมินของส่วนกลาง ดูได้อย่างเดียว"}
                             onClick={(event) => {
                               event.stopPropagation();
                               setSelectedId(item.evaluationFormId);
@@ -735,9 +924,14 @@ export default function EvaluationManagement() {
                     ) : null}
                   </Fragment>
                 );
-              })}
+                  })}
             </tbody>
           </table>
+              </div>
+              ) : null}
+            </section>
+            );
+          })}
         </div>
       </section>
     </section>

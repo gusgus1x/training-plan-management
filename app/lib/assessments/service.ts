@@ -5,7 +5,7 @@ import {
   normalizeAssessmentName,
   type AssessmentRepository,
 } from "./repository";
-import type { AssessmentListFilters, AssessmentRecord, AssessmentWriteInput } from "./types";
+import type { AssessmentListFilters, AssessmentRecord, AssessmentStatus, AssessmentWriteInput } from "./types";
 
 const fail = (code: string, message: string, status: number) =>
   new ApiError({ code, message, status });
@@ -97,6 +97,12 @@ export const createAssessmentService = (
     if (input.seriesCode !== current.seriesCode) {
       throw fail("ASSESSMENT_CODE_LOCKED", "An auto-generated assessment code cannot be changed", 409);
     }
+    // The purpose is baked into the code (PRE-/POST-/ASM-), and the code above can never change.
+    // Letting the purpose move on its own produced a GENERAL assessment still called PRE-000002 -
+    // createAssessmentVersion has always refused the same change for the same reason.
+    if (input.purpose !== current.purpose) {
+      throw fail("ASSESSMENT_PURPOSE_LOCKED", "The purpose is part of the assessment code and cannot be changed; create a new assessment instead", 409);
+    }
     if (!transitions[current.status].includes(input.status)) {
       throw fail("ASSESSMENT_STATUS_TRANSITION_INVALID", `Status cannot change from ${current.status} to ${input.status}`, 409);
     }
@@ -106,6 +112,24 @@ export const createAssessmentService = (
     const companyId = targetCompany(input, principal);
     const record = await repository.update(current, input, companyId, principal.userId);
     return { ...record, canModify: true, canCreateVersion: record.status !== "DRAFT" };
+  },
+
+  /** Retiring or re-activating an assessment. Deliberately does NOT check isUsed: a form attached
+   *  to a course or already answered by employees still has to be retirable, otherwise publishing
+   *  one by mistake is permanent. It changes no content, so nothing already answered is disturbed. */
+  async setAssessmentStatus(assessmentId: string, status: AssessmentStatus, principal: AuthenticatedPrincipal) {
+    const current = await repository.findById(assessmentId);
+    if (!current) throw fail("ASSESSMENT_NOT_FOUND", "Assessment not found", 404);
+    if (!owns(current, principal)) throw fail("ASSESSMENT_SCOPE_FORBIDDEN", "You cannot modify an assessment outside your company", 403);
+    if (!(await repository.isLatest(current.assessmentSeriesId, current.assessmentId))) {
+      throw fail("ASSESSMENT_VERSION_LOCKED", "Only the latest assessment version can change status", 409);
+    }
+    if (!transitions[current.status].includes(status)) {
+      throw fail("ASSESSMENT_STATUS_TRANSITION_INVALID", `Status cannot change from ${current.status} to ${status}`, 409);
+    }
+    const record = await repository.setStatus(assessmentId, status, principal.userId);
+    if (!record) throw fail("ASSESSMENT_NOT_FOUND", "Assessment not found", 404);
+    return { ...record, canModify: writable(record, principal), canCreateVersion: owns(record, principal) && record.status !== "DRAFT" };
   },
 
   async createAssessmentVersion(assessmentId: string, input: AssessmentWriteInput, principal: AuthenticatedPrincipal) {

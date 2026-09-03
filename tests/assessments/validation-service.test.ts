@@ -65,6 +65,7 @@ const repository = () => ({
   update: vi.fn().mockResolvedValue(stored),
   createVersion: vi.fn().mockResolvedValue({ ...stored, versionNo: 2, status: "DRAFT" }),
   isLatest: vi.fn().mockResolvedValue(true),
+  setStatus: vi.fn().mockResolvedValue({ ...stored, status: "INACTIVE" }),
   delete: vi.fn().mockResolvedValue(stored),
 }) as unknown as AssessmentRepository;
 
@@ -123,6 +124,36 @@ describe("assessment company scope and lifecycle", () => {
       principal("HRD_FACTORY", "2"),
     )).rejects.toMatchObject({ code: "ASSESSMENT_CODE_LOCKED", status: 409 });
     expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  it("does not allow the purpose to be edited once the code exists", async () => {
+    // The code carries the purpose tag (PRE-/POST-/ASM-) and can never change, so a purpose that
+    // moves on its own leaves a GENERAL assessment still named PRE-000002.
+    const repo = repository();
+    await expect(createAssessmentService(repo).updateAssessment(
+      "10",
+      parseAssessmentWriteInput({ ...baseInput, companyId: "2", purpose: "GENERAL" }),
+      principal("HRD_FACTORY", "2"),
+    )).rejects.toMatchObject({ code: "ASSESSMENT_PURPOSE_LOCKED", status: 409 });
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  it("lets an owner retire an assessment that is already in use", async () => {
+    // updateAssessment refuses a used assessment outright, which used to make publishing one by
+    // mistake permanent - the status path exists so retiring stays possible without touching
+    // content anybody has already answered.
+    const repo = repository();
+    vi.mocked(repo.findById).mockResolvedValue({ ...stored, isUsed: true });
+    const result = await createAssessmentService(repo).setAssessmentStatus("10", "INACTIVE", principal("HRD_FACTORY", "2"));
+    expect(repo.setStatus).toHaveBeenCalledWith("10", "INACTIVE", "1");
+    expect(result.status).toBe("INACTIVE");
+  });
+
+  it("still refuses a status change on someone else's assessment", async () => {
+    const repo = repository();
+    await expect(createAssessmentService(repo).setAssessmentStatus("10", "INACTIVE", principal("HRD_FACTORY", "3")))
+      .rejects.toMatchObject({ code: "ASSESSMENT_SCOPE_FORBIDDEN", status: 403 });
+    expect(repo.setStatus).not.toHaveBeenCalled();
   });
 
   it("locks used versions but permits an owner to create the next draft", async () => {

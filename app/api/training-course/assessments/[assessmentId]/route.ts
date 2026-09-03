@@ -3,7 +3,7 @@ import { recordDeleteAudit } from "../../../../lib/audit";
 import { readJsonObject, readPositiveId } from "../../../../lib/api/validation";
 import { createProtectedRoute, type ProtectedRouteOptions } from "../../../../lib/auth/guard";
 import { assessmentService, type AssessmentService } from "../../../../lib/assessments/service";
-import { parseAssessmentWriteInput } from "../../../../lib/assessments/validation";
+import { parseAssessmentStatusInput, parseAssessmentWriteInput } from "../../../../lib/assessments/validation";
 
 type Context = { params: Promise<{ assessmentId: string }> };
 type Dependencies = { auth?: ProtectedRouteOptions; service?: AssessmentService };
@@ -28,6 +28,14 @@ export const createDeleteAssessmentHandler = (dependencies: Dependencies = {}) =
   createProtectedRoute<Context>(async (_request, principal, context) =>
     apiSuccess(await (dependencies.service ?? assessmentService).deleteAssessment(await id(context), principal)), options(dependencies.auth));
 
+/** Status-only change - the one edit an assessment already in use still accepts (PATCH refuses). */
+export const createSetAssessmentStatusHandler = (dependencies: Dependencies = {}) =>
+  createProtectedRoute<Context>(async (request, principal, context) =>
+    apiSuccess({ assessment: await (dependencies.service ?? assessmentService).setAssessmentStatus(
+      await id(context), parseAssessmentStatusInput(await readJsonObject(request)), principal,
+    ) }), options(dependencies.auth));
+
 export const GET = createGetAssessmentHandler();
 export const PATCH = createUpdateAssessmentHandler();
+export const POST = createSetAssessmentStatusHandler();
 export const DELETE = createDeleteAssessmentHandler();

@@ -49,5 +49,8 @@ export const createEvaluation = async (input: EvaluationWriteInput, fetcher: Fet
 export const updateEvaluation = async (evaluationFormId: string, input: EvaluationWriteInput, fetcher: Fetcher = fetch) =>
   read<{ evaluation: EvaluationRecord }>(await fetcher(`/api/training-course/evaluations/${evaluationFormId}`, json("PATCH", input)));
 
+export const setEvaluationStatus = async (evaluationFormId: string, status: EvaluationRecord["status"], fetcher: Fetcher = fetch) =>
+  read<{ evaluation: EvaluationRecord }>(await fetcher(`/api/training-course/evaluations/${evaluationFormId}`, json("POST", { status })));
+
 export const deleteEvaluation = async (evaluationFormId: string, fetcher: Fetcher = fetch) =>
   read<{ evaluation: EvaluationRecord; outcome: "DELETED" }>(await fetcher(`/api/training-course/evaluations/${evaluationFormId}`, { method: "DELETE", credentials: "include" }));

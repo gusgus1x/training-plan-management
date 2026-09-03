@@ -129,6 +129,11 @@ export const parseAssessmentWriteInput = (input: InputObject): AssessmentWriteIn
 export const parseCreateAssessmentWriteInput = (input: InputObject): AssessmentWriteInput =>
   parseAssessmentWriteInput({ ...input, seriesCode: "AUTO" });
 
+/** Status-only change. Separate from parseAssessmentWriteInput because this is the one edit an
+ *  assessment already in use still accepts - it must not become a door for content edits. */
+export const parseAssessmentStatusInput = (input: InputObject): AssessmentStatus =>
+  member(input.status, ASSESSMENT_STATUSES, "status") as AssessmentStatus;
+
 export const parseAssessmentListFilters = (
   params: URLSearchParams,
   pagination: Pick<AssessmentListFilters, "skip" | "take">,

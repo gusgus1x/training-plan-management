@@ -9,6 +9,7 @@ import {
   createAssessmentVersion,
   deleteAssessment,
   listAssessments,
+  setAssessmentStatus,
   updateAssessment,
 } from "../../../../lib/assessments/client";
 import type {
@@ -22,6 +23,7 @@ import type {
 } from "../../../../lib/assessments/types";
 import { listCompanies } from "../../../../lib/companies/client";
 import type { CompanyRecord } from "../../../../lib/companies/types";
+import SearchableSelect from "../../../SearchableSelect";
 import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./Assessment.module.css";
 
@@ -59,6 +61,12 @@ type DraftChoice = AssessmentChoiceInput & { id: string };
  * holds exactly what will be written back.
  */
 type AssessmentQuestionType = AssessmentQuestionInput["questionType"];
+
+/** The editor sits above the question list, so pressing Edit on a question further down moved the
+ *  form off-screen. Scrolling to it is the cheap version of editing the question in place. */
+const QUESTION_BUILDER_ID = "assessment-question-builder";
+const scrollToQuestionBuilder = () =>
+  document.getElementById(QUESTION_BUILDER_ID)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
 const CHOICE_TYPES: AssessmentQuestionType[] = ["SINGLE_CHOICE", "MULTIPLE_CHOICE", "TRUE_FALSE"];
 const isChoiceType = (type: AssessmentQuestionType) => CHOICE_TYPES.includes(type);
@@ -156,6 +164,10 @@ const displayQuestionType = (value: AssessmentRecord["questions"][number]["quest
   value === "SHORT_ANSWER" ? "Text" : "Choice";
 
 const csvCell = (value: string | number) => `"${String(value).replaceAll('"', '""')}"`;
+/** Turned off at the user's request until the export is actually wanted. The builder below stays -
+ *  flipping this back on is the whole change. */
+const SHOW_CSV_EXPORT = false;
+
 const createAssessmentCsv = (items: AssessmentRecord[]) => [
   ["Code", "Name", "Scope", "Company", "Purpose", "Version", "Pass Score", "Questions", "Status", "Updated At"],
   ...items.map((item) => [
@@ -247,6 +259,17 @@ export default function Assessment() {
     [toast],
   );
   const [formErrors, setFormErrors] = useState<FormErrors>({});
+  /** Company code, or "CENTRAL" for the central bucket. Center users only - a Factory user's list
+   *  is already narrowed to their own company plus central by the server. */
+  const [companyFilter, setCompanyFilter] = useState("");
+  /** Tracks the CLOSED groups, not the open ones: a company block that has just appeared (a new
+   *  assessment, a cleared filter) should be open, which an "open list" would get backwards. */
+  const [closedGroups, setClosedGroups] = useState<string[]>([]);
+  /** Which existing assessment the new-assessment form was filled from. Display only - the copy is
+   *  a one-time fill, the two records have no lasting link. */
+  const [templateSourceId, setTemplateSourceId] = useState("");
+  const toggleGroup = (code: string) =>
+    setClosedGroups((current) => current.includes(code) ? current.filter((entry) => entry !== code) : [...current, code]);
 
   const updateDraftField = <K extends keyof Draft>(field: K, value: Draft[K]) => {
     setDraft((current) => {
@@ -274,11 +297,37 @@ export default function Assessment() {
   );
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return query
+    const bySearch = query
       ? items.filter((item) => [item.seriesCode, item.seriesName, item.companyCode, item.purpose, item.status]
         .filter(Boolean).join(" ").toLowerCase().includes(query))
       : items;
-  }, [items, search]);
+    // "CENTRAL" is its own bucket rather than a company: a central assessment has no companyCode,
+    // and Center users need to be able to isolate exactly those.
+    return companyFilter
+      ? bySearch.filter((item) => companyFilter === "CENTRAL" ? item.companyCode === null : item.companyCode === companyFilter)
+      : bySearch;
+  }, [items, search, companyFilter]);
+
+  /** The list is grouped the way Course Master groups courses: central first, then one block per
+   *  company. Grouping here rather than in the table keeps the row loop a straight map. */
+  const groupedVisible = useMemo(() => {
+    const groups = new Map<string, AssessmentRecord[]>();
+    for (const item of visible) {
+      const key = item.companyCode ?? "CENTRAL";
+      const bucket = groups.get(key);
+      if (bucket) bucket.push(item); else groups.set(key, [item]);
+    }
+    return [...groups.entries()]
+      .sort(([a], [b]) => a === "CENTRAL" ? -1 : b === "CENTRAL" ? 1 : a.localeCompare(b))
+      .map(([code, rows]) => ({
+        code,
+        label: code === "CENTRAL"
+          ? "แบบทดสอบส่วนกลาง (HRD Center)"
+          : `แบบทดสอบบริษัท ${companies.find((company) => company.companyCode === code)?.companyNameTh ?? code}`,
+        isOwn: code === "CENTRAL" ? isCenter : code === user?.companyCode,
+        rows,
+      }));
+  }, [visible, companies, isCenter, user?.companyCode]);
 
   const load = useCallback(async () => {
     setBusy(true);
@@ -334,6 +383,7 @@ export default function Assessment() {
     setEditingQuestionId("");
     setFeedback(null);
     setFormErrors({});
+    setTemplateSourceId("");
     setMode("new");
   };
 
@@ -516,6 +566,21 @@ export default function Assessment() {
       return [...current.slice(0, index + 1), copy, ...current.slice(index + 1)];
     });
 
+  // Native HTML5 drag and drop - no library. The Move Up/Down buttons stay: dragging is
+  // mouse-only, so they remain the keyboard path.
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+
+  const dropQuestionOn = (targetIndex: number) => {
+    setQuestions((current) => {
+      if (dragIndex === null || dragIndex === targetIndex) return current;
+      const reordered = [...current];
+      const [moved] = reordered.splice(dragIndex, 1);
+      reordered.splice(targetIndex, 0, moved);
+      return reordered;
+    });
+    setDragIndex(null);
+  };
+
   const moveQuestion = (index: number, direction: -1 | 1) => {
     setQuestions((current) => {
       const destination = index + direction;
@@ -673,6 +738,71 @@ export default function Assessment() {
     if (selected) await removeTargetItem(selected);
   };
 
+  /** A greyed-out button with no explanation reads as a broken screen. These are the reasons the
+   *  toolbar actually disables one. */
+  const disabledReason = (action: "edit" | "version") => {
+    if (!selected) return "เลือกแบบทดสอบจากตารางด้านล่างก่อน";
+    if (action === "version") {
+      if (selected.status === "DRAFT") return "แบบทดสอบยังเป็นฉบับร่าง แก้ไขฉบับนี้ได้เลย ไม่ต้องสร้างเวอร์ชันใหม่";
+      return selected.canCreateVersion ? "" : "แบบทดสอบนี้อยู่นอกขอบเขตของคุณ";
+    }
+    if (selected.isUsed) return "แบบทดสอบนี้ถูกผูกกับหลักสูตร/แผนอบรม หรือมีพนักงานทำไปแล้ว แก้ไขและลบไม่ได้ — ปิดใช้งานได้ หรือสร้างเวอร์ชันใหม่";
+    return selected.canModify ? "" : "แบบทดสอบนี้อยู่นอกขอบเขตของคุณ หรือไม่ใช่เวอร์ชันล่าสุด";
+  };
+
+  /** Retiring or re-activating. Allowed even on an assessment already in use - it changes no
+   *  content, and a form published by mistake must not be permanent. */
+  const changeStatus = async (item: AssessmentRecord, status: AssessmentStatus) => {
+    const retiring = status === "INACTIVE";
+    if (!(await confirm({
+      message: {
+        th: retiring
+          ? `ยืนยันที่จะปิดใช้งานแบบทดสอบ "${item.seriesName}" หรือไม่? หลักสูตรจะเลือกใช้ชุดนี้ใหม่ไม่ได้ ผลที่พนักงานทำไปแล้วยังอยู่ครบ`
+          : `ยืนยันที่จะเปิดใช้งานแบบทดสอบ "${item.seriesName}" อีกครั้งหรือไม่?`,
+        en: retiring ? `Retire assessment "${item.seriesName}"?` : `Re-activate assessment "${item.seriesName}"?`,
+      },
+      danger: retiring,
+    }))) return;
+    setBusy(true);
+    try {
+      const saved = (await setAssessmentStatus(item.assessmentId, status)).assessment;
+      setItems((current) => current.map((row) => row.assessmentId === saved.assessmentId ? saved : row));
+      setFeedback({ tone: "success", message: retiring ? "ปิดใช้งานแบบทดสอบแล้ว" : "เปิดใช้งานแบบทดสอบแล้ว" });
+    } catch (error) {
+      setFeedback({ tone: "error", message: error instanceof Error ? error.message : "เปลี่ยนสถานะไม่สำเร็จ" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Fills the new-assessment form from an existing one, the way Course Master pulls details from a
+   *  Center course template. The code stays the freshly generated one and nothing is written until
+   *  Save, so this can never touch the assessment it copied from. */
+  const applyTemplate = (assessmentId: string) => {
+    setTemplateSourceId(assessmentId);
+    if (!assessmentId) return;
+    const source = items.find((item) => item.assessmentId === assessmentId);
+    if (!source) return;
+    setDraft((current) => ({
+      ...current,
+      purpose: source.purpose,
+      seriesCode: generateNextAssessmentCode(source.purpose, current.scope, current.companyId, user?.companyCode, companies, items),
+      seriesName: `${source.seriesName} (Copy)`,
+      instructions: source.instructions ?? "",
+      passingScorePercent: source.passingScorePercent,
+      timeLimitMinutes: source.timeLimitMinutes?.toString() ?? "",
+    }));
+    setQuestions(toDraftQuestions(source).map((question) => ({
+      ...question,
+      id: key(),
+      choices: question.choices.map((choice) => ({ ...choice, id: key() })),
+    })));
+    setQuestion(blankQuestion());
+    setEditingQuestionId("");
+    setFormErrors({});
+    setFeedback({ tone: "success", message: `ดึงคำถาม ${source.questions.length} ข้อจาก "${source.seriesName}" มาแล้ว แก้ไขได้ตามต้องการ` });
+  };
+
   const exportCsv = () => {
     if (!visible.length) return setFeedback({ tone: "error", message: "There are no assessments to export." });
     const url = URL.createObjectURL(new Blob(["\uFEFF", createAssessmentCsv(visible)], { type: "text/csv;charset=utf-8" }));
@@ -696,6 +826,31 @@ export default function Assessment() {
         </div>
         <button className={styles.closeButton} type="button" onClick={closeEditor}>Close</button>
       </div>
+
+      {mode === "new" ? (
+        <div className={styles.templatePicker}>
+          <span className={styles.templatePickerLabel}>
+            📋 สร้างจากแบบทดสอบที่มีอยู่ (Use an existing assessment as a template)
+          </span>
+          <SearchableSelect
+            value={templateSourceId}
+            onChange={applyTemplate}
+            placeholder="🔍 ค้นหารหัสหรือชื่อแบบทดสอบ..."
+            options={[
+              { value: "", label: "-- ไม่ใช้แม่แบบ (เริ่มจากหน้าว่าง) --" },
+              ...items.map((item) => ({
+                value: item.assessmentId,
+                label: `[${item.seriesCode}] ${item.seriesName}`,
+                secondaryLabel: `${item.companyCode ?? "ส่วนกลาง"} · ${item.purpose} · ${item.questions.length} ข้อ`,
+              })),
+            ]}
+          />
+          <small className={styles.templatePickerHint}>
+            * ดึงคำถาม ตัวเลือก เฉลย คะแนน คำชี้แจง เกณฑ์ผ่าน และเวลาจำกัดมาให้ทั้งหมด
+            รหัสแบบทดสอบจะสร้างใหม่เสมอ และแบบทดสอบต้นทางไม่ถูกแตะต้อง
+          </small>
+        </div>
+      ) : null}
 
       <div className={styles.formGrid}>
         {isCenter ? (
@@ -733,10 +888,13 @@ export default function Assessment() {
           </label>
         ) : null}
 
+        {/* Purpose and code are one fact, not two: the code carries the purpose tag and the server
+            refuses to change either after the assessment exists. Only a brand-new assessment, whose
+            code is still being generated as you pick, may set them. */}
         <label>
           <span>Purpose (วัตถุประสงค์) <RequiredIndicator isFilled={Boolean(draft.purpose)} /></span>
           <select
-            disabled={mode === "version"}
+            disabled={mode !== "new"}
             value={draft.purpose}
             onChange={(event) => updateDraftField("purpose", event.target.value as AssessmentPurpose)}
           >
@@ -744,6 +902,7 @@ export default function Assessment() {
             <option value="POST_TEST">POST TEST (ทดสอบหลังเรียน)</option>
             <option value="GENERAL">GENERAL (แบบทดสอบทั่วไป)</option>
           </select>
+          {mode !== "new" ? <small>วัตถุประสงค์เป็นส่วนหนึ่งของรหัสแบบทดสอบ แก้ไม่ได้ ต้องสร้างแบบทดสอบใหม่</small> : null}
         </label>
 
         <label>
@@ -751,7 +910,7 @@ export default function Assessment() {
           <input
             aria-invalid={Boolean(formErrors.seriesCode)}
             className={formErrors.seriesCode ? styles.inputError : undefined}
-            disabled={mode === "version"}
+            disabled={mode !== "new"}
             maxLength={50}
             value={draft.seriesCode}
             onChange={(event) => updateDraftField("seriesCode", event.target.value.toUpperCase())}
@@ -823,7 +982,7 @@ export default function Assessment() {
         </label>
       </div>
 
-      <div className={styles.questionBuilder}>
+      <div className={styles.questionBuilder} id={QUESTION_BUILDER_ID}>
         <div className={styles.panelHeader}>
           <div>
             <p className={styles.kicker}>Question Builder</p>
@@ -1001,9 +1160,21 @@ export default function Assessment() {
         {questions.length ? (
           <div className={styles.questionList}>
             {questions.map((item, index) => (
-              <article key={item.id}>
+              <article
+                key={item.id}
+                draggable
+                onDragStart={() => setDragIndex(index)}
+                onDragEnd={() => setDragIndex(null)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => dropQuestionOn(index)}
+                data-dragging={dragIndex === index}
+              >
                 <div className={styles.questionHeading}>
-                  <strong>{index + 1}. {item.questionText}</strong>
+                  <strong>
+                    <span className={styles.dragHandle} aria-hidden="true" title="ลากเพื่อสลับลำดับ / Drag to reorder">⠿</span>
+                    {index + 1}. {item.questionText}
+                    {item.isRequired ? <em className={styles.requiredMark}> *</em> : null}
+                  </strong>
                   <span>{item.questionType} · {item.questionScore} คะแนน</span>
                 </div>
                 {item.choices.map((choice, choiceIndex) => (
@@ -1025,6 +1196,7 @@ export default function Assessment() {
                       setQuestion(item);
                       setEditingQuestionId(item.id);
                       setFormErrors((current) => ({ ...current, question: undefined }));
+                      scrollToQuestionBuilder();
                     }}
                   >
                     Edit
@@ -1068,15 +1240,54 @@ export default function Assessment() {
       <div className={styles.toolbar}>
         <span className={styles.listMeta}>{visible.length} / {items.length} แบบทดสอบ</span>
         <input aria-label="Search assessment" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="ค้นหารหัส, ชื่อแบบทดสอบ, บริษัท, วัตถุประสงค์, สถานะ..." />
+        {isCenter ? (
+          <div style={{ flex: "1 1 240px", minWidth: "220px" }}>
+            <SearchableSelect
+              value={companyFilter}
+              onChange={setCompanyFilter}
+              placeholder="เลือกบริษัท / Select company"
+              options={[
+                { value: "", label: "ทุกบริษัท (All companies)" },
+                { value: "CENTRAL", label: "ส่วนกลาง (Central)" },
+                ...companies.map((company) => ({
+                  value: company.companyCode,
+                  label: company.companyCode,
+                  secondaryLabel: company.companyNameTh,
+                })),
+              ]}
+            />
+          </div>
+        ) : null}
         <button className={styles.primaryButton} type="button" disabled={busy} onClick={startNew}>+ เพิ่มแบบทดสอบ</button>
-        <button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canModify} onClick={startEdit}>แก้ไข</button>
-        <button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canCreateVersion} onClick={startVersion}>สร้างเวอร์ชันใหม่</button>
-        <button className={styles.dangerButton} type="button" disabled={busy || !selected?.canModify} onClick={() => void remove()}>ลบ</button>
+        <button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canModify} onClick={startEdit} title={disabledReason("edit")}>แก้ไข</button>
+        <button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canCreateVersion} onClick={startVersion} title={disabledReason("version")}>สร้างเวอร์ชันใหม่</button>
+        <button className={styles.dangerButton} type="button" disabled={busy || !selected?.canModify} onClick={() => void remove()} title={disabledReason("edit")}>ลบ</button>
         <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void load()}>รีเฟรช</button>
-        <button className={styles.secondaryButton} type="button" onClick={exportCsv}>ส่งออก CSV</button>
+        {SHOW_CSV_EXPORT ? <button className={styles.secondaryButton} type="button" onClick={exportCsv}>ส่งออก CSV</button> : null}
       </div>
       {mode !== "idle" ? renderEditor() : null}
-      <div className={styles.tableWrap}>
+      {!visible.length ? (
+        <div className={styles.emptyState}>{busy ? "กำลังโหลดข้อมูลแบบทดสอบ..." : "ไม่พบรายการแบบทดสอบ"}</div>
+      ) : null}
+      <div className={styles.companyDirectory}>
+        {groupedVisible.map((group) => {
+          const groupOpen = !closedGroups.includes(group.code);
+          return (
+          <section className={`${styles.companyGroup} ${groupOpen ? styles.openGroup : ""}`} key={`group-${group.code}`}>
+            <button
+              className={styles.companyHeader}
+              type="button"
+              aria-expanded={groupOpen}
+              onClick={() => toggleGroup(group.code)}
+            >
+              <span className={styles.chevron} aria-hidden="true" />
+              <span aria-hidden="true">{group.code === "CENTRAL" ? "🏢" : "🏬"}</span>
+              <strong>{group.label}</strong>
+              {group.isOwn ? <em className={styles.ownCompanyTag}>⭐ ของฉัน</em> : <span />}
+              <small>{group.rows.length} ชุด</small>
+            </button>
+            {groupOpen ? (
+            <div className={styles.tableWrap}>
         <table className={styles.assessmentTable}>
           <thead>
             <tr>
@@ -1092,14 +1303,7 @@ export default function Assessment() {
             </tr>
           </thead>
           <tbody>
-            {!visible.length ? (
-              <tr>
-                <td className={styles.emptyTableCell} colSpan={9}>
-                  {busy ? "กำลังโหลดข้อมูลแบบทดสอบ..." : "ไม่พบรายการแบบทดสอบ"}
-                </td>
-              </tr>
-            ) : null}
-            {visible.map((item) => {
+                {group.rows.map((item) => {
               const isSelected = item.assessmentId === selectedId;
               const isOpen = item.assessmentId === openDetailId;
               const statusClass =
@@ -1133,8 +1337,30 @@ export default function Assessment() {
                     <td>v{item.versionNo}</td>
                     <td>{item.passingScorePercent}%</td>
                     <td>{item.questions.length}</td>
-                    <td>
-                      <span className={`${styles.statusPill} ${statusClass}`}>{item.status}</span>
+                    {/* The pill IS the switch: its status dot grows into the sliding knob, so the
+                        row carries one status control instead of a badge next to a toggle. A DRAFT
+                        keeps the plain badge - publishing it goes through the เผยแพร่ button. */}
+                    <td onClick={(event) => event.stopPropagation()}>
+                      {item.status !== "DRAFT" && item.canCreateVersion ? (
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={item.status === "ACTIVE"}
+                          aria-label={item.status === "ACTIVE" ? "ปิดใช้งานแบบทดสอบนี้" : "เปิดใช้งานแบบทดสอบนี้"}
+                          title={item.status === "ACTIVE" ? "กดเพื่อปิดใช้งาน" : "กดเพื่อเปิดใช้งาน"}
+                          className={`${styles.statusPill} ${statusClass} ${styles.statusToggle}`}
+                          disabled={busy}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void changeStatus(item, item.status === "ACTIVE" ? "INACTIVE" : "ACTIVE");
+                          }}
+                        >
+                          <span className={styles.statusToggleKnob} aria-hidden="true" />
+                          <span>{item.status}</span>
+                        </button>
+                      ) : (
+                        <span className={`${styles.statusPill} ${statusClass}`}>{item.status}</span>
+                      )}
                     </td>
                     <td className={styles.actionCell} onClick={(event) => event.stopPropagation()}>
                       <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
@@ -1168,6 +1394,7 @@ export default function Assessment() {
                           type="button"
                           style={{ whiteSpace: "nowrap", padding: "3px 8px", fontSize: "0.74rem" }}
                           disabled={busy || !item.canModify}
+                          title={item.canModify ? "" : item.isUsed ? "ถูกใช้งานแล้ว แก้ไขไม่ได้ — ปิดใช้งานหรือสร้างเวอร์ชันใหม่แทน" : "แบบทดสอบของส่วนกลาง ดูได้อย่างเดียว"}
                           onClick={(event) => {
                             event.stopPropagation();
                             openEditForItem(item);
@@ -1180,6 +1407,7 @@ export default function Assessment() {
                           type="button"
                           style={{ whiteSpace: "nowrap", padding: "3px 8px", fontSize: "0.74rem" }}
                           disabled={busy || !item.canModify}
+                          title={item.canModify ? "" : item.isUsed ? "ถูกผูกกับหลักสูตร/แผนอบรม หรือมีพนักงานทำไปแล้ว ลบไม่ได้" : "แบบทดสอบของส่วนกลาง ดูได้อย่างเดียว"}
                           onClick={(event) => {
                             event.stopPropagation();
                             setSelectedId(item.assessmentId);
@@ -1233,9 +1461,14 @@ export default function Assessment() {
                   ) : null}
                 </Fragment>
               );
-            })}
+                })}
           </tbody>
         </table>
+            </div>
+            ) : null}
+          </section>
+          );
+        })}
       </div>
     </section>
   </section>;

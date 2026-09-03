@@ -109,6 +109,11 @@ export const parseEvaluationWriteInput = (input: InputObject): EvaluationWriteIn
 export const parseCreateEvaluationWriteInput = (input: InputObject) =>
   parseEvaluationWriteInput({ ...input, formCode: "AUTO" });
 
+/** Status-only change - the one edit an evaluation already in use still accepts. Kept apart from
+ *  parseEvaluationWriteInput so it cannot become a door for content edits. */
+export const parseEvaluationStatusInput = (input: InputObject): EvaluationStatus =>
+  member(input.status, EVALUATION_STATUSES, "status") as EvaluationStatus;
+
 export const parseEvaluationListFilters = (
   params: URLSearchParams,
   pagination: Pick<EvaluationListFilters, "skip" | "take">,

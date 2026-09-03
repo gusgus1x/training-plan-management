@@ -46,6 +46,9 @@ export const createAssessment = async (input: AssessmentWriteInput, fetcher: Fet
 export const updateAssessment = async (assessmentId: string, input: AssessmentWriteInput, fetcher: Fetcher = fetch) =>
   read<{ assessment: AssessmentRecord }>(await fetcher(`/api/training-course/assessments/${assessmentId}`, json("PATCH", input)));
 
+export const setAssessmentStatus = async (assessmentId: string, status: AssessmentRecord["status"], fetcher: Fetcher = fetch) =>
+  read<{ assessment: AssessmentRecord }>(await fetcher(`/api/training-course/assessments/${assessmentId}`, json("POST", { status })));
+
 export const createAssessmentVersion = async (assessmentId: string, input: AssessmentWriteInput, fetcher: Fetcher = fetch) =>
   read<{ assessment: AssessmentRecord }>(await fetcher(`/api/training-course/assessments/${assessmentId}/versions`, json("POST", input)));
 

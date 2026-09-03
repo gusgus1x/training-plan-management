@@ -1,7 +1,7 @@
 import { ApiError } from "../api/errors";
 import type { AuthenticatedPrincipal } from "../auth/types";
 import { evaluationRepository, type EvaluationRepository } from "./repository";
-import type { EvaluationListFilters, EvaluationRecord, EvaluationWriteInput } from "./types";
+import type { EvaluationListFilters, EvaluationRecord, EvaluationStatus, EvaluationWriteInput } from "./types";
 
 const fail = (code: string, message: string, status: number) => new ApiError({ code, message, status });
 type StoredEvaluation = Omit<EvaluationRecord, "canModify" | "canDuplicate">;
@@ -73,6 +73,21 @@ export const createEvaluationService = (repository: EvaluationRepository = evalu
     }
     const record = await repository.update(current, input, targetCompany(input, principal));
     return { ...record, canModify: true, canDuplicate: true };
+  },
+
+  /** Retiring or re-publishing a form. Deliberately does NOT check isUsed: a form attached to a
+   *  course or already answered still has to be retirable, otherwise publishing one by mistake is
+   *  permanent. It changes no content, so nothing already answered is disturbed. */
+  async setEvaluationStatus(evaluationFormId: string, status: EvaluationStatus, principal: AuthenticatedPrincipal) {
+    const current = await repository.findById(evaluationFormId);
+    if (!current) throw fail("EVALUATION_NOT_FOUND", "Evaluation form not found", 404);
+    if (!owns(current, principal)) throw fail("EVALUATION_SCOPE_FORBIDDEN", "You cannot modify an evaluation outside your company", 403);
+    if (!transitions[current.status].includes(status)) {
+      throw fail("EVALUATION_STATUS_TRANSITION_INVALID", `Status cannot change from ${current.status} to ${status}`, 409);
+    }
+    const record = await repository.setStatus(evaluationFormId, status);
+    if (!record) throw fail("EVALUATION_NOT_FOUND", "Evaluation form not found", 404);
+    return { ...record, canModify: owns(record, principal) && !record.isUsed, canDuplicate: true };
   },
 
   async deleteEvaluation(evaluationFormId: string, principal: AuthenticatedPrincipal) {

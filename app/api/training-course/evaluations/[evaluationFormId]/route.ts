@@ -3,7 +3,7 @@ import { recordDeleteAudit } from "../../../../lib/audit";
 import { readJsonObject, readPositiveId } from "../../../../lib/api/validation";
 import { createProtectedRoute, type ProtectedRouteOptions } from "../../../../lib/auth/guard";
 import { evaluationService, type EvaluationService } from "../../../../lib/evaluations/service";
-import { parseEvaluationWriteInput } from "../../../../lib/evaluations/validation";
+import { parseEvaluationStatusInput, parseEvaluationWriteInput } from "../../../../lib/evaluations/validation";
 
 type Context = { params: Promise<{ evaluationFormId: string }> };
 type Dependencies = { auth?: ProtectedRouteOptions; service?: EvaluationService };
@@ -28,6 +28,14 @@ export const createDeleteEvaluationHandler = (dependencies: Dependencies = {}) =
   createProtectedRoute<Context>(async (_request, principal, context) =>
     apiSuccess(await (dependencies.service ?? evaluationService).deleteEvaluation(await id(context), principal)), options(dependencies.auth));
 
+/** Status-only change - the one edit a form already in use still accepts (PATCH refuses those). */
+export const createSetEvaluationStatusHandler = (dependencies: Dependencies = {}) =>
+  createProtectedRoute<Context>(async (request, principal, context) =>
+    apiSuccess({ evaluation: await (dependencies.service ?? evaluationService).setEvaluationStatus(
+      await id(context), parseEvaluationStatusInput(await readJsonObject(request)), principal,
+    ) }), options(dependencies.auth));
+
 export const GET = createGetEvaluationHandler();
 export const PATCH = createUpdateEvaluationHandler();
+export const POST = createSetEvaluationStatusHandler();
 export const DELETE = createDeleteEvaluationHandler();

@@ -297,6 +297,17 @@
   padding: 10px;
 }
 
+.dragHandle {
+  margin-right: 8px;
+  color: var(--ui-30-muted);
+  cursor: grab;
+  user-select: none;
+}
+
+.questionList article[data-dragging="true"] {
+  opacity: 0.45;
+}
+
 .questionList strong {
   display: block;
   font-size: 0.82rem;
@@ -1134,6 +1145,147 @@
   margin: 0;
   background: var(--ui-30-primary-soft);
   color: var(--ui-30-primary-strong);
+}
+
+/* The status badge doubles as an iOS-style switch - its own dot becomes the sliding knob. Matches
+   Assessment; width is fixed because the knob's travel is a translate, not a layout change. */
+.statusToggle {
+  position: relative;
+  width: 84px;
+  justify-content: center;
+  padding: 4px 8px 4px 23px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: padding 180ms ease, background 180ms ease, color 180ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.statusToggle[aria-checked="true"] {
+  padding: 4px 23px 4px 8px;
+}
+
+.statusToggle::before {
+  display: none;
+}
+
+.statusToggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.statusToggle:focus-visible {
+  outline: 2px solid var(--ui-30-primary);
+  outline-offset: 2px;
+}
+
+.statusToggleKnob {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 180ms ease;
+}
+
+/* Travel = width - left inset - knob - right inset (84 - 3 - 16 - 3). */
+.statusToggle[aria-checked="true"] .statusToggleKnob {
+  transform: translateX(62px);
+}
+
+/* Template picker at the top of the new-evaluation form, matching Assessment and Course Master. */
+.templatePicker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(59, 130, 246, 0.02));
+}
+
+.templatePickerLabel {
+  color: #2563eb;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.templatePickerHint {
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+/* One collapsible block per company, matching Assessment and the Employee Data directory. */
+.companyDirectory {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.companyGroup {
+  overflow: hidden;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+}
+
+.companyHeader {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 18px 20px auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  border: 0;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
+  cursor: pointer;
+  font: inherit;
+  min-height: 42px;
+  padding: 10px 13px;
+  text-align: left;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.companyHeader strong {
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.companyHeader small {
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.chevron {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 6px solid var(--ui-30-muted);
+  transform-origin: 45% 50%;
+  transition: transform 140ms ease;
+}
+
+.openGroup .chevron {
+  transform: rotate(90deg);
+}
+
+.openGroup .companyHeader {
+  background: var(--ui-30-primary-soft);
+}
+
+.ownCompanyTag {
+  margin-left: 8px;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 700;
+  color: var(--ui-10-accent, #0f766e);
 }
 
 .requiredMark {

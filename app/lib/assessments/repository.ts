@@ -285,6 +285,17 @@ export const createAssessmentRepository = (client?: DatabaseClient) => {
       });
     },
 
+    /** Touches nothing but the status column, so it stays safe on an assessment already in use. */
+    async setStatus(assessmentId: string, status: AssessmentRecord["status"], userId: string) {
+      return withDatabaseErrorMapping(async () => {
+        await db().assessment.update({
+          where: { assessment_id: BigInt(assessmentId) },
+          data: { status, updated_by: BigInt(userId), updated_at: new Date() },
+        });
+        return findDetail(assessmentId);
+      });
+    },
+
     async update(current: StoredAssessmentRecord, input: AssessmentWriteInput, companyId: string | null, userId: string) {
       return withDatabaseErrorMapping(async () => {
         const updated = await db().$transaction(async (transaction) => {

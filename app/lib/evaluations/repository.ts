@@ -213,6 +213,17 @@ export const createEvaluationRepository = (client?: DatabaseClient) => {
       });
     },
 
+    /** Touches nothing but the status column, so it stays safe on a form already in use. */
+    async setStatus(evaluationFormId: string, status: EvaluationRecord["status"]) {
+      return withDatabaseErrorMapping(async () => {
+        await db().evaluation_form.update({
+          where: { evaluation_form_id: BigInt(evaluationFormId) },
+          data: { status },
+        });
+        return findDetail(evaluationFormId);
+      });
+    },
+
     async update(current: StoredEvaluation, input: EvaluationWriteInput, companyId: string | null) {
       return withDatabaseErrorMapping(async () => {
         const updated = await db().$transaction(async (transaction) => {
