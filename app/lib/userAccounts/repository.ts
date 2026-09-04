@@ -110,10 +110,13 @@ export const createUserAccountRepository = (client?: DatabaseClient) => {
       );
     },
 
-    async usernameTaken(username: string) {
+    async usernameTaken(username: string, excludeUserId?: string) {
       return withDatabaseErrorMapping(async () => {
         const row = await db().user_account.findFirst({
-          where: { username },
+          where: {
+            username,
+            ...(excludeUserId ? { user_id: { not: BigInt(excludeUserId) } } : {}),
+          },
           select: { user_id: true },
         });
         return row !== null;
@@ -144,6 +147,7 @@ export const createUserAccountRepository = (client?: DatabaseClient) => {
         const row = await db().user_account.update({
           where: { user_id: BigInt(userId) },
           data: {
+            ...(input.username === undefined ? {} : { username: input.username }),
             ...(roleId === null ? {} : { role_id: roleId }),
             ...(input.email === undefined ? {} : { email: input.email }),
             ...(input.status === undefined ? {} : { status: input.status }),

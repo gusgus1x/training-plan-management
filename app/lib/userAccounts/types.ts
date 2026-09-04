@@ -36,5 +36,5 @@ export type CreateUserAccountInput = {
 
 /** Password is changed through its own reset endpoint, never as part of a general edit. */
 export type UpdateUserAccountInput = Partial<
-  Omit<CreateUserAccountInput, "username" | "password">
+  Omit<CreateUserAccountInput, "password">
 >;

@@ -105,6 +105,7 @@ export default function AdminDashboard() {
 
   const [editingAccount, setEditingAccount] = useState<UserAccountRecord | null>(null);
   const [editForm, setEditForm] = useState({
+    username: "",
     roleCode: "HRD_FACTORY" as RoleCode,
     companyId: "",
     employeeId: "",
@@ -303,6 +304,7 @@ export default function AdminDashboard() {
   const handleOpenEdit = (account: UserAccountRecord) => {
     setEditingAccount(account);
     setEditForm({
+      username: account.username,
       roleCode: account.roleCode,
       companyId: account.companyId ?? "",
       employeeId: account.employeeId ?? "",
@@ -317,18 +319,25 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!editingAccount) return;
 
+    const trimmedUsername = editForm.username.trim();
+    if (!trimmedUsername) {
+      setError("กรุณากรอกชื่อผู้ใช้ (Username)");
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
     setMessage(null);
     try {
       await updateUserAccount(editingAccount.userId, {
+        username: trimmedUsername,
         roleCode: editForm.roleCode,
         companyId: needsCompany(editForm.roleCode) ? editForm.companyId || null : null,
         employeeId: needsEmployee(editForm.roleCode) ? editForm.employeeId || null : null,
         email: editForm.email.trim() || null,
         status: editForm.status,
       });
-      setMessage(`อัปเดตข้อมูลบัญชี "${editingAccount.username}" เรียบร้อยแล้ว`);
+      setMessage(`อัปเดตข้อมูลบัญชี "${trimmedUsername}" เรียบร้อยแล้ว`);
       setEditingAccount(null);
       await loadAccounts();
     } catch (err) {
@@ -1718,8 +1727,17 @@ export default function AdminDashboard() {
             <form onSubmit={handleEditSubmit}>
               <div className={styles.modalBody}>
                 <div className={styles.formGroup}>
-                  <label>Username</label>
-                  <input type="text" disabled value={editingAccount.username} />
+                  <label htmlFor="edit-username">
+                    ชื่อผู้ใช้ (Username) <b>*</b>
+                  </label>
+                  <input
+                    id="edit-username"
+                    type="text"
+                    required
+                    maxLength={100}
+                    value={editForm.username}
+                    onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                  />
                 </div>
 
                 <div className={styles.formGroup}>

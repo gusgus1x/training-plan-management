@@ -124,4 +124,38 @@ describe("user account service", () => {
       status: 404,
     });
   });
+
+  it("allows changing the username when the new username is available", async () => {
+    const repository = repo({
+      findById: vi.fn().mockResolvedValue(account({ userId: "5", username: "old.name" })),
+      usernameTaken: vi.fn().mockResolvedValue(false),
+      update: vi.fn().mockImplementation(async (userId, input) => account({ userId, username: input.username })),
+    });
+    const service = createUserAccountService(repository);
+    const updated = await service.update(admin, "5", { username: "new.name" });
+    expect(updated.username).toBe("new.name");
+  });
+
+  it("rejects changing the username if the new username is already taken", async () => {
+    const repository = repo({
+      findById: vi.fn().mockResolvedValue(account({ userId: "5", username: "old.name" })),
+      usernameTaken: vi.fn().mockResolvedValue(true),
+    });
+    const service = createUserAccountService(repository);
+    await expect(service.update(admin, "5", { username: "taken.name" })).rejects.toMatchObject({
+      status: 409,
+    });
+  });
+
+  it("does not check usernameTaken if the username is not changed", async () => {
+    const usernameTakenMock = vi.fn().mockResolvedValue(true);
+    const repository = repo({
+      findById: vi.fn().mockResolvedValue(account({ userId: "5", username: "same.name" })),
+      usernameTaken: usernameTakenMock,
+    });
+    const service = createUserAccountService(repository);
+    await service.update(admin, "5", { username: "same.name", email: "new@example.com" });
+    expect(usernameTakenMock).not.toHaveBeenCalled();
+  });
 });
+

@@ -86,6 +86,9 @@ export const parseCreateUserAccount = (input: InputObject): CreateUserAccountInp
 export const parseUpdateUserAccount = (input: InputObject): UpdateUserAccountInput => {
   const update: UpdateUserAccountInput = {};
 
+  if (hasOwn(input, "username")) {
+    update.username = readRequiredString(input, "username", { maxLength: 100 });
+  }
   if (hasOwn(input, "roleCode")) update.roleCode = readRoleCode(input.roleCode);
   if (hasOwn(input, "companyId")) update.companyId = readOptionalReference(input, "companyId");
   if (hasOwn(input, "employeeId")) update.employeeId = readOptionalReference(input, "employeeId");

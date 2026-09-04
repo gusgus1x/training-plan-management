@@ -103,6 +103,12 @@ export const createUserAccountService = (
         throw conflict("You cannot change your own role or status");
       }
 
+      if (input.username !== undefined && input.username !== current.username) {
+        if (await repository.usernameTaken(input.username, userId)) {
+          throw conflict(`Username "${input.username}" is already in use`);
+        }
+      }
+
       assertRoleBindings(nextRole, nextCompany, nextEmployee);
 
       const losesAdmin =
