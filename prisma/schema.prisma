@@ -772,6 +772,10 @@ model training_plan {
   post_assessment_id                                  BigInt?
   evaluation_form_id                                  BigInt?
   evaluation_form_after_30day_id                      BigInt?
+  pre_test_link                                       String?                            @db.NVarChar(2048)
+  post_test_link                                      String?                            @db.NVarChar(2048)
+  evaluation_link                                     String?                            @db.NVarChar(2048)
+  evaluation_after_30day_link                         String?                            @db.NVarChar(2048)
   certificate_import_batch                            certificate_import_batch[]
   training_enrollment                                 training_enrollment[]
   training_expense                                    training_expense[]

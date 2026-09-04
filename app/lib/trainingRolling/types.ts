@@ -47,6 +47,12 @@ export type RollingPlanFormOverrides = {
   postAssessmentId: string;
   evaluationFormId: string;
   evaluationFormAfter30DayId: string;
+  /** External form for a stage, used instead of an in-system one. A stage carries either an id or
+   *  a link, never both - picking one clears the other. */
+  preTestLink: string;
+  postTestLink: string;
+  evaluationLink: string;
+  evaluationAfter30DayLink: string;
 };
 
 export type CreateRollingPlanInput = {

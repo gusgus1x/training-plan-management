@@ -20,6 +20,7 @@ import {
   updateRollingPlan,
 } from "../../../../lib/trainingRolling/client";
 import type { RollingPlanFormOverrides, RollingPlanRecord } from "../../../../lib/trainingRolling/types";
+import { toDataURL as generateQrCodeDataUrl } from "qrcode";
 import { listAssessments } from "../../../../lib/assessments/client";
 import { listEvaluations } from "../../../../lib/evaluations/client";
 import { listInstructors } from "../../../../lib/instructors/client";
@@ -145,6 +146,7 @@ const PlanFormOverrideCard = ({
 }) => {
   const toast = useToast();
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
   // The saved state is a key rather than something an effect copies into local state: when the save
   // lands (or another batch is opened) the key changes and the draft falls back to what is stored,
   // with no synchronous setState inside an effect and no frame showing the previous batch's forms.
@@ -166,38 +168,27 @@ const PlanFormOverrideCard = ({
     draft.evaluationFormId !== plan.formOverrides.evaluationFormId ||
     draft.evaluationFormAfter30DayId !== plan.formOverrides.evaluationFormAfter30DayId;
 
-  const rows: { key: keyof RollingPlanFormOverrides; label: string; courseValue: string; options: FormPickerOption[] }[] = [
-    {
-      key: "preAssessmentId",
-      label: "แบบทดสอบก่อนเรียน",
-      courseValue: plan.course.preTest || plan.course.preTestLink || "-",
-      options: assessmentOptions.filter((option) => option.kind === "PRE_TEST" || option.kind === "GENERAL"),
-    },
-    {
-      key: "postAssessmentId",
-      label: "แบบทดสอบหลังเรียน",
-      courseValue: plan.course.postTest || plan.course.postTestLink || "-",
-      options: assessmentOptions.filter((option) => option.kind === "POST_TEST" || option.kind === "GENERAL"),
-    },
-    {
-      key: "evaluationFormId",
-      label: "แบบประเมิน",
-      courseValue: plan.course.evaluation || plan.course.evaluationLink || "-",
-      options: evaluationOptions,
-    },
-    {
-      key: "evaluationFormAfter30DayId",
-      label: "แบบประเมินหลัง 30 วัน",
-      courseValue: plan.course.evaluationAfter30Day || plan.course.evaluationAfter30DayLink || "-",
-      options: evaluationOptions,
-    },
-  ];
+  const courseDefaults: Record<string, string> = {
+    preAssessmentId: plan.course.preTest || plan.course.preTestLink || "-",
+    postAssessmentId: plan.course.postTest || plan.course.postTestLink || "-",
+    evaluationFormId: plan.course.evaluation || plan.course.evaluationLink || "-",
+    evaluationFormAfter30DayId: plan.course.evaluationAfter30Day || plan.course.evaluationAfter30DayLink || "-",
+  };
+  const rows = FORM_STAGES.map((stage) => ({
+    stage,
+    courseValue: courseDefaults[stage.idKey],
+    options:
+      stage.kind === "EVALUATION"
+        ? evaluationOptions
+        : assessmentOptions.filter((option) => option.kind === stage.kind || option.kind === "GENERAL"),
+  }));
 
   const save = async () => {
     setSaving(true);
     try {
       const saved = await updateRollingPlan(plan.rollingId, { formOverrides: draft });
       onSaved(mapRecordToRollingPlan(saved.rollingPlan));
+      setEditing(false);
       toast.success("บันทึกแบบทดสอบ/แบบประเมินของรุ่นนี้แล้ว");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "บันทึกไม่สำเร็จ");
@@ -210,48 +201,112 @@ const PlanFormOverrideCard = ({
     <div className={styles.previewCard}>
       <div className={styles.previewCardHeader}>
         <span>📝 แบบทดสอบ / แบบประเมิน</span>
-        {plan.canEditForms ? null : <small style={{ color: "var(--ui-30-muted)" }}>อบรมเริ่มแล้ว แก้ไม่ได้</small>}
+        {/* Read-only until Edit is pressed, like every other card on this detail panel. The card
+            used to render live dropdowns straight away, so the page looked editable when it was
+            only meant to be read. */}
+        {!plan.canEditForms ? (
+          <small style={{ color: "var(--ui-30-muted)" }}>อบรมเริ่มแล้ว แก้ไม่ได้</small>
+        ) : editing ? null : (
+          <button type="button" className={styles.formOverrideEditButton} onClick={() => setEditing(true)}>
+            ✎ แก้ไข
+          </button>
+        )}
       </div>
 
-      {rows.map((row) => {
-        const overridden = Boolean(draft[row.key]);
+      {rows.map(({ stage, courseValue, options }) => {
+        const link = draft[stage.linkKey];
+        const usingLink = Boolean(link.trim());
+        const overridden = Boolean(draft[stage.idKey]) || usingLink;
         return (
-          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`} key={row.key}>
+          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`} key={stage.idKey}>
             <span className={styles.previewFieldLabel}>
-              {row.label}
+              {stage.label}
               {overridden ? (
                 <em style={{ marginLeft: "6px", fontStyle: "normal", fontWeight: 700, color: "#c2410c" }}>
                   แก้เฉพาะรุ่นนี้
                 </em>
               ) : null}
             </span>
-            {plan.canEditForms ? (
+
+            {editing ? (
               <select
-                value={draft[row.key]}
-                onChange={(event) => setDraft((current) => ({ ...current, [row.key]: event.target.value }))}
+                value={usingLink || Boolean(draft[stage.linkKey]) ? LINK_MODE_VALUE : draft[stage.idKey]}
+                onChange={(event) => setDraft((current) => setStageChoice(current, stage, event.target.value))}
                 style={{ width: "100%", minHeight: "34px", fontSize: "0.8rem" }}
               >
-                <option value="">— ใช้ตามหลักสูตร ({row.courseValue}) —</option>
-                {row.options.map((option) => (
+                <option value="">— ใช้ตามหลักสูตร ({courseValue}) —</option>
+                {options.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
                   </option>
                 ))}
+                <option value={LINK_MODE_VALUE}>🔗 ใช้ลิงก์ภายนอก</option>
               </select>
+            ) : usingLink ? (
+              // Nothing here for link mode: the link row below already shows it, and printing the
+              // raw URL twice is what pushed it out of the card.
+              null
             ) : (
               <span className={styles.previewFieldValue}>
-                {overridden
-                  ? row.options.find((option) => option.id === draft[row.key])?.label ?? "(ชุดที่เลือกไว้)"
-                  : row.courseValue}
+                {draft[stage.idKey]
+                  ? options.find((option) => option.id === draft[stage.idKey])?.label ?? "(ชุดที่เลือกไว้)"
+                  : courseValue}
               </span>
             )}
+
+            {/* The link row shows while editing link mode, and whenever a link is already set -
+                a started batch can no longer be edited but still needs its QR to hand out. */}
+            {(editing && Boolean(draft[stage.linkKey])) || usingLink ? (
+              <span className={styles.sessionLinkRow}>
+                {editing ? (
+                  <input
+                    type="url"
+                    placeholder="https://forms.gle/..."
+                    value={link.trim()}
+                    onChange={(event) =>
+                      setDraft((current) => ({ ...current, [stage.linkKey]: event.target.value || " " }))
+                    }
+                  />
+                ) : (
+                  <a
+                    className={styles.sessionLinkText}
+                    href={link.trim()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={link.trim()}
+                  >
+                    {shortenLink(link)}
+                  </a>
+                )}
+                <button
+                  type="button"
+                  title="ดาวน์โหลด QR code ของลิงก์นี้"
+                  disabled={!link.trim()}
+                  onClick={() =>
+                    void downloadQrCode(link, `${plan.course.code || "course"}-${plan.batch || "batch"}-${stage.idKey}`).catch(() =>
+                      toast.error("สร้าง QR code ไม่สำเร็จ"),
+                    )
+                  }
+                >
+                  <DownloadIcon />
+                  โหลด QR
+                </button>
+              </span>
+            ) : null}
           </div>
         );
       })}
 
-      {plan.canEditForms ? (
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
-          <button type="button" disabled={!dirty || saving} onClick={() => setEdited(null)}>
+      {editing ? (
+        <div className={styles.formOverrideActions}>
+          <button
+            type="button"
+            disabled={saving}
+            onClick={() => {
+              setEdited(null);
+              setEditing(false);
+            }}
+          >
             ยกเลิก
           </button>
           <button type="button" disabled={!dirty || saving} onClick={() => void save()}>
@@ -439,7 +494,69 @@ const emptyFormOverrides = (): RollingPlanFormOverrides => ({
   postAssessmentId: "",
   evaluationFormId: "",
   evaluationFormAfter30DayId: "",
+  preTestLink: "",
+  postTestLink: "",
+  evaluationLink: "",
+  evaluationAfter30DayLink: "",
 });
+
+/** The four stages, each with the id field, the link field, and where the course's default lives.
+ *  Declared once so the create form and the detail panel cannot drift apart. */
+const FORM_STAGES = [
+  { idKey: "preAssessmentId", linkKey: "preTestLink", label: "แบบทดสอบก่อนเรียน", kind: "PRE_TEST" },
+  { idKey: "postAssessmentId", linkKey: "postTestLink", label: "แบบทดสอบหลังเรียน", kind: "POST_TEST" },
+  { idKey: "evaluationFormId", linkKey: "evaluationLink", label: "แบบประเมิน", kind: "EVALUATION" },
+  { idKey: "evaluationFormAfter30DayId", linkKey: "evaluationAfter30DayLink", label: "แบบประเมินหลัง 30 วัน", kind: "EVALUATION" },
+] as const;
+
+const LINK_MODE_VALUE = "__LINK__";
+
+/** A stage holds either an in-system form or a link, never both - choosing one clears the other. */
+const setStageChoice = (
+  current: RollingPlanFormOverrides,
+  stage: (typeof FORM_STAGES)[number],
+  value: string,
+): RollingPlanFormOverrides =>
+  value === LINK_MODE_VALUE
+    ? { ...current, [stage.idKey]: "", [stage.linkKey]: current[stage.linkKey] || " " }
+    : { ...current, [stage.idKey]: value, [stage.linkKey]: "" };
+
+/** A Google Forms URL is ~90 characters of opaque id. Shown as host + a clipped path, with the
+ *  full URL on the title attribute and the anchor still pointing at the real thing. */
+const shortenLink = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  try {
+    const url = new URL(trimmed);
+    const tail = `${url.pathname}${url.search}`.replace(/\/$/, "");
+    const host = url.hostname.replace(/^www\./, "");
+    return tail.length > 24 ? `${host}${tail.slice(0, 24)}…` : `${host}${tail}`;
+  } catch {
+    return trimmed.length > 48 ? `${trimmed.slice(0, 48)}…` : trimmed;
+  }
+};
+
+/** Inline SVG rather than an emoji: the arrow keeps its shape and colour on every platform, and it
+ *  inherits the button's text colour instead of rendering as a coloured glyph. */
+const DownloadIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 3v12" />
+    <path d="m7 10 5 5 5-5" />
+    <path d="M4 20h16" />
+  </svg>
+);
+
+const downloadQrCode = async (link: string, filename: string) => {
+  const trimmed = link.trim();
+  if (!trimmed) return;
+  const dataUrl = await generateQrCodeDataUrl(trimmed, { width: 480, margin: 2 });
+  const anchor = document.createElement("a");
+  anchor.href = dataUrl;
+  anchor.download = `${filename}-qr.png`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+};
 
 const createEmptyForm = (): RollingForm => ({
   oapId: "",
@@ -1515,32 +1632,73 @@ export default function TrainingRolling() {
                             )}
                           </summary>
                           <div className={styles.sessionFormOverrideGrid}>
-                            {([
-                              ["preAssessmentId", "แบบทดสอบก่อนเรียน", selectedOap.course.preTest, assessmentOptions.filter((o) => o.kind === "PRE_TEST" || o.kind === "GENERAL")],
-                              ["postAssessmentId", "แบบทดสอบหลังเรียน", selectedOap.course.postTest, assessmentOptions.filter((o) => o.kind === "POST_TEST" || o.kind === "GENERAL")],
-                              ["evaluationFormId", "แบบประเมิน", selectedOap.course.evaluation, evaluationOptions],
-                              ["evaluationFormAfter30DayId", "แบบประเมินหลัง 30 วัน", selectedOap.course.evaluationAfter30Day, evaluationOptions],
-                            ] as const).map(([key, label, courseValue, options]) => (
-                              <label key={key}>
-                                <span>{label}</span>
-                                <select
-                                  value={session.formOverrides[key]}
-                                  onChange={(event) =>
-                                    updateSession(session.id, "formOverrides", {
-                                      ...session.formOverrides,
-                                      [key]: event.target.value,
-                                    })
-                                  }
-                                >
-                                  <option value="">— ใช้ตามหลักสูตร ({courseValue || "ไม่มี"}) —</option>
-                                  {options.map((option) => (
-                                    <option key={option.id} value={option.id}>
-                                      {option.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
-                            ))}
+                            {FORM_STAGES.map((stage) => {
+                              const options =
+                                stage.kind === "EVALUATION"
+                                  ? evaluationOptions
+                                  : assessmentOptions.filter((o) => o.kind === stage.kind || o.kind === "GENERAL");
+                              const courseDefault =
+                                stage.idKey === "preAssessmentId"
+                                  ? selectedOap.course.preTest || selectedOap.course.preTestLink
+                                  : stage.idKey === "postAssessmentId"
+                                    ? selectedOap.course.postTest || selectedOap.course.postTestLink
+                                    : stage.idKey === "evaluationFormId"
+                                      ? selectedOap.course.evaluation || selectedOap.course.evaluationLink
+                                      : selectedOap.course.evaluationAfter30Day || selectedOap.course.evaluationAfter30DayLink;
+                              const link = session.formOverrides[stage.linkKey];
+                              const usingLink = Boolean(link);
+                              return (
+                                <label key={stage.idKey}>
+                                  <span>{stage.label}</span>
+                                  <select
+                                    value={usingLink ? LINK_MODE_VALUE : session.formOverrides[stage.idKey]}
+                                    onChange={(event) =>
+                                      updateSession(
+                                        session.id,
+                                        "formOverrides",
+                                        setStageChoice(session.formOverrides, stage, event.target.value),
+                                      )
+                                    }
+                                  >
+                                    <option value="">— ใช้ตามหลักสูตร ({courseDefault || "ไม่มี"}) —</option>
+                                    {options.map((option) => (
+                                      <option key={option.id} value={option.id}>
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                    <option value={LINK_MODE_VALUE}>🔗 ใช้ลิงก์ภายนอก</option>
+                                  </select>
+                                  {usingLink ? (
+                                    <span className={styles.sessionLinkRow}>
+                                      <input
+                                        type="url"
+                                        placeholder="https://forms.gle/..."
+                                        value={link.trim()}
+                                        onChange={(event) =>
+                                          updateSession(session.id, "formOverrides", {
+                                            ...session.formOverrides,
+                                            [stage.linkKey]: event.target.value || " ",
+                                          })
+                                        }
+                                      />
+                                      <button
+                                        type="button"
+                                        title="ดาวน์โหลด QR code ของลิงก์นี้"
+                                        disabled={!link.trim()}
+                                        onClick={() =>
+                                          void downloadQrCode(link, `${session.batchName || "batch"}-${stage.idKey}`).catch(
+                                            () => toast.error("สร้าง QR code ไม่สำเร็จ"),
+                                          )
+                                        }
+                                      >
+                                        <DownloadIcon />
+                                        โหลด QR
+                                      </button>
+                                    </span>
+                                  ) : null}
+                                </label>
+                              );
+                            })}
                           </div>
                         </details>
                       ) : null}

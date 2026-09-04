@@ -190,6 +190,10 @@ const mapRollingPlan = (row: RollingPlanWithRelations) => {
       postAssessmentId: row.post_assessment_id?.toString() || "",
       evaluationFormId: row.evaluation_form_id?.toString() || "",
       evaluationFormAfter30DayId: row.evaluation_form_after_30day_id?.toString() || "",
+      preTestLink: row.pre_test_link || "",
+      postTestLink: row.post_test_link || "",
+      evaluationLink: row.evaluation_link || "",
+      evaluationAfter30DayLink: row.evaluation_after_30day_link || "",
     },
     canEditForms: row.start_datetime.getTime() > Date.now(),
   };
@@ -290,6 +294,10 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
               post_assessment_id: safeBigInt(input.formOverrides?.postAssessmentId),
               evaluation_form_id: safeBigInt(input.formOverrides?.evaluationFormId),
               evaluation_form_after_30day_id: safeBigInt(input.formOverrides?.evaluationFormAfter30DayId),
+              pre_test_link: input.formOverrides?.preTestLink?.trim() || null,
+              post_test_link: input.formOverrides?.postTestLink?.trim() || null,
+              evaluation_link: input.formOverrides?.evaluationLink?.trim() || null,
+              evaluation_after_30day_link: input.formOverrides?.evaluationAfter30DayLink?.trim() || null,
               created_by: BigInt(userId),
               created_at: new Date(),
             },
@@ -328,13 +336,19 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
               status: 409,
             });
           }
-          const { preAssessmentId, postAssessmentId, evaluationFormId, evaluationFormAfter30DayId } = input.formOverrides;
+          const o = input.formOverrides;
           // An empty string clears the override; undefined leaves the field untouched.
-          if (preAssessmentId !== undefined) data.pre_assessment_id = safeBigInt(preAssessmentId);
-          if (postAssessmentId !== undefined) data.post_assessment_id = safeBigInt(postAssessmentId);
-          if (evaluationFormId !== undefined) data.evaluation_form_id = safeBigInt(evaluationFormId);
-          if (evaluationFormAfter30DayId !== undefined) {
-            data.evaluation_form_after_30day_id = safeBigInt(evaluationFormAfter30DayId);
+          if (o.preAssessmentId !== undefined) data.pre_assessment_id = safeBigInt(o.preAssessmentId);
+          if (o.postAssessmentId !== undefined) data.post_assessment_id = safeBigInt(o.postAssessmentId);
+          if (o.evaluationFormId !== undefined) data.evaluation_form_id = safeBigInt(o.evaluationFormId);
+          if (o.evaluationFormAfter30DayId !== undefined) {
+            data.evaluation_form_after_30day_id = safeBigInt(o.evaluationFormAfter30DayId);
+          }
+          if (o.preTestLink !== undefined) data.pre_test_link = o.preTestLink.trim() || null;
+          if (o.postTestLink !== undefined) data.post_test_link = o.postTestLink.trim() || null;
+          if (o.evaluationLink !== undefined) data.evaluation_link = o.evaluationLink.trim() || null;
+          if (o.evaluationAfter30DayLink !== undefined) {
+            data.evaluation_after_30day_link = o.evaluationAfter30DayLink.trim() || null;
           }
         }
 

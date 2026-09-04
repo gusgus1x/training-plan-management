@@ -129,12 +129,35 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
   const planOwnerIsFactory = oap.company_id !== null;
   const employee = row.employee;
 
-  // The batch's own form wins over the course's - the same rule trainingForms' formIdForStage
-  // applies, resolved once here so every stage below reads the identical answer.
-  const preAssessmentId = plan.pre_assessment_id ?? oap.course.pre_assessment_id;
-  const postAssessmentId = plan.post_assessment_id ?? oap.course.post_assessment_id;
-  const evaluationFormId = plan.evaluation_form_id ?? oap.course.evaluation_form_id;
-  const evaluationForm30DayId = plan.evaluation_form_after_30day_id ?? oap.course.evaluation_form_after_30day_id;
+  // The batch's own choice REPLACES the course's for that stage - an id or a link, never a mix of
+  // the batch's link with the course's assessment. Same rule as trainingForms' formIdForStage,
+  // resolved once here so every stage below reads the identical answer.
+  // `!= null` rather than `!== null`: a row read without these columns selected yields undefined,
+  // and treating that as "the batch chose something" would blank the stage entirely.
+  const stageSource = (
+    batchId: bigint | null,
+    batchLink: string | null,
+    courseId: bigint | null,
+    courseLink: string | null,
+  ): { id: bigint | null; link: string | null } =>
+    batchId != null || batchLink?.trim()
+      ? { id: batchId ?? null, link: batchLink ?? null }
+      : { id: courseId, link: courseLink };
+
+  const pre = stageSource(plan.pre_assessment_id, plan.pre_test_link, oap.course.pre_assessment_id, oap.course.pre_test_link);
+  const post = stageSource(plan.post_assessment_id, plan.post_test_link, oap.course.post_assessment_id, oap.course.post_test_link);
+  const evaluation = stageSource(plan.evaluation_form_id, plan.evaluation_link, oap.course.evaluation_form_id, oap.course.evaluation_link);
+  const evaluation30 = stageSource(
+    plan.evaluation_form_after_30day_id,
+    plan.evaluation_after_30day_link,
+    oap.course.evaluation_form_after_30day_id,
+    oap.course.evaluation_after_30day_link,
+  );
+
+  const preAssessmentId = pre.id;
+  const postAssessmentId = post.id;
+  const evaluationFormId = evaluation.id;
+  const evaluationForm30DayId = evaluation30.id;
 
   const closedAtByStage = new Map(plan.training_plan_assessment_setting.map((s) => [s.assessment_stage, s.close_at]));
   const latestAssessmentSubmission = (assessmentId: bigint | null, stage: "PRE_TEST" | "POST_TEST"): StageSubmissionSummary | null => {
@@ -186,7 +209,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
     plan: {
       assessment: {
         preTest: withEnrollmentStageInfo(
-          assessmentStage(preAssessmentId, oap.course.pre_test_link),
+          assessmentStage(pre.id, pre.link),
           "PRE_TEST",
           plan.start_datetime,
           plan.end_datetime,
@@ -194,7 +217,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
           latestAssessmentSubmission(preAssessmentId, "PRE_TEST"),
         ),
         postTest: withEnrollmentStageInfo(
-          assessmentStage(postAssessmentId, oap.course.post_test_link),
+          assessmentStage(post.id, post.link),
           "POST_TEST",
           plan.start_datetime,
           plan.end_datetime,
@@ -202,7 +225,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
           latestAssessmentSubmission(postAssessmentId, "POST_TEST"),
         ),
         evaluation: withEnrollmentStageInfo(
-          assessmentStage(evaluationFormId, oap.course.evaluation_link),
+          assessmentStage(evaluation.id, evaluation.link),
           "EVALUATION",
           plan.start_datetime,
           plan.end_datetime,
@@ -210,7 +233,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
           evaluationSubmission(evaluationFormId),
         ),
         evaluationAfter30Day: withEnrollmentStageInfo(
-          assessmentStage(evaluationForm30DayId, oap.course.evaluation_after_30day_link),
+          assessmentStage(evaluation30.id, evaluation30.link),
           "EVALUATION_30DAY",
           plan.start_datetime,
           plan.end_datetime,

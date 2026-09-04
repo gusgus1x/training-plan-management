@@ -21,6 +21,7 @@ const buildDb = (planOverrides: {
   post_assessment_id?: bigint | null;
   evaluation_form_id?: bigint | null;
   evaluation_form_after_30day_id?: bigint | null;
+  pre_test_link?: string | null;
 }) => {
   const plan = {
     start_datetime: new Date(Date.now() - DAY_MS),
@@ -89,6 +90,20 @@ describe("per-batch form overrides", () => {
     const { repository, asked } = buildDb({ pre_assessment_id: BATCH_PRE });
     await repository.readAssessmentReviewForEmployee("1", "POST_TEST", OWNER.employeeId, OWNER.employeeUserId);
     expect(asked.assessmentId).toBe(COURSE_POST);
+  });
+
+  it("a batch pointed at an external link does not fall back to the course's assessment", async () => {
+    // The batch opted out of the in-system form for that stage. Falling through to the course's
+    // assessment would hand the trainee a test nobody meant them to take.
+    const { repository, asked } = buildDb({ pre_test_link: "https://forms.gle/example" });
+    const review = await repository.readAssessmentReviewForEmployee(
+      "1",
+      "PRE_TEST",
+      OWNER.employeeId,
+      OWNER.employeeUserId,
+    );
+    expect(review).toBeNull();
+    expect(asked.assessmentId).toBeUndefined();
   });
 });
 

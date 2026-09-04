@@ -71,8 +71,8 @@ const formOverrides = (value: unknown): UpdateRollingPlanInput["formOverrides"] 
   }
   const raw = value as Record<string, unknown>;
   const parsed: NonNullable<UpdateRollingPlanInput["formOverrides"]> = {};
-  const keys = ["preAssessmentId", "postAssessmentId", "evaluationFormId", "evaluationFormAfter30DayId"] as const;
-  for (const key of keys) {
+  const idKeys = ["preAssessmentId", "postAssessmentId", "evaluationFormId", "evaluationFormAfter30DayId"] as const;
+  for (const key of idKeys) {
     if (!hasOwn(raw, key)) continue;
     const entry = raw[key];
     if (entry === null || entry === "") {
@@ -84,9 +84,33 @@ const formOverrides = (value: unknown): UpdateRollingPlanInput["formOverrides"] 
     }
     parsed[key] = entry.trim();
   }
+
+  const linkKeys = ["preTestLink", "postTestLink", "evaluationLink", "evaluationAfter30DayLink"] as const;
+  for (const key of linkKeys) {
+    if (!hasOwn(raw, key)) continue;
+    const entry = raw[key];
+    if (entry === null || entry === "") {
+      parsed[key] = "";
+      continue;
+    }
+    if (typeof entry !== "string") throw invalid(`formOverrides.${key}`, "Must be a URL or an empty string");
+    const trimmed = entry.trim();
+    if (trimmed.length > FORM_LINK_MAX_LENGTH) {
+      throw invalid(`formOverrides.${key}`, `Must contain no more than ${FORM_LINK_MAX_LENGTH} characters`);
+    }
+    // http/https only: an employee clicks this straight from their record, so a javascript: or
+    // data: URL here would be a stored redirect aimed at them.
+    if (!/^https?:\/\//i.test(trimmed)) {
+      throw invalid(`formOverrides.${key}`, "Must start with http:// or https://");
+    }
+    parsed[key] = trimmed;
+  }
+
   if (!Object.keys(parsed).length) throw invalid("formOverrides", "At least one form must be given");
   return parsed;
 };
+
+const FORM_LINK_MAX_LENGTH = 2048;
 
 export const parseRollingPlanListFilters = (params: URLSearchParams): RollingPlanListFilters => {
   const search = params.get("search")?.trim() || null;

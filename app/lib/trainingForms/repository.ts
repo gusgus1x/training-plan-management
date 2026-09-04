@@ -72,15 +72,22 @@ type PlanWithCourse = Prisma.training_planGetPayload<{ include: typeof planWithC
  */
 const formIdForStage = (plan: PlanWithCourse, stage: FormStageKey): bigint | null => {
   const course = plan.training_plan_oap.course;
+  // Per stage, the batch's choice REPLACES the course's rather than merging with it: a batch that
+  // points a stage at an external link has deliberately opted out of the in-system form, so
+  // falling back to the course's assessment there would hand the trainee a test they were never
+  // meant to take. Only a batch that set neither an id nor a link follows its course.
   switch (stage) {
     case "PRE_TEST":
-      return plan.pre_assessment_id ?? course.pre_assessment_id;
+      return plan.pre_assessment_id ?? (plan.pre_test_link?.trim() ? null : course.pre_assessment_id);
     case "POST_TEST":
-      return plan.post_assessment_id ?? course.post_assessment_id;
+      return plan.post_assessment_id ?? (plan.post_test_link?.trim() ? null : course.post_assessment_id);
     case "EVALUATION":
-      return plan.evaluation_form_id ?? course.evaluation_form_id;
+      return plan.evaluation_form_id ?? (plan.evaluation_link?.trim() ? null : course.evaluation_form_id);
     case "EVALUATION_30DAY":
-      return plan.evaluation_form_after_30day_id ?? course.evaluation_form_after_30day_id;
+      return (
+        plan.evaluation_form_after_30day_id ??
+        (plan.evaluation_after_30day_link?.trim() ? null : course.evaluation_form_after_30day_id)
+      );
   }
 };
 
