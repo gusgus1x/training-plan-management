@@ -56,14 +56,62 @@ const emptyCreateForm: CreateFormState = {
   email: "",
 };
 
-export default function AdminDashboard() {
+export type AdminTabKey = TabKey;
+
+export type AdminDashboardProps = {
+  initialTab?: TabKey;
+};
+
+export default function AdminDashboard({
+  initialTab = "dashboard",
+}: AdminDashboardProps = {}) {
   const { logout } = useAuthActions();
   const currentUser = useAuthenticatedUser();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [theme, setTheme] = useState<"light" | "dark">("dark");
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  const switchTab = (tab: TabKey) => {
+    setActiveTab(tab);
+    if (typeof window !== "undefined") {
+      const targetUrl =
+        tab === "users"
+          ? "/admin/user_accounts"
+          : tab === "audit"
+          ? "/admin/audit_logs"
+          : "/admin";
+      if (window.location.pathname !== targetUrl) {
+        window.history.pushState(null, "", targetUrl);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      if (path === "/admin/user_accounts") {
+        setActiveTab("users");
+      } else if (
+        path === "/admin/audit_logs" ||
+        path === "/admin/audit-logs" ||
+        decodeURIComponent(path) === "/admin/audit logs"
+      ) {
+        setActiveTab("audit");
+      } else if (path === "/admin") {
+        setActiveTab("dashboard");
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   useEffect(() => {
     const savedTheme = (localStorage.getItem("theme") as "light" | "dark") || "dark";
@@ -520,7 +568,14 @@ export default function AdminDashboard() {
       {/* ── Top Navbar ── */}
       <nav className={styles.topNav}>
         <div className={styles.brandGroup}>
-          <Link href="/admin" className={styles.brand} onClick={() => setActiveTab("dashboard")}>
+          <Link
+            href="/admin"
+            className={styles.brand}
+            onClick={(e) => {
+              e.preventDefault();
+              switchTab("dashboard");
+            }}
+          >
             <div className={styles.brandLogoWrapper}>
               <Image
                 src={logoImage}
@@ -583,7 +638,7 @@ export default function AdminDashboard() {
                   type="button"
                   onClick={() => {
                     setIsUserMenuOpen(false);
-                    setActiveTab("users");
+                    switchTab("users");
                   }}
                 >
                   👥 Manage Users
@@ -648,41 +703,41 @@ export default function AdminDashboard() {
         <aside className={`${styles.sidebar} ${isSidebarOpen ? "" : styles.collapsed}`}>
           <div className={styles.sidebarNav}>
             <div className={styles.navHeading}>CORE</div>
-            <a
-              href="#"
+            <Link
+              href="/admin"
               className={`${styles.navItem} ${activeTab === "dashboard" ? styles.active : ""}`}
               onClick={(e) => {
                 e.preventDefault();
-                setActiveTab("dashboard");
+                switchTab("dashboard");
               }}
             >
               <span className={styles.navIcon}>📈</span>
               <span>Dashboard</span>
-            </a>
+            </Link>
 
             <div className={styles.navHeading}>INTERFACE</div>
-            <a
-              href="#"
+            <Link
+              href="/admin/user_accounts"
               className={`${styles.navItem} ${activeTab === "users" ? styles.active : ""}`}
               onClick={(e) => {
                 e.preventDefault();
-                setActiveTab("users");
+                switchTab("users");
               }}
             >
               <span className={styles.navIcon}>👥</span>
               <span>User Accounts</span>
-            </a>
-            <a
-              href="#"
+            </Link>
+            <Link
+              href="/admin/audit_logs"
               className={`${styles.navItem} ${activeTab === "audit" ? styles.active : ""}`}
               onClick={(e) => {
                 e.preventDefault();
-                setActiveTab("audit");
+                switchTab("audit");
               }}
             >
               <span className={styles.navIcon}>📜</span>
               <span>Audit Logs</span>
-            </a>
+            </Link>
 
             <div className={styles.navHeading}>ADDONS</div>
             <a
@@ -754,7 +809,13 @@ export default function AdminDashboard() {
                   <div>
                     <h1 className={styles.pageTitle}>User Accounts</h1>
                     <nav className={styles.breadcrumb} aria-label="breadcrumb">
-                      <Link href="/admin" onClick={() => setActiveTab("dashboard")}>
+                      <Link
+                        href="/admin"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          switchTab("dashboard");
+                        }}
+                      >
                         Dashboard
                       </Link>
                       <span className={styles.breadcrumbSeparator}>›</span>
@@ -1012,7 +1073,13 @@ export default function AdminDashboard() {
                   <div>
                     <h1 className={styles.pageTitle}>Audit Logs & ผู้ใช้ออนไลน์</h1>
                     <nav className={styles.breadcrumb} aria-label="breadcrumb">
-                      <Link href="/admin" onClick={() => setActiveTab("dashboard")}>
+                      <Link
+                        href="/admin"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          switchTab("dashboard");
+                        }}
+                      >
                         Dashboard
                       </Link>
                       <span className={styles.breadcrumbSeparator}>›</span>
@@ -1323,17 +1390,17 @@ export default function AdminDashboard() {
                       {stats.total}
                     </div>
                   </div>
-                  <a
-                    href="#"
+                  <Link
+                    href="/admin/user_accounts"
                     className={styles.statCardFooter}
                     onClick={(e) => {
                       e.preventDefault();
-                      setActiveTab("users");
+                      switchTab("users");
                     }}
                   >
                     <span>View User Accounts</span>
                     <span>›</span>
-                  </a>
+                  </Link>
                 </article>
 
                 {/* Warning Yellow */}
@@ -1346,18 +1413,18 @@ export default function AdminDashboard() {
                       {stats.inactive}
                     </div>
                   </div>
-                  <a
-                    href="#"
+                  <Link
+                    href="/admin/user_accounts"
                     className={styles.statCardFooter}
                     onClick={(e) => {
                       e.preventDefault();
                       setStatusFilter("INACTIVE");
-                      setActiveTab("users");
+                      switchTab("users");
                     }}
                   >
                     <span>View Details</span>
                     <span>›</span>
-                  </a>
+                  </Link>
                 </article>
 
                 {/* Success Green */}
@@ -1370,18 +1437,18 @@ export default function AdminDashboard() {
                       {stats.active}
                     </div>
                   </div>
-                  <a
-                    href="#"
+                  <Link
+                    href="/admin/user_accounts"
                     className={styles.statCardFooter}
                     onClick={(e) => {
                       e.preventDefault();
                       setStatusFilter("ACTIVE");
-                      setActiveTab("users");
+                      switchTab("users");
                     }}
                   >
                     <span>View Details</span>
                     <span>›</span>
-                  </a>
+                  </Link>
                 </article>
 
                 {/* Danger Red */}
@@ -1394,18 +1461,18 @@ export default function AdminDashboard() {
                       {stats.admins}
                     </div>
                   </div>
-                  <a
-                    href="#"
+                  <Link
+                    href="/admin/user_accounts"
                     className={styles.statCardFooter}
                     onClick={(e) => {
                       e.preventDefault();
                       setRoleFilter("ADMIN");
-                      setActiveTab("users");
+                      switchTab("users");
                     }}
                   >
                     <span>View Details</span>
                     <span>›</span>
-                  </a>
+                  </Link>
                 </article>
               </section>
 
@@ -1633,7 +1700,7 @@ export default function AdminDashboard() {
                                 className={`${styles.actionIconBtn} ${styles.editBtn}`}
                                 type="button"
                                 onClick={() => {
-                                  setActiveTab("users");
+                                  switchTab("users");
                                   handleOpenEdit(acc);
                                 }}
                               >
@@ -1650,7 +1717,7 @@ export default function AdminDashboard() {
                     <button
                       className={styles.btnSecondaryAction}
                       type="button"
-                      onClick={() => setActiveTab("users")}
+                      onClick={() => switchTab("users")}
                     >
                       ดูผู้ใช้งานทั้งหมด ({accounts.length} บัญชี) →
                     </button>
