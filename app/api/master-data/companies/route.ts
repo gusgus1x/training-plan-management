@@ -22,12 +22,12 @@ type CompanyCollectionDependencies = {
 
 const protectedOptions = (auth: ProtectedRouteOptions | undefined) => ({
   ...auth,
-  allowedRoles: ["HRD_CENTER", "HRD_FACTORY"] as const,
+  allowedRoles: ["ADMIN", "HRD_CENTER", "HRD_FACTORY"] as const,
 });
 
 const centerOnlyOptions = (auth: ProtectedRouteOptions | undefined) => ({
   ...auth,
-  allowedRoles: ["HRD_CENTER"] as const,
+  allowedRoles: ["ADMIN", "HRD_CENTER"] as const,
 });
 
 export const createListCompaniesHandler = (

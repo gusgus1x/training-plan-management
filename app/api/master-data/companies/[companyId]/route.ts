@@ -25,11 +25,11 @@ type CompanyItemDependencies = {
 
 const readOptions = (auth: ProtectedRouteOptions | undefined) => ({
   ...auth,
-  allowedRoles: ["HRD_CENTER", "HRD_FACTORY"] as const,
+  allowedRoles: ["ADMIN", "HRD_CENTER", "HRD_FACTORY"] as const,
 });
 const writeOptions = (auth: ProtectedRouteOptions | undefined) => ({
   ...auth,
-  allowedRoles: ["HRD_CENTER"] as const,
+  allowedRoles: ["ADMIN", "HRD_CENTER"] as const,
 });
 
 const readCompanyId = async (context: CompanyRouteContext) =>

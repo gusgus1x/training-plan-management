@@ -42,7 +42,11 @@ export const createCreateUserAccountHandler = (dependencies: Dependencies = {}) 
       entityType: "user_account",
       entityId: account.userId,
       entityLabel: account.username,
-      detail: { roleCode: account.roleCode, status: account.status },
+      detail: {
+        roleCode: account.roleCode,
+        status: account.status,
+        company: account.companyCode ?? undefined,
+      },
       ...auditRequestContext(request),
     });
 

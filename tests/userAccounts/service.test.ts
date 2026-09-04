@@ -157,5 +157,34 @@ describe("user account service", () => {
     await service.update(admin, "5", { username: "same.name", email: "new@example.com" });
     expect(usernameTakenMock).not.toHaveBeenCalled();
   });
+
+  it("allows an administrator to update their own username", async () => {
+    const repository = repo({
+      findById: vi.fn().mockResolvedValue(account({ userId: "1", username: "admin", roleCode: "ADMIN" })),
+      usernameTaken: vi.fn().mockResolvedValue(false),
+      update: vi.fn().mockImplementation(async (userId, input) =>
+        account({ userId, username: input.username, roleCode: "ADMIN" }),
+      ),
+    });
+    const service = createUserAccountService(repository);
+    const updated = await service.update(admin, "1", { username: "admin.super" });
+    expect(updated.username).toBe("admin.super");
+  });
+
+  it("allows updating username on an existing employee account without employeeId", async () => {
+    const repository = repo({
+      findById: vi.fn().mockResolvedValue(
+        account({ userId: "10", username: "old.emp", roleCode: "EMPLOYEE", employeeId: null }),
+      ),
+      usernameTaken: vi.fn().mockResolvedValue(false),
+      update: vi.fn().mockImplementation(async (userId, input) =>
+        account({ userId, username: input.username, roleCode: "EMPLOYEE", employeeId: null }),
+      ),
+    });
+    const service = createUserAccountService(repository);
+    const updated = await service.update(admin, "10", { username: "new.emp" });
+    expect(updated.username).toBe("new.emp");
+  });
 });
+
 

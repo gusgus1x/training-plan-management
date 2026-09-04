@@ -70,7 +70,8 @@ export const readPassword = (input: InputObject, field = "password") => {
 const readOptionalReference = (input: InputObject, field: string) => {
   const value = input[field];
   if (value === undefined || value === null || value === "") return null;
-  return readPositiveId(value, field);
+  const normalized = typeof value === "number" ? String(value) : value;
+  return readPositiveId(normalized, field);
 };
 
 export const parseCreateUserAccount = (input: InputObject): CreateUserAccountInput => ({
@@ -78,7 +79,7 @@ export const parseCreateUserAccount = (input: InputObject): CreateUserAccountInp
   password: readPassword(input),
   roleCode: readRoleCode(input.roleCode),
   companyId: readOptionalReference(input, "companyId"),
-  employeeId: readOptionalReference(input, "employeeId"),
+  employeeId: readOptionalString(input, "employeeId", { maxLength: 50 }),
   email: readOptionalString(input, "email", { maxLength: 255 }),
   status: input.status === undefined ? "ACTIVE" : readStatus(input.status),
 });
@@ -91,7 +92,9 @@ export const parseUpdateUserAccount = (input: InputObject): UpdateUserAccountInp
   }
   if (hasOwn(input, "roleCode")) update.roleCode = readRoleCode(input.roleCode);
   if (hasOwn(input, "companyId")) update.companyId = readOptionalReference(input, "companyId");
-  if (hasOwn(input, "employeeId")) update.employeeId = readOptionalReference(input, "employeeId");
+  if (hasOwn(input, "employeeId")) {
+    update.employeeId = readOptionalString(input, "employeeId", { maxLength: 50 });
+  }
   if (hasOwn(input, "email")) update.email = readOptionalString(input, "email", { maxLength: 255 });
   if (hasOwn(input, "status")) update.status = readStatus(input.status);
 

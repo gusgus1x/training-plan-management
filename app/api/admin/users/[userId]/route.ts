@@ -52,7 +52,10 @@ export const createUpdateUserAccountHandler = (dependencies: Dependencies = {}) 
         entityId: userId,
         entityLabel: account.username,
         // Records what was asked for, so a role change or a disable is visible without diffing.
-        detail: { changed: input },
+        detail: {
+          changed: input,
+          company: account.companyCode ?? undefined,
+        },
         ...auditRequestContext(request),
       });
 

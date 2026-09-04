@@ -18,6 +18,7 @@ import { listCompanies } from "../../lib/companies/client";
 import type { CompanyRecord } from "../../lib/companies/types";
 import {
   USER_ACCOUNT_STATUSES,
+  type UpdateUserAccountInput,
   type UserAccountRecord,
   type UserAccountStatus,
 } from "../../lib/userAccounts/types";
@@ -33,7 +34,8 @@ import styles from "./AdminDashboard.module.css";
 
 type TabKey = "dashboard" | "users" | "audit" | "charts" | "tables";
 
-const needsCompany = (roleCode: RoleCode) => roleCode === "HRD_FACTORY";
+const needsCompany = (roleCode: RoleCode) =>
+  roleCode === "HRD_FACTORY" || roleCode === "EMPLOYEE";
 const needsEmployee = (roleCode: RoleCode) => roleCode === "EMPLOYEE";
 
 type CreateFormState = {
@@ -104,6 +106,7 @@ export default function AdminDashboard() {
   const [createForm, setCreateForm] = useState<CreateFormState>(emptyCreateForm);
 
   const [editingAccount, setEditingAccount] = useState<UserAccountRecord | null>(null);
+  const [modalError, setModalError] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     username: "",
     roleCode: "HRD_FACTORY" as RoleCode,
@@ -116,6 +119,9 @@ export default function AdminDashboard() {
   const [resetAccount, setResetAccount] = useState<UserAccountRecord | null>(null);
   const [resetPasswordValue, setResetPasswordValue] = useState("");
   const [resetConfirmValue, setResetConfirmValue] = useState("");
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
 
   const [deleteAccount, setDeleteAccount] = useState<UserAccountRecord | null>(null);
 
@@ -268,9 +274,15 @@ export default function AdminDashboard() {
   // ── Handlers ──
   const handleOpenCreate = () => {
     setCreateForm(emptyCreateForm);
+    setShowCreatePassword(false);
     setError(null);
     setMessage(null);
     setIsCreateOpen(true);
+    if (companies.length === 0) {
+      void listCompanies()
+        .then((res) => setCompanies(res.items ?? []))
+        .catch(() => setCompanies([]));
+    }
   };
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
@@ -303,6 +315,7 @@ export default function AdminDashboard() {
 
   const handleOpenEdit = (account: UserAccountRecord) => {
     setEditingAccount(account);
+    setModalError(null);
     setEditForm({
       username: account.username,
       roleCode: account.roleCode,
@@ -313,6 +326,11 @@ export default function AdminDashboard() {
     });
     setError(null);
     setMessage(null);
+    if (companies.length === 0) {
+      void listCompanies()
+        .then((res) => setCompanies(res.items ?? []))
+        .catch(() => setCompanies([]));
+    }
   };
 
   const handleEditSubmit = async (e: React.FormEvent) => {
@@ -321,27 +339,64 @@ export default function AdminDashboard() {
 
     const trimmedUsername = editForm.username.trim();
     if (!trimmedUsername) {
-      setError("กรุณากรอกชื่อผู้ใช้ (Username)");
+      setModalError("กรุณากรอกชื่อผู้ใช้ (Username)");
       return;
     }
 
     setIsSubmitting(true);
+    setModalError(null);
     setError(null);
     setMessage(null);
     try {
-      await updateUserAccount(editingAccount.userId, {
-        username: trimmedUsername,
-        roleCode: editForm.roleCode,
-        companyId: needsCompany(editForm.roleCode) ? editForm.companyId || null : null,
-        employeeId: needsEmployee(editForm.roleCode) ? editForm.employeeId || null : null,
-        email: editForm.email.trim() || null,
-        status: editForm.status,
-      });
+      const payload: UpdateUserAccountInput = {};
+
+      if (trimmedUsername !== editingAccount.username) {
+        payload.username = trimmedUsername;
+      }
+
+      const trimmedEmail = editForm.email.trim() || null;
+      if (trimmedEmail !== (editingAccount.email || null)) {
+        payload.email = trimmedEmail;
+      }
+
+      if (editForm.roleCode !== editingAccount.roleCode) {
+        payload.roleCode = editForm.roleCode;
+      }
+      if (editForm.status !== editingAccount.status) {
+        payload.status = editForm.status;
+      }
+
+      if (needsCompany(editForm.roleCode)) {
+        const nextCompanyId = editForm.companyId || null;
+        if (nextCompanyId !== (editingAccount.companyId || null)) {
+          payload.companyId = nextCompanyId;
+        }
+      } else if (editingAccount.companyId) {
+        payload.companyId = null;
+      }
+
+      if (needsEmployee(editForm.roleCode)) {
+        const nextEmployeeId = editForm.employeeId.trim() || null;
+        if (nextEmployeeId !== (editingAccount.employeeId || null)) {
+          payload.employeeId = nextEmployeeId;
+        }
+      } else if (editingAccount.employeeId) {
+        payload.employeeId = null;
+      }
+
+      if (Object.keys(payload).length === 0) {
+        setEditingAccount(null);
+        return;
+      }
+
+      await updateUserAccount(editingAccount.userId, payload);
       setMessage(`อัปเดตข้อมูลบัญชี "${trimmedUsername}" เรียบร้อยแล้ว`);
       setEditingAccount(null);
       await loadAccounts();
     } catch (err) {
-      setError(err instanceof UserAccountClientError ? err.message : "เกิดข้อผิดพลาดในการอัปเดตข้อมูล");
+      const msg = err instanceof UserAccountClientError ? err.message : "เกิดข้อผิดพลาดในการอัปเดตข้อมูล";
+      setModalError(msg);
+      setError(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -351,6 +406,8 @@ export default function AdminDashboard() {
     setResetAccount(account);
     setResetPasswordValue("");
     setResetConfirmValue("");
+    setShowResetPassword(false);
+    setShowResetConfirm(false);
     setError(null);
     setMessage(null);
   };
@@ -825,7 +882,35 @@ export default function AdminDashboard() {
                                 </div>
                               </td>
                               <td>{renderRoleBadge(acc.roleCode)}</td>
-                              <td style={{ fontWeight: 700 }}>{acc.companyCode || "-"}</td>
+                              <td>
+                                {acc.companyCode ? (
+                                  <div>
+                                    <span style={{ fontWeight: 700 }}>{acc.companyCode}</span>
+                                    {(() => {
+                                      const comp = companies.find(
+                                        (c) =>
+                                          c.companyCode === acc.companyCode ||
+                                          c.companyId === acc.companyId,
+                                      );
+                                      return comp?.companyNameTh ? (
+                                        <span
+                                          style={{
+                                            fontSize: "0.75rem",
+                                            fontWeight: 400,
+                                            color: "var(--ui-30-muted, #64748b)",
+                                            display: "block",
+                                            marginTop: "1px",
+                                          }}
+                                        >
+                                          {comp.companyNameTh}
+                                        </span>
+                                      ) : null;
+                                    })()}
+                                  </div>
+                                ) : (
+                                  "-"
+                                )}
+                              </td>
                               <td
                                 style={{
                                   maxWidth: "200px",
@@ -1612,14 +1697,38 @@ export default function AdminDashboard() {
                   <label htmlFor="create-password">
                     Password <b>*</b>
                   </label>
-                  <input
-                    id="create-password"
-                    type="password"
-                    required
-                    placeholder="อย่างน้อย 6 ตัวอักษร"
-                    value={createForm.password}
-                    onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                  />
+                  <div className={styles.passwordInputWrapper}>
+                    <input
+                      id="create-password"
+                      type={showCreatePassword ? "text" : "password"}
+                      required
+                      placeholder="อย่างน้อย 6 ตัวอักษร"
+                      value={createForm.password}
+                      onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                    />
+                    <button
+                      className={styles.passwordToggleBtn}
+                      type="button"
+                      tabIndex={-1}
+                      title={showCreatePassword ? "ซ่อนรหัสผ่าน" : "ดูรหัสผ่าน"}
+                      aria-label={showCreatePassword ? "ซ่อนรหัสผ่าน" : "ดูรหัสผ่าน"}
+                      onClick={() => setShowCreatePassword((prev) => !prev)}
+                    >
+                      {showCreatePassword ? (
+                        <svg aria-hidden="true" viewBox="0 0 24 24">
+                          <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                          <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                          <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                          <line x1="2" x2="22" y1="2" y2="22" />
+                        </svg>
+                      ) : (
+                        <svg aria-hidden="true" viewBox="0 0 24 24">
+                          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                   <span className={styles.formHint}>รหัสผ่านจะได้รับการเข้ารหัสด้วย Argon2id</span>
                 </div>
 
@@ -1645,11 +1754,11 @@ export default function AdminDashboard() {
                 {needsCompany(createForm.roleCode) ? (
                   <div className={styles.formGroup}>
                     <label htmlFor="create-company">
-                      Company (บริษัท) <b>*</b>
+                      Company (บริษัท) {createForm.roleCode === "HRD_FACTORY" ? <b>*</b> : null}
                     </label>
                     <select
                       id="create-company"
-                      required
+                      required={createForm.roleCode === "HRD_FACTORY"}
                       value={createForm.companyId}
                       onChange={(e) => setCreateForm({ ...createForm, companyId: e.target.value })}
                     >
@@ -1726,6 +1835,22 @@ export default function AdminDashboard() {
 
             <form onSubmit={handleEditSubmit}>
               <div className={styles.modalBody}>
+                {modalError ? (
+                  <div
+                    style={{
+                      padding: "10px 14px",
+                      marginBottom: "14px",
+                      background: "#fef2f2",
+                      border: "1px solid #fecaca",
+                      borderRadius: "6px",
+                      color: "#b91c1c",
+                      fontSize: "0.88rem",
+                    }}
+                  >
+                    ⚠️ {modalError}
+                  </div>
+                ) : null}
+
                 <div className={styles.formGroup}>
                   <label htmlFor="edit-username">
                     ชื่อผู้ใช้ (Username) <b>*</b>
@@ -1762,11 +1887,11 @@ export default function AdminDashboard() {
                 {needsCompany(editForm.roleCode) ? (
                   <div className={styles.formGroup}>
                     <label htmlFor="edit-company">
-                      Company (บริษัท) <b>*</b>
+                      Company (บริษัท) {editForm.roleCode === "HRD_FACTORY" ? <b>*</b> : null}
                     </label>
                     <select
                       id="edit-company"
-                      required
+                      required={editForm.roleCode === "HRD_FACTORY"}
                       value={editForm.companyId}
                       onChange={(e) => setEditForm({ ...editForm, companyId: e.target.value })}
                     >
@@ -1864,28 +1989,76 @@ export default function AdminDashboard() {
                   <label htmlFor="reset-new-pw">
                     รหัสผ่านใหม่ <b>*</b>
                   </label>
-                  <input
-                    id="reset-new-pw"
-                    type="password"
-                    required
-                    placeholder="อย่างน้อย 6 ตัวอักษร"
-                    value={resetPasswordValue}
-                    onChange={(e) => setResetPasswordValue(e.target.value)}
-                  />
+                  <div className={styles.passwordInputWrapper}>
+                    <input
+                      id="reset-new-pw"
+                      type={showResetPassword ? "text" : "password"}
+                      required
+                      placeholder="อย่างน้อย 6 ตัวอักษร"
+                      value={resetPasswordValue}
+                      onChange={(e) => setResetPasswordValue(e.target.value)}
+                    />
+                    <button
+                      className={styles.passwordToggleBtn}
+                      type="button"
+                      tabIndex={-1}
+                      title={showResetPassword ? "ซ่อนรหัสผ่าน" : "ดูรหัสผ่าน"}
+                      aria-label={showResetPassword ? "ซ่อนรหัสผ่าน" : "ดูรหัสผ่าน"}
+                      onClick={() => setShowResetPassword((prev) => !prev)}
+                    >
+                      {showResetPassword ? (
+                        <svg aria-hidden="true" viewBox="0 0 24 24">
+                          <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                          <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                          <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                          <line x1="2" x2="22" y1="2" y2="22" />
+                        </svg>
+                      ) : (
+                        <svg aria-hidden="true" viewBox="0 0 24 24">
+                          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <div className={styles.formGroup}>
                   <label htmlFor="reset-confirm-pw">
                     ยืนยันรหัสผ่านใหม่ <b>*</b>
                   </label>
-                  <input
-                    id="reset-confirm-pw"
-                    type="password"
-                    required
-                    placeholder="พิมพ์รหัสผ่านใหม่อีกครั้ง"
-                    value={resetConfirmValue}
-                    onChange={(e) => setResetConfirmValue(e.target.value)}
-                  />
+                  <div className={styles.passwordInputWrapper}>
+                    <input
+                      id="reset-confirm-pw"
+                      type={showResetConfirm ? "text" : "password"}
+                      required
+                      placeholder="พิมพ์รหัสผ่านใหม่อีกครั้ง"
+                      value={resetConfirmValue}
+                      onChange={(e) => setResetConfirmValue(e.target.value)}
+                    />
+                    <button
+                      className={styles.passwordToggleBtn}
+                      type="button"
+                      tabIndex={-1}
+                      title={showResetConfirm ? "ซ่อนรหัสผ่าน" : "ดูรหัสผ่าน"}
+                      aria-label={showResetConfirm ? "ซ่อนรหัสผ่าน" : "ดูรหัสผ่าน"}
+                      onClick={() => setShowResetConfirm((prev) => !prev)}
+                    >
+                      {showResetConfirm ? (
+                        <svg aria-hidden="true" viewBox="0 0 24 24">
+                          <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                          <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                          <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                          <line x1="2" x2="22" y1="2" y2="22" />
+                        </svg>
+                      ) : (
+                        <svg aria-hidden="true" viewBox="0 0 24 24">
+                          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
 

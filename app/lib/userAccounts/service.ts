@@ -99,7 +99,11 @@ export const createUserAccountService = (
       const nextStatus = input.status ?? current.status;
 
       // Changing your own role or disabling yourself is how an administrator locks themselves out.
-      if (principal.userId === userId && (input.roleCode || input.status)) {
+      if (
+        principal.userId === userId &&
+        ((input.roleCode !== undefined && input.roleCode !== current.roleCode) ||
+          (input.status !== undefined && input.status !== current.status))
+      ) {
         throw conflict("You cannot change your own role or status");
       }
 
@@ -109,7 +113,14 @@ export const createUserAccountService = (
         }
       }
 
-      assertRoleBindings(nextRole, nextCompany, nextEmployee);
+      const roleOrBindingChanged =
+        (input.roleCode !== undefined && input.roleCode !== current.roleCode) ||
+        (input.companyId !== undefined && input.companyId !== current.companyId) ||
+        (input.employeeId !== undefined && input.employeeId !== current.employeeId);
+
+      if (roleOrBindingChanged) {
+        assertRoleBindings(nextRole, nextCompany, nextEmployee);
+      }
 
       const losesAdmin =
         current.roleCode === "ADMIN" &&

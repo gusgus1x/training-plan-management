@@ -672,18 +672,19 @@
 .headerCountBadge {
   font-size: 0.78rem;
   font-weight: 700;
-  background: rgba(0, 122, 61, 0.1);
-  color: #007a3d;
-  border: 1px solid rgba(0, 122, 61, 0.25);
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
   padding: 3px 10px;
   border-radius: 9999px;
+  line-height: 1.4;
 }
 
 :global([data-theme="dark"]) .headerCountBadge,
 :global(.dark) .headerCountBadge {
-  background: rgba(16, 185, 129, 0.15) !important;
-  color: #34d399 !important;
-  border-color: rgba(52, 211, 153, 0.3) !important;
+  background: rgba(148, 163, 184, 0.15) !important;
+  color: #e2e8f0 !important;
+  border-color: rgba(148, 163, 184, 0.3) !important;
 }
 
 .panelBody {
@@ -1473,6 +1474,64 @@
 :global([data-theme="dark"]) .formHint,
 :global(.dark) .formHint {
   color: #94a3b8 !important;
+}
+
+.passwordInputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.passwordInputWrapper input {
+  width: 100%;
+  padding-right: 44px !important;
+}
+
+.passwordToggleBtn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0;
+  transition: color 150ms ease, background-color 150ms ease;
+  z-index: 2;
+}
+
+.passwordToggleBtn:hover {
+  color: #0f172a;
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+:global([data-theme="dark"]) .passwordToggleBtn,
+:global(.dark) .passwordToggleBtn {
+  color: #94a3b8;
+}
+
+:global([data-theme="dark"]) .passwordToggleBtn:hover,
+:global(.dark) .passwordToggleBtn:hover {
+  color: #f8fafc;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.passwordToggleBtn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .btnCancel {

@@ -24,8 +24,14 @@ const select = {
   company_id: true,
   employee_user_id: true,
   role: { select: { role_code: true, role_name: true } },
-  company: { select: { company_code: true } },
-  employee: { select: { first_name_th: true, last_name_th: true } },
+  company: { select: { company_id: true, company_code: true } },
+  employee: {
+    select: {
+      first_name_th: true,
+      last_name_th: true,
+      company: { select: { company_id: true, company_code: true } },
+    },
+  },
 } satisfies Prisma.user_accountSelect;
 
 type Row = Prisma.user_accountGetPayload<{ select: typeof select }>;
@@ -36,8 +42,14 @@ const map = (row: Row): UserAccountRecord => ({
   email: row.email,
   roleCode: row.role.role_code as RoleCode,
   roleName: row.role.role_name,
-  companyId: row.company_id?.toString() ?? null,
-  companyCode: row.company?.company_code ?? null,
+  companyId:
+    row.company_id?.toString() ??
+    row.employee?.company?.company_id?.toString() ??
+    null,
+  companyCode:
+    row.company?.company_code ??
+    row.employee?.company?.company_code ??
+    null,
   employeeId: row.employee_user_id ?? null,
   employeeName: row.employee
     ? `${row.employee.first_name_th} ${row.employee.last_name_th}`.trim()
@@ -125,6 +137,15 @@ export const createUserAccountRepository = (client?: DatabaseClient) => {
 
     async create(input: CreateUserAccountInput, passwordHash: string, roleId: number) {
       return withDatabaseErrorMapping(async () => {
+        let companyId = input.companyId ? BigInt(input.companyId) : null;
+        if (!companyId && input.employeeId) {
+          const emp = await db().employee.findFirst({
+            where: { user_id: input.employeeId },
+            select: { company_id: true },
+          });
+          if (emp?.company_id) companyId = emp.company_id;
+        }
+
         const row = await db().user_account.create({
           data: {
             username: input.username,
@@ -132,7 +153,7 @@ export const createUserAccountRepository = (client?: DatabaseClient) => {
             email: input.email,
             status: input.status,
             role_id: roleId,
-            company_id: input.companyId ? BigInt(input.companyId) : null,
+            company_id: companyId,
             employee_user_id: input.employeeId,
             created_at: new Date(),
           },
@@ -144,6 +165,17 @@ export const createUserAccountRepository = (client?: DatabaseClient) => {
 
     async update(userId: string, input: UpdateUserAccountInput, roleId: number | null) {
       return withDatabaseErrorMapping(async () => {
+        let companyIdUpdate: bigint | null | undefined = undefined;
+        if (input.companyId !== undefined) {
+          companyIdUpdate = input.companyId ? BigInt(input.companyId) : null;
+        } else if (input.employeeId) {
+          const emp = await db().employee.findFirst({
+            where: { user_id: input.employeeId },
+            select: { company_id: true },
+          });
+          if (emp?.company_id) companyIdUpdate = emp.company_id;
+        }
+
         const row = await db().user_account.update({
           where: { user_id: BigInt(userId) },
           data: {
@@ -151,9 +183,7 @@ export const createUserAccountRepository = (client?: DatabaseClient) => {
             ...(roleId === null ? {} : { role_id: roleId }),
             ...(input.email === undefined ? {} : { email: input.email }),
             ...(input.status === undefined ? {} : { status: input.status }),
-            ...(input.companyId === undefined
-              ? {}
-              : { company_id: input.companyId ? BigInt(input.companyId) : null }),
+            ...(companyIdUpdate === undefined ? {} : { company_id: companyIdUpdate }),
             ...(input.employeeId === undefined
               ? {}
               : { employee_user_id: input.employeeId }),
