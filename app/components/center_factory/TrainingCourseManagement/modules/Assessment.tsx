@@ -65,6 +65,7 @@ type AssessmentQuestionType = AssessmentQuestionInput["questionType"];
 /** The editor sits above the question list, so pressing Edit on a question further down moved the
  *  form off-screen. Scrolling to it is the cheap version of editing the question in place. */
 const QUESTION_BUILDER_ID = "assessment-question-builder";
+const LEARNER_PREVIEW_ID = "assessment-learner-preview";
 const scrollToQuestionBuilder = () =>
   document.getElementById(QUESTION_BUILDER_ID)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
@@ -268,6 +269,9 @@ export default function Assessment() {
   /** Which existing assessment the new-assessment form was filled from. Display only - the copy is
    *  a one-time fill, the two records have no lasting link. */
   const [templateSourceId, setTemplateSourceId] = useState("");
+  /** Author's list vs what the employee will actually be shown. Off by default: building the form
+   *  is what this panel is mostly used for. */
+  const [previewAsLearner, setPreviewAsLearner] = useState(false);
   const toggleGroup = (code: string) =>
     setClosedGroups((current) => current.includes(code) ? current.filter((entry) => entry !== code) : [...current, code]);
 
@@ -1150,14 +1154,84 @@ export default function Assessment() {
         {formErrors.questions ? <p className={styles.validationMessage} role="alert">{formErrors.questions}</p> : null}
       </div>
 
-      <div className={styles.previewPanel}>
+      <div className={styles.previewPanel} id={LEARNER_PREVIEW_ID}>
         <div className={styles.panelHeader}>
           <div>
-            <p className={styles.kicker}>Question List ({questions.length} ข้อ)</p>
-            <h3>รายการคำถามในชุดแบบทดสอบนี้</h3>
+            <p className={styles.kicker}>
+              {previewAsLearner ? "Learner preview" : `Question List (${questions.length} ข้อ)`}
+            </p>
+            <h3>{previewAsLearner ? "ตัวอย่างที่ผู้เข้าอบรมจะเห็น" : "รายการคำถามในชุดแบบทดสอบนี้"}</h3>
+          </div>
+          <div className={styles.previewToggle}>
+            <button
+              type="button"
+              className={previewAsLearner ? styles.secondaryButton : styles.activePreviewButton}
+              onClick={() => setPreviewAsLearner(false)}
+            >
+              ✎ มุมมองผู้จัดทำ
+            </button>
+            <button
+              type="button"
+              className={previewAsLearner ? styles.activePreviewButton : styles.secondaryButton}
+              onClick={() => setPreviewAsLearner(true)}
+            >
+              👁 มุมมองผู้เรียน
+            </button>
           </div>
         </div>
-        {questions.length ? (
+
+        {/* Mirrors TrainingFormRunner deliberately: same order number, same required asterisk, same
+            control per question type, and no correct answers or per-question scores - the runner
+            shows the learner none of those. A preview that flatters the form is worse than none. */}
+        {previewAsLearner ? (
+          questions.length ? (
+            <div className={styles.learnerPreview}>
+              {draft.instructions.trim() ? (
+                <div className={styles.learnerInstructions}>
+                  <strong>คำชี้แจง</strong>
+                  <p>{draft.instructions}</p>
+                </div>
+              ) : null}
+              {draft.timeLimitMinutes.trim() ? (
+                <p className={styles.learnerMeta}>⏱ เวลาที่ให้ทำ {draft.timeLimitMinutes} นาที</p>
+              ) : null}
+              <p className={styles.learnerMeta}>
+                เกณฑ์ผ่าน {draft.passingScorePercent || 0}% · ทั้งหมด {questions.length} ข้อ
+              </p>
+
+              {questions.map((item, index) => (
+                <article key={item.id} className={styles.learnerQuestion}>
+                  <div className={styles.learnerQuestionHead}>
+                    <span>{index + 1}.</span>
+                    <span>{item.questionText || "(ยังไม่ได้ใส่คำถาม)"}</span>
+                    {item.isRequired ? <em className={styles.requiredMark}>*</em> : null}
+                  </div>
+                  {item.questionType === "SHORT_ANSWER" ? (
+                    <textarea disabled placeholder="พิมพ์คำตอบที่นี่..." rows={3} />
+                  ) : (
+                    <div className={styles.learnerChoices}>
+                      {item.choices.map((choice) => (
+                        <label key={choice.id}>
+                          <input
+                            type={item.questionType === "MULTIPLE_CHOICE" ? "checkbox" : "radio"}
+                            name={`preview-${item.id}`}
+                            disabled
+                          />
+                          <span>{choice.choiceText || "(ยังไม่ได้ใส่ตัวเลือก)"}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </article>
+              ))}
+              <p className={styles.learnerMeta}>
+                * ตัวอย่างเท่านั้น กดตอบไม่ได้ · ผู้เรียนจะไม่เห็นเฉลยและคะแนนรายข้อ
+              </p>
+            </div>
+          ) : (
+            <div className={styles.emptyState}>ยังไม่มีคำถามให้แสดงตัวอย่าง</div>
+          )
+        ) : questions.length ? (
           <div className={styles.questionList}>
             {questions.map((item, index) => (
               <article
