@@ -1616,6 +1616,104 @@
   background: #047857;
 }
 
+/* Click-to-copy URL. Looks like text until hovered, so it does not read as another action button
+   competing with the QR one next to it. */
+/* `flex: 0 1 auto` + a cap, NOT `flex: 1 1 auto`: a growing URL would stretch to fill the row and
+   shove the QR button against the far edge of the card. It now takes only what it needs, shrinking
+   below the cap on a narrow card, and the button stays beside it. */
+.copyableUrl {
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: min(300px, 100%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ui-30-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  padding: 5px 8px;
+  text-align: left;
+}
+
+.copyableUrl:hover {
+  border-color: var(--ui-30-border);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+}
+
+.copyableUrlText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Hidden until hover or keyboard focus - the hint appears exactly when it is useful. */
+.copyIcon {
+  display: inline-flex;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.copyableUrl:hover .copyIcon,
+.copyableUrl:focus-visible .copyIcon {
+  opacity: 1;
+}
+
+/* Chat-style bubble anchored to the URL itself, so the confirmation appears where the click was
+   rather than in a corner of the screen. */
+.copiedBubble {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 8px;
+  z-index: 5;
+  border-radius: 8px;
+  background: #059669;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 5px 10px;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.32);
+  animation: copiedPop 140ms ease-out;
+}
+
+.copiedBubble::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 12px;
+  border: 5px solid transparent;
+  border-top-color: #059669;
+}
+
+@keyframes copiedPop {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Blue, against the green of the external-link QR: HRD prints both, and the two must not be
+   mistaken for each other once they are on paper. */
+.systemQrButton {
+  background: #2563eb !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.28) !important;
+}
+
+.systemQrButton:hover:not(:disabled) {
+  background: #1d4ed8 !important;
+}
+
 .sessionLinkRow button:disabled {
   cursor: not-allowed;
   background: #9ca3af;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   loginWithCredentials,
@@ -8,7 +8,7 @@ import {
   type ClientRoleCode,
   type ClientSessionUser,
 } from "../lib/auth/client";
-import { isEmployeeAllowedPath } from "../lib/auth/route-guard";
+import { getSanitizedDestination, isEmployeeAllowedPath } from "../lib/auth/route-guard";
 import { initializeTrainingWorkflow } from "../lib/trainingWorkflow";
 import LoginPage, { type PreviewCompanyCode } from "./LoginPage";
 import { AuthenticatedUserProvider } from "./AuthenticatedUserContext";
@@ -124,37 +124,23 @@ export default function AuthGate({
   const [sessionUser, setSessionUser] = useState<ClientSessionUser | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutMessage, setLogoutMessage] = useState<string | null>(null);
-  const [targetReturnUrl, setTargetReturnUrl] = useState<string | null>(null);
+  /**
+   * Where the visitor was heading before being bounced to the login screen.
+   *
+   * A ref, not state, and read in exactly one place. It used to be state that both the login
+   * handlers and the effect below consumed: the handler computed a destination, cleared the state
+   * and pushed, then the effect re-ran with the value already gone, resolved to "/" and replaced
+   * the handler's navigation. Whoever landed last won, which was always the effect - so a deep
+   * link survived the login screen and was then quietly thrown away one render later.
+   *
+   * Holding it in a ref keeps clearing it from re-running the effect, and the effect is now the
+   * only thing that navigates after a login.
+   */
+  const targetReturnUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     initializeTrainingWorkflow();
   }, []);
-
-  const getSanitizedDestination = (targetUrl: string | null, roleCode?: ClientRoleCode): string => {
-    // Employees always land directly on their personal UserDashboard at "/"
-    if (roleCode === "EMPLOYEE") return "/";
-    // Admins land on the Admin Dashboard at "/admin"
-    if (roleCode === "ADMIN") {
-      if (targetUrl && (targetUrl === "/admin" || targetUrl.startsWith("/admin/"))) {
-        return targetUrl;
-      }
-      return "/admin";
-    }
-    if (!targetUrl || typeof targetUrl !== "string") return "/";
-    if (targetUrl === "/login" || !targetUrl.startsWith("/")) return "/";
-    const path = targetUrl.split("?")[0];
-    const validBasePaths = [
-      "/",
-      "/admin",
-      "/master-data",
-      "/training-course",
-      "/training-plan",
-      "/training-record",
-      "/report",
-    ];
-    const isValid = validBasePaths.some((base) => path === base || path.startsWith(`${base}/`));
-    return isValid ? targetUrl : "/";
-  };
 
   const handleLogin = async (username: string, password: string) => {
     const loggedUser = await loginWithCredentials(username, password);
@@ -162,9 +148,8 @@ export default function AuthGate({
     setLogoutMessage(null);
     const displayName = loggedUser.displayName || loggedUser.username;
     toast.success(`🎉 ยินดีต้อนรับคุณ ${displayName} เข้าสู่ระบบ / Welcome ${displayName}!`);
-    const dest = getSanitizedDestination(targetReturnUrl, loggedUser.roleCode);
-    setTargetReturnUrl(null);
-    router.push(dest);
+    // No navigation here on purpose - the effect below owns it, and two owners is what broke the
+    // return URL. This only refreshes so the server layout picks up the new session.
     router.refresh();
   };
 
@@ -201,9 +186,7 @@ export default function AuthGate({
     setPreviewUser(nextPreviewUser);
     const displayName = nextPreviewUser.displayName || nextPreviewUser.username;
     toast.success(`🎉 ยินดีต้อนรับคุณ ${displayName} เข้าสู่ระบบ / Welcome ${displayName}!`);
-    const dest = getSanitizedDestination(targetReturnUrl, nextPreviewUser.roleCode);
-    setTargetReturnUrl(null);
-    router.push(dest);
+    // As in handleLogin: the effect below performs the navigation.
   };
 
   const handleLogout = async () => {
@@ -215,7 +198,7 @@ export default function AuthGate({
     setLogoutMessage(null);
     // Clear session user and target return url so the next login does not inherit the previous page
     setSessionUser(null);
-    setTargetReturnUrl(null);
+    targetReturnUrlRef.current = null;
 
     if (previewUser) {
       setPreviewUser(null);
@@ -243,19 +226,20 @@ export default function AuthGate({
   useEffect(() => {
     if (!effectiveUser && pathname !== "/login") {
       if (typeof window !== "undefined") {
-        const fullUrl = `${pathname}${window.location.search}`;
-        setTargetReturnUrl(fullUrl);
+        targetReturnUrlRef.current = `${pathname}${window.location.search}`;
       }
       router.replace("/login");
     } else if (effectiveUser && pathname === "/login") {
-      const dest = getSanitizedDestination(targetReturnUrl, effectiveUser.roleCode);
-      setTargetReturnUrl(null);
+      // Read and clear together: this is the single place the captured URL is consumed, whether
+      // the session arrived from a fresh login or was already present when /login was opened.
+      const dest = getSanitizedDestination(targetReturnUrlRef.current, effectiveUser.roleCode);
+      targetReturnUrlRef.current = null;
       router.replace(dest);
     } else if (effectiveUser && effectiveUser.roleCode === "EMPLOYEE" && !isEmployeeAllowedPath(pathname)) {
       // Employees do not access Center/Factory sub-routes; redirect to their personal dashboard
       router.replace("/");
     }
-  }, [effectiveUser, pathname, router, targetReturnUrl]);
+  }, [effectiveUser, pathname, router]);
 
   if (!effectiveUser) {
     return (

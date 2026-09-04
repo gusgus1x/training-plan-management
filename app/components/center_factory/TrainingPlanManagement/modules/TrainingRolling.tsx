@@ -293,6 +293,29 @@ const PlanFormOverrideCard = ({
                 </button>
               </span>
             ) : null}
+
+            {/* In-system forms get a QR too, encoding the plan rather than the link: the form URL
+                is per-employee, so the QR points at a landing page that resolves whoever scans it
+                to their own copy. Blue, so HRD can tell the two kinds of QR apart at a glance. */}
+            {!usingLink && stageHasInSystemForm(plan, stage) ? (
+              <span className={styles.sessionLinkRow}>
+                <CopyableUrl url={scanUrl(plan.rollingId, stage)} />
+                <button
+                  type="button"
+                  className={styles.systemQrButton}
+                  title="ดาวน์โหลด QR code สำหรับให้ผู้เข้าอบรมสแกนเข้าแบบฟอร์มในระบบ"
+                  onClick={() =>
+                    void downloadQrCode(
+                      scanUrl(plan.rollingId, stage),
+                      `${plan.course.code || "course"}-${plan.batch || "batch"}-${stage.idKey}-system`,
+                    ).catch(() => toast.error("สร้าง QR code ไม่สำเร็จ"))
+                  }
+                >
+                  <DownloadIcon />
+                  โหลด QR (ฟอร์มในระบบ)
+                </button>
+              </span>
+            ) : null}
           </div>
         );
       })}
@@ -511,6 +534,43 @@ const FORM_STAGES = [
 
 const LINK_MODE_VALUE = "__LINK__";
 
+/** Maps each override stage onto the URL segment the employee-facing routes use. */
+const SCAN_STAGE: Record<(typeof FORM_STAGES)[number]["idKey"], string> = {
+  preAssessmentId: "PRE_TEST",
+  postAssessmentId: "POST_TEST",
+  evaluationFormId: "EVALUATION",
+  evaluationFormAfter30DayId: "EVALUATION_30DAY",
+};
+
+/** The URL a scanned QR opens. Encodes the PLAN, not an enrollment - one QR serves the whole room,
+ *  and the landing page resolves each scanner to their own copy of the form.
+ *
+ *  Built from the browser's own origin, so a QR generated from the deployed site carries the
+ *  deployed domain with nothing to configure. Shown next to the button so HRD can see what it
+ *  encodes before handing it out. */
+const scanUrl = (planId: string, stage: (typeof FORM_STAGES)[number]) =>
+  typeof window === "undefined" ? "" : `${window.location.origin}/training-form/plan/${planId}/${SCAN_STAGE[stage.idKey]}`;
+
+/** Whether this stage actually resolves to an in-system form for this batch - the batch's own
+ *  choice when it made one, otherwise the course's. A stage on a link, or with nothing set at all,
+ *  has no in-system form to point a QR at. */
+const stageHasInSystemForm = (plan: RollingPlan, stage: (typeof FORM_STAGES)[number]) => {
+  if (plan.formOverrides[stage.linkKey].trim()) return false;
+  if (plan.formOverrides[stage.idKey]) return true;
+  // The course snapshot carries the form's NAME (empty when the course has none) rather than its
+  // id, and a course stage resolves to a form whenever that name is set.
+  const course = plan.course;
+  const courseFormName =
+    stage.idKey === "preAssessmentId"
+      ? course.preTest
+      : stage.idKey === "postAssessmentId"
+        ? course.postTest
+        : stage.idKey === "evaluationFormId"
+          ? course.evaluation
+          : course.evaluationAfter30Day;
+  return Boolean(courseFormName?.trim());
+};
+
 /** A stage holds either an in-system form or a link, never both - choosing one clears the other. */
 const setStageChoice = (
   current: RollingPlanFormOverrides,
@@ -545,6 +605,55 @@ const DownloadIcon = () => (
     <path d="M4 20h16" />
   </svg>
 );
+
+/**
+ * A URL that copies itself when clicked, with a chat-bubble confirmation at the label.
+ *
+ * The URL is longer than the card is wide, and truncating it left HRD unable to read what the QR
+ * actually encodes. Copying is the useful action anyway - the URL exists to be pasted into a chat
+ * or an email, not to be transcribed by eye.
+ */
+const CopyableUrl = ({ url }: { url: string }) => {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      // navigator.clipboard only exists in a secure context - HTTPS or localhost. The team serves
+      // this over plain http on a LAN address, where it is undefined, so the old textarea trick is
+      // the path that actually runs in practice rather than a theoretical fallback.
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const holder = document.createElement("textarea");
+        holder.value = url;
+        holder.setAttribute("readonly", "");
+        holder.style.position = "fixed";
+        holder.style.opacity = "0";
+        document.body.appendChild(holder);
+        holder.select();
+        document.execCommand("copy");
+        document.body.removeChild(holder);
+      }
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <button type="button" className={styles.copyableUrl} title={`${url}\n(คลิกเพื่อคัดลอก)`} onClick={() => void copy()}>
+      <span className={styles.copyableUrlText}>{url}</span>
+      <span className={styles.copyIcon} aria-hidden="true">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="9" width="12" height="12" rx="2" />
+          <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+        </svg>
+      </span>
+      {copied ? <span className={styles.copiedBubble} role="status">คัดลอกแล้ว</span> : null}
+    </button>
+  );
+};
 
 const downloadQrCode = async (link: string, filename: string) => {
   const trimmed = link.trim();

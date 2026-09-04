@@ -29,3 +29,44 @@ export const isEmployeeAllowedPath = (pathname: string) =>
       // "/" is skipped here: every path starts with it, and the equality check above covers it.
       (base !== "/" && pathname.startsWith(`${base}/`)),
   );
+
+/** Where the non-employee roles are allowed to be sent after logging in. */
+const VALID_BASE_PATHS = [
+  "/",
+  "/admin",
+  "/master-data",
+  "/training-course",
+  "/training-plan",
+  "/training-record",
+  "/report",
+];
+
+const isSafeInternalUrl = (targetUrl: string | null): targetUrl is string =>
+  typeof targetUrl === "string" && targetUrl.startsWith("/") && targetUrl !== "/login";
+
+/**
+ * Where to send someone straight after they log in, given the URL they were originally trying to
+ * reach. Lives here rather than inside AuthGate so it can be tested, and so it sits next to
+ * `isEmployeeAllowedPath` - the allow-list it defers to for employees.
+ *
+ * An employee used to be pinned to "/" unconditionally, which threw away the captured return URL.
+ * That made every deep link into a form unusable for anyone not already logged in - scanning a QR
+ * code for a pre-test landed you on the dashboard with no hint of where you meant to go. Employees
+ * now keep their destination when it is one they are allowed to be at, judged by exactly the same
+ * function that polices their navigation afterwards, so the two can never disagree.
+ */
+export const getSanitizedDestination = (targetUrl: string | null, roleCode?: string): string => {
+  if (roleCode === "EMPLOYEE") {
+    if (!isSafeInternalUrl(targetUrl)) return "/";
+    return isEmployeeAllowedPath(targetUrl.split("?")[0]) ? targetUrl : "/";
+  }
+  // Admins land on the Admin Dashboard, and may only deep-link within it.
+  if (roleCode === "ADMIN") {
+    if (targetUrl && (targetUrl === "/admin" || targetUrl.startsWith("/admin/"))) return targetUrl;
+    return "/admin";
+  }
+  if (!isSafeInternalUrl(targetUrl)) return "/";
+  const path = targetUrl.split("?")[0];
+  const isValid = VALID_BASE_PATHS.some((base) => path === base || path.startsWith(`${base}/`));
+  return isValid ? targetUrl : "/";
+};
