@@ -20,52 +20,6 @@ import {
 import { useUiLanguage } from "../ThaiUiLocalization";
 import styles from "./CenterFactory_Dashboard.module.css";
 
-const CourseIcon = () => (
-  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
-    <rect x="7" y="4" width="18" height="24" rx="3" fill="#3B82F6" />
-    <rect x="7" y="24" width="18" height="2" fill="#EC4899" />
-    <line x1="12" y1="4" x2="12" y2="26" stroke="#1D4EDB" strokeWidth="1.5" />
-  </svg>
-);
-
-const PlanIcon = () => (
-  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
-    <rect x="5" y="6" width="22" height="22" rx="3" fill="#0EA5E9" />
-    <path d="M5 12h22" stroke="#ffffff" strokeWidth="2" />
-    <circle cx="11" cy="17" r="1.5" fill="#ffffff" />
-    <circle cx="16" cy="17" r="1.5" fill="#ffffff" />
-    <circle cx="21" cy="17" r="1.5" fill="#ffffff" />
-    <circle cx="11" cy="22" r="1.5" fill="#ffffff" />
-    <circle cx="16" cy="22" r="1.5" fill="#ffffff" />
-    <path d="M10 4v4M22 4v4" stroke="#0284C7" strokeWidth="2" strokeLinecap="round" />
-  </svg>
-);
-
-const RecordIcon = () => (
-  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
-    <rect x="6" y="6" width="20" height="22" rx="3" fill="#F59E0B" />
-    <rect x="11" y="4" width="10" height="4" rx="1.5" fill="#D97706" />
-    <path d="M11 15l3 3 7-7" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const ReportIcon = () => (
-  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
-    <rect x="5" y="5" width="22" height="22" rx="3" fill="#EF4444" />
-    <rect x="9" y="16" width="3" height="7" rx="1" fill="#ffffff" />
-    <rect x="14.5" y="11" width="3" height="12" rx="1" fill="#ffffff" />
-    <rect x="20" y="8" width="3" height="15" rx="1" fill="#ffffff" />
-  </svg>
-);
-
-const MasterIcon = () => (
-  <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
-    <rect x="5" y="7" width="22" height="18" rx="3" fill="#14B8A6" />
-    <path d="M5 12h22" stroke="#0D9488" strokeWidth="1.5" />
-    <circle cx="10" cy="18" r="2" fill="#ffffff" />
-    <line x1="15" y1="18" x2="22" y2="18" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
-  </svg>
-);
 
 const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const calendarMonths = [
@@ -93,6 +47,30 @@ type DashboardTraining = {
   status: string;
   company: string;
   isCenterPlan: boolean;
+};
+
+type CompanyColorKey = "ALL" | "ATA" | "TEP" | "ATFB" | "NIC" | "SATI" | "SNF";
+
+const getCompanyColorKey = (company: string, isCenterPlan?: boolean): CompanyColorKey => {
+  if (isCenterPlan || company === "All Companies" || company === "ทุกบริษัท" || !company) {
+    return "ALL";
+  }
+  const c = company.toUpperCase().trim();
+  if (c === "ATA") return "ATA";
+  if (c === "TEP") return "TEP";
+  if (c === "ATFB") return "ATFB";
+  if (c === "NIC") return "NIC";
+  if (c === "SATI") return "SATI";
+  if (c === "SNF") return "SNF";
+
+  if (c.includes("ATA")) return "ATA";
+  if (c.includes("TEP")) return "TEP";
+  if (c.includes("ATFB")) return "ATFB";
+  if (c.includes("NIC")) return "NIC";
+  if (c.includes("SATI")) return "SATI";
+  if (c.includes("SNF")) return "SNF";
+
+  return "ALL";
 };
 
 type DashboardProps = {
@@ -645,11 +623,18 @@ export default function Dashboard({
                           <span className={styles.dayNumberBadge}>{item.day}</span>
                           {isToday && <span className={styles.todayDotIndicator} title={isThai ? "วันนี้" : "Today"} />}
                         </div>
-                        {hasTrainings && (
-                          <span className={styles.topRightBadge}>
-                            {item.trainings.length}
-                          </span>
-                        )}
+                        {hasTrainings && (() => {
+                          const dayComp = item.trainings.length === 1
+                            ? getCompanyColorKey(item.trainings[0].company, item.trainings[0].isCenterPlan)
+                            : (item.trainings.every(t => getCompanyColorKey(t.company, t.isCenterPlan) === getCompanyColorKey(item.trainings[0].company, item.trainings[0].isCenterPlan))
+                                ? getCompanyColorKey(item.trainings[0].company, item.trainings[0].isCenterPlan)
+                                : "ALL");
+                          return (
+                            <span className={`${styles.topRightBadge} ${styles[`topRightBadge_${dayComp}`] || styles.topRightBadge_ALL}`}>
+                              {item.trainings.length}
+                            </span>
+                          );
+                        })()}
                       </>
                     ) : null}
                   </div>
@@ -684,38 +669,36 @@ export default function Dashboard({
                   </button>
                 </div>
                 <div className={styles.dayDetailList}>
-                  {dayTrainings.map((training, i) => (
-                    <div className={styles.dayDetailItem} key={`${training.date}-${training.course}-${i}`}>
-                      <div className={styles.dayDetailItemMeta}>
-                        <span
-                          className={styles.dayDetailOwnerBadge}
-                          style={{
-                            background: training.isCenterPlan ? "rgba(0,122,61,0.12)" : "rgba(59,130,246,0.1)",
-                            color: training.isCenterPlan ? "#007a3d" : "#2563eb",
-                            border: `1px solid ${training.isCenterPlan ? "rgba(0,122,61,0.25)" : "rgba(59,130,246,0.25)"}`
-                          }}
-                        >
-                          {training.isCenterPlan ? "🏢 HRD Center" : `🏭 ${training.company}`}
-                        </span>
-                        <span
-                          className={styles.dayDetailStatusBadge}
-                          style={{
-                            background: training.status === "Published" || training.status === "Planned" ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.12)",
-                            color: training.status === "Published" || training.status === "Planned" ? "#059669" : "#d97706",
-                            border: `1px solid ${training.status === "Published" || training.status === "Planned" ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)"}`
-                          }}
-                        >
-                          <span className={styles.pulseDot} style={{ background: training.status === "Published" || training.status === "Planned" ? "#10b981" : "#f59e0b" }} />
-                          {training.status}
-                        </span>
+                  {dayTrainings.map((training, i) => {
+                    const compKey = getCompanyColorKey(training.company, training.isCenterPlan);
+                    const itemBorderClass = styles[`dayDetailItem_${compKey}`] || styles.dayDetailItem_ALL;
+                    const ownerBadgeClass = styles[`ownerBadge_${compKey}`] || styles.ownerBadge_ALL;
+                    return (
+                      <div className={`${styles.dayDetailItem} ${itemBorderClass}`} key={`${training.date}-${training.course}-${i}`}>
+                        <div className={styles.dayDetailItemMeta}>
+                          <span className={`${styles.dayDetailOwnerBadge} ${ownerBadgeClass}`}>
+                            {training.isCenterPlan ? "🏢 HRD Center" : `🏭 ${training.company}`}
+                          </span>
+                          <span
+                            className={styles.dayDetailStatusBadge}
+                            style={{
+                              background: training.status === "Published" || training.status === "Planned" ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.12)",
+                              color: training.status === "Published" || training.status === "Planned" ? "#059669" : "#d97706",
+                              border: `1px solid ${training.status === "Published" || training.status === "Planned" ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)"}`
+                            }}
+                          >
+                            <span className={styles.pulseDot} style={{ background: training.status === "Published" || training.status === "Planned" ? "#10b981" : "#f59e0b" }} />
+                            {training.status}
+                          </span>
+                        </div>
+                        <strong className={styles.dayDetailCourseName}>{training.course}</strong>
+                        <div className={styles.dayDetailInfo}>
+                          <span>🕐 {training.time}</span>
+                          <span>📍 {training.room}</span>
+                        </div>
                       </div>
-                      <strong className={styles.dayDetailCourseName}>{training.course}</strong>
-                      <div className={styles.dayDetailInfo}>
-                        <span>🕐 {training.time}</span>
-                        <span>📍 {training.room}</span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );

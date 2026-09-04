@@ -1252,7 +1252,7 @@ export default function Assessment() {
                   <span>{item.questionType} · {item.questionScore} คะแนน</span>
                 </div>
                 {item.choices.map((choice, choiceIndex) => (
-                  <p key={choice.id} style={{ color: choice.isCorrect ? "#10b981" : undefined, fontWeight: choice.isCorrect ? 700 : undefined }}>
+                  <p key={choice.id} style={{ color: choice.isCorrect ? "var(--ui-30-primary)" : undefined, fontWeight: choice.isCorrect ? 700 : undefined }}>
                     {choice.isCorrect ? "[Correct] " : ""}{String.fromCharCode(65 + choiceIndex)}. {choice.choiceText}
                   </p>
                 ))}
@@ -1346,8 +1346,10 @@ export default function Assessment() {
       <div className={styles.companyDirectory}>
         {groupedVisible.map((group) => {
           const groupOpen = !closedGroups.includes(group.code);
+          const compKey = (group.code || "").toUpperCase();
+          const compClass = styles[`companyGroup_${compKey}`] || "";
           return (
-          <section className={`${styles.companyGroup} ${groupOpen ? styles.openGroup : ""}`} key={`group-${group.code}`}>
+          <section className={`${styles.companyGroup} ${compClass} ${groupOpen ? styles.openGroup : ""}`} key={`group-${group.code}`}>
             <button
               className={styles.companyHeader}
               type="button"

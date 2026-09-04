@@ -62,6 +62,70 @@ const buildCalendarCells = (year: string, month: string, plans: RollingPlan[]) =
   return cells;
 };
 
+export type CalendarCompanyKey = "ALL" | "ATA" | "TEP" | "ATFB" | "NIC" | "SATI" | "SNF";
+
+export const getPlanCompanyKey = (plan: RollingPlan): CalendarCompanyKey => {
+  const formatted = (formatRollingPlanCompanies(plan) || "").trim();
+  if (
+    formatted === "All Companies" ||
+    formatted === "ทุกบริษัท" ||
+    plan.owner === "CENTER" ||
+    plan.company === "All Companies"
+  ) {
+    return "ALL";
+  }
+
+  const companies = getRollingPlanCompanies(plan);
+  if (!companies.length || companies.length >= 6) {
+    return "ALL";
+  }
+
+  const compStr = (plan.company || "").toUpperCase().trim();
+  if (compStr === "ATA") return "ATA";
+  if (compStr === "TEP") return "TEP";
+  if (compStr === "ATFB") return "ATFB";
+  if (compStr === "NIC") return "NIC";
+  if (compStr === "SATI") return "SATI";
+  if (compStr === "SNF") return "SNF";
+
+  const ownerStr = (plan.ownerCompany || "").toUpperCase().trim();
+  if (ownerStr === "ATA") return "ATA";
+  if (ownerStr === "TEP") return "TEP";
+  if (ownerStr === "ATFB") return "ATFB";
+  if (ownerStr === "NIC") return "NIC";
+  if (ownerStr === "SATI") return "SATI";
+  if (ownerStr === "SNF") return "SNF";
+
+  if (companies.length === 1) {
+    const single = companies[0].toUpperCase().trim();
+    if (single === "ATA") return "ATA";
+    if (single === "TEP") return "TEP";
+    if (single === "ATFB") return "ATFB";
+    if (single === "NIC") return "NIC";
+    if (single === "SATI") return "SATI";
+    if (single === "SNF") return "SNF";
+  }
+
+  if (formatted.includes("ATA")) return "ATA";
+  if (formatted.includes("TEP")) return "TEP";
+  if (formatted.includes("ATFB")) return "ATFB";
+  if (formatted.includes("NIC")) return "NIC";
+  if (formatted.includes("SATI")) return "SATI";
+  if (formatted.includes("SNF")) return "SNF";
+
+  return "ALL";
+};
+
+const COMPANY_LEGEND_ITEMS: { key: CalendarCompanyKey; labelTh: string; labelEn: string }[] = [
+  { key: "ALL", labelTh: "ทุกบริษัท", labelEn: "All Companies" },
+  { key: "ATA", labelTh: "ATA", labelEn: "ATA" },
+  { key: "TEP", labelTh: "TEP", labelEn: "TEP" },
+  { key: "ATFB", labelTh: "ATFB", labelEn: "ATFB" },
+  { key: "NIC", labelTh: "NIC", labelEn: "NIC" },
+  { key: "SATI", labelTh: "SATI", labelEn: "SATI" },
+  { key: "SNF", labelTh: "SNF", labelEn: "SNF" },
+];
+
 type ScheduleCalendarProps = {
   onPrepareEmail?: (draft: InternalReportDraft) => void;
   initialYear?: string;
@@ -501,6 +565,17 @@ export default function ScheduleCalendar({
             <span className={styles.calendarCountBadge}>{selectedMonthDetail?.plans.length ?? 0} Schedules</span>
           </div>
 
+          {/* Company Color Legend Bar */}
+          <div className={styles.calendarLegendBar} aria-label="Company Color Legend">
+            <span className={styles.legendTitle}>{uiLang === "th" ? "สัญลักษณ์สี:" : "Colors:"}</span>
+            {COMPANY_LEGEND_ITEMS.map((item) => (
+              <div key={item.key} className={styles.legendItem}>
+                <span className={`${styles.legendDot} ${styles[`legendDot_${item.key}`]}`} />
+                <span>{uiLang === "th" ? item.labelTh : item.labelEn}</span>
+              </div>
+            ))}
+          </div>
+
           <div className={styles.calendarGrid}>
             {weekDays.map((day, idx) => (
               <div
@@ -523,15 +598,19 @@ export default function ScheduleCalendar({
                   <>
                     <span className={styles.dayNumber}>{cell.day}</span>
                     <div className={styles.calendarEventsList}>
-                      {cell.plans.map((plan) => (
-                        <article
-                          className={styles.calendarEventCard}
-                          key={plan.rollingId}
-                        >
-                          <strong>{plan.course.name}</strong>
-                          <small>{plan.startTime}-{plan.endTime} / {formatRollingPlanCompanies(plan)}</small>
-                        </article>
-                      ))}
+                      {cell.plans.map((plan) => {
+                        const companyKey = getPlanCompanyKey(plan);
+                        const companyCardClass = styles[`eventCard_${companyKey}`] || styles.eventCard_ALL;
+                        return (
+                          <article
+                            className={`${styles.calendarEventCard} ${companyCardClass}`}
+                            key={plan.rollingId}
+                          >
+                            <strong>{plan.course.name}</strong>
+                            <small>{plan.startTime}-{plan.endTime} / {formatRollingPlanCompanies(plan)}</small>
+                          </article>
+                        );
+                      })}
                     </div>
                   </>
                 ) : null}

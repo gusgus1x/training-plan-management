@@ -167,19 +167,49 @@
 
 .menuRow {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, 1fr);
   gap: 18px;
+}
+
+.menuBox:nth-child(1),
+.menuBox:nth-child(2),
+.menuBox:nth-child(3) {
+  grid-column: span 2;
+}
+
+.menuBox:nth-child(4) {
+  grid-column: 2 / span 2;
+}
+
+.menuBox:nth-child(5) {
+  grid-column: 4 / span 2;
 }
 
 @media (max-width: 1024px) {
   .menuRow {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .menuBox:nth-child(1),
+  .menuBox:nth-child(2),
+  .menuBox:nth-child(3),
+  .menuBox:nth-child(4) {
+    grid-column: auto;
+  }
+  .menuBox:nth-child(5) {
+    grid-column: 1 / -1;
+    max-width: 480px;
+    margin: 0 auto;
+    width: 100%;
+  }
 }
 
 @media (max-width: 640px) {
   .menuRow {
     grid-template-columns: 1fr;
+  }
+  .menuBox:nth-child(n) {
+    grid-column: auto;
+    max-width: none;
   }
 }
 
@@ -1009,9 +1039,10 @@
 .dayDetailItem {
   display: grid;
   gap: 6px;
-  padding: 14px 18px;
+  padding: 14px 18px 14px 16px;
   border-bottom: 1px solid var(--ui-30-border);
-  transition: background 0.15s ease;
+  border-left: 4px solid #10b981;
+  transition: all 0.15s ease;
 }
 
 .dayDetailItem:last-child {
@@ -1021,6 +1052,143 @@
 .dayDetailItem:hover {
   background: var(--ui-60-surface-soft);
 }
+
+/* Company-specific Left Accent Borders on Day Detail Items */
+.dayDetailItem_ALL {
+  border-left-color: #10b981 !important;
+}
+.dayDetailItem_ATA {
+  border-left-color: #2563eb !important;
+}
+.dayDetailItem_TEP {
+  border-left-color: #eab308 !important;
+}
+.dayDetailItem_ATFB {
+  border-left-color: #f97316 !important;
+}
+.dayDetailItem_NIC {
+  border-left-color: #a855f7 !important;
+}
+.dayDetailItem_SATI {
+  border-left-color: #ef4444 !important;
+}
+.dayDetailItem_SNF {
+  border-left-color: #06b6d4 !important;
+}
+
+:global([data-theme="dark"]) .dayDetailItem_ATA,
+:global(.dark) .dayDetailItem_ATA {
+  border-left-color: #3b82f6 !important;
+}
+:global([data-theme="dark"]) .dayDetailItem_TEP,
+:global(.dark) .dayDetailItem_TEP {
+  border-left-color: #facc15 !important;
+}
+:global([data-theme="dark"]) .dayDetailItem_ATFB,
+:global(.dark) .dayDetailItem_ATFB {
+  border-left-color: #fb923c !important;
+}
+:global([data-theme="dark"]) .dayDetailItem_NIC,
+:global(.dark) .dayDetailItem_NIC {
+  border-left-color: #c084fc !important;
+}
+:global([data-theme="dark"]) .dayDetailItem_SATI,
+:global(.dark) .dayDetailItem_SATI {
+  border-left-color: #f87171 !important;
+}
+:global([data-theme="dark"]) .dayDetailItem_SNF,
+:global(.dark) .dayDetailItem_SNF {
+  border-left-color: #22d3ee !important;
+}
+
+/* Company Owner Badges in Day Detail */
+.ownerBadge_ALL {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #059669 !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+}
+.ownerBadge_ATA {
+  background: rgba(37, 99, 235, 0.12) !important;
+  color: #2563eb !important;
+  border: 1px solid rgba(37, 99, 235, 0.3) !important;
+}
+.ownerBadge_TEP {
+  background: rgba(234, 179, 8, 0.14) !important;
+  color: #b45309 !important;
+  border: 1px solid rgba(234, 179, 8, 0.35) !important;
+}
+.ownerBadge_ATFB {
+  background: rgba(249, 115, 22, 0.12) !important;
+  color: #ea580c !important;
+  border: 1px solid rgba(249, 115, 22, 0.3) !important;
+}
+.ownerBadge_NIC {
+  background: rgba(168, 85, 247, 0.12) !important;
+  color: #9333ea !important;
+  border: 1px solid rgba(168, 85, 247, 0.3) !important;
+}
+.ownerBadge_SATI {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #dc2626 !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+.ownerBadge_SNF {
+  background: rgba(6, 182, 212, 0.12) !important;
+  color: #0891b2 !important;
+  border: 1px solid rgba(6, 182, 212, 0.3) !important;
+}
+
+:global([data-theme="dark"]) .ownerBadge_ALL,
+:global(.dark) .ownerBadge_ALL {
+  background: rgba(16, 185, 129, 0.18) !important;
+  color: #34d399 !important;
+  border-color: rgba(52, 211, 153, 0.4) !important;
+}
+:global([data-theme="dark"]) .ownerBadge_ATA,
+:global(.dark) .ownerBadge_ATA {
+  background: rgba(59, 130, 246, 0.18) !important;
+  color: #60a5fa !important;
+  border-color: rgba(96, 165, 250, 0.4) !important;
+}
+:global([data-theme="dark"]) .ownerBadge_TEP,
+:global(.dark) .ownerBadge_TEP {
+  background: rgba(250, 204, 21, 0.18) !important;
+  color: #facc15 !important;
+  border-color: rgba(250, 204, 21, 0.4) !important;
+}
+:global([data-theme="dark"]) .ownerBadge_ATFB,
+:global(.dark) .ownerBadge_ATFB {
+  background: rgba(251, 146, 60, 0.18) !important;
+  color: #fb923c !important;
+  border-color: rgba(251, 146, 60, 0.4) !important;
+}
+:global([data-theme="dark"]) .ownerBadge_NIC,
+:global(.dark) .ownerBadge_NIC {
+  background: rgba(192, 132, 252, 0.18) !important;
+  color: #c084fc !important;
+  border-color: rgba(192, 132, 252, 0.4) !important;
+}
+:global([data-theme="dark"]) .ownerBadge_SATI,
+:global(.dark) .ownerBadge_SATI {
+  background: rgba(248, 113, 113, 0.18) !important;
+  color: #f87171 !important;
+  border-color: rgba(248, 113, 113, 0.4) !important;
+}
+:global([data-theme="dark"]) .ownerBadge_SNF,
+:global(.dark) .ownerBadge_SNF {
+  background: rgba(34, 211, 238, 0.18) !important;
+  color: #22d3ee !important;
+  border-color: rgba(34, 211, 238, 0.4) !important;
+}
+
+/* Company-specific Top-Right Badges on Calendar Days */
+.topRightBadge_ALL { background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important; color: #fff !important; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.45) !important; }
+.topRightBadge_ATA { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important; color: #fff !important; box-shadow: 0 2px 6px rgba(37, 99, 235, 0.45) !important; }
+.topRightBadge_TEP { background: linear-gradient(135deg, #facc15 0%, #ca8a04 100%) !important; color: #1e293b !important; box-shadow: 0 2px 6px rgba(234, 179, 8, 0.45) !important; }
+.topRightBadge_ATFB { background: linear-gradient(135deg, #fb923c 0%, #ea580c 100%) !important; color: #fff !important; box-shadow: 0 2px 6px rgba(249, 115, 22, 0.45) !important; }
+.topRightBadge_NIC { background: linear-gradient(135deg, #c084fc 0%, #9333ea 100%) !important; color: #fff !important; box-shadow: 0 2px 6px rgba(168, 85, 247, 0.45) !important; }
+.topRightBadge_SATI { background: linear-gradient(135deg, #f87171 0%, #dc2626 100%) !important; color: #fff !important; box-shadow: 0 2px 6px rgba(239, 68, 68, 0.45) !important; }
+.topRightBadge_SNF { background: linear-gradient(135deg, #22d3ee 0%, #0891b2 100%) !important; color: #fff !important; box-shadow: 0 2px 6px rgba(6, 182, 212, 0.45) !important; }
 
 .dayDetailItemMeta {
   display: flex;

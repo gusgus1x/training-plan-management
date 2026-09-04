@@ -755,8 +755,10 @@ export default function EvaluationManagement() {
         <div className={styles.companyDirectory}>
           {groupedVisible.map((group) => {
             const groupOpen = !closedGroups.includes(group.code);
+            const compKey = (group.code || "").toUpperCase();
+            const compClass = styles[`companyGroup_${compKey}`] || "";
             return (
-            <section className={`${styles.companyGroup} ${groupOpen ? styles.openGroup : ""}`} key={`group-${group.code}`}>
+            <section className={`${styles.companyGroup} ${compClass} ${groupOpen ? styles.openGroup : ""}`} key={`group-${group.code}`}>
               <button
                 className={styles.companyHeader}
                 type="button"

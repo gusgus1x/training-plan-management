@@ -665,10 +665,190 @@
 }
 
 .calendarEventCard:hover {
-  border-color: var(--ui-30-primary);
-  box-shadow: 0 4px 14px rgba(0, 122, 61, 0.14);
   transform: translateY(-1px);
 }
+
+/* Company-specific event card borders and subtle tinted backgrounds */
+.eventCard_ALL {
+  border-color: #10b981 !important;
+  background: rgba(16, 185, 129, 0.08) !important;
+}
+.eventCard_ALL:hover {
+  border-color: #059669 !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25) !important;
+}
+
+.eventCard_ATA {
+  border-color: #2563eb !important;
+  background: rgba(37, 99, 235, 0.08) !important;
+}
+.eventCard_ATA:hover {
+  border-color: #1d4ed8 !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25) !important;
+}
+
+.eventCard_TEP {
+  border-color: #eab308 !important;
+  background: rgba(234, 179, 8, 0.08) !important;
+}
+.eventCard_TEP:hover {
+  border-color: #ca8a04 !important;
+  box-shadow: 0 4px 14px rgba(234, 179, 8, 0.25) !important;
+}
+
+.eventCard_ATFB {
+  border-color: #f97316 !important;
+  background: rgba(249, 115, 22, 0.08) !important;
+}
+.eventCard_ATFB:hover {
+  border-color: #ea580c !important;
+  box-shadow: 0 4px 14px rgba(249, 115, 22, 0.25) !important;
+}
+
+.eventCard_NIC {
+  border-color: #a855f7 !important;
+  background: rgba(168, 85, 247, 0.08) !important;
+}
+.eventCard_NIC:hover {
+  border-color: #9333ea !important;
+  box-shadow: 0 4px 14px rgba(168, 85, 247, 0.25) !important;
+}
+
+.eventCard_SATI {
+  border-color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+}
+.eventCard_SATI:hover {
+  border-color: #dc2626 !important;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25) !important;
+}
+
+.eventCard_SNF {
+  border-color: #06b6d4 !important;
+  background: rgba(6, 182, 212, 0.08) !important;
+}
+.eventCard_SNF:hover {
+  border-color: #0891b2 !important;
+  box-shadow: 0 4px 14px rgba(6, 182, 212, 0.25) !important;
+}
+
+/* Dark mode enhancements for vivid glow and high legibility */
+:global([data-theme="dark"]) .eventCard_ALL,
+:global(.dark) .eventCard_ALL {
+  border-color: #10b981 !important;
+  background: rgba(16, 185, 129, 0.14) !important;
+}
+:global([data-theme="dark"]) .eventCard_ALL:hover,
+:global(.dark) .eventCard_ALL:hover {
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.45) !important;
+}
+
+:global([data-theme="dark"]) .eventCard_ATA,
+:global(.dark) .eventCard_ATA {
+  border-color: #3b82f6 !important;
+  background: rgba(59, 130, 246, 0.14) !important;
+}
+:global([data-theme="dark"]) .eventCard_ATA:hover,
+:global(.dark) .eventCard_ATA:hover {
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.45) !important;
+}
+
+:global([data-theme="dark"]) .eventCard_TEP,
+:global(.dark) .eventCard_TEP {
+  border-color: #facc15 !important;
+  background: rgba(250, 204, 21, 0.14) !important;
+}
+:global([data-theme="dark"]) .eventCard_TEP:hover,
+:global(.dark) .eventCard_TEP:hover {
+  box-shadow: 0 4px 16px rgba(250, 204, 21, 0.45) !important;
+}
+
+:global([data-theme="dark"]) .eventCard_ATFB,
+:global(.dark) .eventCard_ATFB {
+  border-color: #fb923c !important;
+  background: rgba(251, 146, 60, 0.14) !important;
+}
+:global([data-theme="dark"]) .eventCard_ATFB:hover,
+:global(.dark) .eventCard_ATFB:hover {
+  box-shadow: 0 4px 16px rgba(251, 146, 60, 0.45) !important;
+}
+
+:global([data-theme="dark"]) .eventCard_NIC,
+:global(.dark) .eventCard_NIC {
+  border-color: #c084fc !important;
+  background: rgba(192, 132, 252, 0.14) !important;
+}
+:global([data-theme="dark"]) .eventCard_NIC:hover,
+:global(.dark) .eventCard_NIC:hover {
+  box-shadow: 0 4px 16px rgba(192, 132, 252, 0.45) !important;
+}
+
+:global([data-theme="dark"]) .eventCard_SATI,
+:global(.dark) .eventCard_SATI {
+  border-color: #f87171 !important;
+  background: rgba(248, 113, 113, 0.14) !important;
+}
+:global([data-theme="dark"]) .eventCard_SATI:hover,
+:global(.dark) .eventCard_SATI:hover {
+  box-shadow: 0 4px 16px rgba(248, 113, 113, 0.45) !important;
+}
+
+:global([data-theme="dark"]) .eventCard_SNF,
+:global(.dark) .eventCard_SNF {
+  border-color: #22d3ee !important;
+  background: rgba(34, 211, 238, 0.14) !important;
+}
+:global([data-theme="dark"]) .eventCard_SNF:hover,
+:global(.dark) .eventCard_SNF:hover {
+  box-shadow: 0 4px 16px rgba(34, 211, 238, 0.45) !important;
+}
+
+/* Company Color Legend Bar */
+.calendarLegendBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px 14px;
+  margin-top: 4px;
+  margin-bottom: 12px;
+  background: var(--ui-60-surface-soft);
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
+}
+
+.legendTitle {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--ui-30-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-right: 4px;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--ui-30-ink);
+}
+
+.legendDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.legendDot_ALL { background: #10b981; box-shadow: 0 0 6px rgba(16, 185, 129, 0.6); }
+.legendDot_ATA { background: #2563eb; box-shadow: 0 0 6px rgba(37, 99, 235, 0.6); }
+.legendDot_TEP { background: #eab308; box-shadow: 0 0 6px rgba(234, 179, 8, 0.6); }
+.legendDot_ATFB { background: #f97316; box-shadow: 0 0 6px rgba(249, 115, 22, 0.6); }
+.legendDot_NIC { background: #a855f7; box-shadow: 0 0 6px rgba(168, 85, 247, 0.6); }
+.legendDot_SATI { background: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, 0.6); }
+.legendDot_SNF { background: #06b6d4; box-shadow: 0 0 6px rgba(6, 182, 212, 0.6); }
 
 .editingEventCard {
   border-color: var(--ui-10-accent);
