@@ -97,11 +97,11 @@ export const buildCourseMasterExportWorkbook = (
       inlineCell(`M${rNum}`, "20", course.targetGroup || "-"),
     ];
 
-    // Levels N to Y (tick checkmark)
+    // Levels N to Y (tick checkmark - style 21 uses Wingdings 2 font where 'P' renders as ✓ checkmark)
     ALL_LEVEL_KEYS.forEach((lvlKey) => {
       const col = LEVEL_COLS[lvlKey];
       const isChecked = activeLevels.has(lvlKey);
-      cells.push(inlineCell(`${col}${rNum}`, "21", isChecked ? "✓" : ""));
+      cells.push(inlineCell(`${col}${rNum}`, "21", isChecked ? "P" : ""));
     });
 
     // Learning Content (Z), Objective (AA)

@@ -53,12 +53,12 @@ describe("Course Master Excel Export", () => {
     expect(sheetXml).toContain("การควบคุมคุณภาพขั้นพื้นฐาน");
     expect(sheetXml).toContain("A1:BU8");
 
-    // Assert J and BB are empty, K and BU hold the data, and levels have checkmark '✓'
+    // Assert J and BB are empty, K and BU hold the data, and levels have checkmark 'P' (Wingdings 2 tick mark)
     expect(sheetXml).toContain('<c r="J7" s="17"/>');
     expect(sheetXml).toContain('<c r="K7" s="19" t="inlineStr"><is><t xml:space="preserve">ความปลอดภัยในการทำงาน 101</t></is></c>');
     expect(sheetXml).toContain('<c r="BB7" s="25"/>');
     expect(sheetXml).toContain('<c r="BU7" s="17" t="inlineStr"><is><t xml:space="preserve">ATA-TC</t></is></c>');
-    expect(sheetXml).toContain('>✓<');
+    expect(sheetXml).toContain('>P<');
 
     // Test Round-trip: Feed exportedBuffer into parseXlsxBuffer (Import logic)
     const { parseXlsxBuffer } = await import("../../app/api/course-master/parse-template/route");

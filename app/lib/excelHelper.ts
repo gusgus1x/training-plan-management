@@ -167,7 +167,7 @@ export const parseCsvText = (text: string): CourseMasterImportRow[] => {
   const isSelectedVal = (val: string | undefined): boolean => {
     if (!val) return false;
     const clean = val.trim().toLowerCase();
-    return clean === "1" || clean === "x" || clean === "y" || clean === "yes" || clean === "✓" || clean === "true";
+    return clean === "1" || clean === "x" || clean === "y" || clean === "yes" || clean === "✓" || clean === "true" || clean === "p";
   };
 
   const rows: CourseMasterImportRow[] = [];
