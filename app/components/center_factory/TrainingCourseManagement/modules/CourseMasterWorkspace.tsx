@@ -104,7 +104,7 @@ type TrainingAssessmentOption = {
   id: string;
   code: string;
   name: string;
-  assessmentType: "Pre Test" | "Post Test";
+  assessmentType: "Pre Test" | "Post Test" | "General";
   courseName: string;
   questionCount: number;
 };
@@ -1191,11 +1191,28 @@ function CourseMaster() {
   const isCourseFormReady =
     completedRequiredFields === requiredFieldCount && selectedCompanies.length > 0;
 
-  // Any ACTIVE assessment can fill either Pre or Post Test — assessmentType is shown as a hint
-  // on each option, not enforced as a hard filter, so the same published assessment can be
-  // reused across both slots.
-  const publishedPreTests = assessmentOptions;
-  const publishedPostTests = assessmentOptions;
+  // The purpose IS enforced per slot: a PRE_TEST bank has no business being offered as the
+  // post-test. GENERAL is the deliberately unscoped bucket and shows in both.
+  //
+  // Whatever is already saved on the course stays in its own list even when it does not match,
+  // because courses predate this rule (two of them hold a PRE_TEST bank in the post slot). Hiding
+  // it would blank the field on open and quietly drop the link on the next save; keeping it lets
+  // HRD see what is there and choose to change it.
+  const scopedOptions = (keep: TrainingAssessmentOption["assessmentType"], selectedId: string) =>
+    assessmentOptions.filter(
+      (assessment) =>
+        assessment.assessmentType === keep || assessment.assessmentType === "General" || assessment.id === selectedId,
+    );
+  const publishedPreTests = useMemo(
+    () => scopedOptions("Pre Test", form.preTestId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [assessmentOptions, form.preTestId],
+  );
+  const publishedPostTests = useMemo(
+    () => scopedOptions("Post Test", form.postTestId),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [assessmentOptions, form.postTestId],
+  );
   // Evaluation After Training and After 30 Days must stay separate forms (design decision,
   // confirmed by the frontend designer) — filtered strictly by timing, unlike assessments above.
   const publishedCourseEvaluations = useMemo(
@@ -1649,17 +1666,20 @@ function CourseMaster() {
         listAssessments({ search: null, status: "ACTIVE", purpose: null }),
         listEvaluations({ search: null, status: "PUBLISHED", timing: null, respondentType: null }),
       ]);
+      // GENERAL used to be filtered out here, which made the purpose unusable: a general-purpose
+      // assessment could be created and published but never attached to a course. It is offered
+      // for both slots, the same as the other two - the purpose is a label on the question bank,
+      // not a restriction on where it may be used.
       setAssessmentOptions(
-        assessments.items
-          .filter((assessment) => assessment.purpose === "PRE_TEST" || assessment.purpose === "POST_TEST")
-          .map((assessment) => ({
-            id: assessment.assessmentId,
-            code: assessment.seriesCode,
-            name: assessment.seriesName,
-            assessmentType: assessment.purpose === "PRE_TEST" ? "Pre Test" : "Post Test",
-            courseName: "-",
-            questionCount: assessment.questions.length,
-          })),
+        assessments.items.map((assessment) => ({
+          id: assessment.assessmentId,
+          code: assessment.seriesCode,
+          name: assessment.seriesName,
+          assessmentType:
+            assessment.purpose === "PRE_TEST" ? "Pre Test" : assessment.purpose === "POST_TEST" ? "Post Test" : "General",
+          courseName: "-",
+          questionCount: assessment.questions.length,
+        })),
       );
       setEvaluationOptions(
         evaluations.items.map((evaluation) => ({
