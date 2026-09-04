@@ -33,6 +33,20 @@ export type RollingPlanRecord = {
   oapProvider: string;
   owner: WorkflowOwner;
   ownerCompany: string;
+  /** This batch's own form choices. Empty string means "use the course's", which is what almost
+   *  every batch holds - `course` above still carries the course-level default to fall back to. */
+  formOverrides: RollingPlanFormOverrides;
+  /** False once the course has started: every form opens at start_datetime, so up to that moment
+   *  nobody can have answered anything and the swap is free. After it, changing the form would
+   *  hand different trainees in one batch different papers. */
+  canEditForms: boolean;
+};
+
+export type RollingPlanFormOverrides = {
+  preAssessmentId: string;
+  postAssessmentId: string;
+  evaluationFormId: string;
+  evaluationFormAfter30DayId: string;
 };
 
 export type CreateRollingPlanInput = {
@@ -44,9 +58,15 @@ export type CreateRollingPlanInput = {
   startTime: string;
   endTime: string;
   status: RollingPlanStatus;
+  /** Optional per-batch forms, set while creating rather than in a second edit. Omitted or empty
+   *  means the batch follows the course, which is what most batches want. */
+  formOverrides?: Partial<RollingPlanFormOverrides>;
 };
 
-export type UpdateRollingPlanInput = Partial<CreateRollingPlanInput>;
+export type UpdateRollingPlanInput = Partial<CreateRollingPlanInput> & {
+  /** Each field is optional; an empty string clears the override back to the course's form. */
+  formOverrides?: Partial<RollingPlanFormOverrides>;
+};
 
 export type RollingPlanListFilters = {
   search: string | null;

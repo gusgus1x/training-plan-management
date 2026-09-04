@@ -47,6 +47,8 @@ model assessment {
   course_course_pre_assessment_idToassessment                        course[]                @relation("course_pre_assessment_idToassessment")
   training_plan_oap_training_plan_oap_post_assessment_idToassessment training_plan_oap[]     @relation("training_plan_oap_post_assessment_idToassessment")
   training_plan_oap_training_plan_oap_pre_assessment_idToassessment  training_plan_oap[]     @relation("training_plan_oap_pre_assessment_idToassessment")
+  training_plan_post_assessment                                      training_plan[]         @relation("training_plan_post_assessment_idToassessment")
+  training_plan_pre_assessment                                       training_plan[]         @relation("training_plan_pre_assessment_idToassessment")
 
   @@unique([assessment_series_id, version_no], map: "UQ_assessment_series_version")
 }
@@ -516,6 +518,8 @@ model evaluation_form {
   evaluation_question   evaluation_question[]
   evaluation_submission evaluation_submission[]
   training_plan_oap     training_plan_oap[]
+  training_plan_evaluation_form           training_plan[]         @relation("TrainingPlanEvaluationForm")
+  training_plan_evaluation_form_after_30day training_plan[]       @relation("TrainingPlanEvaluationFormAfter30Day")
 
   @@index([company_id], map: "IX_evaluation_form_company_id")
   @@index([created_by], map: "IX_evaluation_form_created_by")
@@ -764,10 +768,18 @@ model training_plan {
   created_at                                          DateTime                           @default(dbgenerated("sysdatetime()"), map: "DF_training_plan_created_at")
   updated_at                                          DateTime?
   updated_by                                          BigInt?
+  pre_assessment_id                                   BigInt?
+  post_assessment_id                                  BigInt?
+  evaluation_form_id                                  BigInt?
+  evaluation_form_after_30day_id                      BigInt?
   certificate_import_batch                            certificate_import_batch[]
   training_enrollment                                 training_enrollment[]
   training_expense                                    training_expense[]
   training_need_request                               training_need_request[]
+  assessment_training_plan_pre_assessment_idToassessment  assessment?                    @relation("training_plan_pre_assessment_idToassessment", fields: [pre_assessment_id], references: [assessment_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_plan_pre_assessment_id")
+  assessment_training_plan_post_assessment_idToassessment assessment?                    @relation("training_plan_post_assessment_idToassessment", fields: [post_assessment_id], references: [assessment_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_plan_post_assessment_id")
+  evaluation_form_training_plan                       evaluation_form?                   @relation("TrainingPlanEvaluationForm", fields: [evaluation_form_id], references: [evaluation_form_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_plan_evaluation_form_id")
+  evaluation_form_training_plan_after_30day           evaluation_form?                   @relation("TrainingPlanEvaluationFormAfter30Day", fields: [evaluation_form_after_30day_id], references: [evaluation_form_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_training_plan_evaluation_form_after_30day_id")
   user_account_training_plan_created_byTouser_account user_account                       @relation("training_plan_created_byTouser_account", fields: [created_by], references: [user_id], onUpdate: NoAction, map: "FK_V6F047_training_plan_created_by")
   training_plan_oap                                   training_plan_oap                  @relation(fields: [oap_plan_id], references: [oap_plan_id], onUpdate: NoAction, map: "FK_V6F048_training_plan_oap_plan_id")
   user_account_training_plan_updated_byTouser_account user_account?                      @relation("training_plan_updated_byTouser_account", fields: [updated_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F049_training_plan_updated_by")

@@ -62,17 +62,25 @@ const planWithCourseInclude = {
 
 type PlanWithCourse = Prisma.training_planGetPayload<{ include: typeof planWithCourseInclude }>;
 
+/**
+ * The batch's own choice wins over the course's, so HRD can swap one month's pre-test without
+ * touching the course every other batch shares. NULL on the batch means "use the course's", which
+ * is what every batch created before this existed still holds.
+ *
+ * Every read path - opening a form, submitting one, My Record, the evaluation summary - resolves
+ * the form through this one function, so the override cannot apply in some places and not others.
+ */
 const formIdForStage = (plan: PlanWithCourse, stage: FormStageKey): bigint | null => {
   const course = plan.training_plan_oap.course;
   switch (stage) {
     case "PRE_TEST":
-      return course.pre_assessment_id;
+      return plan.pre_assessment_id ?? course.pre_assessment_id;
     case "POST_TEST":
-      return course.post_assessment_id;
+      return plan.post_assessment_id ?? course.post_assessment_id;
     case "EVALUATION":
-      return course.evaluation_form_id;
+      return plan.evaluation_form_id ?? course.evaluation_form_id;
     case "EVALUATION_30DAY":
-      return course.evaluation_form_after_30day_id;
+      return plan.evaluation_form_after_30day_id ?? course.evaluation_form_after_30day_id;
   }
 };
 

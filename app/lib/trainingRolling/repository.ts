@@ -13,6 +13,18 @@ type DatabaseClient = Pick<PrismaClient, "training_plan" | "training_plan_oap">;
 
 const pad2 = (value: number) => String(value).padStart(2, "0");
 
+/** "" clears the link to NULL; anything unparseable is treated the same rather than throwing, so a
+ *  stray value can never write a dangling foreign key. */
+const safeBigInt = (value: string | null | undefined): bigint | null => {
+  const trimmed = (value ?? "").trim();
+  if (!trimmed) return null;
+  try {
+    return BigInt(trimmed);
+  } catch {
+    return null;
+  }
+};
+
 const courseInclude = {
   course_type: true,
   course_group: true,
@@ -173,6 +185,13 @@ const mapRollingPlan = (row: RollingPlanWithRelations) => {
     oapProvider: oap?.provider_name_text || "",
     owner,
     ownerCompany,
+    formOverrides: {
+      preAssessmentId: row.pre_assessment_id?.toString() || "",
+      postAssessmentId: row.post_assessment_id?.toString() || "",
+      evaluationFormId: row.evaluation_form_id?.toString() || "",
+      evaluationFormAfter30DayId: row.evaluation_form_after_30day_id?.toString() || "",
+    },
+    canEditForms: row.start_datetime.getTime() > Date.now(),
   };
 };
 
@@ -265,6 +284,12 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
               allow_walk_in: false,
               qr_code_token: randomUUID(),
               status: UI_STATUS_TO_DB[input.status],
+              // A brand-new batch is always in the future, so there is no lock to check here - the
+              // guard only exists on update, where an already-started batch can be reached.
+              pre_assessment_id: safeBigInt(input.formOverrides?.preAssessmentId),
+              post_assessment_id: safeBigInt(input.formOverrides?.postAssessmentId),
+              evaluation_form_id: safeBigInt(input.formOverrides?.evaluationFormId),
+              evaluation_form_after_30day_id: safeBigInt(input.formOverrides?.evaluationFormAfter30DayId),
               created_by: BigInt(userId),
               created_at: new Date(),
             },
@@ -290,6 +315,28 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
           updated_by: BigInt(userId),
           updated_at: new Date(),
         };
+
+        if (input.formOverrides) {
+          // Every form opens at start_datetime, so before that moment nobody can have answered and
+          // swapping one costs nothing. Once the course has started, changing it would hand
+          // trainees in the same batch different papers - refused here rather than in the UI,
+          // because the UI is not the trust boundary.
+          if (current.start_datetime.getTime() <= Date.now()) {
+            throw new ApiError({
+              code: "PLAN_FORMS_LOCKED",
+              message: "การอบรมเริ่มแล้ว เปลี่ยนแบบทดสอบ/แบบประเมินของรุ่นนี้ไม่ได้",
+              status: 409,
+            });
+          }
+          const { preAssessmentId, postAssessmentId, evaluationFormId, evaluationFormAfter30DayId } = input.formOverrides;
+          // An empty string clears the override; undefined leaves the field untouched.
+          if (preAssessmentId !== undefined) data.pre_assessment_id = safeBigInt(preAssessmentId);
+          if (postAssessmentId !== undefined) data.post_assessment_id = safeBigInt(postAssessmentId);
+          if (evaluationFormId !== undefined) data.evaluation_form_id = safeBigInt(evaluationFormId);
+          if (evaluationFormAfter30DayId !== undefined) {
+            data.evaluation_form_after_30day_id = safeBigInt(evaluationFormAfter30DayId);
+          }
+        }
 
         if (input.oapPlanId !== undefined && input.oapPlanId !== current.oap_plan_id.toString()) {
           const nextOap = await loadOapSummary(db(), input.oapPlanId, companyId);

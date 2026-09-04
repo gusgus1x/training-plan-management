@@ -19,7 +19,9 @@ import {
   listRollingPlans,
   updateRollingPlan,
 } from "../../../../lib/trainingRolling/client";
-import type { RollingPlanRecord } from "../../../../lib/trainingRolling/types";
+import type { RollingPlanFormOverrides, RollingPlanRecord } from "../../../../lib/trainingRolling/types";
+import { listAssessments } from "../../../../lib/assessments/client";
+import { listEvaluations } from "../../../../lib/evaluations/client";
 import { listInstructors } from "../../../../lib/instructors/client";
 import type { InstructorRecord } from "../../../../lib/instructors/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
@@ -114,6 +116,151 @@ export type RollingPlan = {
   status: RollingStatus;
   dbStatus?: string;
   updatedAt: string;
+  /** This batch's own forms; "" on a field means it follows the course. */
+  formOverrides: RollingPlanFormOverrides;
+  /** False once the course has started - every form opens at the start datetime. */
+  canEditForms: boolean;
+};
+
+type FormPickerOption = { id: string; label: string; kind: "PRE_TEST" | "POST_TEST" | "GENERAL" | "EVALUATION" };
+
+/**
+ * Per-batch form overrides. The course sets the default; this swaps one for a single batch without
+ * touching the course every other batch shares.
+ *
+ * Editable only until the course starts, because every form opens at start_datetime: before then
+ * nobody can have answered, so the swap is free; after it, changing the form would hand trainees in
+ * the same batch different papers. The server enforces the same rule - this only mirrors it.
+ */
+const PlanFormOverrideCard = ({
+  plan,
+  assessmentOptions,
+  evaluationOptions,
+  onSaved,
+}: {
+  plan: RollingPlan;
+  assessmentOptions: FormPickerOption[];
+  evaluationOptions: FormPickerOption[];
+  onSaved: (plan: RollingPlan) => void;
+}) => {
+  const toast = useToast();
+  const [saving, setSaving] = useState(false);
+  // The saved state is a key rather than something an effect copies into local state: when the save
+  // lands (or another batch is opened) the key changes and the draft falls back to what is stored,
+  // with no synchronous setState inside an effect and no frame showing the previous batch's forms.
+  const savedKey = [
+    plan.rollingId,
+    plan.formOverrides.preAssessmentId,
+    plan.formOverrides.postAssessmentId,
+    plan.formOverrides.evaluationFormId,
+    plan.formOverrides.evaluationFormAfter30DayId,
+  ].join("|");
+  const [edited, setEdited] = useState<{ key: string; value: RollingPlanFormOverrides } | null>(null);
+  const draft = edited?.key === savedKey ? edited.value : plan.formOverrides;
+  const setDraft = (update: (current: RollingPlanFormOverrides) => RollingPlanFormOverrides) =>
+    setEdited({ key: savedKey, value: update(draft) });
+
+  const dirty =
+    draft.preAssessmentId !== plan.formOverrides.preAssessmentId ||
+    draft.postAssessmentId !== plan.formOverrides.postAssessmentId ||
+    draft.evaluationFormId !== plan.formOverrides.evaluationFormId ||
+    draft.evaluationFormAfter30DayId !== plan.formOverrides.evaluationFormAfter30DayId;
+
+  const rows: { key: keyof RollingPlanFormOverrides; label: string; courseValue: string; options: FormPickerOption[] }[] = [
+    {
+      key: "preAssessmentId",
+      label: "แบบทดสอบก่อนเรียน",
+      courseValue: plan.course.preTest || plan.course.preTestLink || "-",
+      options: assessmentOptions.filter((option) => option.kind === "PRE_TEST" || option.kind === "GENERAL"),
+    },
+    {
+      key: "postAssessmentId",
+      label: "แบบทดสอบหลังเรียน",
+      courseValue: plan.course.postTest || plan.course.postTestLink || "-",
+      options: assessmentOptions.filter((option) => option.kind === "POST_TEST" || option.kind === "GENERAL"),
+    },
+    {
+      key: "evaluationFormId",
+      label: "แบบประเมิน",
+      courseValue: plan.course.evaluation || plan.course.evaluationLink || "-",
+      options: evaluationOptions,
+    },
+    {
+      key: "evaluationFormAfter30DayId",
+      label: "แบบประเมินหลัง 30 วัน",
+      courseValue: plan.course.evaluationAfter30Day || plan.course.evaluationAfter30DayLink || "-",
+      options: evaluationOptions,
+    },
+  ];
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const saved = await updateRollingPlan(plan.rollingId, { formOverrides: draft });
+      onSaved(mapRecordToRollingPlan(saved.rollingPlan));
+      toast.success("บันทึกแบบทดสอบ/แบบประเมินของรุ่นนี้แล้ว");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "บันทึกไม่สำเร็จ");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className={styles.previewCard}>
+      <div className={styles.previewCardHeader}>
+        <span>📝 แบบทดสอบ / แบบประเมิน</span>
+        {plan.canEditForms ? null : <small style={{ color: "var(--ui-30-muted)" }}>อบรมเริ่มแล้ว แก้ไม่ได้</small>}
+      </div>
+
+      {rows.map((row) => {
+        const overridden = Boolean(draft[row.key]);
+        return (
+          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`} key={row.key}>
+            <span className={styles.previewFieldLabel}>
+              {row.label}
+              {overridden ? (
+                <em style={{ marginLeft: "6px", fontStyle: "normal", fontWeight: 700, color: "#c2410c" }}>
+                  แก้เฉพาะรุ่นนี้
+                </em>
+              ) : null}
+            </span>
+            {plan.canEditForms ? (
+              <select
+                value={draft[row.key]}
+                onChange={(event) => setDraft((current) => ({ ...current, [row.key]: event.target.value }))}
+                style={{ width: "100%", minHeight: "34px", fontSize: "0.8rem" }}
+              >
+                <option value="">— ใช้ตามหลักสูตร ({row.courseValue}) —</option>
+                {row.options.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <span className={styles.previewFieldValue}>
+                {overridden
+                  ? row.options.find((option) => option.id === draft[row.key])?.label ?? "(ชุดที่เลือกไว้)"
+                  : row.courseValue}
+              </span>
+            )}
+          </div>
+        );
+      })}
+
+      {plan.canEditForms ? (
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+          <button type="button" disabled={!dirty || saving} onClick={() => setEdited(null)}>
+            ยกเลิก
+          </button>
+          <button type="button" disabled={!dirty || saving} onClick={() => void save()}>
+            {saving ? "กำลังบันทึก..." : "บันทึกเฉพาะรุ่นนี้"}
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
 };
 
 const RequiredIndicator = ({ isFilled }: { isFilled: boolean }) => (
@@ -240,6 +387,8 @@ const mapRecordToRollingPlan = (record: RollingPlanRecord): RollingPlan => {
     status: record.status,
     dbStatus: record.dbStatus,
     updatedAt: record.updatedAt,
+    formOverrides: record.formOverrides,
+    canEditForms: record.canEditForms,
   };
 };
 
@@ -263,6 +412,8 @@ type RollingSessionForm = {
   endDate: string;
   startTime: string;
   endTime: string;
+  /** Per-batch forms, chosen while the batch is being created. "" follows the course. */
+  formOverrides: RollingPlanFormOverrides;
 };
 
 type RollingForm = {
@@ -280,6 +431,14 @@ const createEmptySession = (index = 0, batchName = ""): RollingSessionForm => ({
   endDate: "",
   startTime: "09:00",
   endTime: "16:00",
+  formOverrides: emptyFormOverrides(),
+});
+
+const emptyFormOverrides = (): RollingPlanFormOverrides => ({
+  preAssessmentId: "",
+  postAssessmentId: "",
+  evaluationFormId: "",
+  evaluationFormAfter30DayId: "",
 });
 
 const createEmptyForm = (): RollingForm => ({
@@ -334,6 +493,37 @@ export default function TrainingRolling() {
   const userCompanyCode = profileValue(user?.companyCode);
   const [oapPlans, setOapPlans] = useState<OapPlanRecord[]>([]);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
+  // Only published forms are offered, the same rule Course Master applies - a draft has no business
+  // being attached to a batch people will actually take.
+  const [assessmentOptions, setAssessmentOptions] = useState<FormPickerOption[]>([]);
+  const [evaluationOptions, setEvaluationOptions] = useState<FormPickerOption[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      listAssessments({ search: null, status: "ACTIVE", purpose: null }).catch(() => ({ items: [] })),
+      listEvaluations({ search: null, status: "PUBLISHED", timing: null, respondentType: null }).catch(() => ({ items: [] })),
+    ]).then(([assessments, evaluations]) => {
+      if (cancelled) return;
+      setAssessmentOptions(
+        assessments.items.map((item) => ({
+          id: item.assessmentId,
+          label: `[${item.seriesCode}] ${item.seriesName}`,
+          kind: item.purpose === "PRE_TEST" ? "PRE_TEST" : item.purpose === "POST_TEST" ? "POST_TEST" : "GENERAL",
+        })),
+      );
+      setEvaluationOptions(
+        evaluations.items.map((item) => ({
+          id: item.evaluationFormId,
+          label: `[${item.formCode}] ${item.formName}`,
+          kind: "EVALUATION" as const,
+        })),
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [standards, setStandards] = useState<WorkflowStandard[]>([]);
   const [instructors, setInstructors] = useState<InstructorRecord[]>([]);
   const [form, setForm] = useState<RollingForm>(createEmptyForm);
@@ -689,10 +879,10 @@ export default function TrainingRolling() {
     });
   };
 
-  const updateSession = (
+  const updateSession = <Field extends Exclude<keyof RollingSessionForm, "id" | "dbId">>(
     sessionId: string,
-    field: Exclude<keyof RollingSessionForm, "id" | "dbId">,
-    value: string,
+    field: Field,
+    value: RollingSessionForm[Field],
   ) => {
     setForm((current) => ({
       ...current,
@@ -778,6 +968,7 @@ export default function TrainingRolling() {
           endDate: session.endDate || startDate,
           startTime: session.startTime || "09:00",
           endTime: session.endTime || "16:00",
+          formOverrides: session.formOverrides,
         };
 
         if (session.dbId) {
@@ -814,6 +1005,7 @@ export default function TrainingRolling() {
         endDate: p.endDate || p.trainingDate,
         startTime: p.startTime || "09:00",
         endTime: p.endTime || "16:00",
+        formOverrides: p.formOverrides,
       })),
     });
     setIsNewOpen(true);
@@ -858,6 +1050,7 @@ export default function TrainingRolling() {
           endDate: plan.endDate || plan.trainingDate,
           startTime: plan.startTime,
           endTime: plan.endTime,
+          formOverrides: plan.formOverrides,
         },
       ],
     });
@@ -1307,6 +1500,50 @@ export default function TrainingRolling() {
                           />
                         </label>
                       </div>
+
+                      {/* Per-batch forms. Left on "ใช้ตามหลักสูตร" this batch simply follows the
+                          course, which is what almost every batch wants - so the whole block is
+                          folded away until someone opens it. */}
+                      {selectedOap ? (
+                        <details className={styles.sessionFormOverrides}>
+                          <summary>
+                            📝 แบบทดสอบ / แบบประเมินของรุ่นนี้
+                            {Object.values(session.formOverrides).some(Boolean) ? (
+                              <em> · แก้เฉพาะรุ่นนี้</em>
+                            ) : (
+                              <em> · ใช้ตามหลักสูตร</em>
+                            )}
+                          </summary>
+                          <div className={styles.sessionFormOverrideGrid}>
+                            {([
+                              ["preAssessmentId", "แบบทดสอบก่อนเรียน", selectedOap.course.preTest, assessmentOptions.filter((o) => o.kind === "PRE_TEST" || o.kind === "GENERAL")],
+                              ["postAssessmentId", "แบบทดสอบหลังเรียน", selectedOap.course.postTest, assessmentOptions.filter((o) => o.kind === "POST_TEST" || o.kind === "GENERAL")],
+                              ["evaluationFormId", "แบบประเมิน", selectedOap.course.evaluation, evaluationOptions],
+                              ["evaluationFormAfter30DayId", "แบบประเมินหลัง 30 วัน", selectedOap.course.evaluationAfter30Day, evaluationOptions],
+                            ] as const).map(([key, label, courseValue, options]) => (
+                              <label key={key}>
+                                <span>{label}</span>
+                                <select
+                                  value={session.formOverrides[key]}
+                                  onChange={(event) =>
+                                    updateSession(session.id, "formOverrides", {
+                                      ...session.formOverrides,
+                                      [key]: event.target.value,
+                                    })
+                                  }
+                                >
+                                  <option value="">— ใช้ตามหลักสูตร ({courseValue || "ไม่มี"}) —</option>
+                                  {options.map((option) => (
+                                    <option key={option.id} value={option.id}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                            ))}
+                          </div>
+                        </details>
+                      ) : null}
                     </article>
                   ))}
                 </div>
@@ -1842,13 +2079,16 @@ export default function TrainingRolling() {
                                       );
                                     })()}
 
-                                    <div className={styles.previewCard}>
-                                      <div className={styles.previewCardHeader}><span>📝 แบบทดสอบ / แบบประเมิน</span></div>
-                                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>แบบทดสอบก่อนเรียน</span><span className={styles.previewFieldValue}>{plan.course.preTest || plan.course.preTestLink || "-"}</span></div>
-                                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>แบบทดสอบหลังเรียน</span><span className={styles.previewFieldValue}>{plan.course.postTest || plan.course.postTestLink || "-"}</span></div>
-                                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>แบบประเมิน</span><span className={styles.previewFieldValue}>{plan.course.evaluation || plan.course.evaluationLink || "-"}</span></div>
-                                      <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>แบบประเมินหลัง 30 วัน</span><span className={styles.previewFieldValue}>{plan.course.evaluationAfter30Day || plan.course.evaluationAfter30DayLink || "-"}</span></div>
-                                    </div>
+                                    <PlanFormOverrideCard
+                                      plan={plan}
+                                      assessmentOptions={assessmentOptions}
+                                      evaluationOptions={evaluationOptions}
+                                      onSaved={(next) => {
+                                        setRollingPlans((current) =>
+                                          current.map((item) => (item.rollingId === next.rollingId ? next : item)),
+                                        );
+                                      }}
+                                    />
 
                                     <div className={styles.previewCard}>
                                       <div className={styles.previewCardHeader}><span>💰 Budget</span></div>

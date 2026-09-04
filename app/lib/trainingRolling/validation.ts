@@ -44,6 +44,7 @@ export const parseCreateRollingPlan = (input: InputObject): CreateRollingPlanInp
   startTime: readTime(input, "startTime"),
   endTime: readTime(input, "endTime"),
   status: status(input.status, "Planning"),
+  ...(hasOwn(input, "formOverrides") ? { formOverrides: formOverrides(input.formOverrides) } : {}),
 });
 
 export const parseUpdateRollingPlan = (input: InputObject): UpdateRollingPlanInput => {
@@ -56,9 +57,35 @@ export const parseUpdateRollingPlan = (input: InputObject): UpdateRollingPlanInp
   if (hasOwn(input, "startTime")) update.startTime = readTime(input, "startTime");
   if (hasOwn(input, "endTime")) update.endTime = readTime(input, "endTime");
   if (hasOwn(input, "status")) update.status = status(input.status);
+  if (hasOwn(input, "formOverrides")) update.formOverrides = formOverrides(input.formOverrides);
 
   if (!Object.keys(update).length) throw invalid("body", "At least one editable field is required");
   return update;
+};
+
+/** Each id is either a numeric string or "" (clear back to the course's form). Only the four known
+ *  keys are read, so nothing else can ride along into the update. */
+const formOverrides = (value: unknown): UpdateRollingPlanInput["formOverrides"] => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw invalid("formOverrides", "formOverrides must be an object");
+  }
+  const raw = value as Record<string, unknown>;
+  const parsed: NonNullable<UpdateRollingPlanInput["formOverrides"]> = {};
+  const keys = ["preAssessmentId", "postAssessmentId", "evaluationFormId", "evaluationFormAfter30DayId"] as const;
+  for (const key of keys) {
+    if (!hasOwn(raw, key)) continue;
+    const entry = raw[key];
+    if (entry === null || entry === "") {
+      parsed[key] = "";
+      continue;
+    }
+    if (typeof entry !== "string" || !/^\d+$/.test(entry.trim())) {
+      throw invalid(`formOverrides.${key}`, "Must be a numeric id or an empty string");
+    }
+    parsed[key] = entry.trim();
+  }
+  if (!Object.keys(parsed).length) throw invalid("formOverrides", "At least one form must be given");
+  return parsed;
 };
 
 export const parseRollingPlanListFilters = (params: URLSearchParams): RollingPlanListFilters => {

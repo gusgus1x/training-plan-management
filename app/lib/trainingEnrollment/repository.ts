@@ -129,6 +129,13 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
   const planOwnerIsFactory = oap.company_id !== null;
   const employee = row.employee;
 
+  // The batch's own form wins over the course's - the same rule trainingForms' formIdForStage
+  // applies, resolved once here so every stage below reads the identical answer.
+  const preAssessmentId = plan.pre_assessment_id ?? oap.course.pre_assessment_id;
+  const postAssessmentId = plan.post_assessment_id ?? oap.course.post_assessment_id;
+  const evaluationFormId = plan.evaluation_form_id ?? oap.course.evaluation_form_id;
+  const evaluationForm30DayId = plan.evaluation_form_after_30day_id ?? oap.course.evaluation_form_after_30day_id;
+
   const closedAtByStage = new Map(plan.training_plan_assessment_setting.map((s) => [s.assessment_stage, s.close_at]));
   const latestAssessmentSubmission = (assessmentId: bigint | null, stage: "PRE_TEST" | "POST_TEST"): StageSubmissionSummary | null => {
     if (assessmentId === null) return null;
@@ -179,36 +186,36 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
     plan: {
       assessment: {
         preTest: withEnrollmentStageInfo(
-          assessmentStage(oap.course.pre_assessment_id, oap.course.pre_test_link),
+          assessmentStage(preAssessmentId, oap.course.pre_test_link),
           "PRE_TEST",
           plan.start_datetime,
           plan.end_datetime,
           closedAtByStage.get("PRE_TEST") ?? null,
-          latestAssessmentSubmission(oap.course.pre_assessment_id, "PRE_TEST"),
+          latestAssessmentSubmission(preAssessmentId, "PRE_TEST"),
         ),
         postTest: withEnrollmentStageInfo(
-          assessmentStage(oap.course.post_assessment_id, oap.course.post_test_link),
+          assessmentStage(postAssessmentId, oap.course.post_test_link),
           "POST_TEST",
           plan.start_datetime,
           plan.end_datetime,
           closedAtByStage.get("POST_TEST") ?? null,
-          latestAssessmentSubmission(oap.course.post_assessment_id, "POST_TEST"),
+          latestAssessmentSubmission(postAssessmentId, "POST_TEST"),
         ),
         evaluation: withEnrollmentStageInfo(
-          assessmentStage(oap.course.evaluation_form_id, oap.course.evaluation_link),
+          assessmentStage(evaluationFormId, oap.course.evaluation_link),
           "EVALUATION",
           plan.start_datetime,
           plan.end_datetime,
           null,
-          evaluationSubmission(oap.course.evaluation_form_id),
+          evaluationSubmission(evaluationFormId),
         ),
         evaluationAfter30Day: withEnrollmentStageInfo(
-          assessmentStage(oap.course.evaluation_form_after_30day_id, oap.course.evaluation_after_30day_link),
+          assessmentStage(evaluationForm30DayId, oap.course.evaluation_after_30day_link),
           "EVALUATION_30DAY",
           plan.start_datetime,
           plan.end_datetime,
           null,
-          evaluationSubmission(oap.course.evaluation_form_after_30day_id),
+          evaluationSubmission(evaluationForm30DayId),
         ),
       },
       // 0 is stored the same as null elsewhere in the codebase: "no validity period".
