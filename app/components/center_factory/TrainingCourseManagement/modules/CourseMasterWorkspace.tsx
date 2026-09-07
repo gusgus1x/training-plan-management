@@ -3048,12 +3048,19 @@ function CourseMaster() {
               const isSectionOpen = !collapsedCompanySections.includes(section.companyName);
               return (
               <div key={section.companyName} className={styles.companySectionBlock}>
-                <button
-                  type="button"
+                {/* The row is a plain container, not a button: it holds the Export button, and a
+                    button inside a button is invalid HTML that React reports as a hydration error.
+                    The collapse toggle is the title area only, so both controls stay reachable by
+                    keyboard and each has its own focus ring. */}
+                <div
                   className={`${styles.companySectionHeader} ${section.isUserCompany ? styles.ownCompanySectionHeader : ""}`}
-                  aria-expanded={isSectionOpen}
-                  onClick={() => toggleCompanySection(section.companyName)}
                 >
+                  <button
+                    type="button"
+                    className={styles.companySectionToggle}
+                    aria-expanded={isSectionOpen}
+                    onClick={() => toggleCompanySection(section.companyName)}
+                  >
                   <div className={styles.companySectionTitle}>
                     <span
                       className={`${styles.sectionChevron} ${isSectionOpen ? styles.sectionChevronOpen : ""}`}
@@ -3075,6 +3082,7 @@ function CourseMaster() {
                       </span>
                     ) : null}
                   </div>
+                  </button>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <button
                       type="button"
@@ -3088,10 +3096,9 @@ function CourseMaster() {
                         minHeight: '28px',
                       }}
                       title={`Export ข้อมูลหลักสูตรของ ${section.companyName}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void handleExportForCompany(section.companyName === 'HRD Center' ? 'CENTER' : section.companyName);
-                      }}
+                      onClick={() =>
+                        void handleExportForCompany(section.companyName === 'HRD Center' ? 'CENTER' : section.companyName)
+                      }
                     >
                       📤 Export
                     </button>
@@ -3099,7 +3106,7 @@ function CourseMaster() {
                       {section.courses.length} {language === 'th' ? 'หลักสูตร' : 'courses'}
                     </span>
                   </div>
-                </button>
+                </div>
 
                 {isSectionOpen ? (
                 <div className={styles.tableWrap}>

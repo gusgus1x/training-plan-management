@@ -3093,7 +3093,6 @@
   color: inherit;
   font: inherit;
   text-align: left;
-  cursor: pointer;
   transition: background 140ms ease, border-color 140ms ease;
 }
 
@@ -3101,7 +3100,25 @@
   background: var(--ui-60-surface-muted, rgba(255, 255, 255, 0.08));
 }
 
-.companySectionHeader:focus-visible {
+/* The collapse control. It used to be the whole row, which meant the Export button sat inside a
+   button - invalid HTML, and React reports it as a hydration error. The row is now a container and
+   this covers the title area, so the two controls no longer nest. */
+.companySectionToggle {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+  cursor: pointer;
+}
+
+.companySectionToggle:focus-visible {
   outline: 2px solid var(--ui-30-primary, #007a3d);
   outline-offset: 2px;
 }
