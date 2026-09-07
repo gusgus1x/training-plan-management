@@ -112,7 +112,7 @@ export const parseUpdateCourse = (input: InputObject): UpdateCourseInput => {
   if (hasOwn(input, "status")) update.status = status(input.status);
   if (hasOwn(input, "courseTypeId")) update.courseTypeId = readRequiredString(input, "courseTypeId");
   if (hasOwn(input, "courseGroupId")) update.courseGroupId = readRequiredString(input, "courseGroupId");
-  
+
   if (hasOwn(input, "standardCode")) update.standardCode = readRequiredString(input, "standardCode", { maxLength: 50 });
   if (hasOwn(input, "standardName")) update.standardName = readRequiredString(input, "standardName", { maxLength: 255 });
   if (hasOwn(input, "functionId")) update.functionId = readOptionalString(input, "functionId");

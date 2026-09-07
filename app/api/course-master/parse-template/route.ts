@@ -132,10 +132,152 @@ export function parseXlsxBuffer(buffer: Buffer): CourseMasterImportRow[] {
 
   if (rawRows.length <= 1) return [];
 
-  const isMultiRowHeader = rawRows.some(r => r.rNum === 4 || r.rNum === 6);
+  const row2 = rawRows.find(r => r.rNum === 2);
   const row4 = rawRows.find(r => r.rNum === 4);
   const row6 = rawRows.find(r => r.rNum === 6);
+  const row2Values = row2 ? Object.values(row2.cells).join(" ").toLowerCase() : "";
   const row4Values = row4 ? Object.values(row4.cells).join(" ").toLowerCase() : "";
+
+  // ── AT-A Master Course Import Export format ──────────────────────────────
+  // Identified by Row 2 containing "Master Training Course" or Row 4 containing course headers
+  // Exact column mapping:
+  //   - Course Group: C
+  //   - Course Code: B
+  //   - Course Type: AO (fallback F)
+  //   - Course Name (TH): L
+  //   - Course Name (EN): K
+  //   - ที่มา (Background): AD
+  //   - Objective: AF
+  //   - Learning Content: AE
+  //   - Target Group: N
+  //   - Methodology: AA (Lecture), AB (Workshop), AC (OJT)
+  //   - Check List Level: O (O1), P (O2), Q (O3), R (O4), S (O5), T (S1), U (S2), V (S3), W (S4), X (M1), Y (M2), Z (M3)
+  //
+  // Data starts at Row 7+
+  const isAtaTemplate = row2Values.includes("master training course") ||
+    row4Values.includes("subject(course group)") ||
+    row4Values.includes("learning content") ||
+    ((row4Values.includes("cousre code") || row4Values.includes("course code")) &&
+    row4Values.includes("course name"));
+
+  if (isAtaTemplate) {
+    // Target Level columns (O=O1, P=O2 ... Z=M3)
+    const levelMap: Array<{ col: string; name: string }> = [
+      { col: "O", name: "O1" },
+      { col: "P", name: "O2" },
+      { col: "Q", name: "O3" },
+      { col: "R", name: "O4" },
+      { col: "S", name: "O5" },
+      { col: "T", name: "S1" },
+      { col: "U", name: "S2" },
+      { col: "V", name: "S3" },
+      { col: "W", name: "S4" },
+      { col: "X", name: "M1" },
+      { col: "Y", name: "M2" },
+      { col: "Z", name: "M3" },
+    ];
+
+    // Training Location Type (Row 6): D=Inside, E=Outside, F=Inhouse, G=Online, H=Public, I=Inside, J=Outside
+    const locationTypeCols = [
+      { col: "D", name: "Inside" },
+      { col: "E", name: "Outside" },
+      { col: "F", name: "Inhouse" },
+      { col: "G", name: "Online" },
+      { col: "H", name: "Public" },
+      { col: "I", name: "Inside(plant)" },
+      { col: "J", name: "Outside(class)" },
+    ];
+
+    const isSelectedVal = (val: string | undefined): boolean => {
+      if (!val) return false;
+      const clean = val.toString().trim().toLowerCase();
+      return clean !== "" && clean !== "0" && clean !== "-" && clean !== "false" && clean !== "no";
+    };
+
+    const isMarkOnly = (val: string): boolean => {
+      const clean = val.trim().toLowerCase();
+      return clean === "1" || clean === "x" || clean === "y" || clean === "yes" || clean === "✓" || clean === "true" || clean === "p" || clean === "/" || clean === "v";
+    };
+
+    const rows: CourseMasterImportRow[] = [];
+    for (const r of rawRows) {
+      if (r.rNum < 7) continue; // Data starts at Row 7
+      const cells = r.cells;
+
+      const courseCode    = (cells["B"] || "").trim();
+      const courseGroup   = (cells["C"] || "General").trim();
+      const instructor    = (cells["D"] || "").trim();
+      const courseType    = (cells["AO"] || "").trim();
+      const courseNameEn  = (cells["K"] || "").trim();
+      const courseNameTh  = (cells["L"] || "").trim();
+      const targetGroup   = (cells["N"] || "-").trim();
+      const levelText     = (cells["O"] || "").trim();
+      const background    = (cells["AD"] || "").trim();
+      const learningContent = (cells["AE"] || "-").trim();
+      const objective     = (cells["AF"] || "-").trim();
+
+      // Skip empty rows or accidental header repetitions
+      if (!courseNameTh && !courseNameEn && !courseCode) continue;
+      if ((courseNameTh + courseNameEn).toLowerCase().includes("course name")) continue;
+
+      // Extract target levels from check list O P Q R S T U V W X Y Z
+      const matchedLevels: string[] = [];
+      levelMap.forEach(({ col, name }) => {
+        if (isSelectedVal(cells[col])) {
+          matchedLevels.push(name);
+        }
+      });
+      // Fallback: use free-text level from column O if no checkboxes matched and O has descriptive text
+      if (matchedLevels.length === 0 && levelText && !levelText.toLowerCase().includes("level") && !isMarkOnly(levelText)) {
+        matchedLevels.push(levelText);
+      }
+
+      // Build methodology from AA (Lecture), AB (Workshop), AC (OJT)
+      const methodologies: string[] = [];
+      if (isSelectedVal(cells["AA"])) {
+        const val = (cells["AA"] || "").trim();
+        methodologies.push(isMarkOnly(val) ? "Lecture" : val);
+      }
+      if (isSelectedVal(cells["AB"])) {
+        const val = (cells["AB"] || "").trim();
+        methodologies.push(isMarkOnly(val) ? "Workshop" : val);
+      }
+      if (isSelectedVal(cells["AC"])) {
+        const val = (cells["AC"] || "").trim();
+        methodologies.push(isMarkOnly(val) ? "OJT" : val);
+      }
+
+      const methodologyStr = methodologies.length > 0
+        ? methodologies.join(" / ")
+        : "-";
+
+      rows.push({
+        rowNum: r.rNum,
+        courseCode,
+        courseNameTh: courseNameTh || courseNameEn || courseCode,
+        courseNameEn: courseNameEn || "-",
+        courseGroup,
+        courseType,
+        background: formatMultiline(background),
+        objective: formatMultiline(objective),
+        learningContent: formatMultiline(learningContent),
+        targetGroup: targetGroup || "-",
+        methodology: methodologyStr,
+        lifeCycleMonth: "",
+        preTest: "-",
+        postTest: "-",
+        functionCode: "",
+        functionName: instructor,
+        positions: "",
+        levels: matchedLevels.join(", "),
+      });
+    }
+
+    if (rows.length > 0) return rows;
+  }
+
+  // ── Legacy multi-row header parsing (Master Course Import Tem) ────────────
+  const isMultiRowHeader = rawRows.some(r => r.rNum === 4 || r.rNum === 6);
 
   if (isMultiRowHeader && (row4Values.includes("code") || row4Values.includes("subject") || row4Values.includes("group") || row4Values.includes("target") || rawRows.some(r => r.rNum >= 7))) {
     // Multi-row header parsing (Master Course Import Tem)

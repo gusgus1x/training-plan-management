@@ -18,6 +18,7 @@ import {
   getCurrentCalendarDate,
 } from "../../lib/calendarDate";
 import { useUiLanguage } from "../ThaiUiLocalization";
+import NewActivities from "./NewActivities/NewActivities";
 import styles from "./CenterFactory_Dashboard.module.css";
 
 
@@ -39,6 +40,7 @@ const calendarMonths = [
 ] as const;
 
 type DashboardTraining = {
+  planId: string;
   date: string;
   course: string;
   shortName: string;
@@ -47,6 +49,8 @@ type DashboardTraining = {
   status: string;
   company: string;
   isCenterPlan: boolean;
+  batch?: string;
+  isEnded?: boolean;
 };
 
 type CompanyColorKey = "ALL" | "ATA" | "TEP" | "ATFB" | "NIC" | "SATI" | "SNF";
@@ -73,11 +77,34 @@ const getCompanyColorKey = (company: string, isCenterPlan?: boolean): CompanyCol
   return "ALL";
 };
 
+export const getDashboardTrainingStatus = ({
+  dbStatus,
+  endDate,
+  trainingDate,
+  todayStr,
+  isThai,
+}: {
+  dbStatus?: string;
+  endDate?: string;
+  trainingDate?: string;
+  todayStr: string;
+  isThai: boolean;
+}) => {
+  const endDateStr = endDate || trainingDate || "";
+  const isEnded = dbStatus === "COMPLETED" || (Boolean(endDateStr) && endDateStr < todayStr);
+  return {
+    isEnded,
+    status: isEnded
+      ? (isThai ? "เสร็จสิ้นแล้ว" : "Completed")
+      : (isThai ? "เปิดรับสมัคร" : "Published"),
+  };
+};
+
 type DashboardProps = {
   username: string;
   onHome: () => void;
   onLogout: () => void;
-  onOpenTrainingPlan: () => void;
+  onOpenTrainingPlan?: (targetModule?: string, courseId?: string) => void;
   onOpenTrainingRecord: () => void;
   onOpenTrainingCourse: () => void;
   onOpenMasterData: () => void;
@@ -203,6 +230,12 @@ export default function Dashboard({
   };
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
 
+  const handleOpenAcceptSurvey = (training: DashboardTraining) => {
+    if (onOpenTrainingPlan) {
+      onOpenTrainingPlan("Training Accept Survey", training.planId);
+    }
+  };
+
   useEffect(() => {
     void loadWorkflowRollingPlans().then(setRollingPlans);
   }, []);
@@ -233,6 +266,8 @@ export default function Dashboard({
     [isCenterDashboard, rollingPlans, selectedCompanyFilter, userCompanyCode],
   );
 
+  const todayStr = `${calendarToday.year}-${calendarToday.month}-${String(calendarToday.day).padStart(2, "0")}`;
+
   const trainingSchedule = useMemo<DashboardTraining[]>(
     () =>
       scopedRollingPlans
@@ -243,18 +278,29 @@ export default function Dashboard({
             plan.ownerCompany === "HRD Center" ||
             plan.provider === "HRD Center";
 
+          const { isEnded, status } = getDashboardTrainingStatus({
+            dbStatus: plan.dbStatus,
+            endDate: plan.endDate,
+            trainingDate: plan.trainingDate,
+            todayStr,
+            isThai,
+          });
+
           return {
+            planId: plan.rollingId,
             date: plan.trainingDate,
             course: plan.course.name,
             shortName: plan.course.code,
             time: `${plan.startTime} - ${plan.endTime}`,
             room: plan.location,
-            status: "Published",
+            status,
             company: formatRollingPlanCompanies(plan),
             isCenterPlan,
+            batch: plan.batch,
+            isEnded,
           };
         }),
-    [scopedRollingPlans],
+    [scopedRollingPlans, todayStr, isThai],
   );
   const calendarYears = useMemo(
     () =>
@@ -367,7 +413,7 @@ export default function Dashboard({
       accentSoft: "var(--ui-30-primary-soft)",
       accentBorder: "var(--ui-30-primary)",
       accentGlow: "rgba(0, 122, 61, 0.18)",
-      onClick: onOpenTrainingPlan,
+      onClick: () => onOpenTrainingPlan?.(),
     },
     {
       badge: isThai ? "บันทึกผลอบรม" : "RECORD MANAGEMENT",
@@ -674,27 +720,85 @@ export default function Dashboard({
                     const itemBorderClass = styles[`dayDetailItem_${compKey}`] || styles.dayDetailItem_ALL;
                     const ownerBadgeClass = styles[`ownerBadge_${compKey}`] || styles.ownerBadge_ALL;
                     return (
-                      <div className={`${styles.dayDetailItem} ${itemBorderClass}`} key={`${training.date}-${training.course}-${i}`}>
-                        <div className={styles.dayDetailItemMeta}>
-                          <span className={`${styles.dayDetailOwnerBadge} ${ownerBadgeClass}`}>
-                            {training.isCenterPlan ? "🏢 HRD Center" : `🏭 ${training.company}`}
-                          </span>
-                          <span
-                            className={styles.dayDetailStatusBadge}
-                            style={{
-                              background: training.status === "Published" || training.status === "Planned" ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.12)",
-                              color: training.status === "Published" || training.status === "Planned" ? "#059669" : "#d97706",
-                              border: `1px solid ${training.status === "Published" || training.status === "Planned" ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)"}`
-                            }}
-                          >
-                            <span className={styles.pulseDot} style={{ background: training.status === "Published" || training.status === "Planned" ? "#10b981" : "#f59e0b" }} />
-                            {training.status}
-                          </span>
+                      <div
+                        className={`${styles.dayDetailItem} ${itemBorderClass}`}
+                        key={`${training.date}-${training.course}-${i}`}
+                        onClick={() => {
+                          if (training.isEnded) {
+                            onOpenTrainingRecord();
+                          } else {
+                            handleOpenAcceptSurvey(training);
+                          }
+                        }}
+                        title={
+                          training.isEnded
+                            ? (isThai ? "หลักสูตรนี้เสร็จสิ้นแล้ว คลิกเพื่อไปที่ Training Record" : "Training completed. Click to view Training Record")
+                            : (isThai ? "คลิกเพื่อไปที่ Training Accept Survey และดูรายละเอียดหลักสูตรนี้" : "Click to view course in Training Accept Survey")
+                        }
+                      >
+                        <div className={styles.dayDetailItemContent}>
+                          <div className={styles.dayDetailItemMeta}>
+                            <span className={`${styles.dayDetailOwnerBadge} ${ownerBadgeClass}`}>
+                              {training.isCenterPlan ? "🏢 HRD Center" : `🏭 ${training.company}`}
+                            </span>
+                            <span
+                              className={styles.dayDetailStatusBadge}
+                              style={{
+                                background: training.isEnded
+                                  ? "rgba(100, 116, 139, 0.12)"
+                                  : "rgba(16,185,129,0.12)",
+                                color: training.isEnded ? "#64748b" : "#059669",
+                                border: `1px solid ${training.isEnded ? "rgba(100, 116, 139, 0.3)" : "rgba(16,185,129,0.3)"}`,
+                              }}
+                            >
+                              <span
+                                className={styles.pulseDot}
+                                style={{
+                                  background: training.isEnded ? "#94a3b8" : "#10b981",
+                                  animation: training.isEnded ? "none" : undefined,
+                                }}
+                              />
+                              {training.status}
+                            </span>
+                            {training.batch ? (
+                              <span style={{ fontSize: "0.72rem", color: "var(--ui-30-muted)", fontWeight: 700 }}>
+                                🏷️ {training.batch}
+                              </span>
+                            ) : null}
+                          </div>
+                          <strong className={styles.dayDetailCourseName}>{training.course}</strong>
+                          <div className={styles.dayDetailInfo}>
+                            <span>🕐 {training.time}</span>
+                            <span>📍 {training.room}</span>
+                          </div>
                         </div>
-                        <strong className={styles.dayDetailCourseName}>{training.course}</strong>
-                        <div className={styles.dayDetailInfo}>
-                          <span>🕐 {training.time}</span>
-                          <span>📍 {training.room}</span>
+
+                        <div className={styles.dayDetailItemAction}>
+                          {training.isEnded ? (
+                            <button
+                              type="button"
+                              className={styles.endedBtn}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onOpenTrainingRecord();
+                              }}
+                              title={isThai ? "หลักสูตรนี้จบไปแล้ว ดูข้อมูลและประวัติที่ Training Record" : "Course has completed. View in Training Record"}
+                            >
+                              <span>{isThai ? "เสร็จสิ้นแล้ว" : "Completed"}</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className={styles.nominateBtn}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenAcceptSurvey(training);
+                              }}
+                              title={isThai ? "เปิด Training Accept Survey เพื่อเลือกหลักสูตรนี้และส่งคนเข้าอบรม" : "Open in Training Accept Survey to survey and nominate trainees"}
+                            >
+                              <span>{isThai ? "ส่งคนเข้าอบรม" : "Accept Survey"}</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -706,6 +810,8 @@ export default function Dashboard({
 
         </section>
       </div>
+
+      <NewActivities isThai={isThai} />
 
       <section className={styles.menuPanel} aria-label="Main workspace menu">
         <div className={styles.menuHeader}>

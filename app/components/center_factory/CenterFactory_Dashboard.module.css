@@ -1037,13 +1037,97 @@
 }
 
 .dayDetailItem {
-  display: grid;
-  gap: 6px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   padding: 14px 18px 14px 16px;
   border-bottom: 1px solid var(--ui-30-border);
   border-left: 4px solid #10b981;
   transition: all 0.15s ease;
+  cursor: pointer;
 }
+
+.dayDetailItemContent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.dayDetailItemAction {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.nominateBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 15px;
+  border-radius: 9999px;
+  border: none;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.28);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.nominateBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.42);
+  filter: brightness(1.05);
+}
+
+:global([data-theme="dark"]) .nominateBtn,
+:global(.dark) .nominateBtn {
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+}
+
+.endedBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 15px;
+  border-radius: 9999px;
+  border: 1px solid var(--ui-30-border, #cbd5e1);
+  background: var(--ui-60-surface-soft, #f1f5f9);
+  color: var(--ui-30-muted, #64748b);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.endedBtn:hover {
+  transform: translateY(-1px);
+  background: var(--ui-30-border, #e2e8f0);
+  color: var(--ui-30-ink, #1e293b);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+:global([data-theme="dark"]) .endedBtn,
+:global(.dark) .endedBtn {
+  background: rgba(51, 65, 85, 0.6);
+  border-color: rgba(100, 116, 139, 0.4);
+  color: #94a3b8;
+}
+
+:global([data-theme="dark"]) .endedBtn:hover,
+:global(.dark) .endedBtn:hover {
+  background: rgba(71, 85, 105, 0.8);
+  color: #f1f5f9;
+}
+
 
 .dayDetailItem:last-child {
   border-bottom: none;

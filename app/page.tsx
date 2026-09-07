@@ -30,7 +30,13 @@ export default function Home() {
 
   return (
     <CenterFactoryDashboard
-      onOpenTrainingPlan={() => router.push("/training-plan")}
+      onOpenTrainingPlan={(targetModule, courseId) => {
+        const path = targetModule ? `/training-plan/${slugify(targetModule)}` : "/training-plan";
+        const query = new URLSearchParams();
+        if (courseId) query.set("courseId", courseId);
+        const queryString = query.toString();
+        router.push(queryString ? `${path}?${queryString}` : path);
+      }}
       onOpenTrainingRecord={() => router.push("/training-record")}
       onOpenTrainingCourse={() => router.push("/training-course")}
       onOpenMasterData={() => router.push("/master-data")}

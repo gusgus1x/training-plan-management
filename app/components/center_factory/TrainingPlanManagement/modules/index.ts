@@ -16,7 +16,7 @@ export type PlanModuleTopic = {
   description: string;
   locked?: boolean;
   slug: string;
-  Component: ComponentType<{ onOpenTrainingOap?: () => void; username?: string }>;
+  Component: ComponentType<{ onOpenTrainingOap?: () => void; username?: string; initialCourseId?: string }>;
 };
 
 export const planItems: readonly PlanModuleTopic[] = [

@@ -644,6 +644,7 @@ function CourseMaster() {
         : [...current, companyName],
     );
   const [listCourseGroupFilter, setListCourseGroupFilter] = useState("");
+  const [listCourseCodeFilter, setListCourseCodeFilter] = useState("");
   const [standards, setStandards] = useState<CourseStandardRecord[]>([]);
   const [standardFunctionCode, setStandardFunctionCode] = useState("");
   const [standardDivisionCode, setStandardDivisionCode] = useState("");
@@ -854,7 +855,7 @@ function CourseMaster() {
       const input = {
         courseNameTh,
         courseNameEn,
-        remark: null,
+        remark: (item.background && item.background !== "-") ? item.background : null,
         objective: item.objective || "-",
         learningContent: item.learningContent || "-",
         targetGroup: item.targetGroup || "-",
@@ -1250,10 +1251,25 @@ function CourseMaster() {
     ? (selectedCourse.owner === "CENTER" || selectedCourse.ownerCompany === "CENTER" || selectedCourse.ownerCompany === "HRD Center" || !selectedCourse.ownerCompany)
     : false;
   const isSelectedCourseReadOnlyForFactory = isFactoryUser && isSelectedCourseCenter;
+  const availableCourseCodePrefixes = useMemo(() => {
+    const set = new Set<string>();
+    scopedCourses.forEach((c) => {
+      const code = c.courseCode || "";
+      const parts = code.split("-");
+      if (parts.length >= 2) {
+        const prefix = parts.length > 2 ? parts[parts.length - 2] : parts[0];
+        if (prefix) set.add(prefix.trim());
+      }
+    });
+    courseGroupOptions.forEach((g) => {
+      if (g.code) set.add(g.code.trim());
+    });
+    return Array.from(set).sort();
+  }, [scopedCourses, courseGroupOptions]);
+
   const filteredCourses = useMemo(() => {
     return scopedCourses
       .filter((course) => {
-        // Search term filter
         const matchesSearch = [
           course.courseCode,
           course.courseNameTh,
@@ -1265,18 +1281,33 @@ function CourseMaster() {
           .toLowerCase()
           .includes(search.toLowerCase());
         if (!matchesSearch) return false;
+
         // Company filter for Center users (HRD_CENTER) — use dedicated listCompanyFilter state
         if (!isFactoryUser && listCompanyFilter) {
           const companyCode = course.ownerCompany || '';
           if (companyCode !== listCompanyFilter) return false;
         }
-        // Course Group filter
+
+        // Course Code (Prefix) filter
+        if (listCourseCodeFilter) {
+          const code = course.courseCode || '';
+          const parts = code.split('-');
+          const hasPrefix =
+            parts.length >= 2 &&
+            (parts[0] === listCourseCodeFilter ||
+              (parts.length > 2 && parts[parts.length - 2] === listCourseCodeFilter) ||
+              code.startsWith(`${listCourseCodeFilter}-`) ||
+              code.includes(`-${listCourseCodeFilter}-`));
+          if (!hasPrefix) return false;
+        }
+
+        // Course Group filter (strictly by courseGroup name)
         if (listCourseGroupFilter) {
           if (course.courseGroup !== listCourseGroupFilter) return false;
         }
         return true;
       });
-  }, [scopedCourses, search, listCompanyFilter, listCourseGroupFilter, isFactoryUser]);
+  }, [scopedCourses, search, listCompanyFilter, listCourseCodeFilter, listCourseGroupFilter, isFactoryUser]);
 
 
   const companySections = useMemo(() => {
@@ -2173,9 +2204,10 @@ function CourseMaster() {
           <span className={styles.fieldLabel}>Course Group <RequiredIndicator isFilled={Boolean(form.courseGroup)} /></span>
           <select value={form.courseGroup} disabled={!isEditing} onChange={(event) => handleCourseGroupChange(event.target.value)}>
             <option value="">Select Course Group</option>
-            {courseGroups.map((group) => (
-              <option key={group} value={group} translate="no">{group}</option>
-
+            {courseGroupOptions.map((g) => (
+              <option key={g.groupId || g.name} value={g.name} translate="no">
+                {g.name}
+              </option>
             ))}
           </select>
           <small className={styles.fieldHint}>Controls course classification and the generated course code.</small>
@@ -2922,7 +2954,7 @@ function CourseMaster() {
           aria-label="Search course"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search course code, name, type, group"
+          placeholder={language === 'th' ? 'ค้นหารหัสหลักสูตร, ชื่อ, รหัสกลุ่ม / ชื่อกลุ่ม, ประเภท...' : 'Search course code, name, group code/name, type...'}
         />
         <button className={styles.primaryButton} type="button" onClick={handleNew}>
           + New
@@ -2993,13 +3025,34 @@ function CourseMaster() {
             </div>
           )}
 
+          {/* Course Code selector */}
+          <div style={{ flex: '1 1 200px', minWidth: '180px' }}>
+            <SearchableSelect
+              value={listCourseCodeFilter}
+              options={[
+                { code: '', name: language === 'th' ? 'ทุกรหัสหลักสูตร (All Course Codes)' : 'All Course Codes' },
+                ...availableCourseCodePrefixes.map((prefix) => ({
+                  code: prefix,
+                  name: prefix,
+                })),
+              ]}
+              placeholder={language === 'th' ? 'เลือกรหัสหลักสูตร (Course Code)' : 'Select Course Code'}
+              onChange={(code) => {
+                setListCourseCodeFilter(code);
+              }}
+            />
+          </div>
+
           {/* Course Group selector */}
-          <div style={{ flex: '1 1 240px', minWidth: '220px' }}>
+          <div style={{ flex: '1 1 220px', minWidth: '200px' }}>
             <SearchableSelect
               value={listCourseGroupFilter}
               options={[
                 { code: '', name: language === 'th' ? 'ทุกกลุ่มหลักสูตร (All Course Groups)' : 'All Course Groups' },
-                ...courseGroupOptions.map((g) => ({ code: g.name, name: g.name })),
+                ...courseGroupOptions.map((g) => ({
+                  code: g.name,
+                  name: g.name,
+                })),
               ]}
               placeholder={language === 'th' ? 'เลือกกลุ่มหลักสูตร (Course Group)' : 'Select Course Group'}
               onChange={(groupName) => {
@@ -3160,7 +3213,9 @@ function CourseMaster() {
                               <td>
                                 <div className={styles.classificationWrap}>
                                   <strong className={styles.typeText} translate="no">{course.courseType || "—"}</strong>
-                                  <span className={styles.groupSubText}>{course.courseGroup || "—"}</span>
+                                  <span className={styles.groupSubText}>
+                                    {course.courseGroup || "—"}
+                                  </span>
                                 </div>
                               </td>
                               <td>
@@ -3451,68 +3506,77 @@ function CourseMaster() {
                           <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700, minWidth: "220px" }}>Course Name (EN)</th>
                           <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>Course Group</th>
                           <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>Course Type</th>
-                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>Target Levels (N-Y)</th>
+                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>Target Levels (O-Z)</th>
                           <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>Target Group</th>
+                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700, minWidth: "220px" }}>ที่มา (Background)</th>
                           <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700, minWidth: "250px" }}>Learning Content</th>
                           <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700, minWidth: "250px" }}>Objective</th>
-                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>Methodology</th>
-                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", color: "#ffffff", fontWeight: 700 }}>Life Cycle</th>
+                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: (importRows.some(r => r.lifeCycleMonth && r.lifeCycleMonth !== "0" && r.lifeCycleMonth !== "-") ? "1px solid #334155" : "none"), color: "#ffffff", fontWeight: 700 }}>Methodology</th>
+                          {importRows.some(r => r.lifeCycleMonth && r.lifeCycleMonth !== "0" && r.lifeCycleMonth !== "-") ? (
+                            <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", color: "#ffffff", fontWeight: 700 }}>Life Cycle</th>
+                          ) : null}
                         </tr>
                       </thead>
                       <tbody>
-                        {importRows.map((row, i) => (
-                          <tr
-                            key={i}
-                            style={{
-                              background: i % 2 === 0 ? "#ffffff" : "#f8fafc",
-                              borderBottom: "1px solid #cbd5e1",
-                            }}
-                          >
-                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 700 }}>{row.rowNum}</td>
-                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", fontWeight: 800, color: "#000000" }}>{row.courseCode || "(Auto)"}</td>
-                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 700 }}>{row.courseNameTh}</td>
-                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 600 }}>{row.courseNameEn || "-"}</td>
-                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0" }}>
-                              <span style={{ background: "#dbeafe", color: "#000000", border: "1px solid #93c5fd", padding: "4px 9px", borderRadius: "6px", fontSize: "0.8rem", fontWeight: 700 }}>
-                                {row.courseGroup || "General"}
-                              </span>
-                            </td>
-                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0" }}>
-                              <span style={{ background: "#fef3c7", color: "#000000", border: "1px solid #fde68a", padding: "4px 9px", borderRadius: "6px", fontSize: "0.8rem", fontWeight: 700 }}>
-                                {row.courseType || (isFactoryUser ? "IN-HOUSE" : "ATA-TC")}
-                              </span>
-                            </td>
-                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0" }}>
-                              {row.levels ? (
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-                                  {row.levels.split(",").map((lvl, lIdx) => (
-                                    <span
-                                      key={lIdx}
-                                      style={{
-                                        background: "#dcfce7",
-                                        color: "#000000",
-                                        fontWeight: 800,
-                                        fontSize: "0.78rem",
-                                        padding: "3px 7px",
-                                        borderRadius: "5px",
-                                        border: "1px solid #86efac",
-                                      }}
-                                    >
-                                      {lvl.trim()}
-                                    </span>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span style={{ color: "#000000", fontWeight: 600 }}>-</span>
-                              )}
-                            </td>
-                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 600 }}>{row.targetGroup || "-"}</td>
-                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 500, minWidth: "260px", maxWidth: "360px", whiteSpace: "pre-line", wordBreak: "break-word", lineHeight: 1.5 }}>{row.learningContent || "-"}</td>
-                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 500, minWidth: "260px", maxWidth: "360px", whiteSpace: "pre-line", wordBreak: "break-word", lineHeight: 1.5 }}>{row.objective || "-"}</td>
-                            <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 600 }}>{row.methodology || "Lecture / Workshop"}</td>
-                            <td style={{ padding: "10px 14px", color: "#000000", fontWeight: 600 }}>{row.lifeCycleMonth || "0"}</td>
-                          </tr>
-                        ))}
+                        {importRows.map((row, i) => {
+                          const hasLifeCycle = importRows.some(r => r.lifeCycleMonth && r.lifeCycleMonth !== "0" && r.lifeCycleMonth !== "-");
+                          return (
+                            <tr
+                              key={i}
+                              style={{
+                                background: i % 2 === 0 ? "#ffffff" : "#f8fafc",
+                                borderBottom: "1px solid #cbd5e1",
+                              }}
+                            >
+                              <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 700 }}>{row.rowNum}</td>
+                              <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", fontWeight: 800, color: "#000000" }}>{row.courseCode || "(Auto)"}</td>
+                              <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 700 }}>{row.courseNameTh}</td>
+                              <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 600 }}>{row.courseNameEn || "-"}</td>
+                              <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0" }}>
+                                <span style={{ background: "#dbeafe", color: "#000000", border: "1px solid #93c5fd", padding: "4px 9px", borderRadius: "6px", fontSize: "0.8rem", fontWeight: 700 }}>
+                                  {row.courseGroup || "General"}
+                                </span>
+                              </td>
+                              <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0" }}>
+                                <span style={{ background: "#fef3c7", color: "#000000", border: "1px solid #fde68a", padding: "4px 9px", borderRadius: "6px", fontSize: "0.8rem", fontWeight: 700 }}>
+                                  {row.courseType || (isFactoryUser ? "IN-HOUSE" : "ATA-TC")}
+                                </span>
+                              </td>
+                              <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0" }}>
+                                {row.levels ? (
+                                  <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                                    {row.levels.split(",").map((lvl, lIdx) => (
+                                      <span
+                                        key={lIdx}
+                                        style={{
+                                          background: "#dcfce7",
+                                          color: "#000000",
+                                          fontWeight: 800,
+                                          fontSize: "0.78rem",
+                                          padding: "3px 7px",
+                                          borderRadius: "5px",
+                                          border: "1px solid #86efac",
+                                        }}
+                                      >
+                                        {lvl.trim()}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span style={{ color: "#000000", fontWeight: 600 }}>-</span>
+                                )}
+                              </td>
+                              <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 600 }}>{row.targetGroup || "-"}</td>
+                              <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 500, minWidth: "220px", maxWidth: "320px", whiteSpace: "pre-line", wordBreak: "break-word", lineHeight: 1.5 }}>{row.background || "-"}</td>
+                              <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 500, minWidth: "260px", maxWidth: "360px", whiteSpace: "pre-line", wordBreak: "break-word", lineHeight: 1.5 }}>{row.learningContent || "-"}</td>
+                              <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 500, minWidth: "260px", maxWidth: "360px", whiteSpace: "pre-line", wordBreak: "break-word", lineHeight: 1.5 }}>{row.objective || "-"}</td>
+                              <td style={{ padding: "10px 14px", borderRight: (hasLifeCycle ? "1px solid #e2e8f0" : "none"), color: "#000000", fontWeight: 600 }}>{row.methodology || "-"}</td>
+                              {hasLifeCycle ? (
+                                <td style={{ padding: "10px 14px", color: "#000000", fontWeight: 600 }}>{row.lifeCycleMonth}</td>
+                              ) : null}
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

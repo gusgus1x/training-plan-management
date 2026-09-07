@@ -18,6 +18,7 @@ export interface CourseMasterImportRow {
   functionName: string;
   positions: string;
   levels: string;
+  background?: string;
 }
 
 export const downloadCsvTemplate = () => {
@@ -219,6 +220,7 @@ export const parseCsvText = (text: string): CourseMasterImportRow[] => {
       functionName: "",
       positions,
       levels: matchedLevels.join(", "),
+      background: bgIdx >= 0 ? cells[bgIdx] || "" : "",
     });
   }
 

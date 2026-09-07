@@ -31,6 +31,7 @@ import RegisterTrainingModule from "./RegisterTrainingModule";
 import ReportModule from "./ReportModule";
 import RequestTrainingModule from "./RequestTrainingModule";
 import RoadmapModule from "./RoadmapModule";
+import NewActivities from "../center_factory/NewActivities/NewActivities";
 import styles from "./UserDashboard.module.css";
 import {
   buildCalendarYearOptions,
@@ -1188,6 +1189,8 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
               ) : null}
             </section>
           ) : null}
+
+          <NewActivities isThai={isThai} readOnly={true} />
 
           <section className={styles.menuPanel} aria-label="Main workspace menu">
             <div className={styles.menuHeader}>

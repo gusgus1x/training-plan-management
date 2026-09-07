@@ -225,9 +225,21 @@
 
 .formGrid {
   display: grid;
-  grid-template-columns: 140px minmax(0, 1fr) minmax(0, 1fr);
-  gap: 12px;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+  gap: 14px;
   margin-top: 14px;
+}
+
+.codeBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-family: monospace, inherit;
+  font-size: 0.82rem;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
+  border: 1px solid var(--ui-30-border);
 }
 
 .formGrid label {
