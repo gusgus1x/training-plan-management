@@ -1369,6 +1369,19 @@ const thaiUiDictionary: Record<string, string> = {
   "The training date has passed, so this session can no longer be cancelled.":
     "เลยวันอบรมแล้ว จึงไม่สามารถยกเลิกรอบอบรมนี้ได้",
   "Date & Time": "วันเวลา",
+  "Locked — already in use": "ล็อก — ถูกใช้งานแล้ว",
+  Unused: "ยังไม่ถูกใช้งาน",
+  // Certificate upload. The panel itself is Thai-first via its own t(), so only the strings that
+  // can still surface in English (server-side rejection reasons) need an entry here.
+  "The file is empty.": "ไฟล์ว่าง",
+  "This file is not a PDF.": "ไฟล์นี้ไม่ใช่ PDF",
+  "That employee is not on this training batch.": "พนักงานคนนี้ไม่ได้อยู่ในรุ่นอบรมนี้",
+  "Two certificates were assigned to one employee.": "มีใบเกียรติบัตร 2 ไฟล์ถูกกำหนดให้พนักงานคนเดียวกัน",
+  "That certificate file is not part of this draft.": "ไฟล์ใบเกียรติบัตรนี้ไม่ได้อยู่ในชุดที่กำลังตรวจ",
+  "There is no certificate draft to confirm for this batch.": "ไม่มีชุดใบเกียรติบัตรที่รอยืนยันสำหรับรุ่นนี้",
+  "Certificate not found": "ไม่พบใบเกียรติบัตร",
+  "This certificate has not been issued yet": "ใบเกียรติบัตรนี้ยังไม่ถูกประกาศ",
+  "You can only open your own certificate": "เปิดดูได้เฉพาะใบเกียรติบัตรของตัวเองเท่านั้น",
 };
 
 const thaiAttributeDictionary: Record<string, string> = {
@@ -1835,7 +1848,15 @@ export default function ThaiUiLocalization({
 
   useEffect(() => {
     document.documentElement.lang = language;
-    localizeTree(document.body, language);
+
+    // Next.js can still be hydrating a later Suspense-streamed part of the page (e.g. a route
+    // segment behind a LoadingBoundary) when this effect fires, since this component mounts near
+    // the root. Mutating that part's DOM text/attributes before React finishes reconciling it
+    // trips a hydration-mismatch error there. One rAF pushes past the commit's paint, by which
+    // point hydration for anything already in the initial response has settled.
+    const frame = requestAnimationFrame(() => {
+      localizeTree(document.body, language);
+    });
 
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
@@ -1861,7 +1882,10 @@ export default function ThaiUiLocalization({
       subtree: true,
     });
 
-    return () => observer.disconnect();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+    };
   }, [language]);
 
   const contextValue = useMemo(

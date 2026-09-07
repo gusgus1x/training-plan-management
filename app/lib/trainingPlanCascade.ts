@@ -50,16 +50,31 @@ export const cascadeDeleteTrainingPlans = async (
   });
   const batchIds = batches.map((b) => b.certificate_import_batch_id);
 
-  // 3. Unlink certificate files from enrollments and results
+  // 3. Delete certificate files, before anything they point at.
+  //
+  // They hold FKs to enrollments AND results AND a NOT NULL FK to their import batch, so they have
+  // to go first. The previous version merely nulled the enrollment/result links and left the rows
+  // in place, then tried to delete the batch out from under them at step 9 -- an FK violation that
+  // the swallowing helper hid, leaving an orphan batch, orphan rows and orphan PDFs on disk. It
+  // never surfaced only because the table has always been empty.
+  //
+  // swallow = false on both: an FK error here means the ordering is wrong again, and that should
+  // roll the whole transaction back loudly rather than half-delete a training plan.
   if (enrollmentIds.length > 0 || batchIds.length > 0) {
-    await tx.training_certificate_file.updateMany({
+    await drop("training_certificate_file", tx.training_certificate_file.deleteMany({
       where: {
         OR: [
+          ...(batchIds.length > 0 ? [{ certificate_import_batch_id: { in: batchIds } }] : []),
           ...(enrollmentIds.length > 0 ? [{ enrollment_id: { in: enrollmentIds } }] : []),
         ],
       },
-      data: { enrollment_id: null, training_result_id: null },
-    }).catch(() => undefined);
+    }), false);
+  }
+
+  if (batchIds.length > 0) {
+    await drop("certificate_import_batch", tx.certificate_import_batch.deleteMany({
+      where: { certificate_import_batch_id: { in: batchIds } },
+    }), false);
   }
 
   if (enrollmentIds.length > 0) {
@@ -111,12 +126,8 @@ export const cascadeDeleteTrainingPlans = async (
     }), false);
   }
 
-  // 9. Delete certificate import batches (if any)
-  if (batchIds.length > 0) {
-    await drop("certificate_import_batch", tx.certificate_import_batch.deleteMany({
-      where: { certificate_import_batch_id: { in: batchIds } },
-    }));
-  }
+  // 9. (Certificate files and their import batches were removed at step 3, before the enrollments
+  //     and results they reference.)
 
   // 10. Delete training plan assessment settings
   await drop("training_plan_assessment_setting", tx.training_plan_assessment_setting.deleteMany({

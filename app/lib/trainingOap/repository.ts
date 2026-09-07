@@ -3,6 +3,7 @@ import { Prisma } from "../../generated/prisma/client";
 import type { AuditActor } from "../audit";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
+import { removePlanCertificateDirectory } from "../certificates/storage";
 import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
 import { ApiError } from "../api/errors";
 import type { WorkflowCourse } from "../trainingWorkflow";
@@ -333,6 +334,7 @@ let oapCode = baseCode;
         await assertOwnedByCompany(db(), id, companyId, "delete");
 
         const oapPlanId = BigInt(id);
+        let removedPlanIds: string[] = [];
         await db().$transaction(async (tx) => {
           // Find all training_plans for this OAP plan
           const plans = await tx.training_plan.findMany({
@@ -340,6 +342,7 @@ let oapCode = baseCode;
             select: { plan_id: true },
           });
           const planIds = plans.map((p) => p.plan_id);
+          removedPlanIds = planIds.map((planId) => planId.toString());
 
           if (planIds.length > 0) {
             await cascadeDeleteTrainingPlans(tx, planIds, actor && {
@@ -353,6 +356,9 @@ let oapCode = baseCode;
             where: { oap_plan_id: oapPlanId },
           });
         });
+
+        // After the commit, never inside it: a rolled-back delete must not have removed the files.
+        await Promise.allSettled(removedPlanIds.map(removePlanCertificateDirectory));
 
         return { oapPlanId: id, outcome: "DELETED" as const };
       });

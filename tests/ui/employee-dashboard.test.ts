@@ -72,6 +72,7 @@ describe("avatar initials", () => {
 const enrollmentWithFollowUp = (overrides: Partial<EnrollmentRecord["plan"]["assessment"]["evaluationAfter30Day"]> = {}): EnrollmentRecord => ({
   id: "1",
   planId: "10",
+  certificate: null,
   result: null,
   plan: {
     assessment: {

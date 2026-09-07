@@ -135,6 +135,7 @@ describe("training finance summary", () => {
       ([id, company], index): EnrollmentRecord => ({
         id: `enrollment-${index}`,
         planId: centerPlan.rollingId,
+        certificate: null,
         result: null,
         plan: {
           assessment: {

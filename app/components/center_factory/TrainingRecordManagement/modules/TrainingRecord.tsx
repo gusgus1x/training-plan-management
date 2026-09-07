@@ -9,6 +9,9 @@ import type {
   TrainingRecordSummary,
 } from "../../../../lib/trainingRecord/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import CertificateUploadPanel from "./CertificateUploadPanel";
+import MaskedUserId, { EyeClosedIcon, EyeOpenIcon } from "../../../shared/MaskedUserId";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useToast } from "../../../ToastHost";
 import { listPlanStageSettings, readEvaluationSummary, setStageClosed } from "../../../../lib/trainingForms/client";
@@ -82,6 +85,8 @@ type CompletedCourse = {
     id: string;
     name: string;
     employeeCode: string;
+    /** SAP UserID. Empty for a course imported from a spreadsheet, which carries no such id. */
+    userId: string;
     department: string;
     position?: string;
     attended?: boolean;
@@ -341,6 +346,8 @@ const mapImportRowToCourse = (
         company,
         department: getCellValue(row, ["department", "function"]) || "-",
         employeeCode: getCellValue(row, ["employeecode"]) || `IMPORT-${index + 1}`,
+        // A spreadsheet row is not linked to an employee record, so there is no SAP UserID to show.
+        userId: "",
         evaluation:
           normalizeHeader(getCellValue(row, ["evaluation"])) === "pending" ? "Pending" : "Done",
         id: `import-attendee-${Date.now()}-${index}`,
@@ -746,6 +753,11 @@ export default function TrainingRecord() {
   const [isCourseDetailOpen, setIsCourseDetailOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [attendeeSearchQuery, setAttendeeSearchQuery] = useState("");
+  const { language } = useUiLanguage();
+  // The SAP UserID identifies a person, so it starts hidden: revealed one row at a time, or all at
+  // once when HRD is actually working through the list (naming certificate files, say).
+  const [showAllUserIds, setShowAllUserIds] = useState(false);
+  const [revealedUserIds, setRevealedUserIds] = useState<Set<string>>(new Set());
   const [selectedAttendeeCompanyFilter, setSelectedAttendeeCompanyFilter] = useState("ALL");
 
   const reloadCourses = () => {
@@ -803,6 +815,7 @@ export default function TrainingRecord() {
               company: attendee.company,
               name: attendee.name,
               employeeCode: attendee.employeeCode,
+              userId: attendee.employeeUserId,
               department: attendee.department,
               position: attendee.position,
               prePost: prePostOf(attendee),
@@ -1532,6 +1545,23 @@ export default function TrainingRecord() {
                 <button
                   type="button"
                   className={styles.secondaryButton}
+                  aria-pressed={showAllUserIds}
+                  onClick={() => {
+                    setShowAllUserIds((current) => !current);
+                    setRevealedUserIds(new Set());
+                  }}
+                  title={
+                    showAllUserIds
+                      ? "ซ่อน UserID ทั้งหมด / Hide all UserIDs"
+                      : "เปิดดู UserID ทั้งหมด / Reveal all UserIDs"
+                  }
+                >
+                  {showAllUserIds ? <EyeClosedIcon /> : <EyeOpenIcon />}
+                  {showAllUserIds ? " ซ่อน UserID" : " เปิดดู UserID"}
+                </button>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
                   disabled
                   title={`${UNDER_DEVELOPMENT.th} / ${UNDER_DEVELOPMENT.en}`}
                 >
@@ -1596,6 +1626,7 @@ export default function TrainingRecord() {
                 <table className={styles.attendeeEmployeeTable}>
                   <thead>
                     <tr>
+                      <th>UserID</th>
                       <th>พนักงาน (Employee)</th>
                       <th>บริษัท & แผนก (Company / Dept)</th>
                       <th>ตำแหน่ง (Position)</th>
@@ -1607,8 +1638,30 @@ export default function TrainingRecord() {
                   </thead>
                   <tbody>
                     {filteredCourseAttendees.map((attendee) => {
+                      const userIdShown = showAllUserIds || revealedUserIds.has(attendee.id);
                       return (
                         <tr key={attendee.id}>
+                          <td>
+                            <MaskedUserId
+                              value={attendee.userId}
+                              revealed={userIdShown}
+                              isThai={language === "th"}
+                              onToggle={() =>
+                                setRevealedUserIds((current) => {
+                                  const next = new Set(current);
+                                  // While "reveal all" is on, this button hides just this row, so
+                                  // the set has to start from every row being visible.
+                                  if (showAllUserIds) {
+                                    setShowAllUserIds(false);
+                                    for (const row of filteredCourseAttendees) next.add(row.id);
+                                  }
+                                  if (next.has(attendee.id)) next.delete(attendee.id);
+                                  else next.add(attendee.id);
+                                  return next;
+                                })
+                              }
+                            />
+                          </td>
                           <td>
                             <div className={styles.attendeeUserCell}>
                               <div>
@@ -1707,6 +1760,10 @@ export default function TrainingRecord() {
 
             {downloadMessage ? <p className={styles.downloadMessage}>{downloadMessage}</p> : null}
           </section>
+
+          {/* Scoped to the selected batch by construction: rendered inside the batch detail, and
+              certificate_import_batch requires a plan_id anyway. */}
+          {selectedCourse.rollingId ? <CertificateUploadPanel planId={selectedCourse.rollingId} /> : null}
         </div>
       </section>
     );

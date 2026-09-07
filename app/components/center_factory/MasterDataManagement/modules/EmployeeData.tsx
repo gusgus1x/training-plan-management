@@ -6,6 +6,7 @@ import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
 import { useToast } from "../../../ToastHost";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
+import MaskedUserId, { EyeClosedIcon, EyeOpenIcon } from "../../../shared/MaskedUserId";
 import { listCompanies } from "../../../../lib/companies/client";
 import type { CompanyRecord } from "../../../../lib/companies/types";
 import {
@@ -125,6 +126,7 @@ const EMPLOYEE_COLUMNS = [
   { key: "no", label: "No.", defaultWidth: 56 },
   { key: "company", label: "Company", defaultWidth: 90 },
   { key: "empCode", label: "Emp Code", defaultWidth: 110 },
+  { key: "userId", label: "UserID", defaultWidth: 140 },
   { key: "idCard", label: "ID Card", defaultWidth: 130 },
   { key: "titleTh", label: "Title(TH)", defaultWidth: 70 },
   { key: "nameTh", label: "Name(TH)", defaultWidth: 120 },
@@ -180,6 +182,10 @@ export default function EmployeeData() {
   const [revealedNationalIds, setRevealedNationalIds] = useState<
     Record<string, string>
   >({});
+  // Unlike the national ID, the UserID is already on the row - hiding it is a display choice, not a
+  // server-side secret, so revealing it needs no request.
+  const [showAllUserIds, setShowAllUserIds] = useState(false);
+  const [revealedUserIds, setRevealedUserIds] = useState<Set<string>>(new Set());
   const [revealingNationalIds, setRevealingNationalIds] = useState(false);
   const [loadingEditor, setLoadingEditor] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -724,6 +730,21 @@ export default function EmployeeData() {
                 ? (isThai ? "ซ่อนเลขบัตรทั้งหมด" : "Hide All IDs")
                 : (isThai ? "แสดงเลขบัตรทั้งหมด" : "Reveal All IDs")}
           </button>
+          <button
+            className={styles.refreshButton}
+            type="button"
+            disabled={rows.length === 0}
+            aria-pressed={showAllUserIds}
+            onClick={() => {
+              setShowAllUserIds((current) => !current);
+              setRevealedUserIds(new Set());
+            }}
+          >
+            {showAllUserIds ? <EyeClosedIcon /> : <EyeOpenIcon />}
+            {showAllUserIds
+              ? (isThai ? " ซ่อน UserID ทั้งหมด" : " Hide All UserIDs")
+              : (isThai ? " แสดง UserID ทั้งหมด" : " Reveal All UserIDs")}
+          </button>
         </div>
 
         {error ? <p role="alert">{error}</p> : null}
@@ -1167,6 +1188,29 @@ export default function EmployeeData() {
                                   </span>
                                 </td>
                                 <td>{employee.employeeCode}</td>
+                                <td onClick={(event) => event.stopPropagation()}>
+                                  <MaskedUserId
+                                    value={employee.userId}
+                                    revealed={
+                                      showAllUserIds || revealedUserIds.has(employee.employeeId)
+                                    }
+                                    isThai={isThai}
+                                    onToggle={() =>
+                                      setRevealedUserIds((current) => {
+                                        const next = new Set(current);
+                                        // While "reveal all" is on, this hides just this row, so the
+                                        // set has to start from every row being visible.
+                                        if (showAllUserIds) {
+                                          setShowAllUserIds(false);
+                                          for (const row of rows) next.add(row.employeeId);
+                                        }
+                                        if (next.has(employee.employeeId)) next.delete(employee.employeeId);
+                                        else next.add(employee.employeeId);
+                                        return next;
+                                      })
+                                    }
+                                  />
+                                </td>
                                 <td>
                                   {revealedNationalIds[employee.employeeId] ??
                                     employee.nationalIdMasked}

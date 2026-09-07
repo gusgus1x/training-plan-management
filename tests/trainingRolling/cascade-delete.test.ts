@@ -41,9 +41,6 @@ describe("cascadeDeleteTrainingPlans", () => {
         }),
       },
       training_certificate_file: {
-        updateMany: vi.fn().mockImplementation(async () => {
-          callOrder.push("training_certificate_file.updateMany");
-        }),
         deleteMany: vi.fn().mockImplementation(async () => {
           callOrder.push("training_certificate_file.deleteMany");
         }),
@@ -106,7 +103,8 @@ describe("cascadeDeleteTrainingPlans", () => {
 
     // Verify order
     expect(callOrder).toEqual([
-      "training_certificate_file.updateMany",
+      "training_certificate_file.deleteMany",
+      "certificate_import_batch.deleteMany",
       "training_result.deleteMany",
       "assessment_answer.deleteMany",
       "assessment_submission.deleteMany",
@@ -114,7 +112,6 @@ describe("cascadeDeleteTrainingPlans", () => {
       "evaluation_submission.deleteMany",
       "attendance.deleteMany",
       "training_enrollment.deleteMany",
-      "certificate_import_batch.deleteMany",
       "training_plan_assessment_setting.deleteMany",
       "training_expense.deleteMany",
       "training_need_request.updateMany",
@@ -126,9 +123,43 @@ describe("cascadeDeleteTrainingPlans", () => {
     const assessmentSubIdx = callOrder.indexOf("assessment_submission.deleteMany");
     expect(resultIdx).toBeLessThan(assessmentSubIdx);
 
-    // Verify training_certificate_file was updated BEFORE certificate_import_batch
-    const certFileIdx = callOrder.indexOf("training_certificate_file.updateMany");
-    const certBatchIdx = callOrder.indexOf("certificate_import_batch.deleteMany");
-    expect(certFileIdx).toBeLessThan(certBatchIdx);
+    // Certificate rows hold FKs to results, enrollments and (NOT NULL) their batch, so they have to
+    // go before all three. Nulling the links and deleting the batch afterwards - what this did
+    // before - is an FK violation that the swallow helper hid.
+    const certFileIdx = callOrder.indexOf("training_certificate_file.deleteMany");
+    expect(certFileIdx).toBeLessThan(callOrder.indexOf("certificate_import_batch.deleteMany"));
+    expect(certFileIdx).toBeLessThan(resultIdx);
+    expect(certFileIdx).toBeLessThan(callOrder.indexOf("training_enrollment.deleteMany"));
+  });
+
+  it("lets a foreign-key failure on certificate files surface instead of swallowing it", async () => {
+    // The old code passed this delete through a swallow-and-continue helper, so a wrong ordering
+    // left orphan rows and orphan PDFs behind without anyone noticing.
+    const mockTx = {
+      training_enrollment: {
+        findMany: vi.fn().mockResolvedValue([{ enrollment_id: BigInt(101) }]),
+        deleteMany: vi.fn(),
+      },
+      certificate_import_batch: {
+        findMany: vi.fn().mockResolvedValue([{ certificate_import_batch_id: BigInt(201) }]),
+        deleteMany: vi.fn(),
+      },
+      training_certificate_file: {
+        deleteMany: vi.fn().mockRejectedValue(new Error("FK violation")),
+      },
+      training_result: { deleteMany: vi.fn() },
+      assessment_submission: { findMany: vi.fn().mockResolvedValue([]), deleteMany: vi.fn() },
+      assessment_answer: { deleteMany: vi.fn() },
+      evaluation_submission: { findMany: vi.fn().mockResolvedValue([]), deleteMany: vi.fn() },
+      evaluation_answer: { deleteMany: vi.fn() },
+      attendance: { deleteMany: vi.fn() },
+      training_plan_assessment_setting: { deleteMany: vi.fn() },
+      training_expense: { deleteMany: vi.fn() },
+      training_need_request: { updateMany: vi.fn() },
+      training_plan: { deleteMany: vi.fn() },
+    };
+
+    await expect(cascadeDeleteTrainingPlans(mockTx as any, [BigInt(1)])).rejects.toThrow("FK violation");
+    expect(mockTx.training_plan.deleteMany).not.toHaveBeenCalled();
   });
 });

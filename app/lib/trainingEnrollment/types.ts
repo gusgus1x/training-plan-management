@@ -156,11 +156,23 @@ export type EnrollmentDeleted = {
   outcome: "DELETED";
 };
 
+/**
+ * The issued certificate document, when there is one. Rides along on the enrollment so the two
+ * employee screens that already load enrollments need no extra request, and so the ownership check
+ * that scopes those enrollments covers the certificate too.
+ */
+export type EnrollmentCertificateInfo = {
+  certificateFileId: string;
+  fileName: string;
+  issuedAt: string;
+};
+
 export type EnrollmentRecord = {
   id: string;
   planId: string;
   plan: EnrollmentPlanInfo;
   result: EnrollmentResultInfo | null;
+  certificate: EnrollmentCertificateInfo | null;
   employeeId: string;
   employeeUserId: string | null;
   employeeCode: string;

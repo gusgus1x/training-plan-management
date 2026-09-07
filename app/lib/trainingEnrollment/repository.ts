@@ -36,6 +36,14 @@ const enrollmentInclude = {
   employee: { include: employeeInclude },
   attendance: true,
   training_result: true,
+  // CONFIRMED only, and that filter is load-bearing: a draft is HRD's working copy and may still be
+  // pointed at the wrong person. Showing one would make the whole verify-before-issue step
+  // decorative. ACTIVE excludes rows superseded by a re-upload.
+  training_certificate_file: {
+    where: { status: "ACTIVE", mapping_status: "CONFIRMED" },
+    orderBy: { certificate_file_id: "desc" },
+    take: 1,
+  },
   // Every attempt/submission this enrollment has ever made, across all four stages - small tables,
   // and reading them here means the "take this form" screens never need a second request just to
   // know whether the employee has already attempted or submitted something.
@@ -204,6 +212,15 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
           completedAt: row.training_result.completed_at?.toISOString() ?? null,
           validUntil: row.training_result.valid_until?.toISOString().slice(0, 10) ?? null,
           certificateNo: row.training_result.certificate_no,
+        }
+      : null,
+    certificate: row.training_certificate_file?.[0]
+      ? {
+          certificateFileId: row.training_certificate_file[0].certificate_file_id.toString(),
+          fileName: row.training_certificate_file[0].original_file_name_masked,
+          issuedAt: (
+            row.training_certificate_file[0].verified_at ?? row.training_certificate_file[0].created_at
+          ).toISOString(),
         }
       : null,
     plan: {

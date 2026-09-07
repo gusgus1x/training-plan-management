@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { certificateFileUrl } from "../../lib/certificates/client";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
 import type {
   EnrollmentAssessmentInfo,
@@ -29,6 +30,9 @@ export type EmployeeTrainingRecord = {
   result: "Completed";
   score: number | null;
   certificateNo: string;
+  /** The issued certificate document, when HRD has confirmed one. Null is the honest default: an
+   *  empty placeholder on every historical course would be noise. */
+  certificate: EnrollmentRecord["certificate"];
   instructor: string;
   location: string;
   note: string;
@@ -73,6 +77,7 @@ export const toRecord = (enrollment: EnrollmentRecord): EmployeeTrainingRecord =
   result: "Completed",
   score: enrollment.result?.postScore ?? null,
   certificateNo: enrollment.result?.certificateNo || "-",
+  certificate: enrollment.certificate,
   instructor: enrollment.plan.instructor || "-",
   location: enrollment.plan.venue || "-",
   note: enrollment.plan.batchName || "1",
@@ -734,6 +739,10 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                   {/* Horizontal Info Bar matching Image 2 */}
                   <div className={styles.infoBarGrid}>
                     <div className={styles.infoBarItem}>
+                      <span className={styles.infoBarLabel}>{t("รุ่นที่อบรม", "Batch")}</span>
+                      <span className={styles.infoBarValue}>🔖 {enrollment.plan.batchName || "-"}</span>
+                    </div>
+                    <div className={styles.infoBarItem}>
                       <span className={styles.infoBarLabel}>{t("วันที่อบรม", "Training Date")}</span>
                       <span className={styles.infoBarValue}>📅 {enrollment.plan.startAt.slice(0, 10)}</span>
                     </div>
@@ -937,6 +946,56 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                           <strong className={styles.metaBoxValue}>{record.provider}</strong>
                         </div>
                       </div>
+
+                      {/* Only when one has actually been issued. The browser renders the PDF; there
+                          is no PDF library in this project and this needs none. */}
+                      {record.certificate ? (
+                        <section
+                          className={styles.assessmentBox}
+                          aria-label={t("ใบเกียรติบัตร", "Certificate")}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              gap: "12px",
+                              flexWrap: "wrap",
+                              marginBottom: "10px",
+                            }}
+                          >
+                            <strong style={{ fontSize: "0.9rem" }}>
+                              🎖 {t("ใบเกียรติบัตร", "Certificate")}
+                            </strong>
+                            <a
+                              href={certificateFileUrl(record.certificate.certificateFileId, { download: true })}
+                              style={{
+                                padding: "6px 14px",
+                                borderRadius: "999px",
+                                background: "var(--ui-30-primary)",
+                                color: "#ffffff",
+                                fontWeight: 800,
+                                fontSize: "0.78rem",
+                                textDecoration: "none",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              {t("บันทึกไฟล์", "Download")}
+                            </a>
+                          </div>
+                          <iframe
+                            src={certificateFileUrl(record.certificate.certificateFileId)}
+                            title={`${t("ใบเกียรติบัตร", "Certificate")} ${record.courseTitle}`}
+                            style={{
+                              width: "100%",
+                              height: "360px",
+                              border: "1px solid var(--ui-30-border)",
+                              borderRadius: "10px",
+                              background: "#ffffff",
+                            }}
+                          />
+                        </section>
+                      ) : null}
 
                       <AssessmentFlowSection
                         assessment={record.assessment}

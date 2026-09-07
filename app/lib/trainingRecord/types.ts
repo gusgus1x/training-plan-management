@@ -39,6 +39,9 @@ export type TrainingResultEntry = {
 export type TrainingRecordAttendee = {
   enrollmentId: string;
   employeeId: string;
+  /** The SAP UserID. HRD needs it to name certificate files, but it identifies a person, so the
+   *  screen keeps it masked until someone asks for it. */
+  employeeUserId: string;
   employeeCode: string;
   name: string;
   department: string;

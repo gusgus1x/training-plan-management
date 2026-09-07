@@ -4,6 +4,7 @@ import { ApiError } from "../api/errors";
 import type { AuditActor } from "../audit";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
+import { removePlanCertificateDirectory } from "../certificates/storage";
 import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
 import { wouldCreateCycle, type PrerequisiteGraph } from "./prerequisiteGraph";
 import type { CourseListFilters, CreateCourseInput, UpdateCourseInput } from "./types";
@@ -680,7 +681,8 @@ export const createCourseRepository = (client?: DatabaseClient) => {
     async delete(id: string, companyId: string | null = null, actor?: AuditActor) {
       return withDatabaseErrorMapping(async () => {
         const courseId = BigInt(id);
-        return await db().$transaction(async (tx) => {
+        let removedPlanIds: string[] = [];
+        const deleted = await db().$transaction(async (tx) => {
           // Snapshot the name while the row still exists, for the audit line.
           const courseLabel = actor
             ? await tx.course.findUnique({
@@ -711,6 +713,7 @@ export const createCourseRepository = (client?: DatabaseClient) => {
               select: { plan_id: true },
             });
             const planIds = plans.map((p) => p.plan_id);
+            removedPlanIds = planIds.map((planId) => planId.toString());
 
             if (planIds.length > 0) {
               await cascadeDeleteTrainingPlans(tx, planIds, actor && {
@@ -782,6 +785,11 @@ export const createCourseRepository = (client?: DatabaseClient) => {
 
           return { courseId: id, outcome: "DELETED" as const };
         }, { timeout: 20000 });
+
+        // After the commit, never inside it: a rolled-back delete must not have removed the files.
+        await Promise.allSettled(removedPlanIds.map(removePlanCertificateDirectory));
+
+        return deleted;
       });
     },
   };

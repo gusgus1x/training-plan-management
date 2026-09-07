@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";
 import { useUiLanguage, type UiLanguage } from "../ThaiUiLocalization";
+import { certificateFileUrl } from "../../lib/certificates/client";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
 import { followUpReminderAt } from "../../lib/trainingForms/availability";
 import {
@@ -172,6 +173,12 @@ export const pendingFollowUpEvaluationsOf = (enrollments: EnrollmentRecord[], no
       enrollment.plan.assessment.evaluationAfter30Day.submission === null &&
       now.getTime() >= new Date(followUpReminderAt(enrollment.plan.endAt)).getTime(),
   );
+
+/** Enrollments carrying an issued certificate. Pure for the same reason as the function above: the
+ *  banner's contents are testable without rendering the dashboard. The repository has already
+ *  filtered to CONFIRMED + ACTIVE, so anything present here is a certificate HRD signed off. */
+export const certificatesOf = (enrollments: EnrollmentRecord[]) =>
+  enrollments.filter((enrollment) => enrollment.certificate !== null);
 
 export default function UserDashboard({ username, onHome, onLogout }: UserDashboardProps) {
   const authenticatedUser = useAuthenticatedUser();
@@ -357,6 +364,9 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
   // Everything this needs already rides on the same enrollments list (Phase 3.1) - no extra
   // request just to know whether to nag someone about a survey.
   const pendingFollowUpEvaluations = useMemo(() => pendingFollowUpEvaluationsOf(enrollments), [enrollments]);
+  const certificateEnrollments = useMemo(() => certificatesOf(enrollments), [enrollments]);
+  // One certificate open at a time; null means the large view is closed.
+  const [openCertificateId, setOpenCertificateId] = useState<string | null>(null);
   const employeeCalendarTrainings = useMemo<CalendarTraining[]>(
     () =>
       availableRollingPlans.map((plan) => ({
@@ -631,6 +641,126 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                       .join(", ")} — tap to complete`}
               </span>
             </button>
+          ) : null}
+
+          {/* Good news, so green rather than the reminder's amber. Each card previews the real PDF
+              scaled down - the browser renders it, no PDF library involved. */}
+          {certificateEnrollments.map((enrollment) => (
+            <button
+              key={enrollment.certificate!.certificateFileId}
+              type="button"
+              onClick={() => setOpenCertificateId(enrollment.certificate!.certificateFileId)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "14px",
+                width: "100%",
+                textAlign: "left",
+                margin: "0 0 16px",
+                padding: "12px 16px",
+                borderRadius: "12px",
+                background: "rgba(34, 197, 94, 0.12)",
+                border: "1px solid rgba(34, 197, 94, 0.35)",
+                color: "#166534",
+                cursor: "pointer",
+                font: "inherit",
+              }}
+              aria-label={t("ใบเกียรติบัตรที่ได้รับ", "Certificate received")}
+            >
+              <span
+                style={{
+                  flexShrink: 0,
+                  width: "120px",
+                  height: "85px",
+                  overflow: "hidden",
+                  borderRadius: "8px",
+                  border: "1px solid rgba(34, 197, 94, 0.35)",
+                  background: "#ffffff",
+                }}
+              >
+                <iframe
+                  src={certificateFileUrl(enrollment.certificate!.certificateFileId)}
+                  title={enrollment.plan.courseName}
+                  style={{
+                    width: "400%",
+                    height: "400%",
+                    border: 0,
+                    transform: "scale(0.25)",
+                    transformOrigin: "top left",
+                    // The wrapping button owns the click; the iframe must not swallow it.
+                    pointerEvents: "none",
+                  }}
+                />
+              </span>
+              <span style={{ fontSize: "0.86rem", fontWeight: 700 }}>
+                {t(
+                  `🎖 คุณได้รับใบเกียรติบัตรของคอร์สอบรม ${enrollment.plan.courseName} — กดเพื่อดูและบันทึก`,
+                  `🎖 You received a certificate for ${enrollment.plan.courseName} — tap to view and save`,
+                )}
+              </span>
+            </button>
+          ))}
+
+          {openCertificateId ? (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={t("ใบเกียรติบัตร", "Certificate")}
+              onClick={() => setOpenCertificateId(null)}
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 60,
+                background: "rgba(15, 23, 42, 0.75)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "12px",
+                padding: "16px",
+              }}
+            >
+              <div
+                onClick={(event) => event.stopPropagation()}
+                style={{ display: "flex", gap: "8px", alignSelf: "flex-end" }}
+              >
+                <a
+                  href={certificateFileUrl(openCertificateId, { download: true })}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "999px",
+                    background: "#16a34a",
+                    color: "#ffffff",
+                    fontWeight: 800,
+                    fontSize: "0.82rem",
+                    textDecoration: "none",
+                  }}
+                >
+                  {t("บันทึกไฟล์", "Download")}
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setOpenCertificateId(null)}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: "999px",
+                    border: 0,
+                    background: "#ffffff",
+                    fontWeight: 800,
+                    fontSize: "0.82rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  {t("ปิด", "Close")} ✕
+                </button>
+              </div>
+              <iframe
+                src={certificateFileUrl(openCertificateId)}
+                title={t("ใบเกียรติบัตร", "Certificate")}
+                onClick={(event) => event.stopPropagation()}
+                style={{ width: "min(960px, 100%)", height: "85vh", border: 0, borderRadius: "12px", background: "#fff" }}
+              />
+            </div>
           ) : null}
 
           <div className={styles.topRow}>

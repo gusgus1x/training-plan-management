@@ -5,6 +5,7 @@ import { ApiError } from "../api/errors";
 import type { AuditActor } from "../audit";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
+import { removePlanCertificateDirectory } from "../certificates/storage";
 import { cascadeDeleteTrainingPlans } from "../trainingPlanCascade";
 import type { WorkflowCourse } from "../trainingWorkflow";
 import type { CreateRollingPlanInput, RollingPlanListFilters, RollingPlanStatus, UpdateRollingPlanInput } from "./types";
@@ -325,30 +326,60 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
         };
 
         if (input.formOverrides) {
-          // Every form opens at start_datetime, so before that moment nobody can have answered and
-          // swapping one costs nothing. Once the course has started, changing it would hand
-          // trainees in the same batch different papers - refused here rather than in the UI,
-          // because the UI is not the trust boundary.
-          if (current.start_datetime.getTime() <= Date.now()) {
-            throw new ApiError({
-              code: "PLAN_FORMS_LOCKED",
-              message: "การอบรมเริ่มแล้ว เปลี่ยนแบบทดสอบ/แบบประเมินของรุ่นนี้ไม่ได้",
-              status: 409,
-            });
-          }
           const o = input.formOverrides;
-          // An empty string clears the override; undefined leaves the field untouched.
-          if (o.preAssessmentId !== undefined) data.pre_assessment_id = safeBigInt(o.preAssessmentId);
-          if (o.postAssessmentId !== undefined) data.post_assessment_id = safeBigInt(o.postAssessmentId);
-          if (o.evaluationFormId !== undefined) data.evaluation_form_id = safeBigInt(o.evaluationFormId);
-          if (o.evaluationFormAfter30DayId !== undefined) {
-            data.evaluation_form_after_30day_id = safeBigInt(o.evaluationFormAfter30DayId);
-          }
-          if (o.preTestLink !== undefined) data.pre_test_link = o.preTestLink.trim() || null;
-          if (o.postTestLink !== undefined) data.post_test_link = o.postTestLink.trim() || null;
-          if (o.evaluationLink !== undefined) data.evaluation_link = o.evaluationLink.trim() || null;
-          if (o.evaluationAfter30DayLink !== undefined) {
-            data.evaluation_after_30day_link = o.evaluationAfter30DayLink.trim() || null;
+          const sameId = (sent: string | undefined, stored: bigint | null) =>
+            sent === undefined || (safeBigInt(sent)?.toString() ?? null) === (stored?.toString() ?? null);
+          const sameLink = (sent: string | undefined, stored: string | null) =>
+            sent === undefined || (sent.trim() || null) === (stored ?? null);
+
+          // The lock fires on an actual CHANGE, not on the field being present. The edit form sends
+          // the whole batch back on every save, forms included, so keying off presence meant editing
+          // a started batch's venue or date was refused outright - the guard blocking edits it was
+          // never meant to touch.
+          const unchanged =
+            sameId(o.preAssessmentId, current.pre_assessment_id) &&
+            sameId(o.postAssessmentId, current.post_assessment_id) &&
+            sameId(o.evaluationFormId, current.evaluation_form_id) &&
+            sameId(o.evaluationFormAfter30DayId, current.evaluation_form_after_30day_id) &&
+            sameLink(o.preTestLink, current.pre_test_link) &&
+            sameLink(o.postTestLink, current.post_test_link) &&
+            sameLink(o.evaluationLink, current.evaluation_link) &&
+            sameLink(o.evaluationAfter30DayLink, current.evaluation_after_30day_link);
+
+          if (!unchanged) {
+            // Every form opens at start_datetime, so before that moment nobody can have answered and
+            // swapping one costs nothing. Once the course has started, changing it would hand
+            // trainees in the same batch different papers - refused here rather than in the UI,
+            // because the UI is not the trust boundary. If this same save is also moving the batch
+            // to a new date, the lock must judge against THAT date, not the stale stored one - a
+            // save that pushes the batch into the future and changes its forms in one step is legal.
+            const effectiveStart =
+              input.trainingDate !== undefined || input.startTime !== undefined
+                ? combineDateTime(
+                    input.trainingDate ?? splitDateTime(current.start_datetime).trainingDate,
+                    input.startTime ?? splitDateTime(current.start_datetime).time,
+                  )
+                : current.start_datetime;
+            if (effectiveStart.getTime() <= Date.now()) {
+              throw new ApiError({
+                code: "PLAN_FORMS_LOCKED",
+                message: "การอบรมเริ่มแล้ว เปลี่ยนแบบทดสอบ/แบบประเมินของรุ่นนี้ไม่ได้",
+                status: 409,
+              });
+            }
+            // An empty string clears the override; undefined leaves the field untouched.
+            if (o.preAssessmentId !== undefined) data.pre_assessment_id = safeBigInt(o.preAssessmentId);
+            if (o.postAssessmentId !== undefined) data.post_assessment_id = safeBigInt(o.postAssessmentId);
+            if (o.evaluationFormId !== undefined) data.evaluation_form_id = safeBigInt(o.evaluationFormId);
+            if (o.evaluationFormAfter30DayId !== undefined) {
+              data.evaluation_form_after_30day_id = safeBigInt(o.evaluationFormAfter30DayId);
+            }
+            if (o.preTestLink !== undefined) data.pre_test_link = o.preTestLink.trim() || null;
+            if (o.postTestLink !== undefined) data.post_test_link = o.postTestLink.trim() || null;
+            if (o.evaluationLink !== undefined) data.evaluation_link = o.evaluationLink.trim() || null;
+            if (o.evaluationAfter30DayLink !== undefined) {
+              data.evaluation_after_30day_link = o.evaluationAfter30DayLink.trim() || null;
+            }
           }
         }
 
@@ -401,6 +432,9 @@ export const createRollingPlanRepository = (client?: DatabaseClient) => {
               .join(" · ") || undefined,
           });
         });
+
+        // After the commit, never inside it: a rolled-back delete must not have removed the files.
+        await removePlanCertificateDirectory(planId.toString());
 
         return { rollingPlanId: id, outcome: "DELETED" as const };
       });

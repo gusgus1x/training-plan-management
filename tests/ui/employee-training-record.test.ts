@@ -6,6 +6,7 @@ const enrollment = (overrides: Partial<EnrollmentRecord> = {}): EnrollmentRecord
   id: "1",
   planId: "10",
   result: null,
+  certificate: null,
   plan: {
     assessment: {
       preTest: emptyEnrollmentStage,

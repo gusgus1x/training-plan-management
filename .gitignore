@@ -63,6 +63,11 @@ training-db-schema-audit
 # info files
 TrainingPlanManagement — Project & Database Handover Context.md
 
+# uploaded certificates — the folder ships so its location on the server is obvious,
+# the documents inside never do: they are employees' personal records.
+/Certificate_Storage/*
+!/Certificate_Storage/.gitkeep
+
 # real employee data samples — never commit
 real data employee.rpt
 *.rpt

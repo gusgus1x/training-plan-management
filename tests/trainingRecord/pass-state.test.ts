@@ -5,6 +5,7 @@ import type { TrainingRecordAttendee } from "../../app/lib/trainingRecord/types"
 const attendee = (overrides: Partial<TrainingRecordAttendee> = {}): TrainingRecordAttendee => ({
   enrollmentId: "1",
   employeeId: "10",
+  employeeUserId: "12345678",
   employeeCode: "1290-000017",
   name: "ทดสอบ ระบบอบรม",
   department: "Office Administration",

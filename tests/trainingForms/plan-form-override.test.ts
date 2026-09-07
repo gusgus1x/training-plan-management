@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createTrainingFormsRepository } from "../../app/lib/trainingForms/repository";
+import { createRollingPlanRepository } from "../../app/lib/trainingRolling/repository";
 import { parseUpdateRollingPlan } from "../../app/lib/trainingRolling/validation";
 
 /**
@@ -123,5 +124,144 @@ describe("parseUpdateRollingPlan - formOverrides", () => {
   it("refuses anything that is not a numeric id", () => {
     expect(() => parseUpdateRollingPlan({ formOverrides: { preAssessmentId: "abc" } })).toThrow();
     expect(() => parseUpdateRollingPlan({ formOverrides: { preAssessmentId: "1; DROP" } })).toThrow();
+  });
+});
+
+describe("the start-date lock fires on a change, not on the field being present", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+
+  /** Only the calls rollingPlanRepository.update makes on the path under test. */
+  const buildRollingDb = (startOffsetMs: number, stored: Record<string, unknown> = {}) => {
+    const current = {
+      plan_id: BigInt(2205),
+      oap_plan_id: BigInt(9),
+      start_datetime: new Date(Date.now() + startOffsetMs),
+      pre_assessment_id: null,
+      post_assessment_id: null,
+      evaluation_form_id: null,
+      evaluation_form_after_30day_id: null,
+      pre_test_link: null,
+      post_test_link: null,
+      evaluation_link: null,
+      evaluation_after_30day_link: null,
+      // Enough of a course row for mapCourseSnapshot, which runs on the update's return value.
+      training_plan_oap: {
+        company_id: null,
+        instructor: null,
+        company: null,
+        course: {
+          course_id: BigInt(1),
+          course_code: "C-001",
+          course_name: "หลักสูตรทดสอบ",
+          course_name_en: "Test course",
+          objective: null,
+          learning_content: null,
+          target_group: null,
+          methodology: null,
+          pre_assessment_id: null,
+          post_assessment_id: null,
+          evaluation_form_id: null,
+          evaluation_form_after_30day_id: null,
+          pre_test_link: null,
+          post_test_link: null,
+          evaluation_link: null,
+          evaluation_after_30day_link: null,
+          assessment_course_pre_assessment_idToassessment: null,
+          assessment_course_post_assessment_idToassessment: null,
+          evaluation_form: null,
+          evaluation_form_after_30day: null,
+          validity_months: null,
+          description: null,
+          status: "ACTIVE",
+          course_type: null,
+          course_group: null,
+          company_id: null,
+          company: null,
+          course_standard_course: [],
+          created_at: new Date(0),
+          updated_at: null,
+        },
+      },
+      training_expense: [],
+      status: "OPEN",
+      batch_no: 1,
+      batch_name: null,
+      plan_code: "X-B01",
+      plan_name: "X",
+      venue: null,
+      capacity: 10,
+      created_by: BigInt(1),
+      created_at: new Date(),
+      updated_at: null,
+      ...stored,
+    };
+
+    const written: { data?: Record<string, unknown> } = {};
+    const db = {
+      training_plan: {
+        findUniqueOrThrow: async () => current,
+        update: async ({ data }: { data: Record<string, unknown> }) => {
+          written.data = data;
+          return current;
+        },
+      },
+    };
+    return { db, written };
+  };
+
+  const update = async (
+    startOffsetMs: number,
+    formOverrides: Record<string, string>,
+    stored = {},
+    extraInput: Record<string, unknown> = {},
+  ) => {
+    const { db, written } = buildRollingDb(startOffsetMs, stored);
+    const repository = createRollingPlanRepository(db as never);
+    await repository.update("2205", { venue: "ห้องประชุม A", formOverrides, ...extraInput }, "1", null);
+    return written;
+  };
+
+  it("lets a started batch save other fields while re-sending its unchanged forms", async () => {
+    // The edit form posts the whole batch back on every save, forms included. Keying the lock off
+    // the field's presence refused an ordinary venue edit on any batch that had already begun.
+    const written = await update(-DAY, {
+      preAssessmentId: "",
+      postAssessmentId: "",
+      evaluationFormId: "",
+      evaluationFormAfter30DayId: "",
+      preTestLink: "",
+      postTestLink: "",
+      evaluationLink: "",
+      evaluationAfter30DayLink: "",
+    });
+    expect(written.data?.venue).toBe("ห้องประชุม A");
+    expect(written.data).not.toHaveProperty("pre_assessment_id");
+  });
+
+  it("still refuses a real form change once the batch has started", async () => {
+    await expect(update(-DAY, { preAssessmentId: "900" })).rejects.toMatchObject({
+      code: "PLAN_FORMS_LOCKED",
+      status: 409,
+    });
+  });
+
+  it("allows a real form change while the batch is still in the future", async () => {
+    const written = await update(DAY, { preAssessmentId: "900" });
+    expect(written.data?.pre_assessment_id).toBe(BigInt(900));
+  });
+
+  it("treats a re-sent identical id as unchanged, not as a change", async () => {
+    const written = await update(-DAY, { preAssessmentId: "900" }, { pre_assessment_id: BigInt(900) });
+    expect(written.data).not.toHaveProperty("pre_assessment_id");
+  });
+
+  it("allows a form change when the same save also moves the batch into the future", async () => {
+    // The stored start_datetime is still in the past when the lock check runs - it must judge the
+    // NEW date being saved in this same request, not the stale one, or a legitimate reschedule +
+    // form change in one step is refused for no reason.
+    const future = new Date(Date.now() + DAY);
+    const trainingDate = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, "0")}-${String(future.getDate()).padStart(2, "0")}`;
+    const written = await update(-DAY, { preAssessmentId: "900" }, {}, { trainingDate, startTime: "09:00" });
+    expect(written.data?.pre_assessment_id).toBe(BigInt(900));
   });
 });
