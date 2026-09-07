@@ -203,12 +203,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .cardRightHeaderGroup {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .statusPill {
@@ -219,6 +221,7 @@
   border-radius: 999px;
   font-size: 0.82rem;
   font-weight: 800;
+  flex-shrink: 0;
 }
 
 .statusApproved,
@@ -255,6 +258,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .viewDetailBtn {
@@ -312,7 +317,7 @@
 /* Horizontal Info Bar matching Image 2 */
 .infoBarGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 16px;
   padding: 14px 20px;
   border-radius: var(--ui-radius-md, 12px);

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useToast } from "../../../ToastHost";
@@ -243,6 +243,7 @@ export default function Assessment() {
   const [companies, setCompanies] = useState<CompanyRecord[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [openDetailId, setOpenDetailId] = useState("");
+  const [detailAsLearner, setDetailAsLearner] = useState(false);
   const [mode, setMode] = useState<Mode>("idle");
   const [draft, setDraft] = useState<Draft>(() => blankDraft(user?.companyId ?? "", !isCenter));
   const [questions, setQuestions] = useState<DraftQuestion[]>([]);
@@ -572,17 +573,28 @@ export default function Assessment() {
 
   // Native HTML5 drag and drop - no library. The Move Up/Down buttons stay: dragging is
   // mouse-only, so they remain the keyboard path.
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  //
+  // Reorders live as the dragged card crosses another one (on dragOver), not just on drop, so the
+  // list itself previews the landing position instead of leaving the user to guess. A ref backs
+  // the index because dragOver can fire faster than React re-renders; reading state here would let
+  // two events in the same tick both see the pre-swap index and double-swap.
+  const [dragIndex, setDragIndexState] = useState<number | null>(null);
+  const dragIndexRef = useRef<number | null>(null);
+  const setDragIndex = (value: number | null) => {
+    dragIndexRef.current = value;
+    setDragIndexState(value);
+  };
 
-  const dropQuestionOn = (targetIndex: number) => {
+  const dragQuestionOver = (targetIndex: number) => {
+    const from = dragIndexRef.current;
+    if (from === null || from === targetIndex) return;
     setQuestions((current) => {
-      if (dragIndex === null || dragIndex === targetIndex) return current;
       const reordered = [...current];
-      const [moved] = reordered.splice(dragIndex, 1);
+      const [moved] = reordered.splice(from, 1);
       reordered.splice(targetIndex, 0, moved);
       return reordered;
     });
-    setDragIndex(null);
+    setDragIndex(targetIndex);
   };
 
   const moveQuestion = (index: number, direction: -1 | 1) => {
@@ -1239,8 +1251,11 @@ export default function Assessment() {
                 draggable
                 onDragStart={() => setDragIndex(index)}
                 onDragEnd={() => setDragIndex(null)}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={() => dropQuestionOn(index)}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  dragQuestionOver(index);
+                }}
+                onDrop={(event) => event.preventDefault()}
                 data-dragging={dragIndex === index}
               >
                 <div className={styles.questionHeading}>
@@ -1447,6 +1462,7 @@ export default function Assessment() {
                             event.stopPropagation();
                             setSelectedId(item.assessmentId);
                             setOpenDetailId(isOpen ? "" : item.assessmentId);
+                            setDetailAsLearner(false);
                           }}
                         >
                           {isOpen ? "ซ่อนรายละเอียด" : "ดูรายละเอียด"}
@@ -1502,34 +1518,97 @@ export default function Assessment() {
                           <div className={styles.panelHeader}>
                             <div>
                               <p className={styles.kicker}>
-                                {item.scope} · {item.purpose} · v{item.versionNo}
+                                {detailAsLearner ? "Learner preview" : `${item.scope} · ${item.purpose} · v${item.versionNo}`}
                               </p>
                               <h3>{item.seriesName}</h3>
                             </div>
-                            <span>{item.isUsed ? "Locked — already in use" : "Unused"}</span>
-                          </div>
-                          <p>{item.instructions || "No instructions"}</p>
-                          {item.questions.length ? (
-                            <div className={styles.questionList}>
-                              {item.questions.map((detail, index) => (
-                                <article key={detail.questionId}>
-                                  <strong>
-                                    {index + 1}. {detail.questionText}
-                                  </strong>
-                                  <span>
-                                    {displayQuestionType(detail.questionType)} · {detail.questionScore} points
-                                  </span>
-                                  {detail.choices.map((choice, choiceIndex) => (
-                                    <p key={choice.choiceId}>
-                                      {choice.isCorrect ? "[Correct] " : ""}
-                                      {String.fromCharCode(65 + choiceIndex)}. {choice.choiceText}
-                                    </p>
-                                  ))}
-                                </article>
-                              ))}
+                            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                              {!detailAsLearner ? <span>{item.isUsed ? "Locked — already in use" : "Unused"}</span> : null}
+                              <button
+                                type="button"
+                                className={styles.secondaryButton}
+                                aria-label={detailAsLearner ? "กลับไปมุมมองผู้จัดทำ" : "ดูมุมมองผู้เรียน"}
+                                title={detailAsLearner ? "กลับไปมุมมองผู้จัดทำ" : "ดูมุมมองผู้เรียน"}
+                                onClick={() => setDetailAsLearner((current) => !current)}
+                              >
+                                👁
+                              </button>
                             </div>
+                          </div>
+                          {/* Mirrors TrainingFormRunner: no correct-answer markers, no per-question score. */}
+                          {detailAsLearner ? (
+                            item.questions.length ? (
+                              <div className={styles.learnerPreview}>
+                                {item.instructions?.trim() ? (
+                                  <div className={styles.learnerInstructions}>
+                                    <strong>คำชี้แจง</strong>
+                                    <p>{item.instructions}</p>
+                                  </div>
+                                ) : null}
+                                {item.timeLimitMinutes ? (
+                                  <p className={styles.learnerMeta}>⏱ เวลาที่ให้ทำ {item.timeLimitMinutes} นาที</p>
+                                ) : null}
+                                <p className={styles.learnerMeta}>
+                                  เกณฑ์ผ่าน {item.passingScorePercent || 0}% · ทั้งหมด {item.questions.length} ข้อ
+                                </p>
+                                {item.questions.map((detail, index) => (
+                                  <article key={detail.questionId} className={styles.learnerQuestion}>
+                                    <div className={styles.learnerQuestionHead}>
+                                      <span>{index + 1}.</span>
+                                      <span>{detail.questionText}</span>
+                                      {detail.isRequired ? <em className={styles.requiredMark}>*</em> : null}
+                                    </div>
+                                    {detail.questionType === "SHORT_ANSWER" ? (
+                                      <textarea disabled placeholder="พิมพ์คำตอบที่นี่..." rows={3} />
+                                    ) : (
+                                      <div className={styles.learnerChoices}>
+                                        {detail.choices.map((choice) => (
+                                          <label key={choice.choiceId}>
+                                            <input
+                                              type={detail.questionType === "MULTIPLE_CHOICE" ? "checkbox" : "radio"}
+                                              name={`row-preview-${detail.questionId}`}
+                                              disabled
+                                            />
+                                            <span>{choice.choiceText}</span>
+                                          </label>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </article>
+                                ))}
+                                <p className={styles.learnerMeta}>
+                                  * ตัวอย่างเท่านั้น กดตอบไม่ได้ · ผู้เรียนจะไม่เห็นเฉลยและคะแนนรายข้อ
+                                </p>
+                              </div>
+                            ) : (
+                              <div className={styles.emptyState}>ยังไม่มีคำถามให้แสดงตัวอย่าง</div>
+                            )
                           ) : (
-                            <div className={styles.emptyState}>This draft does not have questions yet.</div>
+                            <>
+                              <p>{item.instructions || "No instructions"}</p>
+                              {item.questions.length ? (
+                                <div className={styles.questionList}>
+                                  {item.questions.map((detail, index) => (
+                                    <article key={detail.questionId}>
+                                      <strong>
+                                        {index + 1}. {detail.questionText}
+                                      </strong>
+                                      <span>
+                                        {displayQuestionType(detail.questionType)} · {detail.questionScore} points
+                                      </span>
+                                      {detail.choices.map((choice, choiceIndex) => (
+                                        <p key={choice.choiceId}>
+                                          {choice.isCorrect ? "[Correct] " : ""}
+                                          {String.fromCharCode(65 + choiceIndex)}. {choice.choiceText}
+                                        </p>
+                                      ))}
+                                    </article>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className={styles.emptyState}>This draft does not have questions yet.</div>
+                              )}
+                            </>
                           )}
                         </div>
                       </td>

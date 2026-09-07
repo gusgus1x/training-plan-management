@@ -115,6 +115,18 @@
   transform: translateY(-50%);
 }
 
+/* The hero copy is decorative background text (already aria-hidden) sized for the desktop's
+   580px-wide second column. Below that it has nowhere to fit and the 5 stacked slides overlap
+   into unreadable overlapping text - hiding it is correct, not a compromise, since the login
+   card carries the real logo/name at every width and the photo slideshow behind it stays.
+   Must come after the base .heroCopy rule above - CSS cascades by source order regardless of
+   @media nesting, so placed earlier in the file this loses to the base rule's `display: grid`. */
+@media (max-width: 640px) {
+  .heroCopy {
+    display: none;
+  }
+}
+
 .companySlide {
   position: absolute;
   left: 0;
@@ -529,6 +541,17 @@
   backdrop-filter: blur(24px) saturate(1.3);
   -webkit-backdrop-filter: blur(24px) saturate(1.3);
   animation: cardEntrance 0.7s 0.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Left at grid-column 2 below 640px, this forces the grid to grow an implicit second column,
+   which steals nearly all the width from the single 1fr column - that's what squeezed the login
+   card to a sliver. Must come after the base rule above (see the .heroCopy comment for why). */
+@media (max-width: 640px) {
+  .previewAccess {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: stretch;
+  }
 }
 
 .previewDivider {

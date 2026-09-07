@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useToast } from "../../../ToastHost";
@@ -178,6 +178,7 @@ export default function EvaluationManagement() {
   const [companies, setCompanies] = useState<CompanyRecord[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [openDetailId, setOpenDetailId] = useState("");
+  const [detailAsLearner, setDetailAsLearner] = useState(false);
   const [mode, setMode] = useState<Mode>("idle");
   const [draft, setDraft] = useState<Draft>(() => blankDraft(user?.companyId ?? "", isFactory));
   const [questions, setQuestions] = useState<DraftQuestion[]>([]);
@@ -482,16 +483,27 @@ export default function EvaluationManagement() {
   const handleRemoveQuestion = (id: string) => { setQuestions((current) => current.filter((item) => item.id !== id)); if (editingQuestionId === id) resetQuestionEditor(); setPreviewAnswers({}); };
 
   // Native HTML5 drag and drop - no library. Up/Down stay as the keyboard path.
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const dropQuestionOn = (targetIndex: number) => {
+  //
+  // Reorders live as the dragged card crosses another one (on dragOver), not just on drop, so the
+  // list previews the landing position instead of leaving the user to guess. A ref backs the index
+  // because dragOver can fire faster than React re-renders; reading state here would let two
+  // events in the same tick both see the pre-swap index and double-swap.
+  const [dragIndex, setDragIndexState] = useState<number | null>(null);
+  const dragIndexRef = useRef<number | null>(null);
+  const setDragIndex = (value: number | null) => {
+    dragIndexRef.current = value;
+    setDragIndexState(value);
+  };
+  const dragQuestionOver = (targetIndex: number) => {
+    const from = dragIndexRef.current;
+    if (from === null || from === targetIndex) return;
     setQuestions((current) => {
-      if (dragIndex === null || dragIndex === targetIndex) return current;
       const reordered = [...current];
-      const [moved] = reordered.splice(dragIndex, 1);
+      const [moved] = reordered.splice(from, 1);
       reordered.splice(targetIndex, 0, moved);
       return reordered;
     });
-    setDragIndex(null);
+    setDragIndex(targetIndex);
   };
 
   const handleAddOption = () => setQuestionDraft((current) => ({ ...current, options: [...current.options, ""] }));
@@ -547,7 +559,7 @@ export default function EvaluationManagement() {
     const answerKey = `${previewKey}-${item.id}`;
     const options = item.type === "RATING" ? ratingOptions : item.options.filter(Boolean);
     const multiple = item.type === "MULTIPLE_CHOICE";
-    return <article key={item.id} draggable={editable} onDragStart={() => editable && setDragIndex(index)} onDragEnd={() => setDragIndex(null)} onDragOver={(event) => editable && event.preventDefault()} onDrop={() => editable && dropQuestionOn(index)} data-dragging={dragIndex === index}><div className={styles.questionHeading}><div><span>{item.section}</span><strong>{editable ? <span className={styles.dragHandle} aria-hidden="true" title="ลากเพื่อสลับลำดับ / Drag to reorder">⠿</span> : null}{index + 1}. {item.prompt}{item.required ? <em className={styles.requiredMark}> *</em> : null}</strong></div><b>{QUESTION_TYPE_LABELS[item.type]}</b></div>
+    return <article key={item.id} draggable={editable} onDragStart={() => editable && setDragIndex(index)} onDragEnd={() => setDragIndex(null)} onDragOver={(event) => { if (!editable) return; event.preventDefault(); dragQuestionOver(index); }} onDrop={(event) => event.preventDefault()} data-dragging={dragIndex === index}><div className={styles.questionHeading}><div><span>{item.section}</span><strong>{editable ? <span className={styles.dragHandle} aria-hidden="true" title="ลากเพื่อสลับลำดับ / Drag to reorder">⠿</span> : null}{index + 1}. {item.prompt}{item.required ? <em className={styles.requiredMark}> *</em> : null}</strong></div><b>{QUESTION_TYPE_LABELS[item.type]}</b></div>
       {isTextType(item.type) ? <textarea aria-label={`Preview answer for question ${index + 1}`} placeholder="Type a preview response" rows={item.type === "LONG_TEXT" ? 4 : 2} value={previewAnswers[answerKey] ?? ""} onChange={(event) => setPreviewAnswers((current) => ({ ...current, [answerKey]: event.target.value }))} /> : <div className={styles.previewOptions}>{options.map((option) => <label key={`${item.id}-${option}`}><input checked={selectedPreviewOptions(answerKey).has(option)} name={answerKey} type={multiple ? "checkbox" : "radio"} value={option} onChange={() => togglePreviewOption(answerKey, option, multiple)} /><span>{option}</span></label>)}</div>}
       {editable ? <div className={styles.questionActions}><button className={styles.secondaryButton} type="button" disabled={index === 0} onClick={() => handleMoveQuestion(index, -1)}>Up</button><button className={styles.secondaryButton} type="button" disabled={index === previewQuestions.length - 1} onClick={() => handleMoveQuestion(index, 1)}>Down</button><button className={styles.secondaryButton} type="button" onClick={() => handleEditQuestion(item)}>Edit</button><button className={styles.secondaryButton} type="button" onClick={() => handleDuplicateQuestion(index)}>Duplicate</button><button className={styles.dangerButton} type="button" onClick={() => handleRemoveQuestion(item.id)}>Remove</button></div> : null}
     </article>;
@@ -854,6 +866,7 @@ export default function EvaluationManagement() {
                               event.stopPropagation();
                               setSelectedId(item.evaluationFormId);
                               setOpenDetailId(isOpen ? "" : item.evaluationFormId);
+                              setDetailAsLearner(false);
                             }}
                           >
                             {isOpen ? "Hide" : "Preview"}
@@ -908,12 +921,23 @@ export default function EvaluationManagement() {
                           <div className={styles.detailPanel}>
                             <div className={styles.panelHeader}>
                               <div>
-                                <p className={styles.kicker}>Evaluation preview</p>
+                                <p className={styles.kicker}>{detailAsLearner ? "Learner preview" : "Evaluation preview"}</p>
                                 <h3>{item.formName}</h3>
                               </div>
-                              <button className={styles.closeButton} type="button" onClick={() => setOpenDetailId("")}>
-                                Close
-                              </button>
+                              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                <button
+                                  type="button"
+                                  className={styles.secondaryButton}
+                                  aria-label={detailAsLearner ? "กลับไปมุมมองผู้จัดทำ" : "ดูมุมมองผู้เรียน"}
+                                  title={detailAsLearner ? "กลับไปมุมมองผู้จัดทำ" : "ดูมุมมองผู้เรียน"}
+                                  onClick={() => setDetailAsLearner((current) => !current)}
+                                >
+                                  👁
+                                </button>
+                                <button className={styles.closeButton} type="button" onClick={() => setOpenDetailId("")}>
+                                  Close
+                                </button>
+                              </div>
                             </div>
                             <div className={styles.detailMeta}>
                               <article>
@@ -933,7 +957,31 @@ export default function EvaluationManagement() {
                                 <strong>{item.isAnonymous ? "Anonymous" : "Identified"}</strong>
                               </article>
                             </div>
-                            {renderQuestionPreview(draftQuestions, `detail-${item.evaluationFormId}`, false)}
+                            {detailAsLearner ? (
+                              renderQuestionPreview(draftQuestions, `detail-${item.evaluationFormId}`, false)
+                            ) : draftQuestions.length ? (
+                              <div className={styles.questionList}>
+                                {draftQuestions.map((detail, index) => (
+                                  <article key={detail.id}>
+                                    <strong>
+                                      {index + 1}. {detail.prompt}
+                                    </strong>
+                                    <span>
+                                      {QUESTION_TYPE_LABELS[detail.type]} · {detail.section}
+                                    </span>
+                                    {isChoiceType(detail.type)
+                                      ? detail.options.filter(Boolean).map((option, optionIndex) => (
+                                          <p key={`${detail.id}-${optionIndex}`}>
+                                            {String.fromCharCode(65 + optionIndex)}. {option}
+                                          </p>
+                                        ))
+                                      : null}
+                                  </article>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className={styles.emptyState}>No questions yet.</div>
+                            )}
                           </div>
                         </td>
                       </tr>
