@@ -11,10 +11,12 @@ import { planItems } from "./modules";
 
 type TrainingPlanManagementProps = {
   selectedSlug?: string | null;
+  initialCourseId?: string;
 };
 
 export default function TrainingPlanManagement({
   selectedSlug = null,
+  initialCourseId,
 }: TrainingPlanManagementProps) {
   const router = useRouter();
   const toast = useToast();
@@ -80,6 +82,7 @@ export default function TrainingPlanManagement({
             }
           }}
           username={username}
+          initialCourseId={initialCourseId}
         />
       ) : (
         <section className={styles.moduleSection} aria-label="Training Plan Management modules">

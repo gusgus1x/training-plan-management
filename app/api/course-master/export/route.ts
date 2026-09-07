@@ -14,12 +14,20 @@ export const runtime = "nodejs";
 export const GET = createProtectedRoute(
   async (request: NextRequest, principal) => {
     try {
-      const templatePath = path.join(
+      let templatePath = path.join(
         process.cwd(),
         "app",
         "Excel",
-        "Master Course Import Tem.xlsx",
+        "AT-A Master Course Import Export.xlsx",
       );
+      if (!fs.existsSync(templatePath)) {
+        templatePath = path.join(
+          process.cwd(),
+          "app",
+          "Excel",
+          "Master Course Import Tem.xlsx",
+        );
+      }
 
       if (!fs.existsSync(templatePath)) {
         return NextResponse.json(
@@ -81,6 +89,8 @@ export const GET = createProtectedRoute(
             learningContent: course.learningContent,
             targetGroup: course.targetGroup,
             methodology: course.methodology,
+            background: course.remark || "",
+            daySession: course.lifeCycleMonth || "",
             levels: st?.levels || [],
             positions: st?.positions || [],
           } satisfies CourseExportRecord,

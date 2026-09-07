@@ -9,8 +9,11 @@ import ScheduleCalendar, { scheduleCalendarModule } from "./ScheduleCalendar";
 import SummaryDashboard, {
   summaryDashboardModule,
 } from "./SummaryDashboard";
+import NewActivitiesReport, {
+  newActivitiesReportModule,
+} from "./NewActivitiesReport";
 
-export { internalReportTitle };
+export { internalReportTitle, newActivitiesReportModule };
 export type { InternalReportDraft };
 
 export type ReportModuleProps = {
@@ -33,6 +36,7 @@ export type ReportModuleTopic = {
 export const centerReportItems: readonly ReportModuleTopic[] = [
   { ...withSlug(summaryDashboardModule), icon: "📊", Component: SummaryDashboard },
   { ...withSlug(scheduleCalendarModule), icon: "📅", Component: ScheduleCalendar },
+  { ...withSlug(newActivitiesReportModule), icon: "📰", Component: NewActivitiesReport },
   // Locked until it has a backend: sending a report only adds it to local component state, and
   // announcement and notification are both empty, so a sent report reaches nobody.
   { ...withSlug(internalReportModule), icon: "✉️", Component: InternalReport, locked: true },

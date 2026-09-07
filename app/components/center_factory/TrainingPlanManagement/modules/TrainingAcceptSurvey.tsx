@@ -586,19 +586,30 @@ const copyTextToClipboard = async (text: string): Promise<boolean> => {
   }
 };
 
-export default function TrainingAcceptSurvey() {
+export default function TrainingAcceptSurvey({
+  initialCourseId,
+}: {
+  onOpenTrainingOap?: () => void;
+  username?: string;
+  initialCourseId?: string;
+} = {}) {
   const user = useAuthenticatedUser();
-  const [urlCourseId, setUrlCourseId] = useState<string | null>(null);
+  const [urlCourseId, setUrlCourseId] = useState<string | null>(initialCourseId ?? null);
   // Declared here, above the effect that sets it. Separate from isTargetLoading, which is reused
   // when switching course: only the very first load should replace the whole page.
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (initialCourseId) {
+      setUrlCourseId(initialCourseId);
+    } else if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      setUrlCourseId(params.get("courseId"));
+      const cid = params.get("courseId") || params.get("planId") || params.get("id");
+      if (cid) {
+        setUrlCourseId(cid);
+      }
     }
-  }, []);
+  }, [initialCourseId]);
 
   const confirm = useConfirm();
   const toast = useToast();
@@ -738,8 +749,14 @@ export default function TrainingAcceptSurvey() {
 
   useEffect(() => {
     if (urlCourseId && courseSurveys.length > 0) {
+      const query = decodeURIComponent(urlCourseId).trim().toLowerCase();
       const target = courseSurveys.find(
-        (item) => item.id === urlCourseId || item.code === urlCourseId
+        (item) =>
+          item.id === urlCourseId ||
+          item.id.toLowerCase() === query ||
+          item.code.toLowerCase() === query ||
+          item.title.toLowerCase() === query ||
+          (item.batch && `${item.code} ${item.batch}`.toLowerCase() === query)
       );
       if (target) {
         setSelectedCourseOwner(target.owner);
@@ -761,21 +778,26 @@ export default function TrainingAcceptSurvey() {
         { value: "center" as const, label: "Center" },
       ];
   const availableCourseGroups = useMemo<CourseSurveyGroup[]>(() => {
+    const isTargetCourse = (course: CourseSurvey) =>
+      Boolean(urlCourseId && (course.id === urlCourseId || course.code.toLowerCase() === urlCourseId.toLowerCase()));
+
     const ownerFilteredSessions =
       roleMode === "center"
         ? (selectedCourseOwner
-          ? courseSurveys.filter((course) => course.owner === selectedCourseOwner)
-          : courseSurveys.filter((course) => course.owner === "center"))
+          ? courseSurveys.filter((course) => course.owner === selectedCourseOwner || isTargetCourse(course))
+          : courseSurveys.filter((course) => course.owner === "center" || isTargetCourse(course)))
         : (selectedCourseOwner === ""
           ? courseSurveys.filter(
             (course) =>
+              isTargetCourse(course) ||
               (course.owner === "factory" && (course.ownerCompany === userCompanyCode || course.companies.includes(userCompanyCode))) ||
-              (course.owner === "center" && course.companies.includes(userCompanyCode)),
+              (course.owner === "center" && (course.companies.includes(userCompanyCode) || course.companies.includes("All Companies") || course.companies.length === 0)),
           )
           : courseSurveys.filter((course) =>
-            selectedCourseOwner === "factory"
+            isTargetCourse(course) ||
+            (selectedCourseOwner === "factory"
               ? course.owner === "factory" && (course.ownerCompany === userCompanyCode || course.companies.includes(userCompanyCode))
-              : course.owner === "center" && course.companies.includes(userCompanyCode),
+              : course.owner === "center" && (course.companies.includes(userCompanyCode) || course.companies.includes("All Companies") || course.companies.length === 0)),
           ));
     const groups = new Map<string, CourseSurvey[]>();
 
@@ -840,6 +862,18 @@ export default function TrainingAcceptSurvey() {
     };
   }, [selectedCourse?.id]);
 
+  useEffect(() => {
+    if (urlCourseId && selectedCourse) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById("survey-course-detail-panel");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+  }, [urlCourseId, selectedCourse?.id]);
+
   const reloadEnrollments = async () => {
     if (!selectedCourse) return;
     try {
@@ -856,12 +890,29 @@ export default function TrainingAcceptSurvey() {
   const hasSelectedCourse = selectedCourse !== null;
   const canShowAcceptanceList = hasSelectedCourse;
 
-  const accessibleCompanies: string[] =
-    roleMode === "center"
+  const accessibleCompanies: string[] = useMemo(() => {
+    if (!selectedCourse) {
+      return roleMode === "center"
+        ? ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"]
+        : [userCompanyCode];
+    }
+
+    // Factory in-house courses: strictly only the owning factory can participate
+    if (selectedCourse.owner === "factory") {
+      const ownerComp = selectedCourse.ownerCompany;
+      if (roleMode === "factory") {
+        return ownerComp === userCompanyCode ? [userCompanyCode] : [];
+      }
+      return ownerComp ? [ownerComp] : [];
+    }
+
+    // Center courses:
+    return roleMode === "center"
       ? (selectedCourse?.companies && selectedCourse.companies.length > 0
         ? selectedCourse.companies
         : ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"])
       : [userCompanyCode];
+  }, [selectedCourse, roleMode, userCompanyCode]);
 
   const normalizeTargetPosition = (position: string) => {
     const normalized = (position || "").trim().toLowerCase().replace(/[\.\-_]/g, " ").replace(/\s+/g, " ");
@@ -883,8 +934,12 @@ export default function TrainingAcceptSurvey() {
       return { isExactMatch: false, isLevelOnlyMatch: false, isOutMatch: true };
     }
 
-    // 1. Company check: for center mode, check against target companies in Course Standard
-    if (roleMode === "center") {
+    // 1. Company check:
+    if (selectedCourse.owner === "factory") {
+      if (employee.company !== selectedCourse.ownerCompany) {
+        return { isExactMatch: false, isLevelOnlyMatch: false, isOutMatch: true };
+      }
+    } else if (roleMode === "center") {
       const targetCompanies =
         selectedCourse.companies && selectedCourse.companies.length > 0
           ? selectedCourse.companies
@@ -1206,6 +1261,11 @@ export default function TrainingAcceptSurvey() {
   const handleAddEmployee = async (employee: SurveyEmployee) => {
     if (!selectedCourse) return;
 
+    if (selectedCourse.owner === "factory" && employee.company !== selectedCourse.ownerCompany) {
+      toast.error(`หลักสูตรของโรงงาน ${selectedCourse.ownerCompany} สามารถส่งได้เฉพาะพนักงานของ ${selectedCourse.ownerCompany} เท่านั้น`);
+      return;
+    }
+
     if (roleMode === "factory" && selectedCourse?.owner === "center") {
       const isAlreadyDraft = draftSubmittedEmployees.some(
         (emp) =>
@@ -1432,10 +1492,14 @@ export default function TrainingAcceptSurvey() {
               {!selectedCourse
                 ? "กรุณาเลือกหลักสูตรด้านล่างเพื่อเริ่มต้นจัดการรายชื่อ"
                 : roleMode === "center"
-                  ? "ดูภาพรวมพนักงานทุกบริษัท / อนุมัติรายชื่อที่โรงงานส่งมา"
+                  ? (selectedCourse.owner === "factory"
+                    ? `หลักสูตรภายในของโรงงาน ${selectedCourse.ownerCompany} (จัดการได้เฉพาะพนักงาน ${selectedCourse.ownerCompany})`
+                    : "ดูภาพรวมพนักงานทุกบริษัท / อนุมัติรายชื่อที่โรงงานส่งมา")
                   : isFactoryOwnedByUser
                     ? `จัดการผู้เข้าร่วมอบรมสำหรับหลักสูตรของโรงงาน ${userCompanyCode}`
-                    : `ส่งรายชื่อพนักงาน ${userCompanyCode} เข้าอบรมกลางกับ Center`}
+                    : selectedCourse.owner === "factory"
+                      ? `หลักสูตรนี้เป็นของโรงงาน ${selectedCourse.ownerCompany} เท่านั้น (พนักงาน ${userCompanyCode} ไม่สามารถเข้าอบรมได้)`
+                      : `ส่งรายชื่อพนักงาน ${userCompanyCode} เข้าอบรมกลางกับ Center`}
             </strong>
           </div>
         </div>
@@ -1523,7 +1587,7 @@ export default function TrainingAcceptSurvey() {
 
       {selectedCourse ? (
         <Fragment>
-          <section className={styles.coursePanel}>
+          <section id="survey-course-detail-panel" className={styles.coursePanel}>
             <div>
               <p className={styles.kicker}>Course detail</p>
               <h3>{selectedCourse.title}</h3>

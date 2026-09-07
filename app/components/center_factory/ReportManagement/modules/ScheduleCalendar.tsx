@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   formatRollingPlanCompanies,
   getRollingPlanCompanies,
@@ -138,6 +139,7 @@ export default function ScheduleCalendar({
   initialMonth,
 }: ScheduleCalendarProps = {}) {
   const user = useAuthenticatedUser();
+  const router = useRouter();
   const { language: uiLang } = useUiLanguage();
   const [calendarToday] = useState(getCurrentCalendarDate);
   const [selectedYear, setSelectedYear] = useState(() => initialYear || calendarToday.year);
@@ -168,6 +170,10 @@ export default function ScheduleCalendar({
     () =>
       rollingPlans
         .filter((plan) => {
+          if (plan.status !== "Planned") {
+            return false;
+          }
+
           const planCompanies = getRollingPlanCompanies(plan);
           const isCenterPlan =
             plan.ownerScope === "CENTER" ||
@@ -208,7 +214,9 @@ export default function ScheduleCalendar({
     () =>
       buildCalendarYearOptions(
         calendarToday.year,
-        rollingPlans.map((plan) => plan.trainingDate),
+        rollingPlans
+          .filter((plan) => plan.status === "Planned")
+          .map((plan) => plan.trainingDate),
       ),
     [calendarToday.year, rollingPlans],
   );
@@ -643,6 +651,14 @@ export default function ScheduleCalendar({
               selectedMonthDetail?.plans.map((plan) => {
                 const isExpanded = expandedOverviewCourse === plan.rollingId;
                 const dayNumber = Number(plan.trainingDate.slice(8, 10));
+                const endDateStr = plan.endDate || plan.trainingDate;
+                const isEnded = plan.dbStatus === "COMPLETED" || (Boolean(endDateStr) && endDateStr < todayDate);
+                const isFactoryPlanOfOtherCompany =
+                  !isCenterUser &&
+                  plan.ownerScope === "FACTORY" &&
+                  Boolean(plan.ownerCompany) &&
+                  Boolean(userCompanyCode) &&
+                  plan.ownerCompany !== userCompanyCode;
 
                 return (
                   <article className={styles.courseDirectCard} key={plan.rollingId}>
@@ -661,32 +677,73 @@ export default function ScheduleCalendar({
                           <h4>{plan.course.name}</h4>
                           <span className={styles.courseCodeTag}>{plan.course.code}</span>
                         </div>
-                        <p className={styles.courseSubMeta}>
-                          <span className={styles.metaItem}>
+                        <div className={styles.courseSubMeta}>
+                          <span className={`${styles.metaChip} ${styles.metaChipTime}`}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
                             </svg>
-                            {plan.startTime} - {plan.endTime}
+                            <span className={styles.metaLabel}>{uiLang === "th" ? "เวลา:" : "Time:"}</span>
+                            <span className={styles.metaValue}>{plan.startTime} - {plan.endTime}</span>
                           </span>
-                          <span className={styles.metaDot}>•</span>
-                          <span className={styles.metaItem}>
+                          <span className={`${styles.metaChip} ${styles.metaChipCompany}`}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-3"/>
                             </svg>
-                            {formatRollingPlanCompanies(plan)}
+                            <span className={styles.metaLabel}>{uiLang === "th" ? "ผู้เข้าอบรม:" : "Target:"}</span>
+                            <span className={styles.metaValue}>{formatRollingPlanCompanies(plan)}</span>
                           </span>
-                          <span className={styles.metaDot}>•</span>
-                          <span className={styles.metaItem}>
+                          <span className={`${styles.metaChip} ${styles.metaChipLocation}`}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
                             </svg>
-                            {plan.location || (uiLang === "th" ? "ไม่ได้ระบุสถานที่" : "N/A")}
+                            <span className={styles.metaLabel}>{uiLang === "th" ? "สถานที่:" : "Venue:"}</span>
+                            <span className={styles.metaValue}>{plan.location || (uiLang === "th" ? "ไม่ได้ระบุ" : "N/A")}</span>
                           </span>
-                        </p>
+                          {plan.batch ? (
+                            <span className={`${styles.metaChip} ${styles.metaChipBatch}`}>
+                              <span className={styles.metaLabel}>{uiLang === "th" ? "รุ่น:" : "Batch:"}</span>
+                              <span className={styles.metaValue}>{plan.batch}</span>
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
 
                       <div className={styles.courseCardActions}>
                         <span className={styles.targetGroupBadge}>{plan.course.courseGroup}</span>
+
+                        {isEnded ? (
+                          <button
+                            type="button"
+                            className={styles.endedBtn}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push("/training-record");
+                            }}
+                            title={uiLang === "th" ? "หลักสูตรนี้จบไปแล้ว ดูข้อมูลและประวัติที่ Training Record" : "Course has completed. View in Training Record"}
+                          >
+                            <span>{uiLang === "th" ? "เสร็จสิ้นแล้ว" : "Completed"}</span>
+                          </button>
+                        ) : isFactoryPlanOfOtherCompany ? (
+                          <span
+                            className={styles.scopeRestrictedBadge}
+                            title={uiLang === "th" ? `หลักสูตรภายในของโรงงาน ${plan.ownerCompany}` : `In-house course for ${plan.ownerCompany}`}
+                          >
+                            {uiLang === "th" ? `เฉพาะ ${plan.ownerCompany}` : `${plan.ownerCompany} Only`}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className={styles.nominateBtn}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/training-plan/training-accept-survey?courseId=${encodeURIComponent(plan.rollingId)}`);
+                            }}
+                            title={uiLang === "th" ? "ส่งคนเข้าอบรมใน Training Accept Survey" : "Nominate trainees in Training Accept Survey"}
+                          >
+                            <span>{uiLang === "th" ? "ส่งคนเข้าอบรม" : "Accept Survey"}</span>
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           className={styles.toggleDetailBtn}
@@ -726,40 +783,199 @@ export default function ScheduleCalendar({
                     </div>
 
                     {isExpanded ? (
-                      <dl className={styles.courseDetailPanel}>
-                        <div>
-                          <dt>Course Code</dt>
-                          <dd>{plan.course.code}</dd>
+                      <div className={styles.courseDetailPanel}>
+                        {/* 1. สรุปข้อมูลสำคัญ (Logistics & Key Information) */}
+                        <div className={styles.detailGrid}>
+                          <div className={styles.detailCard}>
+                            <span className={styles.detailLabel}>{uiLang === "th" ? "รหัสหลักสูตร" : "Course Code"}</span>
+                            <strong className={styles.detailValue}>{plan.course.code}</strong>
+                          </div>
+                          <div className={styles.detailCard}>
+                            <span className={styles.detailLabel}>{uiLang === "th" ? "กลุ่มหลักสูตร" : "Course Group"}</span>
+                            <strong className={styles.detailValue}>{plan.course.courseGroup || "-"}</strong>
+                          </div>
+                          <div className={styles.detailCard}>
+                            <span className={styles.detailLabel}>{uiLang === "th" ? "ประเภทหลักสูตร" : "Course Type"}</span>
+                            <strong className={styles.detailValue}>{plan.course.courseType || "-"}</strong>
+                          </div>
+                          <div className={styles.detailCard}>
+                            <span className={styles.detailLabel}>{uiLang === "th" ? "รุ่นที่ (Batch)" : "Batch"}</span>
+                            <strong className={styles.detailValue}>{plan.batch || "-"}</strong>
+                          </div>
+                          <div className={styles.detailCard}>
+                            <span className={styles.detailLabel}>{uiLang === "th" ? "วันที่จัดอบรม" : "Training Dates"}</span>
+                            <strong className={styles.detailValue}>
+                              {plan.trainingDate}
+                              {plan.endDate && plan.endDate !== plan.trainingDate ? ` ถึง ${plan.endDate}` : ""}
+                            </strong>
+                          </div>
+                          <div className={styles.detailCard}>
+                            <span className={styles.detailLabel}>{uiLang === "th" ? "เวลาอบรม" : "Training Time"}</span>
+                            <strong className={styles.detailValue}>
+                              {plan.startTime} - {plan.endTime} {plan.hours ? `(${plan.hours} ชม.)` : ""}
+                            </strong>
+                          </div>
+                          <div className={styles.detailCard}>
+                            <span className={styles.detailLabel}>{uiLang === "th" ? "สถานที่" : "Location"}</span>
+                            <strong className={styles.detailValue}>{plan.location || (uiLang === "th" ? "ไม่ได้ระบุสถานที่" : "N/A")}</strong>
+                          </div>
+                          <div className={styles.detailCard}>
+                            <span className={styles.detailLabel}>{uiLang === "th" ? "จำนวนเป้าหมาย" : "Target Capacity"}</span>
+                            <strong className={styles.detailValue}>{plan.participants ? `${plan.participants} คน` : "-"}</strong>
+                          </div>
+                          <div className={styles.detailCard}>
+                            <span className={styles.detailLabel}>{uiLang === "th" ? "หน่วยงานผู้จัด" : "Organizer"}</span>
+                            <strong className={styles.detailValue}>
+                              {plan.ownerScope === "CENTER"
+                                ? (uiLang === "th" ? "HRD Center (ส่วนกลาง)" : "HRD Center")
+                                : `โรงงาน ${plan.ownerCompany || plan.company}`}
+                            </strong>
+                          </div>
+                          <div className={styles.detailCard}>
+                            <span className={styles.detailLabel}>{uiLang === "th" ? "บริษัทเป้าหมาย" : "Target Companies"}</span>
+                            <strong className={styles.detailValue}>{formatRollingPlanCompanies(plan)}</strong>
+                          </div>
+                          <div className={styles.detailCard}>
+                            <span className={styles.detailLabel}>{uiLang === "th" ? "วิทยากร" : "Trainer"}</span>
+                            <strong className={styles.detailValue}>{plan.trainer || (uiLang === "th" ? "ไม่ได้ระบุ" : "-")}</strong>
+                          </div>
+                          <div className={styles.detailCard}>
+                            <span className={styles.detailLabel}>{uiLang === "th" ? "สถาบันจัดอบรม" : "Provider"}</span>
+                            <strong className={styles.detailValue}>{plan.provider || (uiLang === "th" ? "ไม่ได้ระบุ" : "-")}</strong>
+                          </div>
+                          {plan.budget ? (
+                            <div className={styles.detailCard}>
+                              <span className={styles.detailLabel}>{uiLang === "th" ? "งบประมาณรวม" : "Total Budget"}</span>
+                              <strong className={styles.detailValue}>{Number(plan.budget).toLocaleString()} บาท</strong>
+                            </div>
+                          ) : null}
+                          <div className={styles.detailCard}>
+                            <span className={styles.detailLabel}>{uiLang === "th" ? "สถานะหลักสูตร" : "Status"}</span>
+                            <strong className={styles.detailValue} style={{ color: isEnded ? "#64748b" : "#059669" }}>
+                              {isEnded
+                                ? (uiLang === "th" ? "เสร็จสิ้นแล้ว" : "Completed")
+                                : (uiLang === "th" ? "เปิดรับสมัคร" : "Published")}
+                            </strong>
+                          </div>
                         </div>
-                        <div>
-                          <dt>Course Group</dt>
-                          <dd>{plan.course.courseGroup}</dd>
+
+                        {/* 2. วัตถุประสงค์และเนื้อหาหลักสูตร (Objectives & Learning Content) */}
+                        {(plan.course.objective || plan.course.learningContent || plan.course.methodology) ? (
+                          <div className={styles.detailSectionBlock}>
+                            {plan.course.objective ? (
+                              <div className={styles.detailTextBox}>
+                                <h5>{uiLang === "th" ? "วัตถุประสงค์ของหลักสูตร" : "Course Objectives"}</h5>
+                                <p>{plan.course.objective}</p>
+                              </div>
+                            ) : null}
+                            {plan.course.learningContent ? (
+                              <div className={styles.detailTextBox}>
+                                <h5>{uiLang === "th" ? "เนื้อหาและหัวข้อการเรียนรู้" : "Learning Content & Outline"}</h5>
+                                <p>{plan.course.learningContent}</p>
+                              </div>
+                            ) : null}
+                            {plan.course.methodology ? (
+                              <div className={styles.detailTextBox}>
+                                <h5>{uiLang === "th" ? "วิธีการฝึกอบรม" : "Training Methodology"}</h5>
+                                <p>{plan.course.methodology}</p>
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+
+                        {/* 3. กลุ่มเป้าหมายและแบบทดสอบ/การวัดผล (Target Audience & Evaluations) */}
+                        <div className={styles.detailTwoColumns}>
+                          <div className={styles.detailColCard}>
+                            <h5>{uiLang === "th" ? "กลุ่มเป้าหมายและตำแหน่งที่กำหนด" : "Target Audience & Criteria"}</h5>
+                            <div className={styles.detailRowItem}>
+                              <span>{uiLang === "th" ? "กลุ่มเป้าหมาย:" : "Target Group:"}</span>
+                              <strong>{plan.course.targetGroup || (uiLang === "th" ? "พนักงานทั่วไป" : "General staff")}</strong>
+                            </div>
+                            {plan.course.targetLevels && plan.course.targetLevels.length > 0 ? (
+                              <div className={styles.detailRowItem}>
+                                <span>{uiLang === "th" ? "ระดับตำแหน่ง (Levels):" : "Target Levels:"}</span>
+                                <div className={styles.tagWrap}>
+                                  {plan.course.targetLevels.map((lvl) => (
+                                    <span key={lvl} className={styles.smallTag}>{lvl}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null}
+                            {plan.course.targetPositions && plan.course.targetPositions.length > 0 ? (
+                              <div className={styles.detailRowItem}>
+                                <span>{uiLang === "th" ? "ตำแหน่ง (Positions):" : "Target Positions:"}</span>
+                                <div className={styles.tagWrap}>
+                                  {plan.course.targetPositions.map((pos) => (
+                                    <span key={pos} className={styles.smallTag}>{pos}</span>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+
+                          <div className={styles.detailColCard}>
+                            <h5>{uiLang === "th" ? "แบบทดสอบและการประเมินผล" : "Assessments & Evaluations"}</h5>
+                            <div className={styles.assessmentList}>
+                              <div className={styles.assessmentItem}>
+                                <span>{uiLang === "th" ? "ก่อนอบรม (Pre-Test):" : "Pre-Test:"}</span>
+                                <strong>{plan.course.preTest || (uiLang === "th" ? "ไม่มี" : "None")}</strong>
+                              </div>
+                              <div className={styles.assessmentItem}>
+                                <span>{uiLang === "th" ? "หลังอบรม (Post-Test):" : "Post-Test:"}</span>
+                                <strong>{plan.course.postTest || (uiLang === "th" ? "ไม่มี" : "None")}</strong>
+                              </div>
+                              <div className={styles.assessmentItem}>
+                                <span>{uiLang === "th" ? "แบบประเมินผล (Evaluation):" : "Evaluation Form:"}</span>
+                                <strong>{plan.course.evaluation || (uiLang === "th" ? "ไม่มี" : "None")}</strong>
+                              </div>
+                              <div className={styles.assessmentItem}>
+                                <span>{uiLang === "th" ? "ติดตามผล 30 วัน:" : "30-Day Follow-up:"}</span>
+                                <strong>{plan.course.evaluationAfter30Day || (uiLang === "th" ? "ไม่มี" : "None")}</strong>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <dt>Time</dt>
-                          <dd>{plan.startTime} - {plan.endTime}</dd>
+
+                        {/* 4. แถบ Action ด้านล่างของกล่องรายละเอียด */}
+                        <div className={styles.detailFooterBar}>
+                          <div className={styles.footerStatusChip}>
+                            <span
+                              className={styles.statusDot}
+                              style={{ background: isEnded ? "#94a3b8" : "#10b981" }}
+                            />
+                            <span>
+                              {isEnded
+                                ? (uiLang === "th" ? "หลักสูตรนี้จัดเสร็จสิ้นแล้ว" : "Course has completed")
+                                : isFactoryPlanOfOtherCompany
+                                  ? (uiLang === "th" ? `หลักสูตรเฉพาะพนักงาน ${plan.ownerCompany}` : `In-house course for ${plan.ownerCompany}`)
+                                  : (uiLang === "th" ? "หลักสูตรนี้กำลังเปิดรับสมัครผู้เข้าอบรม" : "Open for trainee nomination")}
+                            </span>
+                          </div>
+                          <div>
+                            {isEnded ? (
+                              <button
+                                type="button"
+                                className={styles.endedBtn}
+                                onClick={() => router.push("/training-record")}
+                              >
+                                <span>{uiLang === "th" ? "เสร็จสิ้นแล้ว" : "Completed"}</span>
+                              </button>
+                            ) : isFactoryPlanOfOtherCompany ? (
+                              <span className={styles.scopeRestrictedBadge}>
+                                {uiLang === "th" ? `เฉพาะ ${plan.ownerCompany}` : `${plan.ownerCompany} Only`}
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                className={styles.nominateBtn}
+                                onClick={() => router.push(`/training-plan/training-accept-survey?courseId=${encodeURIComponent(plan.rollingId)}`)}
+                              >
+                                <span>{uiLang === "th" ? "ส่งคนเข้าอบรม" : "Accept Survey"}</span>
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <dt>Company</dt>
-                          <dd>{formatRollingPlanCompanies(plan)}</dd>
-                        </div>
-                        <div>
-                          <dt>Trainer</dt>
-                          <dd>{plan.trainer || "-"}</dd>
-                        </div>
-                        <div>
-                          <dt>Batch</dt>
-                          <dd>{plan.batch || "-"}</dd>
-                        </div>
-                        <div>
-                          <dt>Location</dt>
-                          <dd>{plan.location || "-"}</dd>
-                        </div>
-                        <div>
-                          <dt>Status</dt>
-                          <dd>{plan.status}</dd>
-                        </div>
-                      </dl>
+                      </div>
                     ) : null}
                   </article>
                 );

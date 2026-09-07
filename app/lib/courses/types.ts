@@ -27,7 +27,7 @@ export type CreateCourseInput = {
   status: "Active" | "Draft" | "Inactive";
   courseTypeId: string;
   courseGroupId: string;
-  
+
   standardCode: string;
   standardName: string;
   functionId: string | null;

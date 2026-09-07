@@ -4,7 +4,11 @@ import path from "path";
 
 export async function GET() {
   try {
-    let filePath = path.join(process.cwd(), "app", "Excel", "Master Course Import Tem.xlsx");
+    // Priority order: new AT-A template first, then fallback to legacy files
+    let filePath = path.join(process.cwd(), "app", "Excel", "AT-A Master Course Import Export.xlsx");
+    if (!fs.existsSync(filePath)) {
+      filePath = path.join(process.cwd(), "app", "Excel", "Master Course Import Tem.xlsx");
+    }
     if (!fs.existsSync(filePath)) {
       filePath = path.join(process.cwd(), "app", "Excel", "Course Master Create Tem.xlsx");
     }
@@ -19,7 +23,7 @@ export async function GET() {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": 'attachment; filename="Master_Course_Import_Template.xlsx"',
+        "Content-Disposition": 'attachment; filename="AT-A_Master_Course_Import_Export.xlsx"',
       },
     });
   } catch (error) {

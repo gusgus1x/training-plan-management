@@ -427,7 +427,7 @@ const loadPlanScope = async (db: DatabaseClient, planId: bigint) => {
   return { courseId: plan.training_plan_oap.course_id, companyId: plan.training_plan_oap.company_id };
 };
 
-const assertFactoryScopeForEnrollment = (
+export const assertFactoryScopeForEnrollment = (
   planCompanyId: bigint | null,
   employeeCompanyId: bigint | null,
   requesterCompanyId: string | null,
@@ -435,11 +435,21 @@ const assertFactoryScopeForEnrollment = (
   if (requesterCompanyId === null) {
     throw forbidden("This training plan or employee is outside your permitted scope");
   }
-  const isOwnPlan = planCompanyId !== null && planCompanyId.toString() === requesterCompanyId;
-  const isOwnEmployee = employeeCompanyId !== null && employeeCompanyId.toString() === requesterCompanyId;
 
-  if (!isOwnPlan && !isOwnEmployee) {
-    throw forbidden("This training plan or employee is outside your permitted scope");
+  // Factory in-house plan: only the owning factory can manage it, and only with their own employees
+  if (planCompanyId !== null) {
+    const isOwnPlan = planCompanyId.toString() === requesterCompanyId;
+    const isOwnEmployee = employeeCompanyId !== null && employeeCompanyId.toString() === requesterCompanyId;
+    if (!isOwnPlan || !isOwnEmployee) {
+      throw forbidden("Factory training plans can only enroll employees from their own company");
+    }
+    return;
+  }
+
+  // Center plan: factory user can only enroll employees of their own company
+  const isOwnEmployee = employeeCompanyId !== null && employeeCompanyId.toString() === requesterCompanyId;
+  if (!isOwnEmployee) {
+    throw forbidden("Factory users can only enroll employees from their own company");
   }
 };
 
@@ -481,6 +491,13 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
         const employee = input.employeeUserId
           ? await db().employee.findUniqueOrThrow({ where: { user_id: input.employeeUserId }, include: employeeInclude })
           : await db().employee.findUniqueOrThrow({ where: { employee_id: BigInt(input.employeeId) }, include: employeeInclude });
+
+        // Factory-owned in-house plans strictly only accept employees from that factory
+        if (planCompanyId !== null) {
+          if (employee.company_id === null || employee.company_id.toString() !== planCompanyId.toString()) {
+            throw forbidden("Factory training plans can only enroll employees from their own company");
+          }
+        }
 
         if (role === "HRD_FACTORY") {
           assertFactoryScopeForEnrollment(planCompanyId, employee.company_id, companyId);

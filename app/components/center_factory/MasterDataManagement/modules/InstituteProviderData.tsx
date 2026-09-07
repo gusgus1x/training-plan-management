@@ -30,20 +30,46 @@ export const instituteProviderDataModule = {
 type InstituteProviderForm = {
   instituteProviderCode: string;
   instituteProviderName: string;
-  status: InstituteProviderStatus;
 };
 
 const blankForm = (): InstituteProviderForm => ({
   instituteProviderCode: "",
   instituteProviderName: "",
-  status: "ACTIVE",
 });
 
 const toForm = (record: ApiInstituteProviderRecord): InstituteProviderForm => ({
   instituteProviderCode: record.instituteProviderCode,
   instituteProviderName: record.instituteProviderName,
-  status: record.status,
 });
+
+const CODE_PATTERN = /^([A-Za-z_-]+?)(\d+)$/;
+const nextAutoCode = (existingCodes: string[], fallbackPrefix: string) => {
+  const prefixCounts = new Map<string, number>();
+  for (const code of existingCodes) {
+    const match = code.trim().match(CODE_PATTERN);
+    if (match) prefixCounts.set(match[1], (prefixCounts.get(match[1]) ?? 0) + 1);
+  }
+  let activePrefix = fallbackPrefix;
+  let topCount = 0;
+  for (const [prefix, count] of prefixCounts) {
+    if (count > topCount) {
+      topCount = count;
+      activePrefix = prefix;
+    }
+  }
+  let maxNumber = 0;
+  let width = 4;
+  for (const code of existingCodes) {
+    const match = code.trim().match(CODE_PATTERN);
+    if (!match || match[1] !== activePrefix) continue;
+    const value = parseInt(match[2], 10);
+    if (value > maxNumber) {
+      maxNumber = value;
+      width = match[2].length;
+    }
+  }
+  return `${activePrefix}${String(maxNumber + 1).padStart(width, "0")}`;
+};
 
 const errorText = (error: unknown) =>
   error instanceof InstituteProviderClientError
@@ -73,7 +99,7 @@ export default function InstituteProviderData() {
     const query = search.trim().toLowerCase();
     if (!query) return rows;
     return rows.filter((row) =>
-      [row.instituteProviderCode, row.instituteProviderName, row.status]
+      [row.instituteProviderCode, row.instituteProviderName]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
@@ -120,7 +146,13 @@ export default function InstituteProviderData() {
 
   const startNew = () => {
     if (!isCenter) return;
-    setForm(blankForm());
+    setForm({
+      instituteProviderCode: nextAutoCode(
+        rows.map((item) => item.instituteProviderCode),
+        "IP",
+      ),
+      instituteProviderName: "",
+    });
     setFormMode("new");
     setError(null);
   };
@@ -137,12 +169,12 @@ export default function InstituteProviderData() {
     const savingMode = formMode;
     const editingId = selected?.instituteProviderId ?? null;
     if (savingMode === "edit" && !editingId) {
-      setError("Select an Institute/Provider before saving changes.");
+      setError(isThai ? "กรุณาเลือกสถาบัน/ผู้ให้บริการก่อนบันทึก" : "Select an Institute/Provider before saving changes.");
       return;
     }
     const missingFields: string[] = [];
-    if (!form.instituteProviderCode.trim()) missingFields.push("รหัสสถาบัน / ผู้ให้บริการ (Institute / Provider Code)");
-    if (!form.instituteProviderName.trim()) missingFields.push("ชื่อสถาบัน / ผู้ให้บริการ (Institute / Provider Name)");
+    if (!form.instituteProviderCode.trim()) missingFields.push(isThai ? "รหัสสถาบัน / ผู้ให้บริการ (Institute / Provider Code)" : "Institute / Provider Code");
+    if (!form.instituteProviderName.trim()) missingFields.push(isThai ? "ชื่อสถาบัน / ผู้ให้บริการ (Institute / Provider Name)" : "Institute / Provider Name");
     if (missingFields.length > 0) {
       await notice({ missingFields });
       return;
@@ -153,7 +185,7 @@ export default function InstituteProviderData() {
       const input = {
         instituteProviderCode: form.instituteProviderCode.trim().toUpperCase(),
         instituteProviderName: form.instituteProviderName.trim(),
-        status: form.status,
+        status: "ACTIVE" as const,
       };
       const result =
         savingMode === "edit" && editingId
@@ -174,7 +206,7 @@ export default function InstituteProviderData() {
       setSelectedId(result.instituteProvider.instituteProviderId);
       setFormMode(null);
       setForm(blankForm());
-      toast.success(`บันทึก ${result.instituteProvider.instituteProviderCode} แล้ว / Saved`);
+      toast.success(isThai ? `บันทึก ${result.instituteProvider.instituteProviderCode} แล้ว` : `Saved ${result.instituteProvider.instituteProviderCode}`);
     } catch (caught: unknown) {
       setError(errorText(caught));
     } finally {
@@ -186,7 +218,15 @@ export default function InstituteProviderData() {
     if (!isCenter || !selected || isSaving) {
       return;
     }
-    if (!(await confirm({ message: { th: `ยืนยันที่จะลบสถาบัน / ผู้ให้บริการ ${selected.instituteProviderCode} หรือไม่?`, en: `Confirm deleting ${selected.instituteProviderCode}?` }, danger: true }))) {
+    if (
+      !(await confirm({
+        message: {
+          th: `ยืนยันที่จะลบสถาบัน / ผู้ให้บริการ ${selected.instituteProviderCode} หรือไม่?`,
+          en: `Confirm deleting ${selected.instituteProviderCode}?`,
+        },
+        danger: true,
+      }))
+    ) {
       return;
     }
     setIsSaving(true);
@@ -202,7 +242,9 @@ export default function InstituteProviderData() {
           ),
         );
         toast.warning(
-          `${result.instituteProvider.instituteProviderCode} ยังถูกใช้งานใน Training OAP จึงเปลี่ยนเป็นสถานะ INACTIVE แทนการลบ / Still in use, deactivated instead of deleted`,
+          isThai
+            ? `${result.instituteProvider.instituteProviderCode} ยังถูกใช้งานในระบบ Training OAP จึงไม่สามารถลบออกจากระบบได้`
+            : `${result.instituteProvider.instituteProviderCode} is still in use in Training OAP and cannot be deleted`,
         );
       } else {
         const nextRows = rows.filter(
@@ -210,7 +252,7 @@ export default function InstituteProviderData() {
         );
         setRows(nextRows);
         setSelectedId(nextRows[0]?.instituteProviderId ?? null);
-        toast.success(`ลบ ${result.instituteProvider.instituteProviderCode} แล้ว / Deleted`);
+        toast.success(isThai ? `ลบ ${result.instituteProvider.instituteProviderCode} แล้ว` : `Deleted ${result.instituteProvider.instituteProviderCode}`);
       }
       setFormMode(null);
       void listInstituteProviders()
@@ -257,7 +299,7 @@ export default function InstituteProviderData() {
             aria-label="Search institute / provider records"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search code, name, status..."
+            placeholder={isThai ? "ค้นหารหัส, ชื่อสถาบัน/ผู้ให้บริการ..." : "Search code, name..."}
           />
           {isCenter ? (
             <>
@@ -303,11 +345,18 @@ export default function InstituteProviderData() {
       {formMode ? (
         <section className={styles.formPanel}>
           <h3>
-            {formMode === "new" ? "Add Institute / Provider" : "Edit Institute / Provider"}
+            {formMode === "new"
+              ? (isThai ? "เพิ่มสถาบัน / ผู้ให้บริการ (Add Institute / Provider)" : "Add Institute / Provider")
+              : (isThai ? `แก้ไขสถาบัน / ผู้ให้บริการ (Edit Institute / Provider) - ${form.instituteProviderCode}` : `Edit Institute / Provider - ${form.instituteProviderCode}`)}
           </h3>
           <div className={styles.formGrid}>
             <label>
-              Code
+              {isThai ? "รหัสสถาบัน / ผู้ให้บริการ (Code)" : "Institute / Provider Code"}{" "}
+              {formMode === "new" ? (
+                <span style={{ fontSize: "0.75rem", color: "var(--ui-30-primary)", fontWeight: 700 }}>
+                  {isThai ? "(สร้างอัตโนมัติ)" : "(Auto)"}
+                </span>
+              ) : null}
               <input
                 value={form.instituteProviderCode}
                 maxLength={30}
@@ -317,11 +366,11 @@ export default function InstituteProviderData() {
                     instituteProviderCode: event.target.value,
                   }))
                 }
-                placeholder="e.g. ATA, TGI"
+                placeholder={isThai ? "เช่น IP0001 (สร้างให้อัตโนมัติ)" : "e.g. IP0001 (auto generated)"}
               />
             </label>
             <label>
-              Name
+              {isThai ? "ชื่อสถาบัน / ผู้ให้บริการ (Name)" : "Institute / Provider Name"}
               <input
                 value={form.instituteProviderName}
                 maxLength={255}
@@ -331,23 +380,8 @@ export default function InstituteProviderData() {
                     instituteProviderName: event.target.value,
                   }))
                 }
-                placeholder="e.g. ATA, Thai-German Institute"
+                placeholder={isThai ? "เช่น สถาบันยานยนต์, Thai-German Institute" : "e.g. Thai-German Institute, ATA"}
               />
-            </label>
-            <label>
-              Status
-              <select
-                value={form.status}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    status: event.target.value as InstituteProviderStatus,
-                  }))
-                }
-              >
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="INACTIVE">INACTIVE</option>
-              </select>
             </label>
             <div className={styles.fullWidth}>
               <button
@@ -356,7 +390,11 @@ export default function InstituteProviderData() {
                 onClick={() => void save()}
                 disabled={isSaving}
               >
-                {isSaving ? (isThai ? "กำลังบันทึก..." : "Saving...") : formMode === "new" ? (isThai ? "เพิ่มผู้ให้บริการ" : "Add Provider") : (isThai ? "บันทึกการเปลี่ยนแปลง" : "Save Changes")}
+                {isSaving
+                  ? (isThai ? "กำลังบันทึก..." : "Saving...")
+                  : formMode === "new"
+                    ? (isThai ? "เพิ่มผู้ให้บริการ" : "Add Provider")
+                    : (isThai ? "บันทึกการเปลี่ยนแปลง" : "Save Changes")}
               </button>
               <button
                 className={styles.cancelButton}
@@ -376,17 +414,18 @@ export default function InstituteProviderData() {
 
       <section className={styles.panel}>
         <div className={styles.panelHeader}>
-          <h3>Institute / Provider Records</h3>
-          <span className={styles.itemCount}>{visibleRows.length} records</span>
+          <h3>{isThai ? "รายการสถาบัน / ผู้ให้บริการ" : "Institute / Provider Records"}</h3>
+          <span className={styles.itemCount}>
+            {visibleRows.length} {isThai ? "รายการ" : "records"}
+          </span>
         </div>
         <div className={styles.tableWrap}>
           <table className={styles.dataTable}>
             <thead>
               <tr>
-                <th>No.</th>
-                <th>Code</th>
-                <th>Name</th>
-                <th>Status</th>
+                <th style={{ width: "80px", textAlign: "center" }}>{isThai ? "ลำดับ" : "No."}</th>
+                <th style={{ width: "180px" }}>{isThai ? "รหัส (Code)" : "Code"}</th>
+                <th>{isThai ? "ชื่อสถาบัน / ผู้ให้บริการ (Name)" : "Name"}</th>
               </tr>
             </thead>
             <tbody translate="no">
@@ -398,16 +437,17 @@ export default function InstituteProviderData() {
                   key={row.instituteProviderId}
                   onClick={() => setSelectedId(row.instituteProviderId)}
                 >
-                  <td>{index + 1}</td>
-                  <td>{row.instituteProviderCode}</td>
+                  <td style={{ textAlign: "center" }}>{index + 1}</td>
+                  <td>
+                    <span className={styles.codeBadge}>{row.instituteProviderCode}</span>
+                  </td>
                   <td>{row.instituteProviderName}</td>
-                  <td>{row.status}</td>
                 </tr>
               ))}
               {!isLoading && visibleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className={styles.emptyState}>
-                    No institute / provider data found.
+                  <td colSpan={3} className={styles.emptyState}>
+                    {isThai ? "ไม่พบข้อมูลสถาบัน / ผู้ให้บริการ" : "No institute / provider data found."}
                   </td>
                 </tr>
               ) : null}
