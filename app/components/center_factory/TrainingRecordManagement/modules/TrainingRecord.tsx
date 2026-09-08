@@ -684,6 +684,35 @@ const EvaluationSummaryPanel = ({ planId }: { planId: string }) => {
                         </div>
                       ) : null}
 
+                      {/* A grid is reported per row, because its answers are (row, column) pairs.
+                          Counting by column alone would merge the rows into one bar chart that
+                          answers a question nobody asked. Each row gets its own small breakdown,
+                          with percentages taken against the people who answered THAT row. */}
+                      {question.gridRows.length > 0 ? (
+                        <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                          {question.gridRows.map((row) => (
+                            <div key={row.rowId}>
+                              <p style={{ margin: "0 0 5px", fontSize: "0.78rem", fontWeight: 800, color: "var(--ui-30-ink)" }}>
+                                {row.rowText}
+                                <span style={{ marginLeft: "6px", fontWeight: 600, color: "var(--ui-30-muted)" }}>
+                                  ({row.answeredBy} ผู้ตอบ)
+                                </span>
+                              </p>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+                                {row.cells.map((cell) => (
+                                  <SummaryBar
+                                    key={cell.columnId}
+                                    label={cell.columnText}
+                                    count={cell.count}
+                                    total={row.answeredBy}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+
                       {question.textAnswersWithheld ? (
                         <p style={{ marginTop: "10px", fontSize: "0.76rem", color: "var(--ui-30-muted)" }}>
                           ซ่อนข้อความไว้จนกว่าจะมีผู้ตอบครบ {FREE_TEXT_MIN_RESPONDENTS} คน —

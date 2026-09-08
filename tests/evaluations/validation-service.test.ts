@@ -187,3 +187,153 @@ describe("evaluation repository scope", () => {
     }));
   });
 });
+
+/** ApiError puts the human-readable cause in details.reason; the message is always generic. */
+const reasonOf = (run: () => unknown): string => {
+  try {
+    run();
+  } catch (error) {
+    return (error as { details?: { reason?: string } }).details?.reason ?? String(error);
+  }
+  throw new Error("expected the input to be rejected, but it was accepted");
+};
+
+describe("parseEvaluationWriteInput - sections and text blocks", () => {
+  const question = (extra: Record<string, unknown> = {}) => ({
+    questionText: "How satisfied are you?",
+    questionType: "SINGLE_CHOICE",
+    sectionName: null,
+    isRequired: true,
+    options: [
+      { optionText: "Yes", optionValue: null },
+      { optionText: "No", optionValue: null },
+    ],
+    ...extra,
+  });
+  const sectionBreak = (extra: Record<string, unknown> = {}) => ({
+    questionText: "Part two",
+    questionType: "SECTION_BREAK",
+    sectionName: null,
+    isRequired: false,
+    options: [],
+    ...extra,
+  });
+  const parse = (questions: unknown[], extra: Record<string, unknown> = {}) =>
+    parseEvaluationWriteInput({ ...baseInput, ...extra, questions });
+
+  it("accepts a section break and a text block alongside real questions", () => {
+    const parsed = parse([
+      question(),
+      sectionBreak({ questionDescription: "Second half" }),
+      question({ questionText: "And now?" }),
+    ]);
+    expect(parsed.questions.map((q) => q.questionType)).toEqual(["SINGLE_CHOICE", "SECTION_BREAK", "SINGLE_CHOICE"]);
+    expect(parsed.questions[1].questionDescription).toBe("Second half");
+  });
+
+  it("rejects a section break that carries options", () => {
+    const reason = reasonOf(() => parse([
+      question(),
+      sectionBreak({ options: [{ optionText: "Nope", optionValue: null }] }),
+      question(),
+    ]));
+    expect(reason).toMatch(/must not contain options/);
+  });
+
+  it("rejects a section break marked required", () => {
+    const reason = reasonOf(() => parse([question(), sectionBreak({ isRequired: true }), question()]));
+    expect(reason).toMatch(/cannot be a required question/);
+  });
+
+  it("rejects a branch that jumps backwards", () => {
+    // Forward-only is what keeps the visited path acyclic; see app/lib/formBlocks.
+    const reason = reasonOf(() => parse([
+      question(),
+      sectionBreak(),
+      question({ options: [
+        { optionText: "Back", optionValue: null, nextSection: 1 },
+        { optionText: "No", optionValue: null },
+      ] }),
+    ]));
+    expect(reason).toMatch(/only jump forward/);
+  });
+
+  it("rejects a branch target past the last section", () => {
+    const reason = reasonOf(() => parse([
+      question({ options: [
+        { optionText: "Far", optionValue: null, nextSection: 9 },
+        { optionText: "No", optionValue: null },
+      ] }),
+      sectionBreak(),
+      question(),
+    ]));
+    expect(reason).toMatch(/does not exist/);
+  });
+
+  it("rejects a branch on a multi-select, which has no single answer to branch on", () => {
+    const reason = reasonOf(() => parse([
+      question({ questionType: "MULTIPLE_CHOICE", options: [
+        { optionText: "A", optionValue: null, nextSection: 2 },
+        { optionText: "B", optionValue: null },
+      ] }),
+      sectionBreak(),
+      question(),
+    ]));
+    expect(reason).toMatch(/single-choice/);
+  });
+
+  it("rejects a trailing section break, which would leave an empty section", () => {
+    expect(reasonOf(() => parse([question(), sectionBreak()]))).toMatch(/empty section/);
+  });
+
+  it("will not publish a form made of nothing but blocks", () => {
+    const reason = reasonOf(() => parse([
+      question({ questionText: "Note", questionType: "TEXT_BLOCK", isRequired: false, options: [] }),
+    ], { status: "PUBLISHED" }));
+    expect(reason).toMatch(/at least one question/);
+  });
+});
+
+describe("SUBMIT_SECTION in validation", () => {
+  const question = (extra: Record<string, unknown> = {}) => ({
+    questionText: "Pick one",
+    questionType: "SINGLE_CHOICE",
+    sectionName: null,
+    isRequired: true,
+    options: [{ optionText: "Yes", optionValue: null }, { optionText: "No", optionValue: null }],
+    ...extra,
+  });
+  const sectionBreak = (extra: Record<string, unknown> = {}) => ({
+    questionText: "Part two",
+    questionType: "SECTION_BREAK",
+    sectionName: null,
+    isRequired: false,
+    options: [],
+    ...extra,
+  });
+  const parse = (questions: unknown[]) => parseEvaluationWriteInput({ ...baseInput, questions });
+
+  it("accepts 0 on a section, meaning submit the form here", () => {
+    // 0 is exempt from the forward-only rule: it names no section, so "may only jump forward" does
+    // not apply to it.
+    const parsed = parse([question(), sectionBreak({ nextSection: 0 }), question()]);
+    expect(parsed.questions[1].nextSection).toBe(0);
+  });
+
+  it("accepts 0 on an option", () => {
+    const parsed = parse([
+      question({ options: [
+        { optionText: "Done", optionValue: null, nextSection: 0 },
+        { optionText: "Carry on", optionValue: null },
+      ] }),
+      sectionBreak(),
+      question(),
+    ]);
+    expect(parsed.questions[0].options[0].nextSection).toBe(0);
+  });
+
+  it("still rejects a negative target", () => {
+    expect(reasonOf(() => parse([question(), sectionBreak({ nextSection: -1 }), question()])))
+      .toMatch(/whole number/);
+  });
+});

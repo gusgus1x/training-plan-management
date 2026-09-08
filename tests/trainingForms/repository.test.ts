@@ -21,12 +21,21 @@ const FUTURE_END = new Date(NOW + 2 * DAY_MS).toISOString();
 
 const OWNER = { employeeId: "101", employeeUserId: "USER-101" };
 
-type Choice = { choice_id: bigint; choice_order: number; choice_text: string; is_correct: boolean };
+type Choice = {
+  choice_id: bigint;
+  choice_order: number;
+  choice_text: string;
+  is_correct: boolean;
+  /** Grid questions only - see app/lib/formGrids.ts. */
+  axis?: "ROW" | "COLUMN" | null;
+  option_score?: Prisma.Decimal;
+  correct_columns?: string | null;
+};
 type Question = {
   question_id: bigint;
   question_order: number;
   question_text: string;
-  question_type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "TRUE_FALSE";
+  question_type: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "TRUE_FALSE" | "SECTION_BREAK" | "TEXT_BLOCK" | "MULTIPLE_CHOICE_GRID" | "CHECKBOX_GRID";
   question_score: Prisma.Decimal;
   is_required: boolean;
   assessment_choice: Choice[];
@@ -86,6 +95,7 @@ const buildFakeDb = (opts: {
     reviewed_at?: Date;
     review_comment?: string | null;
   }> = [];
+  const evaluationAnswers: Array<Record<string, unknown>> = [];
   let nextSubmissionId = BigInt(9001);
   let nextAnswerId = BigInt(9001);
   let trainingResult: { pre_score?: Prisma.Decimal; post_score?: Prisma.Decimal; official_pre_submission_id?: bigint; official_post_submission_id?: bigint } | null = null;
@@ -167,7 +177,12 @@ const buildFakeDb = (opts: {
       create: async ({ data }: any) => ({ evaluation_submission_id: BigInt(7001), ...data }),
     },
     evaluation_answer: {
-      createMany: async ({ data }: any) => ({ count: data.length }),
+      createMany: async ({ data }: any) => {
+        // Captured rather than discarded so a test can assert what an evaluation actually stores -
+        // in particular that a grid answer is written at all, and that it carries no score.
+        for (const row of data) evaluationAnswers.push(row);
+        return { count: data.length };
+      },
     },
     training_result: {
       upsert: async ({ create, update }: any) => {
@@ -244,7 +259,7 @@ const buildFakeDb = (opts: {
 
   // `submissions` is handed back so a regrade test can read the score that was written -
   // gradeSubmission itself only answers { graded: true }.
-  return { db, submissions };
+  return { db, submissions, evaluationAnswers };
 };
 
 describe("readAssessmentForEmployee - no answer-key leak", () => {
@@ -363,6 +378,76 @@ describe("submitAssessment - autograding", () => {
       "1",
       "PRE_TEST",
       { answers: [{ questionId: "1", choiceIds: ["11"], text: null }] }, // question 5 never sent
+      OWNER.employeeId,
+      OWNER.employeeUserId,
+    );
+    expect(result.score).toBe(50);
+  });
+
+  it("ignores section breaks and text blocks entirely when scoring", async () => {
+    // Two real questions worth 10 each, one answered right and one wrong, so the correct answer is
+    // 50%. A section break and a text block sit between them, and they deliberately carry a
+    // non-zero question_score here.
+    //
+    // The trap: the choice branch treats anything that is not SHORT_ANSWER as a choice question, so
+    // a block row compares an empty correct set against an empty submitted set, evaluates as
+    // CORRECT, and awards its full question_score. Without the isFormBlockType guard this scores
+    // 30/40 = 75% instead of 10/20 = 50% - the blocks would both inflate the denominator and hand
+    // out free marks. Zero-scored blocks would make this test pass either way, which is why the
+    // fixture scores them.
+    const questions: Question[] = [
+      {
+        question_id: BigInt(1),
+        question_order: 1,
+        question_text: "1 + 1 = ?",
+        question_type: "SINGLE_CHOICE",
+        question_score: new Prisma.Decimal(10),
+        is_required: true,
+        assessment_choice: [
+          { choice_id: BigInt(11), choice_order: 1, choice_text: "2", is_correct: true },
+          { choice_id: BigInt(12), choice_order: 2, choice_text: "3", is_correct: false },
+        ],
+      },
+      {
+        question_id: BigInt(2),
+        question_order: 2,
+        question_text: "Part two",
+        question_type: "SECTION_BREAK",
+        question_score: new Prisma.Decimal(10),
+        is_required: false,
+        assessment_choice: [],
+      },
+      {
+        question_id: BigInt(3),
+        question_order: 3,
+        question_text: "Read this first",
+        question_type: "TEXT_BLOCK",
+        question_score: new Prisma.Decimal(10),
+        is_required: false,
+        assessment_choice: [],
+      },
+      {
+        question_id: BigInt(4),
+        question_order: 4,
+        question_text: "2 + 2 = ?",
+        question_type: "SINGLE_CHOICE",
+        question_score: new Prisma.Decimal(10),
+        is_required: true,
+        assessment_choice: [
+          { choice_id: BigInt(41), choice_order: 1, choice_text: "4", is_correct: true },
+          { choice_id: BigInt(42), choice_order: 2, choice_text: "5", is_correct: false },
+        ],
+      },
+    ];
+    const { db } = buildFakeDb({ questions });
+    const repo = createTrainingFormsRepository(db);
+    const result = await repo.submitAssessment(
+      "1",
+      "PRE_TEST",
+      { answers: [
+        { questionId: "1", choiceIds: ["11"], text: null }, // correct
+        { questionId: "4", choiceIds: ["42"], text: null }, // wrong
+      ] },
       OWNER.employeeId,
       OWNER.employeeUserId,
     );
@@ -607,5 +692,149 @@ describe("setStageClosed", () => {
     await expect(repo.setStageClosed("1", { stage: "PRE_TEST", closed: true }, "1", null)).rejects.toMatchObject({
       code: "RESOURCE_NOT_FOUND",
     });
+  });
+});
+
+describe("submitAssessment - grid questions", () => {
+  /**
+   * One grid worth 4 points: four rows at 1 point each, three columns. Row N's correct column is
+   * ((N-1) % 3) + 1, so rows 1..4 want columns 1, 2, 3, 1.
+   *
+   * Four rows rather than three so every partial score lands on a whole percentage - the repository
+   * returns the raw percentage, it does not round.
+   *
+   * Google Forms scores a grid per row, which makes this the one place in the system where partial
+   * credit within a single question is intended rather than a bug.
+   */
+  const COLUMN_IDS = ["21", "22", "23"];
+  const gridQuestion = (questionType: "MULTIPLE_CHOICE_GRID" | "CHECKBOX_GRID"): Question[] => [{
+    question_id: BigInt(1),
+    question_order: 1,
+    question_text: "Match each item",
+    question_type: questionType,
+    // Must equal the sum of the row points; the writer keeps the two in sync.
+    question_score: new Prisma.Decimal(4),
+    is_required: true,
+    assessment_choice: [
+      ...[1, 2, 3, 4].map((n) => ({
+        choice_id: BigInt(10 + n),
+        choice_order: n,
+        choice_text: `Row ${n}`,
+        is_correct: false,
+        axis: "ROW" as const,
+        option_score: new Prisma.Decimal(1),
+        correct_columns: String(((n - 1) % 3) + 1),
+      })),
+      ...COLUMN_IDS.map((id, index) => ({
+        choice_id: BigInt(id),
+        choice_order: 5 + index,
+        choice_text: `Col ${index + 1}`,
+        is_correct: false,
+        axis: "COLUMN" as const,
+        option_score: new Prisma.Decimal(0),
+        correct_columns: null,
+      })),
+    ],
+  }];
+
+  /** The fully correct answer: row N picks the column its key names. */
+  const allCorrect = [1, 2, 3, 4].map((n) => ({
+    rowId: String(10 + n),
+    columnIds: [COLUMN_IDS[(n - 1) % 3]],
+  }));
+
+  const submitGrid = async (
+    questionType: "MULTIPLE_CHOICE_GRID" | "CHECKBOX_GRID",
+    grid: Array<{ rowId: string; columnIds: string[] }>,
+  ) => {
+    const { db } = buildFakeDb({ questions: gridQuestion(questionType) });
+    const repo = createTrainingFormsRepository(db);
+    return repo.submitAssessment(
+      "1",
+      "PRE_TEST",
+      { answers: [{ questionId: "1", choiceIds: [], text: null, grid }] },
+      OWNER.employeeId,
+      OWNER.employeeUserId,
+    );
+  };
+
+  it("awards every row when all four are right", async () => {
+    expect((await submitGrid("MULTIPLE_CHOICE_GRID", allCorrect)).score).toBe(100);
+  });
+
+  it("scores per row, so three of four rows right is 75%", async () => {
+    const grid = [...allCorrect.slice(0, 3), { rowId: "14", columnIds: ["22"] }];
+    expect((await submitGrid("MULTIPLE_CHOICE_GRID", grid)).score).toBe(75);
+  });
+
+  it("counts an unanswered row as wrong rather than dropping it from the total", async () => {
+    expect((await submitGrid("MULTIPLE_CHOICE_GRID", allCorrect.slice(0, 1))).score).toBe(25);
+  });
+
+  it("gives a wholly unanswered grid zero, not free marks", async () => {
+    // The failure mode that bit the section/text blocks: an empty submitted set matching an empty
+    // correct set and scoring as correct.
+    expect((await submitGrid("MULTIPLE_CHOICE_GRID", [])).score).toBe(0);
+  });
+
+  it("requires an exact match on a checkbox grid row", async () => {
+    // Row 1's key is column 1 only, so adding a second column makes that row wrong outright -
+    // Google is all-or-nothing within a checkbox row.
+    const grid = [{ rowId: "11", columnIds: ["21", "22"] }, ...allCorrect.slice(1)];
+    expect((await submitGrid("CHECKBOX_GRID", grid)).score).toBe(75);
+  });
+
+  it("ignores a column id that is not on the question", async () => {
+    const grid = [{ rowId: "11", columnIds: ["21", "999"] }, ...allCorrect.slice(1)];
+    expect((await submitGrid("MULTIPLE_CHOICE_GRID", grid)).score).toBe(100);
+  });
+});
+
+describe("submitEvaluation - grids are stored, and never scored", () => {
+  /**
+   * Evaluations are not graded. These two tests pin that down from opposite directions: the grid
+   * answer must actually reach the database, and what reaches it must carry nothing score-shaped.
+   */
+  const submitGrid = async (grid: Array<{ rowId: string; columnIds: string[] }>) => {
+    const { db, evaluationAnswers } = buildFakeDb({
+      courseFormIds: { evaluation: BigInt(601) },
+    });
+    const repo = createTrainingFormsRepository(db);
+    await repo.submitEvaluation(
+      "1",
+      "EVALUATION",
+      { answers: [{ questionId: "1", optionIds: [], ratingValue: null, text: null, grid }] },
+      OWNER.employeeId,
+      OWNER.employeeUserId,
+    );
+    return evaluationAnswers;
+  };
+
+  it("writes one row per picked cell, carrying the row it belongs to", async () => {
+    // The bug this guards: a grid sends optionIds: [] and puts its picks in `grid`, so an
+    // empty-optionIds check placed first swallowed the whole answer and stored nothing.
+    const rows = await submitGrid([
+      { rowId: "31", columnIds: ["41"] },
+      { rowId: "32", columnIds: ["42", "43"] },
+    ]);
+    expect(rows).toHaveLength(3);
+    expect(rows.map((row) => [String(row.row_option_id), String(row.evaluation_option_id)])).toEqual([
+      ["31", "41"],
+      ["32", "42"],
+      ["32", "43"],
+    ]);
+  });
+
+  it("stores nothing score-shaped on an evaluation answer", async () => {
+    // evaluation_answer has no score column at all, and nothing in the grid work added one -
+    // rating_value is the 1-5 scale of a RATING question, not a mark.
+    const rows = await submitGrid([{ rowId: "31", columnIds: ["41"] }]);
+    for (const row of rows) {
+      expect(row.rating_value).toBeNull();
+      expect(row).not.toHaveProperty("score_awarded");
+      expect(row).not.toHaveProperty("is_correct");
+      expect(row).not.toHaveProperty("option_score");
+      expect(row).not.toHaveProperty("correct_columns");
+    }
   });
 });

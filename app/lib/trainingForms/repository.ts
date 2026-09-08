@@ -3,6 +3,8 @@ import { Prisma } from "../../generated/prisma/client";
 import { ApiError } from "../api/errors";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
+import { isFormBlockType } from "../formBlocks";
+import { isGridRowCorrect, isGridType, parseCorrectColumns } from "../formGrids";
 import { CLOSABLE_STAGES, stageAvailability, stageOpensAt, type FormStageKey } from "./availability";
 import { FREE_TEXT_MIN_RESPONDENTS } from "./types";
 import type {
@@ -170,10 +172,15 @@ const assessmentDetailSelect = {
       question_text: true,
       question_type: true,
       question_score: true,
+      question_description: true,
+      next_section: true,
       is_required: true,
       assessment_choice: {
         orderBy: { choice_order: "asc" as const },
-        select: { choice_id: true, choice_order: true, choice_text: true },
+        // next_section and axis are layout/navigation, not correctness, so they are safe to send to
+        // the person being tested. option_score and correct_columns are the grid's answer key and
+        // must never appear here.
+        select: { choice_id: true, choice_order: true, choice_text: true, next_section: true, axis: true },
       },
     },
   },
@@ -259,11 +266,15 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
             questionText: question.question_text,
             questionType: question.question_type as AssessmentForEmployee["questions"][number]["questionType"],
             questionScore: question.question_score.toFixed(2),
+            questionDescription: question.question_description,
+            nextSection: question.next_section,
             isRequired: question.is_required,
             choices: question.assessment_choice.map((choice) => ({
               choiceId: choice.choice_id.toString(),
               choiceOrder: choice.choice_order,
               choiceText: choice.choice_text,
+              nextSection: choice.next_section,
+              axis: choice.axis as AssessmentForEmployee["questions"][number]["choices"][number]["axis"],
             })),
           })),
           submissions: submissions.map(mapSubmission),
@@ -308,7 +319,7 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
                 passing_score_percent: true,
                 assessment_question: {
                   orderBy: { question_order: "asc" },
-                  select: { question_id: true, question_order: true, question_text: true, question_score: true },
+                  select: { question_id: true, question_order: true, question_text: true, question_score: true, question_type: true },
                 },
               },
             },
@@ -337,6 +348,9 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
         const missedQuestions: AssessmentReview["missedQuestions"] = [];
 
         for (const question of submission.assessment.assessment_question) {
+          // A section break or text block is not a question: it has no answer and no marks, so it
+          // belongs in neither the total nor the missed list.
+          if (isFormBlockType(question.question_type)) continue;
           const questionId = question.question_id.toString();
           const awarded = awardedByQuestion.get(questionId) ?? new Prisma.Decimal(0);
           totalAwarded = totalAwarded.add(awarded);
@@ -400,7 +414,17 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
                 question_id: true,
                 question_type: true,
                 question_score: true,
-                assessment_choice: { select: { choice_id: true, is_correct: true } },
+                assessment_choice: {
+                  orderBy: { choice_order: "asc" as const },
+                  // Ordered because a grid's answer key names its correct columns by choice_order.
+                  select: {
+                    choice_id: true,
+                    is_correct: true,
+                    axis: true,
+                    option_score: true,
+                    correct_columns: true,
+                  },
+                },
               },
             },
           },
@@ -428,6 +452,11 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
           // answer for it - scoring off input.answers alone would let an omitted question vanish
           // from the denominator instead of counting as wrong, quietly inflating the percentage.
           for (const [questionId, question] of questionsById) {
+            // Sections and text blocks are not answerable. Skipping them before anything else also
+            // keeps them out of the choice branch below, where a row with no choices would compare
+            // an empty correct set against an empty submitted set, score as correct, and award its
+            // question_score for nothing.
+            if (isFormBlockType(question.question_type)) continue;
             const answer = answersByQuestion.get(questionId) ?? { questionId, choiceIds: [], text: null };
             totalPossible = totalPossible.add(question.question_score);
 
@@ -441,6 +470,42 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
                 score_awarded: null,
                 review_status: "PENDING_REVIEW",
               });
+              continue;
+            }
+
+            if (isGridType(question.question_type)) {
+              // Google Forms scores a grid per ROW: each row has its own points and its own correct
+              // column(s), and a row earns its points only on an exact match. question_score is the
+              // sum of the row points, so the denominator added above is already right.
+              const rows = question.assessment_choice.filter((c) => c.axis === "ROW");
+              const columns = question.assessment_choice.filter((c) => c.axis === "COLUMN");
+              const columnOrderById = new Map(columns.map((c, index) => [c.choice_id.toString(), index + 1]));
+              const submittedByRow = new Map((answer.grid ?? []).map((row) => [row.rowId, row.columnIds]));
+
+              for (const row of rows) {
+                const rowId = row.choice_id.toString();
+                const picked = (submittedByRow.get(rowId) ?? []).filter((id) => columnOrderById.has(id));
+                const rowCorrect = isGridRowCorrect(
+                  parseCorrectColumns(row.correct_columns),
+                  picked.map((id) => columnOrderById.get(id)!),
+                );
+                const rowAwarded = rowCorrect ? row.option_score : new Prisma.Decimal(0);
+                totalAwarded = totalAwarded.add(rowAwarded);
+
+                // Same "whole award on the first row" rule the choice branch uses, applied per grid
+                // row, so a regrade summing score_awarded cannot multiply a row by its tick count.
+                picked.forEach((columnId, index) => {
+                  answerRows.push({
+                    submission_id: BigInt(0),
+                    question_id: BigInt(questionId),
+                    choice_id: BigInt(columnId),
+                    row_choice_id: BigInt(rowId),
+                    is_correct: rowCorrect,
+                    score_awarded: index === 0 ? rowAwarded : new Prisma.Decimal(0),
+                    review_status: "NOT_REQUIRED",
+                  });
+                });
+              }
               continue;
             }
 
@@ -554,10 +619,18 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
                   question_text: true,
                   question_type: true,
                   section_name: true,
+                  question_description: true,
+                  next_section: true,
                   is_required: true,
                   evaluation_option: {
                     orderBy: { option_order: "asc" },
-                    select: { evaluation_option_id: true, option_order: true, option_text: true },
+                    select: {
+                      evaluation_option_id: true,
+                      option_order: true,
+                      option_text: true,
+                      next_section: true,
+                      axis: true,
+                    },
                   },
                 },
               },
@@ -580,9 +653,13 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
             questionText: question.question_text,
             questionType: question.question_type as EvaluationForEmployee["questions"][number]["questionType"],
             sectionName: question.section_name,
+            questionDescription: question.question_description,
+            nextSection: question.next_section,
             isRequired: question.is_required,
             options: question.evaluation_option.map((option) => ({
               optionId: option.evaluation_option_id.toString(),
+              nextSection: option.next_section,
+              axis: option.axis as EvaluationForEmployee["questions"][number]["options"][number]["axis"],
               optionOrder: option.option_order,
               optionText: option.option_text,
             })),
@@ -635,6 +712,27 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
 
           const rows: Prisma.evaluation_answerCreateManyInput[] = [];
           for (const answer of input.answers) {
+            // A grid answer is one row per (row, column) pair - a column id alone cannot say which
+            // row it was picked for, which is exactly why row_option_id exists.
+            //
+            // This MUST stay ahead of the empty-optionIds branch below: a grid carries its picks in
+            // `grid` and leaves optionIds empty, so checking optionIds first swallowed every grid
+            // answer into the rating/text branch and discarded it.
+            if (answer.grid?.length) {
+              for (const gridRow of answer.grid) {
+                for (const columnId of gridRow.columnIds) {
+                  rows.push({
+                    evaluation_submission_id: created.evaluation_submission_id,
+                    evaluation_question_id: BigInt(answer.questionId),
+                    evaluation_option_id: BigInt(columnId),
+                    row_option_id: BigInt(gridRow.rowId),
+                    rating_value: null,
+                    answer_text: null,
+                  });
+                }
+              }
+              continue;
+            }
             if (answer.optionIds.length === 0) {
               rows.push({
                 evaluation_submission_id: created.evaluation_submission_id,
@@ -703,7 +801,7 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
                 section_name: true,
                 evaluation_option: {
                   orderBy: { option_order: "asc" },
-                  select: { evaluation_option_id: true, option_text: true },
+                  select: { evaluation_option_id: true, option_text: true, axis: true },
                 },
               },
             },
@@ -724,6 +822,9 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
               select: {
                 evaluation_question_id: true,
                 evaluation_option_id: true,
+                // Without the row link a grid answer cannot be told apart from an ordinary option
+                // pick, which is what collapsed every grid into a flat column count.
+                row_option_id: true,
                 rating_value: true,
                 answer_text: true,
               },
@@ -739,6 +840,11 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
         // submission ids per bucket is what keeps that person counted once.
         const respondentsByQuestion = new Map<string, Set<bigint>>();
         const respondentsByOption = new Map<string, Set<bigint>>();
+        // Grids are counted per (row, column) cell and per row. A grid answer stores one row per
+        // picked cell, so counting by column alone would merge every row of the grid together.
+        const respondentsByCell = new Map<string, Set<bigint>>();
+        const respondentsByGridRow = new Map<string, Set<bigint>>();
+        const cellKey = (rowId: string, columnId: string) => `${rowId}:${columnId}`;
         const ratingsByQuestion = new Map<string, number[]>();
         const textsByQuestion = new Map<string, string[]>();
 
@@ -760,7 +866,17 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
             addTo(respondentsByQuestion, questionId, submission.evaluation_submission_id);
 
             if (answer.evaluation_option_id !== null) {
-              addTo(respondentsByOption, answer.evaluation_option_id.toString(), submission.evaluation_submission_id);
+              // `?? null` rather than a bare !== null: an answer row from before this column
+              // existed, or from any caller that does not select it, arrives as undefined, and
+              // treating that as "has a row" sends an ordinary option pick down the grid path.
+              const rowOptionId = answer.row_option_id ?? null;
+              if (rowOptionId !== null) {
+                const rowId = rowOptionId.toString();
+                addTo(respondentsByCell, cellKey(rowId, answer.evaluation_option_id.toString()), submission.evaluation_submission_id);
+                addTo(respondentsByGridRow, rowId, submission.evaluation_submission_id);
+              } else {
+                addTo(respondentsByOption, answer.evaluation_option_id.toString(), submission.evaluation_submission_id);
+              }
             }
             if (answer.rating_value !== null) {
               const values = ratingsByQuestion.get(questionId);
@@ -806,7 +922,11 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
               ratingDistribution: ratings.length
                 ? [1, 2, 3, 4, 5].map((value) => ({ value, count: ratings.filter((entry) => entry === value).length }))
                 : [],
-              options: question.evaluation_option.map((option) => {
+              // A grid's rows and columns live in this same list but are not options, so they are
+              // excluded here and reported through gridRows instead. `?? null` for the same reason
+              // as the row link above: an option that predates the axis column reads as undefined,
+              // and a bare === null would drop every ordinary option from the summary.
+              options: question.evaluation_option.filter((option) => (option.axis ?? null) === null).map((option) => {
                 const count = respondentsByOption.get(option.evaluation_option_id.toString())?.size ?? 0;
                 return {
                   optionId: option.evaluation_option_id.toString(),
@@ -815,6 +935,32 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
                   percent: percent(count, answeredBy),
                 };
               }),
+              gridRows: question.evaluation_option
+                .filter((option) => option.axis === "ROW")
+                .map((row) => {
+                  const rowId = row.evaluation_option_id.toString();
+                  // Denominator is the people who answered THIS row, matching how an ordinary
+                  // question's option percentages are a share of that question's respondents.
+                  // Rows are answered independently, so one row can trail the rest of the grid.
+                  const rowAnsweredBy = respondentsByGridRow.get(rowId)?.size ?? 0;
+                  return {
+                    rowId,
+                    rowText: row.option_text,
+                    answeredBy: rowAnsweredBy,
+                    cells: question.evaluation_option
+                      .filter((option) => option.axis === "COLUMN")
+                      .map((column) => {
+                        const columnId = column.evaluation_option_id.toString();
+                        const count = respondentsByCell.get(cellKey(rowId, columnId))?.size ?? 0;
+                        return {
+                          columnId,
+                          columnText: column.option_text,
+                          count,
+                          percent: percent(count, rowAnsweredBy),
+                        };
+                      }),
+                  };
+                }),
               // Order is deliberately not preserved: on a small batch, "the third comment" lines up
               // with "the third person to submit" for anyone who can see the attendance list.
               textAnswers: enoughForFreeText ? [...texts].sort((a, b) => a.localeCompare(b)) : [],
@@ -900,7 +1046,7 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
           where: { submission_id: BigInt(submissionId) },
           include: {
             assessment_answer: { select: { answer_id: true, question_id: true, score_awarded: true, review_status: true } },
-            assessment: { select: { passing_score_percent: true, assessment_question: { select: { question_id: true, question_score: true } } } },
+            assessment: { select: { passing_score_percent: true, assessment_question: { select: { question_id: true, question_score: true, question_type: true } } } },
             training_enrollment: { select: { training_plan: { select: { training_plan_oap: { select: { company_id: true } } } } } },
           },
         });
@@ -947,6 +1093,7 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
           // same submission was given at submit time.
           let totalPossible = new Prisma.Decimal(0);
           for (const question of submission.assessment.assessment_question) {
+            if (isFormBlockType(question.question_type)) continue;
             totalPossible = totalPossible.add(question.question_score);
           }
 

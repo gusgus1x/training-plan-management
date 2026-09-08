@@ -97,10 +97,13 @@
   max-width: 480px;
 }
 
+/* `.questionGrid input` was missing here while select and textarea were listed, so the choice
+   option fields rendered with no border or background and disappeared into the panel. */
 .toolbar input,
 .formGrid input,
 .formGrid select,
 .formGrid textarea,
+.questionGrid input,
 .questionGrid select,
 .questionGrid textarea {
   border: 1px solid var(--ui-30-border);
@@ -119,6 +122,7 @@
 .formGrid input:focus,
 .formGrid select:focus,
 .formGrid textarea:focus,
+.questionGrid input:focus,
 .questionGrid select:focus,
 .questionGrid textarea:focus {
   border-color: var(--ui-30-primary);
@@ -128,6 +132,7 @@
 .toolbar input::placeholder,
 .formGrid input::placeholder,
 .formGrid textarea::placeholder,
+.questionGrid input::placeholder,
 .questionGrid textarea::placeholder {
   color: var(--ui-30-muted);
   opacity: 0.8;
@@ -816,3 +821,270 @@
 
 [data-theme="dark"] .companyGroup_SNF,
 .dark .companyGroup_SNF { border-left-color: #22d3ee; }
+
+/* --- Section breaks, text blocks, and the floating item toolbar ------------------ */
+
+/* The toolbar is absolutely positioned against this, and needs room to its right so it does not
+   overlap the cards. Google Forms reserves the same gutter. */
+.previewCanvas {
+  position: relative;
+  padding-right: 58px;
+}
+
+@media (max-width: 900px) {
+  .previewCanvas {
+    padding-right: 0;
+  }
+}
+
+/* Clicking a card makes it the toolbar's anchor, so it needs to be visibly the active one. */
+.questionList article[data-focused="true"] {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px var(--ui-30-primary-soft);
+}
+
+/* A section break and a text block are structure, not questions - tinted so they read as dividers
+   in a list of question cards rather than as something waiting to be answered. */
+.questionList article[data-block] {
+  background: var(--ui-60-surface-soft);
+  border-left: 3px solid var(--ui-30-primary);
+}
+
+.blockTitleInput,
+.blockBodyInput {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font: inherit;
+}
+
+.blockTitleInput {
+  font-weight: 800;
+}
+
+.blockBodyInput {
+  resize: vertical;
+}
+
+.blockTitleInput:focus,
+.blockBodyInput:focus {
+  outline: none;
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px var(--ui-30-primary-soft);
+}
+
+.blockTitleInput::placeholder,
+.blockBodyInput::placeholder {
+  color: var(--ui-30-muted);
+}
+
+.blockTitleStatic {
+  display: block;
+  margin-top: 6px;
+}
+
+.blockBodyStatic {
+  margin: 4px 0 0;
+  color: var(--ui-30-muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* "After this section" and the per-option branch targets. */
+.branchRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.branchLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+  color: var(--ui-30-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.branchLabel select {
+  padding: 6px 8px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font-size: 0.8rem;
+}
+
+.branchLabel select:focus {
+  outline: none;
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px var(--ui-30-primary-soft);
+}
+
+/* Author / learner view switch on the editor's preview panel. Copied to match Assessment exactly -
+   the two editors sit side by side in the same menu, so a different-looking switch reads as a
+   different feature rather than the same one. */
+.previewToggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--ui-60-surface-soft);
+  border: 1px solid var(--ui-30-border);
+}
+
+.activePreviewButton {
+  min-height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--ui-30-primary);
+  color: #ffffff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 5px 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* Keeps the timing/respondent line the header used to show, now stacked under the view switch. */
+.previewHeaderSide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.previewHeaderSide span {
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+/* Field Indicator Dots */
+.indicatorPending,
+.indicatorDone {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  vertical-align: middle;
+  border-radius: 50%;
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.indicatorPending {
+  background: var(--ui-10-accent);
+  box-shadow: 0 0 0 2px var(--ui-10-accent-glow);
+  animation: pulseRadar 1.6s ease-in-out infinite;
+}
+
+.indicatorDone {
+  background: var(--ui-30-primary);
+  box-shadow: 0 0 0 2px var(--ui-30-primary-border);
+  animation: scaleInCheck 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.indicatorPending .indicatorDot,
+.indicatorDone .indicatorDot {
+  display: none;
+}
+
+@keyframes pulseRadar {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 5px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+@keyframes scaleInCheck {
+  0% { transform: scale(0.6); }
+  100% { transform: scale(1); }
+}
+
+/* Grid row/column editor. Two plain lists, because that is literally how a grid is stored. */
+.gridAxisLabel {
+  display: block;
+  margin: 10px 0 6px;
+  color: var(--ui-30-muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.gridAxisRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.gridAxisRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+.gridAxisRemove {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 2px 4px;
+}
+
+.gridAxisRemove:disabled {
+  color: var(--ui-30-muted);
+  cursor: not-allowed;
+}
+
+/* Grid preview inside the author's question list. */
+.gridPreviewScroll {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+
+.gridPreviewTable {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 280px;
+  font-size: 0.78rem;
+}
+
+.gridPreviewTable th,
+.gridPreviewTable td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--ui-30-border);
+  text-align: center;
+}
+
+.gridPreviewTable thead th {
+  color: var(--ui-30-muted);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.gridPreviewTable tbody th {
+  color: var(--ui-30-ink);
+  font-weight: 700;
+  text-align: left;
+  min-width: 100px;
+}

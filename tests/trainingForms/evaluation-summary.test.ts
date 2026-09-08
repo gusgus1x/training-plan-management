@@ -17,6 +17,9 @@ type FakeAnswer = {
   evaluation_option_id: bigint | null;
   rating_value: Prisma.Decimal | null;
   answer_text: string | null;
+  /** Grid answers only. Deliberately optional: rows written before this column existed, and the
+   *  fixtures above, leave it absent, which the summary has to treat as "not a grid answer". */
+  row_option_id?: bigint | null;
 };
 
 const answer = (overrides: Partial<FakeAnswer> & { evaluation_question_id: bigint }): FakeAnswer => ({
@@ -30,6 +33,8 @@ const buildFakeDb = (opts: {
   enrolledCount?: number;
   submissions?: { evaluation_submission_id: bigint; evaluation_answer: FakeAnswer[] }[];
   companyId?: bigint | null;
+  /** Overrides the default two-question form; used by the grid tests. */
+  questions?: unknown[];
 }) => {
   const db = {
     training_plan: {
@@ -53,7 +58,7 @@ const buildFakeDb = (opts: {
         form_name: "Standard Course Evaluation",
         description: "โปรดตอบตามความจริง",
         is_anonymous: true,
-        evaluation_question: [
+        evaluation_question: opts.questions ?? [
           {
             evaluation_question_id: BigInt(1),
             question_order: 1,
@@ -277,5 +282,76 @@ describe("readAssessmentReviewForEmployee", () => {
     await expect(
       buildReviewDb().readAssessmentReviewForEmployee("1", "PRE_TEST", "999", "USER-999"),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("readEvaluationSummary - grid questions", () => {
+  /**
+   * A grid answer is a (row, column) pair. Counting by column alone merges every row together and
+   * reports "people who picked this column somewhere in the grid", which is never the question
+   * being asked - so the summary reports a grid per row instead.
+   */
+  const GRID_QUESTION = [{
+    evaluation_question_id: BigInt(1),
+    question_order: 1,
+    question_text: "ให้คะแนนแต่ละหัวข้อ",
+    question_type: "MULTIPLE_CHOICE_GRID",
+    section_name: null,
+    evaluation_option: [
+      { evaluation_option_id: BigInt(31), option_text: "เนื้อหา", axis: "ROW" },
+      { evaluation_option_id: BigInt(32), option_text: "วิทยากร", axis: "ROW" },
+      { evaluation_option_id: BigInt(41), option_text: "ดี", axis: "COLUMN" },
+      { evaluation_option_id: BigInt(42), option_text: "พอใช้", axis: "COLUMN" },
+    ],
+  }];
+
+  const cell = (rowId: bigint, columnId: bigint) =>
+    answer({ evaluation_question_id: BigInt(1), evaluation_option_id: columnId, row_option_id: rowId });
+
+  const summarise = () => buildFakeDb({
+    enrolledCount: 4,
+    questions: GRID_QUESTION,
+    submissions: [
+      // Person A: content = good, instructor = fair
+      { evaluation_submission_id: BigInt(1), evaluation_answer: [cell(BigInt(31), BigInt(41)), cell(BigInt(32), BigInt(42))] },
+      // Person B: content = good, instructor = good
+      { evaluation_submission_id: BigInt(2), evaluation_answer: [cell(BigInt(31), BigInt(41)), cell(BigInt(32), BigInt(41))] },
+    ],
+  }).readEvaluationSummary(PLAN_ID, "EVALUATION", null);
+
+  it("reports counts per row, not merged across the whole grid", async () => {
+    const summary = await summarise();
+    const [content, instructor] = summary!.questions[0].gridRows;
+
+    // Column "ดี" was picked three times overall - twice on content, once on the instructor.
+    // A column-only count would report 3 for both rows; per-row is 2 and 1.
+    expect(content.rowText).toBe("เนื้อหา");
+    expect(content.cells.map((c) => [c.columnText, c.count])).toEqual([["ดี", 2], ["พอใช้", 0]]);
+    expect(instructor.cells.map((c) => [c.columnText, c.count])).toEqual([["ดี", 1], ["พอใช้", 1]]);
+  });
+
+  it("takes each row's percentages against the people who answered that row", async () => {
+    const summary = await summarise();
+    const [content] = summary!.questions[0].gridRows;
+    expect(content.answeredBy).toBe(2);
+    expect(content.cells.map((c) => c.percent)).toEqual([100, 0]);
+  });
+
+  it("leaves options empty for a grid, since rows and columns are not options", async () => {
+    // Otherwise the rows and the columns would come back as one flat option list and the screen
+    // would draw a bar chart of them side by side.
+    const summary = await summarise();
+    expect(summary!.questions[0].options).toEqual([]);
+  });
+
+  it("leaves gridRows empty for an ordinary question", async () => {
+    const summary = await buildFakeDb({
+      submissions: [{
+        evaluation_submission_id: BigInt(1),
+        evaluation_answer: [answer({ evaluation_question_id: BigInt(1), evaluation_option_id: BigInt(11) })],
+      }],
+    }).readEvaluationSummary(PLAN_ID, "EVALUATION", null);
+    expect(summary!.questions[0].gridRows).toEqual([]);
+    expect(summary!.questions[0].options).toHaveLength(3);
   });
 });

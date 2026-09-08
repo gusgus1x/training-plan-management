@@ -1,9 +1,10 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useToast } from "../../../ToastHost";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import {
   createAssessment,
   createAssessmentVersion,
@@ -12,6 +13,7 @@ import {
   setAssessmentStatus,
   updateAssessment,
 } from "../../../../lib/assessments/client";
+import { ASSESSMENT_QUESTION_TYPES } from "../../../../lib/assessments/types";
 import type {
   AssessmentChoiceInput,
   AssessmentPurpose,
@@ -23,6 +25,25 @@ import type {
 } from "../../../../lib/assessments/types";
 import { listCompanies } from "../../../../lib/companies/client";
 import type { CompanyRecord } from "../../../../lib/companies/types";
+import {
+  fallThroughLabel,
+  isFormBlockType,
+  remapSectionOrdinals,
+  sectionCountOf,
+  sectionIndexPerRow,
+  type FormBlockType,
+} from "../../../../lib/formBlocks";
+import {
+  formatCorrectColumns,
+  gridTotalScore,
+  isGridType,
+  MIN_GRID_COLUMNS,
+  MIN_GRID_ROWS,
+  parseCorrectColumns,
+  type GridAxis,
+} from "../../../../lib/formGrids";
+import FormItemToolbar, { type FormItemKind } from "./FormItemToolbar";
+import FormPreviewRunner, { type PreviewItem, type PreviewKind } from "./FormPreviewRunner";
 import SearchableSelect from "../../../SearchableSelect";
 import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./Assessment.module.css";
@@ -69,6 +90,66 @@ const LEARNER_PREVIEW_ID = "assessment-learner-preview";
 const scrollToQuestionBuilder = () =>
   document.getElementById(QUESTION_BUILDER_ID)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
+/**
+ * Exhaustive over the ANSWERABLE types only - blocks are inserted by the toolbar, never chosen from
+ * this dropdown. Being a Record means a type added to ASSESSMENT_QUESTION_TYPES fails to compile
+ * until it is labelled here, which is exactly what the previous hardcoded <option> list could not do.
+ */
+const ASSESSMENT_TYPE_LABELS: Record<(typeof ASSESSMENT_QUESTION_TYPES)[number], string> = {
+  SINGLE_CHOICE: "Single Choice (ปรนัย - ตอบได้ 1 ข้อ)",
+  MULTIPLE_CHOICE: "Multiple Choice (ปรนัย - ตอบได้หลายข้อ)",
+  TRUE_FALSE: "True / False (ถูก - ผิด)",
+  SHORT_ANSWER: "Short Answer (อัตนัย / เติมคำ)",
+  MULTIPLE_CHOICE_GRID: "Multiple Choice Grid (ตารางกริดหลายตัวเลือก)",
+  CHECKBOX_GRID: "Checkbox Grid (ตารางกริดทำเครื่องหมาย)",
+};
+
+/**
+ * Author-facing summary of a grid: rows down, columns across, a tick on each correct cell and the
+ * row's points on the right.
+ *
+ * Listing a grid's choices flat (A. B. C. ...) the way an ordinary question's are runs the rows and
+ * the columns together into one alphabetised list, which says nothing about which column is correct
+ * for which row - the only thing the author actually needs to check.
+ */
+const renderGridSummary = (
+  choices: ReadonlyArray<{ id?: string; choiceId?: string; choiceText: string; axis: string | null; correctColumns: string | null; optionScore: string | number }>,
+  pointsLabel: string,
+) => {
+  const rows = choices.filter((choice) => choice.axis === "ROW");
+  const columns = choices.filter((choice) => choice.axis === "COLUMN");
+  const keyOf = (choice: { id?: string; choiceId?: string }) => choice.id ?? choice.choiceId ?? "";
+  return (
+    <div className={styles.gridPreviewScroll}>
+      <table className={styles.gridPreviewTable}>
+        <thead>
+          <tr>
+            <th />
+            {columns.map((column) => <th key={keyOf(column)}>{column.choiceText}</th>)}
+            <th>{pointsLabel}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => {
+            const correct = parseCorrectColumns(row.correctColumns);
+            return (
+              <tr key={keyOf(row)}>
+                <th scope="row">{row.choiceText}</th>
+                {columns.map((column, columnIndex) => (
+                  <td key={keyOf(column)} data-correct={correct.includes(columnIndex + 1)}>
+                    {correct.includes(columnIndex + 1) ? "✓" : ""}
+                  </td>
+                ))}
+                <td>{Number(row.optionScore)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 const CHOICE_TYPES: AssessmentQuestionType[] = ["SINGLE_CHOICE", "MULTIPLE_CHOICE", "TRUE_FALSE"];
 const isChoiceType = (type: AssessmentQuestionType) => CHOICE_TYPES.includes(type);
 
@@ -104,6 +185,9 @@ const blankChoice = (isCorrect = false): DraftChoice => ({
   choiceText: "",
   isCorrect,
   optionScore: isCorrect ? "1" : "0",
+  nextSection: null,
+  axis: null,
+  correctColumns: null,
 });
 const blankChoices = (count = DEFAULT_CHOICE_COUNT): DraftChoice[] =>
   Array.from({ length: count }, (_, index) => blankChoice(index === 0));
@@ -111,16 +195,29 @@ const blankChoices = (count = DEFAULT_CHOICE_COUNT): DraftChoice[] =>
 /** TRUE_FALSE is stored as an ordinary two-choice question; the DB check constraint accepts the
  *  type, and the runner renders it as a single-answer question like SINGLE_CHOICE. */
 const trueFalseChoices = (): DraftChoice[] => [
-  { id: key(), choiceText: "True", isCorrect: true, optionScore: "1" },
-  { id: key(), choiceText: "False", isCorrect: false, optionScore: "0" },
+  { id: key(), choiceText: "True", isCorrect: true, optionScore: "1", nextSection: null, axis: null, correctColumns: null },
+  { id: key(), choiceText: "False", isCorrect: false, optionScore: "0", nextSection: null, axis: null, correctColumns: null },
 ];
 const blankQuestion = (): DraftQuestion => ({
   id: key(),
   questionText: "",
   questionType: "SINGLE_CHOICE",
   questionScore: "1",
+  questionDescription: null,
+  nextSection: null,
   isRequired: true,
   choices: blankChoices(),
+});
+
+/** A section break or a text block: a title, an optional body, no choices and no marks. */
+const blankBlock = (type: FormBlockType): DraftQuestion => ({
+  ...blankQuestion(),
+  questionType: type,
+  questionText: type === "SECTION_BREAK" ? "Untitled section" : "Untitled text",
+  questionScore: "0",
+  questionDescription: "",
+  isRequired: false,
+  choices: [],
 });
 
 const toDraftQuestions = (record: AssessmentRecord): DraftQuestion[] =>
@@ -136,6 +233,9 @@ const toDraftQuestions = (record: AssessmentRecord): DraftQuestion[] =>
       // destroyed the other correct answers of a MULTIPLE_CHOICE question.
       isCorrect: isChoiceType(questionType) && choice.isCorrect,
       optionScore: choice.optionScore,
+      nextSection: choice.nextSection,
+      axis: choice.axis,
+      correctColumns: choice.correctColumns,
     }));
     const choices = isChoiceType(questionType)
       ? storedChoices.length >= MIN_CHOICES
@@ -156,13 +256,56 @@ const toDraftQuestions = (record: AssessmentRecord): DraftQuestion[] =>
       questionText: question.questionText,
       questionType,
       questionScore: question.questionScore,
+      questionDescription: question.questionDescription,
+      nextSection: question.nextSection,
       isRequired: question.isRequired,
       choices,
     };
   });
 
+/**
+ * Draft rows to the shape the live preview runner takes.
+ *
+ * Note what is NOT carried across: isCorrect and optionScore. The learner never sees either, so a
+ * preview that had access to them could drift into flattering the form. PreviewItem has nowhere to
+ * put them, which makes that impossible rather than merely discouraged.
+ */
+const toPreviewItems = (rows: DraftQuestion[]): PreviewItem[] => rows.map((row) => {
+  const kind: PreviewKind =
+    row.questionType === "SECTION_BREAK" ? "section"
+      : row.questionType === "TEXT_BLOCK" ? "note"
+        : row.questionType === "MULTIPLE_CHOICE_GRID" ? "grid"
+          : row.questionType === "CHECKBOX_GRID" ? "gridMulti"
+            : row.questionType === "MULTIPLE_CHOICE" ? "multiple"
+              : row.questionType === "SHORT_ANSWER" ? "text"
+                : "single";
+  return {
+    id: row.id,
+    kind,
+    text: row.questionText || "(ยังไม่ได้ใส่คำถาม)",
+    description: row.questionDescription || null,
+    isRequired: row.isRequired,
+    nextSection: row.nextSection,
+    // A grid carries its rows and columns in the same choice list, tagged by axis.
+    options: isGridType(row.questionType)
+      ? row.choices.map((choice) => ({
+          id: choice.id,
+          text: choice.choiceText || "(ยังไม่ได้ใส่ข้อความ)",
+          nextSection: null,
+          axis: choice.axis,
+        }))
+      : isChoiceType(row.questionType)
+        ? row.choices.map((choice) => ({
+            id: choice.id,
+            text: choice.choiceText || "(ยังไม่ได้ใส่ตัวเลือก)",
+            nextSection: row.questionType === "SINGLE_CHOICE" ? choice.nextSection : null,
+          }))
+        : [],
+  };
+});
+
 const displayQuestionType = (value: AssessmentRecord["questions"][number]["questionType"]) =>
-  value === "SHORT_ANSWER" ? "Text" : "Choice";
+  value === "SECTION_BREAK" ? "Section" : value === "TEXT_BLOCK" ? "Text block" : value === "SHORT_ANSWER" ? "Text" : "Choice";
 
 const csvCell = (value: string | number) => `"${String(value).replaceAll('"', '""')}"`;
 /** Turned off at the user's request until the export is actually wanted. The builder below stays -
@@ -244,15 +387,51 @@ export default function Assessment() {
   const [selectedId, setSelectedId] = useState("");
   const [openDetailId, setOpenDetailId] = useState("");
   const [detailAsLearner, setDetailAsLearner] = useState(false);
+
+  // The floating toolbar tracks whichever card is focused and inserts below it. onMouseDown backs
+  // up onFocusCapture, which misses clicks on the parts of a card that are not focusable.
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [anchorTop, setAnchorTop] = useState<number | null>(null);
+  const cardRefs = useRef(new Map<string, HTMLElement>());
   const [mode, setMode] = useState<Mode>("idle");
   const [draft, setDraft] = useState<Draft>(() => blankDraft(user?.companyId ?? "", !isCenter));
   const [questions, setQuestions] = useState<DraftQuestion[]>([]);
   const [question, setQuestion] = useState<DraftQuestion>(blankQuestion);
+
+  useLayoutEffect(() => {
+    setAnchorTop(focusedId ? cardRefs.current.get(focusedId)?.offsetTop ?? null : null);
+  }, [focusedId, questions]);
+
+  /** Registers a card so the floating toolbar can measure its offsetTop. */
+  const cardRef = useCallback((id: string) => (element: HTMLElement | null) => {
+    if (element) cardRefs.current.set(id, element);
+    else cardRefs.current.delete(id);
+  }, []);
+
+  /** Section ordinal each row sits in, so a branch dropdown can offer only forward targets. */
+  const sectionOfRow = useMemo(() => sectionIndexPerRow(questions.map((item) => item.questionType)), [questions]);
+  const totalSections = useMemo(() => sectionCountOf(questions.map((item) => item.questionType)), [questions]);
+
+  /**
+   * A branch that jumps over a section still leaves that section's questions in the score
+   * denominator - submitAssessment sums question_score over every question on the form, not over
+   * the path the learner walked. Persisting the visited path would fix it properly; until then the
+   * author is told plainly, because they are the one choosing to branch a graded test.
+   */
+  const skippedByBranch = useMemo(
+    () => questions.some((item, index) => [item.nextSection, ...item.choices.map((choice) => choice.nextSection)]
+      .some((target) => target !== null && target > (sectionOfRow[index] ?? 1) + 1)),
+    [questions, sectionOfRow],
+  );
   const [editingQuestionId, setEditingQuestionId] = useState("");
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const toast = useToast();
+  // Escape hatch for the strings the DOM-walking dictionary cannot reach: those with
+  // interpolated counts, and those that must differ per language rather than be translated.
+  const { language } = useUiLanguage();
+  const t = (th: string, en: string) => (language === "th" ? th : en);
   // Same call shape as the old banner state, routed to the global toast instead.
   const setFeedback = useCallback(
     (next: Feedback | null) => {
@@ -469,7 +648,29 @@ export default function Assessment() {
       if (questionType === "SHORT_ANSWER") return { ...current, questionType, choices: [] };
       if (questionType === "TRUE_FALSE") return { ...current, questionType, choices: trueFalseChoices() };
 
-      const choices = current.choices.length >= MIN_CHOICES ? [...current.choices] : blankChoices();
+      if (isGridType(questionType)) {
+        // Switching between the two grid types keeps the axes; a checkbox grid row may hold several
+        // correct columns, so coming back to a multiple choice grid has to trim the key to one.
+        const existing = current.choices.filter((choice) => choice.axis !== null);
+        const choices = existing.length ? existing : [
+          { ...blankChoice(false), axis: "ROW" as const, optionScore: "1" },
+          { ...blankChoice(false), axis: "COLUMN" as const, optionScore: "0" },
+          { ...blankChoice(false), axis: "COLUMN" as const, optionScore: "0" },
+        ];
+        return {
+          ...current,
+          questionType,
+          choices: questionType === "MULTIPLE_CHOICE_GRID"
+            ? choices.map((choice) => ({
+                ...choice,
+                correctColumns: formatCorrectColumns(parseCorrectColumns(choice.correctColumns).slice(0, 1)),
+              }))
+            : choices,
+        };
+      }
+      // Leaving a grid drops the axes, or the choices would be neither rows nor plain options.
+      const kept = current.choices.filter((choice) => choice.axis === null);
+      const choices = kept.length >= MIN_CHOICES ? [...kept] : blankChoices();
       // Switching from multiple- to single-answer has to leave exactly one correct choice, which
       // is what the server requires for SINGLE_CHOICE.
       if (questionType === "SINGLE_CHOICE") {
@@ -496,6 +697,27 @@ export default function Assessment() {
           : { ...choice, isCorrect: idx === index },
       ),
     }));
+
+  const updateGridChoice = (choiceId: string, patch: Partial<DraftChoice>) =>
+    setQuestion((current) => ({
+      ...current,
+      choices: current.choices.map((choice) => choice.id === choiceId ? { ...choice, ...patch } : choice),
+    }));
+
+  /** Rows are appended after the last row, columns after the last column, so the two axes stay
+   *  contiguous in the stored list and a column's ordinal keeps matching its answer-key number. */
+  const addGridEntry = (axis: GridAxis) =>
+    setQuestion((current) => {
+      const entry: DraftChoice = {
+        ...blankChoice(false),
+        axis,
+        optionScore: axis === "ROW" ? "1" : "0",
+        correctColumns: null,
+      };
+      const lastOfAxis = current.choices.map((choice) => choice.axis).lastIndexOf(axis);
+      const at = lastOfAxis === -1 ? current.choices.length : lastOfAxis + 1;
+      return { ...current, choices: [...current.choices.slice(0, at), entry, ...current.choices.slice(at)] };
+    });
 
   const addChoice = () =>
     setQuestion((current) => ({ ...current, choices: [...current.choices, blankChoice()] }));
@@ -559,8 +781,45 @@ export default function Assessment() {
   /** Copies a question in place, right below the original - writing several near-identical
    *  questions is the common case when building a test, and retyping every option was the only
    *  way to do it before. Fresh ids so the copy edits independently of its source. */
-  const duplicateQuestion = (index: number) =>
+  /**
+   * Every list mutation goes through here. Moving, adding or deleting a section renumbers every
+   * section after it, so a branch target left alone would silently start pointing at a different
+   * section - worse than the reorder itself, because nothing tells the author it happened.
+   */
+  const reorderQuestions = (change: (current: DraftQuestion[]) => DraftQuestion[]) =>
     setQuestions((current) => {
+      const after = change(current);
+      const rows = (list: DraftQuestion[]) => list.map((item) => ({ id: item.id, questionType: item.questionType }));
+      const map = remapSectionOrdinals(rows(current), rows(after));
+      const move = (target: number | null) => (target === null ? null : map.get(target) ?? null);
+      return after.map((item) => ({
+        ...item,
+        nextSection: move(item.nextSection),
+        choices: item.choices.map((choice) => ({ ...choice, nextSection: move(choice.nextSection) })),
+      }));
+    });
+
+  /**
+   * The toolbar inserts below the focused card, the way Google Forms does. A question opens the
+   * builder above; a section or text block is complete as soon as it exists.
+   */
+  const handleToolbarAdd = (kind: FormItemKind) => {
+    if (kind === "QUESTION") {
+      setQuestion(blankQuestion());
+      setEditingQuestionId("");
+      scrollToQuestionBuilder();
+      return;
+    }
+    const block = blankBlock(kind);
+    reorderQuestions((current) => {
+      const at = current.findIndex((item) => item.id === focusedId);
+      return at === -1 ? [...current, block] : [...current.slice(0, at + 1), block, ...current.slice(at + 1)];
+    });
+    setFocusedId(block.id);
+  };
+
+  const duplicateQuestion = (index: number) =>
+    reorderQuestions((current) => {
       const source = current[index];
       if (!source) return current;
       const copy: DraftQuestion = {
@@ -588,7 +847,7 @@ export default function Assessment() {
   const dragQuestionOver = (targetIndex: number) => {
     const from = dragIndexRef.current;
     if (from === null || from === targetIndex) return;
-    setQuestions((current) => {
+    reorderQuestions((current) => {
       const reordered = [...current];
       const [moved] = reordered.splice(from, 1);
       reordered.splice(targetIndex, 0, moved);
@@ -598,7 +857,7 @@ export default function Assessment() {
   };
 
   const moveQuestion = (index: number, direction: -1 | 1) => {
-    setQuestions((current) => {
+    reorderQuestions((current) => {
       const destination = index + direction;
       if (destination < 0 || destination >= current.length) return current;
       const reordered = [...current];
@@ -618,17 +877,32 @@ export default function Assessment() {
     passingScorePercent: draft.passingScorePercent,
     timeLimitMinutes: draft.timeLimitMinutes ? Number(draft.timeLimitMinutes) : null,
     status: draft.status,
-    questions: questions.map(({ questionText, questionType, questionScore, isRequired, choices }) => ({
+    questions: questions.map(({ questionText, questionType, questionScore, questionDescription, nextSection, isRequired, choices }) => ({
       questionText,
       // The draft already holds the stored value - no lossy round trip through a UI-only label.
       questionType,
-      questionScore,
-      isRequired,
-      choices: isChoiceType(questionType)
-        ? choices.map(({ choiceText, isCorrect }) => ({
+      // A block carries no marks; the DB asserts the same thing via
+      // CK_RC2_assessment_question_block_score_zero.
+      // A grid's score is the sum of its rows', kept in sync here so every server-side denominator
+      // can go on summing question_score per question without knowing grids exist.
+      questionScore: isFormBlockType(questionType)
+        ? "0"
+        : isGridType(questionType)
+          ? gridTotalScore(choices.filter((choice) => choice.axis === "ROW").map((row) => row.optionScore))
+          : questionScore,
+      questionDescription: isFormBlockType(questionType) ? (questionDescription?.trim() || null) : null,
+      nextSection: questionType === "SECTION_BREAK" ? nextSection : null,
+      isRequired: isFormBlockType(questionType) ? false : isRequired,
+      // Grids keep their choices too - rows and columns both live in this list.
+      choices: isChoiceType(questionType) || isGridType(questionType)
+        ? choices.map(({ choiceText, isCorrect, optionScore, nextSection: choiceTarget, axis, correctColumns }) => ({
             choiceText,
             isCorrect,
-            optionScore: isCorrect ? questionScore : "0",
+            // A grid ROW keeps its own point value; every other choice mirrors the question score.
+            optionScore: isGridType(questionType) ? optionScore : isCorrect ? questionScore : "0",
+            nextSection: questionType === "SINGLE_CHOICE" ? choiceTarget : null,
+            axis,
+            correctColumns,
           }))
         : [],
     })),
@@ -642,7 +916,10 @@ export default function Assessment() {
     const passingScore = Number(draft.passingScorePercent);
     if (!Number.isFinite(passingScore) || passingScore < 0 || passingScore > 100) errors.passingScorePercent = "Pass score must be from 0 to 100.";
     if (draft.timeLimitMinutes && (!Number.isInteger(Number(draft.timeLimitMinutes)) || Number(draft.timeLimitMinutes) <= 0)) errors.timeLimitMinutes = "Time limit must be a positive whole number.";
-    if (draft.status === "ACTIVE" && !questions.length) errors.questions = "Add at least one question before publishing.";
+    // Counting rows would let an assessment of nothing but sections and text blocks pass here and
+    // then be rejected by the server, which states the same rule.
+    const answerable = questions.filter((row) => !isFormBlockType(row.questionType));
+    if (draft.status === "ACTIVE" && !answerable.length) errors.questions = "Add at least one question before publishing.";
     if (Object.keys(errors).length) {
       setFormErrors(errors);
       setFeedback({ tone: "error", message: "Please correct the highlighted fields." });
@@ -728,15 +1005,22 @@ export default function Assessment() {
         passingScorePercent: String(item.passingScorePercent),
         timeLimitMinutes: item.timeLimitMinutes,
         status: "ACTIVE",
+        // Status-only publish: every question is echoed back exactly as stored, blocks and branch
+        // targets included, so nothing is rewritten on the way through.
         questions: item.questions.map((q) => ({
           questionText: q.questionText,
           questionType: q.questionType,
           questionScore: String(q.questionScore),
+          questionDescription: q.questionDescription,
+          nextSection: q.nextSection,
           isRequired: q.isRequired,
           choices: q.choices.map((c) => ({
             choiceText: c.choiceText,
             isCorrect: c.isCorrect,
             optionScore: String(c.optionScore),
+            nextSection: c.nextSection,
+            axis: c.axis,
+            correctColumns: c.correctColumns,
           })),
         })),
       };
@@ -1030,10 +1314,12 @@ export default function Assessment() {
               value={question.questionType}
               onChange={(event) => setQuestionType(event.target.value as AssessmentQuestionType)}
             >
-              <option value="SINGLE_CHOICE">Single Choice (ปรนัย - ตอบได้ 1 ข้อ)</option>
-              <option value="MULTIPLE_CHOICE">Multiple Choice (ปรนัย - ตอบได้หลายข้อ)</option>
-              <option value="TRUE_FALSE">True / False (ถูก - ผิด)</option>
-              <option value="SHORT_ANSWER">Short Answer (อัตนัย / เติมคำ)</option>
+              {/* Driven by ASSESSMENT_QUESTION_TYPES rather than a hardcoded list: these four were
+                  written out by hand, so the two grid types were added to the shared const, the
+                  validator and the runner and still never appeared here. */}
+              {ASSESSMENT_QUESTION_TYPES.map((type) => (
+                <option key={type} value={type}>{ASSESSMENT_TYPE_LABELS[type]}</option>
+              ))}
             </select>
           </label>
 
@@ -1138,6 +1424,89 @@ export default function Assessment() {
               )}
             </div>
           ) : null}
+
+          {/* Grid editor. Rows carry the answer key and the points, because Google Forms scores a
+              grid per row; columns are just labels. Both axes live in the same choices list. */}
+          {isGridType(question.questionType) ? (
+            <div className={styles.gridEditor}>
+              {(["ROW", "COLUMN"] as const).map((axis) => {
+                const entries = question.choices.filter((choice) => choice.axis === axis);
+                const columns = question.choices.filter((choice) => choice.axis === "COLUMN");
+                const minimum = axis === "ROW" ? MIN_GRID_ROWS : MIN_GRID_COLUMNS;
+                return (
+                  <div key={axis}>
+                    <span className={styles.gridAxisLabel}>
+                      {axis === "ROW" ? t("แถว (Rows)", "Rows") : t("คอลัมน์ (Columns)", "Columns")}
+                    </span>
+                    {entries.map((choice, index) => (
+                      <span className={styles.gridAxisRow} key={choice.id}>
+                        <input
+                          value={choice.choiceText}
+                          placeholder={axis === "ROW" ? t(`แถวที่ ${index + 1}`, `Row ${index + 1}`) : t(`คอลัมน์ที่ ${index + 1}`, `Column ${index + 1}`)}
+                          onChange={(event) => updateGridChoice(choice.id, { choiceText: event.target.value })}
+                        />
+                        {axis === "ROW" ? (
+                          <>
+                            <select
+                              className={styles.gridKeySelect}
+                              title={t("คอลัมน์ที่ถูกของแถวนี้", "Correct column for this row")}
+                              multiple={question.questionType === "CHECKBOX_GRID"}
+                              value={question.questionType === "CHECKBOX_GRID"
+                                ? parseCorrectColumns(choice.correctColumns).map(String)
+                                : (parseCorrectColumns(choice.correctColumns)[0]?.toString() ?? "")}
+                              onChange={(event) => {
+                                const picked = question.questionType === "CHECKBOX_GRID"
+                                  ? [...event.target.selectedOptions].map((option) => Number(option.value))
+                                  : event.target.value ? [Number(event.target.value)] : [];
+                                updateGridChoice(choice.id, { correctColumns: formatCorrectColumns(picked) });
+                              }}
+                            >
+                              {question.questionType === "CHECKBOX_GRID"
+                                ? null
+                                : <option value="">{t("ไม่มีเฉลย", "No answer key")}</option>}
+                              {columns.map((column, columnIndex) => (
+                                <option key={column.id} value={columnIndex + 1}>
+                                  {column.choiceText || t(`คอลัมน์ที่ ${columnIndex + 1}`, `Column ${columnIndex + 1}`)}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              className={styles.gridScoreInput}
+                              type="number"
+                              min="0"
+                              step="0.5"
+                              value={choice.optionScore}
+                              title={t("คะแนนของแถวนี้", "Points for this row")}
+                              onChange={(event) => updateGridChoice(choice.id, { optionScore: event.target.value })}
+                            />
+                          </>
+                        ) : null}
+                        <button
+                          type="button"
+                          className={styles.gridAxisRemove}
+                          title={t("ลบรายการนี้", "Remove this entry")}
+                          disabled={entries.length <= minimum}
+                          onClick={() => setQuestion((current) => ({
+                            ...current,
+                            choices: current.choices.filter((candidate) => candidate.id !== choice.id),
+                          }))}
+                        >✕</button>
+                      </span>
+                    ))}
+                    <button className={styles.secondaryButton} type="button" onClick={() => addGridEntry(axis)}>
+                      {axis === "ROW" ? t("+ เพิ่มแถว", "+ Add row") : t("+ เพิ่มคอลัมน์", "+ Add column")}
+                    </button>
+                  </div>
+                );
+              })}
+              <p className={styles.helperTextGrid}>
+                {t(
+                  `คะแนนรวมของข้อนี้ = ผลรวมคะแนนทุกแถว = ${gridTotalScore(question.choices.filter((c) => c.axis === "ROW").map((c) => c.optionScore))}`,
+                  `This question scores the sum of its rows: ${gridTotalScore(question.choices.filter((c) => c.axis === "ROW").map((c) => c.optionScore))}`,
+                )}
+              </p>
+            </div>
+          ) : null}
         </div>
 
         {formErrors.question ? <p className={styles.validationMessage} role="alert">{formErrors.question}</p> : null}
@@ -1170,9 +1539,9 @@ export default function Assessment() {
         <div className={styles.panelHeader}>
           <div>
             <p className={styles.kicker}>
-              {previewAsLearner ? "Learner preview" : `Question List (${questions.length} ข้อ)`}
+              {previewAsLearner ? "Try it as a learner" : `Question List (${questions.length} ข้อ)`}
             </p>
-            <h3>{previewAsLearner ? "ตัวอย่างที่ผู้เข้าอบรมจะเห็น" : "รายการคำถามในชุดแบบทดสอบนี้"}</h3>
+            <h3>{previewAsLearner ? t("ทดลองตอบเหมือนที่ผู้เข้าอบรมจะเห็น", "Try it the way a trainee will see it") : "รายการคำถามในชุดแบบทดสอบนี้"}</h3>
           </div>
           <div className={styles.previewToggle}>
             <button
@@ -1180,14 +1549,14 @@ export default function Assessment() {
               className={previewAsLearner ? styles.secondaryButton : styles.activePreviewButton}
               onClick={() => setPreviewAsLearner(false)}
             >
-              ✎ มุมมองผู้จัดทำ
+              {t("✎ มุมมองผู้จัดทำ", "✎ Author view")}
             </button>
             <button
               type="button"
               className={previewAsLearner ? styles.activePreviewButton : styles.secondaryButton}
               onClick={() => setPreviewAsLearner(true)}
             >
-              👁 มุมมองผู้เรียน
+              {t("👁 มุมมองผู้เรียน", "👁 Learner view")}
             </button>
           </div>
         </div>
@@ -1197,58 +1566,41 @@ export default function Assessment() {
             shows the learner none of those. A preview that flatters the form is worse than none. */}
         {previewAsLearner ? (
           questions.length ? (
-            <div className={styles.learnerPreview}>
-              {draft.instructions.trim() ? (
-                <div className={styles.learnerInstructions}>
-                  <strong>คำชี้แจง</strong>
-                  <p>{draft.instructions}</p>
-                </div>
-              ) : null}
-              {draft.timeLimitMinutes.trim() ? (
-                <p className={styles.learnerMeta}>⏱ เวลาที่ให้ทำ {draft.timeLimitMinutes} นาที</p>
-              ) : null}
-              <p className={styles.learnerMeta}>
-                เกณฑ์ผ่าน {draft.passingScorePercent || 0}% · ทั้งหมด {questions.length} ข้อ
-              </p>
-
-              {questions.map((item, index) => (
-                <article key={item.id} className={styles.learnerQuestion}>
-                  <div className={styles.learnerQuestionHead}>
-                    <span>{index + 1}.</span>
-                    <span>{item.questionText || "(ยังไม่ได้ใส่คำถาม)"}</span>
-                    {item.isRequired ? <em className={styles.requiredMark}>*</em> : null}
-                  </div>
-                  {item.questionType === "SHORT_ANSWER" ? (
-                    <textarea disabled placeholder="พิมพ์คำตอบที่นี่..." rows={3} />
-                  ) : (
-                    <div className={styles.learnerChoices}>
-                      {item.choices.map((choice) => (
-                        <label key={choice.id}>
-                          <input
-                            type={item.questionType === "MULTIPLE_CHOICE" ? "checkbox" : "radio"}
-                            name={`preview-${item.id}`}
-                            disabled
-                          />
-                          <span>{choice.choiceText || "(ยังไม่ได้ใส่ตัวเลือก)"}</span>
-                        </label>
-                      ))}
-                    </div>
-                  )}
-                </article>
-              ))}
-              <p className={styles.learnerMeta}>
-                * ตัวอย่างเท่านั้น กดตอบไม่ได้ · ผู้เรียนจะไม่เห็นเฉลยและคะแนนรายข้อ
-              </p>
-            </div>
+            <FormPreviewRunner
+              title={draft.seriesName.trim() || "แบบทดสอบที่ยังไม่มีชื่อ"}
+              instructions={draft.instructions}
+              meta={[
+                draft.timeLimitMinutes.trim() ? `⏱ ${draft.timeLimitMinutes} นาที` : null,
+                `เกณฑ์ผ่าน ${draft.passingScorePercent || 0}%`,
+              ].filter(Boolean).join(" · ")}
+              items={toPreviewItems(questions)}
+            />
           ) : (
-            <div className={styles.emptyState}>ยังไม่มีคำถามให้แสดงตัวอย่าง</div>
+            <div className={styles.emptyState}>{t("ยังไม่มีคำถามให้แสดงตัวอย่าง", "No questions to preview yet")}</div>
           )
         ) : questions.length ? (
+          <div className={styles.previewCanvas}>
+          {skippedByBranch ? (
+            <p className={styles.branchWarning} role="note">
+              {t(
+                "⚠ มีการข้ามส่วนด้วย \"ไปยังส่วนตามคำตอบ\" — คำถามในส่วนที่ถูกข้ามยังถูกนับเป็นตัวหารของคะแนนอยู่ ผู้เรียนที่เดินเส้นทางนั้นจะไม่มีทางได้คะแนนเต็ม 100%",
+                "⚠ A branch skips a section. Questions in a skipped section still count toward the score denominator, so a learner on that path can never reach 100%.",
+              )}
+            </p>
+          ) : null}
           <div className={styles.questionList}>
-            {questions.map((item, index) => (
+            {questions.map((item, index) => {
+              const isBlock = isFormBlockType(item.questionType);
+              // Numbering skips blocks so a section heading does not consume a question number.
+              const displayNumber = questions.slice(0, index + 1).filter((row) => !isFormBlockType(row.questionType)).length;
+              // Forward-only targets, matching the validation rule.
+              const forwardTargets = Array.from({ length: totalSections }, (unused, offset) => offset + 1)
+                .filter((target) => target > (sectionOfRow[index] ?? 1));
+              return (
               <article
                 key={item.id}
                 draggable
+                ref={cardRef(item.id)}
                 onDragStart={() => setDragIndex(index)}
                 onDragEnd={() => setDragIndex(null)}
                 onDragOver={(event) => {
@@ -1256,21 +1608,77 @@ export default function Assessment() {
                   dragQuestionOver(index);
                 }}
                 onDrop={(event) => event.preventDefault()}
+                onMouseDown={() => setFocusedId(item.id)}
+                onFocusCapture={() => setFocusedId(item.id)}
                 data-dragging={dragIndex === index}
+                data-focused={focusedId === item.id}
+                data-block={isBlock ? item.questionType : undefined}
               >
                 <div className={styles.questionHeading}>
                   <strong>
                     <span className={styles.dragHandle} aria-hidden="true" title="ลากเพื่อสลับลำดับ / Drag to reorder">⠿</span>
-                    {index + 1}. {item.questionText}
+                    {isBlock
+                      ? (item.questionType === "SECTION_BREAK"
+                          ? t(`ส่วนที่ ${sectionOfRow[index]}`, `Section ${sectionOfRow[index]}`)
+                          : t("ข้อความ", "Text"))
+                      : <>{displayNumber}. {item.questionText}</>}
                     {item.isRequired ? <em className={styles.requiredMark}> *</em> : null}
                   </strong>
-                  <span>{item.questionType} · {item.questionScore} คะแนน</span>
+                  <span>{isBlock ? displayQuestionType(item.questionType) : `${item.questionType} · ${item.questionScore} คะแนน`}</span>
                 </div>
-                {item.choices.map((choice, choiceIndex) => (
+                {isBlock ? (
+                  <>
+                    <input
+                      className={styles.blockTitleInput}
+                      value={item.questionText}
+                      placeholder={item.questionType === "SECTION_BREAK" ? "Section title" : "Title"}
+                      onChange={(event) => setQuestions((current) => current.map((row) => row.id === item.id ? { ...row, questionText: event.target.value } : row))}
+                    />
+                    <textarea
+                      className={styles.blockBodyInput}
+                      rows={2}
+                      value={item.questionDescription ?? ""}
+                      placeholder="Description"
+                      onChange={(event) => setQuestions((current) => current.map((row) => row.id === item.id ? { ...row, questionDescription: event.target.value } : row))}
+                    />
+                    {item.questionType === "SECTION_BREAK" ? (
+                      <label className={styles.branchLabel}>{t("หลังส่วนนี้", "After this section")}
+                        <select
+                          value={item.nextSection ?? ""}
+                          onChange={(event) => setQuestions((current) => current.map((row) => row.id === item.id ? { ...row, nextSection: event.target.value ? Number(event.target.value) : null } : row))}
+                        >
+                          <option value="">{fallThroughLabel(sectionOfRow[index] ?? 1, totalSections, language === "th")}</option>
+                          <option value="0">{t("ส่งแบบฟอร์ม (จบที่นี่)", "Submit form (end here)")}</option>
+                          {forwardTargets.map((target) => <option key={target} value={target}>{t(`ไปยังส่วนที่ ${target}`, `Go to section ${target}`)}</option>)}
+                        </select>
+                      </label>
+                    ) : null}
+                  </>
+                ) : null}
+                {isGridType(item.questionType) ? renderGridSummary(item.choices, t("คะแนน", "Points")) : null}
+                {isGridType(item.questionType) ? null : item.choices.map((choice, choiceIndex) => (
                   <p key={choice.id} style={{ color: choice.isCorrect ? "var(--ui-30-primary)" : undefined, fontWeight: choice.isCorrect ? 700 : undefined }}>
                     {choice.isCorrect ? "[Correct] " : ""}{String.fromCharCode(65 + choiceIndex)}. {choice.choiceText}
                   </p>
                 ))}
+                {item.questionType === "SINGLE_CHOICE" && forwardTargets.length ? (
+                  <div className={styles.branchRow}>
+                    {item.choices.map((choice, choiceIndex) => choice.choiceText.trim() ? (
+                      <label className={styles.branchLabel} key={`${item.id}-branch-${choice.id}`}>{`"${choice.choiceText}" →`}
+                        <select
+                          value={choice.nextSection ?? ""}
+                          onChange={(event) => setQuestions((current) => current.map((row) => row.id === item.id
+                            ? { ...row, choices: row.choices.map((candidate, targetIndex) => targetIndex === choiceIndex ? { ...candidate, nextSection: event.target.value ? Number(event.target.value) : null } : candidate) }
+                            : row))}
+                        >
+                          <option value="">{fallThroughLabel(sectionOfRow[index] ?? 1, totalSections, language === "th")}</option>
+                          <option value="0">{t("ส่งแบบฟอร์ม (จบที่นี่)", "Submit form (end here)")}</option>
+                          {forwardTargets.map((target) => <option key={target} value={target}>{t(`ไปยังส่วนที่ ${target}`, `Go to section ${target}`)}</option>)}
+                        </select>
+                      </label>
+                    ) : null)}
+                  </div>
+                ) : null}
                 <div className={styles.questionActions}>
                   <button className={styles.secondaryButton} type="button" disabled={index === 0} onClick={() => moveQuestion(index, -1)}>
                     Move Up
@@ -1278,6 +1686,8 @@ export default function Assessment() {
                   <button className={styles.secondaryButton} type="button" disabled={index === questions.length - 1} onClick={() => moveQuestion(index, 1)}>
                     Move Down
                   </button>
+                  {/* A block is edited in place above - it has nothing the question builder offers. */}
+                  {isBlock ? null : (
                   <button
                     className={styles.secondaryButton}
                     type="button"
@@ -1290,6 +1700,7 @@ export default function Assessment() {
                   >
                     Edit
                   </button>
+                  )}
                   <button
                     className={styles.secondaryButton}
                     type="button"
@@ -1300,13 +1711,16 @@ export default function Assessment() {
                   <button
                     className={styles.dangerButton}
                     type="button"
-                    onClick={() => setQuestions((current) => current.filter((candidate) => candidate.id !== item.id))}
+                    onClick={() => reorderQuestions((current) => current.filter((candidate) => candidate.id !== item.id))}
                   >
                     Delete
                   </button>
                 </div>
               </article>
-            ))}
+              );
+            })}
+          </div>
+          <FormItemToolbar anchorTop={anchorTop} onAdd={handleToolbarAdd} />
           </div>
         ) : (
           <div className={styles.emptyState}>ยังไม่มีรายการคำถาม เพิ่มคำถามแรกด้านบนได้ทันที</div>
@@ -1518,7 +1932,7 @@ export default function Assessment() {
                           <div className={styles.panelHeader}>
                             <div>
                               <p className={styles.kicker}>
-                                {detailAsLearner ? "Learner preview" : `${item.scope} · ${item.purpose} · v${item.versionNo}`}
+                                {detailAsLearner ? "Try it as a learner" : `${item.scope} · ${item.purpose} · v${item.versionNo}`}
                               </p>
                               <h3>{item.seriesName}</h3>
                             </div>
@@ -1527,8 +1941,8 @@ export default function Assessment() {
                               <button
                                 type="button"
                                 className={styles.secondaryButton}
-                                aria-label={detailAsLearner ? "กลับไปมุมมองผู้จัดทำ" : "ดูมุมมองผู้เรียน"}
-                                title={detailAsLearner ? "กลับไปมุมมองผู้จัดทำ" : "ดูมุมมองผู้เรียน"}
+                                aria-label={detailAsLearner ? "กลับไปมุมมองผู้จัดทำ" : "ทดลองตอบแบบผู้เรียน"}
+                                title={detailAsLearner ? "กลับไปมุมมองผู้จัดทำ" : "ทดลองตอบแบบผู้เรียน"}
                                 onClick={() => setDetailAsLearner((current) => !current)}
                               >
                                 👁
@@ -1538,72 +1952,54 @@ export default function Assessment() {
                           {/* Mirrors TrainingFormRunner: no correct-answer markers, no per-question score. */}
                           {detailAsLearner ? (
                             item.questions.length ? (
-                              <div className={styles.learnerPreview}>
-                                {item.instructions?.trim() ? (
-                                  <div className={styles.learnerInstructions}>
-                                    <strong>คำชี้แจง</strong>
-                                    <p>{item.instructions}</p>
-                                  </div>
-                                ) : null}
-                                {item.timeLimitMinutes ? (
-                                  <p className={styles.learnerMeta}>⏱ เวลาที่ให้ทำ {item.timeLimitMinutes} นาที</p>
-                                ) : null}
-                                <p className={styles.learnerMeta}>
-                                  เกณฑ์ผ่าน {item.passingScorePercent || 0}% · ทั้งหมด {item.questions.length} ข้อ
-                                </p>
-                                {item.questions.map((detail, index) => (
-                                  <article key={detail.questionId} className={styles.learnerQuestion}>
-                                    <div className={styles.learnerQuestionHead}>
-                                      <span>{index + 1}.</span>
-                                      <span>{detail.questionText}</span>
-                                      {detail.isRequired ? <em className={styles.requiredMark}>*</em> : null}
-                                    </div>
-                                    {detail.questionType === "SHORT_ANSWER" ? (
-                                      <textarea disabled placeholder="พิมพ์คำตอบที่นี่..." rows={3} />
-                                    ) : (
-                                      <div className={styles.learnerChoices}>
-                                        {detail.choices.map((choice) => (
-                                          <label key={choice.choiceId}>
-                                            <input
-                                              type={detail.questionType === "MULTIPLE_CHOICE" ? "checkbox" : "radio"}
-                                              name={`row-preview-${detail.questionId}`}
-                                              disabled
-                                            />
-                                            <span>{choice.choiceText}</span>
-                                          </label>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </article>
-                                ))}
-                                <p className={styles.learnerMeta}>
-                                  * ตัวอย่างเท่านั้น กดตอบไม่ได้ · ผู้เรียนจะไม่เห็นเฉลยและคะแนนรายข้อ
-                                </p>
-                              </div>
+                              <FormPreviewRunner
+                                title={item.seriesName}
+                                instructions={item.instructions}
+                                meta={[
+                                  item.timeLimitMinutes ? `⏱ ${item.timeLimitMinutes} นาที` : null,
+                                  `เกณฑ์ผ่าน ${item.passingScorePercent || 0}%`,
+                                ].filter(Boolean).join(" · ")}
+                                items={toPreviewItems(toDraftQuestions(item))}
+                              />
                             ) : (
-                              <div className={styles.emptyState}>ยังไม่มีคำถามให้แสดงตัวอย่าง</div>
+                              <div className={styles.emptyState}>{t("ยังไม่มีคำถามให้แสดงตัวอย่าง", "No questions to preview yet")}</div>
                             )
                           ) : (
                             <>
                               <p>{item.instructions || "No instructions"}</p>
                               {item.questions.length ? (
                                 <div className={styles.questionList}>
-                                  {item.questions.map((detail, index) => (
-                                    <article key={detail.questionId}>
+                                  {item.questions.map((detail, index) => {
+                                    const isBlock = isFormBlockType(detail.questionType);
+                                    return (
+                                    <article key={detail.questionId} data-block={isBlock ? detail.questionType : undefined}>
                                       <strong>
-                                        {index + 1}. {detail.questionText}
+                                        {/* Blocks are not questions: no number, and no "0 points",
+                                            which is meaningless on a section heading. */}
+                                        {isBlock
+                                          ? detail.questionText
+                                          : `${item.questions.slice(0, index + 1).filter((row) => !isFormBlockType(row.questionType)).length}. ${detail.questionText}`}
                                       </strong>
                                       <span>
-                                        {displayQuestionType(detail.questionType)} · {detail.questionScore} points
+                                        {isBlock
+                                          ? displayQuestionType(detail.questionType)
+                                          : `${displayQuestionType(detail.questionType)} · ${detail.questionScore} points`}
                                       </span>
-                                      {detail.choices.map((choice, choiceIndex) => (
+                                      {isBlock && detail.questionDescription?.trim()
+                                        ? <p className={styles.blockBodyStatic}>{detail.questionDescription}</p>
+                                        : null}
+                                      {isGridType(detail.questionType)
+                                        ? renderGridSummary(detail.choices, t("คะแนน", "Points"))
+                                        : null}
+                                      {isGridType(detail.questionType) ? null : detail.choices.map((choice, choiceIndex) => (
                                         <p key={choice.choiceId}>
                                           {choice.isCorrect ? "[Correct] " : ""}
                                           {String.fromCharCode(65 + choiceIndex)}. {choice.choiceText}
                                         </p>
                                       ))}
                                     </article>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               ) : (
                                 <div className={styles.emptyState}>This draft does not have questions yet.</div>

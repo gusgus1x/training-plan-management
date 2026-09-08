@@ -37,22 +37,49 @@ run("creates, reads, updates, and deletes an Assessment through the least-privil
       passingScorePercent: "80.00",
       timeLimitMinutes: null,
       status: "DRAFT",
+      // A section break and a text block ride along so this exercises migration 37 against the
+      // real database: the widened question_type enum, the relaxed question_score constraint (a
+      // block scores zero, which the original strictly-positive CHECK would have rejected), the
+      // block_score_zero CHECK, and the two new nullable columns on both tables.
       questions: [{
         questionText: "Temporary integration question",
         questionType: "SINGLE_CHOICE",
         questionScore: "1.00",
+        questionDescription: null,
+        nextSection: null,
         isRequired: true,
         choices: [
-          { choiceText: "Correct", isCorrect: true, optionScore: "1.00" },
-          { choiceText: "Incorrect", isCorrect: false, optionScore: "0.00" },
+          { choiceText: "Correct", isCorrect: true, optionScore: "1.00", nextSection: null, axis: null, correctColumns: null },
+          // A forward branch target, so next_section survives the round trip on a choice row too.
+          { choiceText: "Incorrect", isCorrect: false, optionScore: "0.00", nextSection: 2, axis: null, correctColumns: null },
         ],
+      }, {
+        questionText: "Temporary integration section",
+        questionType: "SECTION_BREAK",
+        questionScore: "0",
+        questionDescription: "Second half",
+        nextSection: null,
+        isRequired: false,
+        choices: [],
+      }, {
+        questionText: "Temporary integration note",
+        questionType: "TEXT_BLOCK",
+        questionScore: "0",
+        questionDescription: "Read this before answering",
+        nextSection: null,
+        isRequired: false,
+        choices: [],
       }],
     }, null, account.user_id.toString());
 
     expect(await repository.findById(created.assessmentId)).toMatchObject({
       assessmentId: created.assessmentId,
       seriesCode: created.seriesCode,
-      questions: [{ choices: [{ choiceText: "Correct" }, { choiceText: "Incorrect" }] }],
+      questions: [
+        { choices: [{ choiceText: "Correct" }, { choiceText: "Incorrect", nextSection: 2 }] },
+        { questionType: "SECTION_BREAK", questionScore: "0.00", questionDescription: "Second half" },
+        { questionType: "TEXT_BLOCK", questionDescription: "Read this before answering" },
+      ],
     });
     expect(created.seriesCode).toMatch(/^ASM-\d{3,}$/);
 
@@ -100,10 +127,12 @@ run("creates, reads, updates, and deletes an Assessment through the least-privil
         questionText: "Updated temporary integration question",
         questionType: "TRUE_FALSE",
         questionScore: "2.00",
+        questionDescription: null,
+        nextSection: null,
         isRequired: true,
         choices: [
-          { choiceText: "True", isCorrect: true, optionScore: "2.00" },
-          { choiceText: "False", isCorrect: false, optionScore: "0.00" },
+          { choiceText: "True", isCorrect: true, optionScore: "2.00", nextSection: null, axis: null, correctColumns: null },
+          { choiceText: "False", isCorrect: false, optionScore: "0.00", nextSection: null, axis: null, correctColumns: null },
         ],
       }],
     }, null, account.user_id.toString());

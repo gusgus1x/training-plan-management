@@ -879,3 +879,224 @@
 
 [data-theme="dark"] .companyGroup_SNF,
 .dark .companyGroup_SNF { border-left-color: #22d3ee; }
+
+/* --- Section breaks, text blocks, and the floating item toolbar ------------------ */
+
+/* The toolbar is absolutely positioned against this, and needs room to its right so it does not
+   overlap the cards. Google Forms reserves the same gutter. */
+.previewCanvas {
+  position: relative;
+  padding-right: 58px;
+}
+
+@media (max-width: 900px) {
+  .previewCanvas {
+    padding-right: 0;
+  }
+}
+
+/* Clicking a card makes it the toolbar's anchor, so it needs to be visibly the active one. */
+.questionList article[data-focused="true"] {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px var(--ui-30-primary-soft);
+}
+
+/* A section break and a text block are structure, not questions - tinted so they read as dividers
+   in a list of question cards rather than as something waiting to be answered. */
+.questionList article[data-block] {
+  background: var(--ui-60-surface-soft);
+  border-left: 3px solid var(--ui-30-primary);
+}
+
+.blockTitleInput,
+.blockBodyInput {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font: inherit;
+}
+
+.blockTitleInput {
+  font-weight: 800;
+}
+
+.blockBodyInput {
+  resize: vertical;
+}
+
+.blockTitleInput:focus,
+.blockBodyInput:focus {
+  outline: none;
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px var(--ui-30-primary-soft);
+}
+
+.blockTitleInput::placeholder,
+.blockBodyInput::placeholder {
+  color: var(--ui-30-muted);
+}
+
+.blockTitleStatic {
+  display: block;
+  margin-top: 6px;
+}
+
+.blockBodyStatic {
+  margin: 4px 0 0;
+  color: var(--ui-30-muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* "After this section" and the per-option branch targets. */
+.branchRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.branchLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+  color: var(--ui-30-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.branchLabel select {
+  padding: 6px 8px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font-size: 0.8rem;
+}
+
+.branchLabel select:focus {
+  outline: none;
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px var(--ui-30-primary-soft);
+}
+
+/* Branching a graded test leaves the skipped section's questions in the score denominator. The
+   author chose that, but they must be told - see skippedByBranch in Assessment.tsx. */
+.branchWarning {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-10-accent, #f59e0b);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ui-10-accent, #f59e0b) 12%, transparent);
+  color: var(--ui-30-ink);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+/* Grid row/column editor. Rows carry the answer key and the points, matching how Google Forms
+   scores a grid; columns are labels only. */
+.gridEditor {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gridAxisLabel {
+  display: block;
+  margin: 10px 0 6px;
+  color: var(--ui-30-muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.gridAxisRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.gridAxisRow input[type="text"],
+.gridAxisRow input:not([type]) {
+  flex: 1;
+  min-width: 0;
+}
+
+.gridKeySelect {
+  min-width: 130px;
+  max-width: 190px;
+}
+
+.gridScoreInput {
+  width: 74px;
+  flex: none;
+}
+
+.gridAxisRemove {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: #dc2626;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 2px 4px;
+}
+
+.gridAxisRemove:disabled {
+  color: var(--ui-30-muted);
+  cursor: not-allowed;
+}
+
+.helperTextGrid {
+  margin: 6px 0 0;
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+/* Author-facing grid summary: rows down, columns across, a tick on each correct cell. */
+.gridPreviewScroll {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+
+.gridPreviewTable {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 280px;
+  font-size: 0.78rem;
+}
+
+.gridPreviewTable th,
+.gridPreviewTable td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--ui-30-border);
+  text-align: center;
+}
+
+.gridPreviewTable thead th {
+  color: var(--ui-30-muted);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.gridPreviewTable tbody th {
+  color: var(--ui-30-ink);
+  font-weight: 700;
+  text-align: left;
+  min-width: 100px;
+}
+
+.gridPreviewTable td[data-correct="true"] {
+  color: var(--ui-30-primary);
+  font-weight: 900;
+}

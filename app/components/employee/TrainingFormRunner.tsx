@@ -13,6 +13,14 @@ import {
   submitEvaluation,
   TrainingFormsClientError,
 } from "../../lib/trainingForms/client";
+import {
+  resolveNextSection,
+  splitSections,
+  visitedItems,
+  visitedPath,
+  type FlowItem,
+} from "../../lib/trainingForms/formFlow";
+import type { GridAxis } from "../../lib/formGrids";
 import type {
   AssessmentForEmployee,
   EvaluationForEmployee,
@@ -31,9 +39,20 @@ type TrainingFormRunnerProps = {
 // One shape covers every question type from both assessments and evaluations - the two forms
 // overlap almost completely (single/multiple choice, free text), and a second component is the
 // path by which the two would quietly drift out of sync with each other.
-type RunnerKind = "single" | "multiple" | "text" | "rating";
+// "section" and "note" are not answerable: a section break starts a new page and renders as its
+// heading, a note is a title plus prose. Everything that counts answers filters them out.
+type RunnerKind = "single" | "multiple" | "text" | "rating" | "section" | "note" | "grid" | "gridMulti";
 
-type RunnerOption = { id: string; order: number; text: string };
+type RunnerOption = {
+  id: string;
+  order: number;
+  text: string;
+  nextSection: number | null;
+  /** 'ROW' / 'COLUMN' on a grid question. */
+  axis: GridAxis | null;
+};
+
+const isGridKind = (kind: RunnerKind) => kind === "grid" || kind === "gridMulti";
 
 type RunnerQuestion = {
   questionId: string;
@@ -43,11 +62,33 @@ type RunnerQuestion = {
   kind: RunnerKind;
   options: RunnerOption[];
   sectionName: string | null;
+  /** Body of a note, sub-caption of a section heading. */
+  description: string | null;
+  /** Section breaks only: the default "after this section" target. */
+  nextSection: number | null;
 };
 
-type AnswerState = { choiceIds: string[]; text: string; rating: number | null };
+/** RunnerKind back to the raw question_type the flow helpers key on. */
+const flowItems = (questions: readonly RunnerQuestion[]): FlowItem[] =>
+  questions.map((question) => ({
+    questionId: question.questionId,
+    type: question.kind === "section" ? "SECTION_BREAK" : question.kind === "note" ? "TEXT_BLOCK" : question.kind,
+    isRequired: question.isRequired,
+    nextSection: question.nextSection,
+    options: question.options.map((option) => ({ id: option.id, nextSection: option.nextSection })),
+  }));
 
-const emptyAnswer: AnswerState = { choiceIds: [], text: "", rating: null };
+const isBlockKind = (kind: RunnerKind) => kind === "section" || kind === "note";
+
+type AnswerState = {
+  choiceIds: string[];
+  text: string;
+  rating: number | null;
+  /** Grid questions: row id -> the column ids picked for that row. */
+  grid: Record<string, string[]>;
+};
+
+const emptyAnswer: AnswerState = { choiceIds: [], text: "", rating: null, grid: {} };
 
 /** Stable DOM id per question, so the submit handler can scroll to the first unanswered one. */
 const questionDomId = (questionId: string) => `training-form-q-${questionId}`;
@@ -91,11 +132,53 @@ const countdownLabel = (msLeft: number) => {
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 };
 
+/** Only rows that actually exist on the question, so a stale draft cannot submit a dead row id. */
+const gridAnswerFor = (question: RunnerQuestion, answer: AnswerState | undefined) =>
+  gridRows(question).map((row) => ({ rowId: row.id, columnIds: answer?.grid[row.id] ?? [] }))
+    .filter((row) => row.columnIds.length > 0);
+
+const gridRows = (question: RunnerQuestion) => question.options.filter((option) => option.axis === "ROW");
+const gridColumns = (question: RunnerQuestion) => question.options.filter((option) => option.axis === "COLUMN");
+
 const isAnswered = (question: RunnerQuestion, answer: AnswerState | undefined) => {
+  // A section or note has nothing to answer, so it must never count toward progress or hold up
+  // the submit button.
+  if (isBlockKind(question.kind)) return false;
   if (!answer) return false;
+  // Google Forms' "require a response in each row": a grid counts as answered only when every row
+  // has something, so a half-filled grid cannot pass a required check.
+  if (isGridKind(question.kind)) {
+    return gridRows(question).every((row) => (answer.grid[row.id] ?? []).length > 0);
+  }
   if (question.kind === "single" || question.kind === "multiple") return answer.choiceIds.length > 0;
   if (question.kind === "rating") return answer.rating !== null;
   return answer.text.trim().length > 0;
+};
+
+// Both maps are exhaustive on purpose. The previous ternary chains ended in a bare `: "single"` /
+// `: "text"`, so a type the runner did not know about rendered as an empty radio group or a stray
+// textarea instead of failing loudly.
+const ASSESSMENT_KINDS: Record<AssessmentForEmployee["questions"][number]["questionType"], RunnerKind> = {
+  SINGLE_CHOICE: "single",
+  TRUE_FALSE: "single",
+  MULTIPLE_CHOICE: "multiple",
+  SHORT_ANSWER: "text",
+  MULTIPLE_CHOICE_GRID: "grid",
+  CHECKBOX_GRID: "gridMulti",
+  SECTION_BREAK: "section",
+  TEXT_BLOCK: "note",
+};
+
+const EVALUATION_KINDS: Record<EvaluationForEmployee["questions"][number]["questionType"], RunnerKind> = {
+  RATING: "rating",
+  SINGLE_CHOICE: "single",
+  MULTIPLE_CHOICE: "multiple",
+  SHORT_TEXT: "text",
+  LONG_TEXT: "text",
+  MULTIPLE_CHOICE_GRID: "grid",
+  CHECKBOX_GRID: "gridMulti",
+  SECTION_BREAK: "section",
+  TEXT_BLOCK: "note",
 };
 
 const fromAssessment = (form: AssessmentForEmployee): RunnerQuestion[] =>
@@ -104,9 +187,11 @@ const fromAssessment = (form: AssessmentForEmployee): RunnerQuestion[] =>
     order: q.questionOrder,
     text: q.questionText,
     isRequired: q.isRequired,
-    kind: q.questionType === "MULTIPLE_CHOICE" ? "multiple" : q.questionType === "SHORT_ANSWER" ? "text" : "single",
-    options: q.choices.map((c) => ({ id: c.choiceId, order: c.choiceOrder, text: c.choiceText })),
+    kind: ASSESSMENT_KINDS[q.questionType],
+    options: q.choices.map((c) => ({ id: c.choiceId, order: c.choiceOrder, text: c.choiceText, nextSection: c.nextSection, axis: c.axis })),
     sectionName: null,
+    description: q.questionDescription,
+    nextSection: q.nextSection,
   }));
 
 const fromEvaluation = (form: EvaluationForEmployee): RunnerQuestion[] =>
@@ -115,9 +200,11 @@ const fromEvaluation = (form: EvaluationForEmployee): RunnerQuestion[] =>
     order: q.questionOrder,
     text: q.questionText,
     isRequired: q.isRequired,
-    kind: q.questionType === "RATING" ? "rating" : q.questionType === "MULTIPLE_CHOICE" ? "multiple" : q.questionType === "SINGLE_CHOICE" ? "single" : "text",
-    options: q.options.map((o) => ({ id: o.optionId, order: o.optionOrder, text: o.optionText })),
+    kind: EVALUATION_KINDS[q.questionType],
+    options: q.options.map((o) => ({ id: o.optionId, order: o.optionOrder, text: o.optionText, nextSection: o.nextSection, axis: o.axis })),
     sectionName: q.sectionName,
+    description: q.questionDescription,
+    nextSection: q.nextSection,
   }));
 
 const passStatusLabel = (status: SubmissionSummary["passStatus"], t: (th: string, en: string) => string) =>
@@ -239,20 +326,81 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enrollmentId, stage, kind]);
 
-  const missingRequiredIds = useMemo(() => {
-    if (!questions) return [];
-    return questions.filter((q) => q.isRequired && !isAnswered(q, answers[q.questionId])).map((q) => q.questionId);
-  }, [questions, answers]);
+  // Sections and the path through them. A branch that skips a section makes its questions
+  // unreachable, so everything below counts the VISITED path rather than the whole form - otherwise
+  // a required question the learner was never shown would block submit forever.
+  const selected = useMemo(
+    () => Object.fromEntries(Object.entries(answers).map(([id, answer]) => [id, answer.choiceIds])),
+    [answers],
+  );
+  const sections = useMemo(() => splitSections(flowItems(questions ?? [])), [questions]);
+  const path = useMemo(() => visitedPath(sections, selected), [sections, selected]);
+
+  const byId = useMemo(() => new Map((questions ?? []).map((q) => [q.questionId, q])), [questions]);
+  const questionsIn = (sectionIndex: number): RunnerQuestion[] =>
+    (sections.find((section) => section.index === sectionIndex)?.items ?? [])
+      .map((item) => byId.get(item.questionId))
+      .filter((question): question is RunnerQuestion => Boolean(question));
+
+  const [requestedSection, setSectionIndex] = useState(1);
+  // Re-answering a branching question can drop the page the learner is standing on out of the
+  // path. Derived rather than synced in an effect, so there is never a render showing a section
+  // that is no longer reachable.
+  const sectionIndex = path.includes(requestedSection) ? requestedSection : path[path.length - 1] ?? 1;
+
+  const currentQuestions = questionsIn(sectionIndex);
+  const visitedQuestions = useMemo(
+    () => visitedItems(sections, selected)
+      .map((item) => byId.get(item.questionId))
+      .filter((question): question is RunnerQuestion => Boolean(question)),
+    [sections, selected, byId],
+  );
+
+  /** Display numbering skips blocks, so a note between two questions does not eat a number. */
+  const displayNumbers = useMemo(() => {
+    const numbers = new Map<string, number>();
+    let next = 1;
+    for (const question of questions ?? []) if (!isBlockKind(question.kind)) numbers.set(question.questionId, next++);
+    return numbers;
+  }, [questions]);
+
+  const missingIn = (list: readonly RunnerQuestion[]) =>
+    list.filter((q) => q.isRequired && !isAnswered(q, answers[q.questionId])).map((q) => q.questionId);
+
+  /** Gates Submit: everything required the learner actually walked past. */
+  const missingRequiredIds = useMemo(
+    () => visitedQuestions.filter((q) => q.isRequired && !isAnswered(q, answers[q.questionId])).map((q) => q.questionId),
+    [visitedQuestions, answers],
+  );
+  /** Gates Next: only this page. */
+  const missingOnPage = missingIn(currentQuestions);
 
   const hasStartedAnswering = useMemo(() => Object.values(answers).some((a) => a.text.trim().length > 0 || a.choiceIds.length > 0 || a.rating !== null), [answers]);
 
+  const answerable = visitedQuestions;
   const answeredCount = useMemo(
-    () => (questions ?? []).filter((q) => isAnswered(q, answers[q.questionId])).length,
-    [questions, answers],
+    () => answerable.filter((q) => isAnswered(q, answers[q.questionId])).length,
+    [answerable, answers],
   );
+
+  const isLastSection = resolveNextSection(sections, sectionIndex, selected) === null;
+  const positionInPath = path.indexOf(sectionIndex);
 
   const setAnswer = (questionId: string, patch: Partial<AnswerState>) =>
     setAnswers((prev) => ({ ...prev, [questionId]: { ...(prev[questionId] ?? emptyAnswer), ...patch } }));
+
+  const toggleGridCell = (question: RunnerQuestion, rowId: string, columnId: string) =>
+    setAnswers((prev) => {
+      const current = prev[question.questionId] ?? emptyAnswer;
+      const picked = current.grid[rowId] ?? [];
+      // A multiple choice grid replaces the row's answer; a checkbox grid toggles within the row.
+      const next = question.kind === "grid"
+        ? [columnId]
+        : picked.includes(columnId)
+          ? picked.filter((id) => id !== columnId)
+          : [...picked, columnId];
+      return { ...prev, [question.questionId]: { ...current, grid: { ...current.grid, [rowId]: next } } };
+    });
 
   const toggleChoice = (question: RunnerQuestion, choiceId: string) => {
     setAnswers((prev) => {
@@ -311,21 +459,30 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
       toast.error(t("กรุณาตอบคำถามที่จำเป็นให้ครบก่อนส่ง", "Please answer every required question before submitting"));
       // A toast at the top of the screen says nothing about WHERE the gap is - on a long form the
       // employee is left scrolling to hunt for it. Google Forms jumps to the first unanswered
-      // required question instead, so do the same.
-      document
-        .getElementById(questionDomId(missingRequiredIds[0]))
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      // required question instead, so do the same. With sections that gap can be on another page,
+      // so switch to it first; the scroll then runs once that page has rendered.
+      const target = missingRequiredIds[0];
+      const owning = sections.find((section) => section.items.some((item) => item.questionId === target));
+      if (owning && owning.index !== sectionIndex) setSectionIndex(owning.index);
+      window.setTimeout(
+        () => document.getElementById(questionDomId(target))?.scrollIntoView({ behavior: "smooth", block: "center" }),
+        0,
+      );
       return;
     }
 
     setIsSubmitting(true);
     try {
+      // Only what the learner actually walked. Building this from every question, or straight from
+      // `answers`, would send answers left behind in a section they backtracked out of after
+      // changing a branching choice - they are still in state and in the saved draft.
       if (kind === "assessment") {
         const result = await submitAssessment(enrollmentId, stage as GradedStage, {
-          answers: questions.map((q) => ({
+          answers: visitedQuestions.map((q) => ({
             questionId: q.questionId,
             choiceIds: answers[q.questionId]?.choiceIds ?? [],
             text: q.kind === "text" ? answers[q.questionId]?.text ?? null : null,
+            grid: isGridKind(q.kind) ? gridAnswerFor(q, answers[q.questionId]) : undefined,
           })),
         });
         if (!result.resultsPublished) {
@@ -340,11 +497,12 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
         }
       } else {
         await submitEvaluation(enrollmentId, stage as "EVALUATION" | "EVALUATION_30DAY", {
-          answers: questions.map((q) => ({
+          answers: visitedQuestions.map((q) => ({
             questionId: q.questionId,
             optionIds: answers[q.questionId]?.choiceIds ?? [],
             ratingValue: q.kind === "rating" ? answers[q.questionId]?.rating ?? null : null,
             text: q.kind === "text" ? answers[q.questionId]?.text ?? null : null,
+            grid: isGridKind(q.kind) ? gridAnswerFor(q, answers[q.questionId]) : undefined,
           })),
         });
         toast.success(t("ส่งแบบประเมินเรียบร้อยแล้ว ขอบคุณครับ", "Evaluation submitted - thank you"));
@@ -451,14 +609,14 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
               </div>
             ) : null}
 
-            {(questions ?? []).length > 0 ? (
+            {answerable.length > 0 ? (
               <div className={styles.progressBox}>
                 <div className={styles.progressText}>
                   <span>{t("ความคืบหน้า", "Progress")}</span>
                   <strong>
                     {t(
-                      `ตอบแล้ว ${answeredCount} จาก ${(questions ?? []).length} ข้อ`,
-                      `${answeredCount} of ${(questions ?? []).length} answered`,
+                      `ตอบแล้ว ${answeredCount} จาก ${answerable.length} ข้อ`,
+                      `${answeredCount} of ${answerable.length} answered`,
                     )}
                   </strong>
                 </div>
@@ -466,35 +624,91 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
                   className={styles.progressTrack}
                   role="progressbar"
                   aria-valuemin={0}
-                  aria-valuemax={(questions ?? []).length}
+                  aria-valuemax={answerable.length}
                   aria-valuenow={answeredCount}
                 >
                   <div
                     className={styles.progressFill}
-                    style={{ width: `${Math.round((answeredCount / Math.max(1, (questions ?? []).length)) * 100)}%` }}
+                    style={{ width: `${Math.round((answeredCount / Math.max(1, answerable.length)) * 100)}%` }}
                   />
                 </div>
+                {sections.length > 1 ? (
+                  // Denominator is every section on the form, not the visited count: a respondent
+                  // expects a page count that does not move under them as they answer.
+                  <p className={styles.sectionCounter}>
+                    {t(
+                      `ส่วนที่ ${sectionIndex} จาก ${sections.length}`,
+                      `Section ${sectionIndex} of ${sections.length}`,
+                    )}
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
-            {(questions ?? []).map((question, index) => {
+            {currentQuestions.map((question, index) => {
               const answer = answers[question.questionId];
               const missing = showMissing && missingRequiredIds.includes(question.questionId);
-              // A section's name used to be a small grey line inside every question card, which
-              // repeated it per question and never actually separated one section from the next.
-              const previousSection = index > 0 ? (questions ?? [])[index - 1].sectionName : null;
+
+              // A section break renders as this page's heading, a note as a titled prose block.
+              // Neither takes an input, so both return before the question card below.
+              if (question.kind === "section" || question.kind === "note") {
+                return (
+                  <div className={styles.blockCard} key={question.questionId} data-kind={question.kind}>
+                    <h3 className={styles.sectionHeader}>{question.text}</h3>
+                    {question.description?.trim() ? <p className={styles.blockBody}>{question.description}</p> : null}
+                  </div>
+                );
+              }
+
+              // Legacy section_name grouping, kept for forms authored before real section breaks
+              // existed and not yet re-saved. New forms leave section_name null.
+              const previousSection = index > 0 ? currentQuestions[index - 1].sectionName : null;
               const startsSection = question.sectionName !== null && question.sectionName !== previousSection;
               return (
                 <Fragment key={question.questionId}>
                   {startsSection ? <h3 className={styles.sectionHeader}>{question.sectionName}</h3> : null}
                 <div className={styles.questionCard} data-missing={missing} id={questionDomId(question.questionId)}>
                   <div className={styles.questionHeader}>
-                    <span className={styles.questionOrder}>{question.order}.</span>
+                    <span className={styles.questionOrder}>{displayNumbers.get(question.questionId) ?? question.order}.</span>
                     <span>{question.text}</span>
                     {question.isRequired ? <span className={styles.required}>*</span> : null}
                   </div>
 
-                  {question.kind === "single" || question.kind === "multiple" ? (
+                  {isGridKind(question.kind) ? (
+                    // Rows down the side, columns across the top. A multiple choice grid takes one
+                    // column per row (radio, grouped by row); a checkbox grid takes any number.
+                    <div className={styles.gridScroll}>
+                      <table className={styles.gridTable}>
+                        <thead>
+                          <tr>
+                            <th />
+                            {gridColumns(question).map((column) => <th key={column.id} scope="col">{column.text}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {gridRows(question).map((row) => {
+                            const picked = answer?.grid[row.id] ?? [];
+                            return (
+                              <tr key={row.id}>
+                                <th scope="row">{row.text}</th>
+                                {gridColumns(question).map((column) => (
+                                  <td key={column.id}>
+                                    <input
+                                      type={question.kind === "grid" ? "radio" : "checkbox"}
+                                      name={`${question.questionId}-${row.id}`}
+                                      aria-label={`${row.text} - ${column.text}`}
+                                      checked={picked.includes(column.id)}
+                                      onChange={() => toggleGridCell(question, row.id, column.id)}
+                                    />
+                                  </td>
+                                ))}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : question.kind === "single" || question.kind === "multiple" ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                       {question.options.map((option) => (
                         <label className={styles.optionRow} key={option.id}>
@@ -545,14 +759,47 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
           <button className={styles.secondaryBtn} type="button" onClick={() => void handleBack()}>
             {t("ยกเลิก", "Cancel")}
           </button>
-          <button
-            className={styles.primaryBtn}
-            type="button"
-            disabled={isSubmitting || timeIsUp || (questions ?? []).length === 0}
-            onClick={() => void handleSubmit()}
-          >
-            {isSubmitting ? t("กำลังส่ง...", "Submitting...") : t("ส่งคำตอบ", "Submit")}
-          </button>
+          {positionInPath > 0 ? (
+            <button
+              className={styles.secondaryBtn}
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => setSectionIndex(path[positionInPath - 1])}
+            >
+              {t("ย้อนกลับ", "Back")}
+            </button>
+          ) : null}
+          {isLastSection ? (
+            <button
+              className={styles.primaryBtn}
+              type="button"
+              disabled={isSubmitting || timeIsUp || answerable.length === 0}
+              onClick={() => void handleSubmit()}
+            >
+              {isSubmitting ? t("กำลังส่ง...", "Submitting...") : t("ส่งคำตอบ", "Submit")}
+            </button>
+          ) : (
+            <button
+              className={styles.primaryBtn}
+              type="button"
+              disabled={isSubmitting || timeIsUp}
+              onClick={() => {
+                // Gated by THIS page only. Submit still checks the whole visited path, so a gap
+                // left behind on an earlier page cannot slip through.
+                if (missingOnPage.length > 0) {
+                  setShowMissing(true);
+                  toast.error(t("กรุณาตอบคำถามที่จำเป็นในส่วนนี้ให้ครบ", "Please answer every required question in this section"));
+                  document.getElementById(questionDomId(missingOnPage[0]))?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  return;
+                }
+                const next = resolveNextSection(sections, sectionIndex, selected);
+                if (next !== null) setSectionIndex(next);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+            >
+              {t("ถัดไป", "Next")}
+            </button>
+          )}
         </div>
       ) : null}
     </section>

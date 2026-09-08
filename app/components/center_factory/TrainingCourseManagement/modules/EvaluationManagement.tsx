@@ -1,9 +1,10 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useToast } from "../../../ToastHost";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { listCompanies } from "../../../../lib/companies/client";
 import type { CompanyRecord } from "../../../../lib/companies/types";
 import {
@@ -18,11 +19,24 @@ import type {
   EvaluationQuestionType,
   EvaluationRecord,
   EvaluationRespondent,
+  EvaluationRowType,
   EvaluationScope,
   EvaluationStatus,
   EvaluationTiming,
   EvaluationWriteInput,
 } from "../../../../lib/evaluations/types";
+import { legacySectionBreakPoints, legacySectionTitleAt } from "../../../../lib/evaluations/legacySections";
+import {
+  fallThroughLabel,
+  isFormBlockType,
+  remapSectionOrdinals,
+  sectionCountOf,
+  sectionIndexPerRow,
+  type FormBlockType,
+} from "../../../../lib/formBlocks";
+import { isGridType, MIN_GRID_COLUMNS, MIN_GRID_ROWS } from "../../../../lib/formGrids";
+import FormItemToolbar, { type FormItemKind } from "./FormItemToolbar";
+import FormPreviewRunner, { type PreviewItem, type PreviewKind } from "./FormPreviewRunner";
 import SearchableSelect from "../../../SearchableSelect";
 import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./EvaluationManagement.module.css";
@@ -46,10 +60,11 @@ const QUESTION_TYPE_LABELS: Record<EvaluationQuestionType, string> = {
   MULTIPLE_CHOICE: "Multiple Choice (ตอบได้หลายข้อ)",
   SHORT_TEXT: "Short Text (ข้อความสั้น)",
   LONG_TEXT: "Long Text (ข้อความยาว)",
+  MULTIPLE_CHOICE_GRID: "Multiple Choice Grid (ตารางกริดหลายตัวเลือก)",
+  CHECKBOX_GRID: "Checkbox Grid (ตารางกริดทำเครื่องหมาย)",
 };
-const isChoiceType = (value: EvaluationQuestionType) => value === "SINGLE_CHOICE" || value === "MULTIPLE_CHOICE";
-const isTextType = (value: EvaluationQuestionType) => value === "SHORT_TEXT" || value === "LONG_TEXT";
-type EvaluationSection = "Course Content" | "Instructor" | "Learning Experience" | "Application & Impact" | "Comments";
+const isChoiceType = (value: EvaluationRowType) => value === "SINGLE_CHOICE" || value === "MULTIPLE_CHOICE";
+const isTextType = (value: EvaluationRowType) => value === "SHORT_TEXT" || value === "LONG_TEXT";
 type Feedback = { tone: "success" | "error" | "info"; message: string };
 type FormErrors = Partial<Record<"name" | "companyId" | "questions" | "question", string>>;
 type Draft = {
@@ -68,13 +83,21 @@ type Draft = {
 type DraftQuestion = {
   id: string;
   prompt: string;
-  type: EvaluationQuestionType;
-  section: EvaluationSection;
+  type: EvaluationRowType;
   required: boolean;
   options: string[];
+  /** Body of a TEXT_BLOCK, sub-caption of a SECTION_BREAK. */
+  description: string;
+  /** SECTION_BREAK only: the default "after this section" target, or null to fall through. */
+  nextSection: number | null;
+  /** Per-option branch targets, parallel to `options`. SINGLE_CHOICE only. */
+  optionTargets: (number | null)[];
+  /** Grid questions only. Rows and columns are kept apart here and merged into one axis-tagged
+   *  option list at save time, which is how the database stores them. */
+  gridRows: string[];
+  gridColumns: string[];
 };
 
-const sections: EvaluationSection[] = ["Course Content", "Instructor", "Learning Experience", "Application & Impact", "Comments"];
 const ratingOptions = ["1 - Strongly disagree", "2 - Disagree", "3 - Neutral", "4 - Agree", "5 - Strongly agree"];
 const key = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 const blankDraft = (companyId = "", factory = false): Draft => ({
@@ -91,6 +114,19 @@ const blankDraft = (companyId = "", factory = false): Draft => ({
 /** The editor sits above the question list, so pressing Edit on a question further down moved the
  *  form off-screen. Scrolling to it is the cheap version of editing the question in place. */
 const QUESTION_BUILDER_ID = "evaluation-question-builder";
+const LEARNER_PREVIEW_ID = "evaluation-learner-preview";
+
+/** Matches Assessment's indicator exactly - the two editors sit in the same menu, so a required
+ *  field that is marked in one and not the other reads as a difference in the rules, not the UI.
+ *  The " / " form is what the Thai dictionary splits on, so the title works in both languages. */
+const RequiredIndicator = ({ isFilled }: { isFilled: boolean }) => (
+  <span
+    className={isFilled ? styles.indicatorDone : styles.indicatorPending}
+    title={isFilled ? "กรอกข้อมูลเรียบร้อยแล้ว / Completed" : "จำเป็นต้องกรอก / Required field"}
+  >
+    <span className={styles.indicatorDot} />
+  </span>
+);
 const scrollToQuestionBuilder = () =>
   document.getElementById(QUESTION_BUILDER_ID)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
@@ -104,9 +140,73 @@ const blankQuestion = (): DraftQuestion => ({
   id: key(),
   prompt: "",
   type: "RATING",
-  section: "Course Content",
   required: true,
   options: blankOptions(),
+  description: "",
+  nextSection: null,
+  optionTargets: blankOptions().map(() => null),
+  gridRows: ["", ""],
+  gridColumns: ["", ""],
+});
+
+/** A section break or a text block: a title, an optional body, and never an answer. */
+const blankBlock = (type: FormBlockType): DraftQuestion => ({
+  ...blankQuestion(),
+  type,
+  prompt: type === "SECTION_BREAK" ? "Untitled section" : "Untitled text",
+  required: false,
+  options: [],
+  optionTargets: [],
+});
+
+/** Draft rows to the shape the live preview runner takes. RATING has no stored options in the
+ *  draft - the five-point scale is synthesised at save time - so it is rendered as a rating. */
+const toPreviewItems = (rows: DraftQuestion[]): PreviewItem[] => rows.map((row) => {
+  const kind: PreviewKind =
+    row.type === "SECTION_BREAK" ? "section"
+      : row.type === "TEXT_BLOCK" ? "note"
+        : row.type === "RATING" ? "rating"
+          : row.type === "MULTIPLE_CHOICE_GRID" ? "grid"
+            : row.type === "CHECKBOX_GRID" ? "gridMulti"
+              : row.type === "MULTIPLE_CHOICE" ? "multiple"
+                : row.type === "SINGLE_CHOICE" ? "single"
+                  : "text";
+  if (kind === "grid" || kind === "gridMulti") {
+    return {
+      id: row.id,
+      kind,
+      text: row.prompt,
+      description: null,
+      isRequired: row.required,
+      nextSection: null,
+      options: [
+        ...row.gridRows.filter((label) => label.trim()).map((label, index) => ({
+          id: `${row.id}-r${index}`, text: label, nextSection: null, axis: "ROW" as const,
+        })),
+        ...row.gridColumns.filter((label) => label.trim()).map((label, index) => ({
+          id: `${row.id}-c${index}`, text: label, nextSection: null, axis: "COLUMN" as const,
+        })),
+      ],
+    };
+  }
+  return {
+    id: row.id,
+    kind,
+    text: row.prompt,
+    description: row.description || null,
+    isRequired: row.required,
+    nextSection: row.nextSection,
+    options: kind === "single" || kind === "multiple"
+      ? row.options
+          .map((option, index) => ({ option, target: row.optionTargets[index] ?? null }))
+          .filter(({ option }) => option.trim())
+          .map(({ option, target }, index) => ({
+            id: `${row.id}-${index}`,
+            text: option,
+            nextSection: kind === "single" ? target : null,
+          }))
+      : [],
+  };
 });
 
 // The *Label types are what the form shows; the Evaluation* types are what the API stores. These
@@ -119,21 +219,46 @@ const respondentFromApi = (value: EvaluationRespondent): RespondentLabel => valu
 const statusToApi = (value: StatusLabel): EvaluationStatus => value.toUpperCase() as EvaluationStatus;
 const statusFromApi = (value: EvaluationStatus): StatusLabel => value === "DRAFT" ? "Draft" : value === "PUBLISHED" ? "Published" : "Inactive";
 
-const toDraftQuestions = (record: EvaluationRecord): DraftQuestion[] => record.questions.map((question) => ({
-  id: question.evaluationQuestionId,
-  prompt: question.questionText,
-  type: question.questionType,
-  section: sections.includes(question.sectionName as EvaluationSection) ? question.sectionName as EvaluationSection : "Comments",
-  required: question.isRequired,
-  // Not truncated to 4 any more: a question stored with more options used to lose the extras as
-  // soon as it was opened here, and saving wrote the shortened list back.
-  options: isChoiceType(question.questionType)
-    ? (() => {
-        const stored = question.options.map((option) => option.optionText);
-        return stored.length >= MIN_OPTIONS ? stored : [...stored, ...blankOptions()].slice(0, MIN_OPTIONS);
-      })()
-    : blankOptions(),
-}));
+const toDraftQuestions = (record: EvaluationRecord): DraftQuestion[] => {
+  const rows: DraftQuestion[] = record.questions.map((question) => ({
+    id: question.evaluationQuestionId,
+    prompt: question.questionText,
+    type: question.questionType,
+    required: question.isRequired,
+    description: question.questionDescription ?? "",
+    nextSection: question.nextSection,
+    // Not truncated to 4 any more: a question stored with more options used to lose the extras as
+    // soon as it was opened here, and saving wrote the shortened list back.
+    options: isChoiceType(question.questionType)
+      ? (() => {
+          const stored = question.options.map((option) => option.optionText);
+          return stored.length >= MIN_OPTIONS ? stored : [...stored, ...blankOptions()].slice(0, MIN_OPTIONS);
+        })()
+      : blankOptions(),
+    optionTargets: isChoiceType(question.questionType)
+      ? question.options.map((option) => option.nextSection)
+      : [],
+    // Stored as one axis-tagged list; split back into the two the editor works with.
+    gridRows: question.options.filter((option) => option.axis === "ROW").map((option) => option.optionText),
+    gridColumns: question.options.filter((option) => option.axis === "COLUMN").map((option) => option.optionText),
+  }));
+
+  // Old forms grouped questions with a section_name label instead of real breaks. Convert on open
+  // so the grouping survives the next save, which deletes and recreates every row.
+  const hasRealSections = rows.some((row) => row.type === "SECTION_BREAK");
+  if (hasRealSections) return rows;
+  const points = legacySectionBreakPoints(record.questions);
+  if (!points.length) return rows;
+
+  const converted: DraftQuestion[] = [];
+  rows.forEach((row, index) => {
+    if (points.includes(index)) {
+      converted.push({ ...blankBlock("SECTION_BREAK"), prompt: legacySectionTitleAt(record.questions, index) });
+    }
+    converted.push(row);
+  });
+  return converted;
+};
 
 /** Turned off at the user's request, matching Assessment. Flip to true to bring the button back. */
 const SHOW_CSV_EXPORT = false;
@@ -179,12 +304,24 @@ export default function EvaluationManagement() {
   const [selectedId, setSelectedId] = useState("");
   const [openDetailId, setOpenDetailId] = useState("");
   const [detailAsLearner, setDetailAsLearner] = useState(false);
+  /** Editor-level view switch, separate from detailAsLearner which belongs to the list rows. */
+  const [previewAsLearner, setPreviewAsLearner] = useState(false);
   const [mode, setMode] = useState<Mode>("idle");
   const [draft, setDraft] = useState<Draft>(() => blankDraft(user?.companyId ?? "", isFactory));
   const [questions, setQuestions] = useState<DraftQuestion[]>([]);
   const [questionDraft, setQuestionDraft] = useState<DraftQuestion>(blankQuestion);
   const [editingQuestionId, setEditingQuestionId] = useState("");
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, string>>({});
+
+  // The floating toolbar tracks whichever card is focused and inserts below it. The refs give it
+  // that card's offsetTop; onMouseDown backs up onFocusCapture, which misses clicks on the parts of
+  // a card that are not focusable.
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [anchorTop, setAnchorTop] = useState<number | null>(null);
+  const cardRefs = useRef(new Map<string, HTMLElement>());
+  useLayoutEffect(() => {
+    setAnchorTop(focusedId ? cardRefs.current.get(focusedId)?.offsetTop ?? null : null);
+  }, [focusedId, questions]);
   const [search, setSearch] = useState("");
   /** Company code, or "CENTRAL". Center users only - a Factory list is already narrowed server-side. */
   const [companyFilter, setCompanyFilter] = useState("");
@@ -197,6 +334,10 @@ export default function EvaluationManagement() {
     setClosedGroups((current) => current.includes(code) ? current.filter((entry) => entry !== code) : [...current, code]);
   const [errors, setErrors] = useState<FormErrors>({});
   const toast = useToast();
+  // Escape hatch for the strings the DOM-walking dictionary cannot reach: those with
+  // interpolated counts, and those that must differ per language rather than be translated.
+  const { language } = useUiLanguage();
+  const t = (th: string, en: string) => (language === "th" ? th : en);
   const setFeedback = useCallback(
     (next: Feedback | null) => {
       if (next) toast[next.tone](next.message);
@@ -374,14 +515,20 @@ export default function EvaluationManagement() {
         respondentType: item.respondentType,
         isAnonymous: item.isAnonymous,
         status: "PUBLISHED",
+        // Status-only publish: every question is echoed back exactly as stored, blocks and branch
+        // targets included, so nothing is rewritten on the way through.
         questions: item.questions.map((question) => ({
           questionText: question.questionText,
           questionType: question.questionType,
           sectionName: question.sectionName,
+          questionDescription: question.questionDescription,
+          nextSection: question.nextSection,
           isRequired: question.isRequired,
           options: question.options.map((option) => ({
             optionText: option.optionText,
             optionValue: option.optionValue,
+            nextSection: option.nextSection,
+            axis: option.axis,
           })),
         })),
       };
@@ -408,13 +555,35 @@ export default function EvaluationManagement() {
     questions: sourceQuestions.map((question) => ({
       questionText: question.prompt,
       questionType: question.type,
-      sectionName: question.section,
-      isRequired: question.required,
+      // Superseded by SECTION_BREAK rows. The column stays for forms not yet re-saved, but nothing
+      // written from here sets it again.
+      sectionName: null,
+      questionDescription: isFormBlockType(question.type) ? question.description.trim() || null : null,
+      nextSection: question.type === "SECTION_BREAK" ? question.nextSection : null,
+      isRequired: isFormBlockType(question.type) ? false : question.required,
       options: question.type === "RATING"
-        ? ratingOptions.map((option, index) => ({ optionText: option, optionValue: String(index + 1) }))
-        : isChoiceType(question.type)
-          ? question.options.filter((option) => option.trim()).map((option) => ({ optionText: option, optionValue: null }))
-          : [],
+        ? ratingOptions.map((option, index) => ({ optionText: option, optionValue: String(index + 1), nextSection: null, axis: null }))
+        : isGridType(question.type)
+          // Rows first, then columns: both live in one ordered list, told apart by axis.
+          ? [
+              ...question.gridRows.filter((row) => row.trim()).map((row) => ({
+                optionText: row, optionValue: null, nextSection: null, axis: "ROW" as const,
+              })),
+              ...question.gridColumns.filter((column) => column.trim()).map((column) => ({
+                optionText: column, optionValue: null, nextSection: null, axis: "COLUMN" as const,
+              })),
+            ]
+          : isChoiceType(question.type)
+            ? question.options
+                .map((option, index) => ({ option, target: question.optionTargets[index] ?? null }))
+                .filter(({ option }) => option.trim())
+                .map(({ option, target }) => ({
+                  optionText: option,
+                  optionValue: null,
+                  nextSection: question.type === "SINGLE_CHOICE" ? target : null,
+                  axis: null,
+                }))
+            : [],
     })),
   });
 
@@ -469,6 +638,46 @@ export default function EvaluationManagement() {
     setFeedback({ tone: "success", message: `ดึงคำถาม ${source.questions.length} ข้อจาก "${source.formName}" มาแล้ว แก้ไขได้ตามต้องการ` });
   };
 
+  /**
+   * Every list mutation goes through here. Moving, adding or deleting a section renumbers every
+   * section after it, so a branch target left alone would silently start pointing at a different
+   * section - worse than the reorder itself, because nothing tells the author it happened.
+   */
+  const withRemappedTargets = (before: DraftQuestion[], after: DraftQuestion[]): DraftQuestion[] => {
+    const rows = (list: DraftQuestion[]) => list.map((item) => ({ id: item.id, questionType: item.type }));
+    const map = remapSectionOrdinals(rows(before), rows(after));
+    const move = (target: number | null) => (target === null ? null : map.get(target) ?? null);
+    return after.map((item) => ({
+      ...item,
+      nextSection: move(item.nextSection),
+      optionTargets: item.optionTargets.map(move),
+    }));
+  };
+  const reorderQuestions = (change: (current: DraftQuestion[]) => DraftQuestion[]) =>
+    setQuestions((current) => withRemappedTargets(current, change(current)));
+
+  /**
+   * The toolbar inserts below the focused card, the way Google Forms does. A question opens the
+   * builder above (there is nowhere to type it inline); a section or text block is complete as
+   * soon as it exists, so it goes straight into the list.
+   */
+  const handleToolbarAdd = (kind: FormItemKind) => {
+    if (kind === "QUESTION") {
+      resetQuestionEditor();
+      scrollToQuestionBuilder();
+      return;
+    }
+    const block = blankBlock(kind);
+    reorderQuestions((current) => {
+      const at = current.findIndex((item) => item.id === focusedId);
+      return at === -1
+        ? [...current, block]
+        : [...current.slice(0, at + 1), block, ...current.slice(at + 1)];
+    });
+    setFocusedId(block.id);
+    setPreviewAnswers({});
+  };
+
   const handleAddQuestion = () => {
     const cleanOptions = questionDraft.options.map((option) => option.trim());
     if (!questionDraft.prompt.trim()) return setErrors((current) => ({ ...current, question: "Enter an evaluation question." }));
@@ -480,7 +689,7 @@ export default function EvaluationManagement() {
     setPreviewAnswers({}); resetQuestionEditor();
   };
   const handleEditQuestion = (question: DraftQuestion) => { setQuestionDraft({ ...question, options: question.options.length >= MIN_OPTIONS ? [...question.options] : [...question.options, ...blankOptions()].slice(0, MIN_OPTIONS) }); setEditingQuestionId(question.id); setErrors((current) => ({ ...current, question: undefined })); scrollToQuestionBuilder(); };
-  const handleRemoveQuestion = (id: string) => { setQuestions((current) => current.filter((item) => item.id !== id)); if (editingQuestionId === id) resetQuestionEditor(); setPreviewAnswers({}); };
+  const handleRemoveQuestion = (id: string) => { reorderQuestions((current) => current.filter((item) => item.id !== id)); if (editingQuestionId === id) resetQuestionEditor(); setPreviewAnswers({}); };
 
   // Native HTML5 drag and drop - no library. Up/Down stay as the keyboard path.
   //
@@ -497,7 +706,7 @@ export default function EvaluationManagement() {
   const dragQuestionOver = (targetIndex: number) => {
     const from = dragIndexRef.current;
     if (from === null || from === targetIndex) return;
-    setQuestions((current) => {
+    reorderQuestions((current) => {
       const reordered = [...current];
       const [moved] = reordered.splice(from, 1);
       reordered.splice(targetIndex, 0, moved);
@@ -511,12 +720,12 @@ export default function EvaluationManagement() {
 
   /** Copies a question in place, right below the original - the common case when writing a set of
    *  near-identical rating questions for one section. */
-  const handleDuplicateQuestion = (index: number) => setQuestions((current) => {
+  const handleDuplicateQuestion = (index: number) => reorderQuestions((current) => {
     const source = current[index];
     if (!source) return current;
-    return [...current.slice(0, index + 1), { ...source, id: key(), options: [...source.options] }, ...current.slice(index + 1)];
+    return [...current.slice(0, index + 1), { ...source, id: key(), options: [...source.options], optionTargets: [...source.optionTargets] }, ...current.slice(index + 1)];
   });
-  const handleMoveQuestion = (index: number, direction: -1 | 1) => setQuestions((current) => {
+  const handleMoveQuestion = (index: number, direction: -1 | 1) => reorderQuestions((current) => {
     const destination = index + direction; if (destination < 0 || destination >= current.length) return current;
     const reordered = [...current]; [reordered[index], reordered[destination]] = [reordered[destination], reordered[index]]; return reordered;
   });
@@ -525,6 +734,15 @@ export default function EvaluationManagement() {
     const nextErrors: FormErrors = {};
     if (!draft.formName.trim()) nextErrors.name = "Evaluation name is required.";
     if (!isFactory && draft.scope === "COMPANY" && !draft.companyId) nextErrors.companyId = "Select a company for a company-specific form.";
+    // Same two rules the server enforces (app/lib/evaluations/validation.ts). Checking them here as
+    // well means the author is told which field is wrong instead of getting a generic API error,
+    // and blocks are excluded from the count because a form of only sections has no questions.
+    const answerable = questions.filter((row) => !isFormBlockType(row.type));
+    if (draft.status === "Published" && !answerable.length) {
+      nextErrors.questions = "Add at least one question before publishing.";
+    } else if (draft.status === "Published" && !answerable.some((row) => row.required)) {
+      nextErrors.questions = "A published evaluation needs at least one required question.";
+    }
     if (Object.keys(nextErrors).length) { setErrors(nextErrors); setFeedback({ tone: "error", message: "Please correct the highlighted fields." }); return; }
     setBusy(true); setFeedback(null);
     try {
@@ -555,13 +773,102 @@ export default function EvaluationManagement() {
     return { ...current, [answerKey]: [...chosen].join("\n") };
   });
 
+  /** Section ordinal each row sits in, so a branch dropdown can offer only forward targets. */
+  const sectionOfRow = useMemo(() => sectionIndexPerRow(questions.map((item) => item.type)), [questions]);
+  const totalSections = useMemo(() => sectionCountOf(questions.map((item) => item.type)), [questions]);
+
+  const cardRef = (id: string) => (element: HTMLElement | null) => {
+    if (element) cardRefs.current.set(id, element);
+    else cardRefs.current.delete(id);
+  };
+
   const renderQuestionPreview = (previewQuestions: DraftQuestion[], previewKey: string, editable: boolean) => previewQuestions.length ? <div className={styles.questionList}>{previewQuestions.map((item, index) => {
     const answerKey = `${previewKey}-${item.id}`;
     const options = item.type === "RATING" ? ratingOptions : item.options.filter(Boolean);
     const multiple = item.type === "MULTIPLE_CHOICE";
-    return <article key={item.id} draggable={editable} onDragStart={() => editable && setDragIndex(index)} onDragEnd={() => setDragIndex(null)} onDragOver={(event) => { if (!editable) return; event.preventDefault(); dragQuestionOver(index); }} onDrop={(event) => event.preventDefault()} data-dragging={dragIndex === index}><div className={styles.questionHeading}><div><span>{item.section}</span><strong>{editable ? <span className={styles.dragHandle} aria-hidden="true" title="ลากเพื่อสลับลำดับ / Drag to reorder">⠿</span> : null}{index + 1}. {item.prompt}{item.required ? <em className={styles.requiredMark}> *</em> : null}</strong></div><b>{QUESTION_TYPE_LABELS[item.type]}</b></div>
-      {isTextType(item.type) ? <textarea aria-label={`Preview answer for question ${index + 1}`} placeholder="Type a preview response" rows={item.type === "LONG_TEXT" ? 4 : 2} value={previewAnswers[answerKey] ?? ""} onChange={(event) => setPreviewAnswers((current) => ({ ...current, [answerKey]: event.target.value }))} /> : <div className={styles.previewOptions}>{options.map((option) => <label key={`${item.id}-${option}`}><input checked={selectedPreviewOptions(answerKey).has(option)} name={answerKey} type={multiple ? "checkbox" : "radio"} value={option} onChange={() => togglePreviewOption(answerKey, option, multiple)} /><span>{option}</span></label>)}</div>}
-      {editable ? <div className={styles.questionActions}><button className={styles.secondaryButton} type="button" disabled={index === 0} onClick={() => handleMoveQuestion(index, -1)}>Up</button><button className={styles.secondaryButton} type="button" disabled={index === previewQuestions.length - 1} onClick={() => handleMoveQuestion(index, 1)}>Down</button><button className={styles.secondaryButton} type="button" onClick={() => handleEditQuestion(item)}>Edit</button><button className={styles.secondaryButton} type="button" onClick={() => handleDuplicateQuestion(index)}>Duplicate</button><button className={styles.dangerButton} type="button" onClick={() => handleRemoveQuestion(item.id)}>Remove</button></div> : null}
+    const isBlock = isFormBlockType(item.type);
+    // Numbering skips blocks so a section heading does not consume a question number.
+    const displayNumber = previewQuestions.slice(0, index + 1).filter((row) => !isFormBlockType(row.type)).length;
+    // Forward-only targets, matching the validation rule.
+    const forwardTargets = Array.from({ length: totalSections }, (unused, offset) => offset + 1)
+      .filter((target) => target > (sectionOfRow[index] ?? 1));
+
+    const actions = editable ? <div className={styles.questionActions}><button className={styles.secondaryButton} type="button" disabled={index === 0} onClick={() => handleMoveQuestion(index, -1)}>Up</button><button className={styles.secondaryButton} type="button" disabled={index === previewQuestions.length - 1} onClick={() => handleMoveQuestion(index, 1)}>Down</button>{isBlock ? null : <button className={styles.secondaryButton} type="button" onClick={() => handleEditQuestion(item)}>Edit</button>}<button className={styles.secondaryButton} type="button" onClick={() => handleDuplicateQuestion(index)}>Duplicate</button><button className={styles.dangerButton} type="button" onClick={() => handleRemoveQuestion(item.id)}>Remove</button></div> : null;
+
+    const cardProps = {
+      draggable: editable,
+      onDragStart: () => editable && setDragIndex(index),
+      onDragEnd: () => setDragIndex(null),
+      onDragOver: (event: React.DragEvent) => { if (!editable) return; event.preventDefault(); dragQuestionOver(index); },
+      onDrop: (event: React.DragEvent) => event.preventDefault(),
+      onMouseDown: () => editable && setFocusedId(item.id),
+      onFocusCapture: () => editable && setFocusedId(item.id),
+      ref: editable ? cardRef(item.id) : undefined,
+      "data-dragging": dragIndex === index,
+      "data-focused": editable && focusedId === item.id,
+    };
+
+    // A section break or a text block is edited in place: it is only a title and a body, so the
+    // question builder above has nothing to offer it.
+    if (isBlock) {
+      return <article key={item.id} {...cardProps} data-block={item.type}>
+        <div className={styles.questionHeading}><div><strong>{editable ? <span className={styles.dragHandle} aria-hidden="true" title="ลากเพื่อสลับลำดับ / Drag to reorder">⠿</span> : null}{item.type === "SECTION_BREAK" ? t(`ส่วนที่ ${sectionOfRow[index]}`, `Section ${sectionOfRow[index]}`) : t("ข้อความ", "Text")}</strong></div><b>{item.type === "SECTION_BREAK" ? "Section" : "Text"}</b></div>
+        {editable ? <>
+          <input className={styles.blockTitleInput} value={item.prompt} placeholder={item.type === "SECTION_BREAK" ? "Section title" : "Title"} onChange={(event) => setQuestions((current) => current.map((row) => row.id === item.id ? { ...row, prompt: event.target.value } : row))} />
+          <textarea className={styles.blockBodyInput} rows={2} value={item.description} placeholder="Description" onChange={(event) => setQuestions((current) => current.map((row) => row.id === item.id ? { ...row, description: event.target.value } : row))} />
+          {item.type === "SECTION_BREAK" ? <label className={styles.branchLabel}>{t("หลังส่วนนี้", "After this section")}
+            <select value={item.nextSection ?? ""} onChange={(event) => setQuestions((current) => current.map((row) => row.id === item.id ? { ...row, nextSection: event.target.value ? Number(event.target.value) : null } : row))}>
+              <option value="">{fallThroughLabel(sectionOfRow[index] ?? 1, totalSections, language === "th")}</option>
+              <option value="0">{t("ส่งแบบฟอร์ม (จบที่นี่)", "Submit form (end here)")}</option>
+              {forwardTargets.map((target) => <option key={target} value={target}>{t(`ไปยังส่วนที่ ${target}`, `Go to section ${target}`)}</option>)}
+            </select>
+          </label> : null}
+        </> : <>
+          <strong className={styles.blockTitleStatic}>{item.prompt}</strong>
+          {item.description.trim() ? <p className={styles.blockBodyStatic}>{item.description}</p> : null}
+        </>}
+        {actions}
+      </article>;
+    }
+
+    return <article key={item.id} {...cardProps}><div className={styles.questionHeading}><div><strong>{editable ? <span className={styles.dragHandle} aria-hidden="true" title="ลากเพื่อสลับลำดับ / Drag to reorder">⠿</span> : null}{displayNumber}. {item.prompt}{item.required ? <em className={styles.requiredMark}> *</em> : null}</strong></div><b>{QUESTION_TYPE_LABELS[item.type as EvaluationQuestionType]}</b></div>
+      {/* A grid keeps its rows and columns in gridRows/gridColumns, not in `options`, so without
+          this branch the shared option renderer below found nothing to draw and the card came out
+          empty. */}
+      {isGridType(item.type) ? <div className={styles.gridPreviewScroll}>
+        <table className={styles.gridPreviewTable}>
+          <thead>
+            <tr>
+              <th />
+              {item.gridColumns.filter(Boolean).map((column, columnIndex) => <th key={`col-${columnIndex}`}>{column}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {item.gridRows.filter(Boolean).map((row, rowIndex) => <tr key={`row-${rowIndex}`}>
+              <th scope="row">{row}</th>
+              {item.gridColumns.filter(Boolean).map((unused, columnIndex) => <td key={`cell-${rowIndex}-${columnIndex}`}>
+                <input
+                  type={item.type === "MULTIPLE_CHOICE_GRID" ? "radio" : "checkbox"}
+                  name={`${answerKey}-${rowIndex}`}
+                  checked={selectedPreviewOptions(`${answerKey}-${rowIndex}`).has(String(columnIndex))}
+                  onChange={() => togglePreviewOption(`${answerKey}-${rowIndex}`, String(columnIndex), item.type === "CHECKBOX_GRID")}
+                />
+              </td>)}
+            </tr>)}
+          </tbody>
+        </table>
+        {!item.gridRows.some(Boolean) || !item.gridColumns.some(Boolean)
+          ? <p className={styles.helperText}>{t("ยังไม่ได้ใส่แถวหรือคอลัมน์", "No rows or columns yet")}</p>
+          : null}
+      </div> : isTextType(item.type) ? <textarea aria-label={`Preview answer for question ${displayNumber}`} placeholder="Type a preview response" rows={item.type === "LONG_TEXT" ? 4 : 2} value={previewAnswers[answerKey] ?? ""} onChange={(event) => setPreviewAnswers((current) => ({ ...current, [answerKey]: event.target.value }))} /> : <div className={styles.previewOptions}>{options.map((option) => <label key={`${item.id}-${option}`}><input checked={selectedPreviewOptions(answerKey).has(option)} name={answerKey} type={multiple ? "checkbox" : "radio"} value={option} onChange={() => togglePreviewOption(answerKey, option, multiple)} /><span>{option}</span></label>)}</div>}
+      {editable && item.type === "SINGLE_CHOICE" && forwardTargets.length ? <div className={styles.branchRow}>{item.options.map((option, optionIndex) => option.trim() ? <label className={styles.branchLabel} key={`${item.id}-branch-${optionIndex}`}>{`"${option}" →`}
+        <select value={item.optionTargets[optionIndex] ?? ""} onChange={(event) => setQuestions((current) => current.map((row) => row.id === item.id ? { ...row, optionTargets: row.options.map((unused, targetIndex) => targetIndex === optionIndex ? (event.target.value ? Number(event.target.value) : null) : row.optionTargets[targetIndex] ?? null) } : row))}>
+          <option value="">{fallThroughLabel(sectionOfRow[index] ?? 1, totalSections, language === "th")}</option>
+          <option value="0">{t("ส่งแบบฟอร์ม (จบที่นี่)", "Submit form (end here)")}</option>
+          {forwardTargets.map((target) => <option key={target} value={target}>{t(`ไปยังส่วนที่ ${target}`, `Go to section ${target}`)}</option>)}
+        </select>
+      </label> : null)}</div> : null}
+      {actions}
     </article>;
   })}</div> : <div className={styles.emptyState}>No questions yet. Add a question to preview the evaluation form.</div>;
 
@@ -592,7 +899,7 @@ export default function EvaluationManagement() {
       </div>
     ) : null}
     <div className={styles.formGrid}>
-      <label className={styles.fullWidth}>Evaluation Name
+      <label className={styles.fullWidth}><span>Evaluation Name <RequiredIndicator isFilled={Boolean(draft.formName.trim())} /></span>
         <input
           aria-invalid={Boolean(errors.name)}
           className={errors.name ? styles.inputError : undefined}
@@ -625,7 +932,7 @@ export default function EvaluationManagement() {
         </label>
       ) : null}
       {!isFactory && draft.scope === "COMPANY" ? (
-        <label>Company
+        <label><span>Company <RequiredIndicator isFilled={Boolean(draft.companyId)} /></span>
           <select
             aria-invalid={Boolean(errors.companyId)}
             className={errors.companyId ? styles.inputError : undefined}
@@ -684,18 +991,107 @@ export default function EvaluationManagement() {
       </label>
     </div>
     <div className={styles.questionBuilder} id={QUESTION_BUILDER_ID}><div className={styles.panelHeader}><div><p className={styles.kicker}>Question builder</p><h3>{editingQuestionId ? "Edit question" : "Add evaluation question"}</h3></div><span>{questions.length} questions</span></div>
-      <div className={styles.questionGrid}><label className={styles.fullWidth}>Question<textarea aria-invalid={Boolean(errors.question)} className={errors.question ? styles.inputError : undefined} value={questionDraft.prompt} onChange={(event) => { setQuestionDraft({ ...questionDraft, prompt: event.target.value }); setErrors((current) => ({ ...current, question: undefined })); }} placeholder="Enter the question shown to respondents" /></label>
-        <label>Section<select value={questionDraft.section} onChange={(event) => setQuestionDraft({ ...questionDraft, section: event.target.value as EvaluationSection })}>{sections.map((section) => <option key={section}>{section}</option>)}</select></label>
+      <div className={styles.questionGrid}><label className={styles.fullWidth}><span>Question <RequiredIndicator isFilled={Boolean(questionDraft.prompt.trim())} /></span><textarea aria-invalid={Boolean(errors.question)} className={errors.question ? styles.inputError : undefined} value={questionDraft.prompt} onChange={(event) => { setQuestionDraft({ ...questionDraft, prompt: event.target.value }); setErrors((current) => ({ ...current, question: undefined })); }} placeholder="Enter the question shown to respondents" /></label>
         <label>Answer Type<select value={questionDraft.type} onChange={(event) => setQuestionDraft({ ...questionDraft, type: event.target.value as EvaluationQuestionType })}>{EVALUATION_QUESTION_TYPES.map((type) => <option key={type} value={type}>{QUESTION_TYPE_LABELS[type]}</option>)}</select></label>
         <label className={styles.toggleLabel}><input checked={questionDraft.required} type="checkbox" onChange={(event) => setQuestionDraft({ ...questionDraft, required: event.target.checked })} />Required question</label>
         {isChoiceType(questionDraft.type) ? questionDraft.options.map((option, index) => <label key={`choice-${index}`}>Choice {index + 1}<span style={{ display: "flex", alignItems: "center", gap: "6px" }}><input style={{ flex: 1, minWidth: 0 }} value={option} onChange={(event) => setQuestionDraft({ ...questionDraft, options: questionDraft.options.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} /><button type="button" title="ลบตัวเลือกนี้ / Remove this option" disabled={questionDraft.options.length <= MIN_OPTIONS} onClick={() => handleRemoveOption(index)} style={{ appearance: "none", border: "none", background: "transparent", color: questionDraft.options.length <= MIN_OPTIONS ? "var(--ui-30-muted)" : "#dc2626", cursor: questionDraft.options.length <= MIN_OPTIONS ? "not-allowed" : "pointer", fontSize: "0.9rem", fontWeight: 900, lineHeight: 1, padding: "2px 4px" }}>✕</button></span></label>) : null}
         {isChoiceType(questionDraft.type) ? <div className={styles.fullWidth}><button className={styles.secondaryButton} type="button" onClick={handleAddOption}>+ เพิ่มตัวเลือก / Add option</button></div> : null}
+        {/* A grid asks the same columns about every row, so the two axes are edited as two lists
+            rather than one - which is also exactly how they are stored, tagged by axis. */}
+        {isGridType(questionDraft.type) ? (["gridRows", "gridColumns"] as const).map((axisField) => (
+          <div className={styles.fullWidth} key={axisField}>
+            <span className={styles.gridAxisLabel}>
+              {axisField === "gridRows" ? t("แถว (Rows)", "Rows") : t("คอลัมน์ (Columns)", "Columns")}
+            </span>
+            {questionDraft[axisField].map((label, index) => (
+              <span className={styles.gridAxisRow} key={`${axisField}-${index}`}>
+                <input
+                  value={label}
+                  placeholder={axisField === "gridRows" ? t(`แถวที่ ${index + 1}`, `Row ${index + 1}`) : t(`คอลัมน์ที่ ${index + 1}`, `Column ${index + 1}`)}
+                  onChange={(event) => setQuestionDraft({
+                    ...questionDraft,
+                    [axisField]: questionDraft[axisField].map((item, itemIndex) => itemIndex === index ? event.target.value : item),
+                  })}
+                />
+                <button
+                  type="button"
+                  className={styles.gridAxisRemove}
+                  title={t("ลบรายการนี้", "Remove this entry")}
+                  disabled={questionDraft[axisField].length <= (axisField === "gridRows" ? MIN_GRID_ROWS : MIN_GRID_COLUMNS)}
+                  onClick={() => setQuestionDraft({
+                    ...questionDraft,
+                    [axisField]: questionDraft[axisField].filter((unused, itemIndex) => itemIndex !== index),
+                  })}
+                >✕</button>
+              </span>
+            ))}
+            <button
+              className={styles.secondaryButton}
+              type="button"
+              onClick={() => setQuestionDraft({ ...questionDraft, [axisField]: [...questionDraft[axisField], ""] })}
+            >
+              {axisField === "gridRows" ? t("+ เพิ่มแถว", "+ Add row") : t("+ เพิ่มคอลัมน์", "+ Add column")}
+            </button>
+          </div>
+        )) : null}
       </div>
       {questionDraft.type === "RATING" ? <p className={styles.helperText}>Rating uses the standard five-point scale from Strongly disagree to Strongly agree.</p> : null}
       {errors.question ? <p className={styles.validationMessage} role="alert">{errors.question}</p> : null}
       <div className={styles.formActions}><button className={styles.secondaryButton} type="button" onClick={handleAddQuestion}>{editingQuestionId ? "Update question" : "Add question"}</button>{editingQuestionId ? <button className={styles.closeButton} type="button" onClick={resetQuestionEditor}>Cancel question edit</button> : null}</div>
     </div>
-    <div className={styles.previewPanel}><div className={styles.panelHeader}><div><p className={styles.kicker}>Live preview</p><h3>{draft.formName.trim() || "Untitled evaluation form"}</h3></div><span>{draft.timing} · {draft.respondent}</span></div>{renderQuestionPreview(questions, "editor-preview", true)}</div>
+    {/* Same two-view contract as Assessment: the author view is where questions are built and
+        reordered, the learner view is a real rehearsal of the paged, branching form. Without the
+        toggle the author could only see sections and branches after publishing. */}
+    <div className={styles.previewPanel} id={LEARNER_PREVIEW_ID}>
+      <div className={styles.panelHeader}>
+        <div>
+          <p className={styles.kicker}>
+            {previewAsLearner ? "Try it as a learner" : `Live preview (${questions.length} ข้อ)`}
+          </p>
+          <h3>
+            {previewAsLearner
+              ? t("ทดลองตอบเหมือนที่พนักงานจะเห็น", "Try it the way an employee will see it")
+              : draft.formName.trim() || "Untitled evaluation form"}
+          </h3>
+        </div>
+        <div className={styles.previewHeaderSide}>
+          <div className={styles.previewToggle}>
+            <button
+              type="button"
+              className={previewAsLearner ? styles.secondaryButton : styles.activePreviewButton}
+              onClick={() => setPreviewAsLearner(false)}
+            >
+              {t("✎ มุมมองผู้จัดทำ", "✎ Author view")}
+            </button>
+            <button
+              type="button"
+              className={previewAsLearner ? styles.activePreviewButton : styles.secondaryButton}
+              onClick={() => setPreviewAsLearner(true)}
+            >
+              {t("👁 มุมมองผู้เรียน", "👁 Learner view")}
+            </button>
+          </div>
+          <span>{draft.timing} · {draft.respondent}</span>
+        </div>
+      </div>
+      {previewAsLearner ? (
+        questions.length ? (
+          <FormPreviewRunner
+            title={draft.formName.trim() || "Untitled evaluation form"}
+            instructions={draft.description}
+            meta={`${draft.timing} · ${draft.respondent}`}
+            items={toPreviewItems(questions)}
+          />
+        ) : (
+          <div className={styles.emptyState}>{t("ยังไม่มีคำถามให้ทดลองตอบ", "No questions to try yet")}</div>
+        )
+      ) : (
+        <div className={styles.previewCanvas}>
+          {renderQuestionPreview(questions, "editor-preview", true)}
+          <FormItemToolbar anchorTop={anchorTop} onAdd={handleToolbarAdd} />
+        </div>
+      )}
+    </div>
     {errors.questions ? <p className={styles.validationMessage} role="alert">{errors.questions}</p> : null}
     <div className={styles.editorActions}><button className={styles.closeButton} type="button" onClick={closeEditor}>Cancel</button><button className={styles.primaryButton} type="button" disabled={busy} onClick={() => void handleSave()}>Save evaluation</button></div>
   </section>;
@@ -921,15 +1317,15 @@ export default function EvaluationManagement() {
                           <div className={styles.detailPanel}>
                             <div className={styles.panelHeader}>
                               <div>
-                                <p className={styles.kicker}>{detailAsLearner ? "Learner preview" : "Evaluation preview"}</p>
+                                <p className={styles.kicker}>{detailAsLearner ? "Try it as a learner" : "Evaluation preview"}</p>
                                 <h3>{item.formName}</h3>
                               </div>
                               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                                 <button
                                   type="button"
                                   className={styles.secondaryButton}
-                                  aria-label={detailAsLearner ? "กลับไปมุมมองผู้จัดทำ" : "ดูมุมมองผู้เรียน"}
-                                  title={detailAsLearner ? "กลับไปมุมมองผู้จัดทำ" : "ดูมุมมองผู้เรียน"}
+                                  aria-label={detailAsLearner ? "กลับไปมุมมองผู้จัดทำ" : "ทดลองตอบแบบผู้เรียน"}
+                                  title={detailAsLearner ? "กลับไปมุมมองผู้จัดทำ" : "ทดลองตอบแบบผู้เรียน"}
                                   onClick={() => setDetailAsLearner((current) => !current)}
                                 >
                                   👁
@@ -958,17 +1354,32 @@ export default function EvaluationManagement() {
                               </article>
                             </div>
                             {detailAsLearner ? (
-                              renderQuestionPreview(draftQuestions, `detail-${item.evaluationFormId}`, false)
+                              <FormPreviewRunner
+                                title={item.formName}
+                                instructions={item.description}
+                                meta={`${timingFromApi(item.timing)} · ${respondentFromApi(item.respondentType)}`}
+                                items={toPreviewItems(draftQuestions)}
+                                emptyLabel="ยังไม่มีคำถามให้ทดลองตอบ"
+                              />
                             ) : draftQuestions.length ? (
                               <div className={styles.questionList}>
                                 {draftQuestions.map((detail, index) => (
-                                  <article key={detail.id}>
+                                  <article key={detail.id} data-block={isFormBlockType(detail.type) ? detail.type : undefined}>
                                     <strong>
-                                      {index + 1}. {detail.prompt}
+                                      {/* Blocks are not questions, so they take no number - otherwise
+                                          a form with two sections reads as having two extra items. */}
+                                      {isFormBlockType(detail.type)
+                                        ? detail.prompt
+                                        : `${draftQuestions.slice(0, index + 1).filter((row) => !isFormBlockType(row.type)).length}. ${detail.prompt}`}
                                     </strong>
                                     <span>
-                                      {QUESTION_TYPE_LABELS[detail.type]} · {detail.section}
+                                      {isFormBlockType(detail.type)
+                                        ? (detail.type === "SECTION_BREAK" ? "Section" : "Text")
+                                        : QUESTION_TYPE_LABELS[detail.type as EvaluationQuestionType]}
                                     </span>
+                                    {isFormBlockType(detail.type) && detail.description.trim()
+                                      ? <p className={styles.blockBodyStatic}>{detail.description}</p>
+                                      : null}
                                     {isChoiceType(detail.type)
                                       ? detail.options.filter(Boolean).map((option, optionIndex) => (
                                           <p key={`${detail.id}-${optionIndex}`}>

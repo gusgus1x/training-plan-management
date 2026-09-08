@@ -1,4 +1,5 @@
 import type { AuthenticatedPrincipal } from "../auth/types";
+import { isFormBlockType } from "../formBlocks";
 import { Prisma, type PrismaClient } from "../../generated/prisma/client";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
@@ -6,6 +7,7 @@ import type {
   AssessmentListFilters,
   AssessmentPurpose,
   AssessmentRecord,
+  AssessmentChoiceRecord,
   AssessmentWriteInput,
 } from "./types";
 
@@ -38,6 +40,8 @@ const detailSelect = {
       question_text: true,
       question_type: true,
       question_score: true,
+      question_description: true,
+      next_section: true,
       is_required: true,
       assessment_choice: {
         orderBy: { choice_order: "asc" as const },
@@ -47,6 +51,9 @@ const detailSelect = {
           choice_text: true,
           is_correct: true,
           option_score: true,
+          next_section: true,
+          axis: true,
+          correct_columns: true,
         },
       },
     },
@@ -73,7 +80,14 @@ const questionCreates = (input: AssessmentWriteInput) =>
     question_order: questionIndex + 1,
     question_text: question.questionText,
     question_type: question.questionType,
-    question_score: new Prisma.Decimal(question.questionScore),
+    // A section or text block carries no marks. Validation already rejects a non-zero score on one,
+    // and CK_RC2_assessment_question_block_score_zero asserts it in the database; forcing it here
+    // too means no future caller can write a scoring block through this repository.
+    question_score: new Prisma.Decimal(
+      isFormBlockType(question.questionType) ? 0 : question.questionScore,
+    ),
+    question_description: question.questionDescription,
+    next_section: question.nextSection,
     is_required: question.isRequired,
     assessment_choice: {
       create: question.choices.map((choice, choiceIndex) => ({
@@ -81,6 +95,9 @@ const questionCreates = (input: AssessmentWriteInput) =>
         choice_text: choice.choiceText,
         is_correct: choice.isCorrect,
         option_score: new Prisma.Decimal(choice.optionScore),
+        next_section: choice.nextSection,
+        axis: choice.axis,
+        correct_columns: choice.correctColumns,
       })),
     },
   }));
@@ -109,6 +126,8 @@ const map = (row: DetailRow, isUsed: boolean): StoredAssessmentRecord => ({
     questionText: question.question_text,
     questionType: question.question_type as AssessmentRecord["questions"][number]["questionType"],
     questionScore: question.question_score.toFixed(2),
+    questionDescription: question.question_description,
+    nextSection: question.next_section,
     isRequired: question.is_required,
     choices: question.assessment_choice.map((choice) => ({
       choiceId: choice.choice_id.toString(),
@@ -116,6 +135,9 @@ const map = (row: DetailRow, isUsed: boolean): StoredAssessmentRecord => ({
       choiceText: choice.choice_text,
       isCorrect: choice.is_correct,
       optionScore: choice.option_score.toFixed(2),
+      nextSection: choice.next_section,
+      axis: choice.axis as AssessmentChoiceRecord["axis"],
+      correctColumns: choice.correct_columns,
     })),
   })),
   isUsed,

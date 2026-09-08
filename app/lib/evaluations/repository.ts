@@ -2,7 +2,8 @@ import { Prisma, type PrismaClient } from "../../generated/prisma/client";
 import type { AuthenticatedPrincipal } from "../auth/types";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
-import type { EvaluationListFilters, EvaluationRecord, EvaluationWriteInput } from "./types";
+import type { EvaluationListFilters, EvaluationRecord,
+  EvaluationOptionRecord, EvaluationWriteInput } from "./types";
 
 const detailSelect = {
   evaluation_form_id: true,
@@ -25,6 +26,8 @@ const detailSelect = {
       question_text: true,
       question_type: true,
       section_name: true,
+      question_description: true,
+      next_section: true,
       is_required: true,
       evaluation_option: {
         orderBy: { option_order: "asc" as const },
@@ -33,6 +36,8 @@ const detailSelect = {
           option_order: true,
           option_text: true,
           option_value: true,
+          next_section: true,
+          axis: true,
         },
       },
     },
@@ -65,12 +70,16 @@ const map = (row: DetailRow, isUsed: boolean): StoredEvaluation => ({
     questionText: question.question_text,
     questionType: question.question_type as EvaluationRecord["questions"][number]["questionType"],
     sectionName: question.section_name,
+    questionDescription: question.question_description,
+    nextSection: question.next_section,
     isRequired: question.is_required,
     options: question.evaluation_option.map((option) => ({
       evaluationOptionId: option.evaluation_option_id.toString(),
       optionOrder: option.option_order,
       optionText: option.option_text,
       optionValue: option.option_value?.toFixed(2) ?? null,
+      nextSection: option.next_section,
+      axis: option.axis as EvaluationOptionRecord["axis"],
     })),
   })),
   isUsed,
@@ -83,12 +92,16 @@ const questionCreates = (input: EvaluationWriteInput) => input.questions.map((qu
   question_text: question.questionText,
   question_type: question.questionType,
   section_name: question.sectionName,
+  question_description: question.questionDescription,
+  next_section: question.nextSection,
   is_required: question.isRequired,
   evaluation_option: {
     create: question.options.map((option, optionIndex) => ({
       option_order: optionIndex + 1,
       option_text: option.optionText,
       option_value: option.optionValue === null ? null : new Prisma.Decimal(option.optionValue),
+      next_section: option.nextSection,
+      axis: option.axis,
     })),
   },
 }));

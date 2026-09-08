@@ -1,0 +1,75 @@
+/* Google Forms floats a vertical button strip beside whichever card is focused, and inserts the
+   new item directly below that card. The host positions this by passing the focused card's
+   offsetTop; the transform is inline so it can animate between cards without a class per position.
+
+   Glass treatment matches the floating button in app/components/ScrollToTop.module.css. */
+.toolbar {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  margin-left: 12px;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-full, 999px);
+  background: var(--ui-60-glass, rgba(255, 255, 255, 0.92));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 6px 20px -4px rgba(15, 23, 42, 0.22);
+  transition: transform 180ms ease;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--ui-radius-full, 999px);
+  background: transparent;
+  color: var(--ui-30-muted);
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--ui-30-primary);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+}
+
+.button:focus-visible {
+  outline: var(--ui-focus-ring, 2px solid var(--ui-30-primary));
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+:global([data-theme="dark"]) .toolbar,
+:global(.dark) .toolbar {
+  background: var(--ui-60-glass, rgba(15, 23, 42, 0.88));
+  box-shadow: 0 6px 20px -4px rgba(0, 0, 0, 0.5);
+}
+
+/* Nothing to float beside on a narrow screen, so it becomes a plain row above the list. */
+@media (max-width: 900px) {
+  .toolbar {
+    position: static;
+    margin: 0 0 10px;
+    flex-direction: row;
+    justify-content: flex-start;
+    border-radius: var(--ui-radius-lg, 14px);
+    transform: none !important;
+  }
+}

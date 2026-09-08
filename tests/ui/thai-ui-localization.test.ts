@@ -113,3 +113,49 @@ describe("Thai UI localization", () => {
     );
   });
 });
+
+describe("Thai UI localization - form item toolbar", () => {
+  it("translates the three toolbar buttons", () => {
+    // The toolbar renders English labels and relies on the DOM-walking provider, so a missing
+    // dictionary entry leaves a Thai user with an untranslated control and no other symptom.
+    expect(translateUiText("Add question")).toBe("เพิ่มคำถาม");
+    expect(translateUiText("Add section")).toBe("เพิ่มส่วน");
+    expect(translateUiText("Add text")).toBe("เพิ่มข้อความ");
+  });
+
+  it("translates the section branching labels", () => {
+    expect(translateUiText("After this section")).toBe("หลังส่วนนี้");
+    expect(translateUiText("Continue to next section")).toBe("ไปยังส่วนถัดไป");
+    expect(translateUiText("Section title")).toBe("ชื่อส่วน");
+  });
+
+  it("keeps the new entries in thaiUiDictionary, not thaiAttributeDictionary", () => {
+    // ThaiUiLocalization.tsx holds two dictionaries back to back; an insert that lands in the
+    // second one only ever reaches placeholder/title/aria-label attributes, never visible text.
+    const source = readFileSync(
+      join(process.cwd(), "app", "components", "ThaiUiLocalization.tsx"),
+      "utf8",
+    );
+    const attributeDictionaryAt = source.indexOf("thaiAttributeDictionary");
+    expect(attributeDictionaryAt).toBeGreaterThan(-1);
+    expect(source.indexOf('"Add section"')).toBeLessThan(attributeDictionaryAt);
+    expect(source.indexOf('"Add text"')).toBeLessThan(attributeDictionaryAt);
+  });
+});
+
+describe("Thai UI localization - parity strings added with the section work", () => {
+  it("translates the labels the Evaluation editor relies on the dictionary for", () => {
+    // Evaluation writes English labels and lets the DOM-walking provider translate them, unlike
+    // Assessment which hardcodes bilingual text. A missing key here shows an English label to a
+    // Thai user with no other symptom.
+    expect(translateUiText("Evaluation Name")).toBe("ชื่อแบบประเมิน");
+    expect(translateUiText("Description")).toBe("คำอธิบาย");
+    expect(translateUiText("Untitled evaluation form")).toBe("แบบประเมินที่ยังไม่มีชื่อ");
+  });
+
+  it("translates the publish-guard messages both editors now share", () => {
+    expect(translateUiText("Add at least one question before publishing.")).toBe(
+      "ต้องมีคำถามอย่างน้อย 1 ข้อก่อนเผยแพร่",
+    );
+  });
+});

@@ -215,6 +215,33 @@
   font-weight: 900;
 }
 
+/* Which page of a multi-section form the respondent is on. Sits under the progress bar. */
+.sectionCounter {
+  margin: 8px 0 0;
+  color: var(--ui-30-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+/* A section break or a text block: a heading and optional prose, never an input. Deliberately
+   flatter than .questionCard so it does not read as something waiting to be answered. */
+.blockCard {
+  padding: 4px 2px 2px;
+}
+
+.blockCard[data-kind="note"] .sectionHeader {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.blockBody {
+  margin: 6px 0 0;
+  color: var(--ui-30-muted);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
 .questionCard {
   padding: 14px 16px;
   border-radius: var(--ui-radius-lg, 14px);
@@ -344,4 +371,54 @@
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+/* Grid questions. The wrapper scrolls on its own so a wide grid never makes the page scroll
+   sideways, which on a phone is the difference between usable and not. */
+.gridScroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gridTable {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 320px;
+  font-size: 0.82rem;
+}
+
+.gridTable th,
+.gridTable td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--ui-30-border);
+  text-align: center;
+}
+
+.gridTable thead th {
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* The row label: left aligned and sticky, so the respondent can still tell which row they are
+   ticking after scrolling a wide grid sideways. */
+.gridTable tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
+  font-weight: 700;
+  text-align: left;
+  white-space: normal;
+  min-width: 120px;
+}
+
+.gridTable tbody tr:nth-child(even) td {
+  background: var(--ui-60-surface-soft);
+}
+
+.gridTable input {
+  cursor: pointer;
 }

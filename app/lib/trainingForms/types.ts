@@ -1,3 +1,6 @@
+import type { FormBlockType } from "../formBlocks";
+import type { GridAxis, GridQuestionType } from "../formGrids";
+
 export type { FormStageKey } from "./availability";
 
 /** The two stages that carry an in-system pass/fail assessment. Evaluations are never graded. */
@@ -12,12 +15,21 @@ export type GradingStatus = "PENDING_REVIEW" | "REVIEWED";
  *  question's real type from the database rather than trusting which of these fields is filled -
  *  a client claiming SHORT_ANSWER for a SINGLE_CHOICE question must not slip an ungraded row past
  *  the scorer. */
+/** One row of a grid answer: which columns were picked for that row. */
+export type GridRowAnswerInput = {
+  rowId: string;
+  columnIds: string[];
+};
+
 export type AssessmentAnswerInput = {
   questionId: string;
   /** SINGLE_CHOICE/TRUE_FALSE: exactly one id. MULTIPLE_CHOICE: one or more. Empty for SHORT_ANSWER. */
   choiceIds: string[];
   /** SHORT_ANSWER only. */
   text: string | null;
+  /** Grid questions only. A grid answer cannot live in choiceIds because a column alone does not
+   *  say which row it was picked for. */
+  grid?: GridRowAnswerInput[];
 };
 
 export type SubmitAssessmentInput = {
@@ -32,6 +44,8 @@ export type EvaluationAnswerInput = {
   ratingValue: number | null;
   /** SHORT_TEXT/LONG_TEXT only. */
   text: string | null;
+  /** Grid questions only - see AssessmentAnswerInput.grid. */
+  grid?: GridRowAnswerInput[];
 };
 
 export type SubmitEvaluationInput = {
@@ -59,6 +73,11 @@ export type AssessmentChoiceForEmployee = {
   choiceId: string;
   choiceOrder: number;
   choiceText: string;
+  /** 1-based section to jump to when this choice is picked. Navigation only - it reveals nothing
+   *  about correctness, so it is safe in the employee projection. */
+  nextSection: number | null;
+  /** 'ROW' / 'COLUMN' on a grid question. Layout, not correctness. */
+  axis: GridAxis | null;
   // Deliberately no isCorrect / optionScore - this projection is what gets sent to the person
   // being tested. AssessmentRecord (app/lib/assessments/types.ts) carries both and must never be
   // reused here.
@@ -68,8 +87,10 @@ export type AssessmentQuestionForEmployee = {
   questionId: string;
   questionOrder: number;
   questionText: string;
-  questionType: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "TRUE_FALSE";
+  questionType: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "TRUE_FALSE" | GridQuestionType | FormBlockType;
   questionScore: string;
+  questionDescription: string | null;
+  nextSection: number | null;
   isRequired: boolean;
   choices: AssessmentChoiceForEmployee[];
 };
@@ -89,14 +110,20 @@ export type EvaluationOptionForEmployee = {
   optionId: string;
   optionOrder: number;
   optionText: string;
+  /** 1-based section to jump to when this option is picked. */
+  nextSection: number | null;
+  /** 'ROW' / 'COLUMN' on a grid question. */
+  axis: GridAxis | null;
 };
 
 export type EvaluationQuestionForEmployee = {
   questionId: string;
   questionOrder: number;
   questionText: string;
-  questionType: "RATING" | "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_TEXT" | "LONG_TEXT";
+  questionType: "RATING" | "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "SHORT_TEXT" | "LONG_TEXT" | GridQuestionType | FormBlockType;
   sectionName: string | null;
+  questionDescription: string | null;
+  nextSection: number | null;
   isRequired: boolean;
   options: EvaluationOptionForEmployee[];
 };
@@ -126,6 +153,24 @@ export type EvaluationSummaryOption = {
   percent: number;
 };
 
+export type EvaluationSummaryGridCell = {
+  columnId: string;
+  columnText: string;
+  /** People who picked this column FOR THIS ROW. */
+  count: number;
+  /** Share of the people who answered this row, not of the whole question. */
+  percent: number;
+};
+
+export type EvaluationSummaryGridRow = {
+  rowId: string;
+  rowText: string;
+  /** People who answered this row at all. Rows of a grid are answered independently, so one row
+   *  can have far fewer respondents than the question as a whole. */
+  answeredBy: number;
+  cells: EvaluationSummaryGridCell[];
+};
+
 export type EvaluationSummaryQuestion = {
   questionId: string;
   questionOrder: number;
@@ -138,8 +183,16 @@ export type EvaluationSummaryQuestion = {
   /** RATING only: mean of the 1-5 values, and how many people gave each value. */
   averageRating: number | null;
   ratingDistribution: { value: number; count: number }[];
-  /** Choice questions only. */
+  /** Choice questions only. Empty for a grid, whose axes are not options. */
   options: EvaluationSummaryOption[];
+  /**
+   * Grid questions only: one entry per row, each carrying a count per column.
+   *
+   * A grid cannot be summarised as a flat option list. Its answers are (row, column) pairs, so
+   * counting by column alone collapses the rows together and reports "people who picked this
+   * column somewhere in the grid" - which is never the question anyone is asking.
+   */
+  gridRows: EvaluationSummaryGridRow[];
   /** Free-text only, and only once the form clears FREE_TEXT_MIN_RESPONDENTS. */
   textAnswers: string[];
   textAnswersWithheld: boolean;

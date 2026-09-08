@@ -1,0 +1,332 @@
+/* Deliberately close to app/components/employee/TrainingFormRunner.module.css: the point of this
+   preview is that the author sees what the employee sees, so it must not look like a different
+   product. Tokens only, and a soft tinted frame so it still reads as a rehearsal, not the form. */
+
+.frame {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 14px;
+  border: 1px dashed var(--ui-30-primary);
+  border-radius: var(--ui-radius-lg, 14px);
+  background: var(--ui-60-surface-soft);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.head strong {
+  color: var(--ui-30-ink);
+  font-size: 0.95rem;
+}
+
+.meta {
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.instructions {
+  padding: 10px 12px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 10px;
+  background: var(--ui-60-surface);
+}
+
+.instructions strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.78rem;
+}
+
+.instructions p {
+  margin: 0;
+  color: var(--ui-30-muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.progressBox {
+  padding: 10px 12px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 10px;
+  background: var(--ui-60-surface);
+}
+
+.progressText {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
+}
+
+.progressText strong {
+  color: var(--ui-30-ink);
+}
+
+.progressTrack {
+  height: 6px;
+  border-radius: var(--ui-radius-full, 999px);
+  background: var(--ui-30-primary-soft);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ui-30-primary);
+  transition: width 0.2s ease;
+}
+
+.sectionCounter {
+  margin: 8px 0 0;
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+/* A section break or a note: heading plus prose, never an input. Flatter than a question card so
+   it does not read as something waiting to be answered. */
+.block {
+  padding: 4px 2px 2px;
+}
+
+.block h4 {
+  margin: 0;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--ui-30-primary-border, var(--ui-30-border));
+  color: var(--ui-30-primary-strong, var(--ui-30-ink));
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.block[data-kind="note"] h4 {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.block p {
+  margin: 6px 0 0;
+  color: var(--ui-30-muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.card {
+  padding: 12px 14px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 10px;
+  background: var(--ui-60-surface);
+}
+
+.card[data-missing="true"] {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+
+.cardHead {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  color: var(--ui-30-ink);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.order {
+  color: var(--ui-30-muted);
+}
+
+.required {
+  color: #dc2626;
+  font-style: normal;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ui-30-ink);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.ratingRow {
+  display: flex;
+  gap: 6px;
+}
+
+.ratingBtn {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ratingBtn[data-active="true"] {
+  border-color: var(--ui-30-primary);
+  background: var(--ui-30-primary);
+  color: #fff;
+}
+
+.text {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font: inherit;
+  resize: vertical;
+}
+
+.text:focus,
+.ratingBtn:focus-visible {
+  outline: none;
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px var(--ui-30-primary-soft);
+}
+
+.missing {
+  margin: 8px 0 0;
+  color: #dc2626;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.primary,
+.secondary {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.primary {
+  border: 1px solid var(--ui-30-primary);
+  background: var(--ui-30-primary);
+  color: #fff;
+}
+
+.secondary {
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+}
+
+.secondary:hover {
+  border-color: var(--ui-30-primary);
+  color: var(--ui-30-primary);
+}
+
+.done {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 10px;
+  background: var(--ui-60-surface);
+}
+
+.done strong {
+  color: var(--ui-30-primary);
+  font-size: 0.95rem;
+}
+
+.done p {
+  margin: 0;
+  color: var(--ui-30-ink);
+  font-size: 0.82rem;
+}
+
+.note {
+  margin: 0;
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+  line-height: 1.6;
+}
+
+.empty {
+  margin-top: 10px;
+  padding: 18px;
+  border: 1px dashed var(--ui-30-border);
+  border-radius: 10px;
+  color: var(--ui-30-muted);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+/* Grid questions - same shape as the real runner's, so the rehearsal matches what ships. */
+.gridScroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gridTable {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 320px;
+  font-size: 0.8rem;
+}
+
+.gridTable th,
+.gridTable td {
+  padding: 7px 9px;
+  border-bottom: 1px solid var(--ui-30-border);
+  text-align: center;
+}
+
+.gridTable thead th {
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.gridTable tbody th {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font-weight: 700;
+  text-align: left;
+  min-width: 110px;
+}
+
+.gridTable input {
+  cursor: pointer;
+}

@@ -65,7 +65,10 @@ model assessment_answer {
   review_comment        String?
   reviewed_by           BigInt?
   reviewed_at           DateTime?
-  assessment_choice     assessment_choice?    @relation(fields: [choice_id], references: [choice_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F072_assessment_answer_choice_id")
+  /** Grid questions only: which ROW choice this answer belongs to. */
+  row_choice_id         BigInt?
+  assessment_choice     assessment_choice?    @relation("assessment_answer_choice", fields: [choice_id], references: [choice_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F072_assessment_answer_choice_id")
+  assessment_row_choice assessment_choice?    @relation("assessment_answer_row", fields: [row_choice_id], references: [choice_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_RC2_assessment_answer_row_choice_id")
   assessment_question   assessment_question   @relation(fields: [question_id], references: [question_id], onUpdate: NoAction, map: "FK_V6F073_assessment_answer_question_id")
   user_account          user_account?         @relation(fields: [reviewed_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F074_assessment_answer_reviewed_by")
   assessment_submission assessment_submission @relation(fields: [submission_id], references: [submission_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_V6F075_assessment_answer_submission_id")
@@ -78,7 +81,13 @@ model assessment_choice {
   choice_text         String
   is_correct          Boolean             @default(false, map: "DF_assessment_choice_is_correct")
   option_score        Decimal             @default(0.00, map: "DF_assessment_choice_option_score") @db.Decimal(8, 2)
-  assessment_answer   assessment_answer[]
+  next_section        Int?
+  /** 'ROW' / 'COLUMN' on a grid question; NULL on every ordinary choice. */
+  axis                String?             @db.VarChar(10)
+  /** ROW choices only: choice_order values of the correct columns, comma separated. */
+  correct_columns     String?             @db.VarChar(200)
+  assessment_answer   assessment_answer[] @relation("assessment_answer_choice")
+  assessment_answer_rows assessment_answer[] @relation("assessment_answer_row")
   assessment_question assessment_question @relation(fields: [question_id], references: [question_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_V6F038_assessment_choice_question_id")
 
   @@unique([question_id, choice_order], map: "UQ_assessment_choice_order")
@@ -92,6 +101,8 @@ model assessment_question {
   question_type     String              @db.VarChar(30)
   question_score    Decimal             @default(1.00, map: "DF_assessment_question_question_score") @db.Decimal(8, 2)
   is_required       Boolean             @default(true, map: "DF_assessment_question_is_required")
+  question_description String?           @db.NVarChar(Max)
+  next_section      Int?
   assessment_answer assessment_answer[]
   assessment_choice assessment_choice[]
   assessment        assessment          @relation(fields: [assessment_id], references: [assessment_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_V6F037_assessment_question_assessment_id")
@@ -489,7 +500,10 @@ model evaluation_answer {
   evaluation_option_id     BigInt?
   rating_value             Decimal?              @db.Decimal(8, 2)
   answer_text              String?               @db.NVarChar(Max)
-  evaluation_option        evaluation_option?    @relation(fields: [evaluation_option_id], references: [evaluation_option_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_evaluation_answer_evaluation_option_evaluation_option_id")
+  /** Grid questions only: which ROW option this answer belongs to. */
+  row_option_id            BigInt?
+  evaluation_option        evaluation_option?    @relation("evaluation_answer_option", fields: [evaluation_option_id], references: [evaluation_option_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_evaluation_answer_evaluation_option_evaluation_option_id")
+  evaluation_row_option    evaluation_option?    @relation("evaluation_answer_row", fields: [row_option_id], references: [evaluation_option_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_evaluation_answer_row_option_id")
   evaluation_question      evaluation_question   @relation(fields: [evaluation_question_id], references: [evaluation_question_id], onUpdate: NoAction, map: "FK_evaluation_answer_evaluation_question_evaluation_question_id")
   evaluation_submission    evaluation_submission @relation(fields: [evaluation_submission_id], references: [evaluation_submission_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_evaluation_answer_evaluation_submission_evaluation_submission_id")
 
@@ -531,7 +545,11 @@ model evaluation_option {
   option_order           Int
   option_text            String
   option_value           Decimal?            @db.Decimal(8, 2)
-  evaluation_answer      evaluation_answer[]
+  next_section           Int?
+  /** 'ROW' / 'COLUMN' on a grid question; NULL on every ordinary option. */
+  axis                   String?             @db.NVarChar(10)
+  evaluation_answer      evaluation_answer[] @relation("evaluation_answer_option")
+  evaluation_answer_rows evaluation_answer[] @relation("evaluation_answer_row")
   evaluation_question    evaluation_question @relation(fields: [evaluation_question_id], references: [evaluation_question_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_evaluation_option_evaluation_question_evaluation_question_id")
 
   @@unique([evaluation_question_id, option_order], map: "UQ_evaluation_option_evaluation_question_id_option_order")
@@ -545,6 +563,8 @@ model evaluation_question {
   question_type          String              @db.NVarChar(30)
   is_required            Boolean             @default(true, map: "DF_evaluation_question_is_required")
   section_name           String?             @db.NVarChar(150)
+  question_description   String?             @db.NVarChar(Max)
+  next_section           Int?
   evaluation_answer      evaluation_answer[]
   evaluation_option      evaluation_option[]
   evaluation_form        evaluation_form     @relation(fields: [evaluation_form_id], references: [evaluation_form_id], onDelete: Cascade, onUpdate: NoAction, map: "FK_evaluation_question_evaluation_form_evaluation_form_id")
