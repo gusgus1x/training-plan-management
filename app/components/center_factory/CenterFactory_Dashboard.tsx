@@ -799,7 +799,7 @@ export default function Dashboard({
                                 }}
                               >
                                 👥 {isThai
-                                  ? ((training.remainingSeats ?? 0) > 0 ? `เหลือ ${training.remainingSeats} คน` : "เต็มแล้ว")
+                                  ? ((training.remainingSeats ?? 0) > 0 ? `เหลือ ${training.remainingSeats} ที่` : "เต็มแล้ว")
                                   : ((training.remainingSeats ?? 0) > 0 ? `${training.remainingSeats} seats left` : "Full")}
                               </span>
                             ) : null}

@@ -690,8 +690,8 @@ export default function ScheduleCalendar({
                                 <span className={styles.metaLabel}>{uiLang === "th" ? "ที่นั่ง:" : "Seats:"}</span>
                                 <span className={styles.metaValue}>
                                   {uiLang === "th"
-                                    ? (remaining > 0 ? `เหลือ ${remaining}/${capacity} คน (ลงแล้ว ${enrolled})` : `เต็มแล้ว (${enrolled}/${capacity} คน)`)
-                                    : (remaining > 0 ? `${remaining}/${capacity} left (${enrolled} enrolled)` : `Full (${enrolled}/${capacity})`)}
+                                    ? `ลงแล้ว ${enrolled}/${capacity} คน (${remaining > 0 ? `เหลือ ${remaining} ที่` : "เต็มแล้ว"})`
+                                    : `Enrolled ${enrolled}/${capacity} (${remaining > 0 ? `${remaining} left` : "Full"})`}
                                 </span>
                               </span>
                             );
@@ -819,8 +819,8 @@ export default function ScheduleCalendar({
                                 const enrolled = enrollments.filter(e => e.planId === plan.rollingId && ACTIVE_ENROLLMENT_STATUSES.includes(e.status)).length;
                                 const remaining = Math.max(0, capacity - enrolled);
                                 return uiLang === "th"
-                                  ? `รับ ${capacity} คน (ลงแล้ว ${enrolled} • เหลือ ${remaining} ที่)`
-                                  : `Capacity ${capacity} (${enrolled} enrolled • ${remaining} left)`;
+                                  ? `รับ ${capacity} คน (ลงแล้ว ${enrolled} • ${remaining > 0 ? `เหลือ ${remaining} ที่` : "เต็มแล้ว"})`
+                                  : `Capacity ${capacity} (${enrolled} enrolled • ${remaining > 0 ? `${remaining} left` : "Full"})`;
                               })()}
                             </strong>
                           </div>
