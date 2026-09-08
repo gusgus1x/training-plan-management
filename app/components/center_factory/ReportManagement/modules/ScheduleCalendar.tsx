@@ -18,8 +18,6 @@ import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { listEnrollments } from "../../../../lib/trainingEnrollment/client";
 import { ACTIVE_ENROLLMENT_STATUSES, type EnrollmentRecord } from "../../../../lib/trainingEnrollment/types";
 import TypewriterLoader from "../../../TypewriterLoader";
-import { UNDER_DEVELOPMENT } from "../../../../lib/underDevelopment";
-import type { InternalReportDraft } from "./InternalReport";
 import styles from "./ScheduleCalendar.module.css";
 
 export const scheduleCalendarModule = {
@@ -130,13 +128,11 @@ const COMPANY_LEGEND_ITEMS: { key: CalendarCompanyKey; labelTh: string; labelEn:
 ];
 
 type ScheduleCalendarProps = {
-  onPrepareEmail?: (draft: InternalReportDraft) => void;
   initialYear?: string;
   initialMonth?: string;
 };
 
 export default function ScheduleCalendar({
-  onPrepareEmail,
   initialYear,
   initialMonth,
 }: ScheduleCalendarProps = {}) {
@@ -317,37 +313,6 @@ export default function ScheduleCalendar({
     URL.revokeObjectURL(url);
   };
 
-  const handlePrepareEmail = () => {
-    if (exportPlans.length === 0) {
-      return;
-    }
-
-    const scheduleLines = exportPlans
-      .slice(0, 8)
-      .map((plan) => `${plan.date} ${plan.time} - ${plan.courseName} (${plan.company})`);
-    const remainingCount = exportPlans.length - scheduleLines.length;
-    const summary = [
-      `Training schedule for ${emailPeriodLabel}.`,
-      `Total schedules: ${exportPlans.length}.`,
-      ...scheduleLines,
-      remainingCount > 0 ? `And ${remainingCount} more schedules.` : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    onPrepareEmail?.({
-      subject: `Training schedule: ${emailPeriodLabel}`,
-      reportType: "Training Plan Progress",
-      recipientType: "Company",
-      recipientTarget: emailCompanyScope,
-      recipientGroup: "Factory HR",
-      companyScope: emailCompanyScope,
-      period: emailSendDate,
-      dueDate: emailDueDate,
-      summary,
-    });
-  };
-
   const handleShowCurrentMonth = () => {
     setSelectedYear(calendarToday.year);
     setSelectedMonth(calendarToday.month);
@@ -466,20 +431,6 @@ export default function ScheduleCalendar({
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
               <span>{uiLang === "th" ? "ส่งออก Excel" : "Export Excel"}</span>
-            </button>
-            {/* Its handler routes into InternalReport, which is locked for having no backend, so
-                the click already did nothing at all - silently. Say so instead. */}
-            <button
-              className={styles.emailButton}
-              disabled
-              title={`${UNDER_DEVELOPMENT.th} / ${UNDER_DEVELOPMENT.en}`}
-              type="button"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                <polyline points="22,6 12,13 2,6" />
-              </svg>
-              <span>{uiLang === "th" ? "เตรียมอีเมล" : "Prepare Email"}</span>
             </button>
           </div>
         </div>

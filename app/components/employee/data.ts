@@ -1,4 +1,4 @@
-export type UserModule = "register" | "roadmap" | "request" | "record" | "report" | "calendar";
+export type UserModule = "register" | "roadmap" | "request" | "record" | "calendar" | "activities";
 
 export const moduleCards: Array<{
   key: UserModule;
@@ -32,16 +32,15 @@ export const moduleCards: Array<{
     detail: "Check training history, accumulated hours, course results, and evidence status.",
   },
   {
-    key: "report",
-    eyebrow: "Report",
-    title: "Training Report",
-    detail: "Prepare and review employee training reports for HRD follow-up.",
-    locked: true,
-  },
-  {
     key: "calendar",
     eyebrow: "Calendar",
     title: "Calendar Training",
     detail: "Monthly and annual training schedule calendar for employee operations.",
+  },
+  {
+    key: "activities",
+    eyebrow: "Activities",
+    title: "New Activities",
+    detail: "Browse company training news, event photos, and announcements across all companies.",
   },
 ];

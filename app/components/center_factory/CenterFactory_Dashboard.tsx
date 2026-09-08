@@ -455,8 +455,8 @@ export default function Dashboard({
       title: "Reports & Analytics",
       subTitle: "Reports & Analytics Management",
       description: isThai
-        ? "ดูปฏิทินอบรม สรุปความคืบหน้า ค่าใช้จ่าย และร่างอีเมลรายงาน"
-        : "Training schedule calendars, progress summaries, expense breakdowns, and email drafts.",
+        ? "ดูปฏิทินอบรม สรุปความคืบหน้า และค่าใช้จ่าย"
+        : "Training schedule calendars, progress summaries, and expense breakdowns.",
       accent: "var(--ui-30-primary)",
       accentSoft: "var(--ui-30-primary-soft)",
       accentBorder: "var(--ui-30-primary)",
@@ -856,7 +856,10 @@ export default function Dashboard({
         </section>
       </div>
 
-      <NewActivities isThai={isThai} />
+      <NewActivities
+        isThai={isThai}
+        onOpenModule={() => onOpenReport("New Activities")}
+      />
 
       <section className={styles.menuPanel} aria-label="Main workspace menu">
         <div className={styles.menuHeader}>

@@ -452,18 +452,27 @@
   display: grid;
   grid-template-columns: minmax(0, 0.92fr) minmax(440px, 1.08fr);
   gap: 14px;
-  align-items: start;
+  align-items: stretch;
+}
+
+@media (max-width: 1024px) {
+  .topRow {
+    grid-template-columns: 1fr;
+  }
 }
 
 .calendarPanel {
   position: relative;
   overflow: hidden;
-  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
   background: var(--ui-60-surface);
   border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-xl);
+  border-radius: var(--ui-radius-xl, 16px);
   box-shadow: var(--ui-shadow-md);
   color: var(--ui-30-ink);
+  height: 100%;
 }
 
 .calendarPanel::before {
@@ -494,8 +503,7 @@
   flex-direction: column;
   gap: 16px;
   padding: 20px;
-  height: fit-content;
-  align-self: start;
+  height: 100%;
   border-radius: var(--ui-radius-xl, 16px);
   background: var(--ui-60-glass, rgba(255, 255, 255, 0.95));
   border: 1px solid var(--ui-30-border, rgba(226, 232, 240, 0.8));
@@ -897,20 +905,23 @@
 .calendarGrid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 5px;
+  grid-auto-rows: 1fr;
+  gap: 6px;
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-xl);
   background: var(--ui-60-surface);
-  padding: 8px;
+  padding: 10px;
   box-shadow: var(--ui-shadow-sm);
+  flex: 1;
+  min-height: 280px;
 }
 
 .calendarGrid b {
   display: grid;
-  min-height: 24px;
+  min-height: 26px;
   place-items: center;
   color: var(--ui-30-muted);
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -927,7 +938,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
+  min-height: 48px;
+  height: 100%;
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-md);
   background: var(--ui-60-surface-soft);
@@ -976,11 +988,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 24px;
-  height: 24px;
+  min-width: 26px;
+  height: 26px;
   border-radius: 50%;
   color: var(--ui-30-ink);
-  font-size: 0.8rem;
+  font-size: 0.84rem;
   font-weight: 900;
   line-height: 1;
 }

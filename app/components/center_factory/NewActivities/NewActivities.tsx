@@ -12,6 +12,7 @@ import styles from "./NewActivities.module.css";
 interface NewActivitiesProps {
   isThai?: boolean;
   readOnly?: boolean;
+  onOpenModule?: () => void;
 }
 
 const PAGE_SIZE = 3;
@@ -26,7 +27,11 @@ const DEFAULT_COMPANIES: CompanyOption[] = [
   { id: "6", code: "SNF", name: "SNF - The Siam Nawaloha Foundry Co., Ltd." },
 ];
 
-export default function NewActivities({ isThai: propIsThai, readOnly = false }: NewActivitiesProps) {
+export default function NewActivities({
+  isThai: propIsThai,
+  readOnly = false,
+  onOpenModule,
+}: NewActivitiesProps) {
   const { language } = useUiLanguage();
   const isThai = propIsThai !== undefined ? propIsThai : language === "th";
   const confirm = useConfirm();
@@ -606,22 +611,69 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
     <section className={styles.activitiesSection} aria-label="New Activities">
       {/* Section Header */}
       <div className={styles.sectionHeader}>
-        <div className={styles.headerTitleGroup}>
-          <div className={styles.titleContainer}>
-            <span className={styles.pulseDot} aria-hidden="true" />
-            <h2 className={styles.mainTitle}>
-              <span>New Activities</span>
-            </h2>
+        {/* Top Tier: Title on Left, Action Buttons on Right */}
+        <div className={styles.sectionHeaderTop}>
+          <div className={styles.headerTitleGroup}>
+            <div className={styles.titleContainer}>
+              <span className={styles.pulseDot} aria-hidden="true" />
+              <h2 className={styles.mainTitle}>
+                <span>New Activities</span>
+              </h2>
+            </div>
+            <span className={styles.countBadge}>
+              {filteredActivities.length} {isThai ? "กิจกรรม" : "activities"}
+            </span>
           </div>
-          <span className={styles.countBadge}>
-            {filteredActivities.length} {isThai ? "กิจกรรม" : "activities"}
-          </span>
+
+          <div className={styles.headerActions}>
+            {/* Add Activity Button (only for Admins / HR) */}
+            {!isEmployee && (
+              <button
+                type="button"
+                className={styles.addActivityHeaderBtn}
+                onClick={handleOpenAdd}
+                title={isThai ? "เพิ่มกิจกรรมใหม่" : "Add Activity"}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                <span>{isThai ? "เพิ่มกิจกรรม" : "Add Activity"}</span>
+              </button>
+            )}
+
+            {/* Open Full Module Button */}
+            {onOpenModule && (
+              <button
+                type="button"
+                className={styles.openModuleHeaderBtn}
+                onClick={onOpenModule}
+                title={isThai ? "เปิดดูในโมดูลเต็มหน้าจอ" : "Open full module"}
+              >
+                <span>{isThai ? "ดูทั้งหมดในโมดูล" : "View in Module"}</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                  <polyline points="15 3 21 3 21 9" />
+                  <line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Header Controls: Filters + Add Button */}
-        <div className={styles.headerControls}>
-          <div className={styles.filtersGroup}>
-            {/* Year Filter Pills */}
+        {/* Bottom Tier: Filter Strip Bar */}
+        <div className={styles.filterStripBar}>
+          {/* Year Filter Group */}
+          <div className={styles.filterGroup}>
+            <span className={styles.filterGroupLabel}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+              <span>{isThai ? "ปี:" : "Year:"}</span>
+            </span>
             <div className={styles.filterPillsRow}>
               <button
                 type="button"
@@ -641,8 +693,25 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
                 </button>
               ))}
             </div>
+          </div>
 
-            {/* Company Filter Pills */}
+          <div className={styles.filterDivider} aria-hidden="true" />
+
+          {/* Company Filter Group */}
+          <div className={styles.filterGroup}>
+            <span className={styles.filterGroupLabel}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="2" width="16" height="20" rx="2" />
+                <path d="M9 22v-4h6v4" />
+                <path d="M8 6h.01" />
+                <path d="M16 6h.01" />
+                <path d="M8 10h.01" />
+                <path d="M16 10h.01" />
+                <path d="M8 14h.01" />
+                <path d="M16 14h.01" />
+              </svg>
+              <span>{isThai ? "บริษัท:" : "Company:"}</span>
+            </span>
             <div className={styles.companyPillsRow}>
               <button
                 type="button"
@@ -684,22 +753,6 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
                 })}
             </div>
           </div>
-
-          {/* Add Activity Button (only for Admins / HR) */}
-          {!isEmployee && (
-            <button
-              type="button"
-              className={styles.addActivityHeaderBtn}
-              onClick={handleOpenAdd}
-              title={isThai ? "เพิ่มกิจกรรมใหม่" : "Add Activity"}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              <span>{isThai ? "เพิ่มกิจกรรม" : "Add Activity"}</span>
-            </button>
-          )}
         </div>
       </div>
 

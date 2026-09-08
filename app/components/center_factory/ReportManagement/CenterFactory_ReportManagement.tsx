@@ -9,36 +9,7 @@ import Navbar from "../../Navbar";
 import styles from "./CenterFactory_ReportManagement.module.css";
 import {
   centerReportItems,
-  internalReportTitle,
-  type InternalReportDraft,
 } from "./modules";
-
-const DRAFT_STORAGE_KEY = "report:internal-report-draft";
-
-// Draft handoff from ScheduleCalendar to InternalReport can't travel as a URL
-// param (it's a generated object, not a scalar) and can't travel as React
-// state either (navigating to a different [section] route remounts this
-// component) — sessionStorage is the smallest thing that survives both.
-const readAndClearPreparedDraft = (
-  selectedTitle: string | undefined,
-): InternalReportDraft | null => {
-  if (typeof window === "undefined" || selectedTitle !== internalReportTitle) {
-    return null;
-  }
-
-  const raw = window.sessionStorage.getItem(DRAFT_STORAGE_KEY);
-  window.sessionStorage.removeItem(DRAFT_STORAGE_KEY);
-
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(raw) as InternalReportDraft;
-  } catch {
-    return null;
-  }
-};
 
 type ReportManagementProps = {
   selectedSlug?: string | null;
@@ -59,22 +30,7 @@ export default function ReportManagement({
     centerReportItems,
     selectedSlug,
   );
-  const [preparedDraft] = useState<InternalReportDraft | null>(() =>
-    readAndClearPreparedDraft(selectedItem?.title),
-  );
   const SelectedModule = selectedItem?.Component;
-  const internalReportItem =
-    centerReportItems.find((item) => item.title === internalReportTitle) ?? null;
-  const isInternalReportLocked = internalReportItem?.locked ?? true;
-
-  const handlePrepareEmail = (draft: InternalReportDraft) => {
-    if (isInternalReportLocked || !internalReportItem) {
-      return;
-    }
-
-    window.sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
-    openSection(internalReportItem);
-  };
 
   const handleBack = () => {
     if (selectedItem) {
@@ -110,7 +66,7 @@ export default function ReportManagement({
             <p className={styles.kicker} translate="no">Report</p>
             <h1 translate="no">{selectedItem ? selectedItem.title : "Report Management"}</h1>
             <p>
-              Review training schedules, internal reports, and HRD reporting outputs in one workspace.
+              Review training schedules, summary analytics, and new activities reporting outputs in one workspace.
             </p>
           </div>
         </div>
@@ -118,10 +74,6 @@ export default function ReportManagement({
 
       {SelectedModule ? (
         <SelectedModule
-          onPrepareEmail={
-            isInternalReportLocked ? undefined : handlePrepareEmail
-          }
-          preparedDraft={preparedDraft}
           initialYear={initialYear}
           initialMonth={initialMonth}
         />

@@ -26,9 +26,9 @@ import {
   type RollingPlan,
 } from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
 import CalendarModule from "./CalendarModule";
+import ActivitiesModule from "./ActivitiesModule";
 import RecordModule from "./RecordModule";
 import RegisterTrainingModule from "./RegisterTrainingModule";
-import ReportModule from "./ReportModule";
 import RequestTrainingModule from "./RequestTrainingModule";
 import RoadmapModule from "./RoadmapModule";
 import NewActivities from "../center_factory/NewActivities/NewActivities";
@@ -74,24 +74,22 @@ const RecordIcon = () => (
   </svg>
 );
 
-const ReportIcon = () => (
+const CalendarIcon = () => (
   <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
-    <rect x="5" y="5" width="22" height="22" rx="3" fill="#EF4444" />
-    <rect x="9" y="16" width="3" height="7" rx="1" fill="#ffffff" />
-    <rect x="14.5" y="11" width="3" height="12" rx="1" fill="#ffffff" />
-    <rect x="20" y="8" width="3" height="15" rx="1" fill="#ffffff" />
+    <rect x="5" y="6" width="22" height="20" rx="3" fill="#0EA5E9" />
+    <line x1="5" y1="12" x2="27" y2="12" stroke="#0284C7" strokeWidth="1.5" />
+    <circle cx="10" cy="17" r="1.5" fill="#ffffff" />
+    <circle cx="16" cy="17" r="1.5" fill="#ffffff" />
+    <circle cx="22" cy="17" r="1.5" fill="#ffffff" />
+    <circle cx="10" cy="22" r="1.5" fill="#ffffff" />
+    <circle cx="16" cy="22" r="1.5" fill="#ffffff" />
   </svg>
 );
 
-const CalendarIcon = () => (
+const ActivitiesIcon = () => (
   <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
-    <rect x="5" y="5" width="22" height="22" rx="4" fill="#10B981" />
-    <path d="M5 11h22" stroke="#059669" strokeWidth="1.5" />
-    <rect x="9" y="15" width="4" height="4" rx="1" fill="#ffffff" />
-    <rect x="15" y="15" width="4" height="4" rx="1" fill="#ffffff" />
-    <rect x="21" y="15" width="4" height="4" rx="1" fill="#ffffff" />
-    <rect x="9" y="21" width="4" height="4" rx="1" fill="#ffffff" />
-    <rect x="15" y="21" width="4" height="4" rx="1" fill="#ffffff" />
+    <rect x="5" y="5" width="22" height="22" rx="3" fill="#EC4899" />
+    <path d="M10 16l4 4 8-8" stroke="#ffffff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -100,8 +98,8 @@ const moduleIconMap: Record<UserModule, React.ReactNode> = {
   roadmap: <RoadmapIcon />,
   request: <RequestIcon />,
   record: <RecordIcon />,
-  report: <ReportIcon />,
   calendar: <CalendarIcon />,
+  activities: <ActivitiesIcon />,
 };
 
 type UserDashboardProps = {
@@ -684,16 +682,15 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
               }}
             />
           ) : null}
-          {activeModule === "report" ? (
-            <ReportModule
-              completedHours={completedHours}
-              completedCount={completedEnrollments.length}
-            />
-          ) : null}
           {activeModule === "calendar" ? (
             <CalendarModule
               initialYear={selectedCalendarYear}
               initialMonth={selectedCalendarMonth}
+            />
+          ) : null}
+          {activeModule === "activities" ? (
+            <ActivitiesModule
+              initialYear={selectedCalendarYear}
             />
           ) : null}
         </>
@@ -1364,7 +1361,11 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
             </section>
           ) : null}
 
-          <NewActivities isThai={isThai} readOnly={true} />
+          <NewActivities
+            isThai={isThai}
+            readOnly={true}
+            onOpenModule={() => setActiveModule("activities")}
+          />
 
           <section className={styles.menuPanel} aria-label="Main workspace menu">
             <div className={styles.menuHeader}>
@@ -1409,19 +1410,19 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                     accentBorder: "rgba(217, 119, 6, 0.3)",
                     badgeText: isThai ? `สะสม ${completedHours} ชม.` : `${completedHours} hrs`,
                   },
-                  report: {
-                    icon: "📊",
-                    accent: "#dc2626",
-                    accentSoft: "rgba(220, 38, 38, 0.12)",
-                    accentBorder: "rgba(220, 38, 38, 0.3)",
-                    badgeText: isThai ? "รายงานประวัติ" : "Summary",
-                  },
                   calendar: {
                     icon: "📅",
                     accent: "#059669",
                     accentSoft: "rgba(5, 150, 105, 0.12)",
                     accentBorder: "rgba(5, 150, 105, 0.3)",
                     badgeText: isThai ? "ตารางการอบรม" : "Schedules",
+                  },
+                  activities: {
+                    icon: "📸",
+                    accent: "#0284c7",
+                    accentSoft: "rgba(2, 132, 199, 0.12)",
+                    accentBorder: "rgba(2, 132, 199, 0.3)",
+                    badgeText: isThai ? "ข่าวสาร & ภาพกิจกรรม" : "News & Events",
                   },
                 };
 
