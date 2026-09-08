@@ -18,6 +18,8 @@ import {
   getCurrentCalendarDate,
 } from "../../lib/calendarDate";
 import { useUiLanguage } from "../ThaiUiLocalization";
+import { listEnrollments } from "../../lib/trainingEnrollment/client";
+import { ACTIVE_ENROLLMENT_STATUSES, type EnrollmentRecord } from "../../lib/trainingEnrollment/types";
 import NewActivities from "./NewActivities/NewActivities";
 import styles from "./CenterFactory_Dashboard.module.css";
 
@@ -51,6 +53,9 @@ type DashboardTraining = {
   isCenterPlan: boolean;
   batch?: string;
   isEnded?: boolean;
+  capacity?: number;
+  enrolledCount?: number;
+  remainingSeats?: number;
 };
 
 type CompanyColorKey = "ALL" | "ATA" | "TEP" | "ATFB" | "NIC" | "SATI" | "SNF";
@@ -229,6 +234,7 @@ export default function Dashboard({
     setSelectedDay(null);
   };
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
+  const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
 
   const handleOpenAcceptSurvey = (training: DashboardTraining) => {
     if (onOpenTrainingPlan) {
@@ -238,6 +244,9 @@ export default function Dashboard({
 
   useEffect(() => {
     void loadWorkflowRollingPlans().then(setRollingPlans);
+    void listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
+      .then((res) => setEnrollments(res.enrollments || []))
+      .catch(() => setEnrollments([]));
   }, []);
 
   const scopedRollingPlans = useMemo(
@@ -286,6 +295,12 @@ export default function Dashboard({
             isThai,
           });
 
+          const capacity = Number(plan.participants || 0);
+          const enrolledCount = enrollments.filter(
+            (e) => e.planId === plan.rollingId && ACTIVE_ENROLLMENT_STATUSES.includes(e.status)
+          ).length;
+          const remainingSeats = capacity > 0 ? Math.max(0, capacity - enrolledCount) : 0;
+
           return {
             planId: plan.rollingId,
             date: plan.trainingDate,
@@ -298,9 +313,12 @@ export default function Dashboard({
             isCenterPlan,
             batch: plan.batch,
             isEnded,
+            capacity,
+            enrolledCount,
+            remainingSeats,
           };
         }),
-    [scopedRollingPlans, todayStr, isThai],
+    [scopedRollingPlans, todayStr, isThai, enrollments],
   );
   const calendarYears = useMemo(
     () =>
@@ -765,11 +783,38 @@ export default function Dashboard({
                                 🏷️ {training.batch}
                               </span>
                             ) : null}
+                            {typeof training.capacity === "number" && training.capacity > 0 && !training.isEnded ? (
+                              <span
+                                style={{
+                                  fontSize: "0.72rem",
+                                  fontWeight: 700,
+                                  padding: "2px 8px",
+                                  borderRadius: "9999px",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  background: (training.remainingSeats ?? 0) > 0 ? "rgba(16, 185, 129, 0.12)" : "rgba(239, 68, 68, 0.12)",
+                                  color: (training.remainingSeats ?? 0) > 0 ? "#10b981" : "#ef4444",
+                                  border: `1px solid ${(training.remainingSeats ?? 0) > 0 ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)"}`,
+                                }}
+                              >
+                                👥 {isThai
+                                  ? ((training.remainingSeats ?? 0) > 0 ? `เหลือ ${training.remainingSeats} คน` : "เต็มแล้ว")
+                                  : ((training.remainingSeats ?? 0) > 0 ? `${training.remainingSeats} seats left` : "Full")}
+                              </span>
+                            ) : null}
                           </div>
                           <strong className={styles.dayDetailCourseName}>{training.course}</strong>
                           <div className={styles.dayDetailInfo}>
                             <span>🕐 {training.time}</span>
                             <span>📍 {training.room}</span>
+                            {typeof training.capacity === "number" && training.capacity > 0 ? (
+                              <span>
+                                👥 {isThai
+                                  ? `ลงแล้ว ${training.enrolledCount ?? 0}/${training.capacity} คน (${(training.remainingSeats ?? 0) > 0 ? `เหลือ ${training.remainingSeats} ที่` : "เต็มแล้ว"})`
+                                  : `Enrolled ${training.enrolledCount ?? 0}/${training.capacity} (${(training.remainingSeats ?? 0) > 0 ? `${training.remainingSeats} left` : "Full"})`}
+                              </span>
+                            ) : null}
                           </div>
                         </div>
 

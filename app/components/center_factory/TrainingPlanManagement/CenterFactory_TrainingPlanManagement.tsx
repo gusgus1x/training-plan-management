@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthActions } from "../../AuthActionsContext";
 import { useAuthenticatedUser } from "../../AuthenticatedUserContext";
 import { useSectionNavigation } from "../../../lib/useSectionNavigation";
+import { isSectionHeadOrAbove } from "../../../lib/employeeMasterData";
 import Navbar from "../../Navbar";
 import { useToast } from "../../ToastHost";
 import styles from "./CenterFactory_TrainingPlanManagement.module.css";
@@ -21,7 +23,17 @@ export default function TrainingPlanManagement({
   const router = useRouter();
   const toast = useToast();
   const { logout } = useAuthActions();
-  const username = useAuthenticatedUser()?.username ?? "";
+  const user = useAuthenticatedUser();
+  const username = user?.username ?? "";
+  const isEmployeeBelowSectionHead =
+    user?.roleCode === "EMPLOYEE" && !isSectionHeadOrAbove(user);
+
+  useEffect(() => {
+    if (isEmployeeBelowSectionHead) {
+      toast.error("ตำแหน่งของคุณไม่ถึงที่จะเข้าลิ้งค์ (คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม)");
+    }
+  }, [isEmployeeBelowSectionHead, toast]);
+
   const { selectedItem, openSection, goToGrid } = useSectionNavigation(
     "/training-plan",
     planItems,
@@ -38,6 +50,60 @@ export default function TrainingPlanManagement({
 
     router.push("/");
   };
+
+  if (isEmployeeBelowSectionHead) {
+    return (
+      <main className={styles.page}>
+        <Navbar
+          username={username}
+          contextTitle="Access Denied"
+          onBack={() => router.push("/")}
+          onHome={() => router.push("/")}
+          onLogout={logout}
+        />
+        <div className={styles.accessDeniedContainer}>
+          <div className={styles.accessDeniedCard}>
+            <div className={styles.accessDeniedIconWrap}>
+              <span className={styles.accessDeniedBigIcon}>🚫</span>
+            </div>
+            <h1 className={styles.accessDeniedMainTitle}>ตำแหน่งของคุณไม่ถึงที่จะเข้าลิ้งค์</h1>
+            <p className={styles.accessDeniedSubTitle}>
+              ไม่อนุญาตให้เข้าใช้งาน — คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม
+            </p>
+            <div className={styles.accessDeniedDivider} />
+            <p className={styles.accessDeniedDescription}>
+              ลิ้งก์นี้จัดทำขึ้นสำหรับหัวหน้างานระดับ <strong>Section Head (ผู้จัดการแผนก) ขึ้นไป</strong> เท่านั้น เพื่อใช้ในการคัดเลือกและเสนอชื่อพนักงานในสังกัดเข้าร่วมการฝึกอบรม
+            </p>
+            <div className={styles.accessDeniedProfileCard}>
+              <div className={styles.profileRow}>
+                <span className={styles.profileLabel}>ผู้ใช้งาน:</span>
+                <span className={styles.profileValue}>{user?.displayName || user?.username} ({user?.employeeCode || "-"})</span>
+              </div>
+              <div className={styles.profileRow}>
+                <span className={styles.profileLabel}>ตำแหน่งของคุณ:</span>
+                <span className={styles.profileValueHighlight}>
+                  {user?.positionName || user?.positionCode || "-"} ({user?.levelCode || user?.levelName || "-"})
+                </span>
+              </div>
+              <div className={styles.profileRow}>
+                <span className={styles.profileLabel}>สังกัด:</span>
+                <span className={styles.profileValue}>{user?.companyName || user?.companyCode || "-"} / {user?.functionName || user?.functionCode || "-"}</span>
+              </div>
+            </div>
+            <div className={styles.accessDeniedActionRow}>
+              <button
+                type="button"
+                className={styles.backToHomeBtn}
+                onClick={() => router.push("/")}
+              >
+                🏠 กลับสู่หน้าหลักของคุณ (Home Dashboard)
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className={styles.page}>

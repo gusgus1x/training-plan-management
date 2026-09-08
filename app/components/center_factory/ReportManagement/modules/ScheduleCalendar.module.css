@@ -1308,6 +1308,92 @@
   color: #fde68a;
 }
 
+.metaChipSeats {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.28);
+}
+.metaChipSeats svg {
+  color: #10b981;
+}
+.metaChipSeats .metaValue {
+  color: #059669;
+}
+
+.metaChipSeatsFull {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.28);
+}
+.metaChipSeatsFull svg {
+  color: #ef4444;
+}
+.metaChipSeatsFull .metaValue {
+  color: #dc2626;
+}
+
+:global([data-theme="dark"]) .metaChipSeats,
+:global(.dark) .metaChipSeats {
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+:global([data-theme="dark"]) .metaChipSeats svg,
+:global(.dark) .metaChipSeats svg {
+  color: #34d399;
+}
+:global([data-theme="dark"]) .metaChipSeats .metaValue,
+:global(.dark) .metaChipSeats .metaValue {
+  color: #6ee7b7;
+}
+
+:global([data-theme="dark"]) .metaChipSeatsFull,
+:global(.dark) .metaChipSeatsFull {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+:global([data-theme="dark"]) .metaChipSeatsFull svg,
+:global(.dark) .metaChipSeatsFull svg {
+  color: #f87171;
+}
+:global([data-theme="dark"]) .metaChipSeatsFull .metaValue,
+:global(.dark) .metaChipSeatsFull .metaValue {
+  color: #fca5a5;
+}
+
+.eventSeatBadge {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  font-size: 0.65rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.eventSeatBadgeFull {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  font-size: 0.65rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+:global([data-theme="dark"]) .eventSeatBadge,
+:global(.dark) .eventSeatBadge {
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+}
+
+:global([data-theme="dark"]) .eventSeatBadgeFull,
+:global(.dark) .eventSeatBadgeFull {
+  background: rgba(239, 68, 68, 0.22);
+  color: #f87171;
+}
+
 .courseCardActions {
   display: flex;
   flex-wrap: wrap;

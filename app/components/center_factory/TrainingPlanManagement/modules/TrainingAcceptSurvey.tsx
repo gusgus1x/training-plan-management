@@ -1,9 +1,11 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { type WorkflowStandard } from "../../../../lib/trainingWorkflow";
 import {
   getLevelRank,
+  isSectionHeadOrAbove,
   normalizeEmployeeLevel,
 } from "../../../../lib/employeeMasterData";
 import {
@@ -259,6 +261,7 @@ type PaginatedEmployeeGridProps = {
   pageSize?: number;
   enrollments?: EnrollmentRecord[];
   draftSubmittedEmployees?: SurveyEmployee[];
+  canNominate?: boolean;
 };
 
 function PaginatedEmployeeGrid({
@@ -269,7 +272,9 @@ function PaginatedEmployeeGrid({
   pageSize = 25,
   enrollments = [],
   draftSubmittedEmployees = [],
+  canNominate = true,
 }: PaginatedEmployeeGridProps) {
+  const toast = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -443,10 +448,18 @@ function PaginatedEmployeeGrid({
             return (
               <article className={`${styles.employeeRow} ${styles.targetListRow}`} key={employee.id}>
                 <button
-                  className={`${styles.addTargetButton} ${isBtnDisabled ? styles.addedBtn : ""}`}
+                  className={`${styles.addTargetButton} ${isBtnDisabled ? styles.addedBtn : ""} ${!canNominate ? styles.deniedBtn : ""}`}
                   type="button"
                   disabled={isBtnDisabled}
-                  onClick={() => void onAddEmployee(employee)}
+                  title={!canNominate ? "คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม" : buttonLabel}
+                  onClick={() => {
+                    if (!canNominate) {
+                      toast.error("ตำแหน่งของคุณไม่ถึงที่จะเข้าลิ้งค์ (คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม)");
+                      return;
+                    }
+                    if (isBtnDisabled) return;
+                    void onAddEmployee(employee);
+                  }}
                 >
                   {buttonLabel}
                 </button>
@@ -613,6 +626,14 @@ export default function TrainingAcceptSurvey({
 
   const confirm = useConfirm();
   const toast = useToast();
+  const router = useRouter();
+  const canNominateByPosition = isSectionHeadOrAbove(user);
+
+  useEffect(() => {
+    if (user && user.roleCode === "EMPLOYEE" && !canNominateByPosition && !isInitialLoading) {
+      toast.error("ตำแหน่งของคุณไม่ถึงที่จะเข้าลิ้งค์ (คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม)");
+    }
+  }, [user, canNominateByPosition, isInitialLoading, toast]);
   const roleMode: RoleMode = user?.roleCode === "HRD_CENTER" ? "center" : "factory";
   const userCompanyCode = companies.find((company) => company === user?.companyCode) ?? "SNF";
   const userCompanyLabel =
@@ -1261,6 +1282,11 @@ export default function TrainingAcceptSurvey({
   const handleAddEmployee = async (employee: SurveyEmployee) => {
     if (!selectedCourse) return;
 
+    if (!canNominateByPosition) {
+      toast.error("ตำแหน่งของคุณไม่ถึงที่จะเข้าลิ้งค์ (คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม)");
+      return;
+    }
+
     if (selectedCourse.owner === "factory" && employee.company !== selectedCourse.ownerCompany) {
       toast.error(`หลักสูตรของโรงงาน ${selectedCourse.ownerCompany} สามารถส่งได้เฉพาะพนักงานของ ${selectedCourse.ownerCompany} เท่านั้น`);
       return;
@@ -1363,6 +1389,11 @@ export default function TrainingAcceptSurvey({
 
   const handleCopyNominationLink = async () => {
     if (!selectedCourse) return;
+
+    if (!canNominateByPosition) {
+      toast.error("ตำแหน่งของคุณไม่ถึงที่จะเข้าลิ้งค์ (คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม)");
+      return;
+    }
 
     const nominationUrl = `${window.location.origin}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`;
     await copyTextToClipboard(nominationUrl);
@@ -1695,6 +1726,34 @@ export default function TrainingAcceptSurvey({
             </div>
           </section>
 
+          {!canNominateByPosition && user?.roleCode === "EMPLOYEE" ? (
+            <div className={styles.permissionWarningBanner} role="alert">
+              <span className={styles.permissionWarningIcon}>🚫</span>
+              <div className={styles.permissionWarningBody}>
+                <strong className={styles.permissionWarningTitle}>
+                  ตำแหน่งของคุณไม่ถึงที่จะเข้าลิ้งค์
+                </strong>
+                <p className={styles.permissionWarningSubtitle}>
+                  คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม (เฉพาะตำแหน่ง Section Head / ผู้จัดการแผนก ขึ้นไปเท่านั้นที่มีสิทธิ์เสนอชื่อพนักงานเข้าอบรม)
+                </p>
+                <div className={styles.permissionWarningMeta}>
+                  <span>ผู้เข้าใช้งาน: <strong>{user.displayName || user.username}</strong> ({user.employeeCode || "-"})</span>
+                  <span>ตำแหน่งของคุณ: <strong>{user.positionName || user.positionCode || "-"}</strong> ({user.levelCode || user.levelName || "-"})</span>
+                  <span>สังกัด: <strong>{user.companyName || user.companyCode || "-"} / {user.functionName || user.functionCode || "-"}</strong></span>
+                </div>
+                <div className={styles.permissionWarningActions}>
+                  <button
+                    type="button"
+                    className={styles.permissionBackHomeBtn}
+                    onClick={() => router.push("/")}
+                  >
+                    🏠 กลับสู่หน้าหลักของคุณ (Home Dashboard)
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           <div className={styles.surveySplit}>
             <section className={styles.participantPanel}>
               <div className={styles.workspaceHeader}>
@@ -1705,9 +1764,9 @@ export default function TrainingAcceptSurvey({
                 <div className={styles.participantActions}>
                   <span>{acceptedParticipants.length} / {selectedCourse.capacity} seats</span>
                   <button
-                    className={styles.shareLinkButton}
+                    className={`${styles.shareLinkButton} ${!canNominateByPosition ? styles.deniedBtn : ""}`}
                     type="button"
-                    title="คัดลอกลิ้งก์ส่งให้ Section Head / หัวหน้างาน เพื่อเข้าเลือกและเสนอชื่อพนักงานเข้าอบรมเอง"
+                    title={!canNominateByPosition ? "คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม" : "คัดลอกลิ้งก์ส่งให้ Section Head / หัวหน้างาน เพื่อเข้าเลือกและเสนอชื่อพนักงานเข้าอบรมเอง"}
                     onClick={() => void handleCopyNominationLink()}
                   >
                     <span className={styles.folderContainer}>
@@ -2034,11 +2093,16 @@ export default function TrainingAcceptSurvey({
                           <span className={styles.glowingDotYellow}></span> {draftSubmittedEmployees.length} คนรอส่ง
                         </span>
                         <button
-                          className={styles.saveSubmissionButton}
+                          className={`${styles.saveSubmissionButton} ${!canNominateByPosition ? styles.deniedBtn : ""}`}
                           type="button"
                           disabled={draftSubmittedEmployees.length === 0}
+                          title={!canNominateByPosition ? "คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม" : undefined}
                           onClick={async () => {
                             if (!selectedCourse) return;
+                            if (!canNominateByPosition) {
+                              toast.error("ตำแหน่งของคุณไม่ถึงที่จะเข้าลิ้งค์ (คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม)");
+                              return;
+                            }
                             if (draftSubmittedEmployees.length === 0) return;
                             // HRD is asked once per employee who has not completed a prerequisite;
                             // anyone they decline stays in the draft list rather than being
@@ -2436,6 +2500,7 @@ export default function TrainingAcceptSurvey({
                           emptyMessage="ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้"
                           enrollments={enrollments}
                           draftSubmittedEmployees={draftSubmittedEmployees}
+                          canNominate={canNominateByPosition}
                         />
                       </details>
                     );
@@ -2493,6 +2558,7 @@ export default function TrainingAcceptSurvey({
                               emptyMessage="ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้"
                               enrollments={enrollments}
                               draftSubmittedEmployees={draftSubmittedEmployees}
+                              canNominate={canNominateByPosition}
                             />
                           </details>
                         );
@@ -2546,6 +2612,7 @@ export default function TrainingAcceptSurvey({
                           emptyMessage="ไม่มีพนักงานเพิ่มเติมสำหรับบริษัทนี้"
                           enrollments={enrollments}
                           draftSubmittedEmployees={draftSubmittedEmployees}
+                          canNominate={canNominateByPosition}
                         />
                       </details>
                     );

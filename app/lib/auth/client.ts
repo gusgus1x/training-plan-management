@@ -18,14 +18,19 @@ export type ClientSessionUser = {
   email: string | null;
   employeeCode: string | null;
   displayName: string | null;
+  displayNameEn?: string | null;
   companyCode: string | null;
   companyName: string | null;
+  companyNameEn?: string | null;
   functionCode: string | null;
   functionName: string | null;
+  functionNameEn?: string | null;
   positionCode: string | null;
   positionName: string | null;
+  positionNameEn?: string | null;
   levelCode: string | null;
   levelName: string | null;
+  levelNameEn?: string | null;
   pl: string | null;
 };
 
@@ -102,7 +107,7 @@ const readSessionUser = async (response: Response): Promise<ClientSessionUser> =
     throw new AuthenticationClientError();
   }
 
-  return {
+  const result: ClientSessionUser = {
     userId: candidate.userId,
     username: candidate.username,
     roleCode: candidate.role,
@@ -121,6 +126,24 @@ const readSessionUser = async (response: Response): Promise<ClientSessionUser> =
     levelName: nullableString(candidate.levelName),
     pl: nullableString(candidate.pl),
   };
+
+  if (candidate.displayNameEn !== undefined && candidate.displayNameEn !== null) {
+    result.displayNameEn = nullableString(candidate.displayNameEn);
+  }
+  if (candidate.companyNameEn !== undefined && candidate.companyNameEn !== null) {
+    result.companyNameEn = nullableString(candidate.companyNameEn);
+  }
+  if (candidate.functionNameEn !== undefined && candidate.functionNameEn !== null) {
+    result.functionNameEn = nullableString(candidate.functionNameEn);
+  }
+  if (candidate.positionNameEn !== undefined && candidate.positionNameEn !== null) {
+    result.positionNameEn = nullableString(candidate.positionNameEn);
+  }
+  if (candidate.levelNameEn !== undefined && candidate.levelNameEn !== null) {
+    result.levelNameEn = nullableString(candidate.levelNameEn);
+  }
+
+  return result;
 };
 
 export const loginWithCredentials = async (

@@ -162,6 +162,147 @@ export const countdownLabel = (days: number, language: UiLanguage) => {
   return isThai ? `อีก ${days} วัน` : `in ${days} days`;
 };
 
+const COMPANY_EN_NAMES: Record<string, string> = {
+  ATA: "Aisin Takaoka Asia Co., Ltd.",
+  ATFB: "Aisin Takaoka Foundry Bangpakong Co., Ltd.",
+  NIC: "The Nawaloha Industry Co., Ltd.",
+  SATI: "Siam AT Industry Co., Ltd.",
+  SNF: "The Siam Nawaloha Foundry Co., Ltd.",
+  TEP: "Thai Engineering Products Co., Ltd.",
+};
+
+const THAI_COMPANY_TO_EN: Record<string, string> = {
+  "บริษัท ไอชิน ทากาโอกะ เอเชีย จำกัด": "Aisin Takaoka Asia Co., Ltd.",
+  "บริษัท ไอซิน ทาคาโอกะ เอเชีย จำกัด": "Aisin Takaoka Asia Co., Ltd.",
+  "บริษัท ไอชิน ทากาโอกะ ฟาวดรี บางปะกง จำกัด": "Aisin Takaoka Foundry Bangpakong Co., Ltd.",
+  "บริษัท ไอซิน ทาคาโอกะ ฟาวดรี บางปะกง จำกัด": "Aisin Takaoka Foundry Bangpakong Co., Ltd.",
+  "บริษัท เดอะ นวโลหะ อินดัสตรี จำกัด": "The Nawaloha Industry Co., Ltd.",
+  "บริษัท สยาม เอที อินดัสทรี จำกัด": "Siam AT Industry Co., Ltd.",
+  "บริษัท เดอะ สยาม นวโลหะ ฟาวน์ดรี จำกัด": "The Siam Nawaloha Foundry Co., Ltd.",
+  "บริษัท ไทย เอ็นจิเนียริ่ง โปรดักส์ จำกัด": "Thai Engineering Products Co., Ltd.",
+};
+
+const THAI_POSITION_TO_EN: Record<string, string> = {
+  "เจ้าหน้าที่": "Officer",
+  "พนักงาน": "Staff",
+  "พนักงานปฏิบัติการ": "Operator",
+  "วิศวกร": "Engineer",
+  "ช่างเทคนิค": "Technician",
+  "หัวหน้างาน": "Section Head",
+  "หัวหน้าแผนก": "Section Head",
+  "ผู้จัดการแผนก": "Section Head",
+  "ผู้จัดการ": "Manager",
+  "ผู้จัดการ++": "Manager++",
+  "ผู้จัดการฝ่าย": "General Manager",
+  "ผู้จัดการทั่วไป": "General Manager",
+  "ผู้จัดการโรงงาน": "Plant Manager",
+  "โฟร์แมน": "Foreman",
+  "หัวหน้าชุด": "Foreman",
+  "หัวหน้าชุดอาวุโส": "Senior Foreman",
+  "ลีดเดอร์": "Leader",
+  "ประธาน": "President",
+  "รองประธาน": "Vice President",
+  "ที่ปรึกษา": "Advisor",
+};
+
+const THAI_FUNCTION_TO_EN: Record<string, string> = {
+  "สนง.บริหารกลาง": "General Administration Office",
+  "บริหารกลาง": "General Administration Office",
+  "สำนักงานบริหารกลาง": "General Administration Office",
+  "ทรัพยากรบุคคล": "Human Resource",
+  "ฝ่ายบุคคล": "Human Resource",
+  "ทรัพยากรมนุษย์": "Human Resource",
+  "การเงินและบัญชี": "Account and Financial",
+  "บัญชีและการเงิน": "Account and Financial",
+  "บัญชี": "Account and Financial",
+  "ฝ่ายผลิต": "Production",
+  "ผลิต": "Production",
+  "การผลิต": "Production",
+  "วางแผนการผลิต": "Production Planning",
+  "วิศวกรรม": "Engineering and Maintenance",
+  "ฝ่ายวิศวกรรม": "Engineering and Maintenance",
+  "วิศวกรรมและซ่อมบำรุง": "Engineering and Maintenance",
+  "วิศวกรรมโครงการ": "Project Engineering",
+  "ประกันคุณภาพ": "Quality",
+  "ควบคุมคุณภาพ": "Quality",
+  "คุณภาพ": "Quality",
+  "ความปลอดภัยและสิ่งแวดล้อม": "Safety and Environment",
+  "คลังสินค้า": "Warehouse",
+  "จัดซื้อ": "Purchase",
+  "เทคโนโลยีสารสนเทศ": "IT Promotion",
+  "ฝ่ายไอที": "IT Promotion",
+  "การขาย": "Sale",
+  "วางแผนการขาย": "Sale Planning",
+  "สำนักงานกรรมการผู้จัดการ": "President Office",
+  "ธุรการ": "Administration",
+  "ล่ามและเลขานุการ": "Interpreter and Secretary",
+  "อื่นๆ": "Other",
+};
+
+export const resolveDisplayName = (
+  displayName: string | null | undefined,
+  username: string,
+  isThai: boolean,
+  displayNameEn?: string | null,
+) => {
+  if (isThai) {
+    return displayName || username;
+  }
+  if (displayNameEn?.trim()) {
+    return displayNameEn.trim();
+  }
+  const current = (displayName || username).trim();
+  if (current === "ทดสอบ ระบบอบรม" || current === "นาย ทดสอบ ระบบอบรม") {
+    return "Training System Test";
+  }
+  return current;
+};
+
+export const resolvePosition = (
+  positionName: string | null | undefined,
+  isThai: boolean,
+  positionNameEn?: string | null,
+) => {
+  const raw = positionName?.trim();
+  if (!raw) return "-";
+  if (isThai) return raw;
+  if (positionNameEn?.trim()) return positionNameEn.trim();
+  return THAI_POSITION_TO_EN[raw] ?? raw;
+};
+
+export const resolveDepartment = (
+  functionName: string | null | undefined,
+  isThai: boolean,
+  functionNameEn?: string | null,
+) => {
+  const raw = functionName?.trim();
+  if (!raw) return "-";
+  if (isThai) return raw;
+  if (functionNameEn?.trim()) return functionNameEn.trim();
+  return THAI_FUNCTION_TO_EN[raw] ?? raw;
+};
+
+export const resolveCompany = (
+  companyName: string | null | undefined,
+  companyCode: string | null | undefined,
+  isThai: boolean,
+  companyNameEn?: string | null,
+) => {
+  const rawName = companyName?.trim() ?? "";
+  const rawCode = companyCode?.trim() ?? "";
+  if (isThai) {
+    return rawName || rawCode || "-";
+  }
+  if (companyNameEn?.trim()) return companyNameEn.trim();
+  if (rawCode && COMPANY_EN_NAMES[rawCode]) {
+    return COMPANY_EN_NAMES[rawCode];
+  }
+  if (rawName && THAI_COMPANY_TO_EN[rawName]) {
+    return THAI_COMPANY_TO_EN[rawName];
+  }
+  return rawName || rawCode || "-";
+};
+
 /** Enrollments whose 30-day follow-up evaluation is due for a reminder and still unanswered - the
  *  set the dashboard's reminder banner nags about. Fires from FOLLOW_UP_REMINDER_AFTER_DAYS, which
  *  is earlier than the form itself opens (FOLLOW_UP_OPENS_AFTER_DAYS), so employees see it coming.
@@ -197,24 +338,51 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
       ? t("ทั้งปี", "All year")
       : new Date(2020, Number(value) - 1, 1).toLocaleDateString(locale, { month: "long" }) ||
         fallback;
+  const displayFullName = resolveDisplayName(
+    authenticatedUser?.displayName,
+    username,
+    isThai,
+    authenticatedUser?.displayNameEn,
+  );
+  const displayPosition = resolvePosition(
+    authenticatedUser?.positionName,
+    isThai,
+    authenticatedUser?.positionNameEn,
+  );
+  const displayDepartment = resolveDepartment(
+    authenticatedUser?.functionName,
+    isThai,
+    authenticatedUser?.functionNameEn,
+  );
+  const displayCompany = resolveCompany(
+    authenticatedUser?.companyName,
+    authenticatedUser?.companyCode,
+    isThai,
+    authenticatedUser?.companyNameEn,
+  );
+
   const fullEmployeeProfileItems = useMemo(() => {
     const userAny = authenticatedUser as any;
     return [
       {
         label: isThai ? "ชื่อ-นามสกุล" : "Full Name",
-        value: profileValue(authenticatedUser?.displayName ?? username),
+        value: profileValue(displayFullName),
       },
       {
         label: isThai ? "รหัสพนักงาน" : "Employee Code",
-        value: authenticatedUser?.employeeCode ? authenticatedUser.employeeCode : "EMPLOYEE Account",
+        value: authenticatedUser?.employeeCode?.trim()
+          ? authenticatedUser.employeeCode
+          : isThai
+            ? "ไม่ระบุ"
+            : "Not specified",
       },
       {
         label: isThai ? "ตำแหน่ง" : "Position",
-        value: profileValue(authenticatedUser?.positionName),
+        value: profileValue(displayPosition),
       },
       {
         label: isThai ? "หน่วยงาน / แผนก" : "Department",
-        value: profileValue(authenticatedUser?.functionName),
+        value: profileValue(displayDepartment),
       },
       {
         label: isThai ? "วันเริ่มงาน" : "Start Date",
@@ -226,10 +394,17 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
       },
       {
         label: isThai ? "บริษัท" : "Company",
-        value: profileValue(authenticatedUser?.companyName ?? authenticatedUser?.companyCode),
+        value: profileValue(displayCompany),
       },
     ];
-  }, [authenticatedUser, username, isThai]);
+  }, [
+    authenticatedUser,
+    displayFullName,
+    displayPosition,
+    displayDepartment,
+    displayCompany,
+    isThai,
+  ]);
   const searchParams = useSearchParams();
   // Read once, as the initial value only - a page returning from /training-form links back to
   // "/?module=record" so the employee lands on My Record instead of the bare dashboard home.
@@ -780,8 +955,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                   </div>
                   <strong className={styles.profileName}>{username}</strong>
                   <p className={styles.profileSubText}>
-                    {profileValue(authenticatedUser?.positionName)} /{" "}
-                    {profileValue(authenticatedUser?.functionName)}
+                    {profileValue(displayPosition)} / {profileValue(displayDepartment)}
                   </p>
                 </div>
               </div>
@@ -816,7 +990,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                   <span className={styles.kpiLabel}>{t("เปิดรับ", "Open")}</span>
                   <div className={styles.kpiValueRow}>
                     <strong className={styles.kpiValue}>{openToRegister.length}</strong>
-                    <small className={styles.kpiHelper}>{t("เข้าร่วมได้", "to join")}</small>
+                    <small className={styles.kpiHelper}>{t("หลักสูตร", "courses")}</small>
                   </div>
                 </div>
               </div>

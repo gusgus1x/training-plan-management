@@ -4,6 +4,10 @@ import {
   daysUntil,
   initialsOf,
   pendingFollowUpEvaluationsOf,
+  resolveCompany,
+  resolveDepartment,
+  resolveDisplayName,
+  resolvePosition,
 } from "../../app/components/employee/UserDashboard";
 import { emptyEnrollmentStage, type EnrollmentRecord } from "../../app/lib/trainingEnrollment/types";
 
@@ -140,5 +144,32 @@ describe("30-day follow-up evaluation reminder", () => {
   it("does not flag a course with no follow-up evaluation configured", () => {
     const enrollment = enrollmentWithFollowUp({ mode: "NONE", availability: "NOT_YET" });
     expect(pendingFollowUpEvaluationsOf([enrollment], atOrAfterReminder)).toEqual([]);
+  });
+});
+
+describe("localized employee profile resolution", () => {
+  it("resolves Thai values when isThai is true", () => {
+    expect(resolvePosition("เจ้าหน้าที่", true)).toBe("เจ้าหน้าที่");
+    expect(resolveDepartment("สนง.บริหารกลาง", true)).toBe("สนง.บริหารกลาง");
+    expect(resolveCompany("บริษัท ไอชิน ทากาโอกะ เอเชีย จำกัด", "ATA", true)).toBe(
+      "บริษัท ไอชิน ทากาโอกะ เอเชีย จำกัด",
+    );
+    expect(resolveDisplayName("ทดสอบ ระบบอบรม", "Emp@ATA", true)).toBe("ทดสอบ ระบบอบรม");
+  });
+
+  it("resolves English values when isThai is false", () => {
+    expect(resolvePosition("เจ้าหน้าที่", false)).toBe("Officer");
+    expect(resolveDepartment("สนง.บริหารกลาง", false)).toBe("General Administration Office");
+    expect(resolveCompany("บริษัท ไอชิน ทากาโอกะ เอเชีย จำกัด", "ATA", false)).toBe(
+      "Aisin Takaoka Asia Co., Ltd.",
+    );
+    expect(resolveDisplayName("ทดสอบ ระบบอบรม", "Emp@ATA", false)).toBe("Training System Test");
+  });
+
+  it("prioritizes explicit English fields from session when present", () => {
+    expect(resolvePosition("เจ้าหน้าที่", false, "Special Officer")).toBe("Special Officer");
+    expect(resolveDepartment("สนง.บริหารกลาง", false, "Central Admin")).toBe("Central Admin");
+    expect(resolveCompany("บริษัท", "ATA", false, "Custom ATA Name")).toBe("Custom ATA Name");
+    expect(resolveDisplayName("ทดสอบ ระบบอบรม", "Emp@ATA", false, "John Doe")).toBe("John Doe");
   });
 });

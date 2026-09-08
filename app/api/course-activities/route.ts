@@ -179,12 +179,26 @@ function mapAnnouncementToActivity(row: {
 
 export async function GET() {
   try {
+    const session = await getServerSession().catch(() => null);
+    const isFactory = session?.role === "HRD_FACTORY";
+    const isEmployee = session?.role === "EMPLOYEE";
+    const factoryCompanyId = session?.companyId ? BigInt(session.companyId) : null;
+
+    const where: any = {
+      status: { in: ["PUBLISHED", "DRAFT"] },
+    };
+
+    if ((isFactory || isEmployee) && factoryCompanyId) {
+      where.OR = [
+        { company_id: null },
+        { company_id: factoryCompanyId },
+      ];
+    }
+
     const prisma = getPrismaClient();
     const [rows, rawCompanies] = await Promise.all([
       prisma.announcement.findMany({
-        where: {
-          status: { in: ["PUBLISHED", "DRAFT"] },
-        },
+        where,
         include: {
           company: true,
         },
@@ -199,9 +213,16 @@ export async function GET() {
       }),
     ]);
 
+    let filteredRawCompanies = rawCompanies;
+    if ((isFactory || isEmployee) && factoryCompanyId) {
+      filteredRawCompanies = rawCompanies.filter(
+        (c) => c.company_id === factoryCompanyId
+      );
+    }
+
     const companies: CompanyOption[] = [
       { id: "center", code: "CENTER", name: "Center (ส่วนกลาง)" },
-      ...rawCompanies.map((c) => ({
+      ...filteredRawCompanies.map((c) => ({
         id: c.company_id.toString(),
         code: c.company_code,
         name: `${c.company_code} - ${c.company_name_en}`,
@@ -225,6 +246,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
+    const session = await getServerSession().catch(() => null);
+    const isFactory = session?.role === "HRD_FACTORY";
+    const isEmployee = session?.role === "EMPLOYEE";
+
+    if (isEmployee) {
+      return NextResponse.json({ error: "Forbidden: Employees cannot create activities" }, { status: 403 });
+    }
+
     const userId = await getUserId();
     const prisma = getPrismaClient();
 
@@ -237,10 +266,14 @@ export async function POST(request: NextRequest) {
     const dateStr = date || new Date().toISOString().slice(0, 10);
     const publishDate = new Date(`${dateStr}T00:00:00.000Z`);
 
-    const dbCompanyId =
+    let dbCompanyId =
       !companyId || companyId === "center" || companyId === "ALL"
         ? null
         : BigInt(companyId);
+
+    if (isFactory && session?.companyId) {
+      dbCompanyId = BigInt(session.companyId);
+    }
 
     const created = await prisma.announcement.create({
       data: {
@@ -274,6 +307,14 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Activity ID is required" }, { status: 400 });
     }
 
+    const session = await getServerSession().catch(() => null);
+    const isFactory = session?.role === "HRD_FACTORY";
+    const isEmployee = session?.role === "EMPLOYEE";
+
+    if (isEmployee) {
+      return NextResponse.json({ error: "Forbidden: Employees cannot update activities" }, { status: 403 });
+    }
+
     const prisma = getPrismaClient();
     const existing = await prisma.announcement.findUnique({
       where: { announcement_id: BigInt(id) },
@@ -281,6 +322,15 @@ export async function PUT(request: NextRequest) {
 
     if (!existing) {
       return NextResponse.json({ error: "Activity not found" }, { status: 404 });
+    }
+
+    if (isFactory && session?.companyId) {
+      if (existing.company_id !== BigInt(session.companyId)) {
+        return NextResponse.json(
+          { error: "Forbidden: Cannot modify activities of other companies" },
+          { status: 403 }
+        );
+      }
     }
 
     let existingMeta = { description: "", location: "", imageUrl: "" };
@@ -316,9 +366,11 @@ export async function PUT(request: NextRequest) {
     }
     if (companyId !== undefined) {
       updateData.company_id =
-        companyId === "center" || !companyId || companyId === "ALL"
-          ? null
-          : BigInt(companyId);
+        isFactory && session?.companyId
+          ? BigInt(session.companyId)
+          : companyId === "center" || !companyId || companyId === "ALL"
+            ? null
+            : BigInt(companyId);
     }
 
     // If image was changed or removed, delete the old image file from server
@@ -351,30 +403,49 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Activity ID is required" }, { status: 400 });
     }
 
+    const session = await getServerSession().catch(() => null);
+    const isFactory = session?.role === "HRD_FACTORY";
+    const isEmployee = session?.role === "EMPLOYEE";
+
+    if (isEmployee) {
+      return NextResponse.json({ error: "Forbidden: Employees cannot delete activities" }, { status: 403 });
+    }
+
     const prisma = getPrismaClient();
 
     const existing = await prisma.announcement.findUnique({
       where: { announcement_id: BigInt(id) },
     });
 
+    if (!existing) {
+      return NextResponse.json({ success: true, deletedId: id });
+    }
+
+    if (isFactory && session?.companyId) {
+      if (existing.company_id !== BigInt(session.companyId)) {
+        return NextResponse.json(
+          { error: "Forbidden: Cannot delete activities of other companies" },
+          { status: 403 }
+        );
+      }
+    }
+
     let imageToDelete = queryImageUrl || "";
 
-    if (existing) {
-      try {
-        if (existing.content && existing.content.trim().startsWith("{")) {
-          const meta = JSON.parse(existing.content);
-          if (meta.imageUrl) {
-            imageToDelete = meta.imageUrl;
-          }
+    try {
+      if (existing.content && existing.content.trim().startsWith("{")) {
+        const meta = JSON.parse(existing.content);
+        if (meta.imageUrl) {
+          imageToDelete = meta.imageUrl;
         }
-      } catch {
-        // ignore
       }
-
-      await prisma.announcement.delete({
-        where: { announcement_id: BigInt(id) },
-      });
+    } catch {
+      // ignore
     }
+
+    await prisma.announcement.delete({
+      where: { announcement_id: BigInt(id) },
+    });
 
     if (imageToDelete) {
       await deleteImageFileIfPresent(imageToDelete);
@@ -389,3 +460,4 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Failed to delete activity from database" }, { status: 500 });
   }
 }
+

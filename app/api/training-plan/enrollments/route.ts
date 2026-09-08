@@ -4,6 +4,7 @@ import { apiSuccess } from "../../../lib/api/response";
 import { readJsonObject } from "../../../lib/api/validation";
 import { createProtectedRoute, type ProtectedRouteOptions } from "../../../lib/auth/guard";
 import { requireEmployeeOwnership } from "../../../lib/auth/authorization";
+import { isSectionHeadOrAbove } from "../../../lib/employeeMasterData";
 import { enrollmentService, type EnrollmentService } from "../../../lib/trainingEnrollment/service";
 import { parseCreateEnrollment, parseEnrollmentListFilters } from "../../../lib/trainingEnrollment/validation";
 
@@ -37,17 +38,26 @@ export const createCreateEnrollmentHandler = (dependencies: Dependencies = {}) =
     const input = parseCreateEnrollment(await readJsonObject(request));
 
     if (principal.role === "EMPLOYEE") {
-      requireEmployeeOwnership(principal, input.employeeId, input.employeeUserId);
-      // Either key may PROVE ownership, but the repository RESOLVES the row by employeeUserId
-      // first — so a caller proving themselves with employeeId while sending a colleague's
-      // employeeUserId would enrol the colleague. Pin both keys to the principal instead of
-      // trusting what was sent; an employee acting for themselves needs neither from the client.
-      input.employeeId = principal.employeeId ?? input.employeeId;
-      input.employeeUserId = principal.employeeUserId;
-      input.source = "EMPLOYEE";
-      // An employee cannot wave their own prerequisite condition through, no matter what the
-      // client sent - only HRD sees the confirmation prompt and resubmits with this set.
-      input.acknowledgePrerequisite = false;
+      const isSelf =
+        (principal.employeeUserId !== null && input.employeeUserId != null && principal.employeeUserId === input.employeeUserId) ||
+        (principal.employeeId !== null && input.employeeId === principal.employeeId);
+
+      if (!isSelf) {
+        if (!isSectionHeadOrAbove(principal)) {
+          throw new ApiError({
+            code: "FORBIDDEN",
+            message: "คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม",
+            status: 403,
+          });
+        }
+        input.source = "EMPLOYEE";
+      } else {
+        requireEmployeeOwnership(principal, input.employeeId, input.employeeUserId);
+        input.employeeId = principal.employeeId ?? input.employeeId;
+        input.employeeUserId = principal.employeeUserId;
+        input.source = "EMPLOYEE";
+        input.acknowledgePrerequisite = false;
+      }
     } else if (principal.role === "ADMIN") {
       // Enrolling people is HRD work, not system administration; allRoles already excludes ADMIN,
       // so this only fires if someone widens that list without revisiting the decision.

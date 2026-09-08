@@ -15,6 +15,8 @@ import {
 } from "../../../../lib/calendarDate";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
+import { listEnrollments } from "../../../../lib/trainingEnrollment/client";
+import { ACTIVE_ENROLLMENT_STATUSES, type EnrollmentRecord } from "../../../../lib/trainingEnrollment/types";
 import TypewriterLoader from "../../../TypewriterLoader";
 import { UNDER_DEVELOPMENT } from "../../../../lib/underDevelopment";
 import type { InternalReportDraft } from "./InternalReport";
@@ -148,6 +150,7 @@ export default function ScheduleCalendar({
   const [expandedOverviewMonth, setExpandedOverviewMonth] = useState("");
   const [expandedOverviewCourse, setExpandedOverviewCourse] = useState("");
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
+  const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const isCenterUser = user?.roleCode === "HRD_CENTER";
@@ -156,7 +159,12 @@ export default function ScheduleCalendar({
   const loadWorkspace = async () => {
     setIsLoading(true);
     try {
-      setRollingPlans(await loadWorkflowRollingPlans());
+      const [plans, enrRes] = await Promise.all([
+        loadWorkflowRollingPlans(),
+        listEnrollments({ planId: null, employeeId: null, employeeUserId: null }).catch(() => ({ enrollments: [] })),
+      ]);
+      setRollingPlans(plans);
+      setEnrollments(enrRes.enrollments || []);
     } finally {
       setIsLoading(false);
     }
@@ -609,6 +617,9 @@ export default function ScheduleCalendar({
                       {cell.plans.map((plan) => {
                         const companyKey = getPlanCompanyKey(plan);
                         const companyCardClass = styles[`eventCard_${companyKey}`] || styles.eventCard_ALL;
+                        const capacity = Number(plan.participants || 0);
+                        const enrolled = enrollments.filter(e => e.planId === plan.rollingId && ACTIVE_ENROLLMENT_STATUSES.includes(e.status)).length;
+                        const remaining = Math.max(0, capacity - enrolled);
                         return (
                           <article
                             className={`${styles.calendarEventCard} ${companyCardClass}`}
@@ -616,6 +627,13 @@ export default function ScheduleCalendar({
                           >
                             <strong>{plan.course.name}</strong>
                             <small>{plan.startTime}-{plan.endTime} / {formatRollingPlanCompanies(plan)}</small>
+                            {capacity > 0 ? (
+                              <span className={remaining > 0 ? styles.eventSeatBadge : styles.eventSeatBadgeFull}>
+                                {uiLang === "th"
+                                  ? (remaining > 0 ? `เหลือ ${remaining}/${capacity} คน` : "เต็มแล้ว")
+                                  : (remaining > 0 ? `${remaining}/${capacity} left` : "Full")}
+                              </span>
+                            ) : null}
                           </article>
                         );
                       })}
@@ -705,6 +723,28 @@ export default function ScheduleCalendar({
                               <span className={styles.metaValue}>{plan.batch}</span>
                             </span>
                           ) : null}
+                          {(() => {
+                            const capacity = Number(plan.participants || 0);
+                            if (!capacity) return null;
+                            const enrolled = enrollments.filter(e => e.planId === plan.rollingId && ACTIVE_ENROLLMENT_STATUSES.includes(e.status)).length;
+                            const remaining = Math.max(0, capacity - enrolled);
+                            return (
+                              <span className={`${styles.metaChip} ${remaining > 0 ? styles.metaChipSeats : styles.metaChipSeatsFull}`}>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                  <circle cx="9" cy="7" r="4" />
+                                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                                </svg>
+                                <span className={styles.metaLabel}>{uiLang === "th" ? "ที่นั่ง:" : "Seats:"}</span>
+                                <span className={styles.metaValue}>
+                                  {uiLang === "th"
+                                    ? (remaining > 0 ? `เหลือ ${remaining}/${capacity} คน (ลงแล้ว ${enrolled})` : `เต็มแล้ว (${enrolled}/${capacity} คน)`)
+                                    : (remaining > 0 ? `${remaining}/${capacity} left (${enrolled} enrolled)` : `Full (${enrolled}/${capacity})`)}
+                                </span>
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
 
@@ -820,8 +860,18 @@ export default function ScheduleCalendar({
                             <strong className={styles.detailValue}>{plan.location || (uiLang === "th" ? "ไม่ได้ระบุสถานที่" : "N/A")}</strong>
                           </div>
                           <div className={styles.detailCard}>
-                            <span className={styles.detailLabel}>{uiLang === "th" ? "จำนวนเป้าหมาย" : "Target Capacity"}</span>
-                            <strong className={styles.detailValue}>{plan.participants ? `${plan.participants} คน` : "-"}</strong>
+                            <span className={styles.detailLabel}>{uiLang === "th" ? "จำนวนเป้าหมาย / เหลือ" : "Capacity & Remaining"}</span>
+                            <strong className={styles.detailValue}>
+                              {(() => {
+                                const capacity = Number(plan.participants || 0);
+                                if (!capacity) return "-";
+                                const enrolled = enrollments.filter(e => e.planId === plan.rollingId && ACTIVE_ENROLLMENT_STATUSES.includes(e.status)).length;
+                                const remaining = Math.max(0, capacity - enrolled);
+                                return uiLang === "th"
+                                  ? `รับ ${capacity} คน (ลงแล้ว ${enrolled} • เหลือ ${remaining} ที่)`
+                                  : `Capacity ${capacity} (${enrolled} enrolled • ${remaining} left)`;
+                              })()}
+                            </strong>
                           </div>
                           <div className={styles.detailCard}>
                             <span className={styles.detailLabel}>{uiLang === "th" ? "หน่วยงานผู้จัด" : "Organizer"}</span>

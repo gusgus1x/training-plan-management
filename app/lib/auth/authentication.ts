@@ -43,27 +43,36 @@ const hasActiveOptionalAssociation = (
 const firstAvailable = (...values: Array<string | null>) =>
   values.find((value) => value?.trim()) ?? null;
 
-const buildProfile = (account: AuthenticationAccount) => ({
-  email: firstAvailable(account.employeeEmail, account.accountEmail),
-  employeeCode: account.employeeCode,
-  displayName: firstAvailable(
+const buildProfile = (account: AuthenticationAccount) => {
+  const displayNameTh =
     [account.employeeFirstNameTh, account.employeeLastNameTh]
       .filter(Boolean)
-      .join(" ") || null,
+      .join(" ") || null;
+  const displayNameEn =
     [account.employeeFirstNameEn, account.employeeLastNameEn]
       .filter(Boolean)
-      .join(" ") || null,
-  ),
-  companyCode: account.companyCode,
-  companyName: firstAvailable(account.companyNameTh, account.companyNameEn),
-  functionCode: account.functionCode,
-  functionName: firstAvailable(account.functionNameTh, account.functionNameEn),
-  positionCode: account.positionCode,
-  positionName: firstAvailable(account.positionNameTh, account.positionNameEn),
-  levelCode: account.levelCode,
-  levelName: firstAvailable(account.levelNameTh, account.levelNameEn),
-  pl: account.pl,
-});
+      .join(" ") || null;
+
+  return {
+    email: firstAvailable(account.employeeEmail, account.accountEmail),
+    employeeCode: account.employeeCode,
+    displayName: firstAvailable(displayNameTh, displayNameEn),
+    displayNameEn,
+    companyCode: account.companyCode,
+    companyName: firstAvailable(account.companyNameTh, account.companyNameEn),
+    companyNameEn: account.companyNameEn,
+    functionCode: account.functionCode,
+    functionName: firstAvailable(account.functionNameTh, account.functionNameEn),
+    functionNameEn: account.functionNameEn,
+    positionCode: account.positionCode,
+    positionName: firstAvailable(account.positionNameTh, account.positionNameEn),
+    positionNameEn: account.positionNameEn,
+    levelCode: account.levelCode,
+    levelName: firstAvailable(account.levelNameTh, account.levelNameEn),
+    levelNameEn: account.levelNameEn,
+    pl: account.pl,
+  };
+};
 
 export const resolveActivePrincipal = (
   account: AuthenticationAccount,

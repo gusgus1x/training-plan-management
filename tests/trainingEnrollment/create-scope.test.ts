@@ -106,4 +106,43 @@ describe("enrollment creation scope", () => {
     expect(response.status).toBe(403);
     expect(service.createEnrollment).not.toHaveBeenCalled();
   });
+
+  it("lets a Section Head enroll another employee", async () => {
+    const sectionHead: AuthenticatedPrincipal = {
+      ...base,
+      positionCode: "SH",
+      positionName: "Section Head",
+    };
+    const service = createService();
+    const handler = createCreateEnrollmentHandler({ service, auth: auth(sectionHead) });
+
+    const response = await handler(
+      post({ planId: "9", employeeId: "202", employeeUserId: "USER-202", source: "EMPLOYEE" }),
+    );
+
+    expect(response.status).toBe(201);
+    const input = inputOf(service);
+    expect(input.employeeId).toBe("202");
+    expect(input.employeeUserId).toBe("USER-202");
+    expect(input.source).toBe("EMPLOYEE");
+  });
+
+  it("refuses an employee below Section Head trying to enroll another employee", async () => {
+    const operator: AuthenticatedPrincipal = {
+      ...base,
+      positionCode: "OP",
+      positionName: "Operator",
+    };
+    const service = createService();
+    const handler = createCreateEnrollmentHandler({ service, auth: auth(operator) });
+
+    const response = await handler(
+      post({ planId: "9", employeeId: "202", employeeUserId: "USER-202", source: "EMPLOYEE" }),
+    );
+
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.error.message).toBe("คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม");
+    expect(service.createEnrollment).not.toHaveBeenCalled();
+  });
 });

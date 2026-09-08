@@ -48,13 +48,18 @@ export type AuthenticatedPrincipal = {
   email: string | null;
   employeeCode: string | null;
   displayName: string | null;
+  displayNameEn?: string | null;
   companyCode: string | null;
   companyName: string | null;
+  companyNameEn?: string | null;
   functionCode: string | null;
   functionName: string | null;
+  functionNameEn?: string | null;
   positionCode: string | null;
   positionName: string | null;
+  positionNameEn?: string | null;
   levelCode: string | null;
   levelName: string | null;
+  levelNameEn?: string | null;
   pl: string | null;
 };

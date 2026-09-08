@@ -31,6 +31,10 @@ describe("isEmployeeAllowedPath", () => {
     expect(isEmployeeAllowedPath("/training-form")).toBe(true);
   });
 
+  it("allows training-plan/training-accept-survey for nomination link access", () => {
+    expect(isEmployeeAllowedPath("/training-plan/training-accept-survey")).toBe(true);
+  });
+
   it("refuses Center/Factory sub-routes", () => {
     expect(isEmployeeAllowedPath("/master-data")).toBe(false);
   });

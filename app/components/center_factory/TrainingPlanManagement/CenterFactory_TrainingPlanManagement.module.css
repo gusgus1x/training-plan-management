@@ -381,3 +381,153 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Dedicated Access Denied Page */
+.accessDeniedContainer {
+  width: min(720px, calc(100% - 32px));
+  margin: 60px auto 80px;
+  display: flex;
+  justify-content: center;
+}
+
+.accessDeniedCard {
+  width: 100%;
+  background: var(--ui-card-bg, #ffffff);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-top: 6px solid #ef4444;
+  border-radius: var(--ui-radius-lg, 18px);
+  padding: 42px 36px 38px;
+  box-shadow:
+    0 20px 40px -15px rgba(239, 68, 68, 0.12),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: fadeInDown 0.3s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.accessDeniedIconWrap {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.06) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.accessDeniedBigIcon {
+  font-size: 2.8rem;
+  line-height: 1;
+}
+
+.accessDeniedMainTitle {
+  font-size: 1.65rem;
+  font-weight: 900;
+  color: #b91c1c;
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
+}
+
+.accessDeniedSubTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #dc2626;
+  margin: 0 0 18px;
+}
+
+.accessDeniedDivider {
+  width: 60px;
+  height: 3px;
+  background: rgba(239, 68, 68, 0.3);
+  border-radius: 999px;
+  margin: 0 auto 20px;
+}
+
+.accessDeniedDescription {
+  font-size: 0.92rem;
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0 0 24px;
+  max-width: 540px;
+}
+
+.accessDeniedProfileCard {
+  width: 100%;
+  max-width: 540px;
+  background: rgba(249, 250, 251, 0.9);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 28px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profileRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.86rem;
+}
+
+.profileLabel {
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.profileValue {
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.profileValueHighlight {
+  color: #dc2626;
+  font-weight: 800;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.accessDeniedActionRow {
+  display: flex;
+  justify-content: center;
+}
+
+.backToHomeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  border: none;
+  font-size: 0.92rem;
+  font-weight: 800;
+  padding: 12px 28px;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+  transition: all 0.2s ease;
+}
+
+.backToHomeBtn:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.45);
+}

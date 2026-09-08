@@ -2336,3 +2336,100 @@
   opacity: 0.75;
   cursor: not-allowed !important;
 }
+
+.permissionWarningBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.16) 0%, rgba(185, 28, 28, 0.1) 100%);
+  border: 1.5px solid rgba(239, 68, 68, 0.5);
+  border-left: 6px solid #ef4444;
+  border-radius: var(--ui-radius-sm);
+  padding: 18px 22px;
+  margin-bottom: 24px;
+  color: #b91c1c;
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.15);
+}
+
+.permissionWarningIcon {
+  font-size: 2.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.permissionWarningBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.permissionWarningTitle {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #b91c1c;
+  letter-spacing: -0.01em;
+}
+
+.permissionWarningSubtitle {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #7f1d1d;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.permissionWarningMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 4px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: #4b5563;
+}
+
+.permissionWarningMeta strong {
+  color: #1f2937;
+}
+
+.permissionWarningActions {
+  margin-top: 8px;
+}
+
+.permissionBackHomeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  border: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  transition: all 0.15s ease;
+}
+
+.permissionBackHomeBtn:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
+.deniedBtn {
+  cursor: not-allowed !important;
+  opacity: 0.65;
+  filter: grayscale(0.5);
+}
+
+.deniedBtn:hover {
+  filter: grayscale(0.5) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}

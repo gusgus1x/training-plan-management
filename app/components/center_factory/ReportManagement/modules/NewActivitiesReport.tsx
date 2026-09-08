@@ -56,7 +56,10 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
   const toast = useToast();
 
   const authenticatedUser = useAuthenticatedUser();
+  const isCenterOrAdmin = authenticatedUser?.roleCode === "HRD_CENTER" || authenticatedUser?.roleCode === "ADMIN";
+  const isFactory = authenticatedUser?.roleCode === "HRD_FACTORY";
   const isEmployee = authenticatedUser?.roleCode === "EMPLOYEE";
+  const isCompanyScoped = isFactory || isEmployee;
   const userCompanyId = authenticatedUser?.companyId ? String(authenticatedUser.companyId).trim() : null;
   const userCompanyCode = authenticatedUser?.companyCode ? authenticatedUser.companyCode.trim().toUpperCase() : null;
   const userCompanyName = authenticatedUser?.companyName ? authenticatedUser.companyName.trim().toLowerCase() : null;
@@ -115,9 +118,9 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
     fetchActivities();
   }, []);
 
-  // Filter activities based on employee visibility restrictions
+  // Filter activities based on visibility restrictions
   const visibleActivities = useMemo(() => {
-    if (!isEmployee) return activities;
+    if (isCenterOrAdmin) return activities;
 
     return activities.filter((act) => {
       // 1. Center (ส่วนกลาง) -> everyone can see
@@ -136,11 +139,11 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
 
       return false;
     });
-  }, [activities, isEmployee, userCompanyId, userCompanyCode, userCompanyName]);
+  }, [activities, isCenterOrAdmin, userCompanyId, userCompanyCode, userCompanyName]);
 
   // Accessible companies in dropdown
   const availableCompanies = useMemo(() => {
-    if (!isEmployee) return companies;
+    if (isCenterOrAdmin) return companies;
     return companies.filter((c) => {
       if (c.id === "center" || c.code?.trim().toUpperCase() === "CENTER") return true;
       if (userCompanyId && String(c.id).trim() === userCompanyId) return true;
@@ -148,7 +151,29 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
       if (userCompanyName && c.name && c.name.toLowerCase().includes(userCompanyName)) return true;
       return false;
     });
-  }, [companies, isEmployee, userCompanyId, userCompanyCode, userCompanyName]);
+  }, [companies, isCenterOrAdmin, userCompanyId, userCompanyCode, userCompanyName]);
+
+  const canManageActivity = (act: CourseActivity | null) => {
+    if (!act || isEmployee) return false;
+    if (isCenterOrAdmin) return true;
+    if (isFactory) {
+      // HRD Factory can only edit/delete activities of their own company
+      const isOwnCompany =
+        (userCompanyId && String(act.companyId).trim() === userCompanyId) ||
+        (userCompanyCode && act.companyCode?.trim().toUpperCase() === userCompanyCode) ||
+        (userCompanyName && act.companyName && act.companyName.toLowerCase().includes(userCompanyName));
+      return !!isOwnCompany;
+    }
+    return false;
+  };
+
+  const handleCompanyChange = (companyId: string) => {
+    if (selectedCompany === companyId) {
+      setSelectedCompany("all");
+    } else {
+      setSelectedCompany(companyId);
+    }
+  };
 
   // Compute available distinct years
   const availableYears = useMemo(() => {
@@ -203,7 +228,12 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
     setIsEditing(false);
     setFormId("");
     setFormTitle("");
-    setFormCompanyId("center");
+    if (isFactory) {
+      const ownComp = availableCompanies.find((c) => c.id !== "center");
+      setFormCompanyId(ownComp ? ownComp.id : (userCompanyId || ""));
+    } else {
+      setFormCompanyId("center");
+    }
     setFormDate(new Date().toISOString().slice(0, 10));
     setFormLocation("");
     setFormDescription("");
@@ -218,6 +248,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
 
   // Open Edit Activity Modal
   const handleOpenEdit = (act: CourseActivity) => {
+    if (!canManageActivity(act)) return;
     if (previewUrl && previewUrl.startsWith("blob:")) {
       URL.revokeObjectURL(previewUrl);
     }
@@ -361,6 +392,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
 
   // Delete Activity
   const handleDelete = async (act: CourseActivity) => {
+    if (!canManageActivity(act)) return;
     const confirmed = await confirm({
       message: {
         th: `คุณต้องการลบกิจกรรม "${act.title}" ใช่หรือไม่?`,
@@ -394,11 +426,11 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
         <div className={styles.heroTopRow}>
           <div className={styles.heroTitleGroup}>
             <div className={styles.heroBadgeRow}>
-              <span className={styles.heroTag}>📰 NEWS & HIGHLIGHTS</span>
+              <span className={styles.heroTag}>NEWS & HIGHLIGHTS</span>
               <span className={styles.scopeBadge}>
                 {isEmployee
-                  ? (isThai ? "👤 สิทธิ์มุมมองพนักงาน (Employee View)" : "👤 Employee View")
-                  : (isThai ? "🏢 ผู้ดูแลระบบ (HR & Center Admin)" : "🏢 Administrator")}
+                  ? (isThai ? "สิทธิ์มุมมองพนักงาน (Employee View)" : "Employee View")
+                  : (isThai ? "ผู้ดูแลระบบ (HR & Center Admin)" : "Administrator")}
               </span>
             </div>
             <h1 className={styles.heroTitle}>
@@ -432,7 +464,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
         {/* 4 KPI Quick Summary Stat Cards */}
         <div className={styles.kpiStatsGrid}>
           <article className={styles.kpiCard}>
-            <div className={styles.kpiIconBox} style={{ color: "#007a3d" }}>📢</div>
+            <div className={styles.kpiIconBox} style={{ color: "#007a3d" }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
             <div className={styles.kpiMeta}>
               <span className={styles.kpiLabel}>{isThai ? "กิจกรรมทั้งหมด" : "Total Activities"}</span>
               <div className={styles.kpiValueRow}>
@@ -443,7 +475,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
           </article>
 
           <article className={styles.kpiCard}>
-            <div className={styles.kpiIconBox} style={{ color: "#2563eb" }}>🏛️</div>
+            <div className={styles.kpiIconBox} style={{ color: "#2563eb" }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg></div>
             <div className={styles.kpiMeta}>
               <span className={styles.kpiLabel}>{isThai ? "กิจกรรมส่วนกลาง (Center)" : "Center Activities"}</span>
               <div className={styles.kpiValueRow}>
@@ -454,7 +486,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
           </article>
 
           <article className={styles.kpiCard}>
-            <div className={styles.kpiIconBox} style={{ color: "#d97706" }}>🏢</div>
+            <div className={styles.kpiIconBox} style={{ color: "#d97706" }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M8 14h.01"/><path d="M16 14h.01"/></svg></div>
             <div className={styles.kpiMeta}>
               <span className={styles.kpiLabel}>{isThai ? "กิจกรรมโรงงาน / บริษัท" : "Company Activities"}</span>
               <div className={styles.kpiValueRow}>
@@ -465,7 +497,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
           </article>
 
           <article className={styles.kpiCard}>
-            <div className={styles.kpiIconBox} style={{ color: "#8b5cf6" }}>📅</div>
+            <div className={styles.kpiIconBox} style={{ color: "#8b5cf6" }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
             <div className={styles.kpiMeta}>
               <span className={styles.kpiLabel}>{isThai ? `กิจกรรมปีนี้ (${currentYear})` : `This Year (${currentYear})`}</span>
               <div className={styles.kpiValueRow}>
@@ -479,100 +511,169 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
 
       {/* 2. Interactive Filter & Search Bar */}
       <div className={styles.filterBar}>
-        <div className={styles.searchBox}>
-          <svg className={styles.searchIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
-          <input
-            type="text"
-            className={styles.searchInput}
-            placeholder={isThai ? "ค้นหากิจกรรม, สถานที่ หรือรายละเอียด..." : "Search activities, location, or details..."}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          {searchTerm && (
-            <button
-              type="button"
-              className={styles.clearSearchBtn}
-              onClick={() => setSearchTerm("")}
-              title={isThai ? "ล้างข้อความค้นหา" : "Clear search"}
-            >
-              ✕
-            </button>
-          )}
+        {/* Tier 1: Search + Year Pills + View Mode */}
+        <div className={styles.filterTopRow}>
+          {/* Search Box */}
+          <div className={styles.searchBox}>
+            <span className={styles.searchIconWrapper} aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </span>
+            <input
+              type="text"
+              className={styles.searchInput}
+              placeholder={isThai ? "ค้นหากิจกรรม, สถานที่ หรือรายละเอียด..." : "Search activities, location, or details..."}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                className={styles.clearSearchBtn}
+                onClick={() => setSearchTerm("")}
+                title={isThai ? "ล้างข้อความค้นหา" : "Clear search"}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* Right Controls: Year Filter + View Mode Switcher */}
+          <div className={styles.topRightControls}>
+            {/* Year Filter Pills */}
+            <div className={styles.yearPillsGroup}>
+              <span className={styles.filterSectionLabel}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+                <span>{isThai ? "ปี:" : "Year:"}</span>
+              </span>
+              <div className={styles.yearPillsRow}>
+                <button
+                  type="button"
+                  className={`${styles.yearPillBtn} ${selectedYear === "all" ? styles.yearPillBtnActive : ""}`}
+                  onClick={() => setSelectedYear("all")}
+                >
+                  {isThai ? "ทุกปี" : "All"}
+                </button>
+                {availableYears.map((yr) => (
+                  <button
+                    key={yr}
+                    type="button"
+                    className={`${styles.yearPillBtn} ${selectedYear === yr ? styles.yearPillBtnActive : ""}`}
+                    onClick={() => setSelectedYear(yr)}
+                  >
+                    {yr}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.controlDivider} aria-hidden="true" />
+
+            {/* View Mode Switcher (Grid vs Table) */}
+            <div className={styles.viewModeToggle}>
+              <button
+                type="button"
+                className={`${styles.viewModeBtn} ${viewMode === "grid" ? styles.viewModeBtnActive : ""}`}
+                onClick={() => setViewMode("grid")}
+                title={isThai ? "แสดงแบบการ์ด (Grid)" : "Grid View"}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <rect x="3" y="3" width="7" height="7" rx="1" />
+                  <rect x="14" y="3" width="7" height="7" rx="1" />
+                  <rect x="14" y="14" width="7" height="7" rx="1" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" />
+                </svg>
+                <span>{isThai ? "การ์ด" : "Cards"}</span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.viewModeBtn} ${viewMode === "table" ? styles.viewModeBtnActive : ""}`}
+                onClick={() => setViewMode("table")}
+                title={isThai ? "แสดงแบบตารางรายงาน (Table)" : "Table View"}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" />
+                  <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+                <span>{isThai ? "ตาราง" : "Table"}</span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className={styles.filterGroup}>
-          {/* Year Filter */}
-          <select
-            className={styles.filterSelect}
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            title={isThai ? "กรองตามปี" : "Filter by year"}
-          >
-            <option value="all">{isThai ? "📅 ทุกปี (All Years)" : "📅 All Years"}</option>
-            {availableYears.map((yr) => (
-              <option key={yr} value={yr}>
-                📅 {yr}
-              </option>
-            ))}
-          </select>
+        {/* Tier 2: Company Filter Selector Bar */}
+        <div className={styles.companyFilterSection}>
+          <div className={styles.companyFilterHeader}>
+            <span className={styles.companyFilterIcon}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="2" width="16" height="20" rx="2" />
+                <path d="M9 22v-4h6v4" />
+                <path d="M8 6h.01" />
+                <path d="M16 6h.01" />
+                <path d="M8 10h.01" />
+                <path d="M16 10h.01" />
+                <path d="M8 14h.01" />
+                <path d="M16 14h.01" />
+              </svg>
+            </span>
+            <span className={styles.companyFilterText}>
+              {isThai ? "บริษัท:" : "Company:"}
+            </span>
+          </div>
 
-          {/* Company Filter */}
-          <select
-            className={styles.filterSelect}
-            value={selectedCompany}
-            onChange={(e) => setSelectedCompany(e.target.value)}
-            title={isThai ? "กรองตามบริษัท" : "Filter by company"}
-          >
-            <option value="all">
-              {isEmployee
-                ? (isThai ? "🏢 ทั้งหมด (All)" : "🏢 All")
-                : (isThai ? "🏢 ทุกบริษัท (All Companies)" : "🏢 All Companies")}
-            </option>
-            <option value="center">{isThai ? "🏛️ Center (ส่วนกลาง)" : "🏛️ Center"}</option>
+          <div className={styles.companyPillsRow}>
+            <button
+              type="button"
+              className={`${styles.companyPillBtn} ${selectedCompany === "all" ? styles.companyPillBtnActive : ""}`}
+              onClick={() => handleCompanyChange("all")}
+              title={isThai ? "ดูกิจกรรมทุกบริษัท" : "All Companies"}
+            >
+              <span>
+                {isCompanyScoped
+                  ? (isThai ? "ทั้งหมด (All)" : "All")
+                  : (isThai ? "ทุกบริษัท (All)" : "All")}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className={`${styles.companyPillBtn} ${selectedCompany === "center" ? styles.companyPillBtnActive : ""}`}
+              onClick={() => handleCompanyChange("center")}
+              title={isThai ? "กิจกรรมส่วนกลาง (Center)" : "Center"}
+            >
+              <span>Center</span>
+            </button>
+
             {availableCompanies
               .filter((c) => c.id !== "center")
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  🏢 {c.code}
-                </option>
-              ))}
-          </select>
-
-          {/* View Mode Switcher (Grid vs Table) */}
-          <div className={styles.viewModeToggle}>
-            <button
-              type="button"
-              className={`${styles.viewModeBtn} ${viewMode === "grid" ? styles.viewModeBtnActive : ""}`}
-              onClick={() => setViewMode("grid")}
-              title={isThai ? "แสดงแบบการ์ด (Grid)" : "Grid View"}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <rect x="3" y="3" width="7" height="7" rx="1" />
-                <rect x="14" y="3" width="7" height="7" rx="1" />
-                <rect x="14" y="14" width="7" height="7" rx="1" />
-                <rect x="3" y="14" width="7" height="7" rx="1" />
-              </svg>
-              <span>{isThai ? "การ์ด" : "Cards"}</span>
-            </button>
-            <button
-              type="button"
-              className={`${styles.viewModeBtn} ${viewMode === "table" ? styles.viewModeBtnActive : ""}`}
-              onClick={() => setViewMode("table")}
-              title={isThai ? "แสดงแบบตารางรายงาน (Table)" : "Table View"}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <line x1="8" y1="6" x2="21" y2="6" />
-                <line x1="8" y1="12" x2="21" y2="12" />
-                <line x1="8" y1="18" x2="21" y2="18" />
-                <line x1="3" y1="6" x2="3.01" y2="6" />
-                <line x1="3" y1="12" x2="3.01" y2="12" />
-                <line x1="3" y1="18" x2="3.01" y2="18" />
-              </svg>
-              <span>{isThai ? "ตาราง" : "Table"}</span>
-            </button>
+              .map((c) => {
+                const isActive = selectedCompany === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`${styles.companyPillBtn} ${isActive ? styles.companyPillBtnActive : ""}`}
+                    onClick={() => handleCompanyChange(c.id)}
+                    title={c.name}
+                  >
+                    <span>{c.code}</span>
+                  </button>
+                );
+              })}
           </div>
         </div>
       </div>
@@ -639,7 +740,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
               <div className={styles.cardBody}>
                 <div className={styles.cardMetaRow}>
                   <div className={styles.cardDate}>
-                    <span>📅 {act.formattedDate || act.date}</span>
+                    <span>{act.formattedDate || act.date}</span>
                   </div>
                   <span
                     className={`${styles.companyBadge} ${styles[`companyBadge_${act.companyCode}`] || styles.companyBadge_CENTER}`}
@@ -657,7 +758,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                 <div className={styles.cardFooter}>
                   {act.location ? (
                     <span className={styles.cardLocation} title={act.location}>
-                      📍 {act.location}
+                      {act.location}
                     </span>
                   ) : (
                     <div />
@@ -673,7 +774,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                       <span>{isThai ? "รายละเอียด" : "Details"}</span>
                     </button>
 
-                    {!isEmployee && (
+                    {canManageActivity(act) && (
                       <>
                         <button
                           type="button"
@@ -681,7 +782,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                           onClick={() => handleOpenEdit(act)}
                           title={isThai ? "แก้ไข" : "Edit"}
                         >
-                          ✏️
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         </button>
                         <button
                           type="button"
@@ -689,7 +790,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                           onClick={() => handleDelete(act)}
                           title={isThai ? "ลบ" : "Delete"}
                         >
-                          🗑️
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                         </button>
                       </>
                     )}
@@ -733,7 +834,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                           style={{ cursor: "pointer" }}
                         />
                       ) : (
-                        <div className={styles.tableThumbPlaceholder}>📷</div>
+                        <div className={styles.tableThumbPlaceholder}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
                       )}
                     </td>
                     <td style={{ whiteSpace: "nowrap", fontWeight: 600 }}>
@@ -755,7 +856,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                       </span>
                     </td>
                     <td style={{ color: "var(--ui-30-muted)" }}>
-                      {act.location ? `📍 ${act.location}` : "-"}
+                      {act.location ? `${act.location}` : "-"}
                     </td>
                     <td style={{ color: "var(--ui-30-muted)", maxWidth: "260px" }}>
                       <span
@@ -777,9 +878,9 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                           onClick={() => handleViewDetail(act)}
                           title={isThai ? "ดูรายละเอียด" : "View details"}
                         >
-                          👁️
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                         </button>
-                        {!isEmployee && (
+                        {canManageActivity(act) && (
                           <>
                             <button
                               type="button"
@@ -787,7 +888,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                               onClick={() => handleOpenEdit(act)}
                               title={isThai ? "แก้ไข" : "Edit"}
                             >
-                              ✏️
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </button>
                             <button
                               type="button"
@@ -795,7 +896,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                               onClick={() => handleDelete(act)}
                               title={isThai ? "ลบ" : "Delete"}
                             >
-                              🗑️
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                             </button>
                           </>
                         )}
@@ -821,11 +922,11 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                   {activeActivity.companyName || activeActivity.companyCode}
                 </span>
                 <span style={{ fontSize: "0.85rem", color: "var(--ui-30-muted)", fontWeight: 600 }}>
-                  📅 {activeActivity.formattedDate || activeActivity.date}
+                  {activeActivity.formattedDate || activeActivity.date}
                 </span>
                 {activeActivity.location && (
                   <span style={{ fontSize: "0.85rem", color: "var(--ui-30-muted)", fontWeight: 600 }}>
-                    📍 {activeActivity.location}
+                    {activeActivity.location}
                   </span>
                 )}
               </div>
@@ -834,7 +935,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                 className={styles.closeButton}
                 onClick={() => setIsDetailModalOpen(false)}
               >
-                ✕
+                
               </button>
             </div>
 
@@ -858,14 +959,14 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
             </div>
 
             <div className={styles.modalFooter}>
-              {!isEmployee && (
+              {canManageActivity(activeActivity) && (
                 <>
                   <button
                     type="button"
                     className={styles.cancelBtn}
                     onClick={() => handleOpenEdit(activeActivity)}
                   >
-                    ✏️ {isThai ? "แก้ไขกิจกรรม" : "Edit"}
+                    {isThai ? "แก้ไขกิจกรรม" : "Edit"}
                   </button>
                   <button
                     type="button"
@@ -873,7 +974,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                     style={{ color: "#ef4444", borderColor: "#fca5a5" }}
                     onClick={() => handleDelete(activeActivity)}
                   >
-                    🗑️ {isThai ? "ลบกิจกรรม" : "Delete"}
+                    {isThai ? "ลบกิจกรรม" : "Delete"}
                   </button>
                 </>
               )}
@@ -904,7 +1005,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                 className={styles.closeButton}
                 onClick={() => setIsFormModalOpen(false)}
               >
-                ✕
+                
               </button>
             </div>
 
@@ -931,13 +1032,14 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                       className={styles.formSelect}
                       value={formCompanyId}
                       onChange={(e) => setFormCompanyId(e.target.value)}
+                      disabled={isFactory}
                     >
-                      <option value="center">{isThai ? "🏛️ Center (ส่วนกลาง)" : "🏛️ Center"}</option>
-                      {companies
+                      <option value="center">{isThai ? "Center (ส่วนกลาง)" : "Center"}</option>
+                      {availableCompanies
                         .filter((c) => c.id !== "center")
                         .map((c) => (
                           <option key={c.id} value={c.id}>
-                            🏢 {c.name || c.code}
+                            {c.name || c.code}
                           </option>
                         ))}
                     </select>
@@ -1008,7 +1110,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                           fontSize: "0.78rem",
                         }}
                       >
-                        ✕ {isThai ? "ลบรูปภาพ" : "Remove"}
+                        {isThai ? "ลบรูปภาพ" : "Remove"}
                       </button>
                     </div>
                   ) : null}

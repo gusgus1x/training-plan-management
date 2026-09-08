@@ -19,7 +19,11 @@ export const shouldRedirectToLogin = (
  * own URL, not a dialog: without this entry AuthGate would redirect the employee off the form the
  * instant it opened.
  */
-const EMPLOYEE_ALLOWED_BASE_PATHS = ["/", "/training-form"];
+const EMPLOYEE_ALLOWED_BASE_PATHS = [
+  "/",
+  "/training-form",
+  "/training-plan/training-accept-survey",
+];
 
 export const isEmployeeAllowedPath = (pathname: string) =>
   EMPLOYEE_ALLOWED_BASE_PATHS.some(

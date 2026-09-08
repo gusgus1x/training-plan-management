@@ -110,3 +110,67 @@ export const getLevelRank = (levelKey: string): number => {
 
   return 0;
 };
+
+export const isSectionHeadOrAbove = (user: {
+  role?: string | null;
+  roleCode?: string | null;
+  positionCode?: string | null;
+  positionName?: string | null;
+  position?: string | null;
+  levelCode?: string | null;
+  levelName?: string | null;
+  level?: string | null;
+  levelKey?: string | null;
+} | null | undefined): boolean => {
+  if (!user) return false;
+
+  const role = (user.roleCode || user.role || "").toUpperCase();
+  if (role === "HRD_CENTER" || role === "HRD_FACTORY" || role === "ADMIN") {
+    return true;
+  }
+
+  // 1. Check position code
+  const posCode = (user.positionCode || "").trim().toUpperCase();
+  if (posCode === "SH" || posCode === "MGR") {
+    return true;
+  }
+
+  // 2. Check position name
+  const posName = (user.positionName || user.position || "").trim().toLowerCase();
+  if (posName) {
+    if (
+      posName.includes("section head") ||
+      posName.includes("sectionhead") ||
+      posName.includes("general manager") ||
+      posName.includes("plant manager") ||
+      posName.includes("vice president") ||
+      posName.includes("president") ||
+      posName.includes("director") ||
+      posName === "sh" ||
+      posName === "mgr" ||
+      posName.includes("manager") ||
+      posName.includes("ผู้จัดการแผนก") ||
+      posName.includes("ผู้จัดการ") ||
+      posName.includes("ผู้อำนวยการ") ||
+      posName.includes("กรรมการผู้จัดการ") ||
+      posName.includes("ประธาน")
+    ) {
+      return true;
+    }
+  }
+
+  // 3. Check level (Management level M1-M4 / จ1-จ4)
+  const lvlRaw = (user.levelKey || user.levelCode || user.level || user.levelName || "").trim();
+  if (lvlRaw) {
+    const lvlNorm = normalizeEmployeeLevel(lvlRaw).toUpperCase();
+    if (lvlNorm.startsWith("M") || lvlRaw.startsWith("จ") || lvlRaw.includes("จัดการ")) {
+      return true;
+    }
+    const rank = getLevelRank(lvlRaw);
+    if (rank >= 10) {
+      return true;
+    }
+  }
+
+  return false;
+};

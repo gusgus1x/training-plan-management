@@ -100,6 +100,14 @@ const nullablePrincipalFields = [
   "pl",
 ] as const;
 
+const optionalPrincipalFields = [
+  "displayNameEn",
+  "companyNameEn",
+  "functionNameEn",
+  "positionNameEn",
+  "levelNameEn",
+] as const;
+
 const isAuthenticatedPrincipal = (
   value: unknown,
 ): value is AuthenticatedPrincipal => {
@@ -113,6 +121,12 @@ const isAuthenticatedPrincipal = (
     nullablePrincipalFields.every(
       (field) =>
         principal[field] === null || typeof principal[field] === "string",
+    ) &&
+    optionalPrincipalFields.every(
+      (field) =>
+        principal[field] === undefined ||
+        principal[field] === null ||
+        typeof principal[field] === "string",
     )
   );
 };

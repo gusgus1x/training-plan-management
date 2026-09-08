@@ -34,7 +34,10 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
   const toast = useToast();
 
   const authenticatedUser = useAuthenticatedUser();
+  const isCenterOrAdmin = authenticatedUser?.roleCode === "HRD_CENTER" || authenticatedUser?.roleCode === "ADMIN";
+  const isFactory = authenticatedUser?.roleCode === "HRD_FACTORY";
   const isEmployee = readOnly || authenticatedUser?.roleCode === "EMPLOYEE";
+  const isCompanyScoped = isFactory || isEmployee;
   const userCompanyId = authenticatedUser?.companyId ? String(authenticatedUser.companyId).trim() : null;
   const userCompanyCode = authenticatedUser?.companyCode ? authenticatedUser.companyCode.trim().toUpperCase() : null;
   const userCompanyName = authenticatedUser?.companyName ? authenticatedUser.companyName.trim().toLowerCase() : null;
@@ -95,9 +98,9 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
     fetchActivities();
   }, []);
 
-  // Filter activities for employees: Center + their own company
+  // Filter activities: Center/Admin sees all; Factory/Employee sees Center + their own company
   const visibleActivities = useMemo(() => {
-    if (!isEmployee) return activities;
+    if (isCenterOrAdmin) return activities;
 
     return activities.filter((act) => {
       // 1. Center (ส่วนกลาง) -> everyone can see
@@ -116,11 +119,11 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
 
       return false;
     });
-  }, [activities, isEmployee, userCompanyId, userCompanyCode, userCompanyName]);
+  }, [activities, isCenterOrAdmin, userCompanyId, userCompanyCode, userCompanyName]);
 
   // Companies accessible in dropdown
   const availableCompanies = useMemo(() => {
-    if (!isEmployee) return companies;
+    if (isCenterOrAdmin) return companies;
     return companies.filter((c) => {
       if (c.id === "center" || c.code?.trim().toUpperCase() === "CENTER") return true;
       if (userCompanyId && String(c.id).trim() === userCompanyId) return true;
@@ -128,7 +131,21 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
       if (userCompanyName && c.name && c.name.toLowerCase().includes(userCompanyName)) return true;
       return false;
     });
-  }, [companies, isEmployee, userCompanyId, userCompanyCode, userCompanyName]);
+  }, [companies, isCenterOrAdmin, userCompanyId, userCompanyCode, userCompanyName]);
+
+  const canManageActivity = (act: CourseActivity | null) => {
+    if (!act || isEmployee) return false;
+    if (isCenterOrAdmin) return true;
+    if (isFactory) {
+      // HRD Factory can only edit/delete activities of their own company
+      const isOwnCompany =
+        (userCompanyId && String(act.companyId).trim() === userCompanyId) ||
+        (userCompanyCode && act.companyCode?.trim().toUpperCase() === userCompanyCode) ||
+        (userCompanyName && act.companyName && act.companyName.toLowerCase().includes(userCompanyName));
+      return !!isOwnCompany;
+    }
+    return false;
+  };
 
   // Compute available distinct years sorted descending
   const availableYears = useMemo(() => {
@@ -172,7 +189,11 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
   };
 
   const handleCompanyChange = (companyId: string) => {
-    setSelectedCompany(companyId);
+    if (selectedCompany === companyId && companyId !== "all") {
+      setSelectedCompany("all");
+    } else {
+      setSelectedCompany(companyId);
+    }
     setCurrentIndex(0);
     setIsSliding(false);
   };
@@ -236,7 +257,12 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
     setIsEditing(false);
     setFormId("");
     setFormTitle("");
-    setFormCompanyId("");
+    if (isFactory) {
+      const ownComp = availableCompanies.find((c) => c.id !== "center");
+      setFormCompanyId(ownComp ? ownComp.id : (userCompanyId || ""));
+    } else {
+      setFormCompanyId("");
+    }
     setFormDate(new Date().toISOString().slice(0, 10));
     setFormLocation("");
     setFormDescription("");
@@ -253,6 +279,7 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
   const handleOpenEdit = (e: React.MouseEvent, activity: CourseActivity) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!canManageActivity(activity)) return;
     if (previewUrl && previewUrl.startsWith("blob:")) {
       URL.revokeObjectURL(previewUrl);
     }
@@ -425,6 +452,7 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
   const handleDelete = async (e: React.MouseEvent, activity: CourseActivity) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!canManageActivity(activity)) return;
     const confirmed = await confirm({
       message: {
         th: `คุณต้องการลบกิจกรรม "${activity.title}" ใช่หรือไม่?`,
@@ -483,7 +511,7 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
                 fb.className = "img-load-fallback";
                 fb.style.cssText =
                   "display:flex;align-items:center;justify-content:center;height:100%;width:100%;color:var(--ui-30-muted,#94a3b8);font-size:0.85rem;font-weight:600;background:var(--ui-60-surface-soft,#f1f5f9);";
-                fb.innerText = isThai ? "📷 ไม่สามารถแสดงรูปภาพได้" : "📷 Image unavailable";
+                fb.innerText = isThai ? "ไม่สามารถแสดงรูปภาพได้" : "Image unavailable";
                 parent.appendChild(fb);
               }
             }}
@@ -498,6 +526,14 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
             <span>{isThai ? "ไม่มีรูปภาพ" : "No Image"}</span>
           </div>
         )}
+
+        {/* Floating company badge with frosted glass */}
+        <span
+          className={`${styles.companyBadgeFloating} ${styles[`companyBadge_${act.companyCode}`] || styles.companyBadge_CENTER}`}
+          title={act.companyName || act.companyCode}
+        >
+          {act.companyCode === "CENTER" ? "Center" : act.companyCode}
+        </span>
       </div>
 
       {/* Card Body */}
@@ -512,12 +548,6 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
             </svg>
             <span>{act.formattedDate || act.date}</span>
           </div>
-          <span
-            className={`${styles.companyBadge} ${styles[`companyBadge_${act.companyCode}`] || styles.companyBadge_CENTER}`}
-            title={act.companyName || act.companyCode}
-          >
-            {act.companyCode === "CENTER" ? "Center" : act.companyCode}
-          </span>
         </div>
         <h3 className={styles.cardTitle}>{act.title}</h3>
         <p className={styles.cardDescription}>{act.description}</p>
@@ -536,7 +566,7 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
             <div />
           )}
 
-          {!isEmployee && (
+          {canManageActivity(act) && (
             <div className={styles.cardActionsRow}>
               <button
                 type="button"
@@ -567,14 +597,22 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
     </div>
   );
 
+  // If employee and there are no visible activities, don't show the section at all
+  if (isEmployee && (isLoading || visibleActivities.length === 0)) {
+    return null;
+  }
+
   return (
     <section className={styles.activitiesSection} aria-label="New Activities">
       {/* Section Header */}
       <div className={styles.sectionHeader}>
         <div className={styles.headerTitleGroup}>
-          <h2 className={styles.mainTitle}>
-            <span>{isThai ? "New Activities" : "New Activities"}</span>
-          </h2>
+          <div className={styles.titleContainer}>
+            <span className={styles.pulseDot} aria-hidden="true" />
+            <h2 className={styles.mainTitle}>
+              <span>New Activities</span>
+            </h2>
+          </div>
           <span className={styles.countBadge}>
             {filteredActivities.length} {isThai ? "กิจกรรม" : "activities"}
           </span>
@@ -604,27 +642,47 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
               ))}
             </div>
 
-            {/* Company Filter */}
-            <select
-              className={styles.companyFilterSelect}
-              value={selectedCompany}
-              onChange={(e) => handleCompanyChange(e.target.value)}
-              title={isThai ? "กรองตามบริษัท" : "Filter by company"}
-            >
-              <option value="all">
-                {isEmployee
-                  ? (isThai ? "🏢 ทั้งหมด (All)" : "🏢 All")
-                  : (isThai ? "🏢 ทุกบริษัท (All Companies)" : "🏢 All Companies")}
-              </option>
-              <option value="center">{isThai ? "🏛️ Center (ส่วนกลาง)" : "🏛️ Center"}</option>
+            {/* Company Filter Pills */}
+            <div className={styles.companyPillsRow}>
+              <button
+                type="button"
+                className={`${styles.companyPillBtn} ${selectedCompany === "all" ? styles.companyPillBtnActive : ""}`}
+                onClick={() => handleCompanyChange("all")}
+                title={isThai ? "ดูกิจกรรมทุกบริษัท" : "All Companies"}
+              >
+                <span>
+                  {isCompanyScoped
+                    ? (isThai ? "ทั้งหมด (All)" : "All")
+                    : (isThai ? "ทุกบริษัท (All)" : "All")}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                className={`${styles.companyPillBtn} ${selectedCompany === "center" ? styles.companyPillBtnActive : ""}`}
+                onClick={() => handleCompanyChange("center")}
+                title={isThai ? "กิจกรรมส่วนกลาง (Center)" : "Center"}
+              >
+                <span>Center</span>
+              </button>
+
               {availableCompanies
                 .filter((c) => c.id !== "center")
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    🏢 {c.code}
-                  </option>
-                ))}
-            </select>
+                .map((c) => {
+                  const isSelected = selectedCompany === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`${styles.companyPillBtn} ${isSelected ? styles.companyPillBtnActive : ""}`}
+                      onClick={() => handleCompanyChange(c.id)}
+                      title={c.name || c.code}
+                    >
+                      <span>{c.code}</span>
+                    </button>
+                  );
+                })}
+            </div>
           </div>
 
           {/* Add Activity Button (only for Admins / HR) */}
@@ -660,8 +718,12 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
           </h3>
           <p className={styles.emptyDesc}>
             {isThai
-              ? "ยังไม่มีข้อมูลกิจกรรมตามเงื่อนไขที่เลือก สามารถกดปุ่ม \"เพิ่มกิจกรรม\" ด้านบนเพื่อสร้างกิจกรรมใหม่ได้ครับ"
-              : "No activities match your criteria. Click \"Add Activity\" above to add a new one."}
+              ? isEmployee
+                ? "ยังไม่มีข้อมูลกิจกรรมตามเงื่อนไขที่เลือก"
+                : "ยังไม่มีข้อมูลกิจกรรมตามเงื่อนไขที่เลือก สามารถกดปุ่ม \"เพิ่มกิจกรรม\" ด้านบนเพื่อสร้างกิจกรรมใหม่ได้ครับ"
+              : isEmployee
+                ? "No activities found matching the selected criteria."
+                : "No activities match your criteria. Click \"Add Activity\" above to add a new one."}
           </p>
         </div>
       ) : filteredActivities.length <= 3 ? (
@@ -735,8 +797,12 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
                 type="button"
                 className={styles.closeButton}
                 onClick={handleCloseFormModal}
+                aria-label="Close"
               >
-                ✕
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </div>
 
@@ -761,7 +827,7 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
                             const fb = document.createElement("div");
                             fb.className = "preview-fallback";
                             fb.style.cssText = "display:flex;align-items:center;justify-content:center;height:100%;width:100%;color:#94a3b8;font-size:0.85rem;font-weight:600;";
-                            fb.innerText = isThai ? "📷 ไม่สามารถแสดงรูปภาพได้" : "📷 Image preview unavailable";
+                            fb.innerText = isThai ? "ไม่สามารถแสดงรูปภาพได้" : "Image preview unavailable";
                             parent.appendChild(fb);
                           }
                         }}
@@ -773,7 +839,11 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
                           onClick={handleRemoveImage}
                           title={isThai ? "ลบรูปภาพนี้" : "Remove photo"}
                         >
-                          ✕ {isThai ? "ลบรูปภาพ" : "Remove"}
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                          <span>{isThai ? "ลบรูปภาพ" : "Remove"}</span>
                         </button>
                       </div>
                     </div>
@@ -824,7 +894,7 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
                   />
                 </div>
 
-                {/* Company */}
+                {/* Company - No Emojis */}
                 <div className={styles.formGroup}>
                   <label className={styles.formLabel}>
                     {isThai ? "บริษัท (Company) *" : "Company *"}
@@ -833,14 +903,15 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
                     className={styles.formSelect}
                     value={formCompanyId}
                     onChange={(e) => setFormCompanyId(e.target.value)}
+                    disabled={isFactory}
                     required
                   >
                     <option value="">
                       {isThai ? "-- กรุณาเลือกบริษัท --" : "-- Please select company --"}
                     </option>
-                    {companies.map((c) => (
+                    {availableCompanies.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.code === "CENTER" ? (isThai ? "🏛️ Center (ส่วนกลาง)" : "🏛️ Center") : `🏢 ${c.name}`}
+                        {c.code === "CENTER" ? (isThai ? "Center (ส่วนกลาง)" : "Center") : c.name}
                       </option>
                     ))}
                   </select>
@@ -918,21 +989,31 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
         <div className={styles.modalOverlay} onClick={() => setIsDetailModalOpen(false)}>
           <div className={styles.modalDialog} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+              <div className={styles.modalMetaChips}>
                 <span className={styles.detailDateBadge}>
-                  📅 {activeActivity.formattedDate || activeActivity.date}
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                  <span>{activeActivity.formattedDate || activeActivity.date}</span>
                 </span>
                 <span
                   className={`${styles.companyBadge} ${styles[`companyBadge_${activeActivity.companyCode}`] || styles.companyBadge_CENTER}`}
                   style={{ fontSize: "0.78rem", padding: "4px 10px" }}
                 >
                   {activeActivity.companyCode === "CENTER"
-                    ? (isThai ? "🏛️ Center (ส่วนกลาง)" : "🏛️ Center")
-                    : `🏢 ${activeActivity.companyName || activeActivity.companyCode}`}
+                    ? (isThai ? "Center (ส่วนกลาง)" : "Center")
+                    : (activeActivity.companyName || activeActivity.companyCode)}
                 </span>
                 {activeActivity.location ? (
-                  <span style={{ fontSize: "0.82rem", color: "var(--ui-30-muted)", fontWeight: 700 }}>
-                    📍 {activeActivity.location}
+                  <span className={styles.detailLocationBadge}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    <span>{activeActivity.location}</span>
                   </span>
                 ) : null}
               </div>
@@ -940,8 +1021,12 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
                 type="button"
                 className={styles.closeButton}
                 onClick={() => setIsDetailModalOpen(false)}
+                aria-label="Close"
               >
-                ✕
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </div>
 
@@ -953,7 +1038,7 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
                 </div>
               ) : null}
 
-              <h2 style={{ fontSize: "1.45rem", fontWeight: 800, margin: "0", color: "var(--ui-30-ink)" }}>
+              <h2 className={styles.detailTitle}>
                 {activeActivity.title}
               </h2>
 
@@ -963,22 +1048,29 @@ export default function NewActivities({ isThai: propIsThai, readOnly = false }: 
             </div>
 
             <div className={styles.modalFooter}>
-              {!isEmployee && (
+              {canManageActivity(activeActivity) && (
                 <>
                   <button
                     type="button"
-                    className={styles.cancelBtn}
+                    className={styles.editActionBtn}
                     onClick={(e) => handleOpenEdit(e, activeActivity)}
                   >
-                    ✏️ {isThai ? "แก้ไข" : "Edit"}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    <span>{isThai ? "แก้ไข" : "Edit"}</span>
                   </button>
                   <button
                     type="button"
-                    className={styles.cancelBtn}
-                    style={{ color: "#ef4444", borderColor: "#fca5a5" }}
+                    className={styles.deleteActionBtn}
                     onClick={(e) => handleDelete(e, activeActivity)}
                   >
-                    🗑️ {isThai ? "ลบ" : "Delete"}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    </svg>
+                    <span>{isThai ? "ลบ" : "Delete"}</span>
                   </button>
                 </>
               )}
