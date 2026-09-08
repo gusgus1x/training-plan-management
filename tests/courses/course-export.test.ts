@@ -4,9 +4,28 @@ import path from "node:path";
 import { buildCourseMasterExportWorkbook, type CourseExportRecord } from "../../app/lib/courseMasterExport";
 import { readXlsxEntries } from "../../app/lib/xlsxTemplate";
 
+/**
+ * Same priority order the app uses (app/api/course-master/download-template/route.ts): the current
+ * AT-A template first, older names after. Hard-coding one filename is what broke this test when the
+ * template was renamed - the export code kept working through its fallback while the test did not.
+ */
+const TEMPLATE_NAMES = [
+  "AT-A Master Course Import Export.xlsx",
+  "Master Course Import Tem.xlsx",
+  "Course Master Create Tem.xlsx",
+];
+
+const resolveTemplatePath = (): string => {
+  for (const name of TEMPLATE_NAMES) {
+    const candidate = path.join(process.cwd(), "app", "Excel", name);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  throw new Error(`No course master template found. Looked for: ${TEMPLATE_NAMES.join(", ")}`);
+};
+
 describe("Course Master Excel Export", () => {
-  it("builds a valid xlsx workbook based on Master Course Import Tem", async () => {
-    const templatePath = path.join(process.cwd(), "app", "Excel", "Master Course Import Tem.xlsx");
+  it("builds a valid xlsx workbook based on the course master import template", async () => {
+    const templatePath = resolveTemplatePath();
     expect(fs.existsSync(templatePath)).toBe(true);
 
     const templateBuffer = fs.readFileSync(templatePath);
@@ -51,14 +70,23 @@ describe("Course Master Excel Export", () => {
     expect(sheetXml).toContain("ความปลอดภัยในการทำงาน 101");
     expect(sheetXml).toContain("QUAL-002");
     expect(sheetXml).toContain("การควบคุมคุณภาพขั้นพื้นฐาน");
-    expect(sheetXml).toContain("A1:BU8");
+    expect(sheetXml).toContain("A1:AO8");
 
-    // Assert J and BB are empty, K and BU hold the data, and levels have checkmark 'P' (Wingdings 2 tick mark)
-    expect(sheetXml).toContain('<c r="J7" s="17"/>');
-    expect(sheetXml).toContain('<c r="K7" s="19" t="inlineStr"><is><t xml:space="preserve">ความปลอดภัยในการทำงาน 101</t></is></c>');
-    expect(sheetXml).toContain('<c r="BB7" s="25"/>');
-    expect(sheetXml).toContain('<c r="BU7" s="17" t="inlineStr"><is><t xml:space="preserve">ATA-TC</t></is></c>');
-    expect(sheetXml).toContain('>P<');
+    // Column letters are the template's own, read off its header row 4: K = Course Name (EN),
+    // L = Course Name (TH), AO = Course Type. Checking placement catches an export that writes
+    // readable values into the wrong columns, which the round trip below would not.
+    //
+    // Style ids are deliberately not pinned any more. The previous version asserted
+    // `s="19"` alongside the cell, and the AT-A template rename changed both the columns and the
+    // style numbering - so a working exporter failed its own test. Placement is the contract;
+    // which style slot Excel happened to assign is not.
+    expect(sheetXml).toMatch(/<c r="K7"[^>]*t="inlineStr"><is><t[^>]*>Safety at Work 101</);
+    expect(sheetXml).toMatch(/<c r="L7"[^>]*t="inlineStr"><is><t[^>]*>ความปลอดภัยในการทำงาน 101</);
+    expect(sheetXml).toMatch(/<c r="AO7"[^>]*t="inlineStr"><is><t[^>]*>ATA-TC</);
+    // J is a location sub-column (row 6: "Outside") that this export never fills.
+    expect(sheetXml).toMatch(/<c r="J7"[^>]*\/>/);
+    // The level checkmark is a Wingdings 2 tick, written as the letter P.
+    expect(sheetXml).toContain(">P<");
 
     // Test Round-trip: Feed exportedBuffer into parseXlsxBuffer (Import logic)
     const { parseXlsxBuffer } = await import("../../app/api/course-master/parse-template/route");
@@ -86,8 +114,7 @@ describe("Course Master Excel Export", () => {
   });
 
   it("builds a zip archive containing separated company xlsx files", async () => {
-    const templatePath = path.join(process.cwd(), "app", "Excel", "Master Course Import Tem.xlsx");
-    const templateBuffer = fs.readFileSync(templatePath);
+    const templateBuffer = fs.readFileSync(resolveTemplatePath());
 
     const { buildCompanyCourseMasterExportZip } = await import("../../app/lib/courseMasterExport");
 
