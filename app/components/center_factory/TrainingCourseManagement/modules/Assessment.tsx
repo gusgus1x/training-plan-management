@@ -150,6 +150,19 @@ const renderGridSummary = (
   );
 };
 
+/**
+ * The question score, when the type carries its points inside its own options rather than as one
+ * number for the whole question. Null means the author types the score by hand.
+ *
+ * Only grids do this today: Google Forms scores a grid per row, so the question is worth the sum of
+ * its rows. Returning null for everything else keeps the ordinary types typing their own score, and
+ * makes adding a second self-scoring type a one-line change here rather than a hunt through the JSX.
+ */
+const derivedQuestionScore = (question: DraftQuestion): string | null =>
+  isGridType(question.questionType)
+    ? gridTotalScore(question.choices.filter((choice) => choice.axis === "ROW").map((row) => row.optionScore))
+    : null;
+
 const CHOICE_TYPES: AssessmentQuestionType[] = ["SINGLE_CHOICE", "MULTIPLE_CHOICE", "TRUE_FALSE"];
 const isChoiceType = (type: AssessmentQuestionType) => CHOICE_TYPES.includes(type);
 
@@ -735,7 +748,12 @@ export default function Assessment() {
     });
 
   const saveQuestion = () => {
-    if (!question.questionText.trim() || Number(question.questionScore) <= 0) {
+    // A self-scoring type (a grid) owns its score, so the typed value is ignored from here on -
+    // including by the check below, or a grid whose rows total 3 could still be rejected as "0"
+    // because the read-only field never wrote back to the draft.
+    const derived = derivedQuestionScore(question);
+    const effectiveScore = derived ?? question.questionScore;
+    if (!question.questionText.trim() || Number(effectiveScore) <= 0) {
       setFormErrors((current) => ({ ...current, question: "Enter a question and a positive score before adding it." }));
       setFeedback({ tone: "error", message: "Question text and a positive score are required." });
       return;
@@ -768,7 +786,7 @@ export default function Assessment() {
       setFeedback({ tone: "error", message: "Mark at least two correct answers, or switch the type to Single Choice." });
       return;
     }
-    const next = { ...question, questionText: question.questionText.trim() };
+    const next = { ...question, questionText: question.questionText.trim(), questionScore: effectiveScore };
     setQuestions((current) => editingQuestionId
       ? current.map((item) => item.id === editingQuestionId ? next : item)
       : [...current, next]);
@@ -1324,14 +1342,35 @@ export default function Assessment() {
           </label>
 
           <label>
-            <span>คะแนนข้อนี้ (Score) <RequiredIndicator isFilled={Boolean(Number(question.questionScore) > 0)} /></span>
+            <span>คะแนนข้อนี้ (Score) <RequiredIndicator isFilled={Boolean(Number(derivedQuestionScore(question) ?? question.questionScore) > 0)} /></span>
+            {/* A grid scores per row, so its total is arithmetic, not a decision. Making the field
+                read-only and filling it live removes the step where the author had to add the rows
+                up and retype the answer - and the server rejects a mismatch, so a typo there was a
+                failed save with nothing obviously wrong on screen. */}
             <input
               type="number"
               min="0.01"
               step="0.01"
-              value={question.questionScore}
-              onChange={(event) => setQuestion({ ...question, questionScore: event.target.value })}
+              value={derivedQuestionScore(question) ?? question.questionScore}
+              readOnly={derivedQuestionScore(question) !== null}
+              aria-readonly={derivedQuestionScore(question) !== null}
+              data-derived={derivedQuestionScore(question) !== null}
+              title={derivedQuestionScore(question) !== null
+                ? t("คิดจากผลรวมคะแนนของทุกแถว แก้ที่แต่ละแถวด้านล่าง", "Summed from the row scores - edit them below")
+                : undefined}
+              onChange={(event) => {
+                if (derivedQuestionScore(question) !== null) return;
+                setQuestion({ ...question, questionScore: event.target.value });
+              }}
             />
+            {/* A span, not a small: `.questionGrid label small` is the error-text style (accent
+                colour) at a specificity this class cannot outrank, so a hint written as a small
+                element would read as a validation error. */}
+            {derivedQuestionScore(question) !== null ? (
+              <span className={styles.derivedScoreHint}>
+                {t("คิดอัตโนมัติจากผลรวมคะแนนของทุกแถว", "Calculated from the sum of the row scores")}
+              </span>
+            ) : null}
           </label>
 
           <label>

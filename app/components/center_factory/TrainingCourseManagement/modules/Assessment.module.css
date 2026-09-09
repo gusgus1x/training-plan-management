@@ -1108,3 +1108,17 @@
   color: var(--ui-30-primary);
   font-weight: 900;
 }
+
+/* A score the question computes for itself (a grid, summed from its rows). Styled as read-only so
+   it does not look like a field that is simply refusing to accept input. */
+.questionGrid input[data-derived="true"] {
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  cursor: default;
+}
+
+.derivedScoreHint {
+  color: var(--ui-30-muted);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
