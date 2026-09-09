@@ -644,6 +644,77 @@ describe("submitEvaluation", () => {
   });
 });
 
+describe("the assigned supervisor's reach", () => {
+  // The supervisor is asked what changed in the person 30 days on, and nothing else. Everything
+  // below is about keeping that boundary: an assignment must not become a general key to the
+  // attendee's record.
+  const BOSS = "USER-BOSS";
+  const assignedTo = (reviewerUserId: string, formIds: Parameters<typeof buildFakeDb>[0] = {}) => {
+    const built = buildFakeDb(formIds);
+    const original = built.db.training_enrollment.findUnique;
+    built.db.training_enrollment.findUnique = async (args: unknown) => ({
+      ...(await original(args)),
+      training_evaluation_reviewer: { reviewer_user_id: reviewerUserId },
+    });
+    // Opening the form stamps opened_at for the supervisor. The stamp itself is covered by the
+    // route tests; here it only has to not blow up.
+    built.db.training_evaluation_reviewer = { updateMany: async () => ({ count: 1 }) };
+    // The shared fake answers with one fixed form whatever is asked for. Echoing the requested id
+    // is what makes "which stage did it resolve" assertable at all.
+    built.db.evaluation_form.findUniqueOrThrow = async ({ where }: any) => ({
+      evaluation_form_id: where.evaluation_form_id,
+      form_name: "Sample Evaluation",
+      description: null,
+      is_anonymous: false,
+      evaluation_question: [],
+    });
+    return built.db;
+  };
+
+  // The follow-up opens FOLLOW_UP_OPENS_AFTER_DAYS after the course ends, so a course that ended
+  // yesterday would fail on availability long before authorization is the thing under test.
+  const ENDED_LONG_AGO = {
+    start: new Date(NOW - 40 * DAY_MS).toISOString(),
+    end: new Date(NOW - 39 * DAY_MS).toISOString(),
+  };
+
+  it("lets the assigned supervisor open the 30-day follow-up about somebody else", async () => {
+    const db = assignedTo(BOSS, { ...ENDED_LONG_AGO, courseFormIds: { evaluation30: BigInt(602) } });
+    const repo = createTrainingFormsRepository(db);
+
+    const evaluation = await repo.readEvaluationForEmployee("1", "EVALUATION_30DAY", null, BOSS);
+
+    expect(evaluation.evaluationFormId).toBe("602");
+  });
+
+  it("refuses the same supervisor the after-training evaluation, which is the attendee's own", async () => {
+    const db = assignedTo(BOSS, { courseFormIds: { evaluation: BigInt(601), evaluation30: BigInt(602) } });
+    const repo = createTrainingFormsRepository(db);
+
+    await expect(repo.readEvaluationForEmployee("1", "EVALUATION", null, BOSS)).rejects.toMatchObject({
+      status: 403,
+    });
+  });
+
+  it("refuses a supervisor who was never assigned to this attendee", async () => {
+    const db = assignedTo(BOSS, { ...ENDED_LONG_AGO, courseFormIds: { evaluation30: BigInt(602) } });
+    const repo = createTrainingFormsRepository(db);
+
+    await expect(
+      repo.readEvaluationForEmployee("1", "EVALUATION_30DAY", null, "USER-SOMEONE-ELSE"),
+    ).rejects.toMatchObject({ status: 403 });
+  });
+
+  it("never lets an assignment open the attendee's exam", async () => {
+    const db = assignedTo(BOSS);
+    const repo = createTrainingFormsRepository(db);
+
+    await expect(repo.readAssessmentForEmployee("1", "PRE_TEST", null, BOSS)).rejects.toMatchObject({
+      status: 403,
+    });
+  });
+});
+
 describe("listPlanStageSettings", () => {
   it("reports FORM for a stage the course has a real assessment on", async () => {
     const { db } = buildFakeDb();

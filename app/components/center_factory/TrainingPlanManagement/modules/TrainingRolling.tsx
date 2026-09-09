@@ -23,6 +23,7 @@ import type { RollingPlanFormOverrides, RollingPlanRecord } from "../../../../li
 import { toDataURL as generateQrCodeDataUrl } from "qrcode";
 import { listAssessments } from "../../../../lib/assessments/client";
 import { listEvaluations } from "../../../../lib/evaluations/client";
+import type { EvaluationTiming } from "../../../../lib/evaluations/types";
 import { listInstructors } from "../../../../lib/instructors/client";
 import type { InstructorRecord } from "../../../../lib/instructors/types";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
@@ -123,7 +124,29 @@ export type RollingPlan = {
   canEditForms: boolean;
 };
 
-type FormPickerOption = { id: string; label: string; kind: "PRE_TEST" | "POST_TEST" | "GENERAL" | "EVALUATION" };
+type FormPickerOption = {
+  id: string;
+  label: string;
+  kind: "PRE_TEST" | "POST_TEST" | "GENERAL" | "EVALUATION";
+  /** Evaluations only. Which stage the form was written for, which is what keeps a 30-day
+   *  follow-up out of the after-training slot and the other way round. */
+  timing?: EvaluationTiming;
+};
+
+/**
+ * The forms offered for one stage. An evaluation is written for a particular moment - the
+ * after-training form asks about the course, the 30-day one asks what changed in the person since -
+ * so offering either in either slot invites a batch to be set up asking the wrong questions.
+ * Assessments are matched by purpose instead, with a general one usable at either end.
+ */
+export const optionsForStage = (
+  stage: (typeof FORM_STAGES)[number],
+  assessmentOptions: FormPickerOption[],
+  evaluationOptions: FormPickerOption[],
+) =>
+  stage.kind === "EVALUATION"
+    ? evaluationOptions.filter((option) => option.timing === stage.timing)
+    : assessmentOptions.filter((option) => option.kind === stage.kind || option.kind === "GENERAL");
 
 /**
  * Per-batch form overrides. The course sets the default; this swaps one for a single batch without
@@ -177,10 +200,7 @@ const PlanFormOverrideCard = ({
   const rows = FORM_STAGES.map((stage) => ({
     stage,
     courseValue: courseDefaults[stage.idKey],
-    options:
-      stage.kind === "EVALUATION"
-        ? evaluationOptions
-        : assessmentOptions.filter((option) => option.kind === stage.kind || option.kind === "GENERAL"),
+    options: optionsForStage(stage, assessmentOptions, evaluationOptions),
   }));
 
   const save = async () => {
@@ -525,11 +545,23 @@ const emptyFormOverrides = (): RollingPlanFormOverrides => ({
 
 /** The four stages, each with the id field, the link field, and where the course's default lives.
  *  Declared once so the create form and the detail panel cannot drift apart. */
-const FORM_STAGES = [
+export const FORM_STAGES = [
   { idKey: "preAssessmentId", linkKey: "preTestLink", label: "แบบทดสอบก่อนเรียน", kind: "PRE_TEST" },
   { idKey: "postAssessmentId", linkKey: "postTestLink", label: "แบบทดสอบหลังเรียน", kind: "POST_TEST" },
-  { idKey: "evaluationFormId", linkKey: "evaluationLink", label: "แบบประเมิน", kind: "EVALUATION" },
-  { idKey: "evaluationFormAfter30DayId", linkKey: "evaluationAfter30DayLink", label: "แบบประเมินหลัง 30 วัน", kind: "EVALUATION" },
+  {
+    idKey: "evaluationFormId",
+    linkKey: "evaluationLink",
+    label: "แบบประเมิน",
+    kind: "EVALUATION",
+    timing: "AFTER_TRAINING",
+  },
+  {
+    idKey: "evaluationFormAfter30DayId",
+    linkKey: "evaluationAfter30DayLink",
+    label: "แบบประเมินหลัง 30 วัน",
+    kind: "EVALUATION",
+    timing: "FOLLOW_UP_30_DAYS",
+  },
 ] as const;
 
 const LINK_MODE_VALUE = "__LINK__";
@@ -743,6 +775,7 @@ export default function TrainingRolling() {
           id: item.evaluationFormId,
           label: `[${item.formCode}] ${item.formName}`,
           kind: "EVALUATION" as const,
+          timing: item.timing,
         })),
       );
     });
@@ -1742,10 +1775,7 @@ export default function TrainingRolling() {
                           </summary>
                           <div className={styles.sessionFormOverrideGrid}>
                             {FORM_STAGES.map((stage) => {
-                              const options =
-                                stage.kind === "EVALUATION"
-                                  ? evaluationOptions
-                                  : assessmentOptions.filter((o) => o.kind === stage.kind || o.kind === "GENERAL");
+                              const options = optionsForStage(stage, assessmentOptions, evaluationOptions);
                               const courseDefault =
                                 stage.idKey === "preAssessmentId"
                                   ? selectedOap.course.preTest || selectedOap.course.preTestLink

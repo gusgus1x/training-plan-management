@@ -49,7 +49,7 @@ const enrollmentInclude = {
   // and reading them here means the "take this form" screens never need a second request just to
   // know whether the employee has already attempted or submitted something.
   assessment_submission: {
-    select: { assessment_id: true, assessment_stage: true, attempt_no: true, submitted_at: true, score: true, pass_status: true, grading_status: true, publication_status: true },
+    select: { submission_id: true, assessment_id: true, assessment_stage: true, attempt_no: true, submitted_at: true, score: true, pass_status: true, grading_status: true, publication_status: true },
   },
   evaluation_submission: {
     select: { evaluation_form_id: true, submitted_at: true },
@@ -120,7 +120,8 @@ const withEnrollmentStageInfo = (
   startAt: Date,
   endAt: Date,
   closedAt: Date | null,
-  latestSubmission: StageSubmissionSummary | null,
+  /** Every attempt at this stage, newest first. The first entry is what `submission` reports. */
+  attempts: StageSubmissionSummary[],
 ): EnrollmentStageInfo => {
   const availability = stageAvailability(
     stage,
@@ -129,7 +130,13 @@ const withEnrollmentStageInfo = (
     CLOSABLE_STAGES.includes(stage) ? closedAt?.toISOString() ?? null : null,
     new Date(),
   );
-  return { ...base, opensAt: availability.opensAt, availability: availability.state, submission: latestSubmission };
+  return {
+    ...base,
+    opensAt: availability.opensAt,
+    availability: availability.state,
+    submission: attempts[0] ?? null,
+    attempts,
+  };
 };
 
 const mapEnrollment = (row: EnrollmentWithRelations) => {
@@ -169,24 +176,26 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
   const evaluationForm30DayId = evaluation30.id;
 
   const closedAtByStage = new Map(plan.training_plan_assessment_setting.map((s) => [s.assessment_stage, s.close_at]));
-  const latestAssessmentSubmission = (assessmentId: bigint | null, stage: "PRE_TEST" | "POST_TEST"): StageSubmissionSummary | null => {
-    if (assessmentId === null) return null;
-    const attempts = row.assessment_submission
+  /** Every attempt at one assessment stage, newest first. */
+  const assessmentAttempts = (assessmentId: bigint | null, stage: "PRE_TEST" | "POST_TEST"): StageSubmissionSummary[] => {
+    if (assessmentId === null) return [];
+    return row.assessment_submission
       .filter((s) => s.assessment_id === assessmentId && s.assessment_stage === stage)
-      .sort((a, b) => b.attempt_no - a.attempt_no);
-    const latest = attempts[0];
-    if (!latest) return null;
-    // Same publication gate as trainingForms' mapSubmission: an unreleased score never leaves the
-    // server, so My Record cannot show a grade the runner is still hiding.
-    const resultsPublished = latest.publication_status === "PUBLISHED";
-    return {
-      attemptNo: latest.attempt_no,
-      submittedAt: latest.submitted_at?.toISOString() ?? null,
-      score: !resultsPublished || latest.score === null ? null : Number(latest.score),
-      passStatus: resultsPublished ? (latest.pass_status as StageSubmissionSummary["passStatus"]) : "PENDING",
-      gradingStatus: latest.grading_status as StageSubmissionSummary["gradingStatus"],
-      resultsPublished,
-    };
+      .sort((a, b) => b.attempt_no - a.attempt_no)
+      .map((attempt) => {
+        // Same publication gate as trainingForms' mapSubmission: an unreleased score never leaves
+        // the server, so My Record cannot show a grade the runner is still hiding.
+        const resultsPublished = attempt.publication_status === "PUBLISHED";
+        return {
+          submissionId: attempt.submission_id.toString(),
+          attemptNo: attempt.attempt_no,
+          submittedAt: attempt.submitted_at?.toISOString() ?? null,
+          score: !resultsPublished || attempt.score === null ? null : Number(attempt.score),
+          passStatus: resultsPublished ? (attempt.pass_status as StageSubmissionSummary["passStatus"]) : "PENDING",
+          gradingStatus: attempt.grading_status as StageSubmissionSummary["gradingStatus"],
+          resultsPublished,
+        };
+      });
   };
   const evaluationSubmission = (formId: bigint | null): StageSubmissionSummary | null => {
     if (formId === null) return null;
@@ -194,7 +203,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
     if (!submitted) return null;
     // Evaluations are never graded and never repeated - these three fields exist only because the
     // shape is shared with assessments, and "submitted" is the only fact worth carrying here.
-    return { attemptNo: 1, submittedAt: submitted.submitted_at?.toISOString() ?? null, score: null, passStatus: "PENDING", gradingStatus: "REVIEWED", resultsPublished: true };
+    return { submissionId: "", attemptNo: 1, submittedAt: submitted.submitted_at?.toISOString() ?? null, score: null, passStatus: "PENDING", gradingStatus: "REVIEWED", resultsPublished: true };
   };
 
   return {
@@ -232,7 +241,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
           plan.start_datetime,
           plan.end_datetime,
           closedAtByStage.get("PRE_TEST") ?? null,
-          latestAssessmentSubmission(preAssessmentId, "PRE_TEST"),
+          assessmentAttempts(preAssessmentId, "PRE_TEST"),
         ),
         postTest: withEnrollmentStageInfo(
           assessmentStage(post.id, post.link),
@@ -240,7 +249,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
           plan.start_datetime,
           plan.end_datetime,
           closedAtByStage.get("POST_TEST") ?? null,
-          latestAssessmentSubmission(postAssessmentId, "POST_TEST"),
+          assessmentAttempts(postAssessmentId, "POST_TEST"),
         ),
         evaluation: withEnrollmentStageInfo(
           assessmentStage(evaluation.id, evaluation.link),
@@ -248,7 +257,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
           plan.start_datetime,
           plan.end_datetime,
           null,
-          evaluationSubmission(evaluationFormId),
+          [evaluationSubmission(evaluationFormId)].filter((entry) => entry !== null),
         ),
         evaluationAfter30Day: withEnrollmentStageInfo(
           assessmentStage(evaluation30.id, evaluation30.link),
@@ -256,7 +265,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
           plan.start_datetime,
           plan.end_datetime,
           null,
-          evaluationSubmission(evaluationForm30DayId),
+          [evaluationSubmission(evaluationForm30DayId)].filter((entry) => entry !== null),
         ),
       },
       // 0 is stored the same as null elsewhere in the codebase: "no validity period".

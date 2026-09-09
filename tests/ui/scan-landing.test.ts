@@ -16,7 +16,7 @@ const stage = (overrides: Partial<EnrollmentStageInfo> = {}): EnrollmentStageInf
   link: null,
   opensAt: "2026-09-01T02:00:00.000Z",
   availability: "OPEN",
-  submission: null,
+  submission: null, attempts: [],
   ...overrides,
 });
 
@@ -86,7 +86,7 @@ describe("resolveScanDestination", () => {
 
   it("still forwards someone who already submitted - the runner tells them, and a retake is allowed", () => {
     const submitted = stage({
-      submission: { attemptNo: 1, submittedAt: "2026-09-02T00:00:00.000Z", score: 90, passStatus: "PASS", gradingStatus: "REVIEWED", resultsPublished: true },
+      submission: { submissionId: "9001", attemptNo: 1, submittedAt: "2026-09-02T00:00:00.000Z", score: 90, passStatus: "PASS", gradingStatus: "REVIEWED", resultsPublished: true }, attempts: [{ submissionId: "9001", attemptNo: 1, submittedAt: "2026-09-02T00:00:00.000Z", score: 90, passStatus: "PASS", gradingStatus: "REVIEWED", resultsPublished: true }],
     });
     expect(resolve(enrollment({ preTest: submitted }))).toMatchObject({ kind: "forward" });
   });

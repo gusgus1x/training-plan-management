@@ -198,15 +198,25 @@ export type EvaluationSummaryQuestion = {
   textAnswersWithheld: boolean;
 };
 
+/**
+ * Who the answers came from. Two audiences answer the same form about the same course - the person
+ * who attended, and the supervisor asked to evaluate them - and their answers mean different
+ * things. A summary always covers exactly one of them: averaging a class's own view together with
+ * their supervisors' produces a number that describes nobody.
+ */
+export const EVALUATION_RESPONDENT_GROUPS = ["EMPLOYEE", "SUPERVISOR"] as const;
+export type EvaluationRespondentGroup = (typeof EVALUATION_RESPONDENT_GROUPS)[number];
+
 export type EvaluationSummary = {
   evaluationFormId: string;
   formName: string;
   description: string | null;
   isAnonymous: boolean;
   timing: EvaluationTimingStage;
-  /** Enrolled people, submitted people, and the rate between them. Everything else here is
-   *  meaningless without knowing how many of the class actually answered. */
-  enrolledCount: number;
+  respondentGroup: EvaluationRespondentGroup;
+  /** How many people were expected to answer: the attendees for the EMPLOYEE group, the assigned
+   *  supervisors for the SUPERVISOR one. Everything else here is meaningless without it. */
+  expectedCount: number;
   submittedCount: number;
   responseRatePercent: number;
   questions: EvaluationSummaryQuestion[];
@@ -225,16 +235,59 @@ export type MissedQuestion = {
   reviewComment: string | null;
 };
 
+/** One released attempt, as a line on the attempt list. Carries no questions: the list is there to
+ *  choose from, and the chosen attempt is the one that arrives in full. */
+export type AssessmentAttemptSummary = {
+  submissionId: string;
+  attemptNo: number;
+  submittedAt: string | null;
+  /** False while HRD has not released this attempt. The fields below say what may still be shown. */
+  resultsPublished: boolean;
+  /** Released attempts only - the final percentage and verdict are HRD's to hand out. */
+  scorePercent: number | null;
+  passStatus: PassStatus;
+  /** Released attempts only, for the same reason. `totalPossible` is safe either way: what the
+   *  paper is worth is not a result. */
+  totalAwarded: number | null;
+  totalPossible: number;
+  /**
+   * The part this system marked by itself - the questions with a right answer. Shown whether or not
+   * the attempt is released, because it cannot change: a matched answer is matched. It is what tells
+   * somebody how far the auto-marked questions got them, and so whether another go is worth it
+   * without waiting on the written marking.
+   */
+  autoAwarded: number;
+  autoPossible: number;
+  /** What the written answers still waiting to be marked are worth. The gap between "what I have"
+   *  and "what is still in play". */
+  writtenPendingScore: number;
+};
+
 export type AssessmentReview = {
   submissionId: string;
   attemptNo: number;
   submittedAt: string | null;
+  /** Whether HRD has released THIS attempt. False means the numbers below are the partial ones and
+   *  `missedQuestions` is empty - the breakdown is part of the released result. */
+  resultsPublished: boolean;
   scorePercent: number | null;
   passStatus: PassStatus;
   passingScorePercent: number;
-  totalAwarded: number;
+  totalAwarded: number | null;
   totalPossible: number;
+  autoAwarded: number;
+  autoPossible: number;
+  writtenPendingScore: number;
   missedQuestions: MissedQuestion[];
+  /**
+   * Every released attempt, newest first, so the employee can look back at any of them rather than
+   * only the last one they sat. An unreleased attempt never appears: HRD decides when a score goes
+   * out, and that gate is the same one `publication_status` enforces everywhere else.
+   */
+  attempts: AssessmentAttemptSummary[];
+  /** The attempt with the highest score, which is the one that opens by default. Ties go to the
+   *  earlier attempt - it got there first. */
+  bestAttemptNo: number;
 };
 
 export type GradeAnswerInput = {
@@ -279,4 +332,87 @@ export type PendingGradingSubmission = {
   /** Already graded, waiting only for HRD to release the score. `pendingAnswers` is empty on these
    *  rows - the panel shows a publish button instead of score inputs. */
   awaitingPublication: boolean;
+};
+
+/**
+ * One evaluation a supervisor has been asked to fill in about somebody else.
+ *
+ * `mode` decides what the row can honestly claim. FORM means this system holds the answers and
+ * `submitted` is real. LINK means the form belongs to somebody else, so `openedAt` - whether the
+ * supervisor followed the link at all - is the only thing that can ever be known, and `submitted`
+ * stays false however many times they answer it.
+ */
+export type AssignedEvaluation = {
+  enrollmentId: string;
+  stage: EvaluationTimingStage;
+  attendeeName: string;
+  attendeeEmployeeCode: string;
+  courseName: string;
+  batchNo: number | null;
+  startAt: string;
+  endAt: string;
+  mode: "FORM" | "LINK";
+  /** Only set when mode is LINK. */
+  link: string | null;
+  opensAt: string;
+  isOpen: boolean;
+  openedAt: string | null;
+  submitted: boolean;
+};
+
+/**
+ * One question on a submitted paper, as HRD sees it while checking or reviewing the answers.
+ *
+ * This is the marked-up version, with the answer key on it - deliberately a separate type from
+ * AssessmentReview, which is what the employee sees and carries no key at all. The two audiences
+ * get two shapes so a screen written for one cannot accidentally serve the other.
+ */
+export type SubmissionReviewQuestion = {
+  questionId: string;
+  questionOrder: number;
+  questionText: string;
+  questionType: string;
+  questionScore: number;
+  /** null while a written answer is still waiting for HRD to mark it. */
+  scoreAwarded: number | null;
+  /** null for a written answer, whose correctness is a judgement rather than a match. */
+  isCorrect: boolean | null;
+  /** Set on a written answer that HRD has not marked yet - the reason to be on this screen. */
+  needsReview: boolean;
+  /** The answer id, which is what a mark is saved against. Only set for a written answer. */
+  answerId: string | null;
+  answerText: string | null;
+  reviewComment: string | null;
+  choices: Array<{
+    choiceId: string;
+    choiceOrder: number;
+    choiceText: string;
+    isCorrect: boolean;
+    /** Whether the person taking the test picked this one. */
+    picked: boolean;
+    /** Grid rows only: the row this cell belongs to. */
+    rowId: string | null;
+    axis: "ROW" | "COLUMN" | null;
+  }>;
+};
+
+/** A whole submitted paper for HRD: who, which attempt, the score so far, and every question. */
+export type SubmissionReview = {
+  submissionId: string;
+  enrollmentId: string;
+  employeeName: string;
+  employeeCode: string;
+  stage: GradedStage;
+  attemptNo: number;
+  submittedAt: string | null;
+  /** What the paper is worth in total, and what has been awarded so far. `scoreAwarded` counts
+   *  only what is marked, so it keeps rising as HRD works through the written answers. */
+  totalScore: number;
+  scoreAwarded: number;
+  passingScorePercent: number;
+  passStatus: "PENDING" | "PASS" | "FAIL";
+  gradingStatus: "PENDING_REVIEW" | "REVIEWED";
+  /** False while the score is graded but not yet released to the employee. */
+  resultsPublished: boolean;
+  questions: SubmissionReviewQuestion[];
 };

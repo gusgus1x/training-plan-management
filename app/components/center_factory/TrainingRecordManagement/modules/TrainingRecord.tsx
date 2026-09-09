@@ -5,9 +5,11 @@ import { listTrainingRecords } from "../../../../lib/trainingRecord/client";
 import type { AssessmentStageInfo } from "../../../../lib/trainingEnrollment/types";
 import { EXPENSE_ITEMS } from "../../../../lib/trainingRecord/types";
 import type {
+  ReviewerAssignment,
   TrainingRecordAttendee,
   TrainingRecordSummary,
 } from "../../../../lib/trainingRecord/types";
+import ReviewerAssignmentPanel from "./ReviewerAssignmentPanel";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import CertificateUploadPanel from "./CertificateUploadPanel";
 import MaskedUserId, { EyeClosedIcon, EyeOpenIcon } from "../../../shared/MaskedUserId";
@@ -17,6 +19,7 @@ import { useToast } from "../../../ToastHost";
 import { listPlanStageSettings, readEvaluationSummary, setStageClosed } from "../../../../lib/trainingForms/client";
 import { FREE_TEXT_MIN_RESPONDENTS } from "../../../../lib/trainingForms/types";
 import type {
+  EvaluationRespondentGroup,
   EvaluationSummary,
   EvaluationTimingStage,
   GradedStage,
@@ -79,6 +82,10 @@ type CompletedCourse = {
   preTestPassPercent: number;
   evaluationCompleted: number;
   evaluationTotal: number;
+  /** The 30-day follow-up, which is the only stage a supervisor is asked to fill in. The reviewer
+   *  panel needs it: an external link can only ever report that the supervisor opened it, and a
+   *  course with no follow-up has nothing to assign. */
+  evaluationAfter30Day?: AssessmentStageInfo;
   averageScore: number;
   attendees: Array<{
     company: string;
@@ -88,6 +95,9 @@ type CompletedCourse = {
     /** SAP UserID. Empty for a course imported from a spreadsheet, which carries no such id. */
     userId: string;
     department: string;
+    /** The attendee's own department and section, both languages. Absent on a course imported from
+     *  a spreadsheet, which carries no employee record to read them from. */
+    orgUnit?: TrainingRecordAttendee["orgUnit"];
     position?: string;
     attended?: boolean;
     /** "Pending" is a real third state: nobody has decided yet. Folding it into "Failed"
@@ -96,6 +106,9 @@ type CompletedCourse = {
     /** "None" - the course has no evaluation. "External" - it is somebody else's form and this
      *  system cannot see whether it was filled in. Neither is the same as "Pending". */
     evaluation: "Done" | "Pending" | "None" | "External";
+    /** Who was asked to evaluate this attendee. Only ever set for a course read from the system;
+     *  a spreadsheet import carries no such thing. */
+    reviewer?: ReviewerAssignment | null;
   }>;
 };
 
@@ -129,6 +142,99 @@ type UploadedTrainingRecord = {
 };
 
 const formatNumber = (value: number) => new Intl.NumberFormat("en-US").format(value);
+
+/** For a course read from a spreadsheet: no employee record, so no organisation levels to name. */
+const EMPTY_ORG_UNIT: TrainingRecordAttendee["orgUnit"] = {
+  functionTh: "",
+  functionEn: "",
+  divisionTh: "",
+  divisionEn: "",
+  departmentTh: "",
+  departmentEn: "",
+  sectionTh: "",
+  sectionEn: "",
+};
+
+/** One organisation level in the screen's language, falling back to the other when a name exists in
+ *  only one. Empty stays empty so the cell shows a dash rather than a stray separator. */
+const orgUnitText = (
+  orgUnit: TrainingRecordAttendee["orgUnit"] | undefined,
+  level: "function" | "division" | "department" | "section",
+  isThai: boolean,
+) => {
+  const th = orgUnit?.[`${level}Th`] ?? "";
+  const en = orgUnit?.[`${level}En`] ?? "";
+  return (isThai ? th || en : en || th) || "";
+};
+
+/**
+ * The roster's columns, with the width each starts at. Widths live in state so the header's drag
+ * handles can change them, the way a spreadsheet's column borders do; the table is laid out fixed
+ * so a colgroup width is what the column actually gets.
+ *
+ * The four organisation levels are four separate columns because they are four separate things.
+ * One column headed "Company / Dept" used to show the FUNCTION, so anyone reading it as the
+ * department was reading the wrong field.
+ */
+const ATTENDEE_COLUMNS = [
+  { key: "userId", th: "UserID", en: "UserID", width: 130 },
+  { key: "employee", th: "พนักงาน", en: "Employee", width: 200 },
+  { key: "company", th: "บริษัท", en: "Company", width: 100 },
+  { key: "function", th: "สายงาน", en: "Function", width: 160 },
+  { key: "division", th: "ฝ่าย", en: "Division", width: 150 },
+  { key: "department", th: "แผนก", en: "Department", width: 150 },
+  { key: "section", th: "ส่วน", en: "Section", width: 150 },
+  { key: "position", th: "ตำแหน่ง", en: "Position", width: 140 },
+  // Named for what the column actually reports. prePostOf() reads the recorded result first and
+  // the post-test only as a fallback; the pre-test never enters it, so "Pre / Post" was naming a
+  // comparison the column does not make.
+  { key: "prePost", th: "แบบทดสอบหลังอบรม", en: "Post test", width: 140 },
+  { key: "evaluation", th: "สถานะแบบประเมิน", en: "Evaluation", width: 150 },
+  { key: "budget", th: "งบปันส่วนต่อคน", en: "Cost per person", width: 130 },
+  { key: "actions", th: "จัดการ", en: "Manage", width: 140 },
+] as const;
+
+/** Narrower than this and a column shows nothing but its own ellipsis. */
+const MIN_COLUMN_WIDTH = 70;
+
+/**
+ * Dragged column widths, kept per browser. Same shape as RecordModule's visited-link memory: read
+ * through a lazy initialiser rather than an effect, because a state write inside an effect is what
+ * react-hooks/set-state-in-effect refuses.
+ *
+ * Stored values are merged ONTO the defaults and only for keys that still exist, so a column added
+ * or removed later cannot resurrect a stale width or leave a new column with none.
+ */
+const COLUMN_WIDTH_STORAGE_KEY = "training-record:attendee-column-widths";
+
+const defaultColumnWidths = (): Record<string, number> =>
+  Object.fromEntries(ATTENDEE_COLUMNS.map((column) => [column.key, column.width]));
+
+const loadColumnWidths = (): Record<string, number> => {
+  const widths = defaultColumnWidths();
+  if (typeof window === "undefined") return widths;
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(COLUMN_WIDTH_STORAGE_KEY) || "{}");
+    for (const column of ATTENDEE_COLUMNS) {
+      const value = stored?.[column.key];
+      if (typeof value === "number" && Number.isFinite(value)) {
+        widths[column.key] = Math.max(MIN_COLUMN_WIDTH, value);
+      }
+    }
+  } catch {
+    // Private browsing, or somebody hand-edited the entry. The defaults are already in `widths`.
+  }
+  return widths;
+};
+
+const saveColumnWidths = (widths: Record<string, number>) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(COLUMN_WIDTH_STORAGE_KEY, JSON.stringify(widths));
+  } catch {
+    // A full quota only costs the memory of a column width. Nothing to recover from.
+  }
+};
 
 /**
  * Whether this attendee passed. The result HRD recorded wins: it is a decision a person made,
@@ -536,19 +642,27 @@ const EvaluationSummaryPanel = ({ planId }: { planId: string }) => {
   // The loaded plan id travels with the data instead of a separate "clear it first" write, so
   // switching courses cannot show the previous course's answers for a frame.
   const [loaded, setLoaded] = useState<
-    { planId: string; byTiming: Record<EvaluationTimingStage, EvaluationSummary | null> } | null
+    {
+      planId: string;
+      respondents: EvaluationRespondentGroup;
+      byTiming: Record<EvaluationTimingStage, EvaluationSummary | null>;
+    } | null
   >(null);
   const [openTiming, setOpenTiming] = useState<EvaluationTimingStage>("EVALUATION");
+  // Attendees and supervisors answer the same form about the same course, so their answers are
+  // read one audience at a time. Averaging the two together describes nobody.
+  const [respondents, setRespondents] = useState<EvaluationRespondentGroup>("EMPLOYEE");
 
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      readEvaluationSummary(planId, "EVALUATION").catch(() => ({ summary: null })),
-      readEvaluationSummary(planId, "EVALUATION_30DAY").catch(() => ({ summary: null })),
+      readEvaluationSummary(planId, "EVALUATION", respondents).catch(() => ({ summary: null })),
+      readEvaluationSummary(planId, "EVALUATION_30DAY", respondents).catch(() => ({ summary: null })),
     ]).then(([afterTraining, followUp]) => {
       if (cancelled) return;
       setLoaded({
         planId,
+        respondents,
         byTiming: { EVALUATION: afterTraining.summary, EVALUATION_30DAY: followUp.summary },
       });
       // Open whichever one actually has answers, so the panel does not greet HRD with an empty tab.
@@ -561,13 +675,20 @@ const EvaluationSummaryPanel = ({ planId }: { planId: string }) => {
     return () => {
       cancelled = true;
     };
-  }, [planId]);
+  }, [planId, respondents]);
 
   if (loaded?.planId !== planId) return null;
   const summaries = loaded.byTiming;
   if (!summaries.EVALUATION && !summaries.EVALUATION_30DAY) return null;
 
-  const summary = summaries[openTiming];
+  // While the other audience loads the panel keeps its shape and empties the body. Returning null
+  // instead would take the audience buttons away with it, leaving nothing to switch back with.
+  const isSwitchingAudience = loaded.respondents !== respondents;
+  // Supervisors are only ever asked for the 30-day follow-up, so their answers exist for that
+  // stage alone. Showing them an "after training" tab would offer a report that can only ever be
+  // empty, and reading it as "no supervisor replied" would be wrong - none was ever asked.
+  const timing = respondents === "SUPERVISOR" ? "EVALUATION_30DAY" : openTiming;
+  const summary = isSwitchingAudience ? null : summaries[timing];
   const tabs: { timing: EvaluationTimingStage; label: string }[] = [
     { timing: "EVALUATION", label: "หลังอบรม" },
     { timing: "EVALUATION_30DAY", label: "ติดตามผล 30 วัน" },
@@ -578,41 +699,81 @@ const EvaluationSummaryPanel = ({ planId }: { planId: string }) => {
       <div className={styles.panelHeader}>
         <div>
           <p className={styles.kicker}>Evaluation results</p>
-          <h3>ผลแบบประเมินจากผู้เข้าอบรม</h3>
+          <h3>
+            {respondents === "EMPLOYEE"
+              ? "ผลแบบประเมินจากผู้เข้าอบรม"
+              : "ผลแบบประเมินจากหัวหน้า (ติดตามผล 30 วัน)"}
+          </h3>
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "6px" }}>
+            {(
+              [
+                { group: "EMPLOYEE", label: "ผู้เข้าอบรม" },
+                { group: "SUPERVISOR", label: "หัวหน้า" },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.group}
+                type="button"
+                onClick={() => setRespondents(option.group)}
+                style={{
+                  padding: "4px 12px",
+                  borderRadius: "999px",
+                  border: "1px solid var(--ui-30-border)",
+                  background: respondents === option.group ? "var(--ui-30-primary-soft)" : "var(--ui-60-surface)",
+                  color: respondents === option.group ? "var(--ui-30-primary-strong)" : "var(--ui-30-muted)",
+                  fontSize: "0.72rem",
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.timing}
-              type="button"
-              disabled={!summaries[tab.timing]}
-              onClick={() => setOpenTiming(tab.timing)}
-              style={{
-                padding: "5px 12px",
-                borderRadius: "999px",
-                border: "1px solid var(--ui-30-border)",
-                background: openTiming === tab.timing ? "var(--ui-30-primary-soft)" : "var(--ui-60-surface)",
-                color: openTiming === tab.timing ? "var(--ui-30-primary-strong)" : "var(--ui-30-muted)",
-                fontSize: "0.74rem",
-                fontWeight: 800,
-                cursor: summaries[tab.timing] ? "pointer" : "not-allowed",
-                opacity: summaries[tab.timing] ? 1 : 0.5,
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {tabs.map((tab) => {
+            // A supervisor is only ever asked for the follow-up, so the other tab is not theirs to
+            // read - it is left visible but dead rather than removed, so the two audiences do not
+            // shuffle the controls around as HRD switches between them.
+            const selectable =
+              Boolean(summaries[tab.timing]) && (respondents === "EMPLOYEE" || tab.timing === timing);
+            return (
+              <button
+                key={tab.timing}
+                type="button"
+                disabled={!selectable}
+                onClick={() => setOpenTiming(tab.timing)}
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: "999px",
+                  border: "1px solid var(--ui-30-border)",
+                  background: timing === tab.timing ? "var(--ui-30-primary-soft)" : "var(--ui-60-surface)",
+                  color: timing === tab.timing ? "var(--ui-30-primary-strong)" : "var(--ui-30-muted)",
+                  fontSize: "0.74rem",
+                  fontWeight: 800,
+                  cursor: selectable ? "pointer" : "not-allowed",
+                  opacity: selectable ? 1 : 0.5,
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {!summary ? (
-        <p style={{ fontSize: "0.8rem", color: "var(--ui-30-muted)" }}>หลักสูตรนี้ไม่ได้ตั้งแบบประเมินช่วงเวลานี้ไว้</p>
+        <p style={{ fontSize: "0.8rem", color: "var(--ui-30-muted)" }}>
+          {isSwitchingAudience ? "กำลังโหลด..." : "หลักสูตรนี้ไม่ได้ตั้งแบบประเมินช่วงเวลานี้ไว้"}
+        </p>
       ) : (
         <>
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "12px", alignItems: "center" }}>
             <strong style={{ fontSize: "0.86rem" }}>{summary.formName}</strong>
             <span style={{ fontSize: "0.78rem", color: "var(--ui-30-muted)" }}>
-              ตอบกลับ {summary.submittedCount} จาก {summary.enrolledCount} คน ({summary.responseRatePercent}%)
+              ตอบกลับ {summary.submittedCount} จาก {summary.expectedCount} คน ({summary.responseRatePercent}%)
+              {summary.respondentGroup === "SUPERVISOR" ? " (นับจากหัวหน้าที่ถูกมอบหมาย)" : ""}
             </span>
             {summary.isAnonymous ? (
               <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "var(--ui-30-primary-strong)" }}>
@@ -788,6 +949,33 @@ export default function TrainingRecord() {
   const [showAllUserIds, setShowAllUserIds] = useState(false);
   const [revealedUserIds, setRevealedUserIds] = useState<Set<string>>(new Set());
   const [selectedAttendeeCompanyFilter, setSelectedAttendeeCompanyFilter] = useState("ALL");
+  // Column widths for the roster, dragged from the header the way a spreadsheet's are, and
+  // remembered per browser so a layout somebody set up survives a refresh.
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(loadColumnWidths);
+
+  /**
+   * Drags one column's right edge. The listeners go on the window rather than the handle so the
+   * drag survives the pointer leaving the 4px grab strip, which is most of a real drag.
+   */
+  const startColumnResize = (key: string, event: React.PointerEvent<HTMLSpanElement>) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = columnWidths[key];
+    // The width being dragged to, tracked here so the drag can be saved on release without a
+    // write to localStorage on every pointer move.
+    let latest = startWidth;
+    const onMove = (move: PointerEvent) => {
+      latest = Math.max(MIN_COLUMN_WIDTH, startWidth + move.clientX - startX);
+      setColumnWidths((current) => ({ ...current, [key]: latest }));
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      saveColumnWidths({ ...columnWidths, [key]: latest });
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
 
   const reloadCourses = () => {
     setIsLoading(true);
@@ -836,6 +1024,7 @@ export default function TrainingRecord() {
           preTestPassPercent: percent(record.preTestPassCount, record.attendedCount),
           evaluationCompleted: record.evaluationCompletedCount,
           evaluationTotal: record.attendedCount,
+          evaluationAfter30Day: record.evaluationAfter30Day,
           averageScore: 0,
           attendees: record.attendees
             .filter((attendee) => attendee.attended)
@@ -846,9 +1035,11 @@ export default function TrainingRecord() {
               employeeCode: attendee.employeeCode,
               userId: attendee.employeeUserId,
               department: attendee.department,
+              orgUnit: attendee.orgUnit,
               position: attendee.position,
               prePost: prePostOf(attendee),
               evaluation: evaluationStateOf(record.evaluation, attendee.evaluationCompleted),
+              reviewer: attendee.reviewer,
             })),
         };
       });
@@ -1653,16 +1844,34 @@ export default function TrainingRecord() {
             <div className={styles.attendeeTableCardWrap}>
               {filteredCourseAttendees.length > 0 ? (
                 <table className={styles.attendeeEmployeeTable}>
+                  <colgroup>
+                    {ATTENDEE_COLUMNS.map((column) => (
+                      <col key={column.key} style={{ width: `${columnWidths[column.key]}px` }} />
+                    ))}
+                  </colgroup>
                   <thead>
                     <tr>
-                      <th>UserID</th>
-                      <th>พนักงาน (Employee)</th>
-                      <th>บริษัท & แผนก (Company / Dept)</th>
-                      <th>ตำแหน่ง (Position)</th>
-                      <th>ผล Pre / Post Test</th>
-                      <th>สถานะแบบประเมิน</th>
-                      <th>งบปันส่วนต่อคน</th>
-                      <th>จัดการ / Download</th>
+                      {ATTENDEE_COLUMNS.map((column) => (
+                        <th key={column.key} title={language === "th" ? column.th : column.en}>
+                          {language === "th" ? column.th : column.en}
+                          {/* The grab strip. It is the last column's too - dragging that one just
+                              makes the table wider, which the wrapper scrolls. */}
+                          <span
+                            className={styles.columnResizer}
+                            role="separator"
+                            aria-orientation="vertical"
+                            title="ลากเพื่อปรับความกว้าง · ดับเบิลคลิกเพื่อคืนค่าเดิม"
+                            onPointerDown={(event) => startColumnResize(column.key, event)}
+                            // A width is remembered, so there has to be a way back from one that
+                            // was dragged too narrow to read. Same gesture a spreadsheet uses.
+                            onDoubleClick={() => {
+                              const reset = { ...columnWidths, [column.key]: column.width };
+                              setColumnWidths(reset);
+                              saveColumnWidths(reset);
+                            }}
+                          />
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
@@ -1700,12 +1909,20 @@ export default function TrainingRecord() {
                             </div>
                           </td>
                           <td>
-                            <div className={styles.deptCell}>
-                              <span className={styles.companyPillBadge}>{attendee.company}</span>
-                              <span className={styles.attendeeDeptText}>{attendee.department}</span>
-                            </div>
+                            <span className={styles.companyPillBadge}>{attendee.company}</span>
                           </td>
-                          <td>
+                          {/* Four levels, four columns. A name too long for its column is cut with
+                              an ellipsis and shown in full on hover, so narrowing a column never
+                              hides which value is in it. */}
+                          {(["function", "division", "department", "section"] as const).map((level) => {
+                            const text = orgUnitText(attendee.orgUnit, level, language === "th");
+                            return (
+                              <td key={level} title={text || undefined}>
+                                <span className={styles.attendeeDeptText}>{text || "-"}</span>
+                              </td>
+                            );
+                          })}
+                          <td title={attendee.position || undefined}>
                             <span className={styles.positionText}>{attendee.position || "-"}</span>
                           </td>
                           <td>
@@ -1788,6 +2005,27 @@ export default function TrainingRecord() {
             </div>
 
             {downloadMessage ? <p className={styles.downloadMessage}>{downloadMessage}</p> : null}
+
+            {/* Only for a batch this system actually holds. A course imported from a spreadsheet has
+                no enrollment rows, so there is nobody to assign a reviewer to. */}
+            {selectedCourse.rollingId && selectedCourse.evaluationAfter30Day ? (
+              <ReviewerAssignmentPanel
+                // Remounts on batch change, so an unsaved basket never follows HRD to another batch.
+                key={selectedCourse.rollingId}
+                planId={selectedCourse.rollingId}
+                evaluation={selectedCourse.evaluationAfter30Day}
+                attendees={filteredCourseAttendees.map((attendee) => ({
+                  enrollmentId: attendee.id,
+                  name: attendee.name,
+                  employeeCode: attendee.employeeCode,
+                  orgUnit: attendee.orgUnit ?? EMPTY_ORG_UNIT,
+                  reviewer: attendee.reviewer ?? null,
+                }))}
+                // The save returns the updated record, but the screen rebuilds a course out of a
+                // training record AND its rolling plan, so a reload is the honest way to show it.
+                onSaved={() => void reloadCourses()}
+              />
+            ) : null}
           </section>
 
           {/* Scoped to the selected batch by construction: rendered inside the batch detail, and

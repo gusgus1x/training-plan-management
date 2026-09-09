@@ -264,14 +264,14 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
     setLoadError(null);
     setAccessDenied(false);
 
-    // The enrollment record carries the course name; the URL only has raw ids. Loaded alongside
-    // the form itself rather than blocking on it - an employee with no matching enrollment (not
-    // theirs, or mistyped id) gets a clear refusal instead of a title-less form.
-    const loadCourseTitle = listEnrollments({ planId: null, employeeId: null, employeeUserId: null }).then((result) => {
-      const match = result.enrollments.find((e) => e.id === enrollmentId);
-      if (!match) throw new TrainingFormsClientError("FORBIDDEN");
-      return match.plan.courseName;
-    });
+    // The enrollment record carries the course name; the URL only has raw ids. A caller with no
+    // matching enrollment simply gets no title: the supervisor filling in somebody else's 30-day
+    // follow-up is not enrolled on that course and never will be, and treating that as a refusal
+    // locked them out of a form the server had already agreed to hand over. Access is the form
+    // request's decision, which enforces it against the assignment as well as the enrolment.
+    const loadCourseTitle = listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
+      .then((result) => result.enrollments.find((e) => e.id === enrollmentId)?.plan.courseName ?? "")
+      .catch(() => "");
 
     const loadForm = kind === "assessment" ? readAssessment(enrollmentId, stage as GradedStage) : readEvaluation(enrollmentId, stage as "EVALUATION" | "EVALUATION_30DAY");
 

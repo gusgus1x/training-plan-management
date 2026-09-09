@@ -706,6 +706,79 @@
   padding: 2px 6px;
 }
 
+/* The two headline facts: the best score ever reached, and how many times the test was sat. Two
+   equal cards rather than a sentence, because they answer two different questions. */
+.reviewSummaryRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.reviewSummaryCard {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 10px;
+  background: var(--ui-60-surface-soft);
+}
+
+.reviewSummaryCard span {
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.reviewSummaryCard strong {
+  font-size: 1.35rem;
+}
+
+.reviewSummaryCard em {
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-style: normal;
+}
+
+/* One chip per released attempt. The starred one is the best; the pressed one is what is on screen. */
+.attemptSwitch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.attemptChip,
+.attemptChipOn {
+  padding: 4px 12px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 999px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.attemptChipOn {
+  border-color: var(--ui-30-primary);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+}
+
+/* The provisional warning. Amber rather than red: nothing is wrong, the marking is simply not
+   finished, and a red box would read as a failure. */
+.provisionalNote {
+  margin: -4px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
 .reviewScore {
   display: flex;
   align-items: baseline;

@@ -17,6 +17,7 @@ import {
 } from "../AuthenticatedUserContext";
 import { useToast } from "../ToastHost";
 import { useUiLanguage } from "../ThaiUiLocalization";
+import AssignedEvaluations from "./AssignedEvaluations";
 import ModuleHeader from "./ModuleHeader";
 import styles from "./RecordModule.module.css";
 
@@ -468,14 +469,42 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
   /** The employee's own marked paper. Loaded on demand rather than with the record list: most
    *  people never open it, and it is one request per test per course. */
   const [reviewPanel, setReviewPanel] = useState<
-    { title: string; loading: boolean; review: AssessmentReview | null; failed: boolean } | null
+    | {
+        title: string;
+        loading: boolean;
+        review: AssessmentReview | null;
+        failed: boolean;
+        /** Kept so switching attempt can reload without the caller passing it all again. */
+        target: { targetEnrollmentId: string; stage: GradedStage };
+      }
+    | null
   >(null);
 
-  const openReview = (targetEnrollmentId: string, stage: GradedStage, title: string) => {
-    setReviewPanel({ title, loading: true, review: null, failed: false });
-    readAssessmentReview(targetEnrollmentId, stage)
-      .then((result) => setReviewPanel({ title, loading: false, review: result.review, failed: false }))
-      .catch(() => setReviewPanel({ title, loading: false, review: null, failed: true }));
+  /**
+   * Opens the marked paper. Without an attempt number the server answers with the best-scoring one,
+   * which is the attempt that matters to the person reading; the panel then lists every released
+   * attempt so they can look at the others.
+   */
+  const openReview = (
+    targetEnrollmentId: string,
+    stage: GradedStage,
+    title: string,
+    attemptNo: number | null = null,
+  ) => {
+    setReviewPanel({ title, loading: true, review: null, failed: false, target: { targetEnrollmentId, stage } });
+    readAssessmentReview(targetEnrollmentId, stage, attemptNo)
+      .then((result) =>
+        setReviewPanel({
+          title,
+          loading: false,
+          review: result.review,
+          failed: false,
+          target: { targetEnrollmentId, stage },
+        }),
+      )
+      .catch(() =>
+        setReviewPanel({ title, loading: false, review: null, failed: true, target: { targetEnrollmentId, stage } }),
+      );
   };
 
   const reloadEnrollments = () => {
@@ -635,6 +664,10 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
           </div>
         </div>
       </section>
+
+      {/* Renders nothing unless HRD has asked this person to evaluate somebody, so it is invisible
+          to everyone who is not a supervisor. */}
+      <AssignedEvaluations />
 
       {/* 2. Navigation Tabs Bar */}
       <div className={styles.tabBar} role="tablist" aria-label="Training Record Workspace Tabs">
@@ -1118,18 +1151,117 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
               </p>
             ) : (
               <>
+                {/* Two facts first, because they are what the person came to find: the best they
+                    have scored, and how many times they have sat it. The attempt being read is a
+                    third thing, and only differs from the best when they choose another one. */}
+                <div className={styles.reviewSummaryRow}>
+                  {(() => {
+                    const best =
+                      reviewPanel.review.attempts.find(
+                        (attempt) => attempt.attemptNo === reviewPanel.review!.bestAttemptNo,
+                      ) ?? null;
+                    // An unreleased best shows the auto-marked part instead of a final it does not
+                    // have yet, and says so - a number labelled as final that later moves is worse
+                    // than no number at all.
+                    const bestScore = !best
+                      ? "-"
+                      : best.resultsPublished
+                        ? `${best.totalAwarded} / ${best.totalPossible}`
+                        : `${best.autoAwarded} / ${best.autoPossible}`;
+                    return (
+                      <div className={styles.reviewSummaryCard}>
+                        <span>
+                          {best && !best.resultsPublished
+                            ? t("คะแนนข้อกาสูงสุด (ยังไม่รวมข้อเขียน)", "Best auto-marked score")
+                            : t("คะแนนสูงสุดที่เคยทำได้", "Best score")}
+                        </span>
+                        <strong>{bestScore}</strong>
+                        <em>
+                          {best
+                            ? t(`ครั้งที่ ${best.attemptNo}`, `Attempt ${best.attemptNo}`) +
+                              (best.resultsPublished ? ` · ${best.scorePercent ?? 0}%` : "")
+                            : ""}
+                        </em>
+                      </div>
+                    );
+                  })()}
+                  <div className={styles.reviewSummaryCard}>
+                    <span>{t("จำนวนครั้งที่ทำ", "Attempts taken")}</span>
+                    <strong>{reviewPanel.review.attempts.length}</strong>
+                    <em>
+                      {(() => {
+                        const waiting = reviewPanel.review!.attempts.filter(
+                          (attempt) => !attempt.resultsPublished,
+                        ).length;
+                        return waiting === 0
+                          ? t("ประกาศผลครบแล้ว", "All results released")
+                          : t(`รอผลอีก ${waiting} ครั้ง`, `${waiting} awaiting a result`);
+                      })()}
+                    </em>
+                  </div>
+                </div>
+
+                {reviewPanel.review.attempts.length > 1 ? (
+                  <div className={styles.attemptSwitch}>
+                    {reviewPanel.review.attempts.map((attempt) => (
+                      <button
+                        key={attempt.submissionId}
+                        type="button"
+                        className={
+                          attempt.attemptNo === reviewPanel.review!.attemptNo
+                            ? styles.attemptChipOn
+                            : styles.attemptChip
+                        }
+                        onClick={() =>
+                          openReview(
+                            reviewPanel.target.targetEnrollmentId,
+                            reviewPanel.target.stage,
+                            reviewPanel.title,
+                            attempt.attemptNo,
+                          )
+                        }
+                      >
+                        {t(`ครั้งที่ ${attempt.attemptNo}`, `Attempt ${attempt.attemptNo}`)} ·{" "}
+                        {attempt.resultsPublished
+                          ? `${attempt.totalAwarded}/${attempt.totalPossible}`
+                          : `${attempt.autoAwarded}/${attempt.autoPossible}*`}
+                        {attempt.attemptNo === reviewPanel.review!.bestAttemptNo ? " ★" : ""}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+
                 <div className={styles.reviewScore}>
                   <strong>
-                    {reviewPanel.review.totalAwarded} / {reviewPanel.review.totalPossible}
+                    {reviewPanel.review.resultsPublished
+                      ? `${reviewPanel.review.totalAwarded} / ${reviewPanel.review.totalPossible}`
+                      : `${reviewPanel.review.autoAwarded} / ${reviewPanel.review.autoPossible}`}
                   </strong>
                   <span>
-                    {reviewPanel.review.scorePercent ?? 0}% ·{" "}
+                    {t(`ครั้งที่ ${reviewPanel.review.attemptNo}`, `Attempt ${reviewPanel.review.attemptNo}`)}
+                    {reviewPanel.review.resultsPublished ? ` · ${reviewPanel.review.scorePercent ?? 0}%` : ""} ·{" "}
                     {t(`เกณฑ์ผ่าน ${reviewPanel.review.passingScorePercent}%`, `Pass mark ${reviewPanel.review.passingScorePercent}%`)}
                   </span>
-                  <em data-pass={reviewPanel.review.passStatus === "PASS"}>
-                    {reviewPanel.review.passStatus === "PASS" ? t("ผ่าน", "Pass") : t("ไม่ผ่าน", "Fail")}
-                  </em>
+                  {reviewPanel.review.resultsPublished ? (
+                    <em data-pass={reviewPanel.review.passStatus === "PASS"}>
+                      {reviewPanel.review.passStatus === "PASS" ? t("ผ่าน", "Pass") : t("ไม่ผ่าน", "Fail")}
+                    </em>
+                  ) : (
+                    <em data-pass={false}>{t("รอผล", "Awaiting result")}</em>
+                  )}
                 </div>
+
+                {/* Says plainly that this is not the whole score and how much is still in play, so
+                    the number cannot be mistaken for a final one - and so the person can see how
+                    much the auto-marked questions alone would have to carry. */}
+                {!reviewPanel.review.resultsPublished ? (
+                  <p className={styles.provisionalNote}>
+                    {t(
+                      `ยังไม่ใช่คะแนนสมบูรณ์ นี่คือคะแนนเฉพาะข้อที่ระบบตรวจเองได้ ยังมีข้อเขียนรอ HRD ตรวจอีก ${reviewPanel.review.writtenPendingScore} คะแนน`,
+                      `Not the final score. This counts only the questions marked automatically; ${reviewPanel.review.writtenPendingScore} marks of written answers are still with HRD.`,
+                    )}
+                  </p>
+                ) : null}
 
                 {reviewPanel.review.missedQuestions.length === 0 ? (
                   <p className={styles.reviewNote}>🎉 {t("ตอบถูกทุกข้อ", "Every question correct")}</p>

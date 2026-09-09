@@ -1,6 +1,6 @@
 import type { AuthenticatedPrincipal } from "../auth/types";
 import { trainingRecordRepository, type TrainingRecordRepository } from "./repository";
-import type { SaveExpensesInput, SaveResultsInput } from "./types";
+import type { SaveExpensesInput, SaveResultsInput, SaveReviewersInput } from "./types";
 
 export type TrainingRecordService = ReturnType<typeof createTrainingRecordService>;
 export const createTrainingRecordService = (repository: TrainingRecordRepository = trainingRecordRepository) => ({
@@ -11,6 +11,10 @@ export const createTrainingRecordService = (repository: TrainingRecordRepository
     repository.saveResults(planId, input, companyId),
   getCostBreakdown: (planId: string, principal: AuthenticatedPrincipal) =>
     repository.getCostBreakdown(planId, principal),
+  listReviewerCandidates: (search: string, companyId: string | null) =>
+    repository.listReviewerCandidates(search, companyId),
+  saveTrainingReviewers: (planId: string, input: SaveReviewersInput, userId: string, companyId: string | null) =>
+    repository.saveReviewers(planId, input, userId, companyId),
 });
 
 export const trainingRecordService = createTrainingRecordService();

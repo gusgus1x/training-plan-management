@@ -429,6 +429,8 @@ model employee {
   organization_function                                                          organization_function?      @relation(fields: [function_id], references: [function_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_employee_organization_function_function_id")
   position                                                                       position?                   @relation(fields: [position_id], references: [position_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_employee_position_position_id")
   section                                                                        section?                    @relation(fields: [section_id], references: [section_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_employee_section_section_id")
+  evaluation_submission_respondent                                               evaluation_submission[]     @relation("evaluation_submission_respondent")
+  training_evaluation_reviewer_reviewer                                          training_evaluation_reviewer[] @relation("training_evaluation_reviewer_reviewer")
   training_certificate_file_training_certificate_file_employee_user_idToemployee training_certificate_file[] @relation("training_certificate_file_employee_user_idToemployee")
   training_enrollment_training_enrollment_employee_user_idToemployee             training_enrollment[]       @relation("training_enrollment_employee_user_idToemployee")
   training_need_request_training_need_request_employee_user_idToemployee         training_need_request[]     @relation("training_need_request_employee_user_idToemployee")
@@ -579,12 +581,34 @@ model evaluation_submission {
   status                   String              @default("N'IN_PROGRESS'", map: "DF_evaluation_submission_status") @db.NVarChar(20)
   started_at               DateTime?
   submitted_at             DateTime?
+  /** Who answered: the enrollment's own employee, or the supervisor asked to evaluate them.
+   *  Backfilled from the enrollment for every row predating the supervisor feature. */
+  respondent_user_id       String              @db.NVarChar(50)
   evaluation_answer        evaluation_answer[]
   evaluation_form          evaluation_form     @relation(fields: [evaluation_form_id], references: [evaluation_form_id], onUpdate: NoAction, map: "FK_evaluation_submission_evaluation_form_evaluation_form_id")
   training_enrollment      training_enrollment @relation(fields: [enrollment_id], references: [enrollment_id], onUpdate: NoAction, map: "FK_V6F088_evaluation_submission_enrollment_id")
+  respondent               employee            @relation("evaluation_submission_respondent", fields: [respondent_user_id], references: [user_id], onUpdate: NoAction, map: "FK_evaluation_submission_respondent_user_id")
 
-  @@unique([evaluation_form_id, enrollment_id], map: "UQ_evaluation_submission_evaluation_form_id_enrollment_id")
+  @@unique([evaluation_form_id, enrollment_id, respondent_user_id], map: "UQ_evaluation_submission_form_enrollment_respondent")
   @@index([enrollment_id], map: "IX_evaluation_submission_enrollment_id")
+}
+
+/// Who HRD asked to evaluate one attendee's training. enrollment_id is the primary key, so one
+/// attendee can only ever have one reviewer; a reviewer covering several attendees is just the same
+/// reviewer_user_id on several rows. `opened_at` records the first time the reviewer opened the
+/// form or followed the link - it is never a completion record, and for a LINK course it is the
+/// only signal this system can ever have.
+model training_evaluation_reviewer {
+  enrollment_id       BigInt              @id(map: "PK_training_evaluation_reviewer")
+  reviewer_user_id    String              @db.NVarChar(50)
+  assigned_by         BigInt
+  assigned_at         DateTime            @default(dbgenerated("sysdatetime()"), map: "DF_training_evaluation_reviewer_assigned_at")
+  opened_at           DateTime?
+  training_enrollment training_enrollment @relation(fields: [enrollment_id], references: [enrollment_id], onUpdate: NoAction, map: "FK_training_evaluation_reviewer_enrollment_id")
+  reviewer            employee            @relation("training_evaluation_reviewer_reviewer", fields: [reviewer_user_id], references: [user_id], onUpdate: NoAction, map: "FK_training_evaluation_reviewer_reviewer_user_id")
+  assigner            user_account        @relation(fields: [assigned_by], references: [user_id], onUpdate: NoAction, map: "FK_training_evaluation_reviewer_assigned_by")
+
+  @@index([reviewer_user_id], map: "IX_training_evaluation_reviewer_reviewer_user_id")
 }
 
 model instructor {
@@ -708,6 +732,7 @@ model training_enrollment {
   assessment_submission     assessment_submission[]
   attendance                attendance?
   evaluation_submission     evaluation_submission[]
+  training_evaluation_reviewer training_evaluation_reviewer?
   training_certificate_file training_certificate_file[]
   employee                  employee                    @relation("training_enrollment_employee_user_idToemployee", fields: [employee_user_id], references: [user_id], onUpdate: NoAction, map: "FK_training_enrollment_employee_user_id")
   user_account              user_account?               @relation(fields: [approved_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_V6F058_training_enrollment_approved_by")
@@ -961,6 +986,7 @@ model user_account {
   notification                                                                               notification[]
   training_certificate_file                                                                  training_certificate_file[]
   training_enrollment                                                                        training_enrollment[]
+  training_evaluation_reviewer                                                               training_evaluation_reviewer[]
   training_expense                                                                           training_expense[]
   training_need_request                                                                      training_need_request[]
   training_plan_training_plan_created_byTouser_account                                       training_plan[]                    @relation("training_plan_created_byTouser_account")

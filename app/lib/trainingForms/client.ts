@@ -3,11 +3,14 @@
 import type {
   AssessmentForEmployee,
   AssessmentReview,
+  AssignedEvaluation,
   EvaluationForEmployee,
+  EvaluationRespondentGroup,
   EvaluationSummary,
   GradeSubmissionInput,
   GradedStage,
   PendingGradingSubmission,
+  SubmissionReview,
   SetStageClosedInput,
   StageSetting,
   SubmissionSummary,
@@ -60,12 +63,20 @@ export const readAssessment = async (enrollmentId: string, stage: GradedStage, f
     }),
   );
 
-export const readAssessmentReview = async (enrollmentId: string, stage: GradedStage, fetcher: Fetcher = fetch) =>
+export const readAssessmentReview = async (
+  enrollmentId: string,
+  stage: GradedStage,
+  /** Which attempt to open. Null asks for the best-scoring one, which is what the panel opens on. */
+  attemptNo: number | null = null,
+  fetcher: Fetcher = fetch,
+) =>
   read<{ review: AssessmentReview | null }>(
-    await fetcher(`/api/training-plan/enrollments/${enrollmentId}/assessments/${stage}/review`, {
-      credentials: "include",
-      cache: "no-store",
-    }),
+    await fetcher(
+      `/api/training-plan/enrollments/${enrollmentId}/assessments/${stage}/review${
+        attemptNo === null ? "" : `?attempt=${attemptNo}`
+      }`,
+      { credentials: "include", cache: "no-store" },
+    ),
   );
 
 export const submitAssessment = async (
@@ -118,10 +129,11 @@ export const gradeSubmission = async (
 export const readEvaluationSummary = async (
   planId: string,
   timing: "EVALUATION" | "EVALUATION_30DAY",
+  respondents: EvaluationRespondentGroup = "EMPLOYEE",
   fetcher: Fetcher = fetch,
 ) =>
   read<{ summary: EvaluationSummary | null }>(
-    await fetcher(`/api/training-plan/training-records/${planId}/evaluations/${timing}`, {
+    await fetcher(`/api/training-plan/training-records/${planId}/evaluations/${timing}?respondents=${respondents}`, {
       credentials: "include",
       cache: "no-store",
     }),
@@ -140,4 +152,22 @@ export const listPlanStageSettings = async (planId: string, fetcher: Fetcher = f
 export const setStageClosed = async (planId: string, input: SetStageClosedInput, fetcher: Fetcher = fetch) =>
   read<{ closed: boolean }>(
     await fetcher(`/api/training-plan/training-records/${planId}/form-settings`, json("PUT", input)),
+  );
+
+export const listAssignedEvaluations = async (fetcher: Fetcher = fetch) =>
+  read<{ assignedEvaluations: AssignedEvaluation[] }>(
+    await fetcher("/api/training-plan/assigned-evaluations", { credentials: "include", cache: "no-store" }),
+  );
+
+export const markAssignedEvaluationOpened = async (enrollmentId: string, fetcher: Fetcher = fetch) =>
+  read<{ opened: true }>(
+    await fetcher("/api/training-plan/assigned-evaluations", json("POST", { enrollmentId })),
+  );
+
+export const readSubmissionReview = async (planId: string, submissionId: string, fetcher: Fetcher = fetch) =>
+  read<{ review: SubmissionReview }>(
+    await fetcher(`/api/training-plan/training-records/${planId}/submissions/${submissionId}`, {
+      credentials: "include",
+      cache: "no-store",
+    }),
   );

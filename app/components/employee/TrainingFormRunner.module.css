@@ -1,8 +1,11 @@
+/* The form was built for a phone, where a QR scan lands, and kept the same narrow column on a
+   desktop - which read as a phone screen dropped into the middle of a monitor. The column now grows
+   with the window up to a comfortable reading width and still collapses to full width on a phone. */
 .page {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  max-width: 760px;
+  width: min(1120px, 100%);
   margin: 0 auto;
   padding: 24px 20px 60px;
 }
@@ -319,9 +322,12 @@
   box-shadow: 0 0 0 3px var(--ui-focus-ring);
 }
 
+/* On a wide card the buttons spread across the row instead of huddling at the left edge, which is
+   also a bigger target. They keep their old size once the row is narrow enough to fill. */
 .ratingRow {
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .ratingBtn {
@@ -330,7 +336,9 @@
   background: var(--ui-60-surface);
   color: var(--ui-30-muted);
   border-radius: 8px;
-  width: 38px;
+  flex: 1 1 38px;
+  max-width: 96px;
+  min-width: 38px;
   height: 38px;
   font-weight: 900;
   cursor: pointer;

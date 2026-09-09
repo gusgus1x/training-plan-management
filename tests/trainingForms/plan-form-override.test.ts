@@ -61,9 +61,10 @@ const buildDb = (planOverrides: {
       }),
     },
     assessment_submission: {
-      findFirst: async ({ where }: { where: { assessment_id: bigint } }) => {
+      // The review reads every released attempt, so the fake answers with a list.
+      findMany: async ({ where }: { where: { assessment_id: bigint } }) => {
         asked.assessmentId = where.assessment_id;
-        return null;
+        return [];
       },
     },
   };

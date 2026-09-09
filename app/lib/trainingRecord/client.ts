@@ -2,8 +2,10 @@
 
 import type {
   CostBreakdown,
+  ReviewerCandidate,
   SaveExpensesInput,
   SaveResultsInput,
+  SaveReviewersInput,
   TrainingRecordSummary,
 } from "./types";
 
@@ -50,6 +52,22 @@ export const saveTrainingRecordExpenses = async (planId: string, input: SaveExpe
 export const saveTrainingResults = async (planId: string, input: SaveResultsInput) => {
   const response = await fetch(
     `/api/training-plan/training-records/${planId}/results`,
+    jsonInit("PUT", input),
+  );
+  return parseApiResponse<{ trainingRecord: TrainingRecordSummary }>(response);
+};
+
+export const searchReviewerCandidates = async (planId: string, search: string) => {
+  const response = await fetch(
+    `/api/training-plan/training-records/${planId}/reviewers?search=${encodeURIComponent(search)}`,
+    { credentials: "include", cache: "no-store" },
+  );
+  return parseApiResponse<{ candidates: ReviewerCandidate[] }>(response);
+};
+
+export const saveTrainingReviewers = async (planId: string, input: SaveReviewersInput) => {
+  const response = await fetch(
+    `/api/training-plan/training-records/${planId}/reviewers`,
     jsonInit("PUT", input),
   );
   return parseApiResponse<{ trainingRecord: TrainingRecordSummary }>(response);

@@ -3497,10 +3497,48 @@
   scrollbar-gutter: stable;
 }
 
+/* table-layout: fixed is what makes the colgroup widths binding - without it the browser sizes
+   columns by content and a dragged width is ignored. The table is then as wide as its columns add
+   up to, and .attendeeTableCardWrap scrolls it sideways. */
 .attendeeEmployeeTable {
-  width: 100%;
-  min-width: 920px;
+  width: max-content;
+  min-width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
+}
+
+/* A narrowed column cuts its text instead of pushing the column back out. The full value is on the
+   cell's title, so hovering still shows it. */
+.attendeeEmployeeTable td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attendeeEmployeeTable th {
+  position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The grab strip on a header's right edge. It sits inside the header rather than between headers so
+   there is nothing to line up, and it is 5px wide because a 1px border is not a target anyone can
+   hit. */
+.columnResizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 5px;
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+}
+
+.columnResizer:hover,
+.columnResizer:active {
+  background: var(--ui-30-primary-strong);
 }
 
 .attendeeEmployeeTable thead {
@@ -4516,9 +4554,211 @@
   padding: 10px 12px;
 }
 
-/* The name takes its own line so the five inputs below it always start from the left edge. */
-.actualResultWho {
+/* The attempts card: one attendee, both stages, every paper they handed in. */
+.attemptsOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.attemptsCard {
+  width: min(720px, 100%);
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 20px 22px;
+  border-radius: 14px;
+  background: var(--ui-60-surface);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+
+.attemptsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.attemptsHeader h3 {
+  margin: 2px 0 0;
+  font-size: 1.05rem;
+}
+
+.attemptsKicker {
+  margin: 0;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ui-30-muted);
+}
+
+.attemptsClose {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.attemptsTabs {
+  display: flex;
+  gap: 8px;
+  margin: 14px 0 10px;
+  flex-wrap: wrap;
+}
+
+.attemptsTab,
+.attemptsTabOn {
+  padding: 6px 14px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 999px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.attemptsTabOn {
+  border-color: var(--ui-30-primary);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+}
+
+/* The two headline facts, one card each, because they answer two different questions. */
+.attemptsSummaryRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.attemptsSummaryCard {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 10px;
+  background: var(--ui-60-surface-soft);
+}
+
+.attemptsSummaryCard span {
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.attemptsSummaryCard strong {
+  font-size: 1.3rem;
+}
+
+.attemptsSummaryCard em {
+  color: var(--ui-30-muted);
+  font-size: 0.7rem;
+  font-style: normal;
+}
+
+.attemptsEmpty {
+  margin: 0;
+  padding: 20px 0;
+  color: var(--ui-30-muted);
+  font-size: 0.8rem;
+}
+
+.attemptsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.attemptsRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 10px;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+.attemptsRow:hover {
+  border-color: var(--ui-30-primary);
+  background: var(--ui-30-primary-soft);
+}
+
+.attemptsGo {
+  color: var(--ui-30-primary-strong);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* Links to the marked-up paper, one per stage that has one. They sit on their own line so a long
+   attempt label never squeezes the score boxes. */
+.resultReviewLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
   flex: 1 1 100%;
+}
+
+.resultReviewLink {
+  padding: 3px 10px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 999px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-primary-strong);
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.resultReviewLink:hover {
+  border-color: var(--ui-30-primary);
+  background: var(--ui-30-primary-soft);
+}
+
+/* The pass tick leads the row, like the attendance sheet's. It sits on the same line as the name,
+   so the eye reads "who, and did they pass" before any of the score boxes below. */
+.actualResultRow .resultPassLead {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  /* A fixed track so "ผ่าน" and "ไม่ผ่าน" take the same room. Sized to the wider of the two, or the
+     name beside it shifts every time the tick is clicked. */
+  flex: 0 0 124px;
+  align-self: center;
+  color: var(--ui-30-text);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+
+/* The global input rule stretches a checkbox across its whole cell without a fixed size. */
+.actualResultRow .resultPassLead input {
+  min-height: 0;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  flex: 0 0 auto;
+}
+
+/* The name shares the first line with the tick and still pushes the inputs onto the next one.
+   min-width:0 is what lets it shrink instead of running under the badge beside it. */
+.actualResultWho {
+  flex: 1 1 240px;
   min-width: 0;
 }
 
@@ -4550,14 +4790,11 @@
   text-transform: uppercase;
 }
 
-/* The two score boxes never need to grow; the certificate number is the one that benefits. */
-.actualResultRow label:nth-of-type(1),
-.actualResultRow label:nth-of-type(2) {
-  flex: 0 1 78px;
-}
-
-.actualResultRow label:nth-of-type(4) {
-  flex: 2 1 140px;
+/* The two score boxes are the same size as each other and never grow. Targeted by class rather than
+   by nth-of-type: the pass tick is a label too, so counting position made Pre and Post pick up the
+   widths meant for their neighbours the moment the tick moved to the front of the row. */
+.actualResultRow .resultScoreField {
+  flex: 0 0 92px;
 }
 
 /* The pass/fail checkbox borrows attendanceCheckLabel's flex-row layout wholesale - it must win

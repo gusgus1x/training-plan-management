@@ -19,6 +19,7 @@ import {
   emptyEnrollmentStage,
   type EnrollmentAssessmentInfo,
   type EnrollmentRecord,
+  type EnrollmentStageInfo,
 } from "../../../../lib/trainingEnrollment/types";
 import {
   getCostBreakdown,
@@ -285,6 +286,8 @@ type GradeDraft = Record<string, { scoreAwarded: string; reviewComment: string }
  */
 const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (enrollmentId: string) => void }) => {
   const toast = useToast();
+  const { language } = useUiLanguage();
+  const t = (th: string, en: string) => (language === "th" ? th : en);
   const [submissions, setSubmissions] = useState<PendingGradingSubmission[] | null>(null);
   const [drafts, setDrafts] = useState<Record<string, GradeDraft>>({});
   const [savingSubmissionId, setSavingSubmissionId] = useState<string | null>(null);
@@ -327,11 +330,11 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
     setSavingSubmissionId(submission.submissionId);
     try {
       await gradeSubmission(planId, submission.submissionId, { answers });
-      toast.success(`บันทึกคะแนนของ ${submission.employeeName} แล้ว`);
+      toast.success(t(`บันทึกคะแนนของ ${submission.employeeName} แล้ว`, `Marks saved for ${submission.employeeName}`));
       load();
       onGraded(submission.enrollmentId);
     } catch {
-      toast.error("บันทึกคะแนนไม่สำเร็จ กรุณาลองใหม่");
+      toast.error(t("บันทึกคะแนนไม่สำเร็จ กรุณาลองใหม่", "Could not save the marks. Please try again."));
     } finally {
       setSavingSubmissionId(null);
     }
@@ -341,11 +344,11 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
     setSavingSubmissionId(submission.submissionId);
     try {
       await publishSubmissionResults(planId, submission.submissionId);
-      toast.success(`ประกาศผลของ ${submission.employeeName} แล้ว`);
+      toast.success(t(`ประกาศผลของ ${submission.employeeName} แล้ว`, `Result released for ${submission.employeeName}`));
       load();
       onGraded(submission.enrollmentId);
     } catch {
-      toast.error("ประกาศผลไม่สำเร็จ กรุณาลองใหม่");
+      toast.error(t("ประกาศผลไม่สำเร็จ กรุณาลองใหม่", "Could not release the result. Please try again."));
     } finally {
       setSavingSubmissionId(null);
     }
@@ -369,10 +372,10 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
     <section className={styles.actualResultsPanel} aria-label="Pending written-answer grading" style={{ marginBottom: "16px" }}>
       <div className={styles.actualResultsHeader}>
         <div>
-          <span>รอตรวจ / รอประกาศผล</span>
+          <span>{t("รอตรวจ / รอประกาศผล", "Awaiting marking or release")}</span>
           <strong>Pending Grading &amp; Release</strong>
         </div>
-        <small>{groups.length} คน · {submissions.length} รายการ</small>
+        <small>{t(`${groups.length} คน · ${submissions.length} รายการ`, `${groups.length} people · ${submissions.length} papers`)}</small>
       </div>
 
       {/* Not .actualResultsRows: that one caps at 420px and scrolls inside itself, which suited a
@@ -397,18 +400,20 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
               <small>{group.code || "-"}</small>
             </span>
             <span className={styles.gradingGroupTags}>
-              {toGrade > 0 ? <em data-tone="grade">รอตรวจ {toGrade}</em> : null}
-              {toRelease > 0 ? <em data-tone="release">รอประกาศผล {toRelease}</em> : null}
+              {toGrade > 0 ? <em data-tone="grade">{t(`รอตรวจ ${toGrade}`, `${toGrade} to mark`)}</em> : null}
+              {toRelease > 0 ? <em data-tone="release">{t(`รอประกาศผล ${toRelease}`, `${toRelease} to release`)}</em> : null}
             </span>
           </button>
 
           {isOpen ? group.rows.map((submission) => (
           <div key={submission.submissionId} className={styles.gradingSubmission}>
             <div className={styles.actualResultWho}>
-              <strong>{submission.stage === "PRE_TEST" ? "แบบทดสอบก่อนอบรม (Pre Test)" : "แบบทดสอบหลังอบรม (Post Test)"}</strong>
+              <strong>{submission.stage === "PRE_TEST" ? t("แบบทดสอบก่อนอบรม", "Pre test") : t("แบบทดสอบหลังอบรม", "Post test")}</strong>
               <small>
-                ครั้งที่ {submission.attemptNo} ·{" "}
-                {submission.awaitingPublication ? "ตรวจแล้ว รอประกาศผล" : `รอตรวจ ${submission.pendingAnswers.length} ข้อ`}
+                {t(`ครั้งที่ ${submission.attemptNo}`, `Attempt ${submission.attemptNo}`)} ·{" "}
+                {submission.awaitingPublication
+                  ? t("ตรวจแล้ว รอประกาศผล", "Marked, awaiting release")
+                  : t(`รอตรวจ ${submission.pendingAnswers.length} ข้อ`, `${submission.pendingAnswers.length} to mark`)}
               </small>
             </div>
 
@@ -417,10 +422,10 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
               return (
                 <div key={answer.answerId} className={styles.gradingAnswer}>
                   <span className={styles.gradingQuestion}>{answer.questionText}</span>
-                  <p className={styles.gradingAnswerText}>{answer.answerText || "(ไม่มีคำตอบ)"}</p>
+                  <p className={styles.gradingAnswerText}>{answer.answerText || t("(ไม่มีคำตอบ)", "(no answer)")}</p>
                   <div className={styles.gradingInputs}>
                     <label>
-                      <span>คะแนน</span>
+                      <span>{t("คะแนน", "Mark")}</span>
                       <input
                         type="number"
                         min={0}
@@ -432,7 +437,7 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
                     </label>
                     <input
                       type="text"
-                      placeholder="ความเห็นถึงผู้เรียน (ถ้ามี)"
+                      placeholder={t("ความเห็นถึงผู้เรียน (ถ้ามี)", "Comment for the learner (optional)")}
                       value={entry.reviewComment}
                       onChange={(e) => setAnswerDraft(submission.submissionId, answer.answerId, { reviewComment: e.target.value })}
                     />
@@ -448,7 +453,9 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
                 disabled={savingSubmissionId === submission.submissionId}
                 onClick={() => void handlePublish(submission)}
               >
-                {savingSubmissionId === submission.submissionId ? "กำลังประกาศผล..." : "📣 ประกาศผลให้พนักงาน"}
+                {savingSubmissionId === submission.submissionId
+                  ? t("กำลังประกาศผล...", "Releasing...")
+                  : t("📣 ประกาศผลให้พนักงาน", "📣 Release to the employee")}
               </button>
             ) : (
               <button
@@ -457,7 +464,7 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
                 disabled={savingSubmissionId === submission.submissionId}
                 onClick={() => void handleSave(submission)}
               >
-                {savingSubmissionId === submission.submissionId ? "กำลังบันทึก..." : "บันทึกคะแนน"}
+                {savingSubmissionId === submission.submissionId ? t("กำลังบันทึก...", "Saving...") : t("บันทึกคะแนน", "Save marks")}
               </button>
             )}
           </div>
@@ -479,6 +486,14 @@ export default function TrainingActual() {
   const [draftAttendees, setDraftAttendees] = useState<EmployeeRecord[]>([]);
   const [isSavingDraftAttendees, setIsSavingDraftAttendees] = useState(false);
   const [resultDrafts, setResultDrafts] = useState<Record<string, ResultDraft>>({});
+  /** The attempts card: one attendee's papers for both stages, opened from their result row. */
+  const [attemptsCard, setAttemptsCard] = useState<{
+    enrollmentId: string;
+    name: string;
+    preTest: EnrollmentStageInfo;
+    postTest: EnrollmentStageInfo;
+  } | null>(null);
+  const [attemptsStage, setAttemptsStage] = useState<"preTest" | "postTest">("postTest");
   const [isSavingResults, setIsSavingResults] = useState(false);
   const noAssessment: EnrollmentAssessmentInfo = {
     preTest: emptyEnrollmentStage,
@@ -487,6 +502,9 @@ export default function TrainingActual() {
     evaluationAfter30Day: emptyEnrollmentStage,
   };
   const { language } = useUiLanguage();
+  /** Both strings at the call site rather than a dictionary key: this screen is read beside the
+   *  Thai paperwork it records, and a key would put the wording a file away from its use. */
+  const t = (th: string, en: string) => (language === "th" ? th : en);
   const [courses, setCourses] = useState<ActualCourse[]>([]);
   const [courseOwnerFilter, setCourseOwnerFilter] = useState<CourseOwnerFilter>("");
   const [selectedCourseGroupId, setSelectedCourseGroupId] = useState("");
@@ -827,7 +845,7 @@ export default function TrainingActual() {
       if (selectedCourse) await reloadCostBreakdown(selectedCourse.id);
     } catch (error) {
       console.error("Failed to update attendance", error);
-      toast.error("บันทึกการเช็คชื่อไม่สำเร็จ / Failed to update attendance");
+      toast.error(t("บันทึกการเช็คชื่อไม่สำเร็จ", "Failed to update attendance"));
     }
   };
 
@@ -843,7 +861,7 @@ export default function TrainingActual() {
       if (selectedCourse) await reloadCostBreakdown(selectedCourse.id);
     } catch (error) {
       console.error("Failed to update attendance", error);
-      toast.error("บันทึกการเช็คชื่อไม่สำเร็จ / Failed to update attendance");
+      toast.error(t("บันทึกการเช็คชื่อไม่สำเร็จ", "Failed to update attendance"));
     }
   };
 
@@ -896,7 +914,7 @@ export default function TrainingActual() {
   const saveDraftAttendees = async () => {
     if (!selectedCourse) return;
     if (draftAttendees.length === 0) {
-      toast.error("กรุณาค้นหาและเลือกพนักงานอย่างน้อย 1 คน / Search and select at least one employee");
+      toast.error(t("กรุณาค้นหาและเลือกพนักงานอย่างน้อย 1 คน", "Search and select at least one employee"));
       return;
     }
 
@@ -929,7 +947,12 @@ export default function TrainingActual() {
       await reloadEnrollments();
       setDraftAttendees([]);
       setIsAddingAttendee(false);
-      toast.success(`เพิ่มผู้เข้าอบรม ${added.length} คน เข้า ${selectedCourse.code} แล้ว / Added ${added.length} attendee(s)`);
+      toast.success(
+        t(
+          `เพิ่มผู้เข้าอบรม ${added.length} คน เข้า ${selectedCourse.code} แล้ว`,
+          `Added ${added.length} attendee(s) to ${selectedCourse.code}`,
+        ),
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save attendees");
     } finally {
@@ -1044,12 +1067,12 @@ export default function TrainingActual() {
       setSavedMessage(
         `Saved ${selectedCourse.code} with ${freshPresent} present attendees, total THB ${formatCurrency(expenseTotal)} (THB ${formatCurrency(freshPerPerson)}/person) at ${now}.`,
       );
-      toast.success("บันทึกข้อมูลการอบรมจริงแล้ว / Training actual saved");
+      toast.success(t("บันทึกข้อมูลการอบรมจริงแล้ว", "Training actual saved"));
     } catch (error) {
       console.error("Failed to save training actual", error);
       // Surface what the server said. A certificate clash or a completion without attendance is
       // something HRD can fix, but only if they are told which one it was.
-      toast.error(error instanceof Error ? error.message : "บันทึกไม่สำเร็จ / Could not save");
+      toast.error(error instanceof Error ? error.message : t("บันทึกไม่สำเร็จ", "Could not save"));
     } finally {
       setIsSavingResults(false);
     }
@@ -1088,7 +1111,7 @@ export default function TrainingActual() {
       >
         <div className={styles.courseSelectorControls}>
           <label className={styles.actualCourseSelect}>
-            <span>Step 1 — สิทธิ์หลักสูตร (Owner)</span>
+            <span>{t("Step 1 — สิทธิ์หลักสูตร", "Step 1 — Course owner")}</span>
             <select
               value={selectedCourseOwner}
               onChange={(event) => {
@@ -1098,14 +1121,14 @@ export default function TrainingActual() {
                 setSavedMessage("");
               }}
             >
-              {!isFactoryUser && <option value="">เลือกสิทธิ์ผู้จัด (Center / Factory)</option>}
-              {!isFactoryUser && <option value="CENTER">🏢 Center Standard (ส่วนกลาง)</option>}
-              <option value="FACTORY">🏭 Factory (โรงงาน {userCompanyCode || ""})</option>
+              {!isFactoryUser && <option value="">{t("เลือกสิทธิ์ผู้จัด (ส่วนกลาง / โรงงาน)", "Pick an owner (Center / Factory)")}</option>}
+              {!isFactoryUser && <option value="CENTER">{t("🏢 ส่วนกลาง (Center Standard)", "🏢 Center Standard")}</option>}
+              <option value="FACTORY">{t(`🏭 โรงงาน ${userCompanyCode || ""}`, `🏭 Factory ${userCompanyCode || ""}`)}</option>
             </select>
           </label>
 
           <label className={styles.actualCourseSelect}>
-            <span>Step 2 — เลือกหลักสูตร (Course)</span>
+            <span>{t("Step 2 — เลือกหลักสูตร", "Step 2 — Course")}</span>
             <select
               disabled={!selectedCourseOwner}
               value={selectedCourseGroupId}
@@ -1117,21 +1140,24 @@ export default function TrainingActual() {
             >
               <option value="">
                 {!selectedCourseOwner
-                  ? "กรุณาเลือกผู้จัดหลักสูตรก่อน"
+                  ? t("กรุณาเลือกผู้จัดหลักสูตรก่อน", "Pick a course owner first")
                   : availableCourseGroups.length > 0
-                    ? "เลือกหลักสูตรที่ต้องการเช็คชื่อและคำนวณเงิน"
-                    : `ไม่พบหลักสูตรในสิทธิ์ ${selectedCourseOwner}`}
+                    ? t("เลือกหลักสูตรที่ต้องการเช็คชื่อและคำนวณเงิน", "Pick the course to record attendance and cost for")
+                    : t(`ไม่พบหลักสูตรในสิทธิ์ ${selectedCourseOwner}`, `No course under ${selectedCourseOwner}`)}
               </option>
               {availableCourseGroups.map((group) => (
                 <option key={group.id} value={group.id}>
-                  [{group.code}] {group.title} — งบประมาณ THB {formatCurrency(parseMoney(group.sessions[0]?.budget))} ({group.sessions.length} รอบอบรม)
+                  {t(
+                    `[${group.code}] ${group.title} — งบประมาณ THB ${formatCurrency(parseMoney(group.sessions[0]?.budget))} (${group.sessions.length} รอบอบรม)`,
+                    `[${group.code}] ${group.title} — budget THB ${formatCurrency(parseMoney(group.sessions[0]?.budget))} (${group.sessions.length} session(s))`,
+                  )}
                 </option>
               ))}
             </select>
           </label>
 
           <label className={styles.actualCourseSelect}>
-            <span>Step 3 — รอบการอบรม (Training Session)</span>
+            <span>{t("Step 3 — รอบการอบรม", "Step 3 — Training session")}</span>
             <select
               disabled={!selectedCourseGroup}
               value={selectedCourseId}
@@ -1141,11 +1167,16 @@ export default function TrainingActual() {
               }}
             >
               <option value="">
-                {selectedCourseGroup ? "เลือกรอบการอบรมที่ดำเนินการแล้ว" : "กรุณาเลือกหลักสูตรก่อน"}
+                {selectedCourseGroup
+                  ? t("เลือกรอบการอบรมที่ดำเนินการแล้ว", "Pick a session that has already run")
+                  : t("กรุณาเลือกหลักสูตรก่อน", "Pick a course first")}
               </option>
               {availableSessions.map((session) => (
                 <option key={session.id} value={session.id}>
-                  Batch {session.batch ?? "1"} / วันที่ {session.date} ({session.time}) / ห้อง {session.room}
+                  {t(
+                    `รุ่นที่ ${session.batch ?? "1"} / วันที่ ${session.date} (${session.time}) / ห้อง ${session.room}`,
+                    `Batch ${session.batch ?? "1"} / ${session.date} (${session.time}) / room ${session.room}`,
+                  )}
                 </option>
               ))}
             </select>
@@ -1161,7 +1192,12 @@ export default function TrainingActual() {
               <div>
                 <div className={styles.heroBadgeRow}>
                   <b className={selectedCourse.owner === "CENTER" ? styles.systemSourceBadge : styles.uploadSourceBadge}>
-                    {selectedCourse.owner === "CENTER" ? "🏢 Center Standard" : `🏭 ${selectedCourse.ownerCompany ?? selectedCourse.company} Scope`}
+                    {selectedCourse.owner === "CENTER"
+                      ? t("🏢 ส่วนกลาง", "🏢 Center Standard")
+                      : t(
+                          `🏭 ${selectedCourse.ownerCompany ?? selectedCourse.company}`,
+                          `🏭 ${selectedCourse.ownerCompany ?? selectedCourse.company} Scope`,
+                        )}
                   </b>
                   <span className={styles.totalBadge}>
                     Batch <strong>{selectedCourse.batch ?? "1"}</strong>
@@ -1169,37 +1205,39 @@ export default function TrainingActual() {
                 </div>
                 <h3>{selectedCourse.title}</h3>
                 <span className={styles.courseMetaSubtext}>
-                  📌 รหัสหลักสูตร: <strong>{selectedCourse.code}</strong> | 🏢 บริษัท: <strong>{selectedCourse.company}</strong> | 📅 วันที่: <strong>{selectedCourse.date}</strong> ({selectedCourse.time})
+                  📌 {t("รหัสหลักสูตร", "Course code")}: <strong>{selectedCourse.code}</strong> | 🏢{" "}
+                  {t("บริษัท", "Company")}: <strong>{selectedCourse.company}</strong> | 📅 {t("วันที่", "Date")}:{" "}
+                  <strong>{selectedCourse.date}</strong> ({selectedCourse.time})
                 </span>
               </div>
 
               <div className={styles.actualMiniStats}>
                 <article>
-                  <span>📍 สถานที่ / ห้อง</span>
+                  <span>{t("📍 สถานที่ / ห้อง", "📍 Venue / room")}</span>
                   <strong>{selectedCourse.room}</strong>
                 </article>
                 <article>
-                  <span>👨‍🏫 วิทยากร</span>
+                  <span>{t("👨‍🏫 วิทยากร", "👨‍🏫 Instructor")}</span>
                   <strong>{selectedCourse.instructor}</strong>
                 </article>
                 <article className={styles.actualBudgetStat}>
-                  <span>💰 Planned Budget</span>
+                  <span>{t("💰 งบประมาณที่วางแผน", "💰 Planned budget")}</span>
                   <strong>THB {formatCurrency(plannedBudget)}</strong>
                 </article>
                 <article>
-                  <span>👥 ลงทะเบียน</span>
-                  <strong>{registeredCount} คน</strong>
+                  <span>{t("👥 ลงทะเบียน", "👥 Registered")}</span>
+                  <strong>{t(`${registeredCount} คน`, `${registeredCount}`)}</strong>
                 </article>
                 <article className={styles.actualBudgetStat}>
-                  <span>🟢 เข้าเรียนจริง</span>
-                  <strong>{actualCount} คน</strong>
+                  <span>{t("🟢 เข้าเรียนจริง", "🟢 Attended")}</span>
+                  <strong>{t(`${actualCount} คน`, `${actualCount}`)}</strong>
                 </article>
                 <article>
-                  <span>🔴 ขาดเรียน</span>
-                  <strong>{absentCount} คน</strong>
+                  <span>{t("🔴 ขาดเรียน", "🔴 Absent")}</span>
+                  <strong>{t(`${absentCount} คน`, `${absentCount}`)}</strong>
                 </article>
                 <article className={styles.actualBudgetStat}>
-                  <span>📊 Cost / Person (Actual)</span>
+                  <span>{t("📊 ค่าใช้จ่ายจริง / คน", "📊 Actual cost per person")}</span>
                   <strong>THB {formatCurrency(actualCostPerPerson)}</strong>
                 </article>
               </div>
@@ -1207,7 +1245,10 @@ export default function TrainingActual() {
 
             {isSelectedCourseReadOnlyForFactory ? (
               <div className={styles.actualPermissionNote}>
-                แผนจัดอบรมของส่วนกลาง (HRD Center) — โรงงานดูรายงานได้แต่ไม่สามารถบันทึกการเข้าอบรมหรือค่าใช้จ่ายได้
+                {t(
+                  "แผนจัดอบรมของส่วนกลาง (HRD Center) — โรงงานดูรายงานได้แต่บันทึกการเข้าอบรมหรือค่าใช้จ่ายไม่ได้",
+                  "An HRD Center plan. Factory users can read the report but cannot record attendance or cost.",
+                )}
               </div>
             ) : isFactoryUser ? (
               <div className={styles.actualPermissionNote}>
@@ -1220,11 +1261,16 @@ export default function TrainingActual() {
               <div className={styles.panelHeader}>
                 <div>
                   <p className={styles.kicker}>Attendance Checklist</p>
-                  <h3>รายการเช็คชื่อเข้าร่วมอบรม</h3>
+                  <h3>{t("รายการเช็คชื่อเข้าร่วมอบรม", "Attendance sheet")}</h3>
                 </div>
                 <div className={styles.attendanceHeaderActions}>
                   <span className={styles.attendanceProgressBadge}>
-                    <span className={styles.glowingDotGreen} /> เข้าเรียน {actualCount} / {attendees.length} คน ({attendees.length ? Math.round((actualCount / attendees.length) * 100) : 0}%)
+                    <span className={styles.glowingDotGreen} />{" "}
+                    {t(
+                      `เข้าเรียน ${actualCount} / ${attendees.length} คน`,
+                      `${actualCount} of ${attendees.length} attended`,
+                    )}{" "}
+                    ({attendees.length ? Math.round((actualCount / attendees.length) * 100) : 0}%)
                   </span>
                   <button
                     type="button"
@@ -1232,7 +1278,7 @@ export default function TrainingActual() {
                     disabled={attendees.length === 0 || isSelectedCourseReadOnlyForFactory}
                     onClick={() => void setAllAttendance(!allAttended)}
                   >
-                    {allAttended ? "✕ ยกเลิกเช็คชื่อทั้งหมด" : "✓ เลือกเช็คชื่อทั้งหมด"}
+                    {allAttended ? t("✕ ยกเลิกเช็คชื่อทั้งหมด", "✕ Clear all") : t("✓ เลือกเช็คชื่อทั้งหมด", "✓ Mark all present")}
                   </button>
                   <button
                     type="button"
@@ -1240,7 +1286,7 @@ export default function TrainingActual() {
                     disabled={isSelectedCourseReadOnlyForFactory}
                     onClick={() => setIsAddingAttendee(!isAddingAttendee)}
                   >
-                    {isAddingAttendee ? "✕ ยกเลิก" : "+ เพิ่มรายชื่อผู้เข้าอบรมเพิ่มเติม"}
+                    {isAddingAttendee ? t("✕ ยกเลิก", "✕ Cancel") : t("+ เพิ่มรายชื่อผู้เข้าอบรมเพิ่มเติม", "+ Add more attendees")}
                   </button>
                 </div>
               </div>
@@ -1249,13 +1295,13 @@ export default function TrainingActual() {
                 <div className={styles.addAttendeeWorkspace}>
                   <div className={styles.addAttendeeControls}>
                     <label style={{ gridColumn: "1 / -1" }}>
-                      ค้นหารายชื่อพนักงาน (Search Employee)
+                      {t("ค้นหารายชื่อพนักงาน", "Search employee")}
                       <SearchableSelect
                         options={masterEmployees.map(employeeSelectOption)}
                         value=""
                         onChange={addEmployeeToDraft}
-                        placeholder="🔍 พิมพ์ชื่อ รหัสพนักงาน หรือบริษัท / Type name, code, or company..."
-                        emptyText="ไม่พบพนักงานที่ตรงกัน / No matching employee"
+                        placeholder={t("🔍 พิมพ์ชื่อ รหัสพนักงาน หรือบริษัท...", "🔍 Type a name, code, or company...")}
+                        emptyText={t("ไม่พบพนักงานที่ตรงกัน", "No matching employee")}
                       />
                     </label>
                   </div>
@@ -1265,10 +1311,10 @@ export default function TrainingActual() {
                       <table className={styles.recordTable}>
                         <thead>
                           <tr>
-                            <th>พนักงาน</th>
-                            <th>บริษัท / สำนักงาน</th>
-                            <th>หน่วยงาน</th>
-                            <th>เลเวล</th>
+                            <th>{t("พนักงาน", "Employee")}</th>
+                            <th>{t("บริษัท / สำนักงาน", "Company / office")}</th>
+                            <th>{t("หน่วยงาน", "Org unit")}</th>
+                            <th>{t("เลเวล", "Level")}</th>
                             <th></th>
                           </tr>
                         </thead>
@@ -1304,7 +1350,7 @@ export default function TrainingActual() {
                                 <button
                                   type="button"
                                   className={styles.removeDraftAttendeeButton}
-                                  title="เอาออกจากรายชื่อ / Remove"
+                                  title={t("เอาออกจากรายชื่อ", "Remove")}
                                   onClick={() => removeDraftAttendee(employee.employeeId)}
                                 >
                                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1329,7 +1375,7 @@ export default function TrainingActual() {
                       disabled={draftAttendees.length === 0 || isSavingDraftAttendees}
                       onClick={() => void saveDraftAttendees()}
                     >
-                      {isSavingDraftAttendees ? "กำลังบันทึก..." : `บันทึก (${draftAttendees.length})`}
+                      {isSavingDraftAttendees ? t("กำลังบันทึก...", "Saving...") : t(`บันทึก (${draftAttendees.length})`, `Save (${draftAttendees.length})`)}
                     </button>
                   </div>
                 </div>
@@ -1343,7 +1389,7 @@ export default function TrainingActual() {
                     className={attendanceCompanyFilter === "ALL" ? styles.activeFilterChip : styles.filterChip}
                     onClick={() => setAttendanceCompanyFilter("ALL")}
                   >
-                    ทุกบริษัท ({attendees.length})
+                    {t(`ทุกบริษัท (${attendees.length})`, `All companies (${attendees.length})`)}
                   </button>
                   {attendeeCompanyList.map((comp) => {
                     const count = attendees.filter((a) => a.company === comp).length;
@@ -1366,21 +1412,21 @@ export default function TrainingActual() {
                     className={attendanceStatusFilter === "ALL" ? styles.activeFilterChip : styles.filterChip}
                     onClick={() => setAttendanceStatusFilter("ALL")}
                   >
-                    ทั้งหมด
+                    {t("ทั้งหมด", "All")}
                   </button>
                   <button
                     type="button"
                     className={attendanceStatusFilter === "PRESENT" ? styles.activeFilterChip : styles.filterChip}
                     onClick={() => setAttendanceStatusFilter("PRESENT")}
                   >
-                    🟢 มาเรียน ({actualCount})
+                    {t(`🟢 มาเรียน (${actualCount})`, `🟢 Present (${actualCount})`)}
                   </button>
                   <button
                     type="button"
                     className={attendanceStatusFilter === "ABSENT" ? styles.activeFilterChip : styles.filterChip}
                     onClick={() => setAttendanceStatusFilter("ABSENT")}
                   >
-                    🔴 ขาดเรียน ({absentCount})
+                    {t(`🔴 ขาดเรียน (${absentCount})`, `🔴 Absent (${absentCount})`)}
                   </button>
                 </div>
 
@@ -1388,7 +1434,7 @@ export default function TrainingActual() {
                   <span className={styles.searchIcon}>🔍</span>
                   <input
                     type="text"
-                    placeholder="ค้นหาชื่อ, รหัสพนักงาน, แผนก..."
+                    placeholder={t("ค้นหาชื่อ, รหัสพนักงาน, แผนก...", "Search a name, code, or department...")}
                     value={attendanceSearchQuery}
                     onChange={(e) => setAttendanceSearchQuery(e.target.value)}
                   />
@@ -1409,11 +1455,11 @@ export default function TrainingActual() {
                 <table className={styles.recordTable}>
                   <thead>
                     <tr>
-                      <th style={{ width: "135px" }}>เข้าร่วม</th>
-                      <th>ข้อมูลพนักงาน</th>
-                      <th>บริษัท / แผนก</th>
-                      <th>ส่วน / ฝ่าย</th>
-                      <th>ตำแหน่ง / ระดับ</th>
+                      <th style={{ width: "135px" }}>{t("เข้าร่วม", "Attended")}</th>
+                      <th>{t("ข้อมูลพนักงาน", "Employee")}</th>
+                      <th>{t("บริษัท / แผนก", "Company / department")}</th>
+                      <th>{t("ส่วน / ฝ่าย", "Section / division")}</th>
+                      <th>{t("ตำแหน่ง / ระดับ", "Position / level")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1439,11 +1485,11 @@ export default function TrainingActual() {
                             >
                               {attendee.attended ? (
                                 <>
-                                  <span className={styles.glowingDotGreen} /> มาเรียน
+                                  <span className={styles.glowingDotGreen} /> {t("มาเรียน", "Present")}
                                 </>
                               ) : (
                                 <>
-                                  <span className={styles.glowingDotRed} /> ขาดเรียน
+                                  <span className={styles.glowingDotRed} /> {t("ขาดเรียน", "Absent")}
                                 </>
                               )}
                             </span>
@@ -1481,7 +1527,7 @@ export default function TrainingActual() {
                     {pagedAttendees.length === 0 ? (
                       <tr>
                         <td colSpan={5} className={styles.emptyTableMessage}>
-                          🔍 ไม่พบรายชื่อพนักงานในการอบรมตามเงื่อนไขค้นหา
+                          {t("🔍 ไม่พบรายชื่อพนักงานตามเงื่อนไขค้นหา", "🔍 No attendee matches this search")}
                         </td>
                       </tr>
                     ) : null}
@@ -1493,7 +1539,10 @@ export default function TrainingActual() {
             {totalPages > 1 ? (
               <div className={styles.actualPaginationBar}>
                 <span className={styles.paginationInfo}>
-                  แสดง {startIndex + 1}-{Math.min(startIndex + PAGE_SIZE, attendees.length)} จากทั้งหมด {attendees.length} คน (หน้า {activePage} จาก {totalPages})
+                  {t(
+                    `แสดง ${startIndex + 1}-${Math.min(startIndex + PAGE_SIZE, attendees.length)} จากทั้งหมด ${attendees.length} คน (หน้า ${activePage} จาก ${totalPages})`,
+                    `Showing ${startIndex + 1}-${Math.min(startIndex + PAGE_SIZE, attendees.length)} of ${attendees.length} (page ${activePage} of ${totalPages})`,
+                  )}
                 </span>
                 <div className={styles.paginationNav}>
                   <button
@@ -1501,7 +1550,7 @@ export default function TrainingActual() {
                     type="button"
                     disabled={activePage === 1}
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    title="หน้าก่อนหน้า"
+                    title={t("หน้าก่อนหน้า", "Previous page")}
                   >
                     ‹
                   </button>
@@ -1522,7 +1571,7 @@ export default function TrainingActual() {
                     type="button"
                     disabled={activePage === totalPages}
                     onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    title="หน้าถัดไป"
+                    title={t("หน้าถัดไป", "Next page")}
                   >
                     ›
                   </button>
@@ -1533,7 +1582,7 @@ export default function TrainingActual() {
             <section className={styles.actualResultsPanel} aria-label="Training results">
               <div className={styles.actualResultsHeader}>
                 <div>
-                  <span>ผลการอบรม</span>
+                  <span>{t("ผลการอบรม", "Training result")}</span>
                   <strong>Training Result</strong>
                 </div>
                 <div className={styles.attendanceHeaderActions}>
@@ -1544,27 +1593,31 @@ export default function TrainingActual() {
                     disabled={attendees.length === 0 || isSelectedCourseReadOnlyForFactory}
                     onClick={() => setAllCompletion(allPassed ? "NOT_COMPLETED" : "COMPLETED")}
                   >
-                    {allPassed ? "✕ ยกเลิกผ่านทั้งหมด" : "✓ เลือกผ่านทั้งหมด"}
+                    {allPassed ? t("✕ ยกเลิกผ่านทั้งหมด", "✕ Clear all passes") : t("✓ เลือกผ่านทั้งหมด", "✓ Pass everyone")}
                   </button>
                 </div>
               </div>
 
               {assessment.preTest.mode === "NONE" && assessment.postTest.mode === "NONE" ? (
                 <p className={styles.actualResultsNote}>
-                  หลักสูตรนี้ไม่ได้กำหนดแบบทดสอบ จึงไม่มีคะแนนให้บันทึก / This course has no test
-                  configured, so there is no score to record
+                  {t(
+                    "หลักสูตรนี้ไม่ได้กำหนดแบบทดสอบ จึงไม่มีคะแนนให้บันทึก",
+                    "This course has no test configured, so there is no score to record",
+                  )}
                 </p>
               ) : null}
               {assessment.preTest.mode === "LINK" || assessment.postTest.mode === "LINK" ? (
                 <p className={styles.actualResultsNote}>
-                  แบบทดสอบใช้ลิงก์ภายนอก ระบบมองไม่เห็นคะแนน กรุณากรอกเอง / The test is an external
-                  link, so this system cannot read the score - enter it manually
+                  {t(
+                    "แบบทดสอบใช้ลิงก์ภายนอก ระบบมองไม่เห็นคะแนน กรุณากรอกเอง",
+                    "The test is an external link, so this system cannot read the score - enter it manually",
+                  )}
                 </p>
               ) : null}
 
               {attendees.length === 0 ? (
                 <p className={styles.actualResultsEmpty}>
-                  ยังไม่มีผู้เข้าอบรมที่อนุมัติแล้ว / No approved attendee yet
+                  {t("ยังไม่มีผู้เข้าอบรมที่อนุมัติแล้ว", "No approved attendee yet")}
                 </p>
               ) : (
                 <div className={styles.actualResultsRows}>
@@ -1575,45 +1628,12 @@ export default function TrainingActual() {
                     const fromSystem = Boolean(system && (system.preScore !== null || system.postScore !== null));
                     return (
                       <article key={attendee.id} className={styles.actualResultRow}>
-                        <div className={styles.actualResultWho}>
-                          <strong>{attendee.name}</strong>
-                          <small>
-                            {attendee.employeeCode || "-"} · {attendee.company}
-                            {attendee.attended ? "" : " · ไม่ได้เข้าอบรม / absent"}
-                            {fromSystem ? " · คะแนนจากแบบทดสอบในระบบ" : ""}
-                          </small>
-                        </div>
-
-                        {/* A course with no test at this stage has no score to record. Leaving the
-                            box on screen invites a mark for an exam that never happened onto a
-                            document the employee hands to an employer. */}
-                        {assessment.preTest.mode === "NONE" ? null : (
-                          <label>
-                            Pre
-                            <input
-                              type="number"
-                              min={0}
-                              value={draft.preScore}
-                              onChange={(event) =>
-                                setResultField(attendee.id, "preScore", event.target.value)
-                              }
-                            />
-                          </label>
-                        )}
-                        {assessment.postTest.mode === "NONE" ? null : (
-                          <label>
-                            Post
-                            <input
-                              type="number"
-                              min={0}
-                              value={draft.postScore}
-                              onChange={(event) =>
-                                setResultField(attendee.id, "postScore", event.target.value)
-                              }
-                            />
-                          </label>
-                        )}
-                        <label className={styles.attendanceCheckLabel}>
+                        {/* The pass tick leads the row, the way the attendance sheet's does: it is
+                            the decision HRD is here to make, and every field after it only supports
+                            that decision. Unticked reads as "not passed" in red rather than as an
+                            empty box, so a row nobody has looked at cannot pass for a considered
+                            "no" at a glance. */}
+                        <label className={styles.resultPassLead}>
                           <input
                             type="checkbox"
                             checked={draft.completionStatus === "COMPLETED"}
@@ -1626,19 +1646,61 @@ export default function TrainingActual() {
                               )
                             }
                           />
-                          <span className={draft.completionStatus === "COMPLETED" ? styles.passBadge : styles.failBadge}>
+                          <span
+                            className={
+                              draft.completionStatus === "COMPLETED" ? styles.passBadge : styles.failBadge
+                            }
+                          >
                             {draft.completionStatus === "COMPLETED" ? (
                               <>
-                                <span className={styles.glowingDotGreen} /> ผ่าน
+                                <span className={styles.glowingDotGreen} /> {t("ผ่าน", "Passed")}
                               </>
                             ) : (
                               <>
                                 <span className={styles.glowingDotRed} />{" "}
-                                {draft.completionStatus === "PENDING" ? "ยังไม่ระบุ" : "ไม่ผ่าน"}
+                                {draft.completionStatus === "PENDING" ? t("ยังไม่ระบุ", "Not decided") : t("ไม่ผ่าน", "Not passed")}
                               </>
                             )}
                           </span>
                         </label>
+                        <div className={styles.actualResultWho}>
+                          <strong>{attendee.name}</strong>
+                          <small>
+                            {attendee.employeeCode || "-"} · {attendee.company}
+                            {attendee.attended ? "" : t(" · ไม่ได้เข้าอบรม", " · absent")}
+                            {fromSystem ? t(" · คะแนนจากแบบทดสอบในระบบ", " · scored by the system") : ""}
+                          </small>
+                        </div>
+
+                        {/* A course with no test at this stage has no score to record. Leaving the
+                            box on screen invites a mark for an exam that never happened onto a
+                            document the employee hands to an employer. */}
+                        {assessment.preTest.mode === "NONE" ? null : (
+                          <label className={styles.resultScoreField}>
+                            Pre
+                            <input
+                              type="number"
+                              min={0}
+                              value={draft.preScore}
+                              onChange={(event) =>
+                                setResultField(attendee.id, "preScore", event.target.value)
+                              }
+                            />
+                          </label>
+                        )}
+                        {assessment.postTest.mode === "NONE" ? null : (
+                          <label className={styles.resultScoreField}>
+                            Post
+                            <input
+                              type="number"
+                              min={0}
+                              value={draft.postScore}
+                              onChange={(event) =>
+                                setResultField(attendee.id, "postScore", event.target.value)
+                              }
+                            />
+                          </label>
+                        )}
                         {/* The certificate number is not entered here for now. The draft still
                             carries whatever is stored, so a save leaves an existing number
                             untouched rather than clearing it. */}
@@ -1646,7 +1708,7 @@ export default function TrainingActual() {
                             to appear for every course, inviting a date that means nothing. */}
                         {validityMonths === null ? null : (
                           <label>
-                            หมดอายุ
+                            {t("หมดอายุ", "Expires")}
                             <input
                               type="date"
                               value={draft.validUntil}
@@ -1657,9 +1719,38 @@ export default function TrainingActual() {
                           </label>
                         )}
 
+                        {/* One button for both stages. Two separate links each named an attempt
+                            count but opened a single paper, which read as a promise the click did
+                            not keep - the card lists every attempt instead. */}
+                        {(() => {
+                          const attemptCount =
+                            (saved?.plan.assessment.preTest.attempts.length ?? 0) +
+                            (saved?.plan.assessment.postTest.attempts.length ?? 0);
+                          if (attemptCount === 0) return null;
+                          return (
+                            <span className={styles.resultReviewLinks}>
+                              <button
+                                type="button"
+                                className={styles.resultReviewLink}
+                                onClick={() =>
+                                  setAttemptsCard({
+                                    enrollmentId: attendee.id,
+                                    name: attendee.name,
+                                    preTest: saved!.plan.assessment.preTest,
+                                    postTest: saved!.plan.assessment.postTest,
+                                  })
+                                }
+                              >
+                                {t(`📄 ดูการทำแบบทดสอบ (${attemptCount})`, `📄 Test attempts (${attemptCount})`)}
+                              </button>
+                            </span>
+                          );
+                        })()}
+
                         {saved?.result ? (
                           <small className={styles.actualResultSaved}>
-                            บันทึกแล้ว: {completionStatusLabel(saved.result.completionStatus, language)}
+                            {t("บันทึกแล้ว: ", "Saved: ")}
+                            {completionStatusLabel(saved.result.completionStatus, language)}
                           </small>
                         ) : null}
                       </article>
@@ -1669,9 +1760,10 @@ export default function TrainingActual() {
               )}
 
               <p className={styles.actualResultsNote}>
-                กรอกแล้วกดปุ่มบันทึกด้านขวาครั้งเดียว บันทึกทั้งค่าใช้จ่ายและผลการอบรมพร้อมกัน / Fill
-                these in and use the single save button on the right - it saves the expenses and
-                the results together
+                {t(
+                  "กรอกแล้วกดปุ่มบันทึกด้านขวาครั้งเดียว บันทึกทั้งค่าใช้จ่ายและผลการอบรมพร้อมกัน",
+                  "Fill these in and use the single save button on the right - it saves the expenses and the results together",
+                )}
               </p>
             </section>
 
@@ -1682,8 +1774,8 @@ export default function TrainingActual() {
             <div className={styles.actualCostHeader}>
               <div>
                 <p className={styles.kicker}>Expense Calculation</p>
-                <h3>บันทึกค่าใช้จ่ายจริง</h3>
-                <span>บันทึกค่าใช้จ่ายจริงที่เกิดขึ้นในการอบรม</span>
+                <h3>{t("บันทึกค่าใช้จ่ายจริง", "Record the actual cost")}</h3>
+                <span>{t("บันทึกค่าใช้จ่ายจริงที่เกิดขึ้นในการอบรม", "What the training actually cost")}</span>
               </div>
             </div>
 
@@ -1708,7 +1800,7 @@ export default function TrainingActual() {
             </div>
 
             <div className={styles.actualTotalBox}>
-              <span>รวมค่าใช้จ่ายจริง (Draft Unsaved)</span>
+              <span>{t("รวมค่าใช้จ่ายจริง (ยังไม่บันทึก)", "Actual cost (unsaved draft)")}</span>
               <strong>THB {formatCurrency(expenseTotal)}</strong>
             </div>
 
@@ -1717,10 +1809,10 @@ export default function TrainingActual() {
               <table className={styles.recordTable}>
                 <thead>
                   <tr>
-                    <th>หมวดหมู่</th>
-                    <th>งบประมาณ (Planned)</th>
-                    <th>จ่ายจริง (Saved)</th>
-                    <th>ส่วนต่าง (Variance)</th>
+                    <th>{t("หมวดหมู่", "Category")}</th>
+                    <th>{t("งบประมาณ", "Planned")}</th>
+                    <th>{t("จ่ายจริง", "Actual")}</th>
+                    <th>{t("ส่วนต่าง", "Variance")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1740,7 +1832,7 @@ export default function TrainingActual() {
                     );
                   })}
                   <tr>
-                    <td><strong>รวมทั้งหมด (Total)</strong></td>
+                    <td><strong>{t("รวมทั้งหมด", "Total")}</strong></td>
                     <td><strong>THB {formatCurrency(plannedBudget)}</strong></td>
                     <td><strong>THB {formatCurrency(savedActualTotal)}</strong></td>
                     <td className={remainingBudget < 0 ? styles.actualBudgetOverrun : undefined}>
@@ -1753,7 +1845,7 @@ export default function TrainingActual() {
 
             <div className={styles.actualCostPerPersonSummary}>
               <div>
-                <span>เฉลี่ยงบ/คน (Cost / Person)</span>
+                <span>{t("เฉลี่ยงบ / คน", "Cost per person")}</span>
                 <strong>THB {formatCurrency(actualCostPerPerson)}</strong>
               </div>
               <small>
@@ -1775,7 +1867,10 @@ export default function TrainingActual() {
             {(costBreakdown?.presentCount ?? 0) === 0 ? (
               <p className={styles.actualResultsNote}>
                 {language === "th"
-                  ? "ยังไม่มีใครถูกเช็กชื่อว่าเข้าอบรม จึงยังจำแนกค่าใช้จ่ายต่อคนไม่ได้ — เช็กชื่อในตารางด้านซ้ายก่อน"
+                  ? t(
+                      "ยังไม่มีใครถูกเช็กชื่อว่าเข้าอบรม จึงยังจำแนกค่าใช้จ่ายต่อคนไม่ได้ — เช็กชื่อในตารางด้านซ้ายก่อน",
+                      "Nobody is marked as present yet, so there is no cost per person to work out - mark attendance on the left first",
+                    )
                   : "Nobody is marked as present yet, so the cost cannot be split per person - check attendance in the table on the left first"}
               </p>
             ) : null}
@@ -1786,8 +1881,8 @@ export default function TrainingActual() {
                   <p className={styles.kicker}>Company Cost Share</p>
                   <h4>
                     {isSelectedCourseReadOnlyForFactory || (isFactoryUser && isSelectedCourseCenter)
-                      ? "งบปันส่วนบริษัทของคุณ (Your Company Allocation)"
-                      : "การปันส่วนงบประมาณตามบริษัท"}
+                      ? t("งบปันส่วนบริษัทของคุณ", "Your company allocation")
+                      : t("การปันส่วนงบประมาณตามบริษัท", "Allocation by company")}
                   </h4>
                 </div>
 
@@ -1795,10 +1890,10 @@ export default function TrainingActual() {
                   <table className={styles.companyCostTable}>
                     <thead>
                       <tr>
-                        <th>บริษัท</th>
-                        <th>ผู้เข้าเรียน</th>
-                        <th>สัดส่วน %</th>
-                        <th style={{ textAlign: "right" }}>งบปันส่วน (THB)</th>
+                        <th>{t("บริษัท", "Company")}</th>
+                        <th>{t("ผู้เข้าเรียน", "Attended")}</th>
+                        <th>{t("สัดส่วน %", "Share %")}</th>
+                        <th style={{ textAlign: "right" }}>{t("งบปันส่วน (THB)", "Allocated (THB)")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1811,7 +1906,7 @@ export default function TrainingActual() {
                               <span className={styles.companyBadgePill}>{item.companyCode}</span>
                             </td>
                             <td>
-                              <span className={styles.companyPresentCount}>🟢 {item.presentCount} คน</span>
+                              <span className={styles.companyPresentCount}>{t(`🟢 ${item.presentCount} คน`, `🟢 ${item.presentCount}`)}</span>
                             </td>
                             <td>
                               <div className={styles.sharePercentCell}>
@@ -1835,7 +1930,7 @@ export default function TrainingActual() {
                       {isFactoryUser && isSelectedCourseCenter ? (
                         <tr className={styles.companyTotalRow}>
                           <td colSpan={3}>
-                            <strong>รวมทุกบริษัท (All Companies Total)</strong>
+                            <strong>{t("รวมทุกบริษัท", "All companies total")}</strong>
                           </td>
                           <td style={{ textAlign: "right" }}>
                             <strong className={styles.allocatedCostText}>
@@ -1852,7 +1947,7 @@ export default function TrainingActual() {
 
             <div className={styles.actualBudgetSummary}>
               <div>
-                <span>งบประมาณที่วางแผนไว้</span>
+                <span>{t("งบประมาณที่วางแผนไว้", "Planned budget")}</span>
                 <strong>THB {formatCurrency(plannedBudget)}</strong>
               </div>
               <div
@@ -1860,7 +1955,7 @@ export default function TrainingActual() {
                   remainingBudget < 0 ? styles.actualBudgetOverrun : undefined
                 }
               >
-                <span>งบประมาณคงเหลือ</span>
+                <span>{t("งบประมาณคงเหลือ", "Budget left")}</span>
                 <strong>THB {formatCurrency(remainingBudget)}</strong>
               </div>
               <p
@@ -1868,7 +1963,7 @@ export default function TrainingActual() {
                   remainingBudget < 0 ? styles.actualBudgetOverrun : undefined
                 }
               >
-                {remainingBudget >= 0 ? "🟢 อยู่ในงบประมาณ (Within budget)" : "🔴 เกินงบประมาณ (Over budget)"}
+                {remainingBudget >= 0 ? t("🟢 อยู่ในงบประมาณ", "🟢 Within budget") : t("🔴 เกินงบประมาณ", "🔴 Over budget")}
               </p>
             </div>
 
@@ -1878,12 +1973,15 @@ export default function TrainingActual() {
               disabled={isSelectedCourseReadOnlyForFactory || isSavingResults}
               title={
                 isSelectedCourseReadOnlyForFactory
-                  ? "หลักสูตรของส่วนกลาง โรงงานดูได้อย่างเดียว แก้ไขไม่ได้ (Center course — read-only for factory users)"
+                  ? t(
+                      "หลักสูตรของส่วนกลาง โรงงานดูได้อย่างเดียว แก้ไขไม่ได้",
+                      "A Center course - read-only for factory users",
+                    )
                   : undefined
               }
               onClick={() => void handleSave()}
             >
-              {isSavingResults ? "กำลังบันทึก..." : "💾 บันทึกค่าใช้จ่าย & ผลการอบรม"}
+              {isSavingResults ? t("กำลังบันทึก...", "Saving...") : t("💾 บันทึกค่าใช้จ่าย & ผลการอบรม", "💾 Save cost & results")}
             </button>
 
             {savedMessage ? <p className={styles.actualSavedMessage}>{savedMessage}</p> : null}
@@ -1891,7 +1989,10 @@ export default function TrainingActual() {
         </section>
       ) : (
         <section className={styles.emptyState} aria-label="No selected actual course">
-          กรุณาเลือกหลักสูตรก่อนเพื่อบันทึกและแสดงข้อมูลการอบรมจริง (Select a course first to show training actual details)
+          {t(
+            "กรุณาเลือกหลักสูตรก่อนเพื่อบันทึกและแสดงข้อมูลการอบรมจริง",
+            "Pick a course first to record and show the training actuals",
+          )}
         </section>
       )}
 
@@ -1909,35 +2010,36 @@ export default function TrainingActual() {
             </div>
 
             <div className={styles.successModalHeader}>
-              <h3>บันทึกข้อมูลการอบรมจริงสำเร็จ!</h3>
-              <p>ระบบทำการบันทึกยอดผู้เข้าอบรมจริงและค่าใช้จ่ายเรียบร้อยแล้ว</p>
+              <h3>{t("บันทึกข้อมูลการอบรมจริงสำเร็จ!", "Training actual saved")}</h3>
+              <p>{t("ระบบบันทึกยอดผู้เข้าอบรมจริงและค่าใช้จ่ายเรียบร้อยแล้ว", "The attendance count and the cost are both recorded.")}</p>
             </div>
 
             <div className={styles.successCourseCard}>
               <div className={styles.successCourseCodeBadge}>[{savedSummaryData.courseCode}]</div>
               <div className={styles.successCourseTitle}>{savedSummaryData.courseTitle}</div>
               <div className={styles.successCourseMeta}>
-                Batch <strong>{savedSummaryData.batch}</strong> • วันที่ <strong>{savedSummaryData.date}</strong>
+                {t("รุ่นที่", "Batch")} <strong>{savedSummaryData.batch}</strong> • {t("วันที่", "Date")}{" "}
+                <strong>{savedSummaryData.date}</strong>
               </div>
             </div>
 
             <div className={styles.savedMetricGrid}>
               <div className={styles.savedMetricCard}>
-                <span>🟢 ผู้เข้าเรียนจริง</span>
-                <strong>{savedSummaryData.actualCount} คน</strong>
+                <span>{t("🟢 ผู้เข้าเรียนจริง", "🟢 Attended")}</span>
+                <strong>{t(`${savedSummaryData.actualCount} คน`, `${savedSummaryData.actualCount}`)}</strong>
               </div>
               <div className={styles.savedMetricCard}>
-                <span>💰 รวมค่าใช้จ่ายจริง</span>
+                <span>{t("💰 รวมค่าใช้จ่ายจริง", "💰 Total actual cost")}</span>
                 <strong>THB {formatCurrency(savedSummaryData.totalCost)}</strong>
               </div>
               <div className={styles.savedMetricCard}>
-                <span>📊 เฉลี่ยงบ / คน</span>
+                <span>{t("📊 เฉลี่ยงบ / คน", "📊 Cost per person")}</span>
                 <strong>THB {formatCurrency(savedSummaryData.costPerPerson)}</strong>
               </div>
             </div>
 
             <div className={styles.savedTimestamp}>
-              ⏰ บันทึกเมื่อ: {savedSummaryData.savedTime}
+              {t(`⏰ บันทึกเมื่อ: ${savedSummaryData.savedTime}`, `⏰ Saved at ${savedSummaryData.savedTime}`)}
             </div>
 
             <div className={styles.successModalActions}>
@@ -1946,9 +2048,122 @@ export default function TrainingActual() {
                 className={styles.primaryButton}
                 onClick={() => setShowSaveSuccessModal(false)}
               >
-                ✓ ตกลง (Done)
+                {t("✓ ตกลง", "✓ Done")}
               </button>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Every paper one attendee handed in, both stages, with the stage chosen by a tab. Opening a
+          row goes to the marked-up review; the card only says what exists. */}
+      {attemptsCard ? (
+        <div className={styles.attemptsOverlay} role="dialog" aria-modal="true" onClick={() => setAttemptsCard(null)}>
+          <div className={styles.attemptsCard} onClick={(event) => event.stopPropagation()}>
+            <div className={styles.attemptsHeader}>
+              <div>
+                <p className={styles.attemptsKicker}>{t("ประวัติการทำแบบทดสอบ", "Test attempts")}</p>
+                <h3>{attemptsCard.name}</h3>
+              </div>
+              <button type="button" className={styles.attemptsClose} onClick={() => setAttemptsCard(null)}>
+                ✕
+              </button>
+            </div>
+
+            <div className={styles.attemptsTabs}>
+              {(["preTest", "postTest"] as const).map((stageKey) => {
+                const count = attemptsCard[stageKey].attempts.length;
+                return (
+                  <button
+                    key={stageKey}
+                    type="button"
+                    className={attemptsStage === stageKey ? styles.attemptsTabOn : styles.attemptsTab}
+                    onClick={() => setAttemptsStage(stageKey)}
+                  >
+                    {stageKey === "preTest" ? t("ก่อนอบรม", "Pre test") : t("หลังอบรม", "Post test")} · {count}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Two headline facts for the chosen stage, the same pair the employee's own panel
+                leads with: the best they reached, and how many times they sat it. */}
+            {(() => {
+              const attempts = attemptsCard[attemptsStage].attempts;
+              const scored = attempts.filter((attempt) => attempt.resultsPublished && attempt.score !== null);
+              const best = scored.reduce<(typeof scored)[number] | null>(
+                (top, attempt) => (top === null || attempt.score! > top.score! ? attempt : top),
+                null,
+              );
+              return (
+                <div className={styles.attemptsSummaryRow}>
+                  <div className={styles.attemptsSummaryCard}>
+                    <span>{t("คะแนนสูงสุด", "Best score")}</span>
+                    <strong>{best ? `${best.score}%` : "-"}</strong>
+                    <em>
+                      {best
+                        ? t(`ครั้งที่ ${best.attemptNo}`, `Attempt ${best.attemptNo}`)
+                        : t("ยังไม่มีผลที่ประกาศแล้ว", "No released result yet")}
+                    </em>
+                  </div>
+                  <div className={styles.attemptsSummaryCard}>
+                    <span>{t("จำนวนครั้งที่ทำ", "Attempts taken")}</span>
+                    <strong>{attempts.length}</strong>
+                    <em>
+                      {attempts.length - scored.length === 0
+                        ? t("ประกาศผลครบแล้ว", "All results released")
+                        : t(
+                            `รอผลอีก ${attempts.length - scored.length} ครั้ง`,
+                            `${attempts.length - scored.length} awaiting a result`,
+                          )}
+                    </em>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {attemptsCard[attemptsStage].attempts.length === 0 ? (
+              <p className={styles.attemptsEmpty}>
+                {attemptsCard[attemptsStage].mode === "FORM"
+                  ? t("ยังไม่มีการทำแบบทดสอบนี้", "No attempt yet")
+                  : t(
+                      "แบบทดสอบนี้ไม่ได้อยู่ในระบบ จึงไม่มีกระดาษคำตอบให้ดู",
+                      "This test is not held in the system, so there is no paper to open",
+                    )}
+              </p>
+            ) : (
+              <ul className={styles.attemptsList}>
+                {attemptsCard[attemptsStage].attempts.map((attempt) => (
+                  <li key={attempt.submissionId}>
+                    <a
+                      className={styles.attemptsRow}
+                      href={`/training-record/submission/${selectedCourse?.id}/${attempt.submissionId}`}
+                    >
+                      <strong>{t(`ครั้งที่ ${attempt.attemptNo}`, `Attempt ${attempt.attemptNo}`)}</strong>
+                      <span>
+                        {attempt.submittedAt
+                          ? new Date(attempt.submittedAt).toLocaleDateString(language === "th" ? "th-TH" : "en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            })
+                          : "-"}
+                      </span>
+                      <span>
+                        {/* An unreleased score is not shown here either - the review page is where
+                            HRD sees the marks, and this card is a list, not a result. */}
+                        {attempt.resultsPublished && attempt.score !== null
+                          ? `${attempt.score}%`
+                          : t("ยังไม่ประกาศผล", "Not released")}
+                      </span>
+                      <span className={styles.attemptsGo}>
+                        {attempt.gradingStatus === "PENDING_REVIEW" ? t("รอตรวจ · เปิด →", "To mark · open →") : t("เปิด →", "Open →")}
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       ) : null}

@@ -1,0 +1,304 @@
+/* app/globals.css sets width:100% on every input at a specificity no single class here can beat,
+   so widths come from grid tracks rather than from the inputs. */
+
+.page {
+  width: min(1000px, 100%);
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.state {
+  padding: 40px;
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.backBtn {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.title {
+  margin: 0;
+  font-size: 18px;
+  color: #0f172a;
+}
+
+.meta {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.scoreBox {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.scoreBox strong {
+  font-size: 22px;
+  color: #0f172a;
+}
+
+.publishedTag,
+.heldTag {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+
+.publishedTag {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.heldTag {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Sticks to the top so the jump links and the save button stay reachable on a long paper. */
+.pendingBar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+  background: #fffbeb;
+  font-size: 13px;
+  color: #92400e;
+}
+
+.jumpLinks {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+}
+
+.jumpLink {
+  padding: 2px 10px;
+  border: 1px solid #fcd34d;
+  border-radius: 999px;
+  background: #ffffff;
+  font-size: 12px;
+  color: #92400e;
+  cursor: pointer;
+}
+
+.jumpLink:hover {
+  background: #fef3c7;
+}
+
+.primaryButton {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.primaryButton:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.questions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+/* The stripe down the left edge is the verdict, readable while scrolling past. */
+.correctRow,
+.wrongRow,
+.pendingRow,
+.blockRow {
+  border-left: 4px solid transparent;
+  border-radius: 12px;
+}
+
+.correctRow {
+  border-left-color: #16a34a;
+}
+
+.wrongRow {
+  border-left-color: #dc2626;
+}
+
+.pendingRow {
+  border-left-color: #d97706;
+}
+
+.questionCard {
+  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-left: 0;
+  border-radius: 0 12px 12px 0;
+  background: #ffffff;
+  display: grid;
+  gap: 10px;
+}
+
+.blockCard {
+  padding: 10px 16px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.questionHead {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.questionOrder {
+  font-weight: 800;
+  color: #64748b;
+}
+
+.questionText {
+  min-width: 0;
+}
+
+.questionScore {
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.choices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.choice,
+.choiceCorrect,
+.choiceWrong {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.choiceCorrect {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.choiceWrong {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.choiceMark {
+  text-align: center;
+  font-weight: 800;
+}
+
+.keyNote {
+  font-size: 11px;
+  font-style: normal;
+  color: #166534;
+}
+
+.gridWrap {
+  overflow-x: auto;
+}
+
+.grid {
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.grid th,
+.grid td {
+  border: 1px solid #e2e8f0;
+  padding: 6px 10px;
+  text-align: center;
+}
+
+.grid th[scope="row"] {
+  text-align: left;
+}
+
+.gridPicked {
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-weight: 800;
+}
+
+.written {
+  margin: 0;
+  padding: 10px 14px;
+  border-left: 3px solid #cbd5e1;
+  background: #f8fafc;
+  font-size: 13px;
+  white-space: pre-wrap;
+}
+
+.markRow {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.markRow label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  color: #64748b;
+  min-width: 0;
+}
+
+.commentField {
+  min-width: 0;
+}
+
+.savedComment {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}

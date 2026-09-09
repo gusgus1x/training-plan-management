@@ -10,7 +10,9 @@ import { FREE_TEXT_MIN_RESPONDENTS } from "./types";
 import type {
   AssessmentForEmployee,
   AssessmentReview,
+  AssignedEvaluation,
   EvaluationForEmployee,
+  EvaluationRespondentGroup,
   EvaluationSummary,
   EvaluationSummaryQuestion,
   EvaluationTimingStage,
@@ -18,6 +20,7 @@ import type {
   GradedStage,
   SetStageClosedInput,
   StageSetting,
+  SubmissionReview,
   SubmitAssessmentInput,
   SubmitEvaluationInput,
   SubmissionSummary,
@@ -34,6 +37,7 @@ type DatabaseClient = Pick<
   | "evaluation_form"
   | "evaluation_submission"
   | "evaluation_answer"
+  | "training_evaluation_reviewer"
   | "training_result"
   | "$transaction"
 >;
@@ -48,6 +52,8 @@ const planWithCourseInclude = {
   training_plan_oap: {
     select: {
       company_id: true,
+      // Named on the assignment list, which says which course a supervisor is being asked about.
+      course_name_snapshot: true,
       course: {
         select: {
           pre_assessment_id: true,
@@ -56,6 +62,10 @@ const planWithCourseInclude = {
           post_test_link: true,
           evaluation_form_id: true,
           evaluation_form_after_30day_id: true,
+          // The course's own external links. formIdForStage only needs to know whether the BATCH
+          // set one, but a row that has to show the link itself needs the course's fallback too.
+          evaluation_link: true,
+          evaluation_after_30day_link: true,
         },
       },
     },
@@ -103,6 +113,10 @@ const loadOwnedEnrollment = async (
   enrollmentId: string,
   employeeId: string | null,
   employeeUserId: string | null,
+  // Only the 30-day follow-up passes true. That stage asks what changed in the person since the
+  // course, which is what a supervisor is there to answer; the after-training evaluation is the
+  // attendee's own verdict on the course, and an exam is nobody's to sit but theirs.
+  allowAssignedReviewer = false,
 ) => {
   const enrollment = await db.training_enrollment.findUnique({
     where: { enrollment_id: BigInt(enrollmentId) },
@@ -112,13 +126,18 @@ const loadOwnedEnrollment = async (
       // surrogate employee_id lives one hop away on the employee relation, same as
       // trainingEnrollment/repository.ts's updateStatus ownership check.
       employee: { select: { employee_id: true } },
+      training_evaluation_reviewer: { select: { reviewer_user_id: true } },
     },
   });
   if (!enrollment) throw notFound("Enrollment not found");
 
   const ownsByDurableKey = employeeUserId !== null && enrollment.employee_user_id === employeeUserId;
   const ownsBySurrogateKey = employeeId !== null && enrollment.employee.employee_id.toString() === employeeId;
-  if (!ownsByDurableKey && !ownsBySurrogateKey) {
+  const isAssignedReviewer =
+    allowAssignedReviewer &&
+    employeeUserId !== null &&
+    enrollment.training_evaluation_reviewer?.reviewer_user_id === employeeUserId;
+  if (!ownsByDurableKey && !ownsBySurrogateKey && !isAssignedReviewer) {
     throw forbidden("You can only access your own training records");
   }
   if (enrollment.approval_status !== "APPROVED") {
@@ -127,6 +146,49 @@ const loadOwnedEnrollment = async (
 
   return enrollment;
 };
+
+/**
+ * Whose answers these are. The assigned supervisor answering about an attendee is the only case
+ * where it is not the attendee themselves; everything else - including HRD reading the enrollment
+ * by its surrogate key - belongs to the enrollment's own employee.
+ */
+const respondentUserIdOf = (
+  enrollment: { employee_user_id: string; training_evaluation_reviewer: { reviewer_user_id: string } | null },
+  employeeUserId: string | null,
+) =>
+  employeeUserId !== null && enrollment.training_evaluation_reviewer?.reviewer_user_id === employeeUserId
+    ? employeeUserId
+    : enrollment.employee_user_id;
+
+/**
+ * Stamps the first time the assigned supervisor opened this evaluation. Only the first open is
+ * recorded, so the value answers "have they acted on it at all" rather than "when did they last
+ * look" - and it is never a completion record. Does nothing for the attendee's own visit.
+ */
+const markReviewerOpened = async (
+  db: DatabaseClient,
+  enrollment: { enrollment_id: bigint; employee_user_id: string },
+  respondentUserId: string,
+) => {
+  if (respondentUserId === enrollment.employee_user_id) return;
+  await db.training_evaluation_reviewer.updateMany({
+    where: { enrollment_id: enrollment.enrollment_id, reviewer_user_id: respondentUserId, opened_at: null },
+    data: { opened_at: new Date() },
+  });
+};
+
+/**
+ * The unique key of one evaluation submission. The respondent is part of it because a supervisor
+ * answers the same form about the same enrollment as the employee does. Written once here because
+ * dropping the third part silently reads the wrong person's submission rather than failing.
+ */
+const submissionKey = (formId: bigint, enrollmentId: bigint, respondentUserId: string) => ({
+  evaluation_form_id_enrollment_id_respondent_user_id: {
+    evaluation_form_id: formId,
+    enrollment_id: enrollmentId,
+    respondent_user_id: respondentUserId,
+  },
+});
 
 const assertStageOpen = async (
   db: DatabaseClient,
@@ -289,23 +351,35 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
      *  key would turn a retake into a memory test - the employee is meant to go back to the
      *  material. Returns null while nothing has been released, which is the same thing the score
      *  projections already do. */
+    /**
+     * The employee's own marked paper for one stage.
+     *
+     * Every released attempt is loaded, not just the last one: a person who sat a test three times
+     * has three results worth looking back at, and the one that counts is usually their best rather
+     * than their most recent. `attemptNo` opens a specific one; without it the best-scoring attempt
+     * is what comes back.
+     */
     async readAssessmentReviewForEmployee(
       enrollmentId: string,
       stage: GradedStage,
       employeeId: string | null,
       employeeUserId: string | null,
+      attemptNo: number | null = null,
     ): Promise<AssessmentReview | null> {
       return withDatabaseErrorMapping(async () => {
         const enrollment = await loadOwnedEnrollment(db(), enrollmentId, employeeId, employeeUserId);
         const assessmentId = formIdForStage(enrollment.training_plan, stage);
         if (assessmentId === null) return null;
 
-        const submission = await db().assessment_submission.findFirst({
+        const submissions = await db().assessment_submission.findMany({
           where: {
             enrollment_id: enrollment.enrollment_id,
             assessment_id: assessmentId,
             assessment_stage: stage,
-            publication_status: "PUBLISHED",
+            // Every attempt that was actually handed in, released or not. An attempt still waiting
+            // on HRD is one the person sat and remembers sitting; leaving it out made the count
+            // disagree with their own memory. What it may SAY about itself is limited below.
+            submitted_at: { not: null },
           },
           orderBy: { attempt_no: "desc" },
           select: {
@@ -314,6 +388,7 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
             submitted_at: true,
             score: true,
             pass_status: true,
+            publication_status: true,
             assessment: {
               select: {
                 passing_score_percent: true,
@@ -324,11 +399,94 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
               },
             },
             assessment_answer: {
-              select: { question_id: true, score_awarded: true, review_comment: true },
+              select: { question_id: true, score_awarded: true, review_comment: true, review_status: true },
             },
           },
         });
-        if (!submission) return null;
+        if (submissions.length === 0) return null;
+
+        /**
+         * What one attempt scored, split into the part this system marked by itself and the part a
+         * person still has to read.
+         *
+         * The auto-marked part is the whole point of showing an unreleased attempt at all: it tells
+         * somebody how far the questions with a right answer got them, so they can see whether
+         * another go is worth it without waiting on the written marking. It is honest to show early
+         * because nothing about it can change - a matched answer is matched.
+         */
+        const totalsOf = (row: (typeof submissions)[number]) => {
+          const awarded = new Map<string, Prisma.Decimal>();
+          const pending = new Set<string>();
+          for (const answer of row.assessment_answer) {
+            const questionId = answer.question_id.toString();
+            awarded.set(
+              questionId,
+              (awarded.get(questionId) ?? new Prisma.Decimal(0)).add(answer.score_awarded ?? new Prisma.Decimal(0)),
+            );
+            if (answer.review_status === "PENDING_REVIEW") pending.add(questionId);
+          }
+          let totalAwarded = new Prisma.Decimal(0);
+          let totalPossible = new Prisma.Decimal(0);
+          let autoAwarded = new Prisma.Decimal(0);
+          let autoPossible = new Prisma.Decimal(0);
+          let writtenPendingScore = new Prisma.Decimal(0);
+          for (const question of row.assessment.assessment_question) {
+            if (isFormBlockType(question.question_type)) continue;
+            const questionId = question.question_id.toString();
+            const questionAwarded = awarded.get(questionId) ?? new Prisma.Decimal(0);
+            totalAwarded = totalAwarded.add(questionAwarded);
+            totalPossible = totalPossible.add(question.question_score);
+            // A written answer is the only kind a person has to mark, so it is the only kind whose
+            // score can still move.
+            if (question.question_type === "SHORT_ANSWER") {
+              if (pending.has(questionId)) writtenPendingScore = writtenPendingScore.add(question.question_score);
+            } else {
+              autoAwarded = autoAwarded.add(questionAwarded);
+              autoPossible = autoPossible.add(question.question_score);
+            }
+          }
+          return {
+            totalAwarded: Number(totalAwarded),
+            totalPossible: Number(totalPossible),
+            autoAwarded: Number(autoAwarded),
+            autoPossible: Number(autoPossible),
+            writtenPendingScore: Number(writtenPendingScore),
+          };
+        };
+
+        const attempts: AssessmentReview["attempts"] = submissions.map((row) => {
+          const totals = totalsOf(row);
+          const released = row.publication_status === "PUBLISHED";
+          return {
+            submissionId: row.submission_id.toString(),
+            attemptNo: row.attempt_no,
+            submittedAt: row.submitted_at?.toISOString() ?? null,
+            resultsPublished: released,
+            // The final score and verdict stay behind the release gate. The auto-marked part does
+            // not: it is already decided, and hiding it is what left people guessing.
+            scorePercent: released && row.score !== null ? Number(row.score) : null,
+            passStatus: released ? (row.pass_status as AssessmentReview["passStatus"]) : "PENDING",
+            totalAwarded: released ? totals.totalAwarded : null,
+            totalPossible: totals.totalPossible,
+            autoAwarded: totals.autoAwarded,
+            autoPossible: totals.autoPossible,
+            writtenPendingScore: totals.writtenPendingScore,
+          };
+        });
+
+        // Best of the released attempts, since only those have a final score to compare. With none
+        // released yet, the auto-marked part is the only comparable thing there is. A tie goes to
+        // the earlier attempt, which got there first.
+        const released = attempts.filter((attempt) => attempt.resultsPublished);
+        const best = (released.length > 0 ? [...released] : [...attempts]).sort((a, b) =>
+          released.length > 0
+            ? (b.scorePercent ?? -1) - (a.scorePercent ?? -1) || a.attemptNo - b.attemptNo
+            : b.autoAwarded - a.autoAwarded || a.attemptNo - b.attemptNo,
+        )[0];
+        const submission =
+          submissions.find((row) => row.attempt_no === (attemptNo ?? best.attemptNo)) ??
+          submissions.find((row) => row.attempt_no === best.attemptNo)!;
+        const openedIsReleased = submission.publication_status === "PUBLISHED";
 
         // submitAssessment puts a question's whole award on its first answer row only, so summing
         // rows per question is right and does not multiply a multi-select answer.
@@ -370,16 +528,27 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
           }
         }
 
+        const openedTotals = totalsOf(submission);
+
         return {
           submissionId: submission.submission_id.toString(),
           attemptNo: submission.attempt_no,
           submittedAt: submission.submitted_at?.toISOString() ?? null,
-          scorePercent: submission.score === null ? null : Number(submission.score),
-          passStatus: submission.pass_status as AssessmentReview["passStatus"],
+          resultsPublished: openedIsReleased,
+          scorePercent: openedIsReleased && submission.score !== null ? Number(submission.score) : null,
+          passStatus: openedIsReleased ? (submission.pass_status as AssessmentReview["passStatus"]) : "PENDING",
           passingScorePercent: Number(submission.assessment.passing_score_percent),
-          totalAwarded: Number(totalAwarded),
+          totalAwarded: openedIsReleased ? Number(totalAwarded) : null,
           totalPossible: Number(totalPossible),
-          missedQuestions,
+          autoAwarded: openedTotals.autoAwarded,
+          autoPossible: openedTotals.autoPossible,
+          writtenPendingScore: openedTotals.writtenPendingScore,
+          // The per-question breakdown is the released view. Handing it over early would show which
+          // written answers scored what before HRD has decided, and the missed list on an unmarked
+          // paper reads as "wrong" for answers nobody has read.
+          missedQuestions: openedIsReleased ? missedQuestions : [],
+          attempts,
+          bestAttemptNo: best.attemptNo,
         };
       });
     },
@@ -583,6 +752,98 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
       });
     },
 
+    /**
+     * The evaluations this supervisor has been asked to fill in about other people. Their own
+     * training never appears here - this list is only ever about somebody else.
+     *
+     * Only the 30-day follow-up. That stage asks what changed in the person since the course, which
+     * is the supervisor's to answer; the after-training evaluation is the attendee's own verdict on
+     * the course and stays theirs alone.
+     */
+    async listAssignedEvaluations(reviewerUserId: string): Promise<AssignedEvaluation[]> {
+      return withDatabaseErrorMapping(async () => {
+        const assignments = await db().training_evaluation_reviewer.findMany({
+          where: { reviewer_user_id: reviewerUserId },
+          include: {
+            training_enrollment: {
+              include: {
+                training_plan: { include: planWithCourseInclude },
+                employee: { select: { employee_code: true, first_name_th: true, last_name_th: true } },
+                evaluation_submission: {
+                  where: { respondent_user_id: reviewerUserId },
+                  select: { evaluation_form_id: true, submitted_at: true },
+                },
+              },
+            },
+          },
+          orderBy: { assigned_at: "desc" },
+        });
+
+        const now = new Date();
+        const rows: AssignedEvaluation[] = [];
+        for (const assignment of assignments) {
+          const enrollment = assignment.training_enrollment;
+          // Same rule the attendee's own forms follow: an unapproved registration is not a training
+          // anyone should be evaluating yet.
+          if (enrollment.approval_status !== "APPROVED") continue;
+          const plan = enrollment.training_plan;
+          const startAt = plan.start_datetime.toISOString();
+          const endAt = plan.end_datetime.toISOString();
+
+          const stage = "EVALUATION_30DAY" as const;
+          const formId = formIdForStage(plan, stage);
+          const link =
+            plan.evaluation_after_30day_link ?? plan.training_plan_oap.course.evaluation_after_30day_link;
+          // Neither a form nor a link means this course has no follow-up to fill in.
+          if (formId === null && !link?.trim()) continue;
+
+          const availability = stageAvailability(stage, startAt, endAt, null, now);
+          rows.push({
+            enrollmentId: enrollment.enrollment_id.toString(),
+            stage,
+            attendeeName: `${enrollment.employee.first_name_th} ${enrollment.employee.last_name_th}`.trim(),
+            attendeeEmployeeCode: enrollment.employee.employee_code ?? "",
+            courseName: plan.training_plan_oap.course_name_snapshot,
+            batchNo: plan.batch_no,
+            startAt,
+            endAt,
+            mode: formId === null ? "LINK" : "FORM",
+            link: formId === null ? link?.trim() ?? null : null,
+            opensAt: availability.opensAt,
+            isOpen: availability.state === "OPEN",
+            openedAt: assignment.opened_at?.toISOString() ?? null,
+            submitted:
+              formId !== null &&
+              enrollment.evaluation_submission.some(
+                (submission) => submission.evaluation_form_id === formId && submission.submitted_at !== null,
+              ),
+          });
+        }
+        return rows;
+      });
+    },
+
+    /**
+     * Records that the supervisor followed an external evaluation link. For a LINK course this is
+     * the only trace that will ever exist, since the answers live on somebody else's form - which
+     * is why the screen calls it "opened" and never "done".
+     *
+     * A no-op unless the caller is the person actually assigned, and only the first open is kept.
+     */
+    async markAssignedEvaluationOpened(enrollmentId: string, reviewerUserId: string) {
+      return withDatabaseErrorMapping(async () => {
+        await db().training_evaluation_reviewer.updateMany({
+          where: {
+            enrollment_id: BigInt(enrollmentId),
+            reviewer_user_id: reviewerUserId,
+            opened_at: null,
+          },
+          data: { opened_at: new Date() },
+        });
+        return { opened: true as const };
+      });
+    },
+
     async readEvaluationForEmployee(
       enrollmentId: string,
       timing: "EVALUATION" | "EVALUATION_30DAY",
@@ -590,7 +851,8 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
       employeeUserId: string | null,
     ): Promise<EvaluationForEmployee> {
       return withDatabaseErrorMapping(async () => {
-        const enrollment = await loadOwnedEnrollment(db(), enrollmentId, employeeId, employeeUserId);
+        const enrollment = await loadOwnedEnrollment(db(), enrollmentId, employeeId, employeeUserId, timing === "EVALUATION_30DAY");
+        const respondentUserId = respondentUserIdOf(enrollment, employeeUserId);
         const formId = formIdForStage(enrollment.training_plan, timing);
         if (formId === null) {
           throw notFound("This course has no evaluation form configured for this stage");
@@ -602,6 +864,7 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
           enrollment.training_plan.start_datetime,
           enrollment.training_plan.end_datetime,
         );
+        await markReviewerOpened(db(), enrollment, respondentUserId);
 
         const [form, existing] = await Promise.all([
           db().evaluation_form.findUniqueOrThrow({
@@ -637,7 +900,7 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
             },
           }),
           db().evaluation_submission.findUnique({
-            where: { evaluation_form_id_enrollment_id: { evaluation_form_id: formId, enrollment_id: enrollment.enrollment_id } },
+            where: submissionKey(formId, enrollment.enrollment_id, respondentUserId),
             select: { submitted_at: true },
           }),
         ]);
@@ -678,7 +941,8 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
       employeeUserId: string | null,
     ) {
       return withDatabaseErrorMapping(async () => {
-        const enrollment = await loadOwnedEnrollment(db(), enrollmentId, employeeId, employeeUserId);
+        const enrollment = await loadOwnedEnrollment(db(), enrollmentId, employeeId, employeeUserId, timing === "EVALUATION_30DAY");
+        const respondentUserId = respondentUserIdOf(enrollment, employeeUserId);
         const formId = formIdForStage(enrollment.training_plan, timing);
         if (formId === null) {
           throw notFound("This course has no evaluation form configured for this stage");
@@ -692,7 +956,7 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
         );
 
         const existing = await db().evaluation_submission.findUnique({
-          where: { evaluation_form_id_enrollment_id: { evaluation_form_id: formId, enrollment_id: enrollment.enrollment_id } },
+          where: submissionKey(formId, enrollment.enrollment_id, respondentUserId),
           select: { evaluation_submission_id: true },
         });
         if (existing) {
@@ -704,6 +968,7 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
             data: {
               evaluation_form_id: formId,
               enrollment_id: enrollment.enrollment_id,
+              respondent_user_id: respondentUserId,
               status: "SUBMITTED",
               started_at: new Date(),
               submitted_at: new Date(),
@@ -771,6 +1036,7 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
       planId: string,
       timing: EvaluationTimingStage,
       companyId: string | null,
+      respondentGroup: EvaluationRespondentGroup = "EMPLOYEE",
     ): Promise<EvaluationSummary | null> {
       return withDatabaseErrorMapping(async () => {
         const plan = await db().training_plan.findUniqueOrThrow({
@@ -808,9 +1074,17 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
           },
         });
 
-        const enrolledCount = await db().training_enrollment.count({ where: { plan_id: BigInt(planId) } });
+        // Who was expected to answer. For the class it is the roster; for supervisors it is however
+        // many of them HRD actually asked, which is usually far fewer - dividing their replies by
+        // the roster would report a fraction of the response rate they really achieved.
+        const expectedCount =
+          respondentGroup === "EMPLOYEE"
+            ? await db().training_enrollment.count({ where: { plan_id: BigInt(planId) } })
+            : await db().training_evaluation_reviewer.count({
+                where: { training_enrollment: { plan_id: BigInt(planId) } },
+              });
 
-        const submissions = await db().evaluation_submission.findMany({
+        const allSubmissions = await db().evaluation_submission.findMany({
           where: {
             evaluation_form_id: formId,
             submitted_at: { not: null },
@@ -818,6 +1092,11 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
           },
           select: {
             evaluation_submission_id: true,
+            // Which of the two audiences this row belongs to is "did the person who answered attend
+            // the course themselves". SQL Server cannot compare two columns from inside a Prisma
+            // filter, so the split happens here, over rows this query already had to load.
+            respondent_user_id: true,
+            training_enrollment: { select: { employee_user_id: true } },
             evaluation_answer: {
               select: {
                 evaluation_question_id: true,
@@ -830,6 +1109,12 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
               },
             },
           },
+        });
+
+        const submissions = allSubmissions.filter((submission) => {
+          const isAttendeesOwn =
+            submission.respondent_user_id === submission.training_enrollment.employee_user_id;
+          return respondentGroup === "EMPLOYEE" ? isAttendeesOwn : !isAttendeesOwn;
         });
 
         const submittedCount = submissions.length;
@@ -900,9 +1185,10 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
           description: form.description,
           isAnonymous: form.is_anonymous,
           timing,
-          enrolledCount,
+          respondentGroup,
+          expectedCount,
           submittedCount,
-          responseRatePercent: percent(submittedCount, enrolledCount),
+          responseRatePercent: percent(submittedCount, expectedCount),
           questions: form.evaluation_question.map((question) => {
             const questionId = question.evaluation_question_id.toString();
             const answeredBy = respondentsByQuestion.get(questionId)?.size ?? 0;
@@ -974,6 +1260,154 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
     /** Everything on one plan still waiting on HRD: submissions with an ungraded SHORT_ANSWER, and
      *  submissions already graded but not yet released to the employee. HRD_FACTORY only ever sees
      *  plans their own company owns. */
+    /**
+     * One submitted paper, marked up, for HRD: every question with the answer key, what the person
+     * picked, and what each answer scored.
+     *
+     * Separate from readAssessmentReviewForEmployee, which answers the same question for the person
+     * who sat the test and deliberately carries no key. Two audiences, two shapes: a screen written
+     * for the employee has nowhere to put a key even by mistake.
+     */
+    async readSubmissionForHrd(
+      planId: string,
+      submissionId: string,
+      companyId: string | null,
+    ): Promise<SubmissionReview> {
+      return withDatabaseErrorMapping(async () => {
+        const submission = await db().assessment_submission.findUniqueOrThrow({
+          where: { submission_id: BigInt(submissionId) },
+          include: {
+            training_enrollment: {
+              select: {
+                enrollment_id: true,
+                plan_id: true,
+                employee: {
+                  select: { employee_code: true, first_name_th: true, last_name_th: true, first_name_en: true, last_name_en: true },
+                },
+                training_plan: { select: { training_plan_oap: { select: { company_id: true } } } },
+              },
+            },
+            assessment: {
+              select: {
+                passing_score_percent: true,
+                assessment_question: {
+                  orderBy: { question_order: "asc" },
+                  select: {
+                    question_id: true,
+                    question_order: true,
+                    question_text: true,
+                    question_type: true,
+                    question_score: true,
+                    assessment_choice: {
+                      orderBy: { choice_order: "asc" },
+                      select: { choice_id: true, choice_order: true, choice_text: true, is_correct: true, axis: true },
+                    },
+                  },
+                },
+              },
+            },
+            assessment_answer: {
+              select: {
+                answer_id: true,
+                question_id: true,
+                choice_id: true,
+                row_choice_id: true,
+                answer_text: true,
+                is_correct: true,
+                score_awarded: true,
+                review_status: true,
+                review_comment: true,
+              },
+            },
+          },
+        });
+
+        // The plan in the URL has to be the submission's own, or a scoped HRD user could read a
+        // paper from another company by pairing their own plan id with somebody else's submission.
+        if (submission.training_enrollment.plan_id.toString() !== planId) {
+          throw notFound("This submission does not belong to that plan");
+        }
+        if (
+          companyId &&
+          submission.training_enrollment.training_plan.training_plan_oap.company_id?.toString() !== companyId
+        ) {
+          throw forbidden("This training plan is outside your permitted scope");
+        }
+
+        const employee = submission.training_enrollment.employee;
+        const answersByQuestion = new Map<string, typeof submission.assessment_answer>();
+        for (const answer of submission.assessment_answer) {
+          const key = answer.question_id.toString();
+          const bucket = answersByQuestion.get(key);
+          if (bucket) bucket.push(answer);
+          else answersByQuestion.set(key, [answer]);
+        }
+
+        let totalScore = 0;
+        let scoreAwarded = 0;
+        const questions = submission.assessment.assessment_question.map((question) => {
+          const questionId = question.question_id.toString();
+          const answers = answersByQuestion.get(questionId) ?? [];
+          const picked = new Set(answers.map((answer) => answer.choice_id?.toString()).filter(Boolean));
+          const written = answers.find((answer) => answer.choice_id === null);
+          const awarded = answers.reduce(
+            (sum, answer) => sum + (answer.score_awarded === null ? 0 : Number(answer.score_awarded)),
+            0,
+          );
+          const hasScore = answers.some((answer) => answer.score_awarded !== null);
+          // A block carries no marks and is not part of the total - the same rule the grading and
+          // submitting paths already apply, kept in step here so the denominators agree.
+          if (!isFormBlockType(question.question_type)) totalScore += Number(question.question_score);
+          scoreAwarded += awarded;
+
+          return {
+            questionId,
+            questionOrder: question.question_order,
+            questionText: question.question_text,
+            questionType: question.question_type,
+            questionScore: Number(question.question_score),
+            scoreAwarded: hasScore ? awarded : null,
+            // A written answer is a judgement, not a match, so it has no true/false of its own -
+            // saying "wrong" for one nobody has read yet would be the screen inventing a verdict.
+            isCorrect: written ? null : answers.some((answer) => answer.is_correct === true),
+            needsReview: answers.some((answer) => answer.review_status === "PENDING_REVIEW"),
+            answerId: written?.answer_id.toString() ?? null,
+            answerText: written?.answer_text ?? null,
+            reviewComment: written?.review_comment ?? null,
+            choices: question.assessment_choice.map((choice) => ({
+              choiceId: choice.choice_id.toString(),
+              choiceOrder: choice.choice_order,
+              choiceText: choice.choice_text,
+              isCorrect: choice.is_correct,
+              picked: picked.has(choice.choice_id.toString()),
+              rowId:
+                answers.find((answer) => answer.choice_id === choice.choice_id)?.row_choice_id?.toString() ?? null,
+              axis: (choice.axis as "ROW" | "COLUMN" | null) ?? null,
+            })),
+          };
+        });
+
+        return {
+          submissionId: submission.submission_id.toString(),
+          enrollmentId: submission.training_enrollment.enrollment_id.toString(),
+          employeeName:
+            `${employee.first_name_th} ${employee.last_name_th}`.trim() ||
+            `${employee.first_name_en || ""} ${employee.last_name_en || ""}`.trim(),
+          employeeCode: employee.employee_code ?? "",
+          stage: submission.assessment_stage as GradedStage,
+          attemptNo: submission.attempt_no,
+          submittedAt: submission.submitted_at?.toISOString() ?? null,
+          totalScore,
+          scoreAwarded,
+          passingScorePercent: Number(submission.assessment.passing_score_percent),
+          passStatus: submission.pass_status as SubmissionReview["passStatus"],
+          gradingStatus: submission.grading_status as SubmissionReview["gradingStatus"],
+          resultsPublished: submission.publication_status === "PUBLISHED",
+          questions,
+        };
+      });
+    },
+
     async listPendingGrading(planId: string, companyId: string | null) {
       return withDatabaseErrorMapping(async () => {
         const plan = await db().training_plan.findUniqueOrThrow({

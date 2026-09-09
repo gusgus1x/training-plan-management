@@ -14,8 +14,19 @@ const attendee = (overrides: Partial<TrainingRecordAttendee> = {}): TrainingReco
   attended: true,
   preTestPassed: null,
   postTestPassed: null,
+  orgUnit: {
+    functionTh: "",
+    functionEn: "",
+    divisionTh: "",
+    divisionEn: "",
+    departmentTh: "",
+    departmentEn: "",
+    sectionTh: "",
+    sectionEn: "",
+  },
   evaluationCompleted: false,
   result: null,
+  reviewer: null,
   ...overrides,
 });
 

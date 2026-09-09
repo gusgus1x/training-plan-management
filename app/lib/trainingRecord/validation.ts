@@ -5,6 +5,7 @@ import {
   type CompletionStatus,
   type SaveExpensesInput,
   type SaveResultsInput,
+  type SaveReviewersInput,
 } from "./types";
 
 const invalid = (field: string, reason: string) =>
@@ -108,4 +109,67 @@ export const parseSaveResults = (input: InputObject): SaveResultsInput => {
   });
 
   return { results };
+};
+
+const invalidReviewer = (field: string, reason: string) =>
+  new ApiError({
+    code: "INVALID_INPUT",
+    message: "The submitted reviewer assignment is invalid",
+    status: 400,
+    details: { field, reason },
+  });
+
+/**
+ * The search text a reviewer is looked up by. Empty is a valid request, not a missing one: it asks
+ * for the section-head list the dropdown shows. A single character is refused because it narrows a
+ * company roster to nothing readable while still being a search - the caller either types something
+ * usable or takes the list.
+ */
+export const REVIEWER_SEARCH_MIN_LENGTH = 2;
+
+export const parseReviewerSearch = (params: URLSearchParams): string => {
+  const search = params.get("search")?.trim() ?? "";
+  if (search === "") return "";
+  if (search.length < REVIEWER_SEARCH_MIN_LENGTH) {
+    throw invalidReviewer("search", `Type at least ${REVIEWER_SEARCH_MIN_LENGTH} characters to search`);
+  }
+  if (search.length > 100) {
+    throw invalidReviewer("search", "Search is too long");
+  }
+  return search;
+};
+
+export const parseSaveReviewers = (input: InputObject): SaveReviewersInput => {
+  const rows = input.assignments;
+  if (!Array.isArray(rows)) {
+    throw invalidReviewer("assignments", "Value must be an array of assignments");
+  }
+
+  const seen = new Set<string>();
+  const assignments = rows.map((raw, index) => {
+    if (!raw || typeof raw !== "object") {
+      throw invalidReviewer(`assignments[${index}]`, "Each assignment must be an object");
+    }
+    const row = raw as InputObject;
+    const enrollmentId = row.enrollmentId;
+    if (typeof enrollmentId !== "string" || !/^[1-9]\d*$/.test(enrollmentId)) {
+      throw invalidReviewer(`assignments[${index}].enrollmentId`, "Value must be a positive identifier");
+    }
+    // One attendee has one reviewer, which the table's primary key enforces. Two rows for the same
+    // attendee in one payload would silently keep whichever the writer applied last.
+    if (seen.has(enrollmentId)) {
+      throw invalidReviewer(`assignments[${index}].enrollmentId`, "The same enrollment appears twice");
+    }
+    seen.add(enrollmentId);
+
+    // null is not missing data here - it is the instruction to remove the current reviewer.
+    const rawReviewer = row.reviewerUserId;
+    if (rawReviewer === null) return { enrollmentId, reviewerUserId: null };
+    if (typeof rawReviewer !== "string" || !rawReviewer.trim() || rawReviewer.length > 50) {
+      throw invalidReviewer(`assignments[${index}].reviewerUserId`, "Value must be a user id, or null to unassign");
+    }
+    return { enrollmentId, reviewerUserId: rawReviewer.trim() };
+  });
+
+  return { assignments };
 };

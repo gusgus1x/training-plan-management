@@ -69,6 +69,11 @@ export const assessmentStage = (
 
 /** What the employee has done with one FORM stage so far - only meaningful when mode is FORM. */
 export type StageSubmissionSummary = {
+  /** The latest attempt's id, which is what HRD's answer review is keyed by. Empty for an
+   *  evaluation: those are never graded and have no paper to review. */
+  submissionId: string;
+  /** The latest attempt's number, not a count of rows - the two agree because attempts are
+   *  numbered from 1 with no gaps. */
   attemptNo: number;
   submittedAt: string | null;
   score: number | null;
@@ -92,6 +97,12 @@ export type EnrollmentStageInfo = AssessmentStageInfo & {
   availability: "NOT_YET" | "OPEN" | "CLOSED_BY_HRD";
   /** Null means never attempted. Evaluations never have more than one (attemptNo is always 1). */
   submission: StageSubmissionSummary | null;
+  /**
+   * Every attempt at this stage, newest first, so a screen can list them rather than only naming
+   * the last one. `submission` above is the first of these - kept as its own field because most
+   * callers want exactly that and nothing else.
+   */
+  attempts: StageSubmissionSummary[];
 };
 
 /** A NONE stage with no plan to derive dates from - screens that build a placeholder
@@ -103,6 +114,7 @@ export const emptyEnrollmentStage: EnrollmentStageInfo = {
   opensAt: "",
   availability: "NOT_YET",
   submission: null,
+  attempts: [],
 };
 
 export type EnrollmentAssessmentInfo = {

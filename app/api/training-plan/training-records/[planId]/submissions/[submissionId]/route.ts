@@ -39,3 +39,18 @@ export const createPublishSubmissionHandler = (dependencies: Dependencies = {}) 
   }, options(dependencies.auth));
 
 export const POST = createPublishSubmissionHandler();
+
+/** The marked-up paper, for the review screen. A GET on the same path rather than a new one: it is
+ *  the same resource the other two verbs act on. */
+export const createReadSubmissionReviewHandler = (dependencies: Dependencies = {}) =>
+  createProtectedRoute<RouteContext>(async (_request: NextRequest, principal, { params }) => {
+    const { planId, submissionId } = await params;
+    const review = await (dependencies.service ?? trainingFormsService).readSubmissionForHrd(
+      planId,
+      submissionId,
+      principal.role === "HRD_FACTORY" ? principal.companyId : null,
+    );
+    return apiSuccess({ review });
+  }, options(dependencies.auth));
+
+export const GET = createReadSubmissionReviewHandler();

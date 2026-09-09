@@ -36,6 +36,39 @@ export type TrainingResultEntry = {
   certificateNo: string | null;
 };
 
+/**
+ * One person who could be asked to evaluate an attendee. The org unit fields are on the picker
+ * because this system has no reporting line: HRD is the one who knows which section head belongs to
+ * which attendee, and division/department/section is what they recognise them by. Two people can
+ * easily share a name.
+ */
+export type ReviewerCandidate = {
+  reviewerUserId: string;
+  employeeCode: string;
+  name: string;
+  position: string;
+  /** Company code. A centre HRD user sees every company at once, so the picker needs it both to
+   *  filter by and to tell two people of the same name apart. */
+  company: string;
+  division: string;
+  department: string;
+  section: string;
+};
+
+/**
+ * A reviewer HRD has actually assigned to one attendee.
+ *
+ * `openedAt` is the first time the reviewer opened the form or followed the link. It is NOT a
+ * completion record - for a course evaluated by an external link it is the only signal that will
+ * ever exist, because this system cannot see what happens on someone else's form. `submitted` can
+ * only ever be true for an in-system form.
+ */
+export type ReviewerAssignment = ReviewerCandidate & {
+  assignedAt: string;
+  openedAt: string | null;
+  submitted: boolean;
+};
+
 export type TrainingRecordAttendee = {
   enrollmentId: string;
   employeeId: string;
@@ -47,12 +80,37 @@ export type TrainingRecordAttendee = {
   department: string;
   position: string;
   company: string;
+  /**
+   * The four organisation levels an employee record actually carries, in both languages, empty
+   * where unset. They are four different things and the roster shows all four: `department` above
+   * carries only the function, which is why a column headed Dept had been reading as one for so
+   * long. Both languages travel together because the screen can switch language without refetching.
+   */
+  orgUnit: {
+    functionTh: string;
+    functionEn: string;
+    divisionTh: string;
+    divisionEn: string;
+    departmentTh: string;
+    departmentEn: string;
+    sectionTh: string;
+    sectionEn: string;
+  };
   attended: boolean;
   preTestPassed: boolean | null;
   postTestPassed: boolean | null;
+  /** The attendee's own evaluation. A reviewer's answers never count towards this. */
   evaluationCompleted: boolean;
   /** null until HRD records one. */
   result: TrainingResultEntry | null;
+  /** Who was asked to evaluate this attendee, or null when nobody has been. */
+  reviewer: ReviewerAssignment | null;
+};
+
+/** One row of the basket HRD saves: the attendee, and who reviews them. A null reviewer removes
+ *  whoever was assigned. */
+export type SaveReviewersInput = {
+  assignments: Array<{ enrollmentId: string; reviewerUserId: string | null }>;
 };
 
 export type SaveResultsInput = {
@@ -70,6 +128,10 @@ export type TrainingRecordSummary = {
   planId: string;
   /** How this course is evaluated: an in-system form, an external link, or not at all. */
   evaluation: AssessmentStageInfo;
+  /** The 30-day follow-up, resolved the same way. Kept apart from `evaluation` because it is the
+   *  only stage a supervisor is ever asked to fill in: the follow-up asks what changed in the
+   *  person since the course, which is a question only their supervisor can answer. */
+  evaluationAfter30Day: AssessmentStageInfo;
   registeredCount: number;
   attendedCount: number;
   expenses: TrainingRecordExpenses;

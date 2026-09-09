@@ -1,7 +1,9 @@
 import { ApiError } from "../api/errors";
 import type { InputObject } from "../api/validation";
+import { EVALUATION_RESPONDENT_GROUPS } from "./types";
 import type {
   AssessmentAnswerInput,
+  EvaluationRespondentGroup,
   EvaluationAnswerInput,
   GradeAnswerInput,
   GradeSubmissionInput,
@@ -28,6 +30,16 @@ export const parseEvaluationTiming = (value: string): "EVALUATION" | "EVALUATION
     throw invalid("timing", "Timing must be EVALUATION or EVALUATION_30DAY");
   }
   return value;
+};
+
+/** Which audience's answers to summarise. Defaults to the attendees, who are the only respondents
+ *  every course has - a plan with no supervisor assigned would otherwise open on an empty tab. */
+export const parseEvaluationRespondentGroup = (value: string | null): EvaluationRespondentGroup => {
+  if (value === null || value === "") return "EMPLOYEE";
+  if (!EVALUATION_RESPONDENT_GROUPS.includes(value as EvaluationRespondentGroup)) {
+    throw invalid("respondents", `Respondents must be one of ${EVALUATION_RESPONDENT_GROUPS.join(", ")}`);
+  }
+  return value as EvaluationRespondentGroup;
 };
 
 const readStringArray = (value: unknown, field: string): string[] => {

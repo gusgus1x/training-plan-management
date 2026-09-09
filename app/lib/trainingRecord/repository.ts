@@ -4,19 +4,44 @@ import { ApiError } from "../api/errors";
 import type { AuthenticatedPrincipal } from "../auth/types";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
+import { isSectionHeadOrAbove } from "../employeeMasterData";
 import { assessmentStage } from "../trainingEnrollment/types";
 import {
   EXPENSE_CATEGORIES,
   type CostBreakdown,
   type ExpenseCategory,
   type CompletionStatus,
+  type ReviewerCandidate,
   type SaveExpensesInput,
   type SaveResultsInput,
+  type SaveReviewersInput,
   type TrainingRecordExpenses,
   type TrainingRecordSummary,
 } from "./types";
 
-type DatabaseClient = Pick<PrismaClient, "training_plan" | "training_expense" | "training_result">;
+type DatabaseClient = Pick<
+  PrismaClient,
+  "training_plan" | "training_expense" | "training_result" | "employee" | "training_evaluation_reviewer"
+>;
+
+/** How many matches are read before the position rules narrow them, and how many survive. The scan
+ *  limit is what keeps a two-letter search from loading the whole company. */
+const REVIEWER_SEARCH_SCAN_LIMIT = 200;
+const REVIEWER_SEARCH_RESULT_LIMIT = 20;
+
+/** The section-head list, for the dropdown that offers every one of them without typing anything.
+ *
+ * These match on the POSITION alone, unlike isSectionHeadOrAbove, which also promotes people by
+ * level and by manager-and-above titles. That is deliberate: the dropdown answers "who are the
+ * section heads", so a plant manager appearing in it would be wrong. Anyone the list misses is
+ * still reachable by typing a name, which uses the wider rule.
+ *
+ * It runs as a WHERE clause rather than in JavaScript because this list has no search text to
+ * bound it - filtering after the fact would silently drop every head past the scan limit.
+ */
+const SECTION_HEAD_POSITION_CODES = ["SH"];
+const SECTION_HEAD_POSITION_NAMES = ["section head", "sectionhead", "หัวหน้าแผนก"];
+const REVIEWER_LIST_LIMIT = 200;
 
 const EXPENSE_KEY_TO_CATEGORY: Record<keyof SaveExpensesInput, ExpenseCategory> = {
   accommodation: "ACCOMMODATION",
@@ -33,10 +58,29 @@ const CATEGORY_TO_EXPENSE_KEY = Object.fromEntries(
 const employeeInclude = {
   company: true,
   organization_function: true,
+  // All four organisation levels, in whichever language the screen is in. The roster shows them as
+  // four columns because they are four different things - organization_function above is not the
+  // department, which is what the old single column had been showing under that heading.
+  division: true,
+  department: true,
+  section: true,
   // The mapper always read a position, but the relation was never loaded, so every attendee's
   // position came back empty and the column showed "-" for the whole roster. The `as any` cast on
   // the read is what kept the compiler quiet about it.
   position: true,
+} satisfies Prisma.employeeInclude;
+
+/** What the reviewer picker shows. Division/department/section are here and not on employeeInclude
+ *  because only the reviewer is chosen by org unit; the attendee roster never displays them. */
+const reviewerEmployeeInclude = {
+  position: true,
+  // The picker shows and filters by company: a centre HRD user chooses across all of them.
+  company: true,
+  division: true,
+  department: true,
+  section: true,
+  // Read by isSectionHeadOrAbove, which ranks by level when the position name says nothing useful.
+  employee_level: true,
 } satisfies Prisma.employeeInclude;
 
 const trainingRecordInclude = {
@@ -49,6 +93,10 @@ const trainingRecordInclude = {
         select: {
           evaluation_form_id: true,
           evaluation_link: true,
+          // The 30-day follow-up is the stage a supervisor is asked to fill in, so the reviewer
+          // panel needs to know whether it is a form, a link, or absent.
+          evaluation_form_after_30day_id: true,
+          evaluation_after_30day_link: true,
         },
       },
     },
@@ -62,6 +110,7 @@ const trainingRecordInclude = {
       assessment_submission: true,
       evaluation_submission: true,
       training_result: true,
+      training_evaluation_reviewer: { include: { reviewer: { include: reviewerEmployeeInclude } } },
     },
   },
 } satisfies Prisma.training_planInclude;
@@ -71,6 +120,22 @@ type TrainingRecordPlan = Prisma.training_planGetPayload<{ include: typeof train
 const employeeDisplayName = (employee: TrainingRecordPlan["training_enrollment"][number]["employee"]) =>
   `${employee.first_name_th} ${employee.last_name_th}`.trim() ||
   `${employee.first_name_en || ""} ${employee.last_name_en || ""}`.trim();
+
+/** The picker fields for one employee, from any read that included reviewerEmployeeInclude. */
+const reviewerCandidate = (
+  employee: Prisma.employeeGetPayload<{ include: typeof reviewerEmployeeInclude }>,
+): ReviewerCandidate => ({
+  reviewerUserId: employee.user_id,
+  employeeCode: employee.employee_code ?? "",
+  name:
+    `${employee.first_name_th} ${employee.last_name_th}`.trim() ||
+    `${employee.first_name_en || ""} ${employee.last_name_en || ""}`.trim(),
+  position: employee.position?.position_name_th || employee.position?.position_name_en || "",
+  company: employee.company.company_code,
+  division: employee.division?.division_name_th || employee.division?.division_name_en || "",
+  department: employee.department?.department_name_th || employee.department?.department_name_en || "",
+  section: employee.section?.section_name_th || employee.section?.section_name_en || "",
+});
 
 const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
   const expenses = {
@@ -96,6 +161,7 @@ const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
         .sort((a, b) => b.attempt_no - a.attempt_no)[0];
     const preTest = latestByStage("PRE_TEST");
     const postTest = latestByStage("POST_TEST");
+    const assignment = enrollment.training_evaluation_reviewer;
 
     return {
       enrollmentId: enrollment.enrollment_id.toString(),
@@ -112,12 +178,27 @@ const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
         enrollment.employee.position?.position_name_th ||
         "",
       company: enrollment.employee.company.company_code,
+      orgUnit: {
+        functionTh: enrollment.employee.organization_function?.function_name_th ?? "",
+        functionEn: enrollment.employee.organization_function?.function_name_en ?? "",
+        divisionTh: enrollment.employee.division?.division_name_th ?? "",
+        divisionEn: enrollment.employee.division?.division_name_en ?? "",
+        departmentTh: enrollment.employee.department?.department_name_th ?? "",
+        departmentEn: enrollment.employee.department?.department_name_en ?? "",
+        sectionTh: enrollment.employee.section?.section_name_th ?? "",
+        sectionEn: enrollment.employee.section?.section_name_en ?? "",
+      },
       // PRESENT only, matching Training Actual and the cost breakdown. Counting any attendance row
       // meant somebody marked ABSENT was still reported as having attended.
       attended: enrollment.attendance?.attendance_status === "PRESENT",
       preTestPassed: preTest ? preTest.pass_status?.toUpperCase() === "PASS" : null,
       postTestPassed: postTest ? postTest.pass_status?.toUpperCase() === "PASS" : null,
-      evaluationCompleted: enrollment.evaluation_submission.some((e) => e.submitted_at !== null),
+      // The attendee's OWN submission only. Since a reviewer answers the same form about the same
+      // enrollment, counting every submission here would report the attendee as done the moment
+      // their supervisor answered.
+      evaluationCompleted: enrollment.evaluation_submission.some(
+        (e) => e.submitted_at !== null && e.respondent_user_id === enrollment.employee_user_id,
+      ),
       result: enrollment.training_result
         ? {
             enrollmentId: enrollment.enrollment_id.toString(),
@@ -137,6 +218,16 @@ const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
             certificateNo: enrollment.training_result.certificate_no,
           }
         : null,
+      reviewer: assignment
+        ? {
+            ...reviewerCandidate(assignment.reviewer),
+            assignedAt: assignment.assigned_at.toISOString(),
+            openedAt: assignment.opened_at?.toISOString() ?? null,
+            submitted: enrollment.evaluation_submission.some(
+              (e) => e.submitted_at !== null && e.respondent_user_id === assignment.reviewer_user_id,
+            ),
+          }
+        : null,
     };
   });
 
@@ -145,6 +236,16 @@ const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
     evaluation: assessmentStage(
       row.training_plan_oap.course.evaluation_form_id,
       row.training_plan_oap.course.evaluation_link,
+    ),
+    // The batch's own choice wins over the course's, matching formIdForStage in
+    // trainingForms/repository.ts - a batch that points this stage somewhere else has opted out of
+    // the course's form, and the reviewer must be sent to what the attendee's own screens use.
+    evaluationAfter30Day: assessmentStage(
+      row.evaluation_form_after_30day_id ??
+        (row.evaluation_after_30day_link?.trim()
+          ? null
+          : row.training_plan_oap.course.evaluation_form_after_30day_id),
+      row.evaluation_after_30day_link ?? row.training_plan_oap.course.evaluation_after_30day_link,
     ),
     registeredCount: attendees.length,
     attendedCount: attendees.filter((a) => a.attended).length,
@@ -369,6 +470,195 @@ export const createTrainingRecordRepository = (client?: DatabaseClient) => {
               where: { enrollment_id: enrollmentId },
               create: { enrollment_id: enrollmentId, ...data },
               update: data,
+            });
+          }
+        });
+
+        const updated = await db().training_plan.findUniqueOrThrow({
+          where: { plan_id: id },
+          include: trainingRecordInclude,
+        });
+        return mapTrainingRecord(updated);
+      });
+    },
+
+    /**
+     * People HRD can pick as a reviewer.
+     *
+     * With no search text this is the section-head list: everyone whose POSITION says section head,
+     * which is what the dropdown offers. With search text it is a wider net - isSectionHeadOrAbove,
+     * which also promotes people by level and by manager-and-above titles - so a head whose
+     * position record does not say so can still be found by name.
+     *
+     * That wider rule reads position code, position name and level together, which cannot be
+     * expressed as a WHERE clause, so it runs in JavaScript over a capped fetch. The section-head
+     * list cannot work that way: with no search text to bound it, filtering after the fetch would
+     * silently drop every head past the cap.
+     */
+    async listReviewerCandidates(search: string, companyId: string | null): Promise<ReviewerCandidate[]> {
+      return withDatabaseErrorMapping(async () => {
+        if (search === "") {
+          const heads = await db().employee.findMany({
+            where: {
+              employment_status: "ACTIVE",
+              ...(companyId ? { company_id: BigInt(companyId) } : {}),
+              position: {
+                OR: [
+                  { position_code: { in: SECTION_HEAD_POSITION_CODES } },
+                  ...SECTION_HEAD_POSITION_NAMES.flatMap((name) => [
+                    { position_name_th: { contains: name } },
+                    { position_name_en: { contains: name } },
+                  ]),
+                ],
+              },
+            },
+            include: reviewerEmployeeInclude,
+            orderBy: [{ first_name_th: "asc" }, { last_name_th: "asc" }],
+            take: REVIEWER_LIST_LIMIT,
+          });
+          return heads.map(reviewerCandidate);
+        }
+
+        const rows = await db().employee.findMany({
+          where: {
+            employment_status: "ACTIVE",
+            ...(companyId ? { company_id: BigInt(companyId) } : {}),
+            OR: [
+              { first_name_th: { contains: search } },
+              { last_name_th: { contains: search } },
+              { first_name_en: { contains: search } },
+              { last_name_en: { contains: search } },
+              { employee_code: { contains: search } },
+            ],
+          },
+          include: reviewerEmployeeInclude,
+          orderBy: [{ first_name_th: "asc" }, { last_name_th: "asc" }],
+          take: REVIEWER_SEARCH_SCAN_LIMIT,
+        });
+
+        return rows
+          .filter((employee) =>
+            isSectionHeadOrAbove({
+              positionCode: employee.position?.position_code ?? null,
+              positionName: employee.position?.position_name_en ?? employee.position?.position_name_th ?? null,
+              levelCode: employee.employee_level?.level_code ?? null,
+              levelKey: employee.employee_level?.level_key ?? null,
+              levelName: employee.employee_level?.level_name_en ?? employee.employee_level?.level_name_th ?? null,
+            }),
+          )
+          .slice(0, REVIEWER_SEARCH_RESULT_LIMIT)
+          .map(reviewerCandidate);
+      });
+    },
+
+    /**
+     * Replaces the reviewer of every attendee named in `input`. Attendees left out keep whatever
+     * they have - the screen sends the basket, not the whole roster.
+     *
+     * Assignments are written in one transaction so a half-saved basket cannot exist. Reassigning
+     * does not touch anything the previous reviewer already submitted: that submission stays
+     * attributed to the person who actually wrote it.
+     */
+    async saveReviewers(planId: string, input: SaveReviewersInput, userId: string, companyId: string | null) {
+      return withDatabaseErrorMapping(async () => {
+        const id = BigInt(planId);
+        const plan = await db().training_plan.findUniqueOrThrow({
+          where: { plan_id: id },
+          include: {
+            training_plan_oap: { select: { company_id: true } },
+            training_enrollment: { where: { approval_status: "APPROVED" }, select: { enrollment_id: true } },
+          },
+        });
+        if (
+          companyId &&
+          (plan.training_plan_oap.company_id === null ||
+            plan.training_plan_oap.company_id?.toString() !== companyId)
+        ) {
+          throw new ApiError({
+            code: "FORBIDDEN",
+            message: "This training plan belongs to a different company or center scope",
+            status: 403,
+          });
+        }
+
+        // An assignment whose reviewer has already answered is closed. Their submission is filed
+        // against them by name, so moving the assignment to somebody else would leave answers
+        // credited to a person the record no longer says was asked. Checked here rather than only
+        // on screen, because the screen is not the thing that protects the data.
+        const answered = await db().training_evaluation_reviewer.findMany({
+          where: {
+            enrollment_id: { in: input.assignments.map((assignment) => BigInt(assignment.enrollmentId)) },
+            training_enrollment: {
+              evaluation_submission: { some: { submitted_at: { not: null } } },
+            },
+          },
+          select: {
+            enrollment_id: true,
+            reviewer_user_id: true,
+            training_enrollment: {
+              select: {
+                evaluation_submission: {
+                  where: { submitted_at: { not: null } },
+                  select: { respondent_user_id: true },
+                },
+              },
+            },
+          },
+        });
+        const lockedEnrollmentIds = new Set(
+          answered
+            .filter((row) =>
+              row.training_enrollment.evaluation_submission.some(
+                (submission) => submission.respondent_user_id === row.reviewer_user_id,
+              ),
+            )
+            .map((row) => row.enrollment_id.toString()),
+        );
+
+        const onPlan = new Set(plan.training_enrollment.map((enrollment) => enrollment.enrollment_id.toString()));
+        for (const assignment of input.assignments) {
+          if (lockedEnrollmentIds.has(assignment.enrollmentId)) {
+            throw new ApiError({
+              code: "REVIEWER_ALREADY_ANSWERED",
+              message: "This reviewer has already submitted the evaluation and can no longer be changed",
+              status: 409,
+              details: { enrollmentId: assignment.enrollmentId },
+            });
+          }
+          // Same refusal as saveResults: an id from another plan would otherwise create an
+          // assignment nobody on this screen can see, let alone remove.
+          if (!onPlan.has(assignment.enrollmentId)) {
+            throw new ApiError({
+              code: "ENROLLMENT_NOT_ON_PLAN",
+              message: `Enrollment ${assignment.enrollmentId} is not an approved enrollment on this plan`,
+              status: 409,
+            });
+          }
+        }
+
+        await db().$transaction(async (tx) => {
+          for (const assignment of input.assignments) {
+            const enrollmentId = BigInt(assignment.enrollmentId);
+            if (assignment.reviewerUserId === null) {
+              await tx.training_evaluation_reviewer.deleteMany({ where: { enrollment_id: enrollmentId } });
+              continue;
+            }
+            await tx.training_evaluation_reviewer.upsert({
+              where: { enrollment_id: enrollmentId },
+              // A new reviewer has not opened anything yet, so opened_at resets. Leaving the old
+              // value would credit the new person with the previous one's visit.
+              update: {
+                reviewer_user_id: assignment.reviewerUserId,
+                assigned_by: BigInt(userId),
+                assigned_at: new Date(),
+                opened_at: null,
+              },
+              create: {
+                enrollment_id: enrollmentId,
+                reviewer_user_id: assignment.reviewerUserId,
+                assigned_by: BigInt(userId),
+                assigned_at: new Date(),
+              },
             });
           }
         });

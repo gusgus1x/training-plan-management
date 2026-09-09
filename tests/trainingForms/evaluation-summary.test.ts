@@ -29,9 +29,21 @@ const answer = (overrides: Partial<FakeAnswer> & { evaluation_question_id: bigin
   ...overrides,
 });
 
+/** The attendee of every fixture enrollment. A submission carrying this as its respondent is the
+ *  attendee's own; anything else is the supervisor asked to evaluate them. */
+const ATTENDEE_USER_ID = "USER-ATTENDEE";
+
+type FakeSubmission = {
+  evaluation_submission_id: bigint;
+  evaluation_answer: FakeAnswer[];
+  /** Defaults to the attendee, which is what every row written before supervisors existed is. */
+  respondent_user_id?: string;
+};
+
 const buildFakeDb = (opts: {
   enrolledCount?: number;
-  submissions?: { evaluation_submission_id: bigint; evaluation_answer: FakeAnswer[] }[];
+  reviewerCount?: number;
+  submissions?: FakeSubmission[];
   companyId?: bigint | null;
   /** Overrides the default two-question form; used by the grid tests. */
   questions?: unknown[];
@@ -83,7 +95,15 @@ const buildFakeDb = (opts: {
       }),
     },
     training_enrollment: { count: async () => opts.enrolledCount ?? 10 },
-    evaluation_submission: { findMany: async () => opts.submissions ?? [] },
+    training_evaluation_reviewer: { count: async () => opts.reviewerCount ?? 0 },
+    evaluation_submission: {
+      findMany: async () =>
+        (opts.submissions ?? []).map((submission) => ({
+          respondent_user_id: ATTENDEE_USER_ID,
+          ...submission,
+          training_enrollment: { employee_user_id: ATTENDEE_USER_ID },
+        })),
+    },
   };
 
   return createTrainingFormsRepository(db as unknown as Parameters<typeof createTrainingFormsRepository>[0]);
@@ -115,7 +135,7 @@ describe("readEvaluationSummary", () => {
     const question = summary!.questions[0];
 
     expect(summary!.submittedCount).toBe(2);
-    expect(summary!.enrolledCount).toBe(4);
+    expect(summary!.expectedCount).toBe(4);
     expect(summary!.responseRatePercent).toBe(50);
     expect(question.answeredBy).toBe(2);
 
@@ -125,6 +145,58 @@ describe("readEvaluationSummary", () => {
     expect(skill.count).toBe(1);
     expect(skill.percent).toBe(50);
     expect(network.count).toBe(1);
+  });
+
+  it("never mixes the attendees' answers with their supervisors'", async () => {
+    // Both audiences answer the same form about the same enrollment, so one query returns both.
+    // Averaging them would produce a rating that describes neither group.
+    const submissions = [
+      {
+        evaluation_submission_id: BigInt(1),
+        evaluation_answer: [answer({ evaluation_question_id: BigInt(1), evaluation_option_id: BigInt(11) })],
+      },
+      {
+        evaluation_submission_id: BigInt(2),
+        respondent_user_id: "USER-SUPERVISOR",
+        evaluation_answer: [answer({ evaluation_question_id: BigInt(1), evaluation_option_id: BigInt(12) })],
+      },
+    ];
+
+    const employees = await buildFakeDb({ enrolledCount: 4, reviewerCount: 1, submissions })
+      .readEvaluationSummary(PLAN_ID, "EVALUATION", null, "EMPLOYEE");
+    const supervisors = await buildFakeDb({ enrolledCount: 4, reviewerCount: 1, submissions })
+      .readEvaluationSummary(PLAN_ID, "EVALUATION", null, "SUPERVISOR");
+
+    expect(employees!.submittedCount).toBe(1);
+    expect(employees!.questions[0].options[0].count).toBe(1);
+    expect(employees!.questions[0].options[1].count).toBe(0);
+
+    expect(supervisors!.submittedCount).toBe(1);
+    expect(supervisors!.questions[0].options[0].count).toBe(0);
+    expect(supervisors!.questions[0].options[1].count).toBe(1);
+
+    // Each group is measured against the people who were asked, not against the other group's
+    // denominator: 1 of 4 attendees, and 1 of the 1 supervisor assigned.
+    expect(employees!.expectedCount).toBe(4);
+    expect(employees!.responseRatePercent).toBe(25);
+    expect(supervisors!.expectedCount).toBe(1);
+    expect(supervisors!.responseRatePercent).toBe(100);
+  });
+
+  it("defaults to the attendees when no audience is named", async () => {
+    const summary = await buildFakeDb({
+      enrolledCount: 2,
+      submissions: [
+        {
+          evaluation_submission_id: BigInt(1),
+          respondent_user_id: "USER-SUPERVISOR",
+          evaluation_answer: [answer({ evaluation_question_id: BigInt(1), evaluation_option_id: BigInt(11) })],
+        },
+      ],
+    }).readEvaluationSummary(PLAN_ID, "EVALUATION", null);
+
+    expect(summary!.respondentGroup).toBe("EMPLOYEE");
+    expect(summary!.submittedCount).toBe(0);
   });
 
   it("withholds free text until enough people have answered", async () => {
@@ -217,27 +289,29 @@ describe("readAssessmentReviewForEmployee", () => {
         }),
       },
       assessment_submission: {
-        findFirst: async ({ where }: { where: { publication_status: string } }) => {
-          if ((opts.publicationStatus ?? "PUBLISHED") !== where.publication_status) return null;
-          return {
+        // Every submitted attempt comes back now, released or not - what an unreleased one is
+        // allowed to SAY is decided in the repository, not by leaving it out of the query.
+        findMany: async () => [
+          {
             submission_id: BigInt(9),
             attempt_no: 2,
             submitted_at: new Date(0),
             score: new Prisma.Decimal(50),
             pass_status: "FAIL",
+            publication_status: opts.publicationStatus ?? "PUBLISHED",
             assessment: {
               passing_score_percent: new Prisma.Decimal(80),
               assessment_question: [
-                { question_id: BigInt(1), question_order: 1, question_text: "ข้อที่ตอบถูก", question_score: new Prisma.Decimal(5) },
-                { question_id: BigInt(2), question_order: 2, question_text: "ข้อที่ตอบผิด", question_score: new Prisma.Decimal(5) },
+                { question_id: BigInt(1), question_order: 1, question_text: "ข้อที่ตอบถูก", question_score: new Prisma.Decimal(5), question_type: "SINGLE_CHOICE" },
+                { question_id: BigInt(2), question_order: 2, question_text: "ข้อที่ตอบผิด", question_score: new Prisma.Decimal(5), question_type: "SINGLE_CHOICE" },
               ],
             },
             assessment_answer: [
-              { question_id: BigInt(1), score_awarded: new Prisma.Decimal(5), review_comment: null },
-              { question_id: BigInt(2), score_awarded: new Prisma.Decimal(0), review_comment: "ทบทวนบทที่ 3" },
+              { question_id: BigInt(1), score_awarded: new Prisma.Decimal(5), review_comment: null, review_status: "REVIEWED" },
+              { question_id: BigInt(2), score_awarded: new Prisma.Decimal(0), review_comment: "ทบทวนบทที่ 3", review_status: "REVIEWED" },
             ],
-          };
-        },
+          },
+        ],
       },
     };
     return createTrainingFormsRepository(db as unknown as Parameters<typeof createTrainingFormsRepository>[0]);
@@ -268,20 +342,187 @@ describe("readAssessmentReviewForEmployee", () => {
     }
   });
 
-  it("shows nothing until HRD has released the result", async () => {
+  it("withholds the result of an unreleased attempt but still admits it happened", async () => {
+    // The attempt used to be hidden outright, which made the attempt count disagree with what the
+    // person remembers sitting. It is now listed, with only what cannot change: no final score, no
+    // verdict, no per-question breakdown.
     const review = await buildReviewDb({ publicationStatus: "UNPUBLISHED" }).readAssessmentReviewForEmployee(
       "1",
       "PRE_TEST",
       OWNER.employeeId,
       OWNER.employeeUserId,
     );
-    expect(review).toBeNull();
+
+    expect(review!.attempts).toHaveLength(1);
+    expect(review!.resultsPublished).toBe(false);
+    expect(review!.scorePercent).toBeNull();
+    expect(review!.totalAwarded).toBeNull();
+    expect(review!.passStatus).toBe("PENDING");
+    expect(review!.missedQuestions).toEqual([]);
+    // Both questions here are auto-marked, so the partial score is the whole 5 out of 10.
+    expect(review!.autoAwarded).toBe(5);
+    expect(review!.autoPossible).toBe(10);
+  });
+
+  it("reports what the written answers still waiting to be marked are worth", async () => {
+    const db = {
+      training_enrollment: {
+        findUnique: async () => ({
+          enrollment_id: BigInt(1),
+          plan_id: BigInt(77),
+          approval_status: "APPROVED",
+          employee_user_id: OWNER.employeeUserId,
+          employee: { employee_id: BigInt(OWNER.employeeId) },
+          training_plan: {
+            start_datetime: new Date(),
+            end_datetime: new Date(),
+            training_plan_oap: {
+              company_id: BigInt(2),
+              course: {
+                pre_assessment_id: ASSESSMENT_ID,
+                pre_test_link: null,
+                post_assessment_id: null,
+                post_test_link: null,
+                evaluation_form_id: null,
+                evaluation_form_after_30day_id: null,
+              },
+            },
+          },
+        }),
+      },
+      assessment_submission: {
+        findMany: async () => [
+          {
+            submission_id: BigInt(9),
+            attempt_no: 1,
+            submitted_at: new Date(0),
+            score: null,
+            pass_status: "PENDING",
+            publication_status: "UNPUBLISHED",
+            assessment: {
+              passing_score_percent: new Prisma.Decimal(80),
+              assessment_question: [
+                { question_id: BigInt(1), question_order: 1, question_text: "ข้อกา", question_score: new Prisma.Decimal(60), question_type: "SINGLE_CHOICE" },
+                { question_id: BigInt(2), question_order: 2, question_text: "ข้อเขียน", question_score: new Prisma.Decimal(40), question_type: "SHORT_ANSWER" },
+              ],
+            },
+            assessment_answer: [
+              { question_id: BigInt(1), score_awarded: new Prisma.Decimal(60), review_comment: null, review_status: "REVIEWED" },
+              { question_id: BigInt(2), score_awarded: null, review_comment: null, review_status: "PENDING_REVIEW" },
+            ],
+          },
+        ],
+      },
+    };
+    const review = await createTrainingFormsRepository(
+      db as unknown as Parameters<typeof createTrainingFormsRepository>[0],
+    ).readAssessmentReviewForEmployee("1", "PRE_TEST", OWNER.employeeId, OWNER.employeeUserId);
+
+    // 60 of the 60 auto-marked marks are in hand; the 40 written marks are still with HRD. That
+    // gap is the whole point: it says how much is already safe and how much is still in play.
+    expect(review!.autoAwarded).toBe(60);
+    expect(review!.autoPossible).toBe(60);
+    expect(review!.writtenPendingScore).toBe(40);
+    expect(review!.totalPossible).toBe(100);
   });
 
   it("refuses to show one employee's paper to another", async () => {
     await expect(
       buildReviewDb().readAssessmentReviewForEmployee("1", "PRE_TEST", "999", "USER-999"),
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  describe("across several attempts", () => {
+    // Three released attempts, best in the middle. Opening on the latest would show 20 to somebody
+    // whose best was 90, which is the number that matters to them.
+    const attempt = (attemptNo: number, score: number) => ({
+      submission_id: BigInt(900 + attemptNo),
+      attempt_no: attemptNo,
+      submitted_at: new Date(0),
+      score: new Prisma.Decimal(score),
+      pass_status: score >= 80 ? "PASS" : "FAIL",
+      assessment: {
+        passing_score_percent: new Prisma.Decimal(80),
+        assessment_question: [
+          { question_id: BigInt(1), question_order: 1, question_text: "ข้อ 1", question_score: new Prisma.Decimal(10), question_type: "SINGLE_CHOICE" },
+        ],
+      },
+      assessment_answer: [
+        { question_id: BigInt(1), score_awarded: new Prisma.Decimal(score / 10), review_comment: null },
+      ],
+    });
+
+    const buildMultiAttemptDb = () => {
+      const db = {
+        training_enrollment: {
+          findUnique: async () => ({
+            enrollment_id: BigInt(1),
+            plan_id: BigInt(77),
+            approval_status: "APPROVED",
+            employee_user_id: OWNER.employeeUserId,
+            employee: { employee_id: BigInt(OWNER.employeeId) },
+            training_plan: {
+              start_datetime: new Date(),
+              end_datetime: new Date(),
+              training_plan_oap: {
+                company_id: BigInt(2),
+                course: {
+                  pre_assessment_id: ASSESSMENT_ID,
+                  pre_test_link: null,
+                  post_assessment_id: null,
+                  post_test_link: null,
+                  evaluation_form_id: null,
+                  evaluation_form_after_30day_id: null,
+                },
+              },
+            },
+          }),
+        },
+        assessment_submission: {
+          findMany: async () => [attempt(3, 20), attempt(2, 90), attempt(1, 50)],
+        },
+      };
+      return createTrainingFormsRepository(db as unknown as Parameters<typeof createTrainingFormsRepository>[0]);
+    };
+
+    it("opens on the best attempt, not the most recent one", async () => {
+      const review = await buildMultiAttemptDb().readAssessmentReviewForEmployee(
+        "1",
+        "PRE_TEST",
+        OWNER.employeeId,
+        OWNER.employeeUserId,
+      );
+
+      expect(review!.bestAttemptNo).toBe(2);
+      expect(review!.attemptNo).toBe(2);
+      expect(review!.attempts).toHaveLength(3);
+    });
+
+    it("opens the attempt that was asked for", async () => {
+      const review = await buildMultiAttemptDb().readAssessmentReviewForEmployee(
+        "1",
+        "PRE_TEST",
+        OWNER.employeeId,
+        OWNER.employeeUserId,
+        3,
+      );
+
+      expect(review!.attemptNo).toBe(3);
+      // Still reported, so the panel can keep showing what their best was while reading a worse one.
+      expect(review!.bestAttemptNo).toBe(2);
+    });
+
+    it("falls back to the best attempt when asked for one that does not exist", async () => {
+      const review = await buildMultiAttemptDb().readAssessmentReviewForEmployee(
+        "1",
+        "PRE_TEST",
+        OWNER.employeeId,
+        OWNER.employeeUserId,
+        99,
+      );
+
+      expect(review!.attemptNo).toBe(2);
+    });
   });
 });
 

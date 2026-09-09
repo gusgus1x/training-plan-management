@@ -1,5 +1,6 @@
 import { trainingFormsRepository, type TrainingFormsRepository } from "./repository";
 import type {
+  EvaluationRespondentGroup,
   EvaluationTimingStage,
   GradedStage,
   GradeSubmissionInput,
@@ -27,7 +28,8 @@ export const createTrainingFormsService = (repository: TrainingFormsRepository =
     stage: GradedStage,
     employeeId: string | null,
     employeeUserId: string | null,
-  ) => repository.readAssessmentReviewForEmployee(enrollmentId, stage, employeeId, employeeUserId),
+    attemptNo: number | null = null,
+  ) => repository.readAssessmentReviewForEmployee(enrollmentId, stage, employeeId, employeeUserId, attemptNo),
 
   readEvaluation: (
     enrollmentId: string,
@@ -44,10 +46,22 @@ export const createTrainingFormsService = (repository: TrainingFormsRepository =
     employeeUserId: string | null,
   ) => repository.submitEvaluation(enrollmentId, timing, input, employeeId, employeeUserId),
 
+  listAssignedEvaluations: (reviewerUserId: string) => repository.listAssignedEvaluations(reviewerUserId),
+
+  markAssignedEvaluationOpened: (enrollmentId: string, reviewerUserId: string) =>
+    repository.markAssignedEvaluationOpened(enrollmentId, reviewerUserId),
+
   listPendingGrading: (planId: string, companyId: string | null) => repository.listPendingGrading(planId, companyId),
 
-  readEvaluationSummary: (planId: string, timing: EvaluationTimingStage, companyId: string | null) =>
-    repository.readEvaluationSummary(planId, timing, companyId),
+  readSubmissionForHrd: (planId: string, submissionId: string, companyId: string | null) =>
+    repository.readSubmissionForHrd(planId, submissionId, companyId),
+
+  readEvaluationSummary: (
+    planId: string,
+    timing: EvaluationTimingStage,
+    companyId: string | null,
+    respondentGroup: EvaluationRespondentGroup = "EMPLOYEE",
+  ) => repository.readEvaluationSummary(planId, timing, companyId, respondentGroup),
 
   gradeSubmission: (submissionId: string, input: GradeSubmissionInput, gradedByUserId: string, companyId: string | null) =>
     repository.gradeSubmission(submissionId, input, gradedByUserId, companyId),
