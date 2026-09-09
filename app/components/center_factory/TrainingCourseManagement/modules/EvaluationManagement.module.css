@@ -1027,16 +1027,16 @@
   font-weight: 800;
 }
 
+/* Grid, not flex, for the same reason as Assessment's: app/globals.css gives every input
+   `width: 100%` at a specificity no single class here can outrank, which overflowed the row and
+   pushed the remove button outside the card. Inside a grid track that width means 100% of the
+   track, so the track sizing wins without a specificity fight. */
 .gridAxisRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 6px;
   margin-bottom: 6px;
-}
-
-.gridAxisRow input {
-  flex: 1;
-  min-width: 0;
 }
 
 .gridAxisRemove {

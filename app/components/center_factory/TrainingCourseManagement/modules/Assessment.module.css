@@ -1016,27 +1016,35 @@
   font-weight: 800;
 }
 
+/* Grid, not flex, on purpose. app/globals.css gives every input `width: 100%` at specificity
+   (0,3,1), which no single class here can outrank - the score box grew to the full row, squashed
+   the label box to nothing and pushed the remove button outside the card. Inside a grid track that
+   same `width: 100%` means 100% OF THE TRACK, so the track sizes below decide the layout and the
+   global rule stops mattering instead of being fought. */
 .gridAxisRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 6px;
   margin-bottom: 6px;
 }
 
-.gridAxisRow input[type="text"],
-.gridAxisRow input:not([type]) {
-  flex: 1;
-  min-width: 0;
+/* A row also carries its answer key and its points; a column is just a label. */
+.gridAxisRow[data-axis="ROW"] {
+  grid-template-columns: minmax(0, 1fr) minmax(110px, 180px) 88px auto;
 }
 
-.gridKeySelect {
-  min-width: 130px;
-  max-width: 190px;
-}
-
-.gridScoreInput {
-  width: 74px;
-  flex: none;
+@media (max-width: 900px) {
+  .gridAxisRow[data-axis="ROW"] {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  /* Key and points drop to their own line rather than shrinking past usability. */
+  .gridAxisRow[data-axis="ROW"] .gridKeySelect {
+    grid-column: 1 / 2;
+  }
+  .gridAxisRow[data-axis="ROW"] .gridScoreInput {
+    grid-column: 2 / 3;
+  }
 }
 
 .gridAxisRemove {

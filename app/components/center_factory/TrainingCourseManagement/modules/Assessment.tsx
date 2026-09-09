@@ -1439,7 +1439,7 @@ export default function Assessment() {
                       {axis === "ROW" ? t("แถว (Rows)", "Rows") : t("คอลัมน์ (Columns)", "Columns")}
                     </span>
                     {entries.map((choice, index) => (
-                      <span className={styles.gridAxisRow} key={choice.id}>
+                      <span className={styles.gridAxisRow} data-axis={axis} key={choice.id}>
                         <input
                           value={choice.choiceText}
                           placeholder={axis === "ROW" ? t(`แถวที่ ${index + 1}`, `Row ${index + 1}`) : t(`คอลัมน์ที่ ${index + 1}`, `Column ${index + 1}`)}
