@@ -25,8 +25,8 @@ import { UNDER_DEVELOPMENT } from "../../../../lib/underDevelopment";
 import { listCourses } from "../../../../lib/courses/client";
 import { listEmployees } from "../../../../lib/employees/client";
 import type { EmployeeRecord } from "../../../../lib/employees/types";
-import { createEnrollment, EnrollmentApiError, listEnrollments, updateEnrollmentStatus } from "../../../../lib/trainingEnrollment/client";
-import type { EnrollmentRecord, EnrollmentSource, EnrollmentStatus } from "../../../../lib/trainingEnrollment/types";
+import { createEnrollment, EnrollmentApiError, getCourseEnrollmentHistory, listEnrollments, updateEnrollmentStatus } from "../../../../lib/trainingEnrollment/client";
+import type { CoursePriorHistoryRecord, EnrollmentRecord, EnrollmentSource, EnrollmentStatus } from "../../../../lib/trainingEnrollment/types";
 import { listPositions } from "../../../../lib/positions/client";
 import { getCurrentCalendarDate } from "../../../../lib/calendarDate";
 import styles from "./TrainingAcceptSurvey.module.css";
@@ -262,6 +262,7 @@ type PaginatedEmployeeGridProps = {
   enrollments?: EnrollmentRecord[];
   draftSubmittedEmployees?: SurveyEmployee[];
   canNominate?: boolean;
+  courseHistoryMap?: Map<string, CoursePriorHistoryRecord>;
 };
 
 function PaginatedEmployeeGrid({
@@ -273,6 +274,7 @@ function PaginatedEmployeeGrid({
   enrollments = [],
   draftSubmittedEmployees = [],
   canNominate = true,
+  courseHistoryMap = new Map(),
 }: PaginatedEmployeeGridProps) {
   const toast = useToast();
   const [searchQuery, setSearchQuery] = useState("");
@@ -405,9 +407,14 @@ function PaginatedEmployeeGrid({
                 (employee.employeeCode && c.employeeCode && c.employeeCode === employee.employeeCode),
             );
 
+            const priorHistory =
+              courseHistoryMap.get(employee.id) ||
+              (employee.employeeCode ? courseHistoryMap.get(employee.employeeCode) : undefined);
+
             let statusBadge = <span className={styles.badgeNone}>⚪ ยังไม่ลงทะเบียน</span>;
             let buttonLabel = targetActionLabel;
             let isBtnDisabled = false;
+            let isRetake = false;
 
             if (isDraft) {
               statusBadge = (
@@ -417,7 +424,7 @@ function PaginatedEmployeeGrid({
               );
               buttonLabel = "✓ ในดราฟแล้ว";
               isBtnDisabled = true;
-            } else if (enrollment) {
+            } else if (enrollment && enrollment.status !== "Rejected") {
               if (enrollment.status === "Pending Approval") {
                 statusBadge = (
                   <span className={styles.badgePending}>
@@ -434,21 +441,37 @@ function PaginatedEmployeeGrid({
                 );
                 buttonLabel = "✓ อนุมัติแล้ว";
                 isBtnDisabled = true;
-              } else if (enrollment.status === "Rejected") {
-                statusBadge = (
-                  <span className={styles.badgeRejected}>
-                    <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
-                  </span>
-                );
-                buttonLabel = "+ เลือกใหม่";
-                isBtnDisabled = false;
               }
+            } else if (enrollment && enrollment.status === "Rejected") {
+              statusBadge = (
+                <span className={styles.badgeRejected}>
+                  <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
+                </span>
+              );
+              buttonLabel = "+ เลือกใหม่";
+              isBtnDisabled = false;
+            } else if (priorHistory) {
+              const yearText = priorHistory.planYear ? `ปี ${priorHistory.planYear}` : "";
+              const batchText = priorHistory.batchNo ? `รุ่น ${priorHistory.batchNo}` : (priorHistory.batchName || "");
+              const detailTag = [yearText, batchText].filter(Boolean).join(" • ");
+              statusBadge = (
+                <span
+                  className={styles.badgeCompletedPrior}
+                  title={`เคยผ่านการอบรมหลักสูตรนี้แล้ว${detailTag ? ` (${detailTag})` : ""}${priorHistory.completedAt ? ` วันที่ ${new Date(priorHistory.completedAt).toLocaleDateString("th-TH")}` : ""}`}
+                >
+                  <span className={styles.glowingDotPurple}></span>
+                  <span>เคยอบรมแล้ว</span>
+                  {detailTag ? <span className={styles.badgeYearPill}>{detailTag}</span> : null}
+                </span>
+              );
+              buttonLabel = "+ อบรมซ้ำ";
+              isRetake = true;
             }
 
             return (
               <article className={`${styles.employeeRow} ${styles.targetListRow}`} key={employee.id}>
                 <button
-                  className={`${styles.addTargetButton} ${isBtnDisabled ? styles.addedBtn : ""} ${!canNominate ? styles.deniedBtn : ""}`}
+                  className={`${styles.addTargetButton} ${isBtnDisabled ? styles.addedBtn : ""} ${!canNominate ? styles.deniedBtn : ""} ${isRetake ? styles.badgeRetakeBtn : ""}`}
                   type="button"
                   disabled={isBtnDisabled}
                   title={!canNominate ? "คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม" : buttonLabel}
@@ -650,6 +673,7 @@ export default function TrainingAcceptSurvey({
   const [masterEmployees, setMasterEmployees] = useState<SurveyEmployee[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [draftSubmittedEmployees, setDraftSubmittedEmployees] = useState<SurveyEmployee[]>([]);
+  const [courseHistoryMap, setCourseHistoryMap] = useState<Map<string, CoursePriorHistoryRecord>>(new Map());
   const [isExportingAttendance, setIsExportingAttendance] = useState(false);
   const [isSendingLineNotify, setIsSendingLineNotify] = useState(false);
   const [showNominationModal, setShowNominationModal] = useState(false);
@@ -860,6 +884,7 @@ export default function TrainingAcceptSurvey({
     setDraftSubmittedEmployees([]);
     if (!selectedCourse) {
       setEnrollments([]);
+      setCourseHistoryMap(new Map());
       setIsTargetLoading(false);
       return;
     }
@@ -878,6 +903,23 @@ export default function TrainingAcceptSurvey({
           setTimeout(() => setIsTargetLoading(false), 300);
         }
       });
+
+    getCourseEnrollmentHistory({ planId: selectedCourse.id })
+      .then((result) => {
+        if (!active) return;
+        const map = new Map<string, CoursePriorHistoryRecord>();
+        (result.history || []).forEach((item) => {
+          if (item.employeeId) map.set(item.employeeId, item);
+          if (item.employeeCode) map.set(item.employeeCode, item);
+          if (item.employeeUserId) map.set(item.employeeUserId, item);
+        });
+        setCourseHistoryMap(map);
+      })
+      .catch((error) => {
+        console.error("Failed to load course prior history", error);
+        if (active) setCourseHistoryMap(new Map());
+      });
+
     return () => {
       active = false;
     };
@@ -898,8 +940,18 @@ export default function TrainingAcceptSurvey({
   const reloadEnrollments = async () => {
     if (!selectedCourse) return;
     try {
-      const result = await listEnrollments({ planId: selectedCourse.id, employeeId: null, employeeUserId: null });
+      const [result, historyRes] = await Promise.all([
+        listEnrollments({ planId: selectedCourse.id, employeeId: null, employeeUserId: null }),
+        getCourseEnrollmentHistory({ planId: selectedCourse.id }).catch(() => ({ history: [] })),
+      ]);
       setEnrollments(result.enrollments || []);
+      const map = new Map<string, CoursePriorHistoryRecord>();
+      (historyRes.history || []).forEach((item) => {
+        if (item.employeeId) map.set(item.employeeId, item);
+        if (item.employeeCode) map.set(item.employeeCode, item);
+        if (item.employeeUserId) map.set(item.employeeUserId, item);
+      });
+      setCourseHistoryMap(map);
     } catch (error) {
       console.error("Failed to reload candidates", error);
     }
@@ -1290,6 +1342,35 @@ export default function TrainingAcceptSurvey({
     if (selectedCourse.owner === "factory" && employee.company !== selectedCourse.ownerCompany) {
       toast.error(`หลักสูตรของโรงงาน ${selectedCourse.ownerCompany} สามารถส่งได้เฉพาะพนักงานของ ${selectedCourse.ownerCompany} เท่านั้น`);
       return;
+    }
+
+    const priorHistory =
+      courseHistoryMap.get(employee.id) ||
+      (employee.employeeCode ? courseHistoryMap.get(employee.employeeCode) : undefined);
+
+    if (priorHistory) {
+      const batchLabel = priorHistory.batchNo ? `รุ่นที่ ${priorHistory.batchNo}` : (priorHistory.batchName || "");
+      const yearLabel = priorHistory.planYear ? `ปี ${priorHistory.planYear}` : "";
+      const historyText = [yearLabel, batchLabel].filter(Boolean).join(" ");
+      const confirmed = await confirm({
+        title: {
+          th: "เคยผ่านการอบรมหลักสูตรนี้แล้ว",
+          en: "Course previously completed",
+        },
+        message: {
+          th: `พนักงาน ${employee.name} (${employee.employeeCode}) เคยผ่านการอบรมหลักสูตร "${selectedCourse.title}" แล้ว${historyText ? ` (${historyText})` : ""}\n\nคุณต้องการเพิ่มพนักงานเข้าอบรมในรุ่นนี้อีกครั้งหรือไม่?`,
+          en: `${employee.name} (${employee.employeeCode}) has previously completed "${selectedCourse.title}"${historyText ? ` (${historyText})` : ""}.\n\nDo you want to enroll them in this session again?`,
+        },
+        confirmLabel: {
+          th: "ยืนยันเพิ่มเข้าอบรม",
+          en: "Enroll again",
+        },
+        cancelLabel: {
+          th: "ยกเลิก",
+          en: "Cancel",
+        },
+      });
+      if (!confirmed) return;
     }
 
     if (roleMode === "factory" && selectedCourse?.owner === "center") {
@@ -1955,7 +2036,7 @@ export default function TrainingAcceptSurvey({
                       <h3>รายการพนักงานส่งจากโรงงานรอการอนุมัติเข้าอบรม ({visibleCandidates.length} คน)</h3>
                     </div>
                     <div className={styles.participantActions}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#818cf8", fontWeight: 700, fontSize: "0.82rem" }}>
+                      <span className={styles.queueBadgeBlue}>
                         <span className={styles.glowingDotBlue}></span> รออนุมัติ {approvalQueue.length} คน
                       </span>
                       <button
@@ -2089,7 +2170,7 @@ export default function TrainingAcceptSurvey({
                         <h3>รายการเตรียมส่งคนเข้าอบรมกลาง ({draftSubmittedEmployees.length} คน)</h3>
                       </div>
                       <div className={styles.participantActions}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#eab308", fontWeight: 700, fontSize: "0.82rem" }}>
+                        <span className={styles.queueBadgeYellow}>
                           <span className={styles.glowingDotYellow}></span> {draftSubmittedEmployees.length} คนรอส่ง
                         </span>
                         <button
@@ -2223,7 +2304,7 @@ export default function TrainingAcceptSurvey({
                             <h3>รายการส่งคนเข้าอบรมกลางแล้ว ({savedCandidates.length} คน)</h3>
                           </div>
                           <div className={styles.participantActions}>
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#60a5fa", fontWeight: 700, fontSize: "0.82rem" }}>
+                            <span className={styles.queueBadgeBlue}>
                               <span className={styles.glowingDotBlue}></span> {savedCandidates.length} คนส่งแล้ว
                             </span>
                           </div>
@@ -2323,7 +2404,7 @@ export default function TrainingAcceptSurvey({
                       <h3>รายการพนักงานลงทะเบียน / สมัครเข้าอบรมโรงงานรอการอนุมัติ ({visibleCandidates.length} คน)</h3>
                     </div>
                     <div className={styles.participantActions}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px", color: "#38bdf8", fontWeight: 700, fontSize: "0.82rem" }}>
+                      <span className={styles.queueBadgeBlue}>
                         <span className={styles.glowingDotBlue}></span> รออนุมัติ {approvalQueue.length} คน
                       </span>
                       <button
@@ -2472,10 +2553,9 @@ export default function TrainingAcceptSurvey({
                 </p>
                 <div className={styles.companyGroupGrid}>
                   {targetEmployeeGroups.map((group) => {
-                    const isUserCompanyCard = roleMode === "factory" && group.company === userCompanyCode;
                     return (
                       <details
-                        className={`${styles.companyGroupCard} ${isUserCompanyCard ? styles.ownCompanySectionHeader : ""}`}
+                        className={styles.companyGroupCard}
                         key={group.company}
                         open
                       >
@@ -2483,11 +2563,6 @@ export default function TrainingAcceptSurvey({
                           <div className={styles.companySectionTitle}>
                             <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
                             <h4>บริษัท {group.company}</h4>
-                            {isUserCompanyCard ? (
-                              <span className={styles.ownCompanySectionTag}>
-                                ⭐ บริษัทของฉัน ({userCompanyCode})
-                              </span>
-                            ) : null}
                           </div>
                           <span className={styles.companyCountBadge}>
                             {group.employees.length} available / {group.targetCount} target
@@ -2501,6 +2576,7 @@ export default function TrainingAcceptSurvey({
                           enrollments={enrollments}
                           draftSubmittedEmployees={draftSubmittedEmployees}
                           canNominate={canNominateByPosition}
+                          courseHistoryMap={courseHistoryMap}
                         />
                       </details>
                     );
@@ -2530,10 +2606,9 @@ export default function TrainingAcceptSurvey({
                     </p>
                     <div className={styles.companyGroupGrid}>
                       {levelOnlyEmployeeGroups.map((group) => {
-                        const isUserCompanyCard = roleMode === "factory" && group.company === userCompanyCode;
                         return (
                           <details
-                            className={`${styles.companyGroupCard} ${isUserCompanyCard ? styles.ownCompanySectionHeader : ""}`}
+                            className={styles.companyGroupCard}
                             key={group.company}
                             open
                           >
@@ -2541,11 +2616,6 @@ export default function TrainingAcceptSurvey({
                               <div className={styles.companySectionTitle}>
                                 <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
                                 <h4>บริษัท {group.company}</h4>
-                                {isUserCompanyCard ? (
-                                  <span className={styles.ownCompanySectionTag}>
-                                    ⭐ บริษัทของฉัน ({userCompanyCode})
-                                  </span>
-                                ) : null}
                               </div>
                               <span className={styles.companyCountBadge}>
                                 {group.employees.length} available / {group.targetCount} in level
@@ -2559,6 +2629,7 @@ export default function TrainingAcceptSurvey({
                               enrollments={enrollments}
                               draftSubmittedEmployees={draftSubmittedEmployees}
                               canNominate={canNominateByPosition}
+                              courseHistoryMap={courseHistoryMap}
                             />
                           </details>
                         );
@@ -2585,21 +2656,15 @@ export default function TrainingAcceptSurvey({
                 </p>
                 <div className={styles.companyGroupGrid}>
                   {additionalEmployeeGroups.map((group) => {
-                    const isUserCompanyCard = roleMode === "factory" && group.company === userCompanyCode;
                     return (
                       <details
-                        className={`${styles.companyGroupCard} ${styles.additionalDisclosure} ${isUserCompanyCard ? styles.ownCompanySectionHeader : ""}`}
+                        className={`${styles.companyGroupCard} ${styles.additionalDisclosure}`}
                         key={group.company}
                       >
                         <summary className={styles.companyGroupHeader}>
                           <div className={styles.companySectionTitle}>
                             <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
                             <h4>บริษัท {group.company}</h4>
-                            {isUserCompanyCard ? (
-                              <span className={styles.ownCompanySectionTag}>
-                                ⭐ บริษัทของฉัน ({userCompanyCode})
-                              </span>
-                            ) : null}
                           </div>
                           <span className={styles.companyCountBadge}>
                             {group.employees.length} available
@@ -2613,6 +2678,7 @@ export default function TrainingAcceptSurvey({
                           enrollments={enrollments}
                           draftSubmittedEmployees={draftSubmittedEmployees}
                           canNominate={canNominateByPosition}
+                          courseHistoryMap={courseHistoryMap}
                         />
                       </details>
                     );

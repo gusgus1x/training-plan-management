@@ -25,6 +25,17 @@ export type CourseActivity = {
   location?: string;
   description: string;
   imageUrl: string;
+  images?: string[];
+  isCourseLinked?: boolean;
+  linkedCourseId?: string | null;
+  linkedCourseCode?: string | null;
+  linkedCourseName?: string | null;
+  linkedPlanId?: string | null;
+  linkedTrainingDate?: string | null;
+  linkedEndDate?: string | null;
+  registrationNote?: string | null;
+  isVisibleOnDashboard?: boolean;
+  status?: string;
   companyId: string;
   companyCode: string;
   companyName: string;
@@ -88,6 +99,8 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
   const [formLocation, setFormLocation] = useState<string>("");
   const [formDescription, setFormDescription] = useState<string>("");
   const [formImageUrl, setFormImageUrl] = useState<string>("");
+  const [formIsVisibleOnDashboard, setFormIsVisibleOnDashboard] = useState<boolean>(true);
+  const [selectedStatus, setSelectedStatus] = useState<"all" | "active" | "archived">("all");
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
   const [isUploading, setIsUploading] = useState<boolean>(false);
@@ -141,17 +154,39 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
     });
   }, [activities, isCenterOrAdmin, userCompanyId, userCompanyCode, userCompanyName]);
 
+  // Find the exact company assigned to the current HRD Factory user
+  const factoryOwnCompany = useMemo<CompanyOption | null>(() => {
+    if (!isFactory) return null;
+    const matched = companies.find((c) =>
+      c.id !== "center" && (
+        (userCompanyId && String(c.id).trim() === userCompanyId) ||
+        (userCompanyCode && c.code?.trim().toUpperCase() === userCompanyCode) ||
+        (userCompanyName && c.name?.toLowerCase().includes(userCompanyName))
+      )
+    );
+    if (matched) return matched;
+    if (userCompanyId || userCompanyCode) {
+      return {
+        id: userCompanyId || userCompanyCode || "own_company",
+        code: userCompanyCode || "",
+        name: userCompanyName
+          ? `${userCompanyCode ? `${userCompanyCode} - ` : ""}${userCompanyName}`
+          : (userCompanyCode || `Company ${userCompanyId}`),
+      };
+    }
+    return null;
+  }, [isFactory, companies, userCompanyId, userCompanyCode, userCompanyName]);
+
   // Accessible companies in dropdown
+  // For HRD Factory: ONLY their own company (cannot touch or choose other companies)
+  // For HRD Center / Admin: Center + all available companies
   const availableCompanies = useMemo(() => {
     if (isCenterOrAdmin) return companies;
-    return companies.filter((c) => {
-      if (c.id === "center" || c.code?.trim().toUpperCase() === "CENTER") return true;
-      if (userCompanyId && String(c.id).trim() === userCompanyId) return true;
-      if (userCompanyCode && c.code?.trim().toUpperCase() === userCompanyCode) return true;
-      if (userCompanyName && c.name && c.name.toLowerCase().includes(userCompanyName)) return true;
-      return false;
-    });
-  }, [companies, isCenterOrAdmin, userCompanyId, userCompanyCode, userCompanyName]);
+    if (isFactory) {
+      return factoryOwnCompany ? [factoryOwnCompany] : [];
+    }
+    return companies;
+  }, [companies, isCenterOrAdmin, isFactory, factoryOwnCompany]);
 
   const canManageActivity = (act: CourseActivity | null) => {
     if (!act || isEmployee) return false;
@@ -188,18 +223,28 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
   const currentYear = new Date().getFullYear().toString();
   const kpiStats = useMemo(() => {
     const total = visibleActivities.length;
+    const activeCount = visibleActivities.filter(
+      (a) => a.isVisibleOnDashboard !== false && a.status !== "ARCHIVED"
+    ).length;
+    const archivedCount = visibleActivities.filter(
+      (a) => a.isVisibleOnDashboard === false || a.status === "ARCHIVED"
+    ).length;
     const centerCount = visibleActivities.filter(
       (a) => !a.companyId || a.companyId === "center" || a.companyCode === "CENTER"
     ).length;
     const companyCount = total - centerCount;
     const thisYearCount = visibleActivities.filter((a) => a.year === currentYear).length;
 
-    return { total, centerCount, companyCount, thisYearCount };
+    return { total, activeCount, archivedCount, centerCount, companyCount, thisYearCount };
   }, [visibleActivities, currentYear]);
 
-  // Filtered activities based on search and dropdown selections
+  // Filtered activities based on search, status, and dropdown selections
   const filteredActivities = useMemo(() => {
     return visibleActivities.filter((act) => {
+      // Status filter
+      if (selectedStatus === "active" && (act.isVisibleOnDashboard === false || act.status === "ARCHIVED")) return false;
+      if (selectedStatus === "archived" && act.isVisibleOnDashboard !== false && act.status !== "ARCHIVED") return false;
+
       // Year filter
       if (selectedYear !== "all" && act.year !== selectedYear) return false;
 
@@ -218,7 +263,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
 
       return true;
     });
-  }, [visibleActivities, selectedYear, selectedCompany, searchTerm]);
+  }, [visibleActivities, selectedStatus, selectedYear, selectedCompany, searchTerm]);
 
   // Open Add Activity Modal
   const handleOpenAdd = () => {
@@ -229,14 +274,14 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
     setFormId("");
     setFormTitle("");
     if (isFactory) {
-      const ownComp = availableCompanies.find((c) => c.id !== "center");
-      setFormCompanyId(ownComp ? ownComp.id : (userCompanyId || ""));
+      setFormCompanyId(factoryOwnCompany ? factoryOwnCompany.id : (userCompanyId || ""));
     } else {
       setFormCompanyId("center");
     }
     setFormDate(new Date().toISOString().slice(0, 10));
     setFormLocation("");
     setFormDescription("");
+    setFormIsVisibleOnDashboard(true);
     setFormImageUrl("");
     setSelectedImageFile(null);
     setPreviewUrl("");
@@ -255,7 +300,8 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
     setIsEditing(true);
     setFormId(act.id);
     setFormTitle(act.title);
-    setFormCompanyId(act.companyId || "center");
+    setFormCompanyId(act.companyId || (isFactory && factoryOwnCompany ? factoryOwnCompany.id : "center"));
+    setFormIsVisibleOnDashboard(act.isVisibleOnDashboard !== false && act.status !== "ARCHIVED");
     setFormDate(act.date);
     setFormLocation(act.location || "");
     setFormDescription(act.description);
@@ -358,6 +404,8 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
         location: formLocation.trim(),
         description: formDescription.trim(),
         imageUrl: finalImageUrl,
+        isVisibleOnDashboard: formIsVisibleOnDashboard,
+        status: formIsVisibleOnDashboard ? "PUBLISHED" : "ARCHIVED",
         companyId: formCompanyId || "center",
       };
 
@@ -416,6 +464,56 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || (isThai ? "เกิดข้อผิดพลาดในการลบกิจกรรม" : "Failed to delete activity"));
+    }
+  };
+
+  // Toggle Archive / Dashboard Display
+  const handleToggleArchive = async (act: CourseActivity) => {
+    if (!canManageActivity(act)) return;
+    const isCurrentlyArchived = act.isVisibleOnDashboard === false || act.status === "ARCHIVED";
+    const nextShow = isCurrentlyArchived;
+    const actionText = nextShow
+      ? (isThai ? "นำกลับมาแสดงบนหน้าแรก (Dashboard)" : "restore to Dashboard")
+      : (isThai ? "จัดเก็บและซ่อนออกจากหน้าแรก (Dashboard)" : "archive (hide from Dashboard)");
+
+    const confirmed = await confirm({
+      message: {
+        th: `คุณต้องการ${actionText}สำหรับกิจกรรม "${act.title}" ใช่หรือไม่?`,
+        en: `Are you sure you want to ${actionText} "${act.title}"?`,
+      },
+    });
+    if (!confirmed) return;
+
+    try {
+      setIsSubmitting(true);
+      const res = await fetch("/api/course-activities", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: act.id,
+          isVisibleOnDashboard: nextShow,
+          status: nextShow ? "PUBLISHED" : "ARCHIVED",
+        }),
+      });
+
+      if (res.ok) {
+        toast.success(
+          nextShow
+            ? (isThai ? "นำกิจกรรมกลับมาแสดงบนหน้าแรกเรียบร้อยแล้ว" : "Activity restored to dashboard")
+            : (isThai ? "จัดเก็บกิจกรรมเรียบร้อยแล้ว (ไม่แสดงบน Dashboard)" : "Activity archived")
+        );
+        if (activeActivity?.id === act.id) {
+          setActiveActivity((prev) => prev ? { ...prev, isVisibleOnDashboard: nextShow, status: nextShow ? "PUBLISHED" : "ARCHIVED" } : null);
+        }
+        await fetchActivities();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || (isThai ? "เกิดข้อผิดพลาดในการเปลี่ยนสถานะ" : "Failed to change status"));
+      }
+    } catch {
+      toast.error(isThai ? "เกิดข้อผิดพลาดในการเชื่อมต่อ" : "Network error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -549,7 +647,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
             <div className={styles.yearPillsGroup}>
               <span className={styles.filterSectionLabel}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <rect x="3" y="4" width="18" height="18" rx="2" />
                   <line x1="16" y1="2" x2="16" y2="6" />
                   <line x1="8" y1="2" x2="8" y2="6" />
                   <line x1="3" y1="10" x2="21" y2="10" />
@@ -574,6 +672,40 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                     {yr}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Status Filter Pills */}
+            <div className={styles.yearPillsGroup}>
+              <span className={styles.filterSectionLabel}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <span>{isThai ? "สถานะ:" : "Status:"}</span>
+              </span>
+              <div className={styles.yearPillsRow}>
+                <button
+                  type="button"
+                  className={`${styles.yearPillBtn} ${selectedStatus === "all" ? styles.yearPillBtnActive : ""}`}
+                  onClick={() => setSelectedStatus("all")}
+                >
+                  {isThai ? "ทั้งหมด" : "All"}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.yearPillBtn} ${selectedStatus === "active" ? styles.yearPillBtnActive : ""}`}
+                  onClick={() => setSelectedStatus("active")}
+                >
+                  {isThai ? "แสดงบนหน้าแรก" : "Active"}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.yearPillBtn} ${selectedStatus === "archived" ? styles.yearPillBtnActive : ""}`}
+                  onClick={() => setSelectedStatus("archived")}
+                >
+                  {isThai ? "จัดเก็บแล้ว" : "Archived"}
+                </button>
               </div>
             </div>
 
@@ -741,6 +873,11 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                 <div className={styles.cardMetaRow}>
                   <div className={styles.cardDate}>
                     <span>{act.formattedDate || act.date}</span>
+                    {(act.isVisibleOnDashboard === false || act.status === "ARCHIVED") && (
+                      <span className={styles.cardArchivedBadge}>
+                        {isThai ? "จัดเก็บแล้ว" : "Archived"}
+                      </span>
+                    )}
                   </div>
                   <span
                     className={`${styles.companyBadge} ${styles[`companyBadge_${act.companyCode}`] || styles.companyBadge_CENTER}`}
@@ -778,7 +915,33 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                       <>
                         <button
                           type="button"
-                          className={styles.iconBtn}
+                          className={`${styles.iconBtn} ${act.isVisibleOnDashboard === false || act.status === "ARCHIVED" ? styles.iconBtnRestore : styles.iconBtnArchive}`}
+                          onClick={() => handleToggleArchive(act)}
+                          title={
+                            act.isVisibleOnDashboard === false || act.status === "ARCHIVED"
+                              ? (isThai ? "ยกเลิกจัดเก็บ (แสดงบนหน้าแรก)" : "Restore to Dashboard")
+                              : (isThai ? "จัดเก็บกิจกรรม (ซ่อนจากหน้าแรก)" : "Archive activity")
+                          }
+                        >
+                          {act.isVisibleOnDashboard === false || act.status === "ARCHIVED" ? (
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="2" y="3" width="20" height="5" rx="1" />
+                              <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+                              <path d="M12 16v-5" />
+                              <path d="M9.5 13.5L12 11l2.5 2.5" />
+                            </svg>
+                          ) : (
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="2" y="3" width="20" height="5" rx="1" />
+                              <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+                              <path d="M12 11v5" />
+                              <path d="M9.5 13.5L12 16l2.5-2.5" />
+                            </svg>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className={`${styles.iconBtn} ${styles.iconBtnEdit}`}
                           onClick={() => handleOpenEdit(act)}
                           title={isThai ? "แก้ไข" : "Edit"}
                         >
@@ -811,10 +974,11 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                   <th style={{ width: "70px" }}>{isThai ? "รูปภาพ" : "Photo"}</th>
                   <th style={{ width: "120px" }}>{isThai ? "วันที่จัด" : "Date"}</th>
                   <th style={{ width: "100px" }}>{isThai ? "บริษัท" : "Company"}</th>
+                  <th style={{ width: "115px" }}>{isThai ? "สถานะ" : "Status"}</th>
                   <th>{isThai ? "ชื่อกิจกรรม" : "Activity Title"}</th>
                   <th style={{ width: "160px" }}>{isThai ? "สถานที่" : "Location"}</th>
                   <th>{isThai ? "รายละเอียด" : "Description"}</th>
-                  <th style={{ width: "120px", textAlign: "center" }}>{isThai ? "การจัดการ" : "Action"}</th>
+                  <th style={{ width: "160px", textAlign: "center" }}>{isThai ? "การจัดการ" : "Action"}</th>
                 </tr>
               </thead>
               <tbody>
@@ -846,6 +1010,17 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                       >
                         {act.companyCode === "CENTER" ? (isThai ? "ส่วนกลาง" : "Center") : act.companyCode}
                       </span>
+                    </td>
+                    <td>
+                      {act.isVisibleOnDashboard === false || act.status === "ARCHIVED" ? (
+                        <span className={styles.tableArchivedBadge}>
+                          {isThai ? "จัดเก็บแล้ว" : "Archived"}
+                        </span>
+                      ) : (
+                        <span className={styles.tableActiveBadge}>
+                          {isThai ? "แสดงบนหน้าแรก" : "Active"}
+                        </span>
+                      )}
                     </td>
                     <td style={{ fontWeight: 700 }}>
                       <span
@@ -884,7 +1059,33 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                           <>
                             <button
                               type="button"
-                              className={styles.iconBtn}
+                              className={`${styles.iconBtn} ${act.isVisibleOnDashboard === false || act.status === "ARCHIVED" ? styles.iconBtnRestore : styles.iconBtnArchive}`}
+                              onClick={() => handleToggleArchive(act)}
+                              title={
+                                act.isVisibleOnDashboard === false || act.status === "ARCHIVED"
+                                  ? (isThai ? "ยกเลิกจัดเก็บ (แสดงบนหน้าแรก)" : "Restore to Dashboard")
+                                  : (isThai ? "จัดเก็บกิจกรรม (ซ่อนจากหน้าแรก)" : "Archive activity")
+                              }
+                            >
+                              {act.isVisibleOnDashboard === false || act.status === "ARCHIVED" ? (
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <rect x="2" y="3" width="20" height="5" rx="1" />
+                                  <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+                                  <path d="M12 16v-5" />
+                                  <path d="M9.5 13.5L12 11l2.5 2.5" />
+                                </svg>
+                              ) : (
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <rect x="2" y="3" width="20" height="5" rx="1" />
+                                  <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+                                  <path d="M12 11v5" />
+                                  <path d="M9.5 13.5L12 16l2.5-2.5" />
+                                </svg>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              className={`${styles.iconBtn} ${styles.iconBtnEdit}`}
                               onClick={() => handleOpenEdit(act)}
                               title={isThai ? "แก้ไข" : "Edit"}
                             >
@@ -921,6 +1122,15 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                 >
                   {activeActivity.companyName || activeActivity.companyCode}
                 </span>
+                {activeActivity.isVisibleOnDashboard === false || activeActivity.status === "ARCHIVED" ? (
+                  <span className={styles.tableArchivedBadge}>
+                    {isThai ? "จัดเก็บแล้ว (ซ่อนจากหน้าแรก)" : "Archived"}
+                  </span>
+                ) : (
+                  <span className={styles.tableActiveBadge}>
+                    {isThai ? "แสดงบนหน้าแรก (Dashboard)" : "Active on Dashboard"}
+                  </span>
+                )}
                 <span style={{ fontSize: "0.85rem", color: "var(--ui-30-muted)", fontWeight: 600 }}>
                   {activeActivity.formattedDate || activeActivity.date}
                 </span>
@@ -967,6 +1177,15 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                     onClick={() => handleOpenEdit(activeActivity)}
                   >
                     {isThai ? "แก้ไขกิจกรรม" : "Edit"}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.cancelBtn}
+                    onClick={() => handleToggleArchive(activeActivity)}
+                  >
+                    {activeActivity.isVisibleOnDashboard === false || activeActivity.status === "ARCHIVED"
+                      ? (isThai ? "นำกลับมาแสดงบนหน้าแรก" : "Restore to Dashboard")
+                      : (isThai ? "จัดเก็บ (ซ่อนจากหน้าแรก)" : "Archive Activity")}
                   </button>
                   <button
                     type="button"
@@ -1028,21 +1247,36 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                 <div className={styles.formRow}>
                   <div className={styles.formField}>
                     <label>{isThai ? "บริษัท / หน่วยงาน *" : "Company *"}</label>
-                    <select
-                      className={styles.formSelect}
-                      value={formCompanyId}
-                      onChange={(e) => setFormCompanyId(e.target.value)}
-                      disabled={isFactory}
-                    >
-                      <option value="center">{isThai ? "Center (ส่วนกลาง)" : "Center"}</option>
-                      {availableCompanies
-                        .filter((c) => c.id !== "center")
-                        .map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name || c.code}
-                          </option>
-                        ))}
-                    </select>
+                    {isFactory ? (
+                      <div className={styles.lockedCompanyBox}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                        <span className={styles.lockedCompanyName}>
+                          {factoryOwnCompany?.name || userCompanyCode || (isThai ? "สังกัดของท่าน" : "Your Company")}
+                        </span>
+                        <span className={styles.lockedCompanyBadge}>
+                          {isThai ? "บริษัทของคุณ (ล็อกอัตโนมัติ)" : "Assigned (Locked)"}
+                        </span>
+                      </div>
+                    ) : (
+                      <select
+                        className={styles.formSelect}
+                        value={formCompanyId}
+                        onChange={(e) => setFormCompanyId(e.target.value)}
+                        required
+                      >
+                        <option value="center">{isThai ? "Center (ส่วนกลาง)" : "Center"}</option>
+                        {availableCompanies
+                          .filter((c) => c.id !== "center")
+                          .map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name || c.code}
+                            </option>
+                          ))}
+                      </select>
+                    )}
                   </div>
 
                   <div className={styles.formField}>
@@ -1134,6 +1368,39 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                     </svg>
                     <span>{isThai ? "คลิกเพื่อเลือกไฟล์รูปภาพ (JPG, PNG, WebP สูงสุด 8MB)" : "Click to select photo (max 8MB)"}</span>
                   </div>
+                </div>
+
+                {/* Visibility on Dashboard Toggle */}
+                <div className={`${styles.visibilityToggleCard} ${formIsVisibleOnDashboard ? styles.visibilityToggleCardActive : styles.visibilityToggleCardArchived}`}>
+                  <label className={styles.visibilityCheckboxLabel}>
+                    <input
+                      type="checkbox"
+                      checked={formIsVisibleOnDashboard}
+                      onChange={(e) => setFormIsVisibleOnDashboard(e.target.checked)}
+                      className={styles.visibilityCheckbox}
+                    />
+                    <div className={styles.visibilityTextGroup}>
+                      <div className={styles.visibilityHeaderRow}>
+                        <span className={styles.visibilityTitle}>
+                          {isThai ? "แสดงบนหน้าแรก (Dashboard)" : "Display on Dashboard"}
+                        </span>
+                        <span className={formIsVisibleOnDashboard ? styles.statusActiveBadge : styles.statusArchivedBadge}>
+                          {formIsVisibleOnDashboard
+                            ? (isThai ? "เปิดแสดงบนหน้าแรก" : "Active on Dashboard")
+                            : (isThai ? "จัดเก็บ (ไม่แสดงบนหน้าแรก)" : "Archived / Hidden")}
+                        </span>
+                      </div>
+                      <span className={styles.visibilitySubtitle}>
+                        {formIsVisibleOnDashboard
+                          ? (isThai
+                              ? "กิจกรรมนี้จะเปิดแสดงในภาพสไลด์และรายการบนหน้าแรกของระบบ"
+                              : "This activity will be visible in the carousel and cards on the dashboard")
+                          : (isThai
+                              ? "กิจกรรมนี้จะถูกจัดเก็บและซ่อนออกจากหน้าแรก (ยังคงดู ตรวจสอบ และนำกลับมาแสดงใหม่ได้ในหน้ารายงานกิจกรรม)"
+                              : "This activity is archived and hidden from the dashboard. It remains accessible in the Activity Report.")}
+                      </span>
+                    </div>
+                  </label>
                 </div>
               </div>
 

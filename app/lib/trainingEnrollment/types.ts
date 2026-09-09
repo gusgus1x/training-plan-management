@@ -228,3 +228,19 @@ export type EnrollmentListFilters = {
   employeeId: string | null;
   employeeUserId: string | null;
 };
+
+export type CoursePriorHistoryRecord = {
+  employeeId: string;
+  employeeUserId: string;
+  employeeCode: string;
+  planId: string;
+  planName: string;
+  planYear: number;
+  batchNo: number | null;
+  batchName: string | null;
+  completedAt: string | null;
+  completionStatus: string;
+  attendanceStatus: string | null;
+  approvalStatus: string;
+};
+

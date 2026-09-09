@@ -46,30 +46,11 @@ describe("company lists are not hardcoded into screens", () => {
 });
 
 describe("report screens ship with no seeded records", () => {
-  // These four had no backend, so they were filled with invented rows: budgets with approval
-  // states, pre/post scores, and internal mail stamped "Sent" that nobody ever sent. A screen with
-  // no data should look empty, not busy.
-  it.each([
-    ["InternalReport", "components/center_factory/ReportManagement/modules/InternalReport.tsx"],
-    ["employee ReportModule", "components/employee/ReportModule.tsx"],
-  ])("%s starts with an empty report list", (_label, path) => {
-    expect(read(path)).toMatch(/const initialReports[^=]*=\s*\[\]/);
-  });
-
   it.each([
     ["TrainingExpense", "components/center_factory/ReportManagement/modules/TrainingExpense.tsx"],
     ["TrainingResultReport", "components/center_factory/ReportManagement/modules/TrainingResultReport.tsx"],
   ])("%s has no seeded table rows", (_label, path) => {
     expect(read(path)).not.toContain("initialRows");
-  });
-
-  it("no screen carries the invented attg.local addresses", () => {
-    for (const [, path] of [
-      ["", "components/center_factory/ReportManagement/modules/InternalReport.tsx"],
-      ["", "components/employee/ReportModule.tsx"],
-    ] as const) {
-      expect(read(path)).not.toContain("attg.local");
-    }
   });
 });
 

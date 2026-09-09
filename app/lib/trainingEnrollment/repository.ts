@@ -7,6 +7,7 @@ import { CLOSABLE_STAGES, stageAvailability, type FormStageKey } from "../traini
 import { assessmentStage } from "./types";
 import type {
   AttendanceStatus,
+  CoursePriorHistoryRecord,
   CreateEnrollmentInput,
   EnrollmentAction,
   EnrollmentListFilters,
@@ -689,6 +690,85 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
 
         const updated = await db().training_enrollment.findUniqueOrThrow({ where: { enrollment_id: enrollmentId }, include: enrollmentInclude });
         return mapEnrollment(updated);
+      });
+    },
+
+    async getCourseHistory(planIdStr: string): Promise<CoursePriorHistoryRecord[]> {
+      return withDatabaseErrorMapping(async () => {
+        const planId = BigInt(planIdStr);
+        const currentPlan = await db().training_plan.findUniqueOrThrow({
+          where: { plan_id: planId },
+          include: { training_plan_oap: { select: { course_id: true } } },
+        });
+        const courseId = currentPlan.training_plan_oap.course_id;
+
+        const priorEnrollments = await db().training_enrollment.findMany({
+          where: {
+            plan_id: { not: planId },
+            training_plan: {
+              training_plan_oap: {
+                course_id: courseId,
+              },
+            },
+            OR: [
+              { approval_status: "APPROVED" },
+              { training_result: { completion_status: "COMPLETED" } },
+              { attendance: { attendance_status: { in: ["PRESENT", "ATTENDED"] } } },
+            ],
+          },
+          include: {
+            employee: {
+              select: {
+                employee_id: true,
+                employee_code: true,
+                user_id: true,
+              },
+            },
+            training_plan: {
+              select: {
+                plan_id: true,
+                plan_name: true,
+                batch_no: true,
+                batch_name: true,
+                training_plan_oap: {
+                  select: {
+                    plan_year: true,
+                  },
+                },
+              },
+            },
+            training_result: {
+              select: {
+                completion_status: true,
+                completed_at: true,
+              },
+            },
+            attendance: {
+              select: {
+                attendance_status: true,
+              },
+            },
+          },
+          orderBy: [
+            { training_plan: { training_plan_oap: { plan_year: "desc" } } },
+            { training_plan: { batch_no: "desc" } },
+          ],
+        });
+
+        return priorEnrollments.map((row): CoursePriorHistoryRecord => ({
+          employeeId: row.employee.employee_id.toString(),
+          employeeUserId: row.employee_user_id || row.employee.user_id,
+          employeeCode: row.employee.employee_code ?? "",
+          planId: row.training_plan.plan_id.toString(),
+          planName: row.training_plan.plan_name,
+          planYear: row.training_plan.training_plan_oap.plan_year,
+          batchNo: row.training_plan.batch_no,
+          batchName: row.training_plan.batch_name || (row.training_plan.batch_no ? `รุ่น ${row.training_plan.batch_no}` : null),
+          completedAt: row.training_result?.completed_at?.toISOString() ?? null,
+          completionStatus: row.training_result?.completion_status ?? (row.approval_status === "APPROVED" ? "APPROVED" : "PENDING"),
+          attendanceStatus: row.attendance?.attendance_status ?? null,
+          approvalStatus: row.approval_status,
+        }));
       });
     },
   };

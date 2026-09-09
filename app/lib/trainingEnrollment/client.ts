@@ -1,6 +1,6 @@
 "use client";
 
-import type { CreateEnrollmentInput, EnrollmentDeleted, EnrollmentListFilters, EnrollmentRecord, SetAttendanceInput, UpdateEnrollmentInput } from "./types";
+import type { CoursePriorHistoryRecord, CreateEnrollmentInput, EnrollmentDeleted, EnrollmentListFilters, EnrollmentRecord, SetAttendanceInput, UpdateEnrollmentInput } from "./types";
 
 // A plain Error threw away the API's error code and details, so a caller could not tell a
 // prerequisite rejection (409 PREREQUISITE_NOT_MET, with the missing courses in `details`) apart
@@ -49,6 +49,14 @@ export const listEnrollments = async (filters: EnrollmentListFilters) => {
     cache: "no-store",
   });
   return parseApiResponse<{ enrollments: EnrollmentRecord[] }>(response);
+};
+
+export const getCourseEnrollmentHistory = async ({ planId }: { planId: string }) => {
+  const response = await fetch(`/api/training-plan/enrollments/course-history?planId=${encodeURIComponent(planId)}`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+  return parseApiResponse<{ history: CoursePriorHistoryRecord[] }>(response);
 };
 
 export const createEnrollment = async (input: CreateEnrollmentInput) => {

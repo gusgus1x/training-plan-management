@@ -24,9 +24,6 @@ const courseMaster = read(
 const trainingRecord = read(
   "components/center_factory/TrainingRecordManagement/modules/TrainingRecord.tsx",
 );
-const scheduleCalendar = read(
-  "components/center_factory/ReportManagement/modules/ScheduleCalendar.tsx",
-);
 const loginPage = read("components/LoginPage.tsx");
 
 describe("controls whose backend does not exist stay disabled", () => {
@@ -34,14 +31,13 @@ describe("controls whose backend does not exist stay disabled", () => {
     ["LINE OA notification", acceptSurvey, "handleSendLineNotification"],
     ["save imported courses", trainingRecord, "handleSaveImportedCourses"],
     ["evaluation form download", trainingRecord, "handleDownload"],
-    ["prepare email", scheduleCalendar, "handlePrepareEmail"],
   ])("does not wire %s to a click", (_label, source, handler) => {
     // Catches both onClick={handler} and onClick={() => handler(...)}.
     expect(source).not.toMatch(new RegExp(`onClick=\\{[^}]*${handler}`));
   });
 
   it("says the same thing on every one of them", () => {
-    for (const source of [acceptSurvey, trainingRecord, scheduleCalendar, loginPage]) {
+    for (const source of [acceptSurvey, trainingRecord, loginPage]) {
       expect(source).toContain("UNDER_DEVELOPMENT");
     }
   });

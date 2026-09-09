@@ -58,6 +58,17 @@ export type CourseActivity = {
   location?: string;
   description: string;
   imageUrl: string;
+  images?: string[];
+  isCourseLinked?: boolean;
+  linkedCourseId?: string | null;
+  linkedCourseCode?: string | null;
+  linkedCourseName?: string | null;
+  linkedPlanId?: string | null;
+  linkedTrainingDate?: string | null;
+  linkedEndDate?: string | null;
+  registrationNote?: string | null;
+  isVisibleOnDashboard?: boolean;
+  status?: string;
   companyId: string;
   companyCode: string;
   companyName: string;
@@ -132,6 +143,16 @@ function mapAnnouncementToActivity(row: {
   let description = row.content || "";
   let location = "";
   let imageUrl = "";
+  let images: string[] = [];
+  let isCourseLinked = false;
+  let linkedCourseId: string | null = null;
+  let linkedCourseCode: string | null = null;
+  let linkedCourseName: string | null = null;
+  let linkedPlanId: string | null = null;
+  let linkedTrainingDate: string | null = null;
+  let linkedEndDate: string | null = null;
+  let registrationNote: string | null = null;
+  let isVisibleOnDashboard = true;
 
   try {
     if (row.content && row.content.trim().startsWith("{")) {
@@ -140,6 +161,28 @@ function mapAnnouncementToActivity(row: {
         description = parsed.description || "";
         location = parsed.location || "";
         imageUrl = parsed.imageUrl || "";
+        if (Array.isArray(parsed.images)) {
+          images = parsed.images
+            .filter((img: unknown) => typeof img === "string" && img.trim())
+            .map((img: string) =>
+              img.startsWith("/uploads/activities/")
+                ? img.replace(/^\/uploads\/activities\//, "/api/course-activities/image/")
+                : img.trim()
+            );
+        }
+        isCourseLinked = Boolean(parsed.isCourseLinked);
+        linkedCourseId = parsed.linkedCourseId ? String(parsed.linkedCourseId) : null;
+        linkedCourseCode = parsed.linkedCourseCode ? String(parsed.linkedCourseCode) : null;
+        linkedCourseName = parsed.linkedCourseName ? String(parsed.linkedCourseName) : null;
+        linkedPlanId = parsed.linkedPlanId ? String(parsed.linkedPlanId) : null;
+        linkedTrainingDate = parsed.linkedTrainingDate ? String(parsed.linkedTrainingDate) : null;
+        linkedEndDate = parsed.linkedEndDate ? String(parsed.linkedEndDate) : null;
+        registrationNote = parsed.registrationNote ? String(parsed.registrationNote) : null;
+        if (parsed.isVisibleOnDashboard !== undefined) {
+          isVisibleOnDashboard = Boolean(parsed.isVisibleOnDashboard);
+        } else if (row.status === "INACTIVE" || row.status === "ARCHIVED") {
+          isVisibleOnDashboard = false;
+        }
       }
     }
   } catch {
@@ -149,6 +192,13 @@ function mapAnnouncementToActivity(row: {
   // Normalize legacy public/uploads path to dynamic image API endpoint
   if (imageUrl && imageUrl.startsWith("/uploads/activities/")) {
     imageUrl = imageUrl.replace(/^\/uploads\/activities\//, "/api/course-activities/image/");
+  }
+
+  // Ensure images array includes imageUrl if images was empty
+  if (images.length === 0 && imageUrl) {
+    images = [imageUrl];
+  } else if (images.length > 0 && !imageUrl) {
+    imageUrl = images[0];
   }
 
   const isoDate = row.publish_at.toISOString();
@@ -161,6 +211,14 @@ function mapAnnouncementToActivity(row: {
     ? `${row.company.company_code} - ${row.company.company_name_en}`
     : "Center (ส่วนกลาง)";
 
+  const activityStatus =
+    row.status === "INACTIVE" || row.status === "ARCHIVED" || !isVisibleOnDashboard
+      ? "ARCHIVED"
+      : row.status || "PUBLISHED";
+  if (activityStatus === "ARCHIVED") {
+    isVisibleOnDashboard = false;
+  }
+
   return {
     id: row.announcement_id.toString(),
     title: row.title,
@@ -170,6 +228,17 @@ function mapAnnouncementToActivity(row: {
     location,
     description,
     imageUrl,
+    images,
+    isCourseLinked,
+    linkedCourseId,
+    linkedCourseCode,
+    linkedCourseName,
+    linkedPlanId,
+    linkedTrainingDate,
+    linkedEndDate,
+    registrationNote,
+    isVisibleOnDashboard,
+    status: activityStatus,
     companyId,
     companyCode,
     companyName,
@@ -185,7 +254,7 @@ export async function GET() {
     const factoryCompanyId = session?.companyId ? BigInt(session.companyId) : null;
 
     const where: any = {
-      status: { in: ["PUBLISHED", "DRAFT"] },
+      status: { in: ["PUBLISHED", "DRAFT", "INACTIVE"] },
     };
 
     if ((isFactory || isEmployee) && factoryCompanyId) {
@@ -240,7 +309,25 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, date, location, description, imageUrl, companyId } = body;
+    const {
+      title,
+      date,
+      location,
+      description,
+      imageUrl,
+      images,
+      isCourseLinked,
+      linkedCourseId,
+      linkedCourseCode,
+      linkedCourseName,
+      linkedPlanId,
+      linkedTrainingDate,
+      linkedEndDate,
+      registrationNote,
+      isVisibleOnDashboard,
+      status,
+      companyId,
+    } = body;
 
     if (!title || !title.trim()) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -257,10 +344,36 @@ export async function POST(request: NextRequest) {
     const userId = await getUserId();
     const prisma = getPrismaClient();
 
+    let imageList: string[] = [];
+    if (Array.isArray(images)) {
+      imageList = images.filter((img: unknown) => typeof img === "string" && img.trim());
+    }
+    const primaryImageUrl = (imageUrl || (imageList.length > 0 ? imageList[0] : "") || "").trim();
+    if (primaryImageUrl && !imageList.includes(primaryImageUrl)) {
+      imageList.unshift(primaryImageUrl);
+    }
+
+    const showOnDashboard =
+      isVisibleOnDashboard !== undefined
+        ? Boolean(isVisibleOnDashboard)
+        : status !== "ARCHIVED" && status !== "INACTIVE";
+    const dbStatus = showOnDashboard ? "PUBLISHED" : "INACTIVE";
+
     const content = JSON.stringify({
       description: (description || "").trim(),
       location: (location || "").trim(),
-      imageUrl: (imageUrl || "").trim(),
+      imageUrl: primaryImageUrl,
+      images: imageList,
+      isCourseLinked: Boolean(isCourseLinked),
+      linkedCourseId: linkedCourseId ? String(linkedCourseId).trim() : null,
+      linkedCourseCode: linkedCourseCode ? String(linkedCourseCode).trim() : null,
+      linkedCourseName: linkedCourseName ? String(linkedCourseName).trim() : null,
+      linkedPlanId: linkedPlanId ? String(linkedPlanId).trim() : null,
+      linkedTrainingDate: linkedTrainingDate ? String(linkedTrainingDate).trim() : null,
+      linkedEndDate: linkedEndDate ? String(linkedEndDate).trim() : null,
+      registrationNote: registrationNote ? String(registrationNote).trim() : null,
+      isVisibleOnDashboard: showOnDashboard,
+      status: showOnDashboard ? "PUBLISHED" : "ARCHIVED",
     });
 
     const dateStr = date || new Date().toISOString().slice(0, 10);
@@ -280,7 +393,7 @@ export async function POST(request: NextRequest) {
         title: title.trim(),
         content,
         publish_at: publishDate,
-        status: "PUBLISHED",
+        status: dbStatus,
         target_role: "ALL",
         created_by: userId,
         company_id: dbCompanyId,
@@ -301,7 +414,26 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, title, date, location, description, imageUrl, companyId } = body;
+    const {
+      id,
+      title,
+      date,
+      location,
+      description,
+      imageUrl,
+      images,
+      isCourseLinked,
+      linkedCourseId,
+      linkedCourseCode,
+      linkedCourseName,
+      linkedPlanId,
+      linkedTrainingDate,
+      linkedEndDate,
+      registrationNote,
+      isVisibleOnDashboard,
+      status,
+      companyId,
+    } = body;
 
     if (!id) {
       return NextResponse.json({ error: "Activity ID is required" }, { status: 400 });
@@ -333,7 +465,23 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    let existingMeta = { description: "", location: "", imageUrl: "" };
+    let existingMeta: {
+      description?: string;
+      location?: string;
+      imageUrl?: string;
+      images?: string[];
+      isCourseLinked?: boolean;
+      linkedCourseId?: string | null;
+      linkedCourseCode?: string | null;
+      linkedCourseName?: string | null;
+      linkedPlanId?: string | null;
+      linkedTrainingDate?: string | null;
+      linkedEndDate?: string | null;
+      registrationNote?: string | null;
+      isVisibleOnDashboard?: boolean;
+      status?: string;
+    } = { description: "", location: "", imageUrl: "", images: [] };
+
     try {
       if (existing.content && existing.content.trim().startsWith("{")) {
         existingMeta = { ...existingMeta, ...JSON.parse(existing.content) };
@@ -344,10 +492,46 @@ export async function PUT(request: NextRequest) {
       // ignore
     }
 
+    let imageList: string[] = [];
+    if (Array.isArray(images)) {
+      imageList = images.filter((img: unknown) => typeof img === "string" && img.trim());
+    } else if (Array.isArray(existingMeta.images)) {
+      imageList = existingMeta.images;
+    }
+
+    let finalImageUrl = imageUrl !== undefined ? imageUrl.trim() : (existingMeta.imageUrl || "");
+    if (!finalImageUrl && imageList.length > 0) {
+      finalImageUrl = imageList[0];
+    }
+    if (finalImageUrl && !imageList.includes(finalImageUrl)) {
+      imageList.unshift(finalImageUrl);
+    }
+
+    const showOnDashboard =
+      isVisibleOnDashboard !== undefined
+        ? Boolean(isVisibleOnDashboard)
+        : status !== undefined
+        ? status !== "ARCHIVED" && status !== "INACTIVE"
+        : existingMeta.isVisibleOnDashboard !== undefined
+        ? Boolean(existingMeta.isVisibleOnDashboard)
+        : existing.status !== "INACTIVE" && existing.status !== "ARCHIVED";
+    const dbStatus = showOnDashboard ? "PUBLISHED" : "INACTIVE";
+
     const newContent = JSON.stringify({
-      description: description !== undefined ? description.trim() : existingMeta.description,
-      location: location !== undefined ? location.trim() : existingMeta.location,
-      imageUrl: imageUrl !== undefined ? imageUrl.trim() : existingMeta.imageUrl,
+      description: description !== undefined ? description.trim() : (existingMeta.description || ""),
+      location: location !== undefined ? location.trim() : (existingMeta.location || ""),
+      imageUrl: finalImageUrl,
+      images: imageList,
+      isCourseLinked: isCourseLinked !== undefined ? Boolean(isCourseLinked) : Boolean(existingMeta.isCourseLinked),
+      linkedCourseId: linkedCourseId !== undefined ? (linkedCourseId ? String(linkedCourseId).trim() : null) : (existingMeta.linkedCourseId || null),
+      linkedCourseCode: linkedCourseCode !== undefined ? (linkedCourseCode ? String(linkedCourseCode).trim() : null) : (existingMeta.linkedCourseCode || null),
+      linkedCourseName: linkedCourseName !== undefined ? (linkedCourseName ? String(linkedCourseName).trim() : null) : (existingMeta.linkedCourseName || null),
+      linkedPlanId: linkedPlanId !== undefined ? (linkedPlanId ? String(linkedPlanId).trim() : null) : (existingMeta.linkedPlanId || null),
+      linkedTrainingDate: linkedTrainingDate !== undefined ? (linkedTrainingDate ? String(linkedTrainingDate).trim() : null) : (existingMeta.linkedTrainingDate || null),
+      linkedEndDate: linkedEndDate !== undefined ? (linkedEndDate ? String(linkedEndDate).trim() : null) : (existingMeta.linkedEndDate || null),
+      registrationNote: registrationNote !== undefined ? (registrationNote ? String(registrationNote).trim() : null) : (existingMeta.registrationNote || null),
+      isVisibleOnDashboard: showOnDashboard,
+      status: showOnDashboard ? "PUBLISHED" : "ARCHIVED",
     });
 
     const updateData: {
@@ -355,8 +539,10 @@ export async function PUT(request: NextRequest) {
       content: string;
       publish_at?: Date;
       company_id?: bigint | null;
+      status?: string;
     } = {
       content: newContent,
+      status: dbStatus,
     };
     if (title !== undefined && title.trim()) {
       updateData.title = title.trim();
@@ -373,9 +559,19 @@ export async function PUT(request: NextRequest) {
             : BigInt(companyId);
     }
 
-    // If image was changed or removed, delete the old image file from server
-    if (imageUrl !== undefined && existingMeta.imageUrl && existingMeta.imageUrl !== imageUrl.trim()) {
-      await deleteImageFileIfPresent(existingMeta.imageUrl);
+    // If images were removed from existing set, delete them from disk
+    const existingImages = new Set<string>();
+    if (existingMeta.imageUrl) existingImages.add(existingMeta.imageUrl);
+    if (Array.isArray(existingMeta.images)) {
+      existingMeta.images.forEach((img) => existingImages.add(img));
+    }
+    const currentImages = new Set<string>(imageList);
+    if (finalImageUrl) currentImages.add(finalImageUrl);
+
+    for (const oldImg of existingImages) {
+      if (!currentImages.has(oldImg)) {
+        await deleteImageFileIfPresent(oldImg);
+      }
     }
 
     const updated = await prisma.announcement.update({
@@ -430,13 +626,15 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
-    let imageToDelete = queryImageUrl || "";
+    const imagesToDelete = new Set<string>();
+    if (queryImageUrl) imagesToDelete.add(queryImageUrl);
 
     try {
       if (existing.content && existing.content.trim().startsWith("{")) {
         const meta = JSON.parse(existing.content);
-        if (meta.imageUrl) {
-          imageToDelete = meta.imageUrl;
+        if (meta.imageUrl) imagesToDelete.add(meta.imageUrl);
+        if (Array.isArray(meta.images)) {
+          meta.images.forEach((img: string) => imagesToDelete.add(img));
         }
       }
     } catch {
@@ -447,11 +645,8 @@ export async function DELETE(request: NextRequest) {
       where: { announcement_id: BigInt(id) },
     });
 
-    if (imageToDelete) {
-      await deleteImageFileIfPresent(imageToDelete);
-    }
-    if (queryImageUrl && queryImageUrl !== imageToDelete) {
-      await deleteImageFileIfPresent(queryImageUrl);
+    for (const img of imagesToDelete) {
+      await deleteImageFileIfPresent(img);
     }
 
     return NextResponse.json({ success: true, deletedId: id });

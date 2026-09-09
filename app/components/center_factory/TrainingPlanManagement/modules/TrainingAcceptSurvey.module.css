@@ -813,16 +813,53 @@
   min-width: 0;
 }
 
-.participantActions span {
+.participantActions > span:not([class*="glowingDot"]) {
   border: 1px solid var(--ui-30-primary-border);
   border-radius: 999px;
   background: var(--ui-30-primary-soft);
   color: var(--ui-30-primary-strong);
   font-size: 0.74rem;
-  font-weight: 900;
+  font-weight: 800;
   line-height: 1;
-  padding: 7px 12px;
+  padding: 6px 12px;
   white-space: nowrap;
+}
+
+.queueBadgeBlue {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+  border-radius: 9999px !important;
+  background: rgba(59, 130, 246, 0.12) !important;
+  color: #60a5fa !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  padding: 5px 12px !important;
+  white-space: nowrap !important;
+}
+
+.queueBadgeYellow {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  border: 1px solid rgba(234, 179, 8, 0.3) !important;
+  border-radius: 9999px !important;
+  background: rgba(234, 179, 8, 0.12) !important;
+  color: #eab308 !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  padding: 5px 12px !important;
+  white-space: nowrap !important;
+}
+
+.participantActions span[class*="glowingDot"],
+.participantActions [class*="glowingDot"] {
+  border: none !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
 }
 
 .saveParticipantsButton,
@@ -1383,7 +1420,7 @@
   flex-direction: column;
   gap: 0;
   width: max-content;
-  min-width: 2370px;
+  min-width: 2480px;
 }
 
 .targetEmployeeHeader,
@@ -1391,8 +1428,8 @@
   display: grid;
   align-items: center;
   box-sizing: border-box;
-  width: 2370px;
-  min-width: 2370px;
+  width: 2480px;
+  min-width: 2480px;
   border: 0;
   padding: 10px 16px;
 }
@@ -1441,7 +1478,7 @@
 
 .targetListHeader,
 .targetListRow {
-  grid-template-columns: 105px 1fr;
+  grid-template-columns: 120px 1fr;
   gap: 14px;
 }
 
@@ -1452,7 +1489,7 @@
   gap: 14px;
   grid-template-columns:
     115px
-    110px
+    190px
     65px
     125px
     135px
@@ -2252,6 +2289,79 @@
   font-size: 0.72rem;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.badgeCompletedPrior {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  background: rgba(168, 85, 247, 0.12);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.32);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+}
+
+.badgeYearPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(168, 85, 247, 0.2);
+  color: #e9d5ff;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  font-size: 0.68rem;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.badgeRetakeBtn {
+  background: rgba(168, 85, 247, 0.15) !important;
+  border: 1px solid rgba(168, 85, 247, 0.45) !important;
+  color: #c084fc !important;
+  box-shadow: 0 1px 3px rgba(168, 85, 247, 0.15);
+  transition: all 0.2s ease !important;
+}
+
+.badgeRetakeBtn:hover {
+  background: #7c3aed !important;
+  border-color: #7c3aed !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4) !important;
+  transform: translateY(-1px);
+}
+
+@keyframes pulsePurpleDot {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.8);
+    opacity: 0.8;
+  }
+  60% {
+    transform: scale(1.25);
+    box-shadow: 0 0 0 6px rgba(168, 85, 247, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(168, 85, 247, 0);
+    opacity: 0.8;
+  }
+}
+
+.glowingDotPurple {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #a855f7;
+  box-shadow: 0 0 6px #a855f7;
+  animation: pulsePurpleDot 1.6s infinite ease-in-out;
+  flex-shrink: 0;
 }
 
 @keyframes pulseYellowDot {

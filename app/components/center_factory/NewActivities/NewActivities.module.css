@@ -753,71 +753,119 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 1px solid var(--ui-30-border, #cbd5e1);
-  background: var(--ui-60-surface-soft, #f8fafc);
-  color: var(--ui-30-text, #475569);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.18s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .cardActionBtn:hover {
-  transform: translateY(-2px) scale(1.05);
-  background: var(--ui-60-surface, #ffffff);
-  border-color: var(--ui-30-primary, #007a3d);
-  color: var(--ui-30-primary, #007a3d);
-  box-shadow: 0 4px 10px rgba(0, 122, 61, 0.2);
+  transform: translateY(-2px) scale(1.08);
 }
 
+/* 1. Archive Button (Amber / Warm Gold) */
+.cardActionBtnArchive {
+  background: #fffbeb;
+  border: 1.5px solid rgba(245, 158, 11, 0.55);
+  color: #d97706;
+}
+
+.cardActionBtnArchive:hover {
+  background: #f59e0b !important;
+  border-color: #d97706 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4) !important;
+}
+
+:global([data-theme="dark"]) .cardActionBtnArchive,
+:global(.dark) .cardActionBtnArchive {
+  background: rgba(245, 158, 11, 0.16);
+  border: 1.5px solid rgba(251, 191, 36, 0.6);
+  color: #fbbf24;
+}
+
+:global([data-theme="dark"]) .cardActionBtnArchive:hover,
+:global(.dark) .cardActionBtnArchive:hover {
+  background: #f59e0b !important;
+  border-color: #fbbf24 !important;
+  color: #0f172a !important;
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.5) !important;
+}
+
+/* 2. Edit Button (Royal Blue) */
+.cardActionBtnEdit {
+  background: #eff6ff;
+  border: 1.5px solid rgba(37, 99, 235, 0.5);
+  color: #2563eb;
+}
+
+.cardActionBtnEdit:hover {
+  background: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4) !important;
+}
+
+:global([data-theme="dark"]) .cardActionBtnEdit,
+:global(.dark) .cardActionBtnEdit {
+  background: rgba(59, 130, 246, 0.16);
+  border: 1.5px solid rgba(96, 165, 250, 0.6);
+  color: #60a5fa;
+}
+
+:global([data-theme="dark"]) .cardActionBtnEdit:hover,
+:global(.dark) .cardActionBtnEdit:hover {
+  background: #3b82f6 !important;
+  border-color: #60a5fa !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 16px rgba(96, 165, 250, 0.5) !important;
+}
+
+/* 3. Delete Button (Crimson Red) */
 .cardActionBtnDelete {
-  border-color: var(--ui-30-border, #cbd5e1);
-  color: var(--ui-30-muted, #64748b);
+  background: #fef2f2;
+  border: 1.5px solid rgba(239, 68, 68, 0.5);
+  color: #dc2626;
 }
 
 .cardActionBtnDelete:hover {
-  background: #fef2f2 !important;
-  border-color: #f87171 !important;
-  color: #dc2626 !important;
-  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.2) !important;
+  background: #ef4444 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4) !important;
 }
 
-:global([data-theme="dark"]) .cardActionBtn,
-:global(.dark) .cardActionBtn {
-  background: #1e293b;
-  border-color: #334155;
-  color: #94a3b8;
-}
-
-:global([data-theme="dark"]) .cardActionBtn:hover,
-:global(.dark) .cardActionBtn:hover {
-  background: #0f172a;
-  border-color: #10b981;
-  color: #10b981;
-  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);
+:global([data-theme="dark"]) .cardActionBtnDelete,
+:global(.dark) .cardActionBtnDelete {
+  background: rgba(239, 68, 68, 0.16);
+  border: 1.5px solid rgba(248, 113, 113, 0.6);
+  color: #f87171;
 }
 
 :global([data-theme="dark"]) .cardActionBtnDelete:hover,
 :global(.dark) .cardActionBtnDelete:hover {
-  background: rgba(220, 38, 38, 0.18) !important;
-  border-color: #ef4444 !important;
-  color: #f87171 !important;
-  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3) !important;
+  background: #ef4444 !important;
+  border-color: #f87171 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 16px rgba(248, 113, 113, 0.5) !important;
 }
 
 /* Modal Overlay & Dialog */
 .modalOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(6px);
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  z-index: 9999;
-  padding: 20px;
+  z-index: 999999;
+  padding: 32px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   animation: fadeIn 0.15s ease-out;
 }
 
@@ -832,13 +880,14 @@
   border-radius: 20px;
   max-width: 680px;
   width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  max-height: min(90vh, calc(100vh - 60px));
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
   position: relative;
+  margin: 0 auto;
+  overflow: hidden;
 }
 
 @keyframes scaleUp {
@@ -850,8 +899,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px 16px;
+  padding: 18px 24px 14px;
   border-bottom: 1px solid var(--ui-30-border, #e2e8f0);
+  flex-shrink: 0;
 }
 
 .modalTitle {
@@ -888,6 +938,10 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .modalImagePreview {
@@ -978,6 +1032,8 @@
   gap: 10px;
   padding: 16px 24px 20px;
   border-top: 1px solid var(--ui-30-border, #e2e8f0);
+  flex-shrink: 0;
+  background: var(--ui-60-surface, #ffffff);
 }
 
 .cancelBtn {
@@ -1286,18 +1342,17 @@
 /* Modal Overlay & Dialog */
 .modalOverlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(15, 23, 42, 0.7);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  inset: 0;
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  padding: 20px;
+  z-index: 999999;
+  padding: 40px 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   animation: fadeIn 0.2s ease-out;
 }
 
@@ -1311,13 +1366,22 @@
   border: 1px solid var(--ui-30-border, #e2e8f0);
   border-radius: 20px;
   width: 100%;
-  max-width: 600px;
-  max-height: 90vh;
+  max-width: 620px;
+  max-height: min(90vh, calc(100vh - 80px));
   display: flex;
   flex-direction: column;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
+  margin: auto;
+  position: relative;
+}
+
+.modalMetaChips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 @keyframes slideUp {
@@ -1408,6 +1472,70 @@
   font-size: 0.88rem;
   font-weight: 700;
   color: var(--ui-30-ink, #1e293b);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Blinking Colorful Circle for Required Fields */
+.requiredDot {
+  position: relative;
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.8), 0 0 12px rgba(249, 115, 22, 0.5);
+  vertical-align: middle;
+  flex-shrink: 0;
+  animation: blinkRequiredDot 1.2s infinite ease-in-out;
+}
+
+.requiredDot::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 1.5px solid #ef4444;
+  animation: pulseRequiredRing 1.2s infinite cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  pointer-events: none;
+}
+
+@keyframes blinkRequiredDot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.95), 0 0 14px rgba(249, 115, 22, 0.7);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.82);
+    box-shadow: 0 0 2px rgba(239, 68, 68, 0.3);
+  }
+}
+
+@keyframes pulseRequiredRing {
+  0% {
+    width: 100%;
+    height: 100%;
+    opacity: 0.9;
+  }
+  65%, 100% {
+    width: 250%;
+    height: 250%;
+    opacity: 0;
+  }
+}
+
+:global([data-theme="dark"]) .requiredDot,
+:global(.dark) .requiredDot {
+  background: linear-gradient(135deg, #ff4d4d 0%, #ff8533 100%);
+  box-shadow: 0 0 10px rgba(255, 77, 77, 0.95), 0 0 16px rgba(255, 133, 51, 0.75);
 }
 
 .formInput {
@@ -1928,3 +2056,1260 @@
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   box-shadow: 0 2px 10px rgba(16, 185, 129, 0.4);
 }
+
+/* ==========================================================================
+   Multiple Images & Gallery Enhancements
+   ========================================================================== */
+
+/* Photo count badge on activity card */
+.photoCountBadge {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #ffffff;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Course promotion badge on activity card */
+.courseLinkedBadge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.35);
+  z-index: 3;
+}
+
+:global([data-theme="dark"]) .courseLinkedBadge,
+:global(.dark) .courseLinkedBadge {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+  box-shadow: 0 2px 10px rgba(14, 165, 233, 0.4);
+}
+
+/* Course ended badge on activity card */
+.courseEndedBadge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  color: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  z-index: 3;
+}
+
+:global([data-theme="dark"]) .courseEndedBadge,
+:global(.dark) .courseEndedBadge {
+  background: linear-gradient(135deg, #475569 0%, #334155 100%);
+  color: #cbd5e1;
+}
+
+/* Quick course action container on card */
+/* Quick course action container on card */
+.cardCourseBox {
+  margin-top: 8px;
+  margin-bottom: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.05) 0%, rgba(248, 250, 252, 0.95) 100%);
+  border: 1px solid rgba(2, 132, 199, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+.cardCourseBox:hover {
+  border-color: #0284c7;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.12);
+}
+
+:global([data-theme="dark"]) .cardCourseBox,
+:global(.dark) .cardCourseBox {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.08) 0%, rgba(30, 41, 59, 0.7) 100%);
+  border-color: rgba(56, 189, 248, 0.24);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+:global([data-theme="dark"]) .cardCourseBox:hover,
+:global(.dark) .cardCourseBox:hover {
+  border-color: #38bdf8;
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
+}
+
+.cardCourseTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cardCourseTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.69rem;
+  font-weight: 700;
+  color: #0284c7;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.cardCourseTag svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+:global([data-theme="dark"]) .cardCourseTag,
+:global(.dark) .cardCourseTag {
+  color: #38bdf8;
+}
+
+.courseMiniStatusOpen {
+  background: rgba(2, 132, 199, 0.12);
+  color: #0284c7;
+  border: 1px solid rgba(2, 132, 199, 0.25);
+  border-radius: 9999px;
+  padding: 1.5px 7px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+:global([data-theme="dark"]) .courseMiniStatusOpen,
+:global(.dark) .courseMiniStatusOpen {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+.courseMiniStatusEnded {
+  background: rgba(100, 116, 139, 0.14);
+  color: #64748b;
+  border: 1px solid rgba(100, 116, 139, 0.25);
+  border-radius: 9999px;
+  padding: 1.5px 7px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+:global([data-theme="dark"]) .courseMiniStatusEnded,
+:global(.dark) .courseMiniStatusEnded {
+  background: rgba(148, 163, 184, 0.14);
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+.courseMiniStatusEnrolled {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 9999px;
+  padding: 1.5px 7px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+:global([data-theme="dark"]) .courseMiniStatusEnrolled,
+:global(.dark) .courseMiniStatusEnrolled {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+/* Bottom row: Course Name on the left, Button on the right */
+.cardCourseBottomRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cardCourseTitle {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ui-30-ink, #0f172a);
+  margin: 0;
+  line-height: 1.4;
+  flex: 1;
+  min-width: 0;
+}
+
+:global([data-theme="dark"]) .cardCourseTitle,
+:global(.dark) .cardCourseTitle {
+  color: #f1f5f9;
+}
+
+.cardCourseCodeBadge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: rgba(2, 132, 199, 0.12);
+  color: #0369a1;
+  padding: 1.5px 5px;
+  border-radius: 4px;
+  margin-right: 5px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+:global([data-theme="dark"]) .cardCourseCodeBadge,
+:global(.dark) .cardCourseCodeBadge {
+  background: rgba(56, 189, 248, 0.15);
+  color: #7dd3fc;
+}
+
+.cardCourseNameText {
+  display: inline;
+  word-break: break-word;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.cardCourseActionFooter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+.cardHrdDispatchBtn {
+  background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 7px;
+  padding: 5px 10px;
+  font-size: 0.73rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 4px rgba(79, 70, 229, 0.25);
+  flex-shrink: 0;
+}
+
+.cardHrdDispatchBtn svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.cardHrdDispatchBtn:hover {
+  background: linear-gradient(135deg, #4338ca 0%, #312e81 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(79, 70, 229, 0.35);
+  filter: brightness(1.05);
+}
+
+:global([data-theme="dark"]) .cardHrdDispatchBtn,
+:global(.dark) .cardHrdDispatchBtn {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.3);
+}
+
+:global([data-theme="dark"]) .cardHrdDispatchBtn:hover,
+:global(.dark) .cardHrdDispatchBtn:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+}
+
+.cardEmployeeEnrollBtn {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 7px;
+  padding: 5px 12px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 4px rgba(2, 132, 199, 0.25);
+  flex-shrink: 0;
+}
+
+.cardEmployeeEnrollBtn svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.cardEmployeeEnrollBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(2, 132, 199, 0.35);
+  filter: brightness(1.08);
+}
+
+.cardEnrolledPill {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 7px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cardEnrolledPill svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+:global([data-theme="dark"]) .cardEnrolledPill,
+:global(.dark) .cardEnrolledPill {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.cardEnrolledActionGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cardCancelEnrollBtn {
+  background: rgba(239, 68, 68, 0.08);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 7px;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-family: inherit;
+}
+
+.cardCancelEnrollBtn:hover {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #b91c1c;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+}
+
+:global([data-theme="dark"]) .cardCancelEnrollBtn,
+:global(.dark) .cardCancelEnrollBtn {
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.45);
+}
+
+:global([data-theme="dark"]) .cardCancelEnrollBtn:hover,
+:global(.dark) .cardCancelEnrollBtn:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.cardEndedPill {
+  background: rgba(100, 116, 139, 0.12);
+  color: #64748b;
+  border: 1px solid rgba(100, 116, 139, 0.25);
+  border-radius: 7px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cardEndedPill svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+:global([data-theme="dark"]) .cardEndedPill,
+:global(.dark) .cardEndedPill {
+  background: rgba(148, 163, 184, 0.1);
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+/* ==========================================================================
+   Multi-Image Upload in Form Modal
+   ========================================================================== */
+
+.multiUploadZone {
+  border: 2px dashed var(--ui-30-border, #cbd5e1);
+  border-radius: 12px;
+  padding: 20px 16px;
+  text-align: center;
+  background: var(--ui-60-surface-soft, #f8fafc);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+
+.multiUploadZone:hover {
+  border-color: var(--ui-30-primary, #007a3d);
+  background: rgba(0, 122, 61, 0.04);
+}
+
+:global([data-theme="dark"]) .multiUploadZone,
+:global(.dark) .multiUploadZone {
+  background: #182234;
+  border-color: #334155;
+}
+
+:global([data-theme="dark"]) .multiUploadZone:hover,
+:global(.dark) .multiUploadZone:hover {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+.multiUploadIcon {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto 8px;
+  color: var(--ui-30-muted, #64748b);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.multiUploadText {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ui-30-text, #1e293b);
+  margin-bottom: 4px;
+}
+
+.multiUploadHint {
+  font-size: 0.78rem;
+  color: var(--ui-30-muted, #64748b);
+}
+
+/* Thumbnail Grid inside Form */
+.thumbGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.thumbCard {
+  position: relative;
+  aspect-ratio: 4/3;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid var(--ui-30-border, #e2e8f0);
+  background: #0f172a;
+}
+
+.thumbCardCover {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.3);
+}
+
+.thumbImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.thumbCoverBadge {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  background: #f59e0b;
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.thumbOverlayActions {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(2px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.thumbCard:hover .thumbOverlayActions {
+  opacity: 1;
+}
+
+.thumbActionBtn {
+  background: rgba(255, 255, 255, 0.95);
+  color: #1e293b;
+  border: none;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.thumbActionBtn:hover {
+  background: #ffffff;
+  transform: scale(1.05);
+}
+
+.thumbDeleteBtn {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.thumbDeleteBtn:hover {
+  background: #dc2626;
+}
+
+/* ==========================================================================
+   Course Linking Form Card
+   ========================================================================== */
+
+.courseLinkToggleCard {
+  border: 1px solid var(--ui-30-border, #e2e8f0);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--ui-60-surface-soft, #f8fafc);
+  margin-bottom: 16px;
+  transition: all 0.2s ease;
+}
+
+.courseLinkToggleCardActive {
+  border-color: #0284c7;
+  background: rgba(2, 132, 199, 0.04);
+}
+
+:global([data-theme="dark"]) .courseLinkToggleCard,
+:global(.dark) .courseLinkToggleCard {
+  background: #182234;
+  border-color: #2e3d58;
+}
+
+:global([data-theme="dark"]) .courseLinkToggleCardActive,
+:global(.dark) .courseLinkToggleCardActive {
+  border-color: #38bdf8;
+  background: rgba(14, 165, 233, 0.08);
+}
+
+.courseLinkCheckboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--ui-30-text, #1e293b);
+  cursor: pointer;
+}
+
+.courseLinkFields {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--ui-30-border, #cbd5e1);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ==========================================================================
+   Detail Modal Lightbox Gallery & Course Section
+   ========================================================================== */
+
+.lightboxGalleryContainer {
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #090d16;
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+
+.lightboxMainStage {
+  position: relative;
+  width: 100%;
+  height: 380px;
+  min-height: 340px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0b1120;
+  flex-shrink: 0;
+}
+
+.lightboxMainImg {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+  transition: opacity 0.35s ease-in-out;
+}
+
+.lightboxNavBtn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 5;
+}
+
+.lightboxNavBtn:hover {
+  background: rgba(15, 23, 42, 0.95);
+  transform: translateY(-50%) scale(1.1);
+  color: #38bdf8;
+}
+
+.lightboxNavPrev {
+  left: 12px;
+}
+
+.lightboxNavNext {
+  right: 12px;
+}
+
+.lightboxCounter {
+  position: absolute;
+  bottom: 12px;
+  right: 14px;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  z-index: 5;
+}
+
+.lightboxThumbStrip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #0f172a;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.lightboxThumbBtn {
+  position: relative;
+  width: 64px;
+  height: 46px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  background: #1e293b;
+  opacity: 0.6;
+  transition: all 0.2s ease;
+}
+
+.lightboxThumbBtn:hover {
+  opacity: 0.9;
+}
+
+.lightboxThumbBtnActive {
+  opacity: 1;
+  border-color: #38bdf8;
+  transform: scale(1.05);
+}
+
+.lightboxThumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Linked Course Highlight in Detail Modal */
+.detailLinkedCourseCard {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.08) 0%, rgba(56, 189, 248, 0.05) 100%);
+  border: 1.5px solid #0284c7;
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-top: 18px;
+  margin-bottom: 10px;
+}
+
+:global([data-theme="dark"]) .detailLinkedCourseCard,
+:global(.dark) .detailLinkedCourseCard {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(2, 132, 199, 0.06) 100%);
+  border-color: #38bdf8;
+}
+
+.linkedCourseHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.linkedCourseTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #0284c7;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+:global([data-theme="dark"]) .linkedCourseTag,
+:global(.dark) .linkedCourseTag {
+  color: #38bdf8;
+}
+
+.linkedCourseTitle {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ui-30-text, #0f172a);
+  margin-bottom: 6px;
+}
+
+.linkedCourseNote {
+  font-size: 0.85rem;
+  color: #475569;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  border-left: 3px solid #0284c7;
+}
+
+:global([data-theme="dark"]) .linkedCourseNote,
+:global(.dark) .linkedCourseNote {
+  background: rgba(15, 23, 42, 0.6);
+  color: #cbd5e1;
+  border-left-color: #38bdf8;
+}
+
+.linkedCourseEnrollCta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.detailEnrollBtn {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 20px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 3px 10px rgba(2, 132, 199, 0.35);
+}
+
+.detailEnrollBtn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(2, 132, 199, 0.45);
+}
+
+.detailEnrollBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.enrolledSuccessBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+:global([data-theme="dark"]) .enrolledSuccessBadge,
+:global(.dark) .enrolledSuccessBadge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+.enrolledButtonGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.detailCancelEnrollBtn {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1.5px solid rgba(239, 68, 68, 0.35);
+  color: #dc2626;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.detailCancelEnrollBtn:hover:not(:disabled) {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #b91c1c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+}
+
+.detailCancelEnrollBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+:global([data-theme="dark"]) .detailCancelEnrollBtn,
+:global(.dark) .detailCancelEnrollBtn {
+  background: rgba(239, 68, 68, 0.16);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.45);
+}
+
+:global([data-theme="dark"]) .detailCancelEnrollBtn:hover:not(:disabled),
+:global(.dark) .detailCancelEnrollBtn:hover:not(:disabled) {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.endedNoticeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+:global([data-theme="dark"]) .endedNoticeBadge,
+:global(.dark) .endedNoticeBadge {
+  background: rgba(239, 68, 68, 0.18);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* Detail Modal HRD Dispatch Panel */
+.hrdDispatchPanel {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(99, 102, 241, 0.04) 100%);
+  border: 1.5px solid rgba(79, 70, 229, 0.35);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+:global([data-theme="dark"]) .hrdDispatchPanel,
+:global(.dark) .hrdDispatchPanel {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(79, 70, 229, 0.06) 100%);
+  border-color: rgba(129, 140, 248, 0.4);
+}
+
+.hrdDispatchHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hrdDispatchBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #4338ca;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+:global([data-theme="dark"]) .hrdDispatchBadge,
+:global(.dark) .hrdDispatchBadge {
+  color: #a5b4fc;
+}
+
+.hrdDispatchSubtext {
+  font-size: 0.78rem;
+  color: #4f46e5;
+  font-weight: 700;
+}
+
+:global([data-theme="dark"]) .hrdDispatchSubtext,
+:global(.dark) .hrdDispatchSubtext {
+  color: #c7d2fe;
+}
+
+.hrdDispatchNotice {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #475569;
+  line-height: 1.5;
+}
+
+:global([data-theme="dark"]) .hrdDispatchNotice,
+:global(.dark) .hrdDispatchNotice {
+  color: #cbd5e1;
+}
+
+.hrdDispatchActionBtn {
+  background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+  align-self: flex-start;
+}
+
+.hrdDispatchActionBtn:hover {
+  background: linear-gradient(135deg, #4338ca 0%, #312e81 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.45);
+  filter: brightness(1.06);
+}
+
+:global([data-theme="dark"]) .hrdDispatchActionBtn,
+:global(.dark) .hrdDispatchActionBtn {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+/* Locked Company Box for HRD Factory */
+.lockedCompanyBox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--ui-60-surface-soft, #f8fafc);
+  border: 1px solid var(--ui-30-border, #cbd5e1);
+  color: var(--ui-30-text, #1e293b);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+:global([data-theme="dark"]) .lockedCompanyBox,
+:global(.dark) .lockedCompanyBox {
+  background: #182234;
+  border-color: #2e3d58;
+  color: #f1f5f9;
+}
+
+.lockedCompanyBox svg {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.lockedCompanyName {
+  flex: 1;
+}
+
+.lockedCompanyBadge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(100, 116, 139, 0.12);
+  color: #475569;
+  border: 1px solid rgba(100, 116, 139, 0.25);
+  white-space: nowrap;
+}
+
+:global([data-theme="dark"]) .lockedCompanyBadge,
+:global(.dark) .lockedCompanyBadge {
+  background: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+/* Visibility & Archive Toggle Card */
+.visibilityToggleCard {
+  border: 1.5px solid var(--ui-30-border, #cbd5e1);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--ui-60-surface-soft, #f8fafc);
+  margin-top: 14px;
+  margin-bottom: 12px;
+  transition: all 0.22s ease;
+}
+
+.visibilityToggleCardActive {
+  border-color: #059669;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.visibilityToggleCardArchived {
+  border-color: #d97706;
+  background: rgba(217, 119, 6, 0.05);
+}
+
+:global([data-theme="dark"]) .visibilityToggleCard,
+:global(.dark) .visibilityToggleCard {
+  background: #182234;
+  border-color: #2e3d58;
+}
+
+:global([data-theme="dark"]) .visibilityToggleCardActive,
+:global(.dark) .visibilityToggleCardActive {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+}
+
+:global([data-theme="dark"]) .visibilityToggleCardArchived,
+:global(.dark) .visibilityToggleCardArchived {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.visibilityCheckboxLabel {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.visibilityCheckbox {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #059669;
+  cursor: pointer;
+}
+
+.visibilityTextGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.visibilityHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.visibilityTitle {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--ui-30-text, #0f172a);
+}
+
+:global([data-theme="dark"]) .visibilityTitle,
+:global(.dark) .visibilityTitle {
+  color: #f8fafc;
+}
+
+.visibilitySubtitle {
+  font-size: 0.8rem;
+  color: var(--ui-30-muted, #64748b);
+  line-height: 1.45;
+}
+
+:global([data-theme="dark"]) .visibilitySubtitle,
+:global(.dark) .visibilitySubtitle {
+  color: #94a3b8;
+}
+
+.statusActiveBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  white-space: nowrap;
+}
+
+:global([data-theme="dark"]) .statusActiveBadge,
+:global(.dark) .statusActiveBadge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.45);
+}
+
+.statusArchivedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  background: rgba(217, 119, 6, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(217, 119, 6, 0.35);
+  white-space: nowrap;
+}
+
+:global([data-theme="dark"]) .statusArchivedBadge,
+:global(.dark) .statusArchivedBadge {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+.archiveActionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(217, 119, 6, 0.35);
+  background: rgba(217, 119, 6, 0.08);
+  color: #d97706;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.archiveActionBtn:hover:not(:disabled) {
+  background: #d97706;
+  color: #ffffff;
+  border-color: #b45309;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);
+}
+
+.archiveActionBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+:global([data-theme="dark"]) .archiveActionBtn,
+:global(.dark) .archiveActionBtn {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+:global([data-theme="dark"]) .archiveActionBtn:hover:not(:disabled),
+:global(.dark) .archiveActionBtn:hover:not(:disabled) {
+  background: #f59e0b;
+  color: #0f172a;
+}
+

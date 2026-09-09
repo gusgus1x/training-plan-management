@@ -53,6 +53,21 @@ describe("Course Activities API", () => {
     expect(updatedData.activity.description).toBe("Updated Description");
     expect(updatedData.activity.companyCode).toBe("ATA");
 
+    // 2.5. Archive activity (hide from Dashboard)
+    const archiveReq = new NextRequest("http://localhost/api/course-activities", {
+      method: "PUT",
+      body: JSON.stringify({
+        id: createdId,
+        isVisibleOnDashboard: false,
+        status: "ARCHIVED",
+      }),
+    });
+    const archiveRes = await PUT(archiveReq);
+    expect(archiveRes.status).toBe(200);
+    const archiveData = await archiveRes.json();
+    expect(archiveData.activity.isVisibleOnDashboard).toBe(false);
+    expect(archiveData.activity.status).toBe("ARCHIVED");
+
     // 3. Delete
     const deleteReq = new NextRequest(`http://localhost/api/course-activities?id=${encodeURIComponent(createdId)}`, {
       method: "DELETE",
@@ -142,4 +157,33 @@ describe("Course Activities API", () => {
     const adminVisible = filterActivitiesForUser(dummyActivities, adminUser);
     expect(adminVisible.map((a) => a.id)).toEqual(["1", "2", "3"]);
   });
+
+  it("correctly identifies ended courses based on date and time with isCourseDateOrTimeEnded", async () => {
+    const { isCourseDateOrTimeEnded } = await import("../../app/lib/calendarDate");
+    const mockNow = new Date(2026, 8, 9, 10, 30, 0);
+
+    // Past date -> ended
+    expect(isCourseDateOrTimeEnded("2026-09-08", null, null, mockNow)).toBe(true);
+    expect(isCourseDateOrTimeEnded("2026-09-01", "2026-09-08", null, mockNow)).toBe(true);
+    expect(isCourseDateOrTimeEnded("08/09/2026", null, null, mockNow)).toBe(true);
+
+    // Future date -> not ended
+    expect(isCourseDateOrTimeEnded("2026-09-10", null, null, mockNow)).toBe(false);
+    expect(isCourseDateOrTimeEnded("2026-09-08", "2026-09-15", null, mockNow)).toBe(false);
+
+    // Today with time:
+    // Past end time (09:00 < 10:30) -> ended
+    expect(isCourseDateOrTimeEnded("2026-09-09", null, "09:00", mockNow)).toBe(true);
+    // Future end time (16:00 > 10:30) -> not ended
+    expect(isCourseDateOrTimeEnded("2026-09-09", null, "16:00", mockNow)).toBe(false);
+
+    // Today without end time -> ends at 23:59:59 -> not ended at 10:30
+    expect(isCourseDateOrTimeEnded("2026-09-09", null, null, mockNow)).toBe(false);
+
+    // Missing or invalid date -> false
+    expect(isCourseDateOrTimeEnded(null, null, null, mockNow)).toBe(false);
+    expect(isCourseDateOrTimeEnded("-", null, null, mockNow)).toBe(false);
+    expect(isCourseDateOrTimeEnded("", null, null, mockNow)).toBe(false);
+  });
 });
+

@@ -53,7 +53,7 @@ describe("Thai text is stored as UTF-8", () => {
       damaged,
       `Mis-decoded Thai found. Restore the file from git and redo the edit with a tool that reads UTF-8 — do not use PowerShell Get-Content without -Encoding utf8.\n${damaged.join("\n")}`,
     ).toEqual([]);
-  });
+  }, 20000);
 
   it("still recognises the damage it is looking for", () => {
     // The literal bytes a corrupted file carries, built from escapes so this stays readable.

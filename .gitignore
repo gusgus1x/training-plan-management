@@ -55,6 +55,9 @@ INSTALL_TH.md
 README_PACKAGE.md
 .claude
 .agents
+.agent
+.impeccable
+.impeccable/
 progress.md
 findings.md
 task_plan.md

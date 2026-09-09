@@ -22,6 +22,9 @@ export const createEnrollmentService = (repository: EnrollmentRepository = enrol
   async setAttendance(id: string, attended: boolean, userId: string, role: string, companyId: string | null) {
     return repository.setAttendance(id, attended, userId, role, companyId);
   },
+  async getCourseHistory(planId: string) {
+    return repository.getCourseHistory(planId);
+  },
 });
 
 export const enrollmentService = createEnrollmentService();
