@@ -35,7 +35,9 @@ const withResult = (status: "PENDING" | "NOT_COMPLETED" | "COMPLETED") =>
     result: {
       enrollmentId: "1",
       preScore: null,
+      preLinkScoreMax: null,
       postScore: null,
+      postLinkScoreMax: null,
       completionStatus: status,
       completedAt: null,
       validUntil: null,

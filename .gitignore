@@ -65,7 +65,7 @@ training-db-schema-audit
 
 # info files
 TrainingPlanManagement — Project & Database Handover Context.md
-
+รวมหน้า UI การแสดง คำตอบของพนักงาน
 # uploaded certificates — the folder ships so its location on the server is obvious,
 # the documents inside never do: they are employees' personal records.
 /Certificate_Storage/*

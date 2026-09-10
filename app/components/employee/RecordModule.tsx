@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { certificateFileUrl } from "../../lib/certificates/client";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
+import { scoreLabel } from "../../lib/trainingEnrollment/types";
 import type {
   EnrollmentAssessmentInfo,
   EnrollmentRecord,
@@ -29,7 +30,10 @@ export type EmployeeTrainingRecord = {
   provider: "HRD Center" | "Factory HRD";
   hours: number;
   result: "Completed";
+  /** The MARK from the post-test, with the marks it is out of beside it. A percentage is worked
+   *  out where it is shown; nothing stores one. */
   score: number | null;
+  scoreMax: number | null;
   certificateNo: string;
   /** The issued certificate document, when HRD has confirmed one. Null is the honest default: an
    *  empty placeholder on every historical course would be noise. */
@@ -77,6 +81,12 @@ export const toRecord = (enrollment: EnrollmentRecord): EmployeeTrainingRecord =
   hours: enrollment.plan.hours,
   result: "Completed",
   score: enrollment.result?.postScore ?? null,
+  // The post-test's own form knows its total; an external test only has what HRD typed.
+  scoreMax:
+    enrollment.plan.assessment.postTest.totalScore ??
+    enrollment.plan.assessment.postTest.submission?.scoreMax ??
+    enrollment.result?.postLinkScoreMax ??
+    null,
   certificateNo: enrollment.result?.certificateNo || "-",
   certificate: enrollment.certificate,
   instructor: enrollment.plan.instructor || "-",
@@ -235,10 +245,14 @@ const AssessmentFlowSection = ({
                           : state === "REVIEW_PENDING"
                             ? t("ส่งแล้ว รอ HRD ตรวจ/ประกาศผล", "Submitted - awaiting review")
                             : state === "DONE"
-                              ? t(
-                                  `ทำแล้ว: ${step.stage.submission?.score ?? "-"}%`,
-                                  `Done: ${step.stage.submission?.score ?? "-"}%`,
-                                )
+                              ? (() => {
+                                  const label =
+                                    scoreLabel(
+                                      step.stage.submission?.score ?? null,
+                                      step.stage.submission?.scoreMax ?? null,
+                                    ) ?? "-";
+                                  return t(`ทำแล้ว: ${label}`, `Done: ${label}`);
+                                })()
                               : t("ทำในระบบ", "In-system form")}
                 </small>
               </div>
@@ -360,7 +374,9 @@ const exportPersonalRecord = (
     record.provider,
     record.hours,
     record.result,
-    record.score,
+    // The exported document says "8 / 10 (80%)" rather than a bare number, because the reader is
+    // an employer who has never seen the paper.
+    scoreLabel(record.score, record.scoreMax) ?? "-",
     record.certificateNo,
     record.preTestStatus,
     record.postTestStatus,
@@ -561,8 +577,12 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
   const passportSummary = useMemo(() => {
     const totalHours = records.reduce((sum, r) => sum + r.hours, 0);
     const completedCount = records.length;
-    const scores = records.map((r) => r.score).filter((s): s is number => s !== null);
-    const avgScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+    // Averaged as percentages, not as marks: 8 out of 10 and 8 out of 100 are not the same result,
+    // and a course with no full marks recorded cannot join an average at all.
+    const percents = records
+      .map((r) => (r.scoreMax && r.score !== null ? (r.score / r.scoreMax) * 100 : null))
+      .filter((value): value is number => value !== null);
+    const avgScore = percents.length > 0 ? Math.round(percents.reduce((a, b) => a + b, 0) / percents.length) : null;
     return { totalHours, completedCount, avgScore, pendingCount: pendingEnrollments.length };
   }, [pendingEnrollments.length, records]);
 
@@ -949,7 +969,9 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                         </div>
                         <div className={styles.metricCol}>
                           <span className={styles.metricLabel}>{t("คะแนนสอบ", "Score")}</span>
-                          <strong className={styles.metricValue}>{record.score ? `${record.score}%` : "-"}</strong>
+                          <strong className={styles.metricValue}>
+                            {scoreLabel(record.score, record.scoreMax) ?? "-"}
+                          </strong>
                         </div>
                         <div className={styles.metricCol}>
                           <span className={styles.metricLabel}>{t("รุ่น / รอบ", "Batch / Round")}</span>

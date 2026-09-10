@@ -13,10 +13,16 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const START = new Date(NOW - DAY_MS).toISOString();
 const END = new Date(NOW - 12 * 60 * 60 * 1000).toISOString();
 
+/** One question worth the whole paper, which is all these fixtures need: a score is a MARK now, so
+ *  the projection reads the form's own question totals to say what it is out of. */
+const gradedOutOf = (marks: number) => ({
+  assessment_question: [{ question_score: new Prisma.Decimal(marks), question_type: "SINGLE_CHOICE" }],
+});
+
 const buildRow = (overrides: {
   closedSettings?: Array<{ assessment_stage: string; close_at: Date }>;
-  assessmentSubmissions?: Array<{ submission_id: bigint; assessment_id: bigint; assessment_stage: string; attempt_no: number; submitted_at: Date | null; score: Prisma.Decimal | null; pass_status: string; grading_status: string; publication_status: string }>;
-  evaluationSubmissions?: Array<{ evaluation_form_id: bigint; submitted_at: Date | null }>;
+  assessmentSubmissions?: Array<{ submission_id: bigint; assessment_id: bigint; assessment_stage: string; attempt_no: number; submitted_at: Date | null; score: Prisma.Decimal | null; pass_status: string; grading_status: string; publication_status: string; assessment?: { assessment_question: Array<{ question_score: Prisma.Decimal; question_type: string }> } }>;
+  evaluationSubmissions?: Array<{ evaluation_form_id: bigint; submitted_at: Date | null; respondent_user_id: string }>;
   preAssessmentId?: bigint | null;
   postAssessmentId?: bigint | null;
   evaluationFormId?: bigint | null;
@@ -106,8 +112,8 @@ describe("mapEnrollment stage info", () => {
   it("picks the highest attempt_no as the latest submission, not the first row", async () => {
     const row = buildRow({
       assessmentSubmissions: [
-        { submission_id: BigInt(9001), assessment_id: BigInt(501), assessment_stage: "PRE_TEST", attempt_no: 1, submitted_at: new Date(START), score: new Prisma.Decimal(40), pass_status: "FAIL", grading_status: "REVIEWED", publication_status: "PUBLISHED" },
-        { submission_id: BigInt(9002), assessment_id: BigInt(501), assessment_stage: "PRE_TEST", attempt_no: 2, submitted_at: new Date(START), score: new Prisma.Decimal(90), pass_status: "PASS", grading_status: "REVIEWED", publication_status: "PUBLISHED" },
+        { submission_id: BigInt(9001), assessment_id: BigInt(501), assessment_stage: "PRE_TEST", attempt_no: 1, submitted_at: new Date(START), score: new Prisma.Decimal(40), pass_status: "FAIL", grading_status: "REVIEWED", publication_status: "PUBLISHED", assessment: gradedOutOf(100) },
+        { submission_id: BigInt(9002), assessment_id: BigInt(501), assessment_stage: "PRE_TEST", attempt_no: 2, submitted_at: new Date(START), score: new Prisma.Decimal(90), pass_status: "PASS", grading_status: "REVIEWED", publication_status: "PUBLISHED", assessment: gradedOutOf(100) },
       ],
     });
     const repo = repoWithRow(row);
@@ -119,7 +125,7 @@ describe("mapEnrollment stage info", () => {
   it("withholds the score of a graded submission HRD has not released yet", async () => {
     const row = buildRow({
       assessmentSubmissions: [
-        { submission_id: BigInt(9003), assessment_id: BigInt(501), assessment_stage: "PRE_TEST", attempt_no: 1, submitted_at: new Date(START), score: new Prisma.Decimal(90), pass_status: "PASS", grading_status: "REVIEWED", publication_status: "UNPUBLISHED" },
+        { submission_id: BigInt(9003), assessment_id: BigInt(501), assessment_stage: "PRE_TEST", attempt_no: 1, submitted_at: new Date(START), score: new Prisma.Decimal(90), pass_status: "PASS", grading_status: "REVIEWED", publication_status: "UNPUBLISHED", assessment: gradedOutOf(100) },
       ],
     });
     const repo = repoWithRow(row);
@@ -132,7 +138,7 @@ describe("mapEnrollment stage info", () => {
   it("does not cross-attribute a PRE_TEST submission to POST_TEST even when both use the same assessment", async () => {
     const row = buildRow({
       assessmentSubmissions: [
-        { submission_id: BigInt(9004), assessment_id: BigInt(501), assessment_stage: "PRE_TEST", attempt_no: 1, submitted_at: new Date(START), score: new Prisma.Decimal(100), pass_status: "PASS", grading_status: "REVIEWED", publication_status: "PUBLISHED" },
+        { submission_id: BigInt(9004), assessment_id: BigInt(501), assessment_stage: "PRE_TEST", attempt_no: 1, submitted_at: new Date(START), score: new Prisma.Decimal(100), pass_status: "PASS", grading_status: "REVIEWED", publication_status: "PUBLISHED", assessment: gradedOutOf(100) },
       ],
     });
     const repo = repoWithRow(row);
@@ -145,12 +151,43 @@ describe("mapEnrollment stage info", () => {
     const row = buildRow({
       evaluationFormId: BigInt(601),
       evaluation30FormId: BigInt(602),
-      evaluationSubmissions: [{ evaluation_form_id: BigInt(601), submitted_at: new Date(START) }],
+      evaluationSubmissions: [
+        { evaluation_form_id: BigInt(601), submitted_at: new Date(START), respondent_user_id: "USER-101" },
+      ],
     });
     const repo = repoWithRow(row);
     const [enrollment] = await repo.list({ planId: null, employeeId: null, employeeUserId: null }, null);
     expect(enrollment.plan.assessment.evaluation.submission).not.toBeNull();
     expect(enrollment.plan.assessment.evaluationAfter30Day.submission).toBeNull();
+  });
+
+  it("does not count the supervisor's answer as the attendee's own", async () => {
+    // The 30-day follow-up is answered by both, on the same form and the same enrollment. Matching
+    // on the form alone told the attendee they had already answered the moment their supervisor
+    // did, so their own answer was never collected and HRD saw nobody had replied.
+    const row = buildRow({
+      evaluation30FormId: BigInt(602),
+      evaluationSubmissions: [
+        { evaluation_form_id: BigInt(602), submitted_at: new Date(START), respondent_user_id: "USER-BOSS" },
+      ],
+    });
+    const repo = repoWithRow(row);
+    const [enrollment] = await repo.list({ planId: null, employeeId: null, employeeUserId: null }, null);
+
+    expect(enrollment.plan.assessment.evaluationAfter30Day.submission).toBeNull();
+  });
+
+  it("counts the attendee's own answer to the same form", async () => {
+    const row = buildRow({
+      evaluation30FormId: BigInt(602),
+      evaluationSubmissions: [
+        { evaluation_form_id: BigInt(602), submitted_at: new Date(START), respondent_user_id: "USER-101" },
+      ],
+    });
+    const repo = repoWithRow(row);
+    const [enrollment] = await repo.list({ planId: null, employeeId: null, employeeUserId: null }, null);
+
+    expect(enrollment.plan.assessment.evaluationAfter30Day.submission).not.toBeNull();
   });
 
   it("evaluation stages are never closable, even if a setting row somehow named one", async () => {

@@ -25,11 +25,30 @@ export const completionStatusLabel = (status: CompletionStatus, language: "th" |
     PENDING: { th: "ยังไม่ระบุ", en: "Not decided" },
   })[status][language === "th" ? "th" : "en"];
 
+/**
+ * What a mark comes to as a percentage, for display and for the pass mark. Nothing stores this:
+ * marks and the marks they are out of are what sit on disk, exactly as a Google Forms quiz
+ * response keeps points and no percentage.
+ *
+ * Null when there is nothing to work it out from - no mark, or no denominator, which is the state
+ * of an external test whose full marks nobody has entered.
+ */
+export const scorePercentOf = (score: number | null, max: number | null) => {
+  if (score === null || max === null || max <= 0) return null;
+  return Math.round((score / max) * 10000) / 100;
+};
+
 /** What HRD records for one attendee once the course is over. */
 export type TrainingResultEntry = {
   enrollmentId: string;
+  /** The MARK. For an in-system form the marks it is out of come from the assessment behind the
+   *  official submission; for an external test they come from `preLinkScoreMax`. */
   preScore: number | null;
+  /** Full marks for a test this system cannot see. Null for an in-system form, which has its own
+   *  questions to total. */
+  preLinkScoreMax: number | null;
   postScore: number | null;
+  postLinkScoreMax: number | null;
   completionStatus: CompletionStatus;
   completedAt: string | null;
   validUntil: string | null;
@@ -113,11 +132,15 @@ export type SaveReviewersInput = {
   assignments: Array<{ enrollmentId: string; reviewerUserId: string | null }>;
 };
 
+/** Marks in, marks out - no conversion anywhere. `*LinkScoreMax` is only meaningful for a test
+ *  this system cannot see; an in-system form ignores it and totals its own questions. */
 export type SaveResultsInput = {
   results: Array<{
     enrollmentId: string;
     preScore: number | null;
+    preLinkScoreMax: number | null;
     postScore: number | null;
+    postLinkScoreMax: number | null;
     completionStatus: CompletionStatus;
     validUntil: string | null;
     certificateNo: string | null;

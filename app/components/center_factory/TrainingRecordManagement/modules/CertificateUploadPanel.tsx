@@ -9,6 +9,7 @@ import {
   confirmPlanCertificates,
   discardPlanCertificates,
   loadPlanCertificates,
+  removePlanCertificateFile,
   uploadPlanCertificates,
 } from "../../../../lib/certificates/client";
 import {
@@ -127,11 +128,31 @@ export default function CertificateUploadPanel({ planId }: { planId: string }) {
     );
   };
 
-  const removeCard = (certificateFileId: string) => {
-    setCards((current) =>
-      withDuplicatesMarked(current.filter((card) => card.certificateFileId !== certificateFileId)),
-    );
-    setPreviewId((current) => (current === certificateFileId ? null : current));
+  /**
+   * Removes the file for real, on the server. It used to drop the card from local state only, which
+   * looked right until the next upload: that answers with the whole draft as the database still has
+   * it, so the removed file came straight back and only Discard-all could clear it.
+   */
+  const removeCard = async (certificateFileId: string) => {
+    const ok = await confirm({
+      message: {
+        th: "เอาไฟล์นี้ออกจากรายการหรือไม่? ไฟล์จะถูกลบทิ้ง",
+        en: "Remove this file? It will be deleted.",
+      },
+      danger: true,
+    });
+    if (!ok) return;
+
+    setBusy(true);
+    try {
+      applyView(await removePlanCertificateFile(planId, certificateFileId));
+      setPreviewId((current) => (current === certificateFileId ? null : current));
+      toast.success(t("เอาไฟล์ออกแล้ว", "File removed"));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("ลบไฟล์ไม่สำเร็จ", "Could not remove the file"));
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleSave = async () => {
@@ -389,7 +410,7 @@ export default function CertificateUploadPanel({ planId }: { planId: string }) {
                     <button
                       type="button"
                       className={`${styles.certificateIconButton} ${styles.certificateIconDanger}`}
-                      onClick={() => removeCard(card.certificateFileId)}
+                      onClick={() => void removeCard(card.certificateFileId)}
                       aria-label={t("เอาไฟล์นี้ออก", "Remove this file")}
                       title={t("เอาไฟล์นี้ออก", "Remove this file")}
                     >

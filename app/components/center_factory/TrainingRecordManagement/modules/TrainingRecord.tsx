@@ -17,14 +17,7 @@ import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useToast } from "../../../ToastHost";
 import { listPlanStageSettings, readEvaluationSummary, setStageClosed } from "../../../../lib/trainingForms/client";
-import { FREE_TEXT_MIN_RESPONDENTS } from "../../../../lib/trainingForms/types";
-import type {
-  EvaluationRespondentGroup,
-  EvaluationSummary,
-  EvaluationTimingStage,
-  GradedStage,
-  StageSetting,
-} from "../../../../lib/trainingForms/types";
+import type { GradedStage, StageSetting } from "../../../../lib/trainingForms/types";
 import {
   getRollingPlanCompanies,
   loadWorkflowRollingPlans,
@@ -638,291 +631,54 @@ const FormSettingsPanel = ({ planId, pendingCount }: { planId: string; pendingCo
  *
  *  Everything shown is already aggregated by the server; this component never receives a
  *  submission or enrollment id, so it cannot leak who said what even by accident. */
-const EvaluationSummaryPanel = ({ planId }: { planId: string }) => {
-  // The loaded plan id travels with the data instead of a separate "clear it first" write, so
-  // switching courses cannot show the previous course's answers for a frame.
-  const [loaded, setLoaded] = useState<
-    {
-      planId: string;
-      respondents: EvaluationRespondentGroup;
-      byTiming: Record<EvaluationTimingStage, EvaluationSummary | null>;
-    } | null
-  >(null);
-  const [openTiming, setOpenTiming] = useState<EvaluationTimingStage>("EVALUATION");
-  // Attendees and supervisors answer the same form about the same course, so their answers are
-  // read one audience at a time. Averaging the two together describes nobody.
-  const [respondents, setRespondents] = useState<EvaluationRespondentGroup>("EMPLOYEE");
+/**
+ * The way into one course's evaluation answers.
+ *
+ * This used to be the whole report, inline, and it pushed the roster and the cost panel far
+ * enough down that HRD scrolled past their own work to reach somebody else's reading. The report
+ * moved to a page of its own; what stays behind is the door to it, with the number of replies on
+ * the handle so nobody has to open it to find out there are none.
+ */
+const EvaluationResultsButton = ({ planId }: { planId: string }) => {
+  const { language } = useUiLanguage();
+  const [submitted, setSubmitted] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    // Attendees answer both stages; a supervisor is only ever asked for the follow-up, so three
+    // reads cover every reply this course can have.
+    // ponytail: three summary reads for one count. A count endpoint if this ever feels slow.
     Promise.all([
-      readEvaluationSummary(planId, "EVALUATION", respondents).catch(() => ({ summary: null })),
-      readEvaluationSummary(planId, "EVALUATION_30DAY", respondents).catch(() => ({ summary: null })),
-    ]).then(([afterTraining, followUp]) => {
+      readEvaluationSummary(planId, "EVALUATION", "EMPLOYEE").catch(() => ({ summary: null })),
+      readEvaluationSummary(planId, "EVALUATION_30DAY", "EMPLOYEE").catch(() => ({ summary: null })),
+      readEvaluationSummary(planId, "EVALUATION_30DAY", "SUPERVISOR").catch(() => ({ summary: null })),
+    ]).then((results) => {
       if (cancelled) return;
-      setLoaded({
-        planId,
-        respondents,
-        byTiming: { EVALUATION: afterTraining.summary, EVALUATION_30DAY: followUp.summary },
-      });
-      // Open whichever one actually has answers, so the panel does not greet HRD with an empty tab.
-      setOpenTiming(
-        !afterTraining.summary?.submittedCount && followUp.summary?.submittedCount
-          ? "EVALUATION_30DAY"
-          : "EVALUATION",
-      );
+      const anyForm = results.some((result) => result.summary !== null);
+      setSubmitted(anyForm ? results.reduce((sum, result) => sum + (result.summary?.submittedCount ?? 0), 0) : null);
     });
     return () => {
       cancelled = true;
     };
-  }, [planId, respondents]);
+  }, [planId]);
 
-  if (loaded?.planId !== planId) return null;
-  const summaries = loaded.byTiming;
-  if (!summaries.EVALUATION && !summaries.EVALUATION_30DAY) return null;
-
-  // While the other audience loads the panel keeps its shape and empties the body. Returning null
-  // instead would take the audience buttons away with it, leaving nothing to switch back with.
-  const isSwitchingAudience = loaded.respondents !== respondents;
-  // Supervisors are only ever asked for the 30-day follow-up, so their answers exist for that
-  // stage alone. Showing them an "after training" tab would offer a report that can only ever be
-  // empty, and reading it as "no supervisor replied" would be wrong - none was ever asked.
-  const timing = respondents === "SUPERVISOR" ? "EVALUATION_30DAY" : openTiming;
-  const summary = isSwitchingAudience ? null : summaries[timing];
-  const tabs: { timing: EvaluationTimingStage; label: string }[] = [
-    { timing: "EVALUATION", label: "หลังอบรม" },
-    { timing: "EVALUATION_30DAY", label: "ติดตามผล 30 วัน" },
-  ];
+  // No evaluation on this course at all means there is nothing to open. A course that has one and
+  // no replies yet still shows the button, reading zero - that is a fact worth seeing.
+  if (submitted === null) return null;
 
   return (
-    <section className={styles.courseMasterDetailPanel}>
-      <div className={styles.panelHeader}>
-        <div>
-          <p className={styles.kicker}>Evaluation results</p>
-          <h3>
-            {respondents === "EMPLOYEE"
-              ? "ผลแบบประเมินจากผู้เข้าอบรม"
-              : "ผลแบบประเมินจากหัวหน้า (ติดตามผล 30 วัน)"}
-          </h3>
-          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "6px" }}>
-            {(
-              [
-                { group: "EMPLOYEE", label: "ผู้เข้าอบรม" },
-                { group: "SUPERVISOR", label: "หัวหน้า" },
-              ] as const
-            ).map((option) => (
-              <button
-                key={option.group}
-                type="button"
-                onClick={() => setRespondents(option.group)}
-                style={{
-                  padding: "4px 12px",
-                  borderRadius: "999px",
-                  border: "1px solid var(--ui-30-border)",
-                  background: respondents === option.group ? "var(--ui-30-primary-soft)" : "var(--ui-60-surface)",
-                  color: respondents === option.group ? "var(--ui-30-primary-strong)" : "var(--ui-30-muted)",
-                  fontSize: "0.72rem",
-                  fontWeight: 800,
-                  cursor: "pointer",
-                }}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-          {tabs.map((tab) => {
-            // A supervisor is only ever asked for the follow-up, so the other tab is not theirs to
-            // read - it is left visible but dead rather than removed, so the two audiences do not
-            // shuffle the controls around as HRD switches between them.
-            const selectable =
-              Boolean(summaries[tab.timing]) && (respondents === "EMPLOYEE" || tab.timing === timing);
-            return (
-              <button
-                key={tab.timing}
-                type="button"
-                disabled={!selectable}
-                onClick={() => setOpenTiming(tab.timing)}
-                style={{
-                  padding: "5px 12px",
-                  borderRadius: "999px",
-                  border: "1px solid var(--ui-30-border)",
-                  background: timing === tab.timing ? "var(--ui-30-primary-soft)" : "var(--ui-60-surface)",
-                  color: timing === tab.timing ? "var(--ui-30-primary-strong)" : "var(--ui-30-muted)",
-                  fontSize: "0.74rem",
-                  fontWeight: 800,
-                  cursor: selectable ? "pointer" : "not-allowed",
-                  opacity: selectable ? 1 : 0.5,
-                }}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {!summary ? (
-        <p style={{ fontSize: "0.8rem", color: "var(--ui-30-muted)" }}>
-          {isSwitchingAudience ? "กำลังโหลด..." : "หลักสูตรนี้ไม่ได้ตั้งแบบประเมินช่วงเวลานี้ไว้"}
-        </p>
-      ) : (
-        <>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "12px", alignItems: "center" }}>
-            <strong style={{ fontSize: "0.86rem" }}>{summary.formName}</strong>
-            <span style={{ fontSize: "0.78rem", color: "var(--ui-30-muted)" }}>
-              ตอบกลับ {summary.submittedCount} จาก {summary.expectedCount} คน ({summary.responseRatePercent}%)
-              {summary.respondentGroup === "SUPERVISOR" ? " (นับจากหัวหน้าที่ถูกมอบหมาย)" : ""}
-            </span>
-            {summary.isAnonymous ? (
-              <span style={{ fontSize: "0.72rem", fontWeight: 800, color: "var(--ui-30-primary-strong)" }}>
-                🔒 ไม่ระบุตัวตน
-              </span>
-            ) : null}
-          </div>
-
-          {summary.submittedCount === 0 ? (
-            <p style={{ fontSize: "0.8rem", color: "var(--ui-30-muted)" }}>ยังไม่มีผู้ตอบแบบประเมินนี้</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              {summary.questions.map((question, index) => {
-                const previousSection = index > 0 ? summary.questions[index - 1].sectionName : null;
-                const startsSection = question.sectionName !== null && question.sectionName !== previousSection;
-                return (
-                  <Fragment key={question.questionId}>
-                    {startsSection ? (
-                      <strong style={{ fontSize: "0.8rem", color: "var(--ui-30-primary-strong)" }}>
-                        {question.sectionName}
-                      </strong>
-                    ) : null}
-                    <article
-                      style={{
-                        border: "1px solid var(--ui-30-border)",
-                        borderRadius: "10px",
-                        background: "var(--ui-60-surface)",
-                        padding: "12px",
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", flexWrap: "wrap" }}>
-                        <strong style={{ fontSize: "0.82rem" }}>
-                          {question.questionOrder}. {question.questionText}
-                        </strong>
-                        <span style={{ fontSize: "0.74rem", color: "var(--ui-30-muted)", whiteSpace: "nowrap" }}>
-                          ตอบ {question.answeredBy} คน
-                          {question.averageRating !== null ? ` · เฉลี่ย ${question.averageRating.toFixed(2)}` : ""}
-                        </span>
-                      </div>
-
-                      {/* A RATING question has BOTH a 1-5 distribution and five stored options.
-                          Only the distribution carries counts - the answer lands in rating_value,
-                          never in an option id - so rendering both showed the scale twice with the
-                          second copy stuck at zero. The option rows are still the right labels for
-                          the scale, so they are used as such rather than as a second chart. */}
-                      {question.ratingDistribution.length > 0 ? (
-                        <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "5px" }}>
-                          {question.ratingDistribution.map((bucket) => (
-                            <SummaryBar
-                              key={bucket.value}
-                              label={question.options[bucket.value - 1]?.optionText ?? `${bucket.value}`}
-                              count={bucket.count}
-                              total={question.answeredBy}
-                            />
-                          ))}
-                        </div>
-                      ) : null}
-
-                      {question.ratingDistribution.length === 0 && question.options.length > 0 ? (
-                        <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "5px" }}>
-                          {question.options.map((option) => (
-                            <SummaryBar
-                              key={option.optionId}
-                              label={option.optionText}
-                              count={option.count}
-                              total={question.answeredBy}
-                            />
-                          ))}
-                        </div>
-                      ) : null}
-
-                      {/* A grid is reported per row, because its answers are (row, column) pairs.
-                          Counting by column alone would merge the rows into one bar chart that
-                          answers a question nobody asked. Each row gets its own small breakdown,
-                          with percentages taken against the people who answered THAT row. */}
-                      {question.gridRows.length > 0 ? (
-                        <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "12px" }}>
-                          {question.gridRows.map((row) => (
-                            <div key={row.rowId}>
-                              <p style={{ margin: "0 0 5px", fontSize: "0.78rem", fontWeight: 800, color: "var(--ui-30-ink)" }}>
-                                {row.rowText}
-                                <span style={{ marginLeft: "6px", fontWeight: 600, color: "var(--ui-30-muted)" }}>
-                                  ({row.answeredBy} ผู้ตอบ)
-                                </span>
-                              </p>
-                              <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-                                {row.cells.map((cell) => (
-                                  <SummaryBar
-                                    key={cell.columnId}
-                                    label={cell.columnText}
-                                    count={cell.count}
-                                    total={row.answeredBy}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : null}
-
-                      {question.textAnswersWithheld ? (
-                        <p style={{ marginTop: "10px", fontSize: "0.76rem", color: "var(--ui-30-muted)" }}>
-                          ซ่อนข้อความไว้จนกว่าจะมีผู้ตอบครบ {FREE_TEXT_MIN_RESPONDENTS} คน —
-                          จำนวนผู้ตอบน้อยเกินกว่าจะรักษาการไม่ระบุตัวตนได้
-                        </p>
-                      ) : null}
-
-                      {question.textAnswers.length > 0 ? (
-                        <ul style={{ marginTop: "10px", paddingLeft: "18px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                          {question.textAnswers.map((text, textIndex) => (
-                            <li key={textIndex} style={{ fontSize: "0.8rem", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
-                              {text}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </article>
-                  </Fragment>
-                );
-              })}
-            </div>
-          )}
-        </>
-      )}
-    </section>
-  );
-};
-
-/** One horizontal proportion bar. CSS only - a chart library for eleven bars is not worth a
- *  dependency. */
-const SummaryBar = ({ label, count, total }: { label: string; count: number; total: number }) => {
-  const percent = total === 0 ? 0 : Math.round((count / total) * 100);
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(70px, 34%) 1fr auto", gap: "8px", alignItems: "center" }}>
-      <span style={{ fontSize: "0.76rem" }}>{label}</span>
-      <span style={{ height: "10px", borderRadius: "999px", background: "var(--ui-60-surface-soft)", overflow: "hidden" }}>
-        <span
-          style={{
-            display: "block",
-            height: "100%",
-            width: `${percent}%`,
-            borderRadius: "999px",
-            background: "var(--ui-30-primary)",
-          }}
-        />
-      </span>
-      <span style={{ fontSize: "0.74rem", color: "var(--ui-30-muted)", whiteSpace: "nowrap" }}>
-        {count} ({percent}%)
-      </span>
+    <div className={styles.evaluationResultsBar}>
+      {/* Its own tab: this workspace keeps the chosen course, session and any half-typed result in
+          component state, so navigating away and back would drop HRD at the start. */}
+      <a
+        className={styles.evaluationResultsButton}
+        href={`/training-record/evaluations/${planId}`}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        📊 {language === "th" ? "ดูการตอบกลับแบบประเมิน" : "View evaluation responses"}
+        <span className={styles.evaluationResultsBadge}>{submitted > 99 ? "99+" : submitted}</span>
+      </a>
     </div>
   );
 };
@@ -1389,13 +1145,6 @@ export default function TrainingRecord() {
             </div>
           </div>
 
-          <FormSettingsPanel
-            planId={selectedCourse.id}
-            pendingCount={selectedCourse.attendees.filter((attendee) => attendee.prePost === "Pending").length}
-          />
-
-          <EvaluationSummaryPanel planId={selectedCourse.id} />
-
           {/* Training Course Master Details Panel */}
           <section className={styles.courseMasterDetailPanel}>
             <div className={styles.panelHeader}>
@@ -1750,6 +1499,15 @@ export default function TrainingRecord() {
               </div>
             </article>
           </section>
+
+          {/* Both of these are about the forms the attendee list is judged by, so they sit directly
+              above it rather than up beside the course's own details. */}
+          <EvaluationResultsButton planId={selectedCourse.id} />
+
+          <FormSettingsPanel
+            planId={selectedCourse.id}
+            pendingCount={selectedCourse.attendees.filter((attendee) => attendee.prePost === "Pending").length}
+          />
 
           {/* Executive Actual Attendees Workspace */}
           <section className={styles.evaluationDownloadPanel} aria-label="Actual attendees list">

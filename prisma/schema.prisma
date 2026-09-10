@@ -136,6 +136,9 @@ model assessment_submission {
   attempt_no                                                                         Int
   started_at                                                                         DateTime            @default(dbgenerated("sysdatetime()"), map: "DF_assessment_submission_started_at")
   submitted_at                                                                       DateTime?
+  /// Marks awarded, not a percentage - the sum of assessment_answer.score_awarded. The marks the
+  /// form is out of are the sum of its assessment_question.question_score, which cannot change
+  /// once anybody has answered it. A percentage is worked out from the pair where it is needed.
   score                                                                              Decimal?            @db.Decimal(10, 2)
   pass_status                                                                        String              @default("PENDING", map: "DF_assessment_submission_pass_status") @db.VarChar(20)
   status                                                                             String              @default("IN_PROGRESS", map: "DF_assessment_submission_status") @db.VarChar(20)
@@ -939,9 +942,16 @@ model training_result {
   result_id                                                                                BigInt                     @id(map: "PK_training_result") @default(autoincrement())
   enrollment_id                                                                            BigInt                     @unique(map: "UX_RC2_training_result_enrollment_id")
   official_pre_submission_id                                                               BigInt?
+  /// The MARK, not a percentage. For an in-system form the marks it is out of come from the
+  /// assessment behind official_pre_submission_id; for an external test they come from
+  /// pre_link_score_max, because there is no form here to total.
   pre_score                                                                                Decimal?                   @db.Decimal(10, 2)
+  /// Full marks for a test this system cannot see - an external link, or a mark HRD typed by hand.
+  /// Null for an in-system form, which has its own questions to total.
+  pre_link_score_max                                                                       Decimal?                   @db.Decimal(10, 2)
   official_post_submission_id                                                              BigInt?
   post_score                                                                               Decimal?                   @db.Decimal(10, 2)
+  post_link_score_max                                                                      Decimal?                   @db.Decimal(10, 2)
   completion_status                                                                        String                     @default("PENDING", map: "DF_training_result_completion_status") @db.VarChar(20)
   completed_at                                                                             DateTime?
   valid_until                                                                              DateTime?                  @db.Date

@@ -29,7 +29,9 @@ describe("training result input", () => {
     expect(results[0]).toEqual({
       enrollmentId: "1",
       preScore: 40,
+      preLinkScoreMax: null,
       postScore: 85,
+      postLinkScoreMax: null,
       completionStatus: "COMPLETED",
       validUntil: "2027-12-31",
       certificateNo: "CERT-001",
@@ -83,6 +85,26 @@ describe("training result input", () => {
     const { results } = parseSaveResults({ results: [row({ certificateNo: "   " })] });
 
     expect(results[0].certificateNo).toBeNull();
+  });
+
+  it("keeps the full marks a score was measured against", () => {
+    const { results } = parseSaveResults({ results: [row({ preScore: 8, preLinkScoreMax: 10 })] });
+
+    expect(results[0].preScore).toBe(8);
+    expect(results[0].preLinkScoreMax).toBe(10);
+  });
+
+  it("refuses full marks of zero, which has no percentage to compute", () => {
+    expect(
+      rejectionReason(() => parseSaveResults({ results: [row({ postLinkScoreMax: 0 })] })),
+    ).toMatch(/positive number/);
+  });
+
+  it("refuses a mark above the full marks it is out of", () => {
+    // It would store as more than 100%, and the pass mark downstream is a comparison against one.
+    expect(
+      rejectionReason(() => parseSaveResults({ results: [row({ postScore: 11, postLinkScoreMax: 10 })] })),
+    ).toMatch(/above the full marks/);
   });
 
   it("refuses a payload that is not a list of results", () => {

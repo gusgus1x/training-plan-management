@@ -59,6 +59,19 @@ export const discardPlanCertificates = async (
   return parseApiResponse<CertificatePlanView>(response);
 };
 
+/** Takes one uploaded file out of the draft, on the server rather than only on screen. */
+export const removePlanCertificateFile = async (
+  planId: string,
+  certificateFileId: string,
+  fetcher: Fetcher = fetch,
+): Promise<CertificatePlanView> => {
+  const response = await fetcher(`${basePath(planId)}/${certificateFileId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  return parseApiResponse<CertificatePlanView>(response);
+};
+
 /** The authenticated stream. Used as an iframe src for preview and as an anchor href to download. */
 export const certificateFileUrl = (certificateFileId: string, options: { download?: boolean } = {}): string =>
   `/api/certificates/${certificateFileId}/file${options.download ? "?download=1" : ""}`;

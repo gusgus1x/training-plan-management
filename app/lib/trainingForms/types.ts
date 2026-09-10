@@ -207,6 +207,47 @@ export type EvaluationSummaryQuestion = {
 export const EVALUATION_RESPONDENT_GROUPS = ["EMPLOYEE", "SUPERVISOR"] as const;
 export type EvaluationRespondentGroup = (typeof EVALUATION_RESPONDENT_GROUPS)[number];
 
+/** One person's answer to one question, as it reads on a paper rather than as a count. */
+export type EvaluationResponseAnswer = {
+  questionId: string;
+  /** Every option this person picked. One entry for a single choice, several for a multi-choice,
+   *  and the chosen column per row for a grid (prefixed by the row). Empty for a written answer. */
+  choices: string[];
+  /** RATING only - the 1-5 value they gave. */
+  ratingValue: number | null;
+  text: string | null;
+};
+
+/**
+ * One submitted paper, whole.
+ *
+ * `respondentName` is null on an anonymous form and the screen shows "ผู้ตอบ N" instead. That is
+ * the whole of the anonymity promise on this screen: the answers are readable, the person is not
+ * named, and no id that could be traced back to them leaves the server.
+ */
+export type EvaluationResponse = {
+  /** 1-based position in this list, which is all the identity an anonymous respondent has. */
+  responseNo: number;
+  respondentName: string | null;
+  submittedAt: string | null;
+  answers: EvaluationResponseAnswer[];
+};
+
+/** Every submitted paper for one form and audience, with the questions they answer. */
+export type EvaluationResponseList = {
+  formName: string;
+  isAnonymous: boolean;
+  timing: EvaluationTimingStage;
+  respondentGroup: EvaluationRespondentGroup;
+  questions: Array<{
+    questionId: string;
+    questionOrder: number;
+    questionText: string;
+    questionType: EvaluationSummaryQuestion["questionType"];
+  }>;
+  responses: EvaluationResponse[];
+};
+
 export type EvaluationSummary = {
   evaluationFormId: string;
   formName: string;

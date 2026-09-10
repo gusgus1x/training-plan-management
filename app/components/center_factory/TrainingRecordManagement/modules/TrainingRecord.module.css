@@ -2534,6 +2534,49 @@
   font-weight: 800;
 }
 
+/* The door to the evaluation report, where the whole report used to sit inline. The count rides on
+   the corner of the button so nobody opens it to find out there are no replies. */
+.evaluationResultsBar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.evaluationResultsButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border: 1px solid var(--ui-30-primary-border);
+  border-radius: 999px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.evaluationResultsButton:hover {
+  background: var(--ui-60-surface);
+}
+
+/* Overlaps the corner rather than sitting inside the button, so the label never shifts as the
+   count grows from 1 to 99+. */
+.evaluationResultsBadge {
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  min-width: 22px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--ui-10-accent);
+  color: var(--ui-on-dark);
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.5;
+  text-align: center;
+}
+
 .courseMasterDetailPanel {
   position: relative;
   overflow: hidden;
@@ -4795,6 +4838,50 @@
    widths meant for their neighbours the moment the tick moved to the front of the row. */
 .actualResultRow .resultScoreField {
   flex: 0 0 92px;
+}
+
+/* Pre and Post travel together. Left to the row's own wrapping they separated, and Post's pair
+   started a fresh line under the attendee's name with nothing beside it. */
+.actualResultRow .resultScoreGroups {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 6px 16px;
+}
+
+/* Mark, slash, full marks, and what the two come to - one block, so the caption cannot drift away
+   from the boxes it describes when the row wraps. Fixed grid tracks rather than widths on the
+   inputs: globals.css forces width:100% on every input, and a track sizes the cell instead of
+   fighting it. */
+.actualResultRow .resultScoreGroup {
+  display: grid;
+  grid-template-columns: 72px auto 72px;
+  align-items: end;
+  flex: 0 0 auto;
+  gap: 3px 6px;
+}
+
+/* Sits on the inputs' own line, not on the labels above them. */
+.actualResultRow .resultScoreSlash {
+  padding-bottom: 6px;
+  color: var(--ui-30-muted);
+  font-size: 0.95rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.actualResultRow .resultScoreGroup .resultScoreField {
+  flex: 0 0 auto;
+}
+
+.actualResultRow .resultScorePercent {
+  grid-column: 1 / -1;
+  white-space: nowrap;
+  color: var(--ui-30-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 /* The pass/fail checkbox borrows attendanceCheckLabel's flex-row layout wholesale - it must win

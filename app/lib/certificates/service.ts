@@ -101,6 +101,14 @@ export const createCertificateService = (repository: CertificateRepository = cer
     return repository.loadPlanView(planId, companyId);
   },
 
+  /** Removing one uploaded file. Same order as discard: the row goes first, and the bytes only
+   *  after the commit, so a rolled-back delete cannot leave a row pointing at a missing file. */
+  async removeDraftFile(planId: string, certificateFileId: string, companyId: string | null) {
+    const { removedPaths } = await repository.removeDraftFile(planId, certificateFileId, companyId);
+    await Promise.allSettled(removedPaths.map(deleteCertificateFile));
+    return repository.loadPlanView(planId, companyId);
+  },
+
   async discardDraft(planId: string, companyId: string | null) {
     const { removedPaths } = await repository.discardDraft(planId, companyId);
     await Promise.allSettled(removedPaths.map(deleteCertificateFile));

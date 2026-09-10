@@ -2,6 +2,7 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import { Prisma } from "../../generated/prisma/client";
 import { ApiError } from "../api/errors";
 import { withDatabaseErrorMapping } from "../database/errors";
+import { isFormBlockType } from "../formBlocks";
 import { getPrismaClient } from "../database/prisma";
 import { CLOSABLE_STAGES, stageAvailability, type FormStageKey } from "../trainingForms/availability";
 import { assessmentStage } from "./types";
@@ -31,6 +32,12 @@ const employeeInclude = {
   employee_level: true,
 } satisfies Prisma.employeeInclude;
 
+/** Everything needed to total a paper's marks, and nothing else - no question text leaves the
+ *  server through this. */
+const questionMarksSelect = {
+  assessment_question: { select: { question_score: true, question_type: true } },
+} satisfies Prisma.assessmentSelect;
+
 // The OAP fields ride along so an employee can see what they enrolled in without calling the
 // rolling-plan list, which would hand them every plan in the organisation to read three of them.
 const enrollmentInclude = {
@@ -49,16 +56,27 @@ const enrollmentInclude = {
   // and reading them here means the "take this form" screens never need a second request just to
   // know whether the employee has already attempted or submitted something.
   assessment_submission: {
-    select: { submission_id: true, assessment_id: true, assessment_stage: true, attempt_no: true, submitted_at: true, score: true, pass_status: true, grading_status: true, publication_status: true },
+    // The assessment's own question marks come along because `score` is a MARK: without the marks
+    // the form is out of, a screen can only print a bare number with nothing to compare it to. They
+    // cannot change once anybody has answered (assessmentService refuses to edit a used
+    // assessment), so this reads the same totals the grader divided by.
+    select: { submission_id: true, assessment_id: true, assessment_stage: true, attempt_no: true, submitted_at: true, score: true, pass_status: true, grading_status: true, publication_status: true, assessment: { select: { assessment_question: { select: { question_score: true, question_type: true } } } } },
   },
   evaluation_submission: {
-    select: { evaluation_form_id: true, submitted_at: true },
+    // respondent_user_id is what tells the attendee's own answer from their supervisor's - both sit
+    // on this enrollment for the 30-day follow-up.
+    select: { evaluation_form_id: true, submitted_at: true, respondent_user_id: true },
   },
   training_plan: {
     include: {
       // HRD's close switch for PRE_TEST/POST_TEST (see trainingForms/availability.ts - the two
       // evaluation stages never have a row here, they cannot be closed).
       training_plan_assessment_setting: { select: { assessment_stage: true, close_at: true } },
+      // The marks each paper is out of. It belongs to the FORM, not to an attempt, so it is read
+      // from the assessment the stage points at rather than from a submission - the result screen
+      // has to say "out of 3" for somebody who has not sat the test yet.
+      assessment_training_plan_pre_assessment_idToassessment: { select: questionMarksSelect },
+      assessment_training_plan_post_assessment_idToassessment: { select: questionMarksSelect },
       training_plan_oap: {
         select: {
           company_id: true,
@@ -68,6 +86,9 @@ const enrollmentInclude = {
           provider_name_text: true,
           course: {
             select: {
+              // The course's own papers, for the stages the batch did not override.
+              assessment_course_pre_assessment_idToassessment: { select: questionMarksSelect },
+              assessment_course_post_assessment_idToassessment: { select: questionMarksSelect },
               course_code: true,
               pre_assessment_id: true,
               pre_test_link: true,
@@ -109,6 +130,18 @@ const mapStatus = (approvalStatus: string, planOwnerIsFactory: boolean): Enrollm
   }
 };
 /**
+ * The marks a form is out of. Sections and text blocks are not answerable and carry no marks, so
+ * they are skipped exactly as the grader skips them - counting them would print a bigger
+ * denominator than the one the mark was scored against.
+ */
+const formTotalScore = (questions: { question_score: Prisma.Decimal; question_type: string }[]) => {
+  const total = questions
+    .filter((question) => !isFormBlockType(question.question_type))
+    .reduce((sum, question) => sum + Number(question.question_score), 0);
+  return total > 0 ? total : null;
+};
+
+/**
  * Layers plan dates, HRD's close switch and the enrollment's own submission history onto a bare
  * AssessmentStageInfo. `latestSubmission` is pre-filtered to the rows for this stage (PRE_TEST vs
  * POST_TEST assessment_submission rows are told apart by assessment_stage; the single evaluation
@@ -122,6 +155,10 @@ const withEnrollmentStageInfo = (
   closedAt: Date | null,
   /** Every attempt at this stage, newest first. The first entry is what `submission` reports. */
   attempts: StageSubmissionSummary[],
+  /** The marks this stage's paper is out of, before anybody has sat it. Required rather than
+   *  defaulted: a default of null let a caller that forgot it compile and silently ship an empty
+   *  "out of" box, which is exactly what happened. */
+  totalScore: number | null,
 ): EnrollmentStageInfo => {
   const availability = stageAvailability(
     stage,
@@ -136,6 +173,7 @@ const withEnrollmentStageInfo = (
     availability: availability.state,
     submission: attempts[0] ?? null,
     attempts,
+    totalScore,
   };
 };
 
@@ -172,6 +210,21 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
 
   const preAssessmentId = pre.id;
   const postAssessmentId = post.id;
+  // The paper that goes with the id chosen above, so the total comes from the same place the id
+  // did. Reading the batch's paper while the stage runs the course's would print a total for a
+  // form nobody sat.
+  const preTotalScore = formTotalScore(
+    (plan.pre_assessment_id != null || plan.pre_test_link?.trim()
+      ? plan.assessment_training_plan_pre_assessment_idToassessment
+      : oap.course.assessment_course_pre_assessment_idToassessment
+    )?.assessment_question ?? [],
+  );
+  const postTotalScore = formTotalScore(
+    (plan.post_assessment_id != null || plan.post_test_link?.trim()
+      ? plan.assessment_training_plan_post_assessment_idToassessment
+      : oap.course.assessment_course_post_assessment_idToassessment
+    )?.assessment_question ?? [],
+  );
   const evaluationFormId = evaluation.id;
   const evaluationForm30DayId = evaluation30.id;
 
@@ -191,6 +244,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
           attemptNo: attempt.attempt_no,
           submittedAt: attempt.submitted_at?.toISOString() ?? null,
           score: !resultsPublished || attempt.score === null ? null : Number(attempt.score),
+          scoreMax: formTotalScore(attempt.assessment.assessment_question),
           passStatus: resultsPublished ? (attempt.pass_status as StageSubmissionSummary["passStatus"]) : "PENDING",
           gradingStatus: attempt.grading_status as StageSubmissionSummary["gradingStatus"],
           resultsPublished,
@@ -199,11 +253,16 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
   };
   const evaluationSubmission = (formId: bigint | null): StageSubmissionSummary | null => {
     if (formId === null) return null;
-    const submitted = row.evaluation_submission.find((s) => s.evaluation_form_id === formId);
+    // The employee's OWN answer, not anybody's. A supervisor answers the same form about the same
+    // enrollment for the 30-day follow-up, so matching on the form alone told the attendee they had
+    // already answered the moment their supervisor did - and their real answer was never collected.
+    const submitted = row.evaluation_submission.find(
+      (s) => s.evaluation_form_id === formId && s.respondent_user_id === row.employee_user_id,
+    );
     if (!submitted) return null;
     // Evaluations are never graded and never repeated - these three fields exist only because the
     // shape is shared with assessments, and "submitted" is the only fact worth carrying here.
-    return { submissionId: "", attemptNo: 1, submittedAt: submitted.submitted_at?.toISOString() ?? null, score: null, passStatus: "PENDING", gradingStatus: "REVIEWED", resultsPublished: true };
+    return { submissionId: "", attemptNo: 1, submittedAt: submitted.submitted_at?.toISOString() ?? null, score: null, scoreMax: null, passStatus: "PENDING", gradingStatus: "REVIEWED", resultsPublished: true };
   };
 
   return {
@@ -214,7 +273,11 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
           // Decimal arrives as an object. Number() keeps null apart from 0 - "not graded" and
           // "scored nothing" are different claims on a record used as evidence.
           preScore: row.training_result.pre_score === null ? null : Number(row.training_result.pre_score),
+          preLinkScoreMax:
+            row.training_result.pre_link_score_max === null ? null : Number(row.training_result.pre_link_score_max),
           postScore: row.training_result.post_score === null ? null : Number(row.training_result.post_score),
+          postLinkScoreMax:
+            row.training_result.post_link_score_max === null ? null : Number(row.training_result.post_link_score_max),
           completionStatus: row.training_result.completion_status as
             | "PENDING"
             | "NOT_COMPLETED"
@@ -242,6 +305,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
           plan.end_datetime,
           closedAtByStage.get("PRE_TEST") ?? null,
           assessmentAttempts(preAssessmentId, "PRE_TEST"),
+          preTotalScore,
         ),
         postTest: withEnrollmentStageInfo(
           assessmentStage(post.id, post.link),
@@ -250,6 +314,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
           plan.end_datetime,
           closedAtByStage.get("POST_TEST") ?? null,
           assessmentAttempts(postAssessmentId, "POST_TEST"),
+          postTotalScore,
         ),
         evaluation: withEnrollmentStageInfo(
           assessmentStage(evaluation.id, evaluation.link),
@@ -258,6 +323,8 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
           plan.end_datetime,
           null,
           [evaluationSubmission(evaluationFormId)].filter((entry) => entry !== null),
+          // An evaluation is never scored, so there is nothing for it to be out of.
+          null,
         ),
         evaluationAfter30Day: withEnrollmentStageInfo(
           assessmentStage(evaluation30.id, evaluation30.link),
@@ -266,6 +333,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
           plan.end_datetime,
           null,
           [evaluationSubmission(evaluationForm30DayId)].filter((entry) => entry !== null),
+          null,
         ),
       },
       // 0 is stored the same as null elsewhere in the codebase: "no validity period".

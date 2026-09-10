@@ -55,6 +55,14 @@ const buildDb = (
     calls.push("delete");
     return { count: 1 };
   });
+  const deleteOne = vi.fn(async (_args: Args) => {
+    calls.push("delete-one");
+    return {};
+  });
+  const batchDelete = vi.fn(async (_args: Args) => {
+    calls.push("batch-delete");
+    return {};
+  });
   const batchUpdate = vi.fn(async (_args: Args) => {
     calls.push("batch-update");
     return {};
@@ -66,7 +74,7 @@ const buildDb = (
       findFirst: async () => (options.hasDraft === false ? null : batch),
       update: batchUpdate,
       create: async () => ({ certificate_import_batch_id: BigInt(300) }),
-      delete: async () => ({}),
+      delete: batchDelete,
     },
     training_certificate_file: {
       // The repository always filters to CONFIRMED + ACTIVE, so this stands in for rows that
@@ -82,6 +90,7 @@ const buildDb = (
       updateMany,
       update,
       deleteMany,
+      delete: deleteOne,
       create: async () => ({}),
     },
   };
@@ -91,7 +100,7 @@ const buildDb = (
     $transaction: async (run: (tx: unknown) => Promise<unknown>) => run(models),
   };
 
-  return { db, calls, updateMany, update, deleteMany, batchUpdate };
+  return { db, calls, updateMany, update, deleteMany, deleteOne, batchDelete, batchUpdate };
 };
 
 const repositoryFor = (db: unknown) =>
@@ -303,5 +312,55 @@ describe("confirmDraft", () => {
         "8",
       ),
     ).rejects.toMatchObject({ status: 403 });
+  });
+});
+
+describe("removeDraftFile", () => {
+  it("deletes the row so the next upload cannot bring the file back", async () => {
+    // The bug this covers: the card was dropped on screen only. The next upload answers with the
+    // whole draft as the database still holds it, so the removed file reappeared and only
+    // discarding the entire batch could clear it.
+    const { db, deleteOne } = buildDb(
+      [{ enrollmentId: "1", userId: "u-1" }],
+      [
+        { id: "10", userId: "u-1" },
+        { id: "11", userId: null },
+      ],
+    );
+
+    const result = await repositoryFor(db).removeDraftFile("42", "10", null);
+
+    expect(deleteOne).toHaveBeenCalledTimes(1);
+    expect(result.removedPaths).toEqual(["42/cert_10.pdf"]);
+  });
+
+  it("drops the batch along with its last file", async () => {
+    const { db, batchDelete } = buildDb([{ enrollmentId: "1", userId: "u-1" }], [{ id: "10", userId: "u-1" }]);
+
+    await repositoryFor(db).removeDraftFile("42", "10", null);
+
+    expect(batchDelete).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the batch while other files remain", async () => {
+    const { db, batchDelete } = buildDb(
+      [{ enrollmentId: "1", userId: "u-1" }],
+      [
+        { id: "10", userId: "u-1" },
+        { id: "11", userId: null },
+      ],
+    );
+
+    await repositoryFor(db).removeDraftFile("42", "10", null);
+
+    expect(batchDelete).not.toHaveBeenCalled();
+  });
+
+  it("refuses a file id that is not in this plan's draft", async () => {
+    // Otherwise a file id from another plan would delete a row this HRD user cannot even see.
+    const { db, deleteOne } = buildDb([{ enrollmentId: "1", userId: "u-1" }], [{ id: "10", userId: "u-1" }]);
+
+    await expect(repositoryFor(db).removeDraftFile("42", "999", null)).rejects.toMatchObject({ status: 404 });
+    expect(deleteOne).not.toHaveBeenCalled();
   });
 });

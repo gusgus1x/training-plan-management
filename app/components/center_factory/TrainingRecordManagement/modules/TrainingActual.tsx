@@ -17,6 +17,7 @@ import type { EmployeeRecord } from "../../../../lib/employees/types";
 import { createEnrollment, EnrollmentApiError, listEnrollments, setEnrollmentAttendance } from "../../../../lib/trainingEnrollment/client";
 import {
   emptyEnrollmentStage,
+  scoreLabel,
   type EnrollmentAssessmentInfo,
   type EnrollmentRecord,
   type EnrollmentStageInfo,
@@ -30,6 +31,7 @@ import {
   EXPENSE_ITEMS,
   completionStatusLabel,
   expiryFrom,
+  scorePercentOf,
   type CompletionStatus,
 } from "../../../../lib/trainingRecord/types";
 import { gradeSubmission, listPendingGrading, publishSubmissionResults } from "../../../../lib/trainingForms/client";
@@ -86,8 +88,15 @@ type Attendee = {
 /** One attendee's result while it is being typed. Everything is a string so a half-typed score
  *  does not have to survive a round trip through Number. */
 type ResultDraft = {
+  /** The MARK, not the percentage the server stores - "8", not "80". A screen showing 80 for a
+   *  test out of 10 reads as eighty marks, which is the confusion this whole pair of fields
+   *  exists to remove. */
   preScore: string;
+  /** Full marks the mark beside it is out of. Blank means nobody knows, and the mark is then a
+   *  percentage - the only thing an external test's score can be. */
+  preScoreMax: string;
   postScore: string;
+  postScoreMax: string;
   completionStatus: CompletionStatus;
   validUntil: string;
   certificateNo: string;
@@ -95,7 +104,9 @@ type ResultDraft = {
 
 const emptyResultDraft: ResultDraft = {
   preScore: "",
+  preScoreMax: "",
   postScore: "",
+  postScoreMax: "",
   completionStatus: "PENDING",
   validUntil: "",
   certificateNo: "",
@@ -116,6 +127,11 @@ const systemScores = (record: EnrollmentRecord) => {
     stage.mode === "FORM" && stage.submission?.resultsPublished && stage.submission.score !== null
       ? stage.submission.score
       : null;
+  // The marks the form is out of, which an in-system form knows before anybody sits it - the total
+  // belongs to the paper, not to an attempt. The attempt's own total is the fallback, for a stage
+  // whose assessment the plan has since been pointed away from.
+  const maxOf = (stage: typeof pre) =>
+    stage.mode === "FORM" ? stage.totalScore ?? stage.submission?.scoreMax ?? null : null;
 
   // The post-test is what decides completion when a course has one; a course with only a pre-test
   // falls back to that. passStatus was computed on the server against the assessment's own
@@ -128,10 +144,25 @@ const systemScores = (record: EnrollmentRecord) => {
 
   return {
     preScore: scoreOf(pre),
+    preScoreMax: maxOf(pre),
     postScore: scoreOf(post),
+    postScoreMax: maxOf(post),
     suggestedCompletion:
       decidingStatus === null ? null : decidingStatus === "PASS" ? ("COMPLETED" as const) : ("NOT_COMPLETED" as const),
   };
+};
+
+const numberBox = (value: number | null): string => (value === null ? "" : String(value));
+
+/** What a half-typed mark comes to as a percentage, for the line under the box. Null when there is
+ *  nothing to work it out from - a blank mark, or full marks nobody has entered yet. */
+const percentOfMark = (score: string, max: string): number | null => {
+  const mark = Number(score);
+  const total = Number(max);
+  if (score.trim() === "" || max.trim() === "" || !Number.isFinite(mark) || !Number.isFinite(total) || total <= 0) {
+    return null;
+  }
+  return scorePercentOf(mark, total);
 };
 
 const draftsFromEnrollments = (records: EnrollmentRecord[]): Record<string, ResultDraft> => {
@@ -148,13 +179,22 @@ const draftsFromEnrollments = (records: EnrollmentRecord[]): Record<string, Resu
     const system = systemScores(record);
 
     if (!record.result) {
+      // The marks the paper is out of count as something to prefill on their own: an attendee who
+      // has not sat the test yet still has a box that should read "of 3" rather than empty.
       const hasSomethingToPrefill =
-        derivedExpiry || system.preScore !== null || system.postScore !== null || system.suggestedCompletion;
+        derivedExpiry ||
+        system.preScore !== null ||
+        system.postScore !== null ||
+        system.preScoreMax !== null ||
+        system.postScoreMax !== null ||
+        system.suggestedCompletion;
       if (hasSomethingToPrefill) {
         drafts[record.id] = {
           ...emptyResultDraft,
-          preScore: system.preScore === null ? "" : String(system.preScore),
-          postScore: system.postScore === null ? "" : String(system.postScore),
+          preScore: numberBox(system.preScore),
+          preScoreMax: numberBox(system.preScoreMax),
+          postScore: numberBox(system.postScore),
+          postScoreMax: numberBox(system.postScoreMax),
           completionStatus: system.suggestedCompletion ?? emptyResultDraft.completionStatus,
           validUntil: derivedExpiry,
         };
@@ -165,8 +205,12 @@ const draftsFromEnrollments = (records: EnrollmentRecord[]): Record<string, Resu
     drafts[record.id] = {
       // A stored score wins: HRD may have corrected it deliberately, and overwriting that from the
       // submission every reload would undo their edit in front of them.
-      preScore: record.result.preScore !== null ? String(record.result.preScore) : system.preScore === null ? "" : String(system.preScore),
-      postScore: record.result.postScore !== null ? String(record.result.postScore) : system.postScore === null ? "" : String(system.postScore),
+      preScore: numberBox(record.result.preScore ?? system.preScore),
+      // An in-system form knows its own total, so that wins; the stored column only carries the
+      // full marks of a test this system cannot see.
+      preScoreMax: numberBox(system.preScoreMax ?? record.result.preLinkScoreMax),
+      postScore: numberBox(record.result.postScore ?? system.postScore),
+      postScoreMax: numberBox(system.postScoreMax ?? record.result.postLinkScoreMax),
       completionStatus:
         record.result.completionStatus === "PENDING" && system.suggestedCompletion
           ? system.suggestedCompletion
@@ -242,6 +286,46 @@ type ActualCourseGroup = {
 
 type CourseOwner = ActualCourse["owner"];
 type CourseOwnerFilter = CourseOwner | "";
+
+/**
+ * The three steps that pick what this screen is about - the scope, the course, and the session -
+ * survive leaving the page and coming back. Without this, opening an attempt or reloading dropped
+ * HRD at Step 1 mid-way through recording a course they had already chosen three times over.
+ *
+ * sessionStorage, not localStorage: this is where somebody is in a piece of work, not a setting,
+ * and a new tab or a new day should start from the top rather than from a course that has since
+ * been closed. Ids that no longer exist simply resolve to nothing, which the screen already draws
+ * as "not chosen yet" - a stale entry cannot select the wrong course.
+ */
+const SELECTION_STORAGE_KEY = "training-actual:selection";
+
+type StoredSelection = { owner: CourseOwnerFilter; groupId: string; courseId: string };
+
+const emptySelection: StoredSelection = { owner: "", groupId: "", courseId: "" };
+
+const loadSelection = (): StoredSelection => {
+  if (typeof window === "undefined") return emptySelection;
+  try {
+    const stored = JSON.parse(window.sessionStorage.getItem(SELECTION_STORAGE_KEY) || "{}");
+    return {
+      owner: stored?.owner === "CENTER" || stored?.owner === "FACTORY" ? stored.owner : "",
+      groupId: typeof stored?.groupId === "string" ? stored.groupId : "",
+      courseId: typeof stored?.courseId === "string" ? stored.courseId : "",
+    };
+  } catch {
+    // Private browsing, or somebody hand-edited the entry. Starting at Step 1 is the old behaviour.
+    return emptySelection;
+  }
+};
+
+const saveSelection = (selection: StoredSelection) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify(selection));
+  } catch {
+    // A full quota costs three clicks. Nothing to recover from.
+  }
+};
 
 // Shared with Training Record. Each screen used to keep its own list, so the same key read
 // "ค่าวัดผล / เอกสารประกอบ" on the form and "ค่าเอกสาร & อุปกรณ์" on the report.
@@ -506,9 +590,9 @@ export default function TrainingActual() {
    *  Thai paperwork it records, and a key would put the wording a file away from its use. */
   const t = (th: string, en: string) => (language === "th" ? th : en);
   const [courses, setCourses] = useState<ActualCourse[]>([]);
-  const [courseOwnerFilter, setCourseOwnerFilter] = useState<CourseOwnerFilter>("");
-  const [selectedCourseGroupId, setSelectedCourseGroupId] = useState("");
-  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [courseOwnerFilter, setCourseOwnerFilter] = useState<CourseOwnerFilter>(() => loadSelection().owner);
+  const [selectedCourseGroupId, setSelectedCourseGroupId] = useState(() => loadSelection().groupId);
+  const [selectedCourseId, setSelectedCourseId] = useState(() => loadSelection().courseId);
   const [savedMessage, setSavedMessage] = useState("");
   const [showSaveSuccessModal, setShowSaveSuccessModal] = useState(false);
   const [savedSummaryData, setSavedSummaryData] = useState<{
@@ -597,6 +681,10 @@ export default function TrainingActual() {
       setCourseOwnerFilter("FACTORY");
     }
   }, [isFactoryUser, courseOwnerFilter]);
+
+  useEffect(() => {
+    saveSelection({ owner: courseOwnerFilter, groupId: selectedCourseGroupId, courseId: selectedCourseId });
+  }, [courseOwnerFilter, selectedCourseGroupId, selectedCourseId]);
   const selectedCourseOwner: CourseOwnerFilter = courseOwnerFilter;
   const ownerFilteredCourses = useMemo(
     () =>
@@ -1028,7 +1116,17 @@ export default function TrainingActual() {
             // An empty box means "not graded", which is not the same as a score of zero on a
             // record the employee downloads as evidence.
             preScore: draft.preScore.trim() === "" ? null : Number(draft.preScore),
+            // Only an external test's full marks are stored. An in-system form totals its own
+            // questions, so sending its total back would write the same fact to a second place.
+            preLinkScoreMax:
+              assessment.preTest.mode === "FORM" || draft.preScoreMax.trim() === ""
+                ? null
+                : Number(draft.preScoreMax),
             postScore: draft.postScore.trim() === "" ? null : Number(draft.postScore),
+            postLinkScoreMax:
+              assessment.postTest.mode === "FORM" || draft.postScoreMax.trim() === ""
+                ? null
+                : Number(draft.postScoreMax),
             completionStatus: draft.completionStatus,
             validUntil: draft.validUntil.trim() === "" ? null : draft.validUntil,
             certificateNo: draft.certificateNo.trim() === "" ? null : draft.certificateNo.trim(),
@@ -1675,32 +1773,58 @@ export default function TrainingActual() {
                         {/* A course with no test at this stage has no score to record. Leaving the
                             box on screen invites a mark for an exam that never happened onto a
                             document the employee hands to an employer. */}
-                        {assessment.preTest.mode === "NONE" ? null : (
-                          <label className={styles.resultScoreField}>
-                            Pre
-                            <input
-                              type="number"
-                              min={0}
-                              value={draft.preScore}
-                              onChange={(event) =>
-                                setResultField(attendee.id, "preScore", event.target.value)
-                              }
-                            />
-                          </label>
-                        )}
-                        {assessment.postTest.mode === "NONE" ? null : (
-                          <label className={styles.resultScoreField}>
-                            Post
-                            <input
-                              type="number"
-                              min={0}
-                              value={draft.postScore}
-                              onChange={(event) =>
-                                setResultField(attendee.id, "postScore", event.target.value)
-                              }
-                            />
-                          </label>
-                        )}
+                        {/* The mark and the full marks it is out of, with what the two come to
+                            underneath. The box used to hold the percentage alone, so a test out of
+                            10 showed "80" and read as eighty marks. The percentage still has to be
+                            on screen: it is what the pass mark is compared against, and it is what
+                            the database stores. */}
+                        {/* Both stages sit in one block so they wrap together rather than leaving
+                            Post's boxes stranded on a line of their own. */}
+                        <div className={styles.resultScoreGroups}>
+                          {(["pre", "post"] as const).map((stage) => {
+                            const stageInfo = assessment[stage === "pre" ? "preTest" : "postTest"];
+                            if (stageInfo.mode === "NONE") return null;
+                            const scoreKey = `${stage}Score` as const;
+                            const maxKey = `${stage}ScoreMax` as const;
+                            const percent = percentOfMark(draft[scoreKey], draft[maxKey]);
+                            // An in-system form counts its own marks. Letting HRD retype that total
+                            // would let the screen disagree with the paper the mark was scored on.
+                            const totalIsFixed = stageInfo.mode === "FORM";
+                            return (
+                              <div key={stage} className={styles.resultScoreGroup}>
+                                <label className={styles.resultScoreField}>
+                                  {stage === "pre" ? "Pre" : "Post"}
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={draft[scoreKey]}
+                                    onChange={(event) => setResultField(attendee.id, scoreKey, event.target.value)}
+                                  />
+                                </label>
+                                {/* Reads as "mark / full marks" at a glance, which is what the two
+                                    boxes are - two labelled boxes side by side did not say it. */}
+                                <span className={styles.resultScoreSlash} aria-hidden="true">
+                                  /
+                                </span>
+                                <label className={styles.resultScoreField}>
+                                  {t("เต็ม", "of")}
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    readOnly={totalIsFixed}
+                                    value={draft[maxKey]}
+                                    onChange={(event) => setResultField(attendee.id, maxKey, event.target.value)}
+                                  />
+                                </label>
+                                <small className={styles.resultScorePercent}>
+                                  {percent === null
+                                    ? t("ใส่คะแนนเต็มเพื่อคิด %", "Enter the full marks for a %")
+                                    : t(`เทียบเป็น ${percent}%/100%`, `${percent}% of 100%`)}
+                                </small>
+                              </div>
+                            );
+                          })}
+                        </div>
                         {/* The certificate number is not entered here for now. The draft still
                             carries whatever is stored, so a save leaves an existing number
                             untouched rather than clearing it. */}
@@ -2099,7 +2223,7 @@ export default function TrainingActual() {
                 <div className={styles.attemptsSummaryRow}>
                   <div className={styles.attemptsSummaryCard}>
                     <span>{t("คะแนนสูงสุด", "Best score")}</span>
-                    <strong>{best ? `${best.score}%` : "-"}</strong>
+                    <strong>{(best && scoreLabel(best.score, best.scoreMax)) || "-"}</strong>
                     <em>
                       {best
                         ? t(`ครั้งที่ ${best.attemptNo}`, `Attempt ${best.attemptNo}`)
@@ -2135,9 +2259,14 @@ export default function TrainingActual() {
               <ul className={styles.attemptsList}>
                 {attemptsCard[attemptsStage].attempts.map((attempt) => (
                   <li key={attempt.submissionId}>
+                    {/* Opens in its own tab. This screen's course, session and half-typed results
+                        live in component state, so navigating away and back would drop HRD at Step
+                        1 with everything they had entered gone. */}
                     <a
                       className={styles.attemptsRow}
                       href={`/training-record/submission/${selectedCourse?.id}/${attempt.submissionId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                     >
                       <strong>{t(`ครั้งที่ ${attempt.attemptNo}`, `Attempt ${attempt.attemptNo}`)}</strong>
                       <span>
@@ -2152,9 +2281,8 @@ export default function TrainingActual() {
                       <span>
                         {/* An unreleased score is not shown here either - the review page is where
                             HRD sees the marks, and this card is a list, not a result. */}
-                        {attempt.resultsPublished && attempt.score !== null
-                          ? `${attempt.score}%`
-                          : t("ยังไม่ประกาศผล", "Not released")}
+                        {(attempt.resultsPublished && scoreLabel(attempt.score, attempt.scoreMax)) ||
+                          t("ยังไม่ประกาศผล", "Not released")}
                       </span>
                       <span className={styles.attemptsGo}>
                         {attempt.gradingStatus === "PENDING_REVIEW" ? t("รอตรวจ · เปิด →", "To mark · open →") : t("เปิด →", "Open →")}

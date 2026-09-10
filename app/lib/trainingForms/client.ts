@@ -6,6 +6,7 @@ import type {
   AssignedEvaluation,
   EvaluationForEmployee,
   EvaluationRespondentGroup,
+  EvaluationResponseList,
   EvaluationSummary,
   GradeSubmissionInput,
   GradedStage,
@@ -137,6 +138,19 @@ export const readEvaluationSummary = async (
       credentials: "include",
       cache: "no-store",
     }),
+  );
+
+export const readEvaluationResponses = async (
+  planId: string,
+  timing: "EVALUATION" | "EVALUATION_30DAY",
+  respondents: EvaluationRespondentGroup = "EMPLOYEE",
+  fetcher: Fetcher = fetch,
+) =>
+  read<{ responses: EvaluationResponseList | null }>(
+    await fetcher(
+      `/api/training-plan/training-records/${planId}/evaluations/${timing}/responses?respondents=${respondents}`,
+      { credentials: "include", cache: "no-store" },
+    ),
   );
 
 export const publishSubmissionResults = async (planId: string, submissionId: string, fetcher: Fetcher = fetch) =>

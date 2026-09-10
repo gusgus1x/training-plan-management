@@ -13,6 +13,8 @@ import type {
   AssignedEvaluation,
   EvaluationForEmployee,
   EvaluationRespondentGroup,
+  EvaluationResponseAnswer,
+  EvaluationResponseList,
   EvaluationSummary,
   EvaluationSummaryQuestion,
   EvaluationTimingStage,
@@ -39,6 +41,8 @@ type DatabaseClient = Pick<
   | "evaluation_answer"
   | "training_evaluation_reviewer"
   | "training_result"
+  // Only for putting a name on a reply, and only when the form is not anonymous.
+  | "employee"
   | "$transaction"
 >;
 
@@ -707,12 +711,12 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
             }
           }
 
-          const scorePercent = hasPendingReview || totalPossible.isZero()
-            ? null
-            : totalAwarded.mul(100).div(totalPossible);
-          const passStatus = scorePercent === null
+          // The mark is what is stored. The pass mark is a percentage, so the comparison converts -
+          // the score does not.
+          const marks = hasPendingReview || totalPossible.isZero() ? null : totalAwarded;
+          const passStatus = marks === null
             ? "PENDING"
-            : scorePercent.gte(questions.passing_score_percent)
+            : marks.mul(100).div(totalPossible).gte(questions.passing_score_percent)
               ? "PASS"
               : "FAIL";
 
@@ -723,7 +727,7 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
               assessment_stage: stage,
               attempt_no: previousAttempts + 1,
               submitted_at: new Date(),
-              score: scorePercent,
+              score: marks,
               pass_status: passStatus,
               status: hasPendingReview ? "SUBMITTED" : "GRADED",
               grading_status: hasPendingReview ? "PENDING_REVIEW" : "REVIEWED",
@@ -1257,6 +1261,166 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
       });
     },
 
+    /**
+     * The same answers readEvaluationSummary counts, but one paper at a time.
+     *
+     * The summary throws away who said what on purpose; this does not, which is the whole point of
+     * it - HRD asked to read individual replies the way Microsoft Forms lets them. The anonymity
+     * promise is kept the only way it can be on a screen like this: on an anonymous form the name
+     * is dropped here, in the projection, so no screen can leak what never left the server. No
+     * submission id and no user id travel either - a respondent is a position in the list.
+     *
+     * The order is the order they were submitted in. On an anonymous form that is still a thread a
+     * determined reader could pull on if they also hold the attendance list, which is why the
+     * summary's free-text rule exists; this screen is HRD's own and is not offered to anybody else.
+     */
+    async readEvaluationResponses(
+      planId: string,
+      timing: EvaluationTimingStage,
+      companyId: string | null,
+      respondentGroup: EvaluationRespondentGroup = "EMPLOYEE",
+    ): Promise<EvaluationResponseList | null> {
+      return withDatabaseErrorMapping(async () => {
+        const plan = await db().training_plan.findUniqueOrThrow({
+          where: { plan_id: BigInt(planId) },
+          include: planWithCourseInclude,
+        });
+        if (companyId && plan.training_plan_oap.company_id?.toString() !== companyId) {
+          throw forbidden("This training plan is outside your permitted scope");
+        }
+
+        const formId = formIdForStage(plan, timing);
+        if (formId === null) return null;
+
+        const form = await db().evaluation_form.findUniqueOrThrow({
+          where: { evaluation_form_id: formId },
+          select: {
+            form_name: true,
+            is_anonymous: true,
+            evaluation_question: {
+              orderBy: { question_order: "asc" },
+              select: {
+                evaluation_question_id: true,
+                question_order: true,
+                question_text: true,
+                question_type: true,
+                evaluation_option: {
+                  orderBy: { option_order: "asc" },
+                  select: { evaluation_option_id: true, option_text: true, axis: true },
+                },
+              },
+            },
+          },
+        });
+
+        const allSubmissions = await db().evaluation_submission.findMany({
+          where: {
+            evaluation_form_id: formId,
+            submitted_at: { not: null },
+            training_enrollment: { plan_id: BigInt(planId) },
+          },
+          orderBy: { submitted_at: "asc" },
+          select: {
+            submitted_at: true,
+            respondent_user_id: true,
+            training_enrollment: { select: { employee_user_id: true } },
+            evaluation_answer: {
+              select: {
+                evaluation_question_id: true,
+                evaluation_option_id: true,
+                row_option_id: true,
+                rating_value: true,
+                answer_text: true,
+              },
+            },
+          },
+        });
+
+        // Same split as the summary: which audience a row belongs to is "did the person who
+        // answered attend the course themselves". SQL Server cannot compare two columns from inside
+        // a Prisma filter, so it happens here, over rows this query already had to load.
+        const submissions = allSubmissions.filter((submission) => {
+          const isAttendeesOwn =
+            submission.respondent_user_id === submission.training_enrollment.employee_user_id;
+          return respondentGroup === "EMPLOYEE" ? isAttendeesOwn : !isAttendeesOwn;
+        });
+
+        // Names are looked up only when the form is not anonymous. On an anonymous form the query
+        // is not run at all, so there is nothing to forget to strip later.
+        const namesByUserId = new Map<string, string>();
+        if (!form.is_anonymous && submissions.length > 0) {
+          const employees = await db().employee.findMany({
+            where: { user_id: { in: [...new Set(submissions.map((s) => s.respondent_user_id))] } },
+            select: { user_id: true, employee_code: true, first_name_th: true, last_name_th: true },
+          });
+          for (const employee of employees) {
+            namesByUserId.set(
+              employee.user_id,
+              // The employee code is the fallback, and it too can be missing on an imported row.
+              `${employee.first_name_th} ${employee.last_name_th}`.trim() || employee.employee_code || "-",
+            );
+          }
+        }
+
+        const optionTextById = new Map<string, string>();
+        for (const question of form.evaluation_question) {
+          for (const option of question.evaluation_option) {
+            optionTextById.set(option.evaluation_option_id.toString(), option.option_text);
+          }
+        }
+
+        return {
+          formName: form.form_name,
+          isAnonymous: form.is_anonymous,
+          timing,
+          respondentGroup,
+          questions: form.evaluation_question.map((question) => ({
+            questionId: question.evaluation_question_id.toString(),
+            questionOrder: question.question_order,
+            questionText: question.question_text,
+            questionType: question.question_type as EvaluationSummaryQuestion["questionType"],
+          })),
+          responses: submissions.map((submission, index) => {
+            const byQuestion = new Map<string, EvaluationResponseAnswer>();
+            for (const answer of submission.evaluation_answer) {
+              const questionId = answer.evaluation_question_id.toString();
+              const entry = byQuestion.get(questionId) ?? {
+                questionId,
+                choices: [],
+                ratingValue: null,
+                text: null,
+              };
+              if (answer.evaluation_option_id !== null) {
+                const optionText = optionTextById.get(answer.evaluation_option_id.toString()) ?? "";
+                // A grid answer is a (row, column) pair, and the column alone reads as an answer to
+                // a question nobody asked. The row it belongs to is written in front of it.
+                const rowText =
+                  answer.row_option_id === null
+                    ? null
+                    : optionTextById.get(answer.row_option_id.toString()) ?? null;
+                entry.choices.push(rowText === null ? optionText : `${rowText}: ${optionText}`);
+              }
+              // Decimal comes back as an object, like every other numeric column here.
+              if (answer.rating_value !== null) entry.ratingValue = Number(answer.rating_value);
+              if (answer.answer_text !== null && answer.answer_text.trim().length > 0) {
+                entry.text = answer.answer_text;
+              }
+              byQuestion.set(questionId, entry);
+            }
+
+            return {
+              responseNo: index + 1,
+              respondentName: form.is_anonymous
+                ? null
+                : namesByUserId.get(submission.respondent_user_id) ?? null,
+              submittedAt: submission.submitted_at?.toISOString() ?? null,
+              answers: [...byQuestion.values()],
+            };
+          }),
+        };
+      });
+    },
+
     /** Everything on one plan still waiting on HRD: submissions with an ungraded SHORT_ANSWER, and
      *  submissions already graded but not yet released to the employee. HRD_FACTORY only ever sees
      *  plans their own company owns. */
@@ -1543,12 +1707,15 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
               : (answer.score_awarded ?? new Prisma.Decimal(0));
             totalAwarded = totalAwarded.add(awarded);
           }
-          const scorePercent = totalPossible.isZero() ? new Prisma.Decimal(0) : totalAwarded.mul(100).div(totalPossible);
-          const passStatus = scorePercent.gte(submission.assessment.passing_score_percent) ? "PASS" : "FAIL";
+          const passStatus =
+            !totalPossible.isZero() &&
+            totalAwarded.mul(100).div(totalPossible).gte(submission.assessment.passing_score_percent)
+              ? "PASS"
+              : "FAIL";
 
           await tx.assessment_submission.update({
             where: { submission_id: submission.submission_id },
-            data: { score: scorePercent, pass_status: passStatus, status: "GRADED", grading_status: "REVIEWED" },
+            data: { score: totalAwarded, pass_status: passStatus, status: "GRADED", grading_status: "REVIEWED" },
           });
 
           // training_result is deliberately NOT written here. Grading and releasing are two acts:
@@ -1701,11 +1868,17 @@ const writeOfficialAssessmentResult = async (
       score: { not: null },
       publication_status: "PUBLISHED",
     },
+    // Every attempt at one stage is against the same assessment, so the highest mark is the highest
+    // score however it is expressed.
     orderBy: [{ score: "desc" }, { submitted_at: "desc" }],
     select: { submission_id: true, score: true },
   });
   if (!best) return;
 
+  // Marks only. The marks this is out of are the assessment's own question totals, reachable
+  // through official_*_submission_id and unable to change once anybody has answered - so copying
+  // them onto this row would store the same fact twice. The pre/post_link_score_max columns exist
+  // for the case that has no assessment at all: a test this system cannot see.
   const data =
     stage === "PRE_TEST"
       ? { pre_score: best.score, official_pre_submission_id: best.submission_id }

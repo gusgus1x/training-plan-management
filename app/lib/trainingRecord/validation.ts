@@ -47,6 +47,16 @@ const readOptionalScore = (value: unknown, field: string): number | null => {
   return value;
 };
 
+// Full marks of zero has no percentage to compute, which the database check constraint also
+// refuses. Empty means "no denominator offered", and the mark is then read as a percentage.
+const readOptionalScoreMax = (value: unknown, field: string): number | null => {
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    throw invalidResult(field, "Full marks must be a positive number, or empty");
+  }
+  return value;
+};
+
 const readCompletionStatus = (value: unknown): CompletionStatus => {
   if (typeof value !== "string" || !COMPLETION_STATUSES.includes(value as CompletionStatus)) {
     throw invalidResult("completionStatus", `Status must be one of ${COMPLETION_STATUSES.join(", ")}`);
@@ -98,10 +108,22 @@ export const parseSaveResults = (input: InputObject): SaveResultsInput => {
       throw invalidResult(`results[${index}].certificateNo`, "Certificate number is too long");
     }
 
+    // A mark above the full marks it is out of is not a mark. The pass verdict downstream compares
+    // a percentage against the pass mark, and this one would come out above 100.
+    for (const stage of ["pre", "post"] as const) {
+      const score = readOptionalScore(row[`${stage}Score`], `results[${index}].${stage}Score`);
+      const max = readOptionalScoreMax(row[`${stage}LinkScoreMax`], `results[${index}].${stage}LinkScoreMax`);
+      if (score !== null && max !== null && score > max) {
+        throw invalidResult(`results[${index}].${stage}Score`, "Score cannot be above the full marks");
+      }
+    }
+
     return {
       enrollmentId,
       preScore: readOptionalScore(row.preScore, `results[${index}].preScore`),
+      preLinkScoreMax: readOptionalScoreMax(row.preLinkScoreMax, `results[${index}].preLinkScoreMax`),
       postScore: readOptionalScore(row.postScore, `results[${index}].postScore`),
+      postLinkScoreMax: readOptionalScoreMax(row.postLinkScoreMax, `results[${index}].postLinkScoreMax`),
       completionStatus: readCompletionStatus(row.completionStatus),
       validUntil: readOptionalDate(row.validUntil, `results[${index}].validUntil`),
       certificateNo,

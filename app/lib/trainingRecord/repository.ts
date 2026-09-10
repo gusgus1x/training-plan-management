@@ -138,6 +138,18 @@ const reviewerCandidate = (
 });
 
 const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
+  // Which form each evaluation stage resolves to for this batch. Same rule as formIdForStage in
+  // trainingForms/repository.ts: the batch's own choice replaces the course's, and a batch pointed
+  // at an external link has opted out of the in-system form entirely.
+  const afterTrainingFormId =
+    row.evaluation_form_id ??
+    (row.evaluation_link?.trim() ? null : row.training_plan_oap.course.evaluation_form_id);
+  const followUpFormId =
+    row.evaluation_form_after_30day_id ??
+    (row.evaluation_after_30day_link?.trim()
+      ? null
+      : row.training_plan_oap.course.evaluation_form_after_30day_id);
+
   const expenses = {
     accommodation: 0,
     foodBeverage: 0,
@@ -193,12 +205,17 @@ const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
       attended: enrollment.attendance?.attendance_status === "PRESENT",
       preTestPassed: preTest ? preTest.pass_status?.toUpperCase() === "PASS" : null,
       postTestPassed: postTest ? postTest.pass_status?.toUpperCase() === "PASS" : null,
-      // The attendee's OWN submission only. Since a reviewer answers the same form about the same
-      // enrollment, counting every submission here would report the attendee as done the moment
-      // their supervisor answered.
-      evaluationCompleted: enrollment.evaluation_submission.some(
-        (e) => e.submitted_at !== null && e.respondent_user_id === enrollment.employee_user_id,
-      ),
+      // The attendee's own answer to the AFTER-TRAINING form, and nothing else. Two things get
+      // wrongly counted without both halves of that: their supervisor's answer (a different
+      // respondent) and their own 30-day follow-up (a different form).
+      evaluationCompleted:
+        afterTrainingFormId !== null &&
+        enrollment.evaluation_submission.some(
+          (e) =>
+            e.submitted_at !== null &&
+            e.respondent_user_id === enrollment.employee_user_id &&
+            e.evaluation_form_id === afterTrainingFormId,
+        ),
       result: enrollment.training_result
         ? {
             enrollmentId: enrollment.enrollment_id.toString(),
@@ -208,10 +225,18 @@ const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
               enrollment.training_result.pre_score === null
                 ? null
                 : Number(enrollment.training_result.pre_score),
+            preLinkScoreMax:
+              enrollment.training_result.pre_link_score_max === null
+                ? null
+                : Number(enrollment.training_result.pre_link_score_max),
             postScore:
               enrollment.training_result.post_score === null
                 ? null
                 : Number(enrollment.training_result.post_score),
+            postLinkScoreMax:
+              enrollment.training_result.post_link_score_max === null
+                ? null
+                : Number(enrollment.training_result.post_link_score_max),
             completionStatus: enrollment.training_result.completion_status as CompletionStatus,
             completedAt: enrollment.training_result.completed_at?.toISOString() ?? null,
             validUntil: enrollment.training_result.valid_until?.toISOString().slice(0, 10) ?? null,
@@ -223,9 +248,16 @@ const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
             ...reviewerCandidate(assignment.reviewer),
             assignedAt: assignment.assigned_at.toISOString(),
             openedAt: assignment.opened_at?.toISOString() ?? null,
-            submitted: enrollment.evaluation_submission.some(
-              (e) => e.submitted_at !== null && e.respondent_user_id === assignment.reviewer_user_id,
-            ),
+            // The reviewer is only ever asked for the 30-day follow-up, so their answer to any
+            // other form is not what this row reports - and it is what locks the assignment.
+            submitted:
+              followUpFormId !== null &&
+              enrollment.evaluation_submission.some(
+                (e) =>
+                  e.submitted_at !== null &&
+                  e.respondent_user_id === assignment.reviewer_user_id &&
+                  e.evaluation_form_id === followUpFormId,
+              ),
           }
         : null,
     };
@@ -457,7 +489,11 @@ export const createTrainingRecordRepository = (client?: DatabaseClient) => {
             const enrollmentId = BigInt(row.enrollmentId);
             const data = {
               pre_score: row.preScore,
+              // Full marks with no mark beside them describe nothing, and would show up next
+              // reload as a denominator for a score that was never recorded.
+              pre_link_score_max: row.preScore === null ? null : row.preLinkScoreMax,
               post_score: row.postScore,
+              post_link_score_max: row.postScore === null ? null : row.postLinkScoreMax,
               completion_status: row.completionStatus,
               // Owned by the status, not by the caller: a row that stops being COMPLETED must not
               // keep the date it was completed on.

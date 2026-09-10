@@ -76,11 +76,26 @@ export type StageSubmissionSummary = {
    *  numbered from 1 with no gaps. */
   attemptNo: number;
   submittedAt: string | null;
+  /** The MARK, not a percentage - the same thing Google Forms keeps on a quiz response. */
   score: number | null;
+  /** The marks the form is out of. Null for an evaluation, which is never scored. */
+  scoreMax: number | null;
   passStatus: "PENDING" | "PASS" | "FAIL";
   gradingStatus: "PENDING_REVIEW" | "REVIEWED";
   /** False while HRD has graded but not yet released the score - `score` is null in that state. */
   resultsPublished: boolean;
+};
+
+/**
+ * How a mark is written on screen: "8 / 10 (80%)". The marks come first because they are what is
+ * stored and what the paper says; the percentage trails as the reading of them, which is the whole
+ * point of no longer storing one. Without a denominator only the bare mark can be shown - the state
+ * of an external test nobody has entered the full marks for.
+ */
+export const scoreLabel = (score: number | null, max: number | null): string | null => {
+  if (score === null) return null;
+  if (max === null || max <= 0) return String(score);
+  return `${score} / ${max} (${Math.round((score / max) * 1000) / 10}%)`;
 };
 
 /**
@@ -103,6 +118,10 @@ export type EnrollmentStageInfo = AssessmentStageInfo & {
    * callers want exactly that and nothing else.
    */
   attempts: StageSubmissionSummary[];
+  /** The marks this stage's paper is out of. It belongs to the FORM, so it is known before anybody
+   *  sits the test - unlike `submission.scoreMax`, which only exists once there is an attempt.
+   *  Null for NONE and LINK: neither has a paper here to total. */
+  totalScore: number | null;
 };
 
 /** A NONE stage with no plan to derive dates from - screens that build a placeholder
@@ -115,6 +134,7 @@ export const emptyEnrollmentStage: EnrollmentStageInfo = {
   availability: "NOT_YET",
   submission: null,
   attempts: [],
+  totalScore: null,
 };
 
 export type EnrollmentAssessmentInfo = {
@@ -150,8 +170,14 @@ export type EnrollmentPlanInfo = {
 
 /** What HRD recorded once the course ended. Null until somebody records it. */
 export type EnrollmentResultInfo = {
+  /** The MARK. For an in-system form the marks it is out of are the stage's own `scoreMax`; for a
+   *  test this system cannot see they are `preLinkScoreMax`, typed by HRD. */
   preScore: number | null;
+  /** Full marks for an external test only. Null for an in-system form, which has its own
+   *  questions to total - storing it twice is what migration 41 undid. */
+  preLinkScoreMax: number | null;
   postScore: number | null;
+  postLinkScoreMax: number | null;
   completionStatus: "PENDING" | "NOT_COMPLETED" | "COMPLETED";
   completedAt: string | null;
   validUntil: string | null;

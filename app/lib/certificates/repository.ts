@@ -450,6 +450,56 @@ export const createCertificateRepository = (client?: DatabaseClient) => {
     },
 
     /**
+     * Drops one uploaded file from the draft.
+     *
+     * The card used to be removed on screen only, which held for as long as nobody uploaded again:
+     * the next upload answered with the whole draft as the database still had it, and the removed
+     * file came back. Removing the row is what makes the removal real.
+     *
+     * An empty batch is deleted with its last file, matching discardDraft - a batch with nothing in
+     * it is not a draft anybody is working on.
+     */
+    async removeDraftFile(
+      planId: string,
+      certificateFileId: string,
+      companyId: string | null,
+    ): Promise<{ removedPaths: string[] }> {
+      return withDatabaseErrorMapping(async () => {
+        await loadPlanRoster(db(), planId, companyId);
+
+        return db().$transaction(async (tx) => {
+          const batch = await loadDraftBatch(tx as unknown as DatabaseClient, planId);
+          if (!batch) return { removedPaths: [] };
+
+          // Scoped to this plan's own draft: a file id from another plan must not delete anything,
+          // and the batch lookup above is what ties the id to the plan in the URL.
+          const target = batch.training_certificate_file.find(
+            (file) => file.certificate_file_id.toString() === certificateFileId,
+          );
+          if (!target) {
+            throw new ApiError({
+              code: "CERTIFICATE_FILE_NOT_IN_DRAFT",
+              message: "That file is not part of this plan's draft.",
+              status: 404,
+            });
+          }
+
+          await tx.training_certificate_file.delete({
+            where: { certificate_file_id: target.certificate_file_id },
+          });
+
+          if (batch.training_certificate_file.length === 1) {
+            await tx.certificate_import_batch.delete({
+              where: { certificate_import_batch_id: batch.certificate_import_batch_id },
+            });
+          }
+
+          return { removedPaths: [target.storage_path] };
+        });
+      });
+    },
+
+    /**
      * The single gate on reading a certificate's bytes. Every role passes through here.
      */
     async loadFileForPrincipal(

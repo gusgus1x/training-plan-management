@@ -98,7 +98,7 @@ const buildFakeDb = (opts: {
   const evaluationAnswers: Array<Record<string, unknown>> = [];
   let nextSubmissionId = BigInt(9001);
   let nextAnswerId = BigInt(9001);
-  let trainingResult: { pre_score?: Prisma.Decimal; post_score?: Prisma.Decimal; official_pre_submission_id?: bigint; official_post_submission_id?: bigint } | null = null;
+  let trainingResult: { pre_score?: Prisma.Decimal; pre_score_max?: Prisma.Decimal | null; post_score?: Prisma.Decimal; post_score_max?: Prisma.Decimal | null; official_pre_submission_id?: bigint; official_post_submission_id?: bigint } | null = null;
 
   const enrollment = {
     enrollment_id: BigInt(1),
@@ -146,7 +146,20 @@ const buildFakeDb = (opts: {
         const candidates = submissions
           .filter((s) => s.enrollment_id === where.enrollment_id && s.assessment_stage === where.assessment_stage && s.score !== null)
           .sort((a, b) => (b.score! as any).minus(a.score! as any).toNumber() || (b.submitted_at?.getTime() ?? 0) - (a.submitted_at?.getTime() ?? 0));
-        return candidates[0] ?? null;
+        // The official-result writer reads the form's questions through the submission, to total
+        // the full marks its percentage came from.
+        const best = candidates[0];
+        return best
+          ? {
+              ...best,
+              assessment: {
+                assessment_question: questions.map((q) => ({
+                  question_score: q.question_score,
+                  question_type: q.question_type,
+                })),
+              },
+            }
+          : null;
       },
       findUniqueOrThrow: async ({ where }: any) => {
         const row = submissions.find((s) => s.submission_id === where.submission_id);
@@ -259,7 +272,7 @@ const buildFakeDb = (opts: {
 
   // `submissions` is handed back so a regrade test can read the score that was written -
   // gradeSubmission itself only answers { graded: true }.
-  return { db, submissions, evaluationAnswers };
+  return { db, submissions, evaluationAnswers, officialResult: () => trainingResult };
 };
 
 describe("readAssessmentForEmployee - no answer-key leak", () => {
@@ -313,7 +326,7 @@ describe("stage availability enforced server-side", () => {
 
 describe("submitAssessment - autograding", () => {
   it("awards full credit for a correct SINGLE_CHOICE answer and writes the official result immediately", async () => {
-    const { db } = buildFakeDb();
+    const { db, officialResult } = buildFakeDb();
     const repo = createTrainingFormsRepository(db);
     const result = await repo.submitAssessment(
       "1",
@@ -326,6 +339,9 @@ describe("submitAssessment - autograding", () => {
     expect(result.passStatus).toBe("PASS");
     expect(result.gradingStatus).toBe("REVIEWED");
     expect(result.status).toBe("GRADED");
+    // The official record carries the MARK. Nothing copies the denominator onto it: the assessment
+    // behind official_pre_submission_id owns that, and cannot change once anybody has answered.
+    expect(Number(officialResult()?.pre_score)).toBe(100);
   });
 
   it("gives zero credit for a wrong answer and fails against the passing score", async () => {
@@ -381,7 +397,7 @@ describe("submitAssessment - autograding", () => {
       OWNER.employeeId,
       OWNER.employeeUserId,
     );
-    expect(result.score).toBe(50);
+    expect(result.score).toBe(100);
   });
 
   it("ignores section breaks and text blocks entirely when scoring", async () => {
@@ -451,7 +467,7 @@ describe("submitAssessment - autograding", () => {
       OWNER.employeeId,
       OWNER.employeeUserId,
     );
-    expect(result.score).toBe(50);
+    expect(result.score).toBe(10);
   });
 
   it("gives zero credit for a MULTIPLE_CHOICE answer missing one of the correct options", async () => {
@@ -830,16 +846,16 @@ describe("submitAssessment - grid questions", () => {
   };
 
   it("awards every row when all four are right", async () => {
-    expect((await submitGrid("MULTIPLE_CHOICE_GRID", allCorrect)).score).toBe(100);
+    expect((await submitGrid("MULTIPLE_CHOICE_GRID", allCorrect)).score).toBe(4);
   });
 
   it("scores per row, so three of four rows right is 75%", async () => {
     const grid = [...allCorrect.slice(0, 3), { rowId: "14", columnIds: ["22"] }];
-    expect((await submitGrid("MULTIPLE_CHOICE_GRID", grid)).score).toBe(75);
+    expect((await submitGrid("MULTIPLE_CHOICE_GRID", grid)).score).toBe(3);
   });
 
   it("counts an unanswered row as wrong rather than dropping it from the total", async () => {
-    expect((await submitGrid("MULTIPLE_CHOICE_GRID", allCorrect.slice(0, 1))).score).toBe(25);
+    expect((await submitGrid("MULTIPLE_CHOICE_GRID", allCorrect.slice(0, 1))).score).toBe(1);
   });
 
   it("gives a wholly unanswered grid zero, not free marks", async () => {
@@ -852,12 +868,12 @@ describe("submitAssessment - grid questions", () => {
     // Row 1's key is column 1 only, so adding a second column makes that row wrong outright -
     // Google is all-or-nothing within a checkbox row.
     const grid = [{ rowId: "11", columnIds: ["21", "22"] }, ...allCorrect.slice(1)];
-    expect((await submitGrid("CHECKBOX_GRID", grid)).score).toBe(75);
+    expect((await submitGrid("CHECKBOX_GRID", grid)).score).toBe(3);
   });
 
   it("ignores a column id that is not on the question", async () => {
     const grid = [{ rowId: "11", columnIds: ["21", "999"] }, ...allCorrect.slice(1)];
-    expect((await submitGrid("MULTIPLE_CHOICE_GRID", grid)).score).toBe(100);
+    expect((await submitGrid("MULTIPLE_CHOICE_GRID", grid)).score).toBe(4);
   });
 });
 

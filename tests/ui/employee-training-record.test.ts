@@ -107,7 +107,7 @@ describe("employee training record is built from attendance, not from invented d
           link: null,
           opensAt: "2026-05-12T02:00:00.000Z",
           availability: "OPEN",
-          submission: { submissionId: "9001", attemptNo: 1, submittedAt: "2026-05-12T03:00:00.000Z", score: 90, passStatus: "PASS", gradingStatus: "REVIEWED", resultsPublished: true }, attempts: [{ submissionId: "9001", attemptNo: 1, submittedAt: "2026-05-12T03:00:00.000Z", score: 90, passStatus: "PASS", gradingStatus: "REVIEWED", resultsPublished: true }],
+          submission: { submissionId: "9001", attemptNo: 1, submittedAt: "2026-05-12T03:00:00.000Z", score: 90, scoreMax: 10, passStatus: "PASS", gradingStatus: "REVIEWED", resultsPublished: true }, attempts: [{ submissionId: "9001", attemptNo: 1, submittedAt: "2026-05-12T03:00:00.000Z", score: 90, scoreMax: 10, passStatus: "PASS", gradingStatus: "REVIEWED", resultsPublished: true }], totalScore: 10
         },
       },
     };
@@ -120,7 +120,7 @@ describe("employee training record is built from attendance, not from invented d
       ...notDone.plan,
       assessment: {
         ...notDone.plan.assessment,
-        preTest: { mode: "FORM", link: null, opensAt: "2026-05-12T02:00:00.000Z", availability: "OPEN", submission: null, attempts: [] },
+        preTest: { mode: "FORM", link: null, opensAt: "2026-05-12T02:00:00.000Z", availability: "OPEN", submission: null, attempts: [], totalScore: 10 },
       },
     };
     expect(toRecord(notDone).preTestStatus).toBe("Pending");
@@ -164,10 +164,10 @@ describe("resolveStageState - the assessment/evaluation button and label state",
 
   it("distinguishes a graded submission from one still awaiting HRD review", () => {
     const reviewed = stage({
-      submission: { submissionId: "9001", attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: 80, passStatus: "PASS", gradingStatus: "REVIEWED", resultsPublished: true }, attempts: [{ submissionId: "9001", attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: 80, passStatus: "PASS", gradingStatus: "REVIEWED", resultsPublished: true }],
+      submission: { submissionId: "9001", attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: 80, scoreMax: 10, passStatus: "PASS", gradingStatus: "REVIEWED", resultsPublished: true }, attempts: [{ submissionId: "9001", attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: 80, scoreMax: 10, passStatus: "PASS", gradingStatus: "REVIEWED", resultsPublished: true }], totalScore: 10
     });
     const pending = stage({
-      submission: { submissionId: "9001", attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: null, passStatus: "PENDING", gradingStatus: "PENDING_REVIEW", resultsPublished: false }, attempts: [{ submissionId: "9001", attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: null, passStatus: "PENDING", gradingStatus: "PENDING_REVIEW", resultsPublished: false }],
+      submission: { submissionId: "9001", attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: null, scoreMax: 10, passStatus: "PENDING", gradingStatus: "PENDING_REVIEW", resultsPublished: false }, attempts: [{ submissionId: "9001", attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: null, scoreMax: 10, passStatus: "PENDING", gradingStatus: "PENDING_REVIEW", resultsPublished: false }], totalScore: 10
     });
     expect(resolveStageState(reviewed)).toBe("DONE");
     expect(resolveStageState(pending)).toBe("REVIEW_PENDING");
@@ -177,7 +177,7 @@ describe("resolveStageState - the assessment/evaluation button and label state",
     // Grading and releasing are separate acts: a REVIEWED submission HRD has not published yet
     // must not show up as Completed with a score the employee is not supposed to see.
     const held = stage({
-      submission: { submissionId: "9001", attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: null, passStatus: "PENDING", gradingStatus: "REVIEWED", resultsPublished: false }, attempts: [{ submissionId: "9001", attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: null, passStatus: "PENDING", gradingStatus: "REVIEWED", resultsPublished: false }],
+      submission: { submissionId: "9001", attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: null, scoreMax: 10, passStatus: "PENDING", gradingStatus: "REVIEWED", resultsPublished: false }, attempts: [{ submissionId: "9001", attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: null, scoreMax: 10, passStatus: "PENDING", gradingStatus: "REVIEWED", resultsPublished: false }], totalScore: 10
     });
     expect(resolveStageState(held)).toBe("REVIEW_PENDING");
   });

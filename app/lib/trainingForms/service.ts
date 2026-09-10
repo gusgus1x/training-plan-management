@@ -63,6 +63,13 @@ export const createTrainingFormsService = (repository: TrainingFormsRepository =
     respondentGroup: EvaluationRespondentGroup = "EMPLOYEE",
   ) => repository.readEvaluationSummary(planId, timing, companyId, respondentGroup),
 
+  readEvaluationResponses: (
+    planId: string,
+    timing: EvaluationTimingStage,
+    companyId: string | null,
+    respondentGroup: EvaluationRespondentGroup = "EMPLOYEE",
+  ) => repository.readEvaluationResponses(planId, timing, companyId, respondentGroup),
+
   gradeSubmission: (submissionId: string, input: GradeSubmissionInput, gradedByUserId: string, companyId: string | null) =>
     repository.gradeSubmission(submissionId, input, gradedByUserId, companyId),
 

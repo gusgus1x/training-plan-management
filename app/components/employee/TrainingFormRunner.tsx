@@ -20,6 +20,8 @@ import {
   visitedPath,
   type FlowItem,
 } from "../../lib/trainingForms/formFlow";
+import { isFormBlockType } from "../../lib/formBlocks";
+import { scoreLabel } from "../../lib/trainingEnrollment/types";
 import type { GridAxis } from "../../lib/formGrids";
 import type {
   AssessmentForEmployee,
@@ -241,6 +243,7 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
   const [accessDenied, setAccessDenied] = useState(false);
   const [questions, setQuestions] = useState<RunnerQuestion[] | null>(null);
   const [priorAttempts, setPriorAttempts] = useState<SubmissionSummary[]>([]);
+  const [formTotalMarks, setFormTotalMarks] = useState<number | null>(null);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [formTitle, setFormTitle] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -285,6 +288,13 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
           setFormTitle(assessmentForm.seriesName);
           setQuestions(fromAssessment(assessmentForm));
           setPriorAttempts(assessmentForm.submissions);
+          // The marks the paper is out of. A score is a mark now, so without this the screen can
+          // only print a bare number - "7" says nothing until it says 7 of what.
+          setFormTotalMarks(
+            assessmentForm.questions
+              .filter((question) => !isFormBlockType(question.questionType))
+              .reduce((total, question) => total + Number(question.questionScore), 0) || null,
+          );
           setAlreadySubmitted(false);
           setInstructions(assessmentForm.instructions);
           timeLimitMinutes = assessmentForm.timeLimitMinutes;
@@ -488,10 +498,11 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
         if (!result.resultsPublished) {
           toast.success(t("ส่งคำตอบแล้ว รอ HRD ตรวจและประกาศผล", "Submitted - waiting for HRD to grade and release the result"));
         } else {
+          const label = scoreLabel(result.score, formTotalMarks) ?? "-";
           toast.success(
             t(
-              `ส่งคำตอบแล้ว คะแนน ${result.score}% (${passStatusLabel(result.passStatus, t)})`,
-              `Submitted - score ${result.score}% (${passStatusLabel(result.passStatus, t)})`,
+              `ส่งคำตอบแล้ว คะแนน ${label} (${passStatusLabel(result.passStatus, t)})`,
+              `Submitted - score ${label} (${passStatusLabel(result.passStatus, t)})`,
             ),
           );
         }
@@ -601,7 +612,7 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
                       {!attempt.resultsPublished
                         ? t("รอตรวจ/ประกาศผล", "Awaiting review")
                         : attempt.score !== null
-                          ? `${attempt.score}% (${passStatusLabel(attempt.passStatus, t)})`
+                          ? `${scoreLabel(attempt.score, formTotalMarks)} (${passStatusLabel(attempt.passStatus, t)})`
                           : "-"}
                     </span>
                   </div>

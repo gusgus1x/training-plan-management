@@ -132,7 +132,24 @@ export default function SubmissionReviewPage({
 
   return (
     <section className={styles.page}>
-      <button type="button" className={styles.backBtn} onClick={() => router.back()}>
+      {/* Opened in its own tab from Training Actual, so there is usually nothing to go back to.
+          Closing returns the person to the workspace tab they left running; the push is the
+          fallback for anyone who reached this page by typing the address. */}
+      <button
+        type="button"
+        className={styles.backBtn}
+        onClick={() => {
+          if (typeof window !== "undefined" && window.opener) {
+            window.close();
+            return;
+          }
+          if (typeof window !== "undefined" && window.history.length > 1) {
+            router.back();
+            return;
+          }
+          router.push("/training-record/training-actual");
+        }}
+      >
         ← {t("กลับ", "Back")}
       </button>
 
