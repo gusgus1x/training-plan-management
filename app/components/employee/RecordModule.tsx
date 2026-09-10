@@ -20,6 +20,32 @@ import { useUiLanguage } from "../ThaiUiLocalization";
 import AssignedEvaluations from "./AssignedEvaluations";
 import ModuleHeader from "./ModuleHeader";
 import styles from "./RecordModule.module.css";
+import {
+  FileText,
+  Check,
+  Link2,
+  Trophy,
+  Clock,
+  BarChart3,
+  Hourglass,
+  Award,
+  Download,
+  Landmark,
+  Factory,
+  Tag,
+  Calendar,
+  MapPin,
+  User,
+  CheckCircle2,
+  Search,
+  RefreshCw,
+  ClipboardList,
+  BookOpen,
+  X,
+  Star,
+  Sparkles,
+  MessageSquare,
+} from "../icons/LucideIcons";
 
 export type EmployeeTrainingRecord = {
   id: string;
@@ -196,7 +222,8 @@ const AssessmentFlowSection = ({
   return (
     <section className={styles.assessmentBox} aria-label="Assessment links">
       <h4 className={styles.assessmentTitle}>
-        📄 {t("แบบทดสอบ & แบบประเมินผล (ASSESSMENT FLOW)", "ASSESSMENT & EVALUATION FLOW")}
+        <FileText size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+        {t("แบบทดสอบ & แบบประเมินผล (ASSESSMENT FLOW)", "ASSESSMENT & EVALUATION FLOW")}
       </h4>
 
       <div className={styles.assessmentSteps}>
@@ -219,7 +246,7 @@ const AssessmentFlowSection = ({
                       title={t("เคยกดเข้าไปทำแล้ว", "Previously opened")}
                       aria-label={t("เคยกดเข้าไปทำแล้ว", "Previously opened")}
                     >
-                      {visited ? "✓" : ""}
+                      {visited ? <Check size={12} /> : ""}
                     </span>
                   ) : null}
                 </span>
@@ -271,7 +298,8 @@ const AssessmentFlowSection = ({
                       setVisitedLinks((current) => ({ ...current, [visitedLinkKey(enrollmentId, step.key)]: true }));
                     }}
                   >
-                    🔗 {t("เปิดทำแบบทดสอบ", "Open Link")}
+                    <Link2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("เปิดทำแบบทดสอบ", "Open Link")}
                   </a>
                 ) : (
                   <button disabled type="button" className={styles.openLinkBtn} style={{ opacity: 0.5, cursor: "not-allowed" }}>
@@ -604,7 +632,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
               color: "#10b981",
             }}
           >
-            🏆
+            <Trophy size={24} />
           </div>
           <div className={styles.heroMeta}>
             <span className={styles.heroLabel}>{t("ผ่านการอบรมแล้ว", "Completed Courses")}</span>
@@ -621,7 +649,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
               color: "#3b82f6",
             }}
           >
-            ⏱️
+            <Clock size={24} />
           </div>
           <div className={styles.heroMeta}>
             <span className={styles.heroLabel}>{t("ชั่วโมงเรียนรู้สะสม", "Learning Hours")}</span>
@@ -638,7 +666,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
               color: "#8b5cf6",
             }}
           >
-            📊
+            <BarChart3 size={24} />
           </div>
           <div className={styles.heroMeta}>
             <span className={styles.heroLabel}>{t("คะแนนเฉลี่ยสอบ", "Average Post-Score")}</span>
@@ -655,7 +683,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
               color: "#f59e0b",
             }}
           >
-            ⏳
+            <Hourglass size={24} />
           </div>
           <div className={styles.heroMeta}>
             <span className={styles.heroLabel}>{t("รออนุมัติ / รออบรม", "Pending Approvals")}</span>
@@ -678,7 +706,8 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
           aria-selected={activeTab === "pending"}
           onClick={() => setActiveTab("pending")}
         >
-          ⏳ {t("สถานะลงทะเบียน & รออนุมัติ", "Registration Status & Approvals")}
+          <Hourglass size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+          {t("สถานะลงทะเบียน & รออนุมัติ", "Registration Status & Approvals")}
           <span className={styles.tabBadge}>{pendingEnrollments.length}</span>
         </button>
 
@@ -689,7 +718,8 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
           aria-selected={activeTab === "completed"}
           onClick={() => setActiveTab("completed")}
         >
-          📜 {t("ประวัติการอบรมที่สำเร็จแล้ว", "Completed Passport")}
+          <Award size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+          {t("ประวัติการอบรมที่สำเร็จแล้ว", "Completed Passport")}
           <span className={styles.tabBadge}>{records.length}</span>
         </button>
 
@@ -700,7 +730,8 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
           aria-selected={activeTab === "download"}
           onClick={() => setActiveTab("download")}
         >
-          📥 {t("ดาวน์โหลดประวัติ & เอกสาร", "Download Official Record")}
+          <Download size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+          {t("ดาวน์โหลดประวัติ & เอกสาร", "Download Official Record")}
         </button>
       </div>
 
@@ -709,7 +740,8 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
         <section className={styles.cardSection} aria-label="Pending approval registrations">
           <div className={styles.cardSectionHeader}>
             <h3 className={styles.cardSectionTitle}>
-              ⏳ {t("หลักสูตรที่ลงทะเบียน / รอการพิจารณาอนุมัติ", "Registered Courses / Awaiting Approval")}
+              <Hourglass size={18} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+              {t("หลักสูตรที่ลงทะเบียน / รอการพิจารณาอนุมัติ", "Registered Courses / Awaiting Approval")}
             </h3>
             <span className={styles.cardCountBadge}>
               {pendingEnrollments.length} {t("รายการ", "items")}
@@ -750,7 +782,17 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
 
                     <div className={styles.cardRightHeaderGroup}>
                       <span className={styles.providerTag}>
-                        {isCenterOwner ? "🏛️ HRD Center" : "🏭 Factory HRD"}
+                        {isCenterOwner ? (
+                          <>
+                            <Landmark size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                            HRD Center
+                          </>
+                        ) : (
+                          <>
+                            <Factory size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                            Factory HRD
+                          </>
+                        )}
                       </span>
 
                       <button
@@ -773,23 +815,38 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                   <div className={styles.infoBarGrid}>
                     <div className={styles.infoBarItem}>
                       <span className={styles.infoBarLabel}>{t("รุ่นที่อบรม", "Batch")}</span>
-                      <span className={styles.infoBarValue}>🔖 {enrollment.plan.batchName || "-"}</span>
+                      <span className={styles.infoBarValue}>
+                        <Tag size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {enrollment.plan.batchName || "-"}
+                      </span>
                     </div>
                     <div className={styles.infoBarItem}>
                       <span className={styles.infoBarLabel}>{t("วันที่อบรม", "Training Date")}</span>
-                      <span className={styles.infoBarValue}>📅 {enrollment.plan.startAt.slice(0, 10)}</span>
+                      <span className={styles.infoBarValue}>
+                        <Calendar size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {enrollment.plan.startAt.slice(0, 10)}
+                      </span>
                     </div>
                     <div className={styles.infoBarItem}>
                       <span className={styles.infoBarLabel}>{t("สถานที่", "Venue")}</span>
-                      <span className={styles.infoBarValue}>📍 {enrollment.plan.venue || "-"}</span>
+                      <span className={styles.infoBarValue}>
+                        <MapPin size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {enrollment.plan.venue || "-"}
+                      </span>
                     </div>
                     <div className={styles.infoBarItem}>
                       <span className={styles.infoBarLabel}>{t("วิทยากร", "Instructor")}</span>
-                      <span className={styles.infoBarValue}>👨‍🏫 {enrollment.plan.instructor || "-"}</span>
+                      <span className={styles.infoBarValue}>
+                        <User size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {enrollment.plan.instructor || "-"}
+                      </span>
                     </div>
                     <div className={styles.infoBarItem}>
                       <span className={styles.infoBarLabel}>{t("ระยะเวลา", "Duration")}</span>
-                      <span className={styles.infoBarValue}>⏱️ {enrollment.plan.hours} {t("ชม.", "hrs")}</span>
+                      <span className={styles.infoBarValue}>
+                        <Clock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {enrollment.plan.hours} {t("ชม.", "hrs")}
+                      </span>
                     </div>
                   </div>
 
@@ -798,7 +855,8 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                       <div className={styles.metaBox} style={{ gap: "6px" }}>
                         <span className={styles.metaBoxLabel}>{t("สถานะการพิจารณาอนุมัติ", "Approval Status")}</span>
                         <strong className={styles.metaBoxValue} style={{ color: "#10b981", fontSize: "0.95rem" }}>
-                          🟢 {enrollment.status}
+                          <CheckCircle2 size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4, color: "#10b981" }} />
+                          {enrollment.status}
                         </strong>
                       </div>
 
@@ -839,7 +897,8 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
         <section className={styles.cardSection} aria-label="Completed training section">
           <div className={styles.cardSectionHeader}>
             <h3 className={styles.cardSectionTitle}>
-              📜 {t("ประวัติการอบรมที่สำเร็จแล้ว (Completed Training History)", "Completed Training History")}
+              <Award size={18} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+              {t("ประวัติการอบรมที่สำเร็จแล้ว (Completed Training History)", "Completed Training History")}
             </h3>
             <span className={styles.cardCountBadge}>{filteredRecords.length} {t("รายการ", "records")}</span>
           </div>
@@ -859,7 +918,9 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
             </select>
 
             <div className={styles.searchInputBox}>
-              <span className={styles.searchIcon} aria-hidden="true">🔍</span>
+              <span className={styles.searchIcon} aria-hidden="true">
+                <Search size={14} />
+              </span>
               <input
                 className={styles.searchInput}
                 value={query}
@@ -890,7 +951,17 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
 
                     <div className={styles.cardRightHeaderGroup}>
                       <span className={styles.providerTag}>
-                        {record.provider === "HRD Center" ? "🏛️ HRD Center" : "🏭 Factory HRD"}
+                        {record.provider === "HRD Center" ? (
+                          <>
+                            <Landmark size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                            HRD Center
+                          </>
+                        ) : (
+                          <>
+                            <Factory size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                            Factory HRD
+                          </>
+                        )}
                       </span>
 
                       {onRequestRefresher ? (
@@ -900,7 +971,8 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                           title={t("ขอให้เปิดอบรมทบทวนหลักสูตรนี้ใหม่", "Request refresher for this course")}
                           onClick={() => onRequestRefresher(record)}
                         >
-                          🔄 {t("ขออบรมทบทวน", "Request Refresher")}
+                          <RefreshCw size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                          {t("ขออบรมทบทวน", "Request Refresher")}
                         </button>
                       ) : null}
 
@@ -924,19 +996,31 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                   <div className={styles.infoBarGrid}>
                     <div className={styles.infoBarItem}>
                       <span className={styles.infoBarLabel}>{t("วันที่สำเร็จอบรม", "Completed Date")}</span>
-                      <span className={styles.infoBarValue}>📅 {formatDate(record.completedDate)}</span>
+                      <span className={styles.infoBarValue}>
+                        <Calendar size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {formatDate(record.completedDate)}
+                      </span>
                     </div>
                     <div className={styles.infoBarItem}>
                       <span className={styles.infoBarLabel}>{t("สถานที่อบรม", "Venue")}</span>
-                      <span className={styles.infoBarValue}>📍 {record.location || "-"}</span>
+                      <span className={styles.infoBarValue}>
+                        <MapPin size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {record.location || "-"}
+                      </span>
                     </div>
                     <div className={styles.infoBarItem}>
                       <span className={styles.infoBarLabel}>{t("วิทยากรผู้สอน", "Instructor")}</span>
-                      <span className={styles.infoBarValue}>👨‍🏫 {record.instructor || "-"}</span>
+                      <span className={styles.infoBarValue}>
+                        <User size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {record.instructor || "-"}
+                      </span>
                     </div>
                     <div className={styles.infoBarItem}>
                       <span className={styles.infoBarLabel}>{t("ระยะเวลาเรียน", "Duration")}</span>
-                      <span className={styles.infoBarValue}>⏱️ {record.hours} {t("ชม.", "hrs")}</span>
+                      <span className={styles.infoBarValue}>
+                        <Clock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {record.hours} {t("ชม.", "hrs")}
+                      </span>
                     </div>
                   </div>
 
@@ -998,7 +1082,8 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                             }}
                           >
                             <strong style={{ fontSize: "0.9rem" }}>
-                              🎖 {t("ใบเกียรติบัตร", "Certificate")}
+                              <Award size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                              {t("ใบเกียรติบัตร", "Certificate")}
                             </strong>
                             <a
                               href={certificateFileUrl(record.certificate.certificateFileId, { download: true })}
@@ -1058,7 +1143,10 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
       {activeTab === "download" ? (
         <section className={styles.exportPanel} aria-label="Download completed training files">
           <div className={styles.exportHeader}>
-            <h3>📑 {t("ดาวน์โหลดประวัติและเอกสารการอบรมฉบับเต็ม", "Download Full Official Training Record")}</h3>
+            <h3>
+              <FileText size={18} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+              {t("ดาวน์โหลดประวัติและเอกสารการอบรมฉบับเต็ม", "Download Full Official Training Record")}
+            </h3>
             <p>
               {t(
                 "ส่งออกไฟล์ประวัติการอบรมฉบับสมบูรณ์ ประกอบด้วยหลักสูตรที่ผ่าน ชั่วโมงเรียน เลขที่ใบรับรอง คะแนนสอบ และผู้จัด สำหรับยื่นเรื่องปรับตำแหน่ง ย้ายแผนก หรือลาออก",
@@ -1087,7 +1175,8 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
           {/* TAB 3 Completed Courses List Preview */}
           <div className={styles.exportPreviewBox}>
             <h4>
-              📋 {t("รายการหลักสูตรที่เสร็จสมบูรณ์ที่จะจัดส่งออกในเอกสารฉบับนี้", "Completed Courses Included in Document")}{" "}
+              <ClipboardList size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+              {t("รายการหลักสูตรที่เสร็จสมบูรณ์ที่จะจัดส่งออกในเอกสารฉบับนี้", "Completed Courses Included in Document")}{" "}
               ({records.length} {t("รายการ", "records")})
             </h4>
             <div className={styles.exportPreviewList}>
@@ -1096,12 +1185,15 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                   <div>
                     <strong style={{ fontSize: "0.9rem", color: "var(--ui-30-ink)" }}>{record.courseTitle}</strong>
                     <div style={{ fontSize: "0.78rem", color: "var(--ui-30-muted)", marginTop: "2px" }}>
-                      {record.courseCode} • {record.provider} • 📅 {formatDate(record.completedDate)}
+                      {record.courseCode} • {record.provider} •{" "}
+                      <Calendar size={11} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />
+                      {formatDate(record.completedDate)}
                     </div>
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
                     <span style={{ fontSize: "0.84rem", fontWeight: 900, color: "#10b981" }}>
-                      ⏱️ {record.hours} {t("ชม.", "hrs")}
+                      <Clock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />
+                      {record.hours} {t("ชม.", "hrs")}
                     </span>
                     <div style={{ fontSize: "0.74rem", color: "var(--ui-30-muted)" }}>
                       {t("เลขใบรับรอง", "Cert No")}: {record.certificateNo}
@@ -1120,12 +1212,19 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
 
           <div className={styles.exportFooter}>
             <div className={styles.exportStats}>
-              <span className={styles.statBadge}>📚 {records.length} {t("หลักสูตร", "Records")}</span>
-              <span className={styles.statBadge}>⏱️ {records.reduce((t, r) => t + r.hours, 0)} {t("ชั่วโมง", "Hours")}</span>
+              <span className={styles.statBadge}>
+                <BookOpen size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                {records.length} {t("หลักสูตร", "Records")}
+              </span>
+              <span className={styles.statBadge}>
+                <Clock size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                {records.reduce((t, r) => t + r.hours, 0)} {t("ชั่วโมง", "Hours")}
+              </span>
             </div>
 
             <button className={styles.exportBtn} type="button" onClick={handleExportAll}>
-              📥 {t("ดาวน์โหลดเอกสาร (Download HTML)", "Download Passport Document")}
+              <Download size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+              {t("ดาวน์โหลดเอกสาร (Download HTML)", "Download Passport Document")}
             </button>
           </div>
         </section>
@@ -1136,8 +1235,8 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
           <div className={styles.reviewDialog} onClick={(event) => event.stopPropagation()}>
             <div className={styles.reviewHeader}>
               <h4>{reviewPanel.title}</h4>
-              <button type="button" className={styles.reviewClose} onClick={() => setReviewPanel(null)}>
-                ✕
+              <button type="button" className={styles.reviewClose} onClick={() => setReviewPanel(null)} aria-label="Close">
+                <X size={16} />
               </button>
             </div>
 
@@ -1225,7 +1324,11 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                         {attempt.resultsPublished
                           ? `${attempt.totalAwarded}/${attempt.totalPossible}`
                           : `${attempt.autoAwarded}/${attempt.autoPossible}*`}
-                        {attempt.attemptNo === reviewPanel.review!.bestAttemptNo ? " ★" : ""}
+                        {attempt.attemptNo === reviewPanel.review!.bestAttemptNo ? (
+                          <> <Star size={11} style={{ display: "inline", verticalAlign: "text-bottom" }} /></>
+                        ) : (
+                          ""
+                        )}
                       </button>
                     ))}
                   </div>
@@ -1264,7 +1367,10 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                 ) : null}
 
                 {reviewPanel.review.missedQuestions.length === 0 ? (
-                  <p className={styles.reviewNote}>🎉 {t("ตอบถูกทุกข้อ", "Every question correct")}</p>
+                  <p className={styles.reviewNote}>
+                    <Sparkles size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6, color: "#10b981" }} />
+                    {t("ตอบถูกทุกข้อ", "Every question correct")}
+                  </p>
                 ) : (
                   <>
                     <p className={styles.reviewNote}>
@@ -1285,7 +1391,10 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                             </strong>
                           </div>
                           {question.reviewComment ? (
-                            <p className={styles.reviewComment}>💬 {question.reviewComment}</p>
+                            <p className={styles.reviewComment}>
+                              <MessageSquare size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                              {question.reviewComment}
+                            </p>
                           ) : null}
                         </li>
                       ))}

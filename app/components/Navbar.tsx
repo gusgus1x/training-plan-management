@@ -7,6 +7,7 @@ import logoImage from "../photo/logo.png";
 import { profileValue, useAuthenticatedUser } from "./AuthenticatedUserContext";
 import { useUiLanguage } from "./ThaiUiLocalization";
 import styles from "./Navbar.module.css";
+import { Lock } from "./icons/LucideIcons";
 
 type NavbarProps = {
   username?: string;
@@ -448,7 +449,7 @@ export default function Navbar({
                   >
                     {item.locked ? (
                       <span className={styles.contextLock} aria-hidden="true">
-                        🔒
+                        <Lock size={12} />
                       </span>
                     ) : null}
                     <span translate="no">{item.title}</span>

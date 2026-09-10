@@ -19,6 +19,7 @@ import {
   type CertificatePlanView,
   type IssuedCertificate,
 } from "../../../../lib/certificates/types";
+import { Check, X, Eye, Trash2 } from "../../../icons/LucideIcons";
 import styles from "./TrainingRecord.module.css";
 
 /**
@@ -281,7 +282,7 @@ export default function CertificateUploadPanel({ planId }: { planId: string }) {
                             role="img"
                             aria-label={t("ได้รับแล้ว", "Issued")}
                           >
-                            ✓
+                            <Check size={14} />
                           </span>
                         ) : (
                           <span
@@ -321,7 +322,7 @@ export default function CertificateUploadPanel({ planId }: { planId: string }) {
                                 : t("ดูใบเกียรติบัตร", "Preview certificate")
                             }
                           >
-                            {isOpen ? "✕" : "👁"}
+                            {isOpen ? <X size={14} /> : <Eye size={14} />}
                           </button>
                         ) : null}
                       </td>
@@ -384,7 +385,7 @@ export default function CertificateUploadPanel({ planId }: { planId: string }) {
                       aria-label={isOpen ? t("ปิดตัวอย่าง", "Close preview") : t("ดูใบเกียรติบัตร", "Preview certificate")}
                       title={isOpen ? t("ปิดตัวอย่าง", "Close preview") : t("ดูใบเกียรติบัตร", "Preview certificate")}
                     >
-                      {isOpen ? "✕" : "👁"}
+                      {isOpen ? <X size={14} /> : <Eye size={14} />}
                     </button>
                     <button
                       type="button"
@@ -393,7 +394,7 @@ export default function CertificateUploadPanel({ planId }: { planId: string }) {
                       aria-label={t("เอาไฟล์นี้ออก", "Remove this file")}
                       title={t("เอาไฟล์นี้ออก", "Remove this file")}
                     >
-                      🗑
+                      <Trash2 size={14} />
                     </button>
                   </div>
 

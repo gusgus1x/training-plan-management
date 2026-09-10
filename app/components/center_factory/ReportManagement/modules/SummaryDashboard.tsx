@@ -20,6 +20,7 @@ import type { EnrollmentRecord } from "../../../../lib/trainingEnrollment/types"
 import { listTrainingRecords } from "../../../../lib/trainingRecord/client";
 import type { TrainingRecordSummary } from "../../../../lib/trainingRecord/types";
 import styles from "./SummaryDashboard.module.css";
+import { Building2, Factory } from "../../../icons/LucideIcons";
 
 export const summaryDashboardModule = {
   title: "Summary Dashboard",
@@ -271,7 +272,11 @@ export default function SummaryDashboard() {
           <p>{summaryDashboardModule.description}</p>
         </div>
         <span className={`${styles.scopeBadge} ${isFactoryUser ? styles.factoryScopeBadge : ""}`}>
-          {isFactoryUser ? `🏭 ${userCompanyCode}` : "🏢 HRD Center"}
+          {isFactoryUser ? (
+            <><Factory size={13} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> {userCompanyCode}</>
+          ) : (
+            <><Building2 size={13} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> HRD Center</>
+          )}
         </span>
       </section>
 

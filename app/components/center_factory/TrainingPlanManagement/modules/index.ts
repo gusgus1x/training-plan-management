@@ -1,4 +1,5 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
+import React from "react";
 import { withSlug } from "../../../../lib/slug";
 import RequestTrainingNeed, {
   requestTrainingNeedModule,
@@ -8,9 +9,10 @@ import TrainingAcceptSurvey, {
 } from "./TrainingAcceptSurvey";
 import TrainingOAP, { trainingOapModule } from "./TrainingOAP";
 import TrainingRolling, { trainingRollingModule } from "./TrainingRolling";
+import { CalendarDays, Clock, FileEdit, CheckSquare } from "../../../icons/LucideIcons";
 
 export type PlanModuleTopic = {
-  icon: string;
+  icon: ReactNode;
   title: string;
   subtitle: string;
   description: string;
@@ -20,8 +22,8 @@ export type PlanModuleTopic = {
 };
 
 export const planItems: readonly PlanModuleTopic[] = [
-  { ...withSlug(trainingOapModule), icon: "🗓️", Component: TrainingOAP },
-  { ...withSlug(trainingRollingModule), icon: "📆", Component: TrainingRolling },
-  { ...withSlug(requestTrainingNeedModule), icon: "📝", Component: RequestTrainingNeed },
-  { ...withSlug(trainingAcceptSurveyModule), icon: "☑️", Component: TrainingAcceptSurvey },
+  { ...withSlug(trainingOapModule), icon: React.createElement(CalendarDays, { size: 28 }), Component: TrainingOAP },
+  { ...withSlug(trainingRollingModule), icon: React.createElement(Clock, { size: 28 }), Component: TrainingRolling },
+  { ...withSlug(requestTrainingNeedModule), icon: React.createElement(FileEdit, { size: 28 }), Component: RequestTrainingNeed },
+  { ...withSlug(trainingAcceptSurveyModule), icon: React.createElement(CheckSquare, { size: 28 }), Component: TrainingAcceptSurvey },
 ];

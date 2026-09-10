@@ -47,6 +47,7 @@ import FormPreviewRunner, { type PreviewItem, type PreviewKind } from "./FormPre
 import SearchableSelect from "../../../SearchableSelect";
 import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./Assessment.module.css";
+import { Building2, Check, ClipboardList, Eye, Pencil, Star, X } from "../../../icons/LucideIcons";
 
 export const assessmentModule = {
   title: "Assessment",
@@ -137,7 +138,7 @@ const renderGridSummary = (
                 <th scope="row">{row.choiceText}</th>
                 {columns.map((column, columnIndex) => (
                   <td key={keyOf(column)} data-correct={correct.includes(columnIndex + 1)}>
-                    {correct.includes(columnIndex + 1) ? "✓" : ""}
+                    {correct.includes(columnIndex + 1) ? <Check size={14} style={{ display: "inline-block" }} /> : null}
                   </td>
                 ))}
                 <td>{Number(row.optionScore)}</td>
@@ -1148,12 +1149,12 @@ export default function Assessment() {
       {mode === "new" ? (
         <div className={styles.templatePicker}>
           <span className={styles.templatePickerLabel}>
-            📋 สร้างจากแบบทดสอบที่มีอยู่ (Use an existing assessment as a template)
+            <><ClipboardList size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} /> สร้างจากแบบทดสอบที่มีอยู่ (Use an existing assessment as a template)</>
           </span>
           <SearchableSelect
             value={templateSourceId}
             onChange={applyTemplate}
-            placeholder="🔍 ค้นหารหัสหรือชื่อแบบทดสอบ..."
+            placeholder="ค้นหารหัสหรือชื่อแบบทดสอบ..."
             options={[
               { value: "", label: "-- ไม่ใช้แม่แบบ (เริ่มจากหน้าว่าง) --" },
               ...items.map((item) => ({
@@ -1431,9 +1432,7 @@ export default function Assessment() {
                             lineHeight: 1,
                             padding: "2px 4px",
                           }}
-                        >
-                          ✕
-                        </button>
+                        ><X size={14} /></button>
                       </div>
                     </div>
                     <input
@@ -1529,7 +1528,7 @@ export default function Assessment() {
                             ...current,
                             choices: current.choices.filter((candidate) => candidate.id !== choice.id),
                           }))}
-                        >✕</button>
+                        ><X size={14} /></button>
                       </span>
                     ))}
                     <button className={styles.secondaryButton} type="button" onClick={() => addGridEntry(axis)}>
@@ -1588,14 +1587,14 @@ export default function Assessment() {
               className={previewAsLearner ? styles.secondaryButton : styles.activePreviewButton}
               onClick={() => setPreviewAsLearner(false)}
             >
-              {t("✎ มุมมองผู้จัดทำ", "✎ Author view")}
+              <><Pencil size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> {t("มุมมองผู้จัดทำ", "Author view")}</>
             </button>
             <button
               type="button"
               className={previewAsLearner ? styles.activePreviewButton : styles.secondaryButton}
               onClick={() => setPreviewAsLearner(true)}
             >
-              {t("👁 มุมมองผู้เรียน", "👁 Learner view")}
+              <><Eye size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> {t("มุมมองผู้เรียน", "Learner view")}</>
             </button>
           </div>
         </div>
@@ -1609,7 +1608,7 @@ export default function Assessment() {
               title={draft.seriesName.trim() || "แบบทดสอบที่ยังไม่มีชื่อ"}
               instructions={draft.instructions}
               meta={[
-                draft.timeLimitMinutes.trim() ? `⏱ ${draft.timeLimitMinutes} นาที` : null,
+                draft.timeLimitMinutes.trim() ? `${draft.timeLimitMinutes} นาที` : null,
                 `เกณฑ์ผ่าน ${draft.passingScorePercent || 0}%`,
               ].filter(Boolean).join(" · ")}
               items={toPreviewItems(questions)}
@@ -1622,8 +1621,8 @@ export default function Assessment() {
           {skippedByBranch ? (
             <p className={styles.branchWarning} role="note">
               {t(
-                "⚠ มีการข้ามส่วนด้วย \"ไปยังส่วนตามคำตอบ\" — คำถามในส่วนที่ถูกข้ามยังถูกนับเป็นตัวหารของคะแนนอยู่ ผู้เรียนที่เดินเส้นทางนั้นจะไม่มีทางได้คะแนนเต็ม 100%",
-                "⚠ A branch skips a section. Questions in a skipped section still count toward the score denominator, so a learner on that path can never reach 100%.",
+                "มีการข้ามส่วนด้วย \"ไปยังส่วนตามคำตอบ\" — คำถามในส่วนที่ถูกข้ามยังถูกนับเป็นตัวหารของคะแนนอยู่ ผู้เรียนที่เดินเส้นทางนั้นจะไม่มีทางได้คะแนนเต็ม 100%",
+                "A branch skips a section. Questions in a skipped section still count toward the score denominator, so a learner on that path can never reach 100%.",
               )}
             </p>
           ) : null}
@@ -1825,9 +1824,9 @@ export default function Assessment() {
               onClick={() => toggleGroup(group.code)}
             >
               <span className={styles.chevron} aria-hidden="true" />
-              <span aria-hidden="true">{group.code === "CENTRAL" ? "🏢" : "🏬"}</span>
+              <span aria-hidden="true">{group.code === "CENTRAL" ? <Building2 size={16} /> : <Building2 size={16} />}</span>
               <strong>{group.label}</strong>
-              {group.isOwn ? <em className={styles.ownCompanyTag}>⭐ ของฉัน</em> : <span />}
+              {group.isOwn ? <em className={styles.ownCompanyTag}><Star size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> ของฉัน</em> : <span />}
               <small>{group.rows.length} ชุด</small>
             </button>
             {groupOpen ? (
@@ -1983,9 +1982,7 @@ export default function Assessment() {
                                 aria-label={detailAsLearner ? "กลับไปมุมมองผู้จัดทำ" : "ทดลองตอบแบบผู้เรียน"}
                                 title={detailAsLearner ? "กลับไปมุมมองผู้จัดทำ" : "ทดลองตอบแบบผู้เรียน"}
                                 onClick={() => setDetailAsLearner((current) => !current)}
-                              >
-                                👁
-                              </button>
+                              ><Eye size={16} /></button>
                             </div>
                           </div>
                           {/* Mirrors TrainingFormRunner: no correct-answer markers, no per-question score. */}
@@ -1995,7 +1992,7 @@ export default function Assessment() {
                                 title={item.seriesName}
                                 instructions={item.instructions}
                                 meta={[
-                                  item.timeLimitMinutes ? `⏱ ${item.timeLimitMinutes} นาที` : null,
+                                  item.timeLimitMinutes ? `${item.timeLimitMinutes} นาที` : null,
                                   `เกณฑ์ผ่าน ${item.passingScorePercent || 0}%`,
                                 ].filter(Boolean).join(" · ")}
                                 items={toPreviewItems(toDraftQuestions(item))}

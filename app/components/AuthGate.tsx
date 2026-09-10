@@ -147,7 +147,7 @@ export default function AuthGate({
     setSessionUser(loggedUser);
     setLogoutMessage(null);
     const displayName = loggedUser.displayName || loggedUser.username;
-    toast.success(`🎉 ยินดีต้อนรับคุณ ${displayName} เข้าสู่ระบบ / Welcome ${displayName}!`);
+    toast.success(`ยินดีต้อนรับคุณ ${displayName} เข้าสู่ระบบ / Welcome ${displayName}!`);
     // No navigation here on purpose - the effect below owns it, and two owners is what broke the
     // return URL. This only refreshes so the server layout picks up the new session.
     router.refresh();
@@ -185,7 +185,7 @@ export default function AuthGate({
     setLogoutMessage(null);
     setPreviewUser(nextPreviewUser);
     const displayName = nextPreviewUser.displayName || nextPreviewUser.username;
-    toast.success(`🎉 ยินดีต้อนรับคุณ ${displayName} เข้าสู่ระบบ / Welcome ${displayName}!`);
+    toast.success(`ยินดีต้อนรับคุณ ${displayName} เข้าสู่ระบบ / Welcome ${displayName}!`);
     // As in handleLogin: the effect below performs the navigation.
   };
 

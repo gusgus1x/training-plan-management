@@ -11,6 +11,7 @@ import type { SubmissionReview, SubmissionReviewQuestion } from "../../../../lib
 import { isFormBlockType } from "../../../../lib/formBlocks";
 import { useToast } from "../../../ToastHost";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
+import { Check, X } from "../../../icons/LucideIcons";
 import styles from "./SubmissionReviewPage.module.css";
 
 /**
@@ -276,7 +277,7 @@ const QuestionCard = ({
               }
             >
               <span className={styles.choiceMark}>
-                {choice.picked ? (choice.isCorrect ? "✓" : "✕") : choice.isCorrect ? "•" : ""}
+                {choice.picked ? (choice.isCorrect ? <Check size={12} /> : <X size={12} />) : choice.isCorrect ? "•" : ""}
               </span>
               <span>{choice.choiceText}</span>
               {choice.isCorrect && !choice.picked ? (

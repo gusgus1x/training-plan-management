@@ -40,6 +40,7 @@ import type { LevelRecord } from "../../../../lib/levels/types";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./CourseMasterWorkspace.module.css";
+import { BarChart3, Building2, Check, ClipboardList, Download, FileSpreadsheet, Folder, Play, Star, Trash2, Upload, X } from "../../../icons/LucideIcons";
 
 export const courseMasterWorkspaceModule = {
   title: "Course Master & Standard",
@@ -424,7 +425,7 @@ const PrerequisiteCourseSelect = ({
                   onClick={() => !isBlocked && onToggle(opt.id)}
                 >
                   <div className={styles.itemMain} translate="no">
-                    {selectedIds.includes(opt.id) ? "✓ " : ""}
+                    {selectedIds.includes(opt.id) ? <Check size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> : null}
                     {opt.code} — {opt.name}
                   </div>
                   {isBlocked ? (
@@ -708,8 +709,8 @@ function CourseMaster() {
       const targetLabel = companyCode && companyCode !== "ALL" ? companyCode : (language === "th" ? "ทุกบริษัท" : "All Companies");
       toast.success(
         language === "th"
-          ? `📤 Export ข้อมูลหลักสูตร (${targetLabel}) เรียบร้อยแล้ว`
-          : `📤 Course Master exported successfully (${downloadFilename})`,
+          ? `Export ข้อมูลหลักสูตร (${targetLabel}) เรียบร้อยแล้ว`
+          : `Course Master exported successfully (${downloadFilename})`,
       );
     } catch (err) {
       console.error("Export error:", err);
@@ -753,13 +754,13 @@ function CourseMaster() {
           setImportRows(mapped);
         } catch (err) {
           console.error("CSV fallback parse error:", err);
-          setImportNotice("❌ ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบรูปแบบไฟล์ CSV / Excel");
+          setImportNotice("ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบรูปแบบไฟล์ CSV / Excel");
         }
       };
       reader.readAsText(file);
     } catch (err) {
       console.error("Excel/CSV parse error:", err);
-      setImportNotice("❌ ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบรูปแบบไฟล์ CSV / Excel");
+      setImportNotice("ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบรูปแบบไฟล์ CSV / Excel");
     }
   };
 
@@ -2177,7 +2178,7 @@ function CourseMaster() {
         }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px", width: "100%" }}>
             <span className={styles.fieldLabel} style={{ color: "#2563eb", fontWeight: 800, fontSize: "0.92rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "6px" }}>
-              <span>📋</span>
+              <ClipboardList size={16} />
               <span>
                 {language === "th"
                   ? "ดึงข้อมูลจากหลักสูตรส่วนกลาง (Copy details from Center Course template)"
@@ -2187,7 +2188,7 @@ function CourseMaster() {
             <SearchableSelect
               value={selectedTemplateCourseId}
               options={centerCourseTemplateOptions}
-              placeholder={language === "th" ? "🔍 เลือกหลักสูตรส่วนกลางเพื่อดึงรายละเอียด..." : "🔍 Select Center course template..."}
+              placeholder={language === "th" ? "เลือกหลักสูตรส่วนกลางเพื่อดึงรายละเอียด..." : "Select Center course template..."}
               onChange={(code) => handleApplyCenterTemplate(code)}
             />
             <small className={styles.fieldHint} style={{ color: "#64748b", marginTop: "4px" }}>
@@ -2634,7 +2635,7 @@ function CourseMaster() {
                     }
                   />
                   <span className={styles.standard_checkMark} aria-hidden="true">
-                    {selectedCompanies.includes(code) ? "✓" : ""}
+                    {selectedCompanies.includes(code) ? <Check size={12} /> : null}
                   </span>
                   <span translate="no">{code}</span>
                 </label>
@@ -2765,7 +2766,7 @@ function CourseMaster() {
                         )
                       }
                     >
-                      🗑️ ลบ (Delete)
+                      <Trash2 size={13} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> ลบ (Delete)
                     </button>
                   ) : null}
                 </div>
@@ -2865,7 +2866,7 @@ function CourseMaster() {
                     }
                   />
                   <span className={styles.standard_checkMark} aria-hidden="true">
-                    {selectedPositions.includes(position) ? "✓" : ""}
+                    {selectedPositions.includes(position) ? <Check size={12} /> : null}
                   </span>
                   <span translate="no">{position}</span>
                 </label>
@@ -2895,7 +2896,7 @@ function CourseMaster() {
                     }
                   />
                   <span className={styles.standard_checkMark} aria-hidden="true">
-                    {selectedLevels.includes(level) ? "✓" : ""}
+                    {selectedLevels.includes(level) ? <Check size={12} /> : null}
                   </span>
                   <span translate="no">{level}</span>
                 </label>
@@ -2978,7 +2979,7 @@ function CourseMaster() {
         Delete
         </button>
         <button className={styles.secondaryButton} type="button" onClick={() => setIsImportModalOpen(true)}>
-          📥 Import Excel
+          <Upload size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} /> Import Excel
         </button>
         <button className={styles.secondaryButton} type="button" onClick={handleRefresh}>
           Refresh
@@ -3080,13 +3081,18 @@ function CourseMaster() {
                 gap: '6px',
               }}
             >
-              {isExporting
-                ? '⏳ กำลังส่งออก...'
-                : listCompanyFilter
-                ? `📤 Export ${listCompanyFilter}`
-                : isFactoryUser && userCompanyCode
-                ? `📤 Export ${userCompanyCode}`
-                : (language === 'th' ? '📤 Export ทุกบริษัท' : '📤 Export All')}
+              {isExporting ? (
+                language === 'th' ? 'กำลังส่งออก...' : 'Exporting...'
+              ) : (
+                <>
+                  <Download size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} />
+                  {listCompanyFilter
+                    ? `Export ${listCompanyFilter}`
+                    : isFactoryUser && userCompanyCode
+                    ? `Export ${userCompanyCode}`
+                    : (language === 'th' ? 'Export ทุกบริษัท' : 'Export All')}
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -3119,9 +3125,9 @@ function CourseMaster() {
                       className={`${styles.sectionChevron} ${isSectionOpen ? styles.sectionChevronOpen : ""}`}
                       aria-hidden="true"
                     >
-                      ▶
+                      <Play size={10} style={{ display: "inline-block", fill: "currentColor" }} />
                     </span>
-                    <span className={styles.companyIcon}>{section.companyName === "HRD Center" ? "🏢" : "🏬"}</span>
+                    <span className={styles.companyIcon}>{section.companyName === "HRD Center" ? <Building2 size={16} /> : <Building2 size={16} />}</span>
                     <h4>
                       {section.companyName === "HRD Center"
                         ? (language === 'th' ? "หลักสูตรส่วนกลาง (HRD Center)" : "HRD Center Courses")
@@ -3130,8 +3136,8 @@ function CourseMaster() {
                     {section.isUserCompany ? (
                       <span className={styles.ownCompanySectionTag}>
                         {language === 'th'
-                          ? `⭐ บริษัทของฉัน (${userCompanyCode || "HRD Center"})`
-                          : `⭐ My Company (${userCompanyCode || "HRD Center"})`}
+                          ? <><Star size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> {`บริษัทของฉัน (${userCompanyCode || "HRD Center"})`}</>
+                          : <><Star size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> {`My Company (${userCompanyCode || "HRD Center"})`}</>}
                       </span>
                     ) : null}
                   </div>
@@ -3153,7 +3159,7 @@ function CourseMaster() {
                         void handleExportForCompany(section.companyName === 'HRD Center' ? 'CENTER' : section.companyName)
                       }
                     >
-                      📤 Export
+                      <Download size={13} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> Export
                     </button>
                     <span className={styles.companyCountBadge}>
                       {section.courses.length} {language === 'th' ? 'หลักสูตร' : 'courses'}
@@ -3347,7 +3353,7 @@ function CourseMaster() {
             >
               <div>
                 <h3 style={{ margin: "0 0 4px", fontSize: "1.15rem", color: "#0f172a" }}>
-                  📥 นำเข้าข้อมูลหลักสูตร (Import Course Master via Excel/CSV)
+                  <Upload size={18} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} /> นำเข้าข้อมูลหลักสูตร (Import Course Master via Excel/CSV)
                 </h3>
                 <p style={{ margin: 0, fontSize: "0.82rem", color: "#64748b" }}>
                   เลือกไฟล์ Excel เพื่อสร้างรายชื่อหลักสูตรและมาตรฐานกลุ่มเป้าหมายในระบบจำนวนมาก
@@ -3370,9 +3376,7 @@ function CourseMaster() {
                     setImportFileName("");
                   }
                 }}
-              >
-                ✕
-              </button>
+              ><X size={18} /></button>
             </div>
 
             <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>
@@ -3430,7 +3434,7 @@ function CourseMaster() {
                     style={{ display: "none" }}
                     onChange={handleExcelFileChange}
                   />
-                  <div style={{ fontSize: "2rem", marginBottom: "8px" }}>📊</div>
+                  <div style={{ marginBottom: "8px", display: "flex", justifyContent: "center" }}><BarChart3 size={32} /></div>
                   <h4 style={{ margin: "0 0 6px", color: "#1e293b", fontSize: "1rem" }}>
                     {importFileName ? `ไฟล์ที่เลือก: ${importFileName}` : "ลากไฟล์มาวางที่นี่ หรือคลิกปุ่มเพื่อเลือกไฟล์ Excel"}
                   </h4>
@@ -3451,7 +3455,7 @@ function CourseMaster() {
                       }}
                       onClick={() => importFileInputRef.current?.click()}
                     >
-                      📁 Select Excel File
+                      <Folder size={15} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} /> Select Excel File
                     </button>
                     <button
                       type="button"
@@ -3466,7 +3470,7 @@ function CourseMaster() {
                       }}
                       onClick={handleDownloadExcelTemplate}
                     >
-                      📄 Download Template
+                      <FileSpreadsheet size={15} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} /> Download Template
                     </button>
                   </div>
                 </div>

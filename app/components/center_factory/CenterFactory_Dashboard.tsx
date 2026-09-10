@@ -22,6 +22,7 @@ import { listEnrollments } from "../../lib/trainingEnrollment/client";
 import { ACTIVE_ENROLLMENT_STATUSES, type EnrollmentRecord } from "../../lib/trainingEnrollment/types";
 import NewActivities from "./NewActivities/NewActivities";
 import styles from "./CenterFactory_Dashboard.module.css";
+import { BarChart3, BookOpen, Building2, CalendarDays, ClipboardCheck, Clock, Factory, Folder, MapPin, Tag, Users, X } from "../icons/LucideIcons";
 
 
 const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -406,7 +407,7 @@ export default function Dashboard({
     {
       badge: isThai ? "จัดการหลักสูตร" : "COURSE MANAGEMENT",
       step: "01",
-      icon: "📚",
+      icon: <BookOpen size={28} />,
       title: "Training Course",
       subTitle: "Training Course Management",
       description: isThai
@@ -421,7 +422,7 @@ export default function Dashboard({
     {
       badge: isThai ? "จัดการแผนอบรม" : "PLAN MANAGEMENT",
       step: "02",
-      icon: "📅",
+      icon: <CalendarDays size={28} />,
       title: "Training Plan",
       subTitle: "Training Plan Management",
       description: isThai
@@ -436,7 +437,7 @@ export default function Dashboard({
     {
       badge: isThai ? "บันทึกผลอบรม" : "RECORD MANAGEMENT",
       step: "03",
-      icon: "📋",
+      icon: <ClipboardCheck size={28} />,
       title: "Training Record",
       subTitle: "Training Record Management",
       description: isThai
@@ -451,7 +452,7 @@ export default function Dashboard({
     {
       badge: isThai ? "รายงาน" : "REPORT MANAGEMENT",
       step: "04",
-      icon: "📊",
+      icon: <BarChart3 size={28} />,
       title: "Reports & Analytics",
       subTitle: "Reports & Analytics Management",
       description: isThai
@@ -466,7 +467,7 @@ export default function Dashboard({
     {
       badge: isThai ? "ข้อมูลหลัก" : "MASTER DATA",
       step: "05",
-      icon: "🗃️",
+      icon: <Folder size={28} />,
       title: "Master Data",
       subTitle: "Master Data Management",
       description: isThai
@@ -720,7 +721,7 @@ export default function Dashboard({
               <div className={styles.dayDetailPanel} aria-label={`Training detail for day ${selectedDay}`}>
                 <div className={styles.dayDetailHeader}>
                   <div>
-                    <strong>📅 {dateLabel}</strong>
+                    <strong><CalendarDays size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> {dateLabel}</strong>
                     <span>{dayTrainings.length} {isThai ? "รายการอบรมในวันนี้" : "training courses scheduled today"}</span>
                   </div>
                   <button
@@ -728,9 +729,7 @@ export default function Dashboard({
                     type="button"
                     onClick={() => setSelectedDay(null)}
                     title="Close"
-                  >
-                    ✕
-                  </button>
+                  ><X size={16} /></button>
                 </div>
                 <div className={styles.dayDetailList}>
                   {dayTrainings.map((training, i) => {
@@ -757,7 +756,7 @@ export default function Dashboard({
                         <div className={styles.dayDetailItemContent}>
                           <div className={styles.dayDetailItemMeta}>
                             <span className={`${styles.dayDetailOwnerBadge} ${ownerBadgeClass}`}>
-                              {training.isCenterPlan ? "🏢 HRD Center" : `🏭 ${training.company}`}
+                              {training.isCenterPlan ? <><Building2 size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> HRD Center</> : <><Factory size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> {training.company}</>}
                             </span>
                             <span
                               className={styles.dayDetailStatusBadge}
@@ -780,7 +779,7 @@ export default function Dashboard({
                             </span>
                             {training.batch ? (
                               <span style={{ fontSize: "0.72rem", color: "var(--ui-30-muted)", fontWeight: 700 }}>
-                                🏷️ {training.batch}
+                                <><Tag size={11} style={{ display: "inline", verticalAlign: "middle", marginRight: 3 }} /> {training.batch}</>
                               </span>
                             ) : null}
                             {typeof training.capacity === "number" && training.capacity > 0 && !training.isEnded ? (
@@ -798,21 +797,21 @@ export default function Dashboard({
                                   border: `1px solid ${(training.remainingSeats ?? 0) > 0 ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)"}`,
                                 }}
                               >
-                                👥 {isThai
+                                <><Users size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 3 }} /> {isThai
                                   ? ((training.remainingSeats ?? 0) > 0 ? `เหลือ ${training.remainingSeats} ที่` : "เต็มแล้ว")
-                                  : ((training.remainingSeats ?? 0) > 0 ? `${training.remainingSeats} seats left` : "Full")}
+                                  : ((training.remainingSeats ?? 0) > 0 ? `${training.remainingSeats} seats left` : "Full")}</>
                               </span>
                             ) : null}
                           </div>
                           <strong className={styles.dayDetailCourseName}>{training.course}</strong>
                           <div className={styles.dayDetailInfo}>
-                            <span>🕐 {training.time}</span>
-                            <span>📍 {training.room}</span>
+                            <span><Clock size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> {training.time}</span>
+                            <span><MapPin size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> {training.room}</span>
                             {typeof training.capacity === "number" && training.capacity > 0 ? (
                               <span>
-                                👥 {isThai
+                                <><Users size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 3 }} /> {isThai
                                   ? `ลงแล้ว ${training.enrolledCount ?? 0}/${training.capacity} คน (${(training.remainingSeats ?? 0) > 0 ? `เหลือ ${training.remainingSeats} ที่` : "เต็มแล้ว"})`
-                                  : `Enrolled ${training.enrolledCount ?? 0}/${training.capacity} (${(training.remainingSeats ?? 0) > 0 ? `${training.remainingSeats} left` : "Full"})`}
+                                  : `Enrolled ${training.enrolledCount ?? 0}/${training.capacity} (${(training.remainingSeats ?? 0) > 0 ? `${training.remainingSeats} left` : "Full"})`}</>
                               </span>
                             ) : null}
                           </div>

@@ -34,6 +34,24 @@ import { useUiLanguage } from "../../../ThaiUiLocalization";
 import TypewriterLoader from "../../../TypewriterLoader";
 import SearchableSelect from "../../../SearchableSelect";
 import { getLocalDateString } from "../../../../lib/calendarDate";
+import {
+  Search,
+  ClipboardCheck,
+  FileEdit,
+  Tag,
+  Folder,
+  Clock,
+  Building2,
+  Factory,
+  Target,
+  Users,
+  Star,
+  BookOpen,
+  Coins,
+  User,
+  Wallet,
+  CalendarDays,
+} from "../../../icons/LucideIcons";
 import styles from "./TrainingRolling.module.css";
 
 export const trainingRollingModule = {
@@ -220,7 +238,10 @@ const PlanFormOverrideCard = ({
   return (
     <div className={styles.previewCard}>
       <div className={styles.previewCardHeader}>
-        <span>📝 แบบทดสอบ / แบบประเมิน</span>
+        <span>
+          <ClipboardCheck size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+          แบบทดสอบ / แบบประเมิน
+        </span>
         {/* Read-only until Edit is pressed, like every other card on this detail panel. The card
             used to render live dropdowns straight away, so the page looked editable when it was
             only meant to be read. */}
@@ -228,7 +249,8 @@ const PlanFormOverrideCard = ({
           <small style={{ color: "var(--ui-30-muted)" }}>อบรมเริ่มแล้ว แก้ไม่ได้</small>
         ) : editing ? null : (
           <button type="button" className={styles.formOverrideEditButton} onClick={() => setEditing(true)}>
-            ✎ แก้ไข
+            <FileEdit size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+            แก้ไข
           </button>
         )}
       </div>
@@ -260,7 +282,7 @@ const PlanFormOverrideCard = ({
                     {option.label}
                   </option>
                 ))}
-                <option value={LINK_MODE_VALUE}>🔗 ใช้ลิงก์ภายนอก</option>
+                <option value={LINK_MODE_VALUE}>ใช้ลิงก์ภายนอก (External Link)</option>
               </select>
             ) : usingLink ? (
               // Nothing here for link mode: the link row below already shows it, and printing the
@@ -1510,7 +1532,7 @@ export default function TrainingRolling() {
         <section className={styles.toolbar} aria-label="Training Rolling toolbar">
           <div className={styles.filterRow}>
             <div className={styles.searchWrapper}>
-              <span className={styles.searchIcon}>🔍</span>
+              <Search size={16} className={styles.searchIcon} />
               <input
                 className={styles.searchInput}
                 aria-label="Search monthly rolling plan"
@@ -1636,7 +1658,7 @@ export default function TrainingRolling() {
                   })}
                   value={form.oapId}
                   onChange={(oapId) => updateOap(oapId)}
-                  placeholder="🔍 พิมพ์เพื่อค้นหาหลักสูตร/แผน OAP... / Search course or OAP plan..."
+                  placeholder="พิมพ์เพื่อค้นหาหลักสูตร/แผน OAP... / Search course or OAP plan..."
                 />
               </div>
 
@@ -1766,7 +1788,8 @@ export default function TrainingRolling() {
                       {selectedOap ? (
                         <details className={styles.sessionFormOverrides}>
                           <summary>
-                            📝 แบบทดสอบ / แบบประเมินของรุ่นนี้
+                            <ClipboardCheck size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                            {" "}แบบทดสอบ / แบบประเมินของรุ่นนี้
                             {Object.values(session.formOverrides).some(Boolean) ? (
                               <em> · แก้เฉพาะรุ่นนี้</em>
                             ) : (
@@ -1805,7 +1828,7 @@ export default function TrainingRolling() {
                                         {option.label}
                                       </option>
                                     ))}
-                                    <option value={LINK_MODE_VALUE}>🔗 ใช้ลิงก์ภายนอก</option>
+                                    <option value={LINK_MODE_VALUE}>ใช้ลิงก์ภายนอก (External Link)</option>
                                   </select>
                                   {usingLink ? (
                                     <span className={styles.sessionLinkRow}>
@@ -1858,19 +1881,23 @@ export default function TrainingRolling() {
                   <div className={styles.previewBadges}>
                     {selectedOap.course.courseType ? (
                       <span className={`${styles.previewBadge} ${styles.previewBadgeHighlight}`}>
-                        🏷️ {selectedOap.course.courseType}
+                        <Tag size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {selectedOap.course.courseType}
                       </span>
                     ) : null}
                     {selectedOap.course.courseGroup ? (
                       <span className={styles.previewBadge} translate="no">
-                        📂 {selectedOap.course.courseGroup}
+                        <Folder size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {selectedOap.course.courseGroup}
                       </span>
                     ) : null}
                     <span className={styles.previewBadge}>
-                      ⏱️ {!selectedOap.course.lifeCycleMonth || selectedOap.course.lifeCycleMonth === "0" || Number(selectedOap.course.lifeCycleMonth) === 0 ? "ไม่มีการหมดอายุ" : `${selectedOap.course.lifeCycleMonth} Months`}
+                      <Clock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                      {!selectedOap.course.lifeCycleMonth || selectedOap.course.lifeCycleMonth === "0" || Number(selectedOap.course.lifeCycleMonth) === 0 ? "ไม่มีการหมดอายุ" : `${selectedOap.course.lifeCycleMonth} Months`}
                     </span>
                     <span className={styles.previewBadge}>
-                      🏢 {selectedOap.ownerCompany || selectedOap.owner}
+                      <Building2 size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                      {selectedOap.ownerCompany || selectedOap.owner}
                     </span>
                   </div>
                 </div>
@@ -1878,7 +1905,10 @@ export default function TrainingRolling() {
                 <div className={styles.previewSections}>
                   <div className={styles.previewCard}>
                     <div className={styles.previewCardHeader}>
-                      <span>🎯 วัตถุประสงค์และเนื้อหา (Objectives & Content)</span>
+                      <span>
+                        <Target size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                        วัตถุประสงค์และเนื้อหา (Objectives & Content)
+                      </span>
                     </div>
                     <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>ที่มา (Background)</span>
@@ -2015,7 +2045,10 @@ export default function TrainingRolling() {
 
                   <div className={styles.previewCard}>
                     <div className={styles.previewCardHeader}>
-                      <span>👥 กลุ่มเป้าหมายมาตรฐาน (Standard Target)</span>
+                      <span>
+                        <Users size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                        กลุ่มเป้าหมายมาตรฐาน (Standard Target)
+                      </span>
                     </div>
                     {(() => {
                       const std = standards.find((item) => item.courseId === selectedOap.course.id);
@@ -2072,7 +2105,10 @@ export default function TrainingRolling() {
 
                   <div className={`${styles.previewCard} ${styles.previewCardFull}`}>
                     <div className={styles.previewCardHeader}>
-                      <span>📋 Assessments & Evaluation</span>
+                      <span>
+                        <ClipboardCheck size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                        Assessments & Evaluation
+                      </span>
                     </div>
                     <div className={styles.assessmentGrid}>
                       <div className={styles.assessmentItem}>
@@ -2143,9 +2179,14 @@ export default function TrainingRolling() {
               >
                 <div className={styles.companySectionTitle}>
                   <span className={styles.chevron} aria-hidden="true" />
-                  <span className={styles.companyIcon}>{section.companyName === "HRD Center" ? "🏢" : "🏬"}</span>
+                  <span className={styles.companyIcon}>{section.companyName === "HRD Center" ? <Building2 size={18} /> : <Factory size={18} />}</span>
                   <h4>แผนอบรม {section.companyName}</h4>
-                  {section.isUserCompany ? <span className={styles.ownCompanySectionTag}>⭐ บริษัทของฉัน ({userCompanyCode || "HRD Center"})</span> : null}
+                  {section.isUserCompany ? (
+                    <span className={styles.ownCompanySectionTag}>
+                      <Star size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                      บริษัทของฉัน ({userCompanyCode || "HRD Center"})
+                    </span>
+                  ) : null}
                 </div>
                 <span className={styles.companyCountBadge} translate="no">{sessions.length} รอบอบรม</span>
               </button>
@@ -2198,13 +2239,15 @@ export default function TrainingRolling() {
                               {isCenterGroup ? (
                                 <div>
                                   <span className={styles.creatorBadgeCenter}>
-                                    🏢 จัดหลักสูตรโดย HRD Center
+                                    <Building2 size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                                    จัดหลักสูตรโดย HRD Center
                                   </span>
                                 </div>
                               ) : (
                                 <div>
                                   <span className={styles.creatorBadgeFactory}>
-                                    🏬 จัดหลักสูตรโดย {plan.ownerCompany || plan.company}
+                                    <Factory size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                                    จัดหลักสูตรโดย {plan.ownerCompany || plan.company}
                                   </span>
                                 </div>
                               )}
@@ -2307,7 +2350,12 @@ export default function TrainingRolling() {
                                   </div>
                                   <div className={styles.previewSections}>
                                     <div className={`${styles.previewCard} ${styles.previewCardFull}`}>
-                                      <div className={styles.previewCardHeader}><span>📘 หลักสูตร (Course)</span></div>
+                                      <div className={styles.previewCardHeader}>
+                                        <span>
+                                          <BookOpen size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                                          หลักสูตร (Course)
+                                        </span>
+                                      </div>
                                       <div className={styles.previewFieldGrid}>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>กลุ่มหลักสูตร</span><span className={styles.previewFieldValue} translate="no">{plan.course.courseGroup || "-"}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>รหัสหลักสูตร</span><span className={styles.previewFieldValue}>{plan.course.code}</span></div>
@@ -2326,7 +2374,12 @@ export default function TrainingRolling() {
                                       const std = standards.find((item) => item.courseId === plan.course.id);
                                       return (
                                         <div className={styles.previewCard}>
-                                          <div className={styles.previewCardHeader}><span>🎯 กลุ่มเป้าหมาย (Target Group)</span></div>
+                                          <div className={styles.previewCardHeader}>
+                                            <span>
+                                              <Target size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                                              กลุ่มเป้าหมาย (Target Group)
+                                            </span>
+                                          </div>
                                           <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>กลุ่มผู้เข้าอบรม</span><span className={styles.previewFieldValue}>{plan.course.targetGroup}</span></div>
                                           <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
                                             <span className={styles.previewFieldLabel}>Standard Companies</span>
@@ -2388,7 +2441,12 @@ export default function TrainingRolling() {
                                     />
 
                                     <div className={styles.previewCard}>
-                                      <div className={styles.previewCardHeader}><span>💰 Budget</span></div>
+                                      <div className={styles.previewCardHeader}>
+                                        <span>
+                                          <Coins size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                                          Budget
+                                        </span>
+                                      </div>
                                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>Instructor Budget</span><span className={styles.previewFieldValue}>฿{Number(plan.budgetInstructor || 0).toLocaleString("en-US")}</span></div>
                                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>Traveling Budget</span><span className={styles.previewFieldValue}>฿{Number(plan.budgetTraveling || 0).toLocaleString("en-US")}</span></div>
                                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>Seminar Room Budget</span><span className={styles.previewFieldValue}>฿{Number(plan.budgetSeminarRoom || 0).toLocaleString("en-US")}</span></div>
@@ -2406,7 +2464,12 @@ export default function TrainingRolling() {
                                       );
                                       return (
                                         <div className={styles.previewCard}>
-                                          <div className={styles.previewCardHeader}><span>👨‍🏫 ข้อมูลวิทยากร &amp; สถาบัน (Instructor &amp; Provider)</span></div>
+                                          <div className={styles.previewCardHeader}>
+                                            <span>
+                                              <User size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                                              ข้อมูลวิทยากร &amp; สถาบัน (Instructor &amp; Provider)
+                                            </span>
+                                          </div>
                                           <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>วิทยากร</span><span className={styles.previewFieldValue}>{plan.trainer || "-"}</span></div>
                                           {matchedRollingInstructor?.instructorCode ? (
                                             <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>รหัสวิทยากร</span><span className={styles.previewFieldValue}>{matchedRollingInstructor.instructorCode}</span></div>
@@ -2432,7 +2495,12 @@ export default function TrainingRolling() {
 
                                       return (
                                         <div className={styles.previewCard}>
-                                          <div className={styles.previewCardHeader}><span>💵 ค่าใช้จ่ายประมาณการ</span></div>
+                                          <div className={styles.previewCardHeader}>
+                                            <span>
+                                              <Wallet size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                                              ค่าใช้จ่ายประมาณการ
+                                            </span>
+                                          </div>
                                           <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
                                             <span className={styles.previewFieldLabel}>จำนวนที่แต่ละบริษัทส่งได้</span>
                                             <span className={styles.previewFieldValue}>
@@ -2447,7 +2515,7 @@ export default function TrainingRolling() {
                                     })()}
 
                                     <div className={`${styles.previewCard} ${styles.previewCardFull}`}>
-                                      <div className={styles.previewCardHeader}><span>📅 กำหนดการ / สถานะ</span></div>
+                                      <div className={styles.previewCardHeader}><span><CalendarDays size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />กำหนดการ / สถานะ</span></div>
                                       <div className={styles.previewFieldGrid}>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ลำดับหลักสูตร</span><span className={styles.previewFieldValue} translate="no">{group.sequence}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>รุ่น (Sessions)</span><span className={styles.previewFieldValue}>{group.plans.length}</span></div>
@@ -2459,8 +2527,8 @@ export default function TrainingRolling() {
                                           <span className={styles.previewFieldLabel}>Created By</span>
                                           <span className={styles.previewFieldValue}>
                                             {plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.ownerName === "Center HRD"
-                                              ? `🏢 HRD Center (ส่วนกลางจัดอบรมให้บริษัท ${formatRollingPlanCompanies(plan)})`
-                                              : `🏬 ${plan.ownerCompany || plan.company} (โรงงานจัดอบรมเอง)`}
+                                              ? (<><Building2 size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />HRD Center (ส่วนกลางจัดอบรมให้บริษัท {formatRollingPlanCompanies(plan)})</>)
+                                              : (<><Factory size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{plan.ownerCompany || plan.company} (โรงงานจัดอบรมเอง)</>)}
                                           </span>
                                         </div>
                                       </div>

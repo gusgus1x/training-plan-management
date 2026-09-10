@@ -26,6 +26,23 @@ import type { UserModule } from "./data";
 import ModuleHeader from "./ModuleHeader";
 import { getLocalDateString } from "../../lib/calendarDate";
 import styles from "./RegisterTrainingModule.module.css";
+import {
+  Globe,
+  Landmark,
+  Factory,
+  Building2,
+  Calendar,
+  Clock,
+  MapPin,
+  User,
+  Lock,
+  Target,
+  BookOpen,
+  GraduationCap,
+  Settings,
+  Link2,
+  FolderOpen,
+} from "../icons/LucideIcons";
 
 export type AvailableCourseItem = {
   rollingId: string;
@@ -689,21 +706,24 @@ export default function RegisterTrainingModule({
               className={`${styles.scopePill} ${selectedScope === "ALL" ? styles.activeScopePill : ""}`}
               onClick={() => setSelectedScope("ALL")}
             >
-              🌐 {t("ทั้งหมด", "All Scopes")} ({scopeCounts.all})
+              <Globe size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+              {t("ทั้งหมด", "All Scopes")} ({scopeCounts.all})
             </button>
             <button
               type="button"
               className={`${styles.scopePill} ${selectedScope === "Center" ? styles.activeScopePill : ""}`}
               onClick={() => setSelectedScope("Center")}
             >
-              🏛️ {t("ศูนย์กลาง", "Center")} ({scopeCounts.center})
+              <Landmark size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+              {t("ศูนย์กลาง", "Center")} ({scopeCounts.center})
             </button>
             <button
               type="button"
               className={`${styles.scopePill} ${selectedScope === "Factory" ? styles.activeScopePill : ""}`}
               onClick={() => setSelectedScope("Factory")}
             >
-              🏭 {t("โรงงาน", "Factory Training")} ({scopeCounts.factory})
+              <Factory size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+              {t("โรงงาน", "Factory Training")} ({scopeCounts.factory})
             </button>
 
             <label className={styles.checkboxLabel}>
@@ -749,13 +769,24 @@ export default function RegisterTrainingModule({
               <div className={styles.cardHeaderRow}>
                 <div className={styles.tagGroup}>
                   <span className={`${styles.scopeBadge} ${isCenter ? styles.centerBadge : styles.factoryBadge}`}>
-                    {isCenter ? "🏛️ Center Mandatory" : `🏭 ${course.ownerCompany}`}
+                    {isCenter ? (
+                      <>
+                        <Landmark size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        Center Mandatory
+                      </>
+                    ) : (
+                      <>
+                        <Factory size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {course.ownerCompany}
+                      </>
+                    )}
                   </span>
                   <span className={styles.categoryPill}>{course.category}</span>
                   <span className={styles.targetGroupBadge}>
-                    🏢 {t("บริษัทที่เกี่ยวข้อง", "Target Companies")}: <strong>{course.targetCompanies.join(", ")}</strong>
+                    <Building2 size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("บริษัทที่เกี่ยวข้อง", "Target Companies")}: <strong>{course.targetCompanies.join(", ")}</strong>
                   </span>
-                  {isEnded ? <span className={styles.categoryPill} style={{ background: "rgba(100,116,139,0.15)", color: "#64748b" }}>🏁 {t("จบการอบรมแล้ว", "Ended")}</span> : null}
+                  {isEnded ? <span className={styles.categoryPill} style={{ background: "rgba(100,116,139,0.15)", color: "#64748b" }}>{t("จบการอบรมแล้ว", "Ended")}</span> : null}
                 </div>
                 <span className={styles.codePill}>{course.id}</span>
               </div>
@@ -771,19 +802,31 @@ export default function RegisterTrainingModule({
               {/* Schedule Grid Box */}
               <div className={styles.scheduleGrid}>
                 <div className={styles.scheduleItem}>
-                  <span className={styles.scheduleLabel}>📅 {t("วันที่อบรม", "Date")}</span>
+                  <span className={styles.scheduleLabel}>
+                    <Calendar size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("วันที่อบรม", "Date")}
+                  </span>
                   <strong className={styles.scheduleValue}>{course.date}</strong>
                 </div>
                 <div className={styles.scheduleItem}>
-                  <span className={styles.scheduleLabel}>⏰ {t("เวลา / ระยะเวลา", "Time & Duration")}</span>
+                  <span className={styles.scheduleLabel}>
+                    <Clock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("เวลา / ระยะเวลา", "Time & Duration")}
+                  </span>
                   <strong className={styles.scheduleValue}>{course.time} ({course.duration})</strong>
                 </div>
                 <div className={styles.scheduleItem}>
-                  <span className={styles.scheduleLabel}>📍 {t("สถานที่อบรม", "Venue / Place")}</span>
+                  <span className={styles.scheduleLabel}>
+                    <MapPin size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("สถานที่อบรม", "Venue / Place")}
+                  </span>
                   <strong className={styles.scheduleValue} title={course.place}>{course.place}</strong>
                 </div>
                 <div className={styles.scheduleItem}>
-                  <span className={styles.scheduleLabel}>👨‍🏫 {t("วิทยากร / ที่นั่ง", "Trainer & Seats")}</span>
+                  <span className={styles.scheduleLabel}>
+                    <User size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("วิทยากร / ที่นั่ง", "Trainer & Seats")}
+                  </span>
                   <strong className={styles.scheduleValue}>{course.trainer} • {course.seats}</strong>
                 </div>
               </div>
@@ -825,7 +868,8 @@ export default function RegisterTrainingModule({
                         `Requires completing ${course.missingPrerequisites.map((p) => `${p.courseCode} (${p.courseName})`).join(", ")} first`,
                       )}
                     >
-                      🔒 {t(
+                      <Lock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                      {t(
                         `ต้องผ่านหลักสูตร ${course.missingPrerequisites.map((p) => p.courseCode).join(", ")} ก่อน`,
                         `Must complete ${course.missingPrerequisites.map((p) => p.courseCode).join(", ")} first`,
                       )}
@@ -848,7 +892,8 @@ export default function RegisterTrainingModule({
                   {/* Screenshot-Matched Target Group Sub-Boxes */}
                   <div className={styles.targetGroupCardSection}>
                     <div className={styles.targetSectionHeader}>
-                      🎯 {t("รายละเอียดกลุ่มเป้าหมาย (TARGET GROUP)", "TARGET GROUP DETAILS")}
+                      <Target size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                      {t("รายละเอียดกลุ่มเป้าหมาย (TARGET GROUP)", "TARGET GROUP DETAILS")}
                     </div>
 
                     <div className={styles.targetSubBox}>
@@ -887,7 +932,10 @@ export default function RegisterTrainingModule({
                   <div className={styles.detailGrid}>
                     {/* Section 1: Objective & Learning Content */}
                     <div className={styles.detailSectionCard}>
-                      <h4>📖 {t("วัตถุประสงค์ & เนื้อหาการเรียนรู้", "Objective & Learning Content")}</h4>
+                      <h4>
+                        <BookOpen size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                        {t("วัตถุประสงค์ & เนื้อหาการเรียนรู้", "Objective & Learning Content")}
+                      </h4>
                       <dl className={styles.detailDl}>
                         <div className={styles.detailItem}>
                           <dt>{t("วัตถุประสงค์ (Objective)", "Objective")}</dt>
@@ -906,7 +954,10 @@ export default function RegisterTrainingModule({
 
                     {/* Section 2: Class & Schedule Detail */}
                     <div className={styles.detailSectionCard}>
-                      <h4>🏫 {t("รายละเอียดชั้นเรียน & ผู้จัด", "Class & Trainer Detail")}</h4>
+                      <h4>
+                        <GraduationCap size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                        {t("รายละเอียดชั้นเรียน & ผู้จัด", "Class & Trainer Detail")}
+                      </h4>
                       <dl className={styles.detailDl}>
                         <div className={styles.detailItem}>
                           <dt>{t("รหัสวิชา / รุ่นการอบรม", "Course Code / Batch")}</dt>
@@ -933,7 +984,10 @@ export default function RegisterTrainingModule({
 
                     {/* Section 3: Requirements & Approval Flow */}
                     <div className={styles.detailSectionCard}>
-                      <h4>⚙️ {t("ข้อกำหนด & การอนุมัติ", "Requirements & Approval")}</h4>
+                      <h4>
+                        <Settings size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                        {t("ข้อกำหนด & การอนุมัติ", "Requirements & Approval")}
+                      </h4>
                       <dl className={styles.detailDl}>
                         {course.hasPreOrPostTest ? (
                           <div className={styles.detailItem}>
@@ -960,7 +1014,8 @@ export default function RegisterTrainingModule({
                             <dt>{t("ลิงก์แบบทดสอบก่อนอบรม (Pre-Test)", "Pre-Test Link")}</dt>
                             <dd>
                               <a href={course.preTestLink} target="_blank" rel="noopener noreferrer" style={{ color: "var(--ui-30-primary)", textDecoration: "underline", fontWeight: 800 }}>
-                                🔗 {t("เปิดทำแบบทดสอบก่อนอบรม", "Open Pre-Test")}
+                                <Link2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                                {t("เปิดทำแบบทดสอบก่อนอบรม", "Open Pre-Test")}
                               </a>
                             </dd>
                           </div>
@@ -976,7 +1031,7 @@ export default function RegisterTrainingModule({
 
         {filteredCourses.length === 0 ? (
           <div className={styles.emptyStateCard}>
-            <div className={styles.emptyIcon}>📂</div>
+            <div className={styles.emptyIcon}><FolderOpen size={40} /></div>
             <div className={styles.emptyTitle}>
               {t("ไม่พบรายชื่อคอร์สฝึกอบรมที่ตรงตามเงื่อนไข", "No training courses found")}
             </div>

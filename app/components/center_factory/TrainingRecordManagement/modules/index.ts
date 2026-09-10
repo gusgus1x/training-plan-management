@@ -1,10 +1,11 @@
-import type { ComponentType } from "react";
+import React, { type ComponentType, type ReactNode } from "react";
 import { withSlug } from "../../../../lib/slug";
 import TrainingActual, { trainingActualModule } from "./TrainingActual";
 import TrainingRecord, { trainingRecordModule } from "./TrainingRecord";
+import { Users, Award } from "../../../icons/LucideIcons";
 
 export type RecordModuleTopic = {
-  icon: string;
+  icon: ReactNode;
   title: string;
   subtitle: string;
   description: string;
@@ -14,6 +15,6 @@ export type RecordModuleTopic = {
 };
 
 export const recordItems: readonly RecordModuleTopic[] = [
-  { ...withSlug(trainingActualModule), icon: "👥", Component: TrainingActual },
-  { ...withSlug(trainingRecordModule), icon: "🏅", Component: TrainingRecord },
+  { ...withSlug(trainingActualModule), icon: React.createElement(Users, { size: 28 }), Component: TrainingActual },
+  { ...withSlug(trainingRecordModule), icon: React.createElement(Award, { size: 28 }), Component: TrainingRecord },
 ];

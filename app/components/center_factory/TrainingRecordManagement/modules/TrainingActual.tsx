@@ -36,6 +36,49 @@ import { gradeSubmission, listPendingGrading, publishSubmissionResults } from ".
 import type { PendingGradingSubmission } from "../../../../lib/trainingForms/types";
 import type { CostBreakdown } from "../../../../lib/trainingRecord/types";
 import styles from "./TrainingRecord.module.css";
+import {
+  Send,
+  Building2,
+  Factory,
+  Pin,
+  Calendar,
+  Clock,
+  MapPin,
+  User,
+  Wallet,
+  Users,
+  CheckCircle2,
+  XCircle,
+  BarChart3,
+  X,
+  Check,
+  Plus,
+  Search,
+  FileText,
+  AlertTriangle,
+  BookOpen,
+  Home,
+  Utensils,
+} from "../../../icons/LucideIcons";
+
+function getExpenseIcon(key: string, size = 15) {
+  switch (key) {
+    case "instructor":
+      return <User size={size} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />;
+    case "traveling":
+      return <MapPin size={size} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />;
+    case "seminarRoom":
+      return <Building2 size={size} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />;
+    case "accommodation":
+      return <Home size={size} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />;
+    case "material":
+      return <BookOpen size={size} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />;
+    case "foodBeverage":
+      return <Utensils size={size} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />;
+    default:
+      return <Wallet size={size} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />;
+  }
+}
 
 export const trainingActualModule = {
   title: "Training Actual",
@@ -453,9 +496,14 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
                 disabled={savingSubmissionId === submission.submissionId}
                 onClick={() => void handlePublish(submission)}
               >
-                {savingSubmissionId === submission.submissionId
-                  ? t("กำลังประกาศผล...", "Releasing...")
-                  : t("📣 ประกาศผลให้พนักงาน", "📣 Release to the employee")}
+                {savingSubmissionId === submission.submissionId ? (
+                  t("กำลังประกาศผล...", "Releasing...")
+                ) : (
+                  <>
+                    <Send size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("ประกาศผลให้พนักงาน", "Release to the employee")}
+                  </>
+                )}
               </button>
             ) : (
               <button
@@ -1122,8 +1170,8 @@ export default function TrainingActual() {
               }}
             >
               {!isFactoryUser && <option value="">{t("เลือกสิทธิ์ผู้จัด (ส่วนกลาง / โรงงาน)", "Pick an owner (Center / Factory)")}</option>}
-              {!isFactoryUser && <option value="CENTER">{t("🏢 ส่วนกลาง (Center Standard)", "🏢 Center Standard")}</option>}
-              <option value="FACTORY">{t(`🏭 โรงงาน ${userCompanyCode || ""}`, `🏭 Factory ${userCompanyCode || ""}`)}</option>
+              {!isFactoryUser && <option value="CENTER">{t("ส่วนกลาง (Center Standard)", "Center Standard")}</option>}
+              <option value="FACTORY">{t(`โรงงาน ${userCompanyCode || ""}`, `Factory ${userCompanyCode || ""}`)}</option>
             </select>
           </label>
 
@@ -1192,12 +1240,20 @@ export default function TrainingActual() {
               <div>
                 <div className={styles.heroBadgeRow}>
                   <b className={selectedCourse.owner === "CENTER" ? styles.systemSourceBadge : styles.uploadSourceBadge}>
-                    {selectedCourse.owner === "CENTER"
-                      ? t("🏢 ส่วนกลาง", "🏢 Center Standard")
-                      : t(
-                          `🏭 ${selectedCourse.ownerCompany ?? selectedCourse.company}`,
-                          `🏭 ${selectedCourse.ownerCompany ?? selectedCourse.company} Scope`,
+                    {selectedCourse.owner === "CENTER" ? (
+                      <>
+                        <Building2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {t("ส่วนกลาง", "Center Standard")}
+                      </>
+                    ) : (
+                      <>
+                        <Factory size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {t(
+                          `${selectedCourse.ownerCompany ?? selectedCourse.company}`,
+                          `${selectedCourse.ownerCompany ?? selectedCourse.company} Scope`,
                         )}
+                      </>
+                    )}
                   </b>
                   <span className={styles.totalBadge}>
                     Batch <strong>{selectedCourse.batch ?? "1"}</strong>
@@ -1205,39 +1261,63 @@ export default function TrainingActual() {
                 </div>
                 <h3>{selectedCourse.title}</h3>
                 <span className={styles.courseMetaSubtext}>
-                  📌 {t("รหัสหลักสูตร", "Course code")}: <strong>{selectedCourse.code}</strong> | 🏢{" "}
-                  {t("บริษัท", "Company")}: <strong>{selectedCourse.company}</strong> | 📅 {t("วันที่", "Date")}:{" "}
-                  <strong>{selectedCourse.date}</strong> ({selectedCourse.time})
+                  <Pin size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                  {t("รหัสหลักสูตร", "Course code")}: <strong>{selectedCourse.code}</strong> |{" "}
+                  <Building2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                  {t("บริษัท", "Company")}: <strong>{selectedCourse.company}</strong> |{" "}
+                  <Calendar size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                  {t("วันที่", "Date")}: <strong>{selectedCourse.date}</strong> ({selectedCourse.time})
                 </span>
               </div>
 
               <div className={styles.actualMiniStats}>
                 <article>
-                  <span>{t("📍 สถานที่ / ห้อง", "📍 Venue / room")}</span>
+                  <span>
+                    <MapPin size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("สถานที่ / ห้อง", "Venue / room")}
+                  </span>
                   <strong>{selectedCourse.room}</strong>
                 </article>
                 <article>
-                  <span>{t("👨‍🏫 วิทยากร", "👨‍🏫 Instructor")}</span>
+                  <span>
+                    <User size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("วิทยากร", "Instructor")}
+                  </span>
                   <strong>{selectedCourse.instructor}</strong>
                 </article>
                 <article className={styles.actualBudgetStat}>
-                  <span>{t("💰 งบประมาณที่วางแผน", "💰 Planned budget")}</span>
+                  <span>
+                    <Wallet size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("งบประมาณที่วางแผน", "Planned budget")}
+                  </span>
                   <strong>THB {formatCurrency(plannedBudget)}</strong>
                 </article>
                 <article>
-                  <span>{t("👥 ลงทะเบียน", "👥 Registered")}</span>
+                  <span>
+                    <Users size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("ลงทะเบียน", "Registered")}
+                  </span>
                   <strong>{t(`${registeredCount} คน`, `${registeredCount}`)}</strong>
                 </article>
                 <article className={styles.actualBudgetStat}>
-                  <span>{t("🟢 เข้าเรียนจริง", "🟢 Attended")}</span>
+                  <span>
+                    <CheckCircle2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4, color: "#10b981" }} />
+                    {t("เข้าเรียนจริง", "Attended")}
+                  </span>
                   <strong>{t(`${actualCount} คน`, `${actualCount}`)}</strong>
                 </article>
                 <article>
-                  <span>{t("🔴 ขาดเรียน", "🔴 Absent")}</span>
+                  <span>
+                    <XCircle size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4, color: "#ef4444" }} />
+                    {t("ขาดเรียน", "Absent")}
+                  </span>
                   <strong>{t(`${absentCount} คน`, `${absentCount}`)}</strong>
                 </article>
                 <article className={styles.actualBudgetStat}>
-                  <span>{t("📊 ค่าใช้จ่ายจริง / คน", "📊 Actual cost per person")}</span>
+                  <span>
+                    <BarChart3 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("ค่าใช้จ่ายจริง / คน", "Actual cost per person")}
+                  </span>
                   <strong>THB {formatCurrency(actualCostPerPerson)}</strong>
                 </article>
               </div>
@@ -1278,7 +1358,17 @@ export default function TrainingActual() {
                     disabled={attendees.length === 0 || isSelectedCourseReadOnlyForFactory}
                     onClick={() => void setAllAttendance(!allAttended)}
                   >
-                    {allAttended ? t("✕ ยกเลิกเช็คชื่อทั้งหมด", "✕ Clear all") : t("✓ เลือกเช็คชื่อทั้งหมด", "✓ Mark all present")}
+                    {allAttended ? (
+                      <>
+                        <X size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {t("ยกเลิกเช็คชื่อทั้งหมด", "Clear all")}
+                      </>
+                    ) : (
+                      <>
+                        <Check size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {t("เลือกเช็คชื่อทั้งหมด", "Mark all present")}
+                      </>
+                    )}
                   </button>
                   <button
                     type="button"
@@ -1286,7 +1376,17 @@ export default function TrainingActual() {
                     disabled={isSelectedCourseReadOnlyForFactory}
                     onClick={() => setIsAddingAttendee(!isAddingAttendee)}
                   >
-                    {isAddingAttendee ? t("✕ ยกเลิก", "✕ Cancel") : t("+ เพิ่มรายชื่อผู้เข้าอบรมเพิ่มเติม", "+ Add more attendees")}
+                    {isAddingAttendee ? (
+                      <>
+                        <X size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {t("ยกเลิก", "Cancel")}
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {t("เพิ่มรายชื่อผู้เข้าอบรมเพิ่มเติม", "Add more attendees")}
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -1300,7 +1400,7 @@ export default function TrainingActual() {
                         options={masterEmployees.map(employeeSelectOption)}
                         value=""
                         onChange={addEmployeeToDraft}
-                        placeholder={t("🔍 พิมพ์ชื่อ รหัสพนักงาน หรือบริษัท...", "🔍 Type a name, code, or company...")}
+                        placeholder={t("พิมพ์ชื่อ รหัสพนักงาน หรือบริษัท...", "Type a name, code, or company...")}
                         emptyText={t("ไม่พบพนักงานที่ตรงกัน", "No matching employee")}
                       />
                     </label>
@@ -1419,19 +1519,21 @@ export default function TrainingActual() {
                     className={attendanceStatusFilter === "PRESENT" ? styles.activeFilterChip : styles.filterChip}
                     onClick={() => setAttendanceStatusFilter("PRESENT")}
                   >
-                    {t(`🟢 มาเรียน (${actualCount})`, `🟢 Present (${actualCount})`)}
+                    <CheckCircle2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4, color: "#10b981" }} />
+                    {t(`มาเรียน (${actualCount})`, `Present (${actualCount})`)}
                   </button>
                   <button
                     type="button"
                     className={attendanceStatusFilter === "ABSENT" ? styles.activeFilterChip : styles.filterChip}
                     onClick={() => setAttendanceStatusFilter("ABSENT")}
                   >
-                    {t(`🔴 ขาดเรียน (${absentCount})`, `🔴 Absent (${absentCount})`)}
+                    <XCircle size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4, color: "#ef4444" }} />
+                    {t(`ขาดเรียน (${absentCount})`, `Absent (${absentCount})`)}
                   </button>
                 </div>
 
                 <div className={styles.attendeeSearchBox}>
-                  <span className={styles.searchIcon}>🔍</span>
+                  <span className={styles.searchIcon}><Search size={14} /></span>
                   <input
                     type="text"
                     placeholder={t("ค้นหาชื่อ, รหัสพนักงาน, แผนก...", "Search a name, code, or department...")}
@@ -1444,7 +1546,7 @@ export default function TrainingActual() {
                       className={styles.clearSearchBtn}
                       onClick={() => setAttendanceSearchQuery("")}
                     >
-                      ✕
+                      <X size={12} />
                     </button>
                   ) : null}
                 </div>
@@ -1527,7 +1629,8 @@ export default function TrainingActual() {
                     {pagedAttendees.length === 0 ? (
                       <tr>
                         <td colSpan={5} className={styles.emptyTableMessage}>
-                          {t("🔍 ไม่พบรายชื่อพนักงานตามเงื่อนไขค้นหา", "🔍 No attendee matches this search")}
+                          <Search size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                          {t("ไม่พบรายชื่อพนักงานตามเงื่อนไขค้นหา", "No attendee matches this search")}
                         </td>
                       </tr>
                     ) : null}
@@ -1593,7 +1696,17 @@ export default function TrainingActual() {
                     disabled={attendees.length === 0 || isSelectedCourseReadOnlyForFactory}
                     onClick={() => setAllCompletion(allPassed ? "NOT_COMPLETED" : "COMPLETED")}
                   >
-                    {allPassed ? t("✕ ยกเลิกผ่านทั้งหมด", "✕ Clear all passes") : t("✓ เลือกผ่านทั้งหมด", "✓ Pass everyone")}
+                    {allPassed ? (
+                      <>
+                        <X size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {t("ยกเลิกผ่านทั้งหมด", "Clear all passes")}
+                      </>
+                    ) : (
+                      <>
+                        <Check size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {t("เลือกผ่านทั้งหมด", "Pass everyone")}
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -1741,7 +1854,8 @@ export default function TrainingActual() {
                                   })
                                 }
                               >
-                                {t(`📄 ดูการทำแบบทดสอบ (${attemptCount})`, `📄 Test attempts (${attemptCount})`)}
+                                <FileText size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                                {t(`ดูการทำแบบทดสอบ (${attemptCount})`, `Test attempts (${attemptCount})`)}
                               </button>
                             </span>
                           );
@@ -1783,7 +1897,7 @@ export default function TrainingActual() {
               {expenseFields.map((field) => (
                 <label key={field.key} className={styles.expenseInputCard}>
                   <div className={styles.expenseLabelHeader}>
-                    <span>{field.icon} {field.label}</span>
+                    <span>{getExpenseIcon(field.key)} {field.label}</span>
                   </div>
                   <div className={styles.expenseInputWrap}>
                     <span className={styles.currencyPrefix}>THB</span>
@@ -1822,7 +1936,7 @@ export default function TrainingActual() {
                     const variance = planned - actual;
                     return (
                       <tr key={field.key}>
-                        <td>{field.icon} {field.label}</td>
+                        <td>{getExpenseIcon(field.key)} {field.label}</td>
                         <td>THB {formatCurrency(planned)}</td>
                         <td>THB {formatCurrency(actual)}</td>
                         <td className={variance < 0 ? styles.actualBudgetOverrun : undefined}>
@@ -1906,7 +2020,10 @@ export default function TrainingActual() {
                               <span className={styles.companyBadgePill}>{item.companyCode}</span>
                             </td>
                             <td>
-                              <span className={styles.companyPresentCount}>{t(`🟢 ${item.presentCount} คน`, `🟢 ${item.presentCount}`)}</span>
+                              <span className={styles.companyPresentCount}>
+                                <CheckCircle2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4, color: "#10b981" }} />
+                                {t(`${item.presentCount} คน`, `${item.presentCount}`)}
+                              </span>
                             </td>
                             <td>
                               <div className={styles.sharePercentCell}>
@@ -1963,7 +2080,17 @@ export default function TrainingActual() {
                   remainingBudget < 0 ? styles.actualBudgetOverrun : undefined
                 }
               >
-                {remainingBudget >= 0 ? t("🟢 อยู่ในงบประมาณ", "🟢 Within budget") : t("🔴 เกินงบประมาณ", "🔴 Over budget")}
+                {remainingBudget >= 0 ? (
+                  <>
+                    <CheckCircle2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4, color: "#10b981" }} />
+                    {t("อยู่ในงบประมาณ", "Within budget")}
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4, color: "#ef4444" }} />
+                    {t("เกินงบประมาณ", "Over budget")}
+                  </>
+                )}
               </p>
             </div>
 
@@ -1981,7 +2108,14 @@ export default function TrainingActual() {
               }
               onClick={() => void handleSave()}
             >
-              {isSavingResults ? t("กำลังบันทึก...", "Saving...") : t("💾 บันทึกค่าใช้จ่าย & ผลการอบรม", "💾 Save cost & results")}
+              {isSavingResults ? (
+                t("กำลังบันทึก...", "Saving...")
+              ) : (
+                <>
+                  <FileText size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                  {t("บันทึกค่าใช้จ่าย & ผลการอบรม", "Save cost & results")}
+                </>
+              )}
             </button>
 
             {savedMessage ? <p className={styles.actualSavedMessage}>{savedMessage}</p> : null}
@@ -2006,7 +2140,7 @@ export default function TrainingActual() {
             aria-modal="true"
           >
             <div className={styles.successIconRing}>
-              <span className={styles.checkIconEmoji}>✓</span>
+              <span className={styles.checkIconEmoji}><Check size={28} /></span>
             </div>
 
             <div className={styles.successModalHeader}>
@@ -2025,21 +2159,31 @@ export default function TrainingActual() {
 
             <div className={styles.savedMetricGrid}>
               <div className={styles.savedMetricCard}>
-                <span>{t("🟢 ผู้เข้าเรียนจริง", "🟢 Attended")}</span>
+                <span>
+                  <CheckCircle2 size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4, color: "#10b981" }} />
+                  {t("ผู้เข้าเรียนจริง", "Attended")}
+                </span>
                 <strong>{t(`${savedSummaryData.actualCount} คน`, `${savedSummaryData.actualCount}`)}</strong>
               </div>
               <div className={styles.savedMetricCard}>
-                <span>{t("💰 รวมค่าใช้จ่ายจริง", "💰 Total actual cost")}</span>
+                <span>
+                  <Wallet size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                  {t("รวมค่าใช้จ่ายจริง", "Total actual cost")}
+                </span>
                 <strong>THB {formatCurrency(savedSummaryData.totalCost)}</strong>
               </div>
               <div className={styles.savedMetricCard}>
-                <span>{t("📊 เฉลี่ยงบ / คน", "📊 Cost per person")}</span>
+                <span>
+                  <BarChart3 size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                  {t("เฉลี่ยงบ / คน", "Cost per person")}
+                </span>
                 <strong>THB {formatCurrency(savedSummaryData.costPerPerson)}</strong>
               </div>
             </div>
 
             <div className={styles.savedTimestamp}>
-              {t(`⏰ บันทึกเมื่อ: ${savedSummaryData.savedTime}`, `⏰ Saved at ${savedSummaryData.savedTime}`)}
+              <Clock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+              {t(`บันทึกเมื่อ: ${savedSummaryData.savedTime}`, `Saved at ${savedSummaryData.savedTime}`)}
             </div>
 
             <div className={styles.successModalActions}>
@@ -2048,7 +2192,8 @@ export default function TrainingActual() {
                 className={styles.primaryButton}
                 onClick={() => setShowSaveSuccessModal(false)}
               >
-                {t("✓ ตกลง", "✓ Done")}
+                <Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                {t("ตกลง", "Done")}
               </button>
             </div>
           </div>
@@ -2066,7 +2211,7 @@ export default function TrainingActual() {
                 <h3>{attemptsCard.name}</h3>
               </div>
               <button type="button" className={styles.attemptsClose} onClick={() => setAttemptsCard(null)}>
-                ✕
+                <X size={14} />
               </button>
             </div>
 

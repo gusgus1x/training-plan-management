@@ -38,6 +38,23 @@ import {
   getCurrentCalendarDate,
 } from "../../lib/calendarDate";
 import TypewriterLoader from "../TypewriterLoader";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Building2,
+  User,
+  ClipboardList,
+  BookOpen,
+  Map as MapIcon,
+  Lightbulb,
+  Camera,
+  Lock,
+  X,
+  Check,
+  Award,
+  FileEdit,
+} from "../icons/LucideIcons";
 
 const RegisterIcon = () => (
   <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
@@ -803,7 +820,9 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
               }}
               aria-label="30-day follow-up evaluation reminder"
             >
-              <span aria-hidden="true" style={{ fontSize: "1.1rem" }}>📋</span>
+              <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center" }}>
+                <ClipboardList size={18} />
+              </span>
               <span style={{ fontSize: "0.84rem", fontWeight: 700 }}>
                 {isThai
                   ? `มีแบบประเมินหลัง 30 วันรอทำ ${pendingFollowUpEvaluations.length} รายการ: ${pendingFollowUpEvaluations
@@ -865,11 +884,14 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                   }}
                 />
               </span>
-              <span style={{ fontSize: "0.86rem", fontWeight: 700 }}>
-                {t(
-                  `🎖 คุณได้รับใบเกียรติบัตรของคอร์สอบรม ${enrollment.plan.courseName} — กดเพื่อดูและบันทึก`,
-                  `🎖 You received a certificate for ${enrollment.plan.courseName} — tap to view and save`,
-                )}
+              <span style={{ fontSize: "0.86rem", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                <Award size={18} style={{ flexShrink: 0 }} />
+                <span>
+                  {t(
+                    `คุณได้รับใบเกียรติบัตรของคอร์สอบรม ${enrollment.plan.courseName} — กดเพื่อดูและบันทึก`,
+                    `You received a certificate for ${enrollment.plan.courseName} — tap to view and save`,
+                  )}
+                </span>
               </span>
             </button>
           ))}
@@ -915,6 +937,9 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                   type="button"
                   onClick={() => setOpenCertificateId(null)}
                   style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
                     padding: "8px 16px",
                     borderRadius: "999px",
                     border: 0,
@@ -924,7 +949,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                     cursor: "pointer",
                   }}
                 >
-                  {t("ปิด", "Close")} ✕
+                  {t("ปิด", "Close")} <X size={14} />
                 </button>
               </div>
               <iframe
@@ -1148,15 +1173,16 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                   <div className={styles.dayDetailPanel} aria-label={`Training detail for day ${selectedDay}`}>
                     <div className={styles.dayDetailHeader}>
                       <div>
-                        <strong>📅 {dateLabel}</strong>
+                        <strong><Calendar size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />{dateLabel}</strong>
                         <span>{dayTrainings.length} {isThai ? "รายการอบรมในวันนี้" : "training courses scheduled today"}</span>
                       </div>
                       <button
                         className={styles.dayDetailClose}
                         type="button"
                         onClick={() => setSelectedDay(null)}
+                        aria-label="Close"
                       >
-                        ✕
+                        <X size={16} />
                       </button>
                     </div>
                     <div className={styles.dayDetailList}>
@@ -1164,7 +1190,8 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                         <div className={styles.dayDetailItem} key={training.title}>
                           <div className={styles.dayDetailItemTop}>
                             <span className={styles.dayDetailCompanyTag}>
-                              🏠 {employeeCompany}
+                              <Building2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                              {employeeCompany}
                             </span>
                             <span className={styles.dayDetailStatusBadge}>
                               <span className={styles.pulseDot} />
@@ -1173,8 +1200,8 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                           </div>
                           <strong className={styles.dayDetailCourseName}>{training.title}</strong>
                           <div className={styles.dayDetailInfo}>
-                            <span>🕐 {training.time}</span>
-                            <span>📍 {training.place}</span>
+                            <span><Clock size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{training.time}</span>
+                            <span><MapPin size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{training.place}</span>
                           </div>
                         </div>
                       ))}
@@ -1198,7 +1225,11 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                         </div>
                         <div className={styles.listCardContent}>
                           <strong>{training.title}</strong>
-                          <span>🕐 {training.time} • 📍 {training.place}</span>
+                          <span>
+                            <Clock size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                            {training.time} • <MapPin size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                            {training.place}
+                          </span>
                         </div>
                         <span className={styles.listStatusBadge}>{training.status}</span>
                       </article>
@@ -1224,7 +1255,9 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                 }}
               >
                 <div className={styles.upcomingSectionTitleBox}>
-                  <span className={styles.upcomingSectionIcon} aria-hidden="true">📅</span>
+                  <span className={styles.upcomingSectionIcon} aria-hidden="true">
+                    <Calendar size={22} />
+                  </span>
                   <div>
                     <div className={styles.upcomingSectionTitleRow}>
                       <h3 className={styles.upcomingSectionTitle}>
@@ -1304,10 +1337,12 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                                 {enrollment.plan.courseCode || "TR-COURSE"}
                               </span>
                               <span className={styles.upcomingStatusTag}>
-                                ✓ {isThai ? "อนุมัติแล้ว" : "Approved"}
+                                <Check size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                                {isThai ? "อนุมัติแล้ว" : "Approved"}
                               </span>
                               <span className={styles.upcomingOwnerTag}>
-                                🏢 {enrollment.plan.owner === "CENTER" ? "HRD Center" : `${employeeCompany || "Factory"}`}
+                                <Building2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                                {enrollment.plan.owner === "CENTER" ? "HRD Center" : `${employeeCompany || "Factory"}`}
                               </span>
                             </div>
                             <h4 className={styles.upcomingCourseName} title={enrollment.plan.courseName}>
@@ -1317,7 +1352,10 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
 
                           <div className={styles.upcomingDetailsRow}>
                             <div className={styles.upcomingDetailChip}>
-                              <span className={styles.upcomingDetailChipLabel}>🕒 {isThai ? "เวลา" : "Time"}:</span>
+                              <span className={styles.upcomingDetailChipLabel}>
+                                <Clock size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                                {isThai ? "เวลา" : "Time"}:
+                              </span>
                               <span className={styles.upcomingDetailChipValue}>
                                 {startDate.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })} -{" "}
                                 {endDate.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}{" "}
@@ -1325,11 +1363,17 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                               </span>
                             </div>
                             <div className={styles.upcomingDetailChip}>
-                              <span className={styles.upcomingDetailChipLabel}>📍 {isThai ? "สถานที่" : "Venue"}:</span>
+                              <span className={styles.upcomingDetailChipLabel}>
+                                <MapPin size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                                {isThai ? "สถานที่" : "Venue"}:
+                              </span>
                               <span className={styles.upcomingDetailChipValue}>{enrollment.plan.venue || "-"}</span>
                             </div>
                             <div className={styles.upcomingDetailChip}>
-                              <span className={styles.upcomingDetailChipLabel}>👤 {isThai ? "วิทยากร" : "Instructor"}:</span>
+                              <span className={styles.upcomingDetailChipLabel}>
+                                <User size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                                {isThai ? "วิทยากร" : "Instructor"}:
+                              </span>
                               <span className={styles.upcomingDetailChipValue}>{enrollment.plan.instructor || "-"}</span>
                             </div>
                           </div>
@@ -1342,7 +1386,8 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                             onClick={() => setActiveModule("record")}
                             title={isThai ? "ไปที่หน้าประวัติและแบบทดสอบ" : "Go to My Record & Tests"}
                           >
-                            📝 {isThai ? "แบบทดสอบ & ผล" : "Tests & Record"}
+                            <FileEdit size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                            {isThai ? "แบบทดสอบ & ผล" : "Tests & Record"}
                           </button>
                           <button
                             type="button"
@@ -1350,7 +1395,8 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                             onClick={() => setActiveModule("calendar")}
                             title={isThai ? "ดูตารางในปฏิทิน" : "View in Calendar"}
                           >
-                            📅 {isThai ? "ดูในปฏิทิน" : "Calendar"}
+                            <Calendar size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                            {isThai ? "ดูในปฏิทิน" : "Calendar"}
                           </button>
                         </div>
                       </article>
@@ -1380,45 +1426,45 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
               {moduleCards.map((module, index) => {
                 const moduleThemes: Record<
                   UserModule,
-                  { icon: string; accent: string; accentSoft: string; accentBorder: string; badgeText?: string }
+                  { icon: React.ReactNode; accent: string; accentSoft: string; accentBorder: string; badgeText?: string }
                 > = {
                   register: {
-                    icon: "📚",
+                    icon: <BookOpen size={24} color="#2563eb" />,
                     accent: "#2563eb",
                     accentSoft: "rgba(37, 99, 235, 0.12)",
                     accentBorder: "rgba(37, 99, 235, 0.3)",
                     badgeText: openToRegister.length > 0 ? (isThai ? `เปิดรับ ${openToRegister.length} คอร์ส` : `${openToRegister.length} open`) : undefined,
                   },
                   roadmap: {
-                    icon: "🗺️",
+                    icon: <MapIcon size={24} color="#0d9488" />,
                     accent: "#0d9488",
                     accentSoft: "rgba(13, 148, 136, 0.12)",
                     accentBorder: "rgba(13, 148, 136, 0.3)",
                     badgeText: isThai ? "เส้นทางฝึกอบรม" : "Personal Path",
                   },
                   request: {
-                    icon: "💡",
+                    icon: <Lightbulb size={24} color="#7c3aed" />,
                     accent: "#7c3aed",
                     accentSoft: "rgba(124, 58, 237, 0.12)",
                     accentBorder: "rgba(124, 58, 237, 0.3)",
                     badgeText: awaitingApproval.length > 0 ? (isThai ? `รออนุมัติ ${awaitingApproval.length}` : `${awaitingApproval.length} pending`) : undefined,
                   },
                   record: {
-                    icon: "📋",
+                    icon: <ClipboardList size={24} color="#d97706" />,
                     accent: "#d97706",
                     accentSoft: "rgba(217, 119, 6, 0.12)",
                     accentBorder: "rgba(217, 119, 6, 0.3)",
                     badgeText: isThai ? `สะสม ${completedHours} ชม.` : `${completedHours} hrs`,
                   },
                   calendar: {
-                    icon: "📅",
+                    icon: <Calendar size={24} color="#059669" />,
                     accent: "#059669",
                     accentSoft: "rgba(5, 150, 105, 0.12)",
                     accentBorder: "rgba(5, 150, 105, 0.3)",
                     badgeText: isThai ? "ตารางการอบรม" : "Schedules",
                   },
                   activities: {
-                    icon: "📸",
+                    icon: <Camera size={24} color="#0284c7" />,
                     accent: "#0284c7",
                     accentSoft: "rgba(2, 132, 199, 0.12)",
                     accentBorder: "rgba(2, 132, 199, 0.3)",
@@ -1447,21 +1493,39 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                   >
                     <div className={styles.cardHeaderRow}>
                       <div className={styles.cardIconBox} aria-hidden="true">
-                        <span className={styles.cardEmojiIcon}>{isLocked ? "🔒" : theme.icon}</span>
+                        <span className={styles.cardEmojiIcon}>{isLocked ? <Lock size={22} color="#64748b" /> : theme.icon}</span>
                       </div>
                       <span className={styles.cardIndexPill} aria-hidden="true">
-                        {isLocked ? "🔒" : String(index + 1).padStart(2, "0")}
+                        {isLocked ? <Lock size={12} /> : String(index + 1).padStart(2, "0")}
                       </span>
                     </div>
 
                     <div className={styles.cardBodyContent}>
-                      <span className={styles.cardKicker}>{isLocked ? (isThai ? "🔒 ล็อกอยู่" : "🔒 Locked") : (theme.badgeText || module.eyebrow)}</span>
+                      <span className={styles.cardKicker}>
+                        {isLocked ? (
+                          <>
+                            <Lock size={11} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} />
+                            {isThai ? "ล็อกอยู่" : "Locked"}
+                          </>
+                        ) : (
+                          theme.badgeText || module.eyebrow
+                        )}
+                      </span>
                       <strong className={styles.cardMainTitle} translate="no">{module.title}</strong>
                       <p className={styles.cardDescText}>{module.detail}</p>
                     </div>
 
                     <div className={styles.cardFooterAction}>
-                      <span className={styles.openBtn}>{isLocked ? (isThai ? "🔒 ล็อกอยู่" : "🔒 Locked") : (isThai ? "เปิด" : "Open")}</span>
+                      <span className={styles.openBtn}>
+                        {isLocked ? (
+                          <>
+                            <Lock size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} />
+                            {isThai ? "ล็อกอยู่" : "Locked"}
+                          </>
+                        ) : (
+                          isThai ? "เปิด" : "Open"
+                        )}
+                      </span>
                     </div>
                   </button>
                 );

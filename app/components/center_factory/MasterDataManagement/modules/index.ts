@@ -1,4 +1,16 @@
-import type { ComponentType } from "react";
+import React, { type ComponentType } from "react";
+import {
+  Users,
+  Settings,
+  Link2,
+  GraduationCap,
+  Landmark,
+  Building2,
+  Briefcase,
+  TrendingUp,
+  Tag,
+  Folder,
+} from "../../../icons/LucideIcons";
 import { withSlug } from "../../../../lib/slug";
 import CompanyData, { companyDataModule } from "./CompanyData";
 import EmployeeData, { employeeDataModule } from "./EmployeeData";
@@ -14,7 +26,7 @@ import InstituteProviderData, {
 } from "./InstituteProviderData";
 
 export type MasterDataModuleTopic = {
-  icon: string;
+  icon: React.ReactNode;
   title: string;
   subtitle: string;
   description: string;
@@ -24,19 +36,19 @@ export type MasterDataModuleTopic = {
 };
 
 export const masterDataItems: readonly MasterDataModuleTopic[] = [
-  { ...withSlug(employeeDataModule), icon: "👥", Component: EmployeeData },
-  { ...withSlug(functionDataModule), icon: "⚙️", Component: FunctionData },
-  { ...withSlug(functionMappingModule), icon: "🔗", Component: FunctionMapping },
-  { ...withSlug(instructorDataModule), icon: "🧑‍🏫", Component: InstructorData },
+  { ...withSlug(employeeDataModule), icon: React.createElement(Users, { size: 24 }), Component: EmployeeData },
+  { ...withSlug(functionDataModule), icon: React.createElement(Settings, { size: 24 }), Component: FunctionData },
+  { ...withSlug(functionMappingModule), icon: React.createElement(Link2, { size: 24 }), Component: FunctionMapping },
+  { ...withSlug(instructorDataModule), icon: React.createElement(GraduationCap, { size: 24 }), Component: InstructorData },
   {
     ...withSlug(instituteProviderDataModule),
-    icon: "🏛️",
+    icon: React.createElement(Landmark, { size: 24 }),
     Component: InstituteProviderData,
   },
-  { ...withSlug(companyDataModule), icon: "🏢", Component: CompanyData },
-  { ...withSlug(positionDataModule), icon: "💼", Component: PositionData },
-  { ...withSlug(levelDataModule), icon: "📶", Component: LevelData },
-  { ...withSlug(courseTypeModule), icon: "🏷️", Component: CourseType },
-  { ...withSlug(courseGroupModule), icon: "🗂️", Component: CourseGroup },
+  { ...withSlug(companyDataModule), icon: React.createElement(Building2, { size: 24 }), Component: CompanyData },
+  { ...withSlug(positionDataModule), icon: React.createElement(Briefcase, { size: 24 }), Component: PositionData },
+  { ...withSlug(levelDataModule), icon: React.createElement(TrendingUp, { size: 24 }), Component: LevelData },
+  { ...withSlug(courseTypeModule), icon: React.createElement(Tag, { size: 24 }), Component: CourseType },
+  { ...withSlug(courseGroupModule), icon: React.createElement(Folder, { size: 24 }), Component: CourseGroup },
 ];
 

@@ -57,6 +57,7 @@ import { listOrgHierarchyUsage } from "../../../../lib/orgHierarchy/client";
 import type { OrgHierarchyUsageRow } from "../../../../lib/orgHierarchy/types";
 import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./FunctionMapping.module.css";
+import { Building2 } from "../../../icons/LucideIcons";
 
 export const functionMappingModule = {
   title: "Function & Organization Mapping",
@@ -620,7 +621,7 @@ export default function FunctionMapping() {
             onChange={(e) => setSelectedCompanyFilter(e.target.value)}
             aria-label="Filter by Company"
           >
-            <option value="ALL">🏢 All Companies</option>
+            <option value="ALL">All Companies</option>
             {companies.map((c) => (
               <option key={c.companyId} value={c.companyCode}>
                 {c.companyCode} — {c.companyNameTh || c.companyNameEn}
@@ -798,7 +799,7 @@ export default function FunctionMapping() {
                 >
                   <div className={styles.companyHeader} style={{ cursor: "default", gridTemplateColumns: "1fr auto" }}>
                     <span>
-                      🏢 Company: <strong style={{ fontSize: "1rem" }}>{companyGroup.companyCode}</strong> — {companyGroup.companyName}
+                      <Building2 size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} /> Company: <strong style={{ fontSize: "1rem" }}>{companyGroup.companyCode}</strong> — {companyGroup.companyName}
                     </span>
                     <b>({companyGroup.rows.length} records)</b>
                   </div>
