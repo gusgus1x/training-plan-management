@@ -93,23 +93,22 @@ export default function Navbar({
 
   const contextKey = contextTitle?.split("/")[0]?.trim() || "default";
 
-  // Auto-scroll active item into view & preserve horizontal scroll position
   useEffect(() => {
     if (!contextItemsRef.current) return;
     const container = contextItemsRef.current;
-
-    const savedScroll = sessionStorage.getItem(`navbar-scroll-${contextKey}`);
-    if (savedScroll !== null) {
-      container.scrollLeft = Number(savedScroll);
-    }
 
     const activeItem = container.querySelector<HTMLElement>(`.${styles.activeContextItem}`);
     if (activeItem) {
       activeItem.scrollIntoView({
         behavior: "smooth",
         block: "nearest",
-        inline: "nearest",
+        inline: "center",
       });
+    } else {
+      const savedScroll = sessionStorage.getItem(`navbar-scroll-${contextKey}`);
+      if (savedScroll !== null) {
+        container.scrollLeft = Number(savedScroll);
+      }
     }
   }, [contextTitle, contextItems, contextKey]);
 
@@ -445,7 +444,14 @@ export default function Navbar({
                     disabled={item.locked}
                     key={item.title}
                     type="button"
-                    onClick={item.onClick}
+                    onClick={(e) => {
+                      e.currentTarget.scrollIntoView({
+                        behavior: "smooth",
+                        block: "nearest",
+                        inline: "center",
+                      });
+                      item.onClick();
+                    }}
                   >
                     {item.locked ? (
                       <span className={styles.contextLock} aria-hidden="true">

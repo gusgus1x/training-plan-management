@@ -405,7 +405,6 @@ export default function CompanyData() {
                 <th>Comp Name (TH)</th>
                 <th>Comp Name (EN)</th>
                 <th>Remark</th>
-                <th>Status</th>
               </tr>
             </thead>
             <tbody translate="no">
@@ -429,23 +428,13 @@ export default function CompanyData() {
                       <td>{row.companyNameTh}</td>
                       <td>{row.companyNameEn ?? "-"}</td>
                       <td>{row.remark ?? "-"}</td>
-                      <td>
-                        <span
-                          className={`${styles.statusPill} ${
-                            row.status === "INACTIVE"
-                              ? styles.inactiveStatus
-                              : ""
-                          }`}
-                        >
-                          {row.status}
-                        </span>
-                      </td>
+
                     </tr>
                   ))
                 : null}
               {!isLoading && visibleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={6}>No company data found.</td>
+                  <td colSpan={5}>No company data found.</td>
                 </tr>
               ) : null}
             </tbody>
@@ -496,21 +485,7 @@ export default function CompanyData() {
                 }
               />
             </label>
-            <label>
-              Status
-              <select
-                value={formValues.status}
-                onChange={(event) =>
-                  setFormValues((current) => ({
-                    ...current,
-                    status: event.target.value as CompanyStatus,
-                  }))
-                }
-              >
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="INACTIVE">INACTIVE</option>
-              </select>
-            </label>
+
             <label className={styles.fullWidth}>
               Remark
               <textarea

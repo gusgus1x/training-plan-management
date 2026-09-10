@@ -120,17 +120,7 @@ export default function CourseGroup() {
                 translate="no"
               />
             </label>
-            <label>
-              Status
-              <select
-                value={draft.status}
-                onChange={(e) => setDraft({ ...draft, status: e.target.value as CourseGroupStatus })}
-                translate="no"
-              >
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="INACTIVE">INACTIVE</option>
-              </select>
-            </label>
+
             {mode === "edit" ? (
               <label>
                 Last Course Number
@@ -159,7 +149,6 @@ export default function CourseGroup() {
                 <th>No.</th>
                 <th>Course Group</th>
                 <th>Group ID / Code</th>
-                <th>Status</th>
               </tr>
             </thead>
             <tbody translate="no">
@@ -175,9 +164,7 @@ export default function CourseGroup() {
                   <td>{index + 1}</td>
                   <td>{item.name}</td>
                   <td>{item.code}</td>
-                  <td>
-                    <span className={styles.statusPill}>{item.status}</span>
-                  </td>
+
                 </tr>
               ))}
             </tbody>

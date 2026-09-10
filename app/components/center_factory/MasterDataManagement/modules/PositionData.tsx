@@ -325,21 +325,7 @@ export default function PositionData() {
                   }
                 />
               </label>
-              <label>
-                Status
-                <select
-                  value={form.status}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      status: event.target.value as PositionStatus,
-                    }))
-                  }
-                >
-                  <option value="ACTIVE">ACTIVE</option>
-                  <option value="INACTIVE">INACTIVE</option>
-                </select>
-              </label>
+
             </div>
             <div className={styles.formActions}>
               <button
@@ -378,7 +364,6 @@ export default function PositionData() {
                   <th>Position Code</th>
                   <th>Position Name(TH)</th>
                   <th>Position Name(EN)</th>
-                  <th>Status</th>
                 </tr>
               </thead>
               <tbody translate="no">
@@ -398,12 +383,11 @@ export default function PositionData() {
                     </td>
                     <td>{row.positionNameTh}</td>
                     <td>{row.positionNameEn ?? "-"}</td>
-                    <td>{row.status}</td>
                   </tr>
                 ))}
                 {!isLoading && visibleRows.length === 0 ? (
                   <tr>
-                    <td colSpan={5}>No position data found.</td>
+                    <td colSpan={4}>No position data found.</td>
                   </tr>
                 ) : null}
               </tbody>

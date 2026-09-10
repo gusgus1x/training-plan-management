@@ -300,7 +300,7 @@ export default function LevelData() {
               <label>Level Name(EN)<input maxLength={255} value={form.levelNameEn ?? ""} onChange={(event) => change("levelNameEn", event.target.value)} /></label>
               <label>PL<input maxLength={30} value={form.pl} onChange={(event) => change("pl", event.target.value)} /></label>
               <label>Level Key<input maxLength={30} value={form.levelKey} onChange={(event) => change("levelKey", event.target.value)} /></label>
-              <label>Status<select value={form.status} onChange={(event) => change("status", event.target.value as LevelStatus)}><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select></label>
+
               <label className={styles.fullWidth}>Remark.<textarea maxLength={500} value={form.remark ?? ""} onChange={(event) => change("remark", event.target.value)} /></label>
             </div>
             <div className={styles.formActions}>
@@ -322,7 +322,7 @@ export default function LevelData() {
                   <th>No.</th><th>Level Code</th><th>Level Code(TH)</th>
                   <th>Level Code(EN)</th><th>Level Name(TH)</th>
                   <th>Level Name(EN)</th><th>PL</th><th>Level Key</th>
-                  <th>Remark.</th><th>Status</th>
+                  <th>Remark.</th>
                 </tr>
               </thead>
               <tbody translate="no">
@@ -338,11 +338,11 @@ export default function LevelData() {
                     <td>{row.levelNameTh}</td><td>{row.levelNameEn ?? "-"}</td>
                     <td>{row.pl ?? "-"}</td>
                     <td><span className={styles.keyPill}>{row.levelKey}</span></td>
-                    <td>{row.remark ?? "-"}</td><td>{row.status}</td>
+                    <td>{row.remark ?? "-"}</td>
                   </tr>
                 ))}
                 {!isLoading && visibleRows.length === 0 ? (
-                  <tr><td colSpan={10}>No level data found.</td></tr>
+                  <tr><td colSpan={9}>No level data found.</td></tr>
                 ) : null}
               </tbody>
             </table>

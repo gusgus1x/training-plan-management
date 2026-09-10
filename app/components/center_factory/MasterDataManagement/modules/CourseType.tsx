@@ -157,17 +157,7 @@ export default function CourseType() {
                 placeholder="Optional description"
               />
             </label>
-            <label>
-              Status
-              <select
-                value={draft.status}
-                onChange={(e) => setDraft({ ...draft, status: e.target.value as CourseTypeStatus })}
-                translate="no"
-              >
-                <option value="ACTIVE">ACTIVE</option>
-                <option value="INACTIVE">INACTIVE</option>
-              </select>
-            </label>
+
             <div className={styles.formActions}>
               <button className={styles.saveButton} type="button" disabled={busy} onClick={() => void save()}>
                 {busy ? (isThai ? "กำลังบันทึก..." : "Saving...") : (isThai ? "บันทึก" : "Save")}
@@ -192,7 +182,6 @@ export default function CourseType() {
                 <th>No.</th>
                 <th>Course Type Code</th>
                 <th>Course Type Name</th>
-                <th>Status</th>
               </tr>
             </thead>
             <tbody translate="no">
@@ -210,9 +199,7 @@ export default function CourseType() {
                     <strong>{item.code}</strong>
                   </td>
                   <td>{item.name}</td>
-                  <td>
-                    <span className={styles.statusPill}>{item.status}</span>
-                  </td>
+
                 </tr>
               ))}
             </tbody>

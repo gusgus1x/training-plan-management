@@ -14,6 +14,7 @@ import {
 } from "../../../../lib/trainingForms/types";
 import { isFormBlockType } from "../../../../lib/formBlocks";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
+import { Download, FileSpreadsheet, FileText, Lock, Star, X } from "../../../icons/LucideIcons";
 import styles from "./EvaluationResultsPage.module.css";
 
 /**
@@ -125,7 +126,7 @@ const Stars = ({ average }: { average: number }) => (
   <span className={styles.stars} aria-hidden="true">
     {[1, 2, 3, 4, 5].map((star) => (
       <span key={star} className={star <= Math.round(average) ? styles.starOn : styles.starOff}>
-        ★
+        <Star size={14} />
       </span>
     ))}
   </span>
@@ -332,7 +333,7 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
               {summary ? <p className={styles.formName}>{summary.formName}</p> : null}
             </div>
             {summary?.isAnonymous ? (
-              <span className={styles.anonymousTag}>🔒 {t("ไม่ระบุตัวตน", "Anonymous")}</span>
+              <span className={styles.anonymousTag}><Lock size={13} style={{ verticalAlign: "middle", marginRight: 4 }} />{t("ไม่ระบุตัวตน", "Anonymous")}</span>
             ) : null}
           </header>
 
@@ -449,7 +450,7 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
               {t("วิเคราะห์และสำรวจผลลัพธ์ล่าสุดใน Excel", "Analyse the latest results in Excel")}
             </p>
             <button type="button" className={styles.insightAction} disabled>
-              📊 {t("ดาวน์โหลดเป็น Excel", "Download as Excel")}
+              <FileSpreadsheet size={15} style={{ verticalAlign: "middle", marginRight: 6 }} />{t("ดาวน์โหลดเป็น Excel", "Download as Excel")}
               <em>{t("กำลังทำ", "Not built yet")}</em>
             </button>
           </div>
@@ -461,7 +462,7 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
               disabled={!summary || summary.submittedCount === 0 || isLoadingResponses}
               onClick={() => void openIndividual()}
             >
-              🧾 {t("ตรวจสอบผลแต่ละรายการ", "Review individual responses")}
+              <FileText size={15} style={{ verticalAlign: "middle", marginRight: 6 }} />{t("ตรวจสอบผลแต่ละรายการ", "Review individual responses")}
               {isLoadingResponses ? <em>{t("กำลังโหลด...", "Loading...")}</em> : null}
             </button>
           </div>
@@ -472,7 +473,7 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
         <div className={styles.overlay} onClick={() => setDetail(null)}>
           <div className={styles.detailCard} onClick={(event) => event.stopPropagation()}>
             <button type="button" className={styles.detailClose} onClick={() => setDetail(null)}>
-              ✕
+              <X size={16} />
             </button>
             <h2>
               {detail.questionOrder}. {detail.questionText}
@@ -526,10 +527,10 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
               <h2>{t("ดูผลลัพธ์", "View result")}</h2>
               <div className={styles.individualTopActions}>
                 <button type="button" className={styles.printButton} onClick={() => window.print()}>
-                  🖨️ {t("บันทึกเป็น PDF", "Save as PDF")}
+                  <Download size={15} style={{ verticalAlign: "middle", marginRight: 6 }} />{t("บันทึกเป็น PDF", "Save as PDF")}
                 </button>
                 <button type="button" className={styles.detailClose} onClick={() => setIndividualIndex(null)}>
-                  ✕
+                  <X size={16} />
                 </button>
               </div>
             </div>
@@ -596,6 +597,7 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                   );
                 })}
             </div>
+
           </div>
         </div>
       ) : null}

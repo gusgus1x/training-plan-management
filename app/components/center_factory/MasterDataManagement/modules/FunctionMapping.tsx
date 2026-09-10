@@ -738,21 +738,7 @@ export default function FunctionMapping() {
                 ))}
               </select>
             </label>
-            <label>
-              Status
-              <select
-                value={form.status}
-                onChange={(event) =>
-                  change("status", event.target.value as MasterStatus)
-                }
-              >
-                {MASTER_STATUSES.map((statusOption) => (
-                  <option key={statusOption} value={statusOption}>
-                    {statusOption}
-                  </option>
-                ))}
-              </select>
-            </label>
+
           </div>
           <div className={styles.formGrid}>
             <div className={styles.fullWidth}>
@@ -812,7 +798,6 @@ export default function FunctionMapping() {
                           <th>Division</th>
                           <th>Department</th>
                           <th>Section</th>
-                          <th>Status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -867,9 +852,6 @@ export default function FunctionMapping() {
                                 <span style={{ color: "#94a3b8" }}>-</span>
                               )}
                             </td>
-                            <td>
-                              <span className={styles.statusPill}>{row.status}</span>
-                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -903,7 +885,6 @@ export default function FunctionMapping() {
                   <th>Plant Code</th>
                   <th>Plant Name</th>
                   <th>Maps to Master</th>
-                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -923,7 +904,6 @@ export default function FunctionMapping() {
                       <td translate="no">
                         {row.canonicalCode} — {row.canonicalName}
                       </td>
-                      <td>{row.status}</td>
                       <td>
                         <div className={styles.rowActions}>
                           <button
@@ -948,7 +928,7 @@ export default function FunctionMapping() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: "center", padding: "24px", color: "#64748b" }}>
+                    <td colSpan={7} style={{ textAlign: "center", padding: "24px", color: "#64748b" }}>
                       {isLoading ? "Loading mapping data..." : "No plant code mapping data found."}
                     </td>
                   </tr>
