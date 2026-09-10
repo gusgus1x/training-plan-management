@@ -519,18 +519,20 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
       {individual && shownResponses ? (
         <div className={styles.overlay} onClick={() => setIndividualIndex(null)}>
           <div
-            className={`${styles.individualCard} ${styles.printArea}`}
+            className={styles.individualCard}
             onClick={(event) => event.stopPropagation()}
           >
-            <button
-              type="button"
-              className={styles.detailClose}
-              onClick={() => setIndividualIndex(null)}
-            >
-              ✕
-            </button>
-
-            <h2>{t("ดูผลลัพธ์", "View result")}</h2>
+            <div className={styles.individualTopBar}>
+              <h2>{t("ดูผลลัพธ์", "View result")}</h2>
+              <div className={styles.individualTopActions}>
+                <button type="button" className={styles.printButton} onClick={() => window.print()}>
+                  🖨️ {t("บันทึกเป็น PDF", "Save as PDF")}
+                </button>
+                <button type="button" className={styles.detailClose} onClick={() => setIndividualIndex(null)}>
+                  ✕
+                </button>
+              </div>
+            </div>
 
             <div className={styles.individualNav}>
               <button
@@ -540,11 +542,23 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
               >
                 ‹
               </button>
-              <div className={styles.individualWho}>
+              {/* Arrows walk the list one at a time; the picker jumps straight to a person, which is
+                  what HRD actually wants once they know whose reply they came here for. It carries
+                  the label, so the heading beside it does not repeat the name twice. */}
+              <label className={styles.individualPicker}>
                 <span>{t("ผู้ตอบ", "Respondent")}</span>
-                <strong>{individual.responseNo}</strong>
-                <em>{individual.respondentName ?? t("ไม่ระบุตัวตน", "anonymous")}</em>
-              </div>
+                <select
+                  value={individualIndex ?? 0}
+                  onChange={(event) => setIndividualIndex(Number(event.target.value))}
+                >
+                  {shownResponses.responses.map((response, index) => (
+                    <option key={response.responseNo} value={index}>
+                      {response.responseNo}.{" "}
+                      {response.respondentName ?? t("ไม่ระบุตัวตน", "anonymous")}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <button
                 type="button"
                 disabled={individualIndex === shownResponses.responses.length - 1}
@@ -558,13 +572,20 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
               </button>
             </div>
 
+            {/* The paper says who it belongs to. The picker above is a control and prints as one
+                line of nothing useful, so the printed copy gets this instead. */}
+            <p className={styles.individualPrintedWho}>
+              {t("ผู้ตอบ", "Respondent")} {individual.responseNo} ·{" "}
+              {individual.respondentName ?? t("ไม่ระบุตัวตน", "anonymous")}
+            </p>
+
             <div className={styles.individualAnswers}>
               {shownResponses.questions
                 .filter((question) => !isFormBlockType(question.questionType))
                 .map((question) => {
                   const text = answerText(individual, question.questionId);
                   return (
-                    <div key={question.questionId}>
+                    <div key={question.questionId} className={styles.individualAnswerBlock}>
                       <p className={styles.individualQuestion}>
                         {question.questionOrder}. {question.questionText}
                       </p>
@@ -575,13 +596,6 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                   );
                 })}
             </div>
-
-            {/* The browser's own print dialogue, which offers "Save as PDF" everywhere this app
-                runs. A PDF library for one page of text would be a dependency to keep current
-                forever. The print stylesheet hides everything but this card. */}
-            <button type="button" className={styles.printButton} onClick={() => window.print()}>
-              🖨️ {t("บันทึกเป็น PDF", "Save as PDF")}
-            </button>
           </div>
         </div>
       ) : null}

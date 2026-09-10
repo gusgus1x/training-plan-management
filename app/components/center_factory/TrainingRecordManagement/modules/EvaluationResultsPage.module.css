@@ -629,31 +629,132 @@
   cursor: pointer;
 }
 
-/* Printing sends this card to the paper and nothing else. `visibility` rather than `display`,
-   because hiding an ancestor with display:none would take the card down with it. */
+/* The title and the two actions on one line, so Save-as-PDF sits where a reader reaches for it. */
+.individualTopBar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.individualTopActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The close button rides in the action row now rather than floating over the card's corner. */
+.individualCard .detailClose {
+  position: static;
+}
+
+.individualPicker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.individualPicker span {
+  color: var(--ui-30-muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* A grid track rather than a width on the control: globals.css forces width:100% on form fields,
+   and a track sizes the cell instead of fighting it. */
+.individualPicker select {
+  min-width: 0;
+  max-width: 320px;
+  padding: 7px 10px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+/* Only on paper: the picker prints as a control saying nothing, so the sheet carries the name as
+   text instead. */
+.individualPrintedWho {
+  display: none;
+}
+
+.individualAnswerBlock {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/*
+ * Printing.
+ *
+ * The first attempt hid the rest of the page with `visibility: hidden` and left the overlay
+ * `position: fixed`. Both are wrong on paper: hidden content keeps its height, so the sheet count
+ * followed the whole scrolled page, and a fixed element repeats on every sheet - which is why five
+ * questions came out as several identical pages.
+ *
+ * So the overlay stops being an overlay: everything else on the page is taken out of the flow with
+ * display:none, and the card becomes ordinary block content that paginates once.
+ */
 @media print {
-  :global(body) * {
-    visibility: hidden;
+  :global(html),
+  :global(body) {
+    height: auto;
+    margin: 0;
+    background: #fff;
   }
 
-  .printArea,
-  .printArea * {
-    visibility: visible;
+  .page {
+    min-height: 0;
+    padding: 0;
+    background: #fff;
   }
 
-  .printArea {
-    position: absolute;
-    top: 0;
-    left: 0;
+  .page > *:not(.overlay) {
+    display: none !important;
+  }
+
+  .overlay {
+    position: static;
+    display: block;
+    padding: 0;
+    background: none;
+  }
+
+  .individualCard {
     width: 100%;
     max-height: none;
     overflow: visible;
+    padding: 0;
+    border-radius: 0;
     box-shadow: none;
   }
 
-  .detailClose,
-  .printButton,
-  .individualNav button {
-    display: none;
+  /* Controls do not belong on paper. The nav row goes with them, and the name it was showing is
+     printed by .individualPrintedWho instead. */
+  .individualTopActions,
+  .individualNav {
+    display: none !important;
+  }
+
+  .individualPrintedWho {
+    display: block;
+    margin: 0 0 18px;
+    color: var(--ui-30-ink);
+    font-size: 0.95rem;
+    font-weight: 800;
+  }
+
+  .individualAnswers {
+    gap: 14px;
+  }
+
+  .individualAnswer,
+  .individualBlank {
+    background: none;
   }
 }
