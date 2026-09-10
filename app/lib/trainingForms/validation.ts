@@ -8,6 +8,7 @@ import type {
   GradeAnswerInput,
   GradeSubmissionInput,
   GradedStage,
+  GridRowAnswerInput,
   SetStageClosedInput,
   SubmitAssessmentInput,
   SubmitEvaluationInput,
@@ -50,6 +51,31 @@ const readStringArray = (value: unknown, field: string): string[] => {
   return value as string[];
 };
 
+/**
+ * A grid answer: one entry per row, each naming the columns picked for THAT row.
+ *
+ * Both submit parsers used to build their result field by field and simply never mention `grid`, so
+ * every grid pick was dropped here - between a screen that sent them and a repository that knew how
+ * to store them. The forms recorded nothing and the report counted nobody.
+ *
+ * Absent is not the same as empty: a form with no grid on it sends nothing, and that has to stay
+ * `undefined` so the repository takes its non-grid branch.
+ */
+const readGridAnswer = (value: unknown): GridRowAnswerInput[] | undefined => {
+  if (value === undefined || value === null) return undefined;
+  if (!Array.isArray(value)) throw invalid("grid", "Value must be an array of rows");
+  return value.map((raw) => {
+    if (typeof raw !== "object" || raw === null) {
+      throw invalid("grid", "Each grid row must be an object");
+    }
+    const row = raw as InputObject;
+    if (typeof row.rowId !== "string" || row.rowId.trim() === "") {
+      throw invalid("grid.rowId", "Each grid row needs a rowId");
+    }
+    return { rowId: row.rowId, columnIds: readStringArray(row.columnIds, "grid.columnIds") };
+  });
+};
+
 const parseAssessmentAnswer = (raw: unknown): AssessmentAnswerInput => {
   if (typeof raw !== "object" || raw === null) {
     throw invalid("answers", "Each answer must be an object");
@@ -63,6 +89,7 @@ const parseAssessmentAnswer = (raw: unknown): AssessmentAnswerInput => {
     questionId: item.questionId,
     choiceIds: readStringArray(item.choiceIds, "choiceIds"),
     text,
+    grid: readGridAnswer(item.grid),
   };
 };
 
@@ -92,6 +119,7 @@ const parseEvaluationAnswer = (raw: unknown): EvaluationAnswerInput => {
     optionIds: readStringArray(item.optionIds, "optionIds"),
     ratingValue,
     text,
+    grid: readGridAnswer(item.grid),
   };
 };
 

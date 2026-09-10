@@ -151,3 +151,89 @@ describe("readSubmissionForHrd", () => {
     });
   });
 });
+
+/**
+ * A grid where one column is picked in more than one row - the case the review grid used to draw
+ * with a single tick, because each column carried one `rowId` and `find` returned whichever answer
+ * row it met first.
+ */
+const gridDb = () => ({
+  assessment_submission: {
+    findUniqueOrThrow: async () => ({
+      submission_id: BigInt(SUBMISSION_ID),
+      assessment_stage: "POST_TEST",
+      attempt_no: 1,
+      submitted_at: new Date("2026-09-01T03:00:00.000Z"),
+      pass_status: "PASS",
+      grading_status: "REVIEWED",
+      publication_status: "PUBLISHED",
+      training_enrollment: {
+        enrollment_id: BigInt(7),
+        plan_id: BigInt(PLAN_ID),
+        employee: {
+          employee_code: "E1",
+          first_name_th: "ทดสอบ",
+          last_name_th: "ระบบ",
+          first_name_en: null,
+          last_name_en: null,
+        },
+        training_plan: { training_plan_oap: { company_id: BigInt(1) } },
+      },
+      assessment: {
+        passing_score_percent: new Prisma.Decimal(50),
+        assessment_question: [
+          {
+            question_id: BigInt(1),
+            question_order: 1,
+            question_text: "ให้คะแนนแต่ละหัวข้อ",
+            question_type: "MULTIPLE_CHOICE_GRID",
+            question_score: new Prisma.Decimal(10),
+            assessment_choice: [
+              { choice_id: BigInt(21), choice_order: 1, choice_text: "หัวข้อ ก", is_correct: false, axis: "ROW" },
+              { choice_id: BigInt(22), choice_order: 2, choice_text: "หัวข้อ ข", is_correct: false, axis: "ROW" },
+              { choice_id: BigInt(31), choice_order: 3, choice_text: "ดี", is_correct: false, axis: "COLUMN" },
+            ],
+          },
+        ],
+      },
+      // The same column, picked for both rows.
+      assessment_answer: [
+        {
+          answer_id: BigInt(6001),
+          question_id: BigInt(1),
+          choice_id: BigInt(31),
+          row_choice_id: BigInt(21),
+          answer_text: null,
+          is_correct: true,
+          score_awarded: new Prisma.Decimal(5),
+          review_status: "NOT_REQUIRED",
+          review_comment: null,
+        },
+        {
+          answer_id: BigInt(6002),
+          question_id: BigInt(1),
+          choice_id: BigInt(31),
+          row_choice_id: BigInt(22),
+          answer_text: null,
+          is_correct: true,
+          score_awarded: new Prisma.Decimal(5),
+          review_status: "NOT_REQUIRED",
+          review_comment: null,
+        },
+      ],
+    }),
+  },
+});
+
+describe("readSubmissionForHrd - grids", () => {
+  it("reports every row a column was picked for, not just the first", async () => {
+    const review = await read(gridDb());
+    const column = review.questions[0].choices.find((choice) => choice.axis === "COLUMN")!;
+
+    expect(column.pickedRowIds.sort()).toEqual(["21", "22"]);
+    // The rows themselves were never picked as choices; only columns carry the answer.
+    for (const row of review.questions[0].choices.filter((choice) => choice.axis === "ROW")) {
+      expect(row.pickedRowIds).toEqual([]);
+    }
+  });
+});

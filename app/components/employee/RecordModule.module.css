@@ -95,7 +95,9 @@
   align-items: center;
   gap: 10px;
   border-bottom: 1px solid var(--ui-30-border);
-  padding-bottom: 12px;
+  /* Room for the badges that overhang each button's top-right corner. `overflow-x: auto` makes the
+     vertical overflow scrollable too, so anything poking outside the box would be cut off. */
+  padding: 10px 8px 12px 0;
   overflow-x: auto;
 }
 
@@ -128,15 +130,26 @@
   box-shadow: 0 2px 10px rgba(0, 122, 61, 0.15);
 }
 
+/* The count rides on the button's corner rather than sitting inside it, the way the evaluation
+   button in the record workspace does - so the label does not shift as the number grows, and the
+   two screens count the same way. */
+.tabBtn {
+  position: relative;
+}
+
 .tabBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2px 9px;
+  position: absolute;
+  top: -7px;
+  right: -6px;
+  min-width: 22px;
+  padding: 2px 6px;
   border-radius: 999px;
-  font-size: 0.74rem;
+  background: var(--ui-10-accent);
+  color: var(--ui-on-dark);
+  font-size: 0.68rem;
   font-weight: 900;
-  background: rgba(128, 128, 128, 0.14);
+  line-height: 1.5;
+  text-align: center;
 }
 
 /* ─── Shared Card Layout (Matching Image 2 Fidelity) ───────────── */

@@ -228,7 +228,20 @@ export type EvaluationResponseAnswer = {
 export type EvaluationResponse = {
   /** 1-based position in this list, which is all the identity an anonymous respondent has. */
   responseNo: number;
+  /** Title, first and last name, as the reply should be signed. Null on an anonymous form. */
   respondentName: string | null;
+  /** The respondent's position, so a supervisor's reply says who is speaking. Null when unknown or
+   *  when the form is anonymous. */
+  respondentPosition: string | null;
+  /**
+   * Who the reply is ABOUT. Only meaningful when somebody other than the attendee answered - a
+   * supervisor evaluating one of their people - so it is null for an attendee's own reply, where
+   * the respondent and the subject are the same person.
+   *
+   * Withheld on an anonymous form for the same reason the name is: one supervisor answers for one
+   * attendee, so naming the subject names the respondent.
+   */
+  subjectName: string | null;
   submittedAt: string | null;
   answers: EvaluationResponseAnswer[];
 };
@@ -389,7 +402,13 @@ export type AssignedEvaluation = {
   attendeeName: string;
   attendeeEmployeeCode: string;
   courseName: string;
-  batchNo: number | null;
+  /**
+   * The round as everybody else names it. NOT `training_plan.batch_no`, which restarts at 1 inside
+   * each OAP: a course on its fourth round through a second OAP carries batch_no 2, and printing
+   * that told the supervisor they were evaluating round 2. `batch_name` is what the employee's own
+   * screens show and what HRD types.
+   */
+  batchName: string | null;
   startAt: string;
   endAt: string;
   mode: "FORM" | "LINK";
@@ -431,8 +450,14 @@ export type SubmissionReviewQuestion = {
     isCorrect: boolean;
     /** Whether the person taking the test picked this one. */
     picked: boolean;
-    /** Grid rows only: the row this cell belongs to. */
-    rowId: string | null;
+    /**
+     * Grid columns only: every ROW this column was picked for.
+     *
+     * A list, not one id. The same column is picked once per row it answers, so a single `rowId`
+     * held whichever answer row happened to be found first and the review grid ticked one cell of
+     * however many the person actually filled in.
+     */
+    pickedRowIds: string[];
     axis: "ROW" | "COLUMN" | null;
   }>;
 };

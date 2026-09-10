@@ -47,6 +47,15 @@ export const stageOpensAt = (stage: FormStageKey, startAt: string, endAt: string
   if (stage === "EVALUATION_30DAY") {
     const end = new Date(endAt);
     end.setUTCDate(end.getUTCDate() + FOLLOW_UP_OPENS_AFTER_DAYS);
+    // The start of that day, not the hour the course happened to finish on. Carrying the finishing
+    // time forward made the form open at 16:00 for a course that ended at 16:00, while the screen
+    // said only "opens 10 Sep" - so on the day itself it read as open and behaved as locked, with
+    // nothing on screen to explain the wait. Thirty days is a rule about days.
+    //
+    // ponytail: midnight UTC, which is 07:00 in the only timezone this system runs in. A course
+    // recorded as ending after 17:00 UTC falls on the next local day and would open a day late by
+    // the label; store the plan's timezone if that ever becomes real.
+    end.setUTCHours(0, 0, 0, 0);
     return end.toISOString();
   }
   return startAt;

@@ -68,7 +68,7 @@ export default function AssignedEvaluations() {
               <strong>{row.attendeeName}</strong>
               <span className={styles.meta}>
                 {row.attendeeEmployeeCode}
-                {row.batchNo === null ? "" : ` · ${t("รุ่นที่", "Batch")} ${row.batchNo}`}
+                {row.batchName ? ` · ${t("รุ่นที่", "Batch")} ${row.batchName}` : ""}
               </span>
               <span className={styles.meta}>{row.courseName}</span>
               <span className={styles.meta}>

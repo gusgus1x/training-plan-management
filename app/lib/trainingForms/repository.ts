@@ -46,6 +46,19 @@ type DatabaseClient = Pick<
   | "$transaction"
 >;
 
+/** Title, first name and last name, the way a Thai reply is signed. The title is optional on the
+ *  employee record, so it is joined rather than assumed. */
+const fullNameTh = (employee: { title_th?: string | null; first_name_th: string; last_name_th: string }) =>
+  [employee.title_th ?? "", employee.first_name_th, employee.last_name_th]
+    .map((part) => part.trim())
+    .filter((part) => part !== "")
+    .join(" ");
+
+/** Marks read back as a percentage, for the screens that judge against a pass mark. Nothing stores
+ *  this: `assessment_submission.score` is the mark, and the marks it is out of are the paper's. */
+const percentOfMarks = (awarded: number, possible: number) =>
+  possible <= 0 ? null : Math.round((awarded / possible) * 10000) / 100;
+
 const forbidden = (message: string) => new ApiError({ code: "FORBIDDEN", message, status: 403 });
 const notFound = (message: string) => new ApiError({ code: "RESOURCE_NOT_FOUND", message, status: 404 });
 
@@ -468,7 +481,10 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
             resultsPublished: released,
             // The final score and verdict stay behind the release gate. The auto-marked part does
             // not: it is already decided, and hiding it is what left people guessing.
-            scorePercent: released && row.score !== null ? Number(row.score) : null,
+            //
+            // Worked out from the marks rather than read from `score`, which is a MARK now: reading
+            // it as a percentage put "6%" beside "6 / 6" on the employee's own screen.
+            scorePercent: released ? percentOfMarks(totals.totalAwarded, totals.totalPossible) : null,
             passStatus: released ? (row.pass_status as AssessmentReview["passStatus"]) : "PENDING",
             totalAwarded: released ? totals.totalAwarded : null,
             totalPossible: totals.totalPossible,
@@ -539,7 +555,7 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
           attemptNo: submission.attempt_no,
           submittedAt: submission.submitted_at?.toISOString() ?? null,
           resultsPublished: openedIsReleased,
-          scorePercent: openedIsReleased && submission.score !== null ? Number(submission.score) : null,
+          scorePercent: openedIsReleased ? percentOfMarks(Number(totalAwarded), Number(totalPossible)) : null,
           passStatus: openedIsReleased ? (submission.pass_status as AssessmentReview["passStatus"]) : "PENDING",
           passingScorePercent: Number(submission.assessment.passing_score_percent),
           totalAwarded: openedIsReleased ? Number(totalAwarded) : null,
@@ -808,7 +824,7 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
             attendeeName: `${enrollment.employee.first_name_th} ${enrollment.employee.last_name_th}`.trim(),
             attendeeEmployeeCode: enrollment.employee.employee_code ?? "",
             courseName: plan.training_plan_oap.course_name_snapshot,
-            batchNo: plan.batch_no,
+            batchName: plan.batch_name,
             startAt,
             endAt,
             mode: formId === null ? "LINK" : "FORM",
@@ -1323,7 +1339,14 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
           select: {
             submitted_at: true,
             respondent_user_id: true,
-            training_enrollment: { select: { employee_user_id: true } },
+            // The attendee the reply is about, for a supervisor's 30-day answers: HRD reading those
+            // needs to know which of their people each one describes.
+            training_enrollment: {
+              select: {
+                employee_user_id: true,
+                employee: { select: { title_th: true, first_name_th: true, last_name_th: true } },
+              },
+            },
             evaluation_answer: {
               select: {
                 evaluation_question_id: true,
@@ -1347,18 +1370,25 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
 
         // Names are looked up only when the form is not anonymous. On an anonymous form the query
         // is not run at all, so there is nothing to forget to strip later.
-        const namesByUserId = new Map<string, string>();
+        const respondentsByUserId = new Map<string, { name: string; position: string | null }>();
         if (!form.is_anonymous && submissions.length > 0) {
           const employees = await db().employee.findMany({
             where: { user_id: { in: [...new Set(submissions.map((s) => s.respondent_user_id))] } },
-            select: { user_id: true, employee_code: true, first_name_th: true, last_name_th: true },
+            select: {
+              user_id: true,
+              employee_code: true,
+              title_th: true,
+              first_name_th: true,
+              last_name_th: true,
+              position: { select: { position_name_th: true } },
+            },
           });
           for (const employee of employees) {
-            namesByUserId.set(
-              employee.user_id,
+            respondentsByUserId.set(employee.user_id, {
               // The employee code is the fallback, and it too can be missing on an imported row.
-              `${employee.first_name_th} ${employee.last_name_th}`.trim() || employee.employee_code || "-",
-            );
+              name: fullNameTh(employee) || employee.employee_code || "-",
+              position: employee.position?.position_name_th ?? null,
+            });
           }
         }
 
@@ -1408,11 +1438,22 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
               byQuestion.set(questionId, entry);
             }
 
+            const respondent = form.is_anonymous
+              ? null
+              : respondentsByUserId.get(submission.respondent_user_id) ?? null;
+            // Only a reply written by somebody else is ABOUT somebody: an attendee's own answer has
+            // no separate subject to name.
+            const answeredBySomebodyElse =
+              submission.respondent_user_id !== submission.training_enrollment.employee_user_id;
+
             return {
               responseNo: index + 1,
-              respondentName: form.is_anonymous
-                ? null
-                : namesByUserId.get(submission.respondent_user_id) ?? null,
+              respondentName: respondent?.name ?? null,
+              respondentPosition: respondent?.position ?? null,
+              subjectName:
+                form.is_anonymous || !answeredBySomebodyElse
+                  ? null
+                  : fullNameTh(submission.training_enrollment.employee) || null,
               submittedAt: submission.submitted_at?.toISOString() ?? null,
               answers: [...byQuestion.values()],
             };
@@ -1544,8 +1585,9 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
               choiceText: choice.choice_text,
               isCorrect: choice.is_correct,
               picked: picked.has(choice.choice_id.toString()),
-              rowId:
-                answers.find((answer) => answer.choice_id === choice.choice_id)?.row_choice_id?.toString() ?? null,
+              pickedRowIds: answers
+                .filter((answer) => answer.choice_id === choice.choice_id && answer.row_choice_id !== null)
+                .map((answer) => answer.row_choice_id!.toString()),
               axis: (choice.axis as "ROW" | "COLUMN" | null) ?? null,
             })),
           };

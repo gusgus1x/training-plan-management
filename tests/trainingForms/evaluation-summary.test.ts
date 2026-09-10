@@ -335,6 +335,10 @@ describe("readAssessmentReviewForEmployee", () => {
     expect(review!.totalAwarded).toBe(5);
     expect(review!.totalPossible).toBe(10);
     expect(review!.passingScorePercent).toBe(80);
+    // Worked out from the marks. Reading assessment_submission.score as a percentage - which it
+    // stopped being - printed "6%" beside "6 / 6" on the employee's own screen.
+    expect(review!.scorePercent).toBe(50);
+    expect(review!.attempts[0].scorePercent).toBe(50);
 
     const serialised = JSON.stringify(review);
     for (const forbidden of ["isCorrect", "is_correct", "choice", "correct"]) {

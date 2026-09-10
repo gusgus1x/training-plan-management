@@ -321,7 +321,7 @@ const QuestionCard = ({
                 <tr key={row.choiceId}>
                   <th scope="row">{row.choiceText}</th>
                   {columns.map((column) => {
-                    const picked = column.picked && column.rowId === row.choiceId;
+                    const picked = column.pickedRowIds.includes(row.choiceId);
                     return (
                       <td key={column.choiceId} className={picked ? styles.gridPicked : undefined}>
                         {picked ? "●" : ""}

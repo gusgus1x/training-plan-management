@@ -259,8 +259,18 @@
 
 .donut {
   width: 100%;
-  max-width: 190px;
+  max-width: 230px;
   justify-self: center;
+}
+
+/* The share written on each wedge. Anchored in the middle so it reads the same on either side of
+   the ring, and not rotated with the slices - only the arcs carry that transform. */
+.donutLabel {
+  fill: var(--ui-30-ink);
+  font-size: 9px;
+  font-weight: 800;
+  text-anchor: middle;
+  dominant-baseline: middle;
 }
 
 .donutTrack {
@@ -274,7 +284,7 @@
   stroke-width: 16;
   /* Starts the first slice at twelve o'clock instead of three, which is where a reader looks. */
   transform: rotate(-90deg);
-  transform-origin: 60px 60px;
+  transform-origin: 80px 80px;
 }
 
 .average {
@@ -294,9 +304,18 @@
   font-size: 0.78rem;
 }
 
+/* An explicit row. The stars were text characters when this was written, and `letter-spacing` was
+   enough; they are SVGs now, and an inline run of them stacks the moment anything in the cascade
+   gives an svg a block display. */
 .stars {
-  font-size: 1.2rem;
-  letter-spacing: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.starOn,
+.starOff {
+  display: inline-flex;
 }
 
 .starOn {
@@ -344,23 +363,98 @@
   white-space: nowrap;
 }
 
-.gridRows {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+/* A diverging stacked bar per grid row, drawn the way the reference does: a bare area with one
+   axis line down the middle, thin bars, and the ordered ramp carrying the direction. An earlier
+   version filled the whole track grey, which made every row read as a full-width block. */
+.gridChart {
   margin-top: 14px;
 }
 
-.gridRowTitle {
-  margin: 0 0 6px;
-  color: var(--ui-30-ink);
-  font-size: 0.8rem;
-  font-weight: 800;
+.gridChart .legend {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-bottom: 18px;
 }
 
-.gridRowTitle span {
+.gridChart .legend li {
+  grid-template-columns: 8px auto;
+  gap: 7px;
+  font-size: 0.75rem;
+}
+
+.gridChart .legendDot {
+  width: 8px;
+  height: 8px;
+}
+
+.gridRows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gridRow {
+  display: grid;
+  grid-template-columns: minmax(90px, 24%) minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.gridRowLabel {
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+/* Two halves of equal width meeting at the axis, so 100% of a row fills exactly one side. */
+.gridTrack {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  height: 14px;
+}
+
+.gridHalf {
+  position: relative;
+  display: flex;
+  height: 100%;
+}
+
+/* Reversed so the first column - the worst answer - ends furthest from the centre. */
+.gridHalfLeft {
+  flex-direction: row-reverse;
+}
+
+.gridSegment {
+  height: 100%;
+}
+
+/* The only rule the chart draws: where zero is. It runs past the bar so the rows line up by eye. */
+.gridAxis {
+  position: absolute;
+  left: 50%;
+  top: -6px;
+  bottom: -6px;
+  width: 1px;
+  background: var(--ui-30-border);
+}
+
+.gridScale {
+  display: grid;
+  grid-template-columns: minmax(90px, 24%) minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 10px;
+}
+
+/* The three marks share ONE grid cell, spread across the track. Placing them all in column 2 of
+   the outer grid put each on its own implicit row, which is how the scale ended up as a staircase. */
+.gridScaleMarks {
+  display: flex;
+  justify-content: space-between;
   color: var(--ui-30-muted);
-  font-weight: 600;
+  font-size: 0.7rem;
+  font-weight: 700;
 }
 
 .textPreview {
@@ -680,8 +774,46 @@
 
 /* Only on paper: the picker prints as a control saying nothing, so the sheet carries the name as
    text instead. */
-.individualPrintedWho {
-  display: none;
+/* Who answered, and for a supervisor's reply who it is about. Prints as well as shows: the picker
+   above it is a control and puts nothing useful on paper. */
+.individualWhoBlock {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 40px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-60-surface-soft);
+}
+
+.individualWhoBlock > div {
+  display: grid;
+  gap: 2px;
+}
+
+.individualWhoBlock span {
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.individualWhoBlock strong {
+  color: var(--ui-30-ink);
+  font-size: 0.95rem;
+}
+
+.individualWhoBlock em {
+  color: var(--ui-30-text);
+  font-size: 0.8rem;
+  font-style: normal;
+}
+
+/* The respondent's position, under their name in the per-question table. */
+.detailPosition {
+  display: block;
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
 }
 
 .individualAnswerBlock {
@@ -734,19 +866,18 @@
     box-shadow: none;
   }
 
-  /* Controls do not belong on paper. The nav row goes with them, and the name it was showing is
-     printed by .individualPrintedWho instead. */
+  /* Controls do not belong on paper. The nav row goes with them; the who-block above carries the
+     names the nav was standing in for. */
   .individualTopActions,
   .individualNav {
     display: none !important;
   }
 
-  .individualPrintedWho {
-    display: block;
+  .individualWhoBlock {
+    border: none;
+    background: none;
+    padding: 0;
     margin: 0 0 18px;
-    color: var(--ui-30-ink);
-    font-size: 0.95rem;
-    font-weight: 800;
   }
 
   .individualAnswers {

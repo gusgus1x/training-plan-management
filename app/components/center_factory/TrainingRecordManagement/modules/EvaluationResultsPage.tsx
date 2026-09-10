@@ -14,7 +14,7 @@ import {
 } from "../../../../lib/trainingForms/types";
 import { isFormBlockType } from "../../../../lib/formBlocks";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
-import { Download, FileSpreadsheet, FileText, Lock, Star, X } from "../../../icons/LucideIcons";
+import { FileSpreadsheet, FileText, Lock, Printer, Star, X } from "../../../icons/LucideIcons";
 import styles from "./EvaluationResultsPage.module.css";
 
 /**
@@ -41,6 +41,27 @@ const SERIES_COLOURS = [
 const colourAt = (index: number) => SERIES_COLOURS[index % SERIES_COLOURS.length];
 
 /**
+ * The grid's own ramp, which is a different job from the categorical palette above.
+ *
+ * A Likert scale is ordered, so its colours have to be: warm at the unhappy end, cool at the happy
+ * one, neutral in the middle. Six unrelated hues said nothing about direction and left the chart
+ * needing its legend read before any of it meant anything.
+ */
+const GRID_NEGATIVE = ["#c2410c", "#ea7c3c", "#f0a06a"];
+const GRID_POSITIVE = ["#93b4f7", "#4f7fe8", "#1d4ed8"];
+const GRID_NEUTRAL = "#cbd5e1";
+
+const gridColourAt = (index: number, count: number) => {
+  const negatives = Math.floor(count / 2);
+  if (index < negatives) {
+    // Darkest at the far end of the scale, which is where the strongest answer sits.
+    return GRID_NEGATIVE[Math.min(negatives - 1 - index, GRID_NEGATIVE.length - 1)];
+  }
+  if (count % 2 === 1 && index === negatives) return GRID_NEUTRAL;
+  return GRID_POSITIVE[Math.min(index - negatives - (count % 2 === 1 ? 1 : 0), GRID_POSITIVE.length - 1)];
+};
+
+/**
  * What one person said to one question, as a single readable string.
  *
  * An empty string rather than a dash for "did not answer", because the cell is already blank on the
@@ -63,30 +84,45 @@ const answerText = (response: EvaluationResponse, questionId: string) => {
  */
 const Donut = ({ slices }: { slices: { label: string; count: number }[] }) => {
   const total = slices.reduce((sum, slice) => sum + slice.count, 0);
+  const centre = 80;
   const radius = 42;
   const circumference = 2 * Math.PI * radius;
+  // The ring sits inside a wider box so the percentages have room outside it. Without the margin
+  // they were clipped by the viewBox on the slices nearest three and nine o'clock.
+  const labelRadius = radius + 20;
   let offset = 0;
 
   return (
-    <svg viewBox="0 0 120 120" className={styles.donut} role="img" aria-hidden="true">
-      <circle cx="60" cy="60" r={radius} className={styles.donutTrack} />
+    <svg viewBox="0 0 160 160" className={styles.donut} role="img" aria-hidden="true">
+      <circle cx={centre} cy={centre} r={radius} className={styles.donutTrack} />
       {total === 0
         ? null
         : slices.map((slice, index) => {
             if (slice.count === 0) return null;
             const length = (slice.count / total) * circumference;
             const dash = `${length} ${circumference - length}`;
+            // The label goes at the slice's midpoint, measured from twelve o'clock the same way
+            // the ring is rotated, so the text lands on the wedge it describes.
+            const midAngle = ((offset + length / 2) / circumference) * 2 * Math.PI - Math.PI / 2;
             const element = (
-              <circle
-                key={slice.label + index}
-                cx="60"
-                cy="60"
-                r={radius}
-                className={styles.donutSlice}
-                stroke={colourAt(index)}
-                strokeDasharray={dash}
-                strokeDashoffset={-offset}
-              />
+              <g key={slice.label + index}>
+                <circle
+                  cx={centre}
+                  cy={centre}
+                  r={radius}
+                  className={styles.donutSlice}
+                  stroke={colourAt(index)}
+                  strokeDasharray={dash}
+                  strokeDashoffset={-offset}
+                />
+                <text
+                  x={centre + Math.cos(midAngle) * labelRadius}
+                  y={centre + Math.sin(midAngle) * labelRadius}
+                  className={styles.donutLabel}
+                >
+                  {Math.round((slice.count / total) * 100)}%
+                </text>
+              </g>
             );
             offset += length;
             return element;
@@ -170,28 +206,105 @@ const RatingChart = ({ question }: { question: EvaluationSummaryQuestion }) => (
   </div>
 );
 
-const GridChart = ({ question }: { question: EvaluationSummaryQuestion }) => (
-  <div className={styles.gridRows}>
-    {question.gridRows.map((row) => (
-      <div key={row.rowId}>
-        <p className={styles.gridRowTitle}>
-          {row.rowText} <span>({row.answeredBy} ผู้ตอบ)</span>
-        </p>
-        <div className={styles.bars}>
-          {row.cells.map((cell, index) => (
-            <Bar
-              key={cell.columnId}
-              label={cell.columnText}
-              count={cell.count}
-              total={row.answeredBy}
-              colour={colourAt(index)}
+/**
+ * A grid, as the diverging stacked bar a Likert scale is normally read with: the columns run in
+ * their own order from worst to best, the axis is pinned at the middle of the scale, and each row's
+ * answers push left or right of it.
+ *
+ * The first version drew each row as its own little bar chart. It was the rating chart reused, and
+ * it answers a different question: it says how a row was answered, but not which rows the group
+ * leaned unhappy about, which is the only reason a grid is on a report at all. Reading that off
+ * separate charts means comparing four bars in four places.
+ *
+ */
+const GridChart = ({ question }: { question: EvaluationSummaryQuestion }) => {
+  const columns = question.gridRows[0]?.cells ?? [];
+  // The first half of the scale reads as the unhappy end. An odd middle column goes with the
+  // positive side rather than being split down the axis: splitting is the statistician's habit, and
+  // on a small batch it draws one person's single answer as two bars either side of the line, which
+  // reads as a fault rather than as a neutral answer.
+  const leftCount = Math.floor(columns.length / 2);
+  const leftOf = (index: number) => index < leftCount;
+
+  // Every bar would be zero wide, which draws as nothing at all and reads as a broken chart rather
+  // than as an unanswered question.
+  if (question.answeredBy === 0) {
+    return <p className={styles.withheld}>ยังไม่มีใครตอบข้อนี้</p>;
+  }
+
+  return (
+    <div className={styles.gridChart}>
+      <ul className={styles.legend}>
+        {columns.map((column, index) => (
+          <li key={column.columnId}>
+            <span
+              className={styles.legendDot}
+              style={{ background: gridColourAt(index, columns.length) }}
             />
-          ))}
-        </div>
+            <span className={styles.legendLabel}>{column.columnText}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div className={styles.gridRows}>
+        {question.gridRows.map((row) => (
+          <div key={row.rowId} className={styles.gridRow}>
+            <span className={styles.gridRowLabel} title={`${row.answeredBy} ผู้ตอบ`}>
+              {row.rowText}
+            </span>
+            <span className={styles.gridTrack}>
+              {/* Two halves meeting at the axis. The left one is laid out in reverse so the first
+                  column ends up furthest from the centre, which is what makes the scale read
+                  outward in both directions. */}
+              <span className={`${styles.gridHalf} ${styles.gridHalfLeft}`}>
+                {row.cells.map((cell, index) =>
+                  !leftOf(index) ? null : (
+                    <span
+                      key={cell.columnId}
+                      className={styles.gridSegment}
+                      style={{
+                        width: `${cell.percent}%`,
+                        background: gridColourAt(index, columns.length),
+                      }}
+                      title={`${cell.columnText}: ${cell.count} (${cell.percent}%)`}
+                    />
+                  ),
+                )}
+              </span>
+              <span className={styles.gridAxis} />
+              <span className={styles.gridHalf}>
+                {row.cells.map((cell, index) =>
+                  leftOf(index) ? null : (
+                    <span
+                      key={cell.columnId}
+                      className={styles.gridSegment}
+                      style={{
+                        width: `${cell.percent}%`,
+                        background: gridColourAt(index, columns.length),
+                      }}
+                      title={`${cell.columnText}: ${cell.count} (${cell.percent}%)`}
+                    />
+                  ),
+                )}
+              </span>
+            </span>
+          </div>
+        ))}
       </div>
-    ))}
-  </div>
-);
+
+      {/* The first cell is empty on purpose: it lines the marks up under the track rather than
+          under the row labels. */}
+      <div className={styles.gridScale}>
+        <span />
+        <span className={styles.gridScaleMarks}>
+          <span>100%</span>
+          <span>0%</span>
+          <span>100%</span>
+        </span>
+      </div>
+    </div>
+  );
+};
 
 /** The first few written answers, with the rest behind "รายละเอียดเพิ่มเติม". */
 const TextAnswers = ({
@@ -232,10 +345,10 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
 
   const [respondents, setRespondents] = useState<EvaluationRespondentGroup>("EMPLOYEE");
   const [timing, setTiming] = useState<EvaluationTimingStage>("EVALUATION");
-  const [loaded, setLoaded] = useState<{
-    respondents: EvaluationRespondentGroup;
-    byTiming: Record<EvaluationTimingStage, EvaluationSummary | null>;
-  } | null>(null);
+  const [loaded, setLoaded] = useState<Record<
+    EvaluationRespondentGroup,
+    Record<EvaluationTimingStage, EvaluationSummary | null>
+  > | null>(null);
   const [detail, setDetail] = useState<EvaluationSummaryQuestion | null>(null);
   // The individual replies are a second, heavier read, so they are fetched only once somebody asks
   // to see a person rather than a count.
@@ -243,28 +356,40 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
   const [isLoadingResponses, setIsLoadingResponses] = useState(false);
   const [individualIndex, setIndividualIndex] = useState<number | null>(null);
 
+  // All four combinations at once, rather than two per audience on demand. The 30-day stage is
+  // mostly answered by supervisors, so an HRD who left the audience on "attendees" read zero and
+  // had no way to tell that two replies were sitting behind the other button. Holding all four
+  // also means switching audience redraws instead of flickering through a load.
   useEffect(() => {
     let cancelled = false;
+    const read = (timing: EvaluationTimingStage, group: EvaluationRespondentGroup) =>
+      readEvaluationSummary(planId, timing, group).catch(() => ({ summary: null }));
+
     Promise.all([
-      readEvaluationSummary(planId, "EVALUATION", respondents).catch(() => ({ summary: null })),
-      readEvaluationSummary(planId, "EVALUATION_30DAY", respondents).catch(() => ({ summary: null })),
-    ]).then(([afterTraining, followUp]) => {
+      read("EVALUATION", "EMPLOYEE"),
+      read("EVALUATION_30DAY", "EMPLOYEE"),
+      read("EVALUATION", "SUPERVISOR"),
+      read("EVALUATION_30DAY", "SUPERVISOR"),
+    ]).then(([employeeAfter, employee30, supervisorAfter, supervisor30]) => {
       if (cancelled) return;
       setLoaded({
-        respondents,
-        byTiming: { EVALUATION: afterTraining.summary, EVALUATION_30DAY: followUp.summary },
+        EMPLOYEE: { EVALUATION: employeeAfter.summary, EVALUATION_30DAY: employee30.summary },
+        SUPERVISOR: { EVALUATION: supervisorAfter.summary, EVALUATION_30DAY: supervisor30.summary },
       });
     });
     return () => {
       cancelled = true;
     };
-  }, [planId, respondents]);
+  }, [planId]);
 
   // A supervisor is only ever asked for the 30-day follow-up, so that is the only stage of theirs
   // that can carry answers. Reading an empty "after training" tab as "no supervisor replied" would
   // be wrong: none was ever asked.
   const shownTiming = respondents === "SUPERVISOR" ? "EVALUATION_30DAY" : timing;
-  const summary = loaded?.byTiming[shownTiming] ?? null;
+  const summary = loaded?.[respondents][shownTiming] ?? null;
+  /** Replies of the audience that is NOT on screen, for the same stage. */
+  const otherAudience = respondents === "EMPLOYEE" ? "SUPERVISOR" : "EMPLOYEE";
+  const otherAudienceCount = loaded?.[otherAudience][shownTiming]?.submittedCount ?? 0;
 
   const questions = useMemo(
     () => (summary?.questions ?? []).filter((question) => !isFormBlockType(question.questionType)),
@@ -399,7 +524,18 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
               </div>
 
               {summary.submittedCount === 0 ? (
-                <p className={styles.note}>{t("ยังไม่มีผู้ตอบแบบประเมินนี้", "Nobody has answered this yet")}</p>
+                <p className={styles.note}>
+                  {t("ยังไม่มีผู้ตอบแบบประเมินนี้", "Nobody has answered this yet")}
+                  {/* The 30-day stage is mostly the supervisors', so an empty attendee tab is the
+                      expected state rather than a missing one. Say where the replies are instead of
+                      leaving a zero that reads like a fault. */}
+                  {otherAudienceCount > 0
+                    ? t(
+                        ` · มีคำตอบจาก${otherAudience === "SUPERVISOR" ? "หัวหน้า" : "ผู้เข้าอบรม"} ${otherAudienceCount} คน กดปุ่มด้านบนเพื่อดู`,
+                        ` · ${otherAudienceCount} reply(s) from ${otherAudience === "SUPERVISOR" ? "supervisors" : "attendees"} - switch with the buttons above`,
+                      )
+                    : ""}
+                </p>
               ) : (
                 <div className={styles.questions}>
                   {questions.map((question, index) => {
@@ -496,6 +632,10 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                   <tr>
                     <th>ID</th>
                     <th>{t("ชื่อ", "Name")}</th>
+                    {/* Only a supervisor's pile has a subject; an attendee answers for themselves. */}
+                    {shownResponses.responses.some((response) => response.subjectName) ? (
+                      <th>{t("ประเมินให้", "Evaluating")}</th>
+                    ) : null}
                     <th>{t("การตอบกลับ", "Response")}</th>
                   </tr>
                 </thead>
@@ -503,7 +643,15 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                   {shownResponses.responses.map((response) => (
                     <tr key={response.responseNo}>
                       <td>{response.responseNo}</td>
-                      <td>{response.respondentName ?? t("ไม่ระบุตัวตน", "anonymous")}</td>
+                      <td>
+                        {response.respondentName ?? t("ไม่ระบุตัวตน", "anonymous")}
+                        {response.respondentPosition ? (
+                          <small className={styles.detailPosition}>{response.respondentPosition}</small>
+                        ) : null}
+                      </td>
+                      {shownResponses.responses.some((entry) => entry.subjectName) ? (
+                        <td>{response.subjectName ?? "-"}</td>
+                      ) : null}
                       <td>{answerText(response, detail.questionId)}</td>
                     </tr>
                   ))}
@@ -527,7 +675,8 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
               <h2>{t("ดูผลลัพธ์", "View result")}</h2>
               <div className={styles.individualTopActions}>
                 <button type="button" className={styles.printButton} onClick={() => window.print()}>
-                  <Download size={15} style={{ verticalAlign: "middle", marginRight: 6 }} />{t("บันทึกเป็น PDF", "Save as PDF")}
+                  <Printer size={15} style={{ verticalAlign: "middle", marginRight: 6 }} />
+                  {t("บันทึกเป็น PDF", "Save as PDF")}
                 </button>
                 <button type="button" className={styles.detailClose} onClick={() => setIndividualIndex(null)}>
                   <X size={16} />
@@ -573,12 +722,21 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
               </button>
             </div>
 
-            {/* The paper says who it belongs to. The picker above is a control and prints as one
-                line of nothing useful, so the printed copy gets this instead. */}
-            <p className={styles.individualPrintedWho}>
-              {t("ผู้ตอบ", "Respondent")} {individual.responseNo} ·{" "}
-              {individual.respondentName ?? t("ไม่ระบุตัวตน", "anonymous")}
-            </p>
+            {/* Who wrote this and, for a supervisor's reply, who it is about. On screen and on
+                paper both: the picker above is a control and prints as a line of nothing useful. */}
+            <div className={styles.individualWhoBlock}>
+              <div>
+                <span>{t("ผู้ตอบแบบประเมิน", "Respondent")}</span>
+                <strong>{individual.respondentName ?? t("ไม่ระบุตัวตน", "anonymous")}</strong>
+                {individual.respondentPosition ? <em>{individual.respondentPosition}</em> : null}
+              </div>
+              {individual.subjectName ? (
+                <div>
+                  <span>{t("ประเมินให้", "Evaluating")}</span>
+                  <strong>{individual.subjectName}</strong>
+                </div>
+              ) : null}
+            </div>
 
             <div className={styles.individualAnswers}>
               {shownResponses.questions

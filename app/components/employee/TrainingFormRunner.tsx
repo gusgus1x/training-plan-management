@@ -385,7 +385,19 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
   /** Gates Next: only this page. */
   const missingOnPage = missingIn(currentQuestions);
 
-  const hasStartedAnswering = useMemo(() => Object.values(answers).some((a) => a.text.trim().length > 0 || a.choiceIds.length > 0 || a.rating !== null), [answers]);
+  // A grid counts as work in progress like everything else. Leaving it out meant somebody who had
+  // filled in nothing but a grid could navigate away without being asked.
+  const hasStartedAnswering = useMemo(
+    () =>
+      Object.values(answers).some(
+        (a) =>
+          a.text.trim().length > 0 ||
+          a.choiceIds.length > 0 ||
+          a.rating !== null ||
+          Object.values(a.grid).some((columns) => columns.length > 0),
+      ),
+    [answers],
+  );
 
   const answerable = visitedQuestions;
   const answeredCount = useMemo(

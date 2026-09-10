@@ -1014,6 +1014,15 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
 
                   {/* Horizontal Info Bar matching Image 2 */}
                   <div className={styles.infoBarGrid}>
+                    {/* The batch leads, as it does on the registration cards above: two rounds of
+                        one course are told apart by this and nothing else. */}
+                    <div className={styles.infoBarItem}>
+                      <span className={styles.infoBarLabel}>{t("รุ่นที่อบรม", "Batch")}</span>
+                      <span className={styles.infoBarValue}>
+                        <Tag size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {record.note || "-"}
+                      </span>
+                    </div>
                     <div className={styles.infoBarItem}>
                       <span className={styles.infoBarLabel}>{t("วันที่สำเร็จอบรม", "Completed Date")}</span>
                       <span className={styles.infoBarValue}>

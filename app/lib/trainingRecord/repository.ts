@@ -167,12 +167,21 @@ const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
 
   const attendees = row.training_enrollment.map((enrollment) => {
     const submittedAssessments = enrollment.assessment_submission.filter((s) => s.submitted_at !== null);
-    const latestByStage = (stage: string) =>
+    /**
+     * The attempt that counts: the best of the RELEASED ones, which is the same rule
+     * writeOfficialAssessmentResult uses to fill training_result.
+     *
+     * It used to be the latest attempt, so the roster could say "not passed" for somebody whose
+     * recorded score on the same screen was a pass they earned on an earlier go - and an attempt
+     * HRD had graded but not released still handed its verdict to the roster, ahead of the
+     * publication gate every other screen honours.
+     */
+    const officialByStage = (stage: string) =>
       submittedAssessments
-        .filter((s) => s.assessment_stage === stage)
-        .sort((a, b) => b.attempt_no - a.attempt_no)[0];
-    const preTest = latestByStage("PRE_TEST");
-    const postTest = latestByStage("POST_TEST");
+        .filter((s) => s.assessment_stage === stage && s.publication_status === "PUBLISHED")
+        .sort((a, b) => Number(b.score ?? -1) - Number(a.score ?? -1) || a.attempt_no - b.attempt_no)[0];
+    const preTest = officialByStage("PRE_TEST");
+    const postTest = officialByStage("POST_TEST");
     const assignment = enrollment.training_evaluation_reviewer;
 
     return {

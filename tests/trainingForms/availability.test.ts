@@ -22,8 +22,18 @@ describe("stageOpensAt", () => {
     const opensAt = stageOpensAt("EVALUATION_30DAY", START, END);
     const expected = new Date(END);
     expected.setUTCDate(expected.getUTCDate() + FOLLOW_UP_OPENS_AFTER_DAYS);
+    expected.setUTCHours(0, 0, 0, 0);
     expect(opensAt).toBe(expected.toISOString());
     expect(opensAt).not.toBe(stageOpensAt("EVALUATION_30DAY", START, START));
+  });
+
+  it("opens at the start of that day, not at the hour the course finished", () => {
+    // The screen only ever prints the date. Carrying the finishing time forward left the form
+    // locked for most of the day it said it opened, with nothing on screen to explain the wait.
+    const opensAt = stageOpensAt("EVALUATION_30DAY", START, "2026-08-11T09:00:00.000Z");
+
+    expect(opensAt).toBe("2026-09-10T00:00:00.000Z");
+    expect(new Date(opensAt).getUTCHours()).toBe(0);
   });
 });
 
