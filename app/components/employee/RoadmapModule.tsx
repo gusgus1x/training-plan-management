@@ -813,7 +813,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
               value={selectedGroup}
               onChange={(e) => setSelectedGroup(e.target.value)}
             >
-              <option value="ALL">-- {t("ทุกหมวดหมู่หลักสูตร", "All Categories")} --</option>
+              <option value="ALL">{t("ทุกหมวดหมู่หลักสูตร", "All Categories")}</option>
               {categoryGroups.map((group) => (
                 <option key={group} value={group}>
                   {group}

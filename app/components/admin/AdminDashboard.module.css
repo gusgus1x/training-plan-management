@@ -843,7 +843,8 @@
   background: rgba(255, 255, 255, 0.04) !important;
 }
 
-.tablePagination {
+.tablePagination,
+.paginationBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -857,6 +858,8 @@
 .paginationControls {
   display: flex;
   gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .pageBtn {
@@ -885,6 +888,17 @@
   background: #0d6efd !important;
   color: #ffffff !important;
   border-color: #0d6efd !important;
+}
+
+.paginationEllipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  font-size: 0.85rem;
+  color: #8c98a4;
+  user-select: none;
+  font-weight: bold;
 }
 
 @media (max-width: 768px) {

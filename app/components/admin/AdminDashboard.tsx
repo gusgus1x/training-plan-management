@@ -57,6 +57,50 @@ const emptyCreateForm: CreateFormState = {
   email: "",
 };
 
+function getPaginationItems(currentPage: number, totalPages: number): (number | string)[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  const delta = 2;
+  const range: number[] = [];
+  for (
+    let i = Math.max(2, currentPage - delta);
+    i <= Math.min(totalPages - 1, currentPage + delta);
+    i++
+  ) {
+    range.push(i);
+  }
+
+  const items: (number | string)[] = [1];
+
+  if (currentPage - delta > 2) {
+    items.push("ellipsis-prev");
+  } else if (currentPage - delta === 2) {
+    items.push(2);
+  }
+
+  for (const page of range) {
+    if (!items.includes(page)) {
+      items.push(page);
+    }
+  }
+
+  if (currentPage + delta < totalPages - 1) {
+    items.push("ellipsis-next");
+  } else if (currentPage + delta === totalPages - 1) {
+    if (!items.includes(totalPages - 1)) {
+      items.push(totalPages - 1);
+    }
+  }
+
+  if (!items.includes(totalPages)) {
+    items.push(totalPages);
+  }
+
+  return items;
+}
+
 export type AdminTabKey = TabKey;
 
 export type AdminDashboardProps = {
@@ -1029,20 +1073,26 @@ export default function AdminDashboard({
                       >
                         Previous
                       </button>
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
-                        <button
-                          key={num}
-                          className={`${styles.pageBtn} ${currentPage === num ? styles.pageBtnActive : ""}`}
-                          type="button"
-                          onClick={() => setCurrentPage(num)}
-                        >
-                          {num}
-                        </button>
-                      ))}
+                      {getPaginationItems(currentPage, totalPages).map((item, idx) =>
+                        typeof item === "number" ? (
+                          <button
+                            key={item}
+                            className={`${styles.pageBtn} ${currentPage === item ? styles.pageBtnActive : ""}`}
+                            type="button"
+                            onClick={() => setCurrentPage(item)}
+                          >
+                            {item}
+                          </button>
+                        ) : (
+                          <span key={`ellipsis-${idx}`} className={styles.paginationEllipsis}>
+                            …
+                          </span>
+                        )
+                      )}
                       <button
                         className={styles.pageBtn}
                         type="button"
-                        disabled={currentPage === totalPages}
+                        disabled={currentPage === totalPages || totalPages === 0}
                         onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       >
                         Next
@@ -1330,20 +1380,26 @@ export default function AdminDashboard({
                       >
                         Previous
                       </button>
-                      {Array.from({ length: auditTotalPages }, (_, i) => i + 1).map((num) => (
-                        <button
-                          key={num}
-                          className={`${styles.pageBtn} ${auditPage === num ? styles.pageBtnActive : ""}`}
-                          type="button"
-                          onClick={() => setAuditPage(num)}
-                        >
-                          {num}
-                        </button>
-                      ))}
+                      {getPaginationItems(auditPage, auditTotalPages).map((item, idx) =>
+                        typeof item === "number" ? (
+                          <button
+                            key={item}
+                            className={`${styles.pageBtn} ${auditPage === item ? styles.pageBtnActive : ""}`}
+                            type="button"
+                            onClick={() => setAuditPage(item)}
+                          >
+                            {item}
+                          </button>
+                        ) : (
+                          <span key={`ellipsis-${idx}`} className={styles.paginationEllipsis}>
+                            …
+                          </span>
+                        )
+                      )}
                       <button
                         className={styles.pageBtn}
                         type="button"
-                        disabled={auditPage === auditTotalPages}
+                        disabled={auditPage === auditTotalPages || auditTotalPages === 0}
                         onClick={() => setAuditPage((p) => Math.min(auditTotalPages, p + 1))}
                       >
                         Next
