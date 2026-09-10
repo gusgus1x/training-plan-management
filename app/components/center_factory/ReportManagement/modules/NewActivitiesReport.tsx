@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
 import { useToast } from "../../../ToastHost";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { loadWorkflowRollingPlans, type RollingPlan } from "../../TrainingPlanManagement/modules/TrainingRolling";
+import { isCourseDateOrTimeEnded } from "../../../../lib/calendarDate";
 import type { ReportModuleProps } from "./index";
 import styles from "./NewActivitiesReport.module.css";
 
@@ -98,11 +100,24 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
   const [formDate, setFormDate] = useState<string>("");
   const [formLocation, setFormLocation] = useState<string>("");
   const [formDescription, setFormDescription] = useState<string>("");
-  const [formImageUrl, setFormImageUrl] = useState<string>("");
   const [formIsVisibleOnDashboard, setFormIsVisibleOnDashboard] = useState<boolean>(true);
   const [selectedStatus, setSelectedStatus] = useState<"all" | "active" | "archived">("all");
-  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>("");
+
+  // Multi-image states
+  const [formImages, setFormImages] = useState<string[]>([]);
+  const [selectedNewFiles, setSelectedNewFiles] = useState<{ file: File; previewUrl: string }[]>([]);
+
+  // Course linking states
+  const [availablePlans, setAvailablePlans] = useState<RollingPlan[]>([]);
+  const [formIsCourseLinked, setFormIsCourseLinked] = useState<boolean>(false);
+  const [formLinkedPlanId, setFormLinkedPlanId] = useState<string>("");
+  const [formLinkedCourseId, setFormLinkedCourseId] = useState<string>("");
+  const [formLinkedCourseCode, setFormLinkedCourseCode] = useState<string>("");
+  const [formLinkedCourseName, setFormLinkedCourseName] = useState<string>("");
+  const [formLinkedTrainingDate, setFormLinkedTrainingDate] = useState<string>("");
+  const [formLinkedEndDate, setFormLinkedEndDate] = useState<string>("");
+  const [formRegistrationNote, setFormRegistrationNote] = useState<string>("");
+
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -129,6 +144,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
 
   useEffect(() => {
     fetchActivities();
+    loadWorkflowRollingPlans().then(setAvailablePlans).catch(() => []);
   }, []);
 
   // Filter activities based on visibility restrictions
@@ -187,6 +203,73 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
     }
     return companies;
   }, [companies, isCenterOrAdmin, isFactory, factoryOwnCompany]);
+
+  // Current Form Company Code
+  const currentFormCompanyCode = useMemo(() => {
+    if (isFactory) {
+      return factoryOwnCompany?.code?.toUpperCase().trim() || userCompanyCode || "";
+    }
+    if (!formCompanyId || formCompanyId === "center" || formCompanyId === "ALL") {
+      return "CENTER";
+    }
+    const found = availableCompanies.find(
+      (c) =>
+        String(c.id).toLowerCase() === String(formCompanyId).toLowerCase() ||
+        c.code.toUpperCase() === String(formCompanyId).toUpperCase()
+    );
+    return found?.code?.toUpperCase().trim() || "";
+  }, [isFactory, factoryOwnCompany, userCompanyCode, formCompanyId, availableCompanies]);
+
+  // Strict company matcher for rolling plans: Center matches Center/All, Factory matches only their own
+  const isPlanMatchingCompany = useCallback((plan: RollingPlan, targetCompanyCode: string): boolean => {
+    if (!targetCompanyCode) return false;
+    const target = targetCompanyCode.toUpperCase().trim();
+    if (target === "CENTER") {
+      return (
+        plan.owner === "CENTER" ||
+        plan.ownerCompany?.toUpperCase().trim() === "CENTER" ||
+        plan.company === "All Companies"
+      );
+    }
+    if (
+      plan.owner === "CENTER" ||
+      plan.ownerCompany?.toUpperCase().trim() === "CENTER" ||
+      plan.company === "All Companies"
+    ) {
+      return false;
+    }
+    const planOwnerCompany = plan.ownerCompany?.toUpperCase().trim();
+    const planCompany = plan.company?.toUpperCase().trim();
+
+    return planOwnerCompany === target || planCompany === target;
+  }, []);
+
+  // Selectable plans: strictly filtered by the activity's company
+  const selectablePlans = useMemo(() => {
+    return availablePlans.filter((plan) => {
+      if (!isPlanMatchingCompany(plan, currentFormCompanyCode)) {
+        return false;
+      }
+      if (formLinkedPlanId && plan.rollingId === formLinkedPlanId) return true;
+      if (plan.status === "Cancel" || String(plan.dbStatus || "").toUpperCase() === "COMPLETED" || String(plan.dbStatus || "").toUpperCase() === "CANCELLED") return false;
+      return !isCourseDateOrTimeEnded(plan.trainingDate, plan.endDate, plan.endTime);
+    });
+  }, [availablePlans, formLinkedPlanId, currentFormCompanyCode, isPlanMatchingCompany]);
+
+  // Reset linked plan if form company changes
+  useEffect(() => {
+    if (!formLinkedPlanId || !currentFormCompanyCode) return;
+    const currentPlan = availablePlans.find((p) => p.rollingId === formLinkedPlanId);
+    if (currentPlan && !isPlanMatchingCompany(currentPlan, currentFormCompanyCode)) {
+      setFormLinkedPlanId("");
+      setFormLinkedCourseId("");
+      setFormLinkedCourseCode("");
+      setFormLinkedCourseName("");
+      setFormLinkedTrainingDate("");
+      setFormLinkedEndDate("");
+      setFormRegistrationNote("");
+    }
+  }, [currentFormCompanyCode, formLinkedPlanId, availablePlans, isPlanMatchingCompany]);
 
   const canManageActivity = (act: CourseActivity | null) => {
     if (!act || isEmployee) return false;
@@ -267,9 +350,14 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
 
   // Open Add Activity Modal
   const handleOpenAdd = () => {
-    if (previewUrl && previewUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(previewUrl);
-    }
+    selectedNewFiles.forEach((item) => {
+      if (item.previewUrl && item.previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(item.previewUrl);
+      }
+    });
+    setSelectedNewFiles([]);
+    setFormImages([]);
+
     setIsEditing(false);
     setFormId("");
     setFormTitle("");
@@ -282,9 +370,16 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
     setFormLocation("");
     setFormDescription("");
     setFormIsVisibleOnDashboard(true);
-    setFormImageUrl("");
-    setSelectedImageFile(null);
-    setPreviewUrl("");
+
+    setFormIsCourseLinked(false);
+    setFormLinkedPlanId("");
+    setFormLinkedCourseId("");
+    setFormLinkedCourseCode("");
+    setFormLinkedCourseName("");
+    setFormLinkedTrainingDate("");
+    setFormLinkedEndDate("");
+    setFormRegistrationNote("");
+
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -294,20 +389,57 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
   // Open Edit Activity Modal
   const handleOpenEdit = (act: CourseActivity) => {
     if (!canManageActivity(act)) return;
-    if (previewUrl && previewUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(previewUrl);
-    }
+    selectedNewFiles.forEach((item) => {
+      if (item.previewUrl && item.previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(item.previewUrl);
+      }
+    });
+    setSelectedNewFiles([]);
+
+    const existingImgs = act.images && act.images.length > 0
+      ? [...act.images]
+      : act.imageUrl ? [act.imageUrl] : [];
+    setFormImages(existingImgs);
+
     setIsEditing(true);
     setFormId(act.id);
     setFormTitle(act.title);
-    setFormCompanyId(act.companyId || (isFactory && factoryOwnCompany ? factoryOwnCompany.id : "center"));
+    let targetCompanyId = act.companyId || "";
+    if (targetCompanyId && targetCompanyId !== "center" && targetCompanyId !== "ALL") {
+      const matchById = companies.find((c) => String(c.id).toLowerCase() === String(targetCompanyId).toLowerCase());
+      if (matchById) {
+        targetCompanyId = matchById.id;
+      } else {
+        const matchByCode = companies.find((c) => c.code && c.code.toUpperCase() === String(targetCompanyId).toUpperCase());
+        if (matchByCode) {
+          targetCompanyId = matchByCode.id;
+        }
+      }
+    }
+    if ((!targetCompanyId || targetCompanyId === "center") && act.companyCode && act.companyCode !== "CENTER") {
+      const matchByCode = companies.find((c) => c.code && c.code.toUpperCase() === act.companyCode.toUpperCase());
+      if (matchByCode) {
+        targetCompanyId = matchByCode.id;
+      }
+    }
+    if (!targetCompanyId) {
+      targetCompanyId = isFactory && factoryOwnCompany ? factoryOwnCompany.id : "center";
+    }
+    setFormCompanyId(targetCompanyId);
     setFormIsVisibleOnDashboard(act.isVisibleOnDashboard !== false && act.status !== "ARCHIVED");
-    setFormDate(act.date);
+    setFormDate(act.date || "");
     setFormLocation(act.location || "");
-    setFormDescription(act.description);
-    setFormImageUrl(act.imageUrl || "");
-    setSelectedImageFile(null);
-    setPreviewUrl(act.imageUrl || "");
+    setFormDescription(act.description || "");
+
+    setFormIsCourseLinked(Boolean(act.isCourseLinked));
+    setFormLinkedPlanId(act.linkedPlanId || "");
+    setFormLinkedCourseId(act.linkedCourseId || "");
+    setFormLinkedCourseCode(act.linkedCourseCode || "");
+    setFormLinkedCourseName(act.linkedCourseName || "");
+    setFormLinkedTrainingDate(act.linkedTrainingDate || "");
+    setFormLinkedEndDate(act.linkedEndDate || "");
+    setFormRegistrationNote(act.registrationNote || "");
+
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -321,41 +453,80 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
     setIsDetailModalOpen(true);
   };
 
-  // Handle Image File Selection
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Multiple files selection
+  const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    if (!file.type.startsWith("image/")) {
-      toast.error(isThai ? "กรุณาเลือกไฟล์รูปภาพเท่านั้น (JPG, PNG, WebP)" : "Please select an image file only");
-      return;
+    const validExtensions = [
+      ".jpg",
+      ".jpeg",
+      ".jfif",
+      ".png",
+      ".webp",
+      ".gif",
+      ".svg",
+      ".bmp",
+      ".avif",
+      ".tiff",
+      ".tif",
+    ];
+
+    const newItems: { file: File; previewUrl: string }[] = [];
+
+    for (const file of files) {
+      const fileName = (file.name || "").toLowerCase();
+      const isImageMime = Boolean(file.type && file.type.startsWith("image/"));
+      const hasImageExt = validExtensions.some((ext) => fileName.endsWith(ext));
+
+      if (!isImageMime && !hasImageExt) {
+        toast.error(
+          isThai
+            ? `ไฟล์ "${file.name}" ไม่ใช่รูปภาพที่รองรับ`
+            : `File "${file.name}" is not a supported image`
+        );
+        continue;
+      }
+
+      const previewUrl = URL.createObjectURL(file);
+      newItems.push({ file, previewUrl });
     }
 
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error(isThai ? "ขนาดไฟล์ต้องไม่เกิน 8MB ครับ" : "File size must not exceed 8MB");
-      return;
-    }
-
-    if (previewUrl && previewUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(previewUrl);
-    }
-
-    setSelectedImageFile(file);
-    const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
-  };
-
-  // Handle Remove Selected Image
-  const handleRemoveImage = () => {
-    if (previewUrl && previewUrl.startsWith("blob:")) {
-      URL.revokeObjectURL(previewUrl);
-    }
-    setSelectedImageFile(null);
-    setPreviewUrl("");
-    setFormImageUrl("");
+    setSelectedNewFiles((prev) => [...prev, ...newItems]);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+  };
+
+  const handleRemoveExistingImage = (index: number) => {
+    setFormImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveNewFile = (index: number) => {
+    setSelectedNewFiles((prev) => {
+      const item = prev[index];
+      if (item && item.previewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(item.previewUrl);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const handleSetCoverExisting = (index: number) => {
+    if (index === 0) return;
+    setFormImages((prev) => {
+      const target = prev[index];
+      const rest = prev.filter((_, i) => i !== index);
+      return [target, ...rest];
+    });
+  };
+
+  const handleSetCoverNew = (index: number) => {
+    setSelectedNewFiles((prev) => {
+      const target = prev[index];
+      const rest = prev.filter((_, i) => i !== index);
+      return [target, ...rest];
+    });
   };
 
   // Submit Activity Form (Create / Update)
@@ -363,25 +534,27 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
     e.preventDefault();
     if (!formTitle.trim()) {
       await notice({
-        missingFields: [isThai ? "หัวข้อกิจกรรม (Activity Title)" : "Activity Title"],
+        missingFields: [isThai ? "ชื่อกิจกรรม (Activity Title)" : "Activity Title"],
       });
       return;
     }
-    if (!formDate) {
+    if (!formCompanyId) {
       await notice({
-        missingFields: [isThai ? "วันที่จัดกิจกรรม (Activity Date)" : "Activity Date"],
+        missingFields: [isThai ? "บริษัท (Company)" : "Company"],
       });
       return;
     }
 
     try {
       setIsSubmitting(true);
-      let finalImageUrl = formImageUrl;
+      let uploadedUrls: string[] = [];
 
-      if (selectedImageFile) {
+      if (selectedNewFiles.length > 0) {
         setIsUploading(true);
         const uploadFormData = new FormData();
-        uploadFormData.append("file", selectedImageFile);
+        selectedNewFiles.forEach((item) => {
+          uploadFormData.append("files", item.file);
+        });
 
         const uploadRes = await fetch("/api/course-activities/upload", {
           method: "POST",
@@ -389,43 +562,59 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
         });
 
         if (!uploadRes.ok) {
-          const errData = await uploadRes.json();
-          throw new Error(errData.error || "Failed to upload image");
+          const errData = await uploadRes.json().catch(() => ({}));
+          throw new Error(errData.error || (isThai ? "อัปโหลดรูปภาพไม่สำเร็จ" : "Failed to upload images"));
         }
 
-        const uploadResult = await uploadRes.json();
-        finalImageUrl = uploadResult.imageUrl;
+        const uploadData = await uploadRes.json();
+        if (Array.isArray(uploadData.urls)) {
+          uploadedUrls = uploadData.urls;
+        } else if (uploadData.url) {
+          uploadedUrls = [uploadData.url];
+        }
         setIsUploading(false);
       }
 
+      const allImages = [...formImages, ...uploadedUrls];
+      const primaryImageUrl = allImages.length > 0 ? allImages[0] : "";
+
       const payload = {
+        id: formId,
         title: formTitle.trim(),
         date: formDate,
         location: formLocation.trim(),
         description: formDescription.trim(),
-        imageUrl: finalImageUrl,
+        imageUrl: primaryImageUrl,
+        images: allImages,
+        isCourseLinked: formIsCourseLinked,
+        linkedCourseId: formLinkedCourseId || null,
+        linkedCourseCode: formLinkedCourseCode || null,
+        linkedCourseName: formLinkedCourseName || null,
+        linkedPlanId: formLinkedPlanId || null,
+        linkedTrainingDate: formLinkedTrainingDate || null,
+        linkedEndDate: formLinkedEndDate || null,
+        registrationNote: formRegistrationNote.trim() || null,
         isVisibleOnDashboard: formIsVisibleOnDashboard,
         status: formIsVisibleOnDashboard ? "PUBLISHED" : "ARCHIVED",
         companyId: formCompanyId || "center",
       };
 
-      if (isEditing) {
-        const res = await fetch("/api/course-activities", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: formId, ...payload }),
-        });
-        if (!res.ok) throw new Error("Failed to update activity");
-        toast.success(isThai ? "แก้ไขกิจกรรมสำเร็จเรียบร้อย" : "Activity updated successfully");
-      } else {
-        const res = await fetch("/api/course-activities", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) throw new Error("Failed to create activity");
-        toast.success(isThai ? "เพิ่มกิจกรรมใหม่สำเร็จเรียบร้อย" : "Activity created successfully");
+      const res = await fetch("/api/course-activities", {
+        method: isEditing ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || (isThai ? "ไม่สามารถบันทึกกิจกรรมได้" : "Failed to save activity"));
       }
+
+      toast.success(
+        isEditing
+          ? (isThai ? "แก้ไขกิจกรรมสำเร็จเรียบร้อย" : "Activity updated successfully")
+          : (isThai ? "เพิ่มกิจกรรมใหม่สำเร็จเรียบร้อย" : "Activity created successfully")
+      );
 
       setIsFormModalOpen(false);
       await fetchActivities();
@@ -1144,8 +1333,12 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                 type="button"
                 className={styles.closeButton}
                 onClick={() => setIsDetailModalOpen(false)}
+                aria-label="Close"
               >
-                
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </div>
 
@@ -1223,151 +1416,327 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                 type="button"
                 className={styles.closeButton}
                 onClick={() => setIsFormModalOpen(false)}
+                aria-label="Close"
               >
-                
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </div>
 
-            <form onSubmit={handleSubmitForm}>
+            <form onSubmit={handleSubmitForm} className={styles.modalForm}>
               <div className={styles.modalBody}>
+                {/* Multi-Image Upload & Thumbnail Gallery Manager */}
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>
+                    {isThai ? "รูปภาพกิจกรรม (Activity Photos)" : "Activity Photos"}
+                    <span style={{ fontSize: "0.78rem", fontWeight: "normal", color: "var(--ui-30-muted, #64748b)", marginLeft: "8px" }}>
+                      {isThai ? "(สามารถเลือกได้หลายรูป โดยรูปแรกจะเป็นภาพหน้าปก)" : "(Multiple photos allowed; first photo is cover)"}
+                    </span>
+                  </label>
+
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className={styles.fileInputHidden}
+                    accept="image/*,.jpg,.jpeg,.jfif,.png,.webp,.gif,.svg,.bmp,.avif"
+                    multiple
+                    onChange={handleFilesChange}
+                  />
+
+                  <div
+                    className={styles.multiUploadZone}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <div className={styles.multiUploadIcon}>
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                        <circle cx="8.5" cy="8.5" r="1.5" />
+                        <polyline points="21 15 16 10 5 21" />
+                      </svg>
+                    </div>
+                    <div className={styles.multiUploadText}>
+                      {isThai ? "คลิกเพื่อเลือกรูปภาพกิจกรรม (เลือกได้หลายรูปพร้อมกัน)" : "Click to select activity photos (multiple allowed)"}
+                    </div>
+                    <div className={styles.multiUploadHint}>
+                      {isThai
+                        ? "รองรับ JPG, JPEG, PNG, WEBP, GIF, SVG, JFIF, BMP, AVIF (รูปแรกคือภาพหน้าปก)"
+                        : "Supports JPG, JPEG, PNG, WEBP, GIF (First image is cover photo)"}
+                    </div>
+                  </div>
+
+                  {/* Thumbnail Previews Grid */}
+                  {(formImages.length > 0 || selectedNewFiles.length > 0) && (
+                    <div className={styles.thumbGrid}>
+                      {/* Existing saved images */}
+                      {formImages.map((imgUrl, idx) => {
+                        const isCover = idx === 0;
+                        return (
+                          <div key={`exist-${imgUrl}-${idx}`} className={`${styles.thumbCard} ${isCover ? styles.thumbCardCover : ""}`}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={imgUrl} alt={`Activity ${idx + 1}`} className={styles.thumbImage} />
+                            {isCover && (
+                              <span className={styles.thumbCoverBadge}>
+                                {isThai ? "หน้าปก" : "Cover"}
+                              </span>
+                            )}
+                            <div className={styles.thumbOverlayActions}>
+                              {!isCover && (
+                                <button
+                                  type="button"
+                                  className={styles.thumbActionBtn}
+                                  onClick={() => handleSetCoverExisting(idx)}
+                                  title={isThai ? "ตั้งเป็นภาพหน้าปก" : "Set as cover"}
+                                >
+                                  {isThai ? "ตั้งหน้าปก" : "Cover"}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className={`${styles.thumbActionBtn} ${styles.thumbDeleteBtn}`}
+                                onClick={() => handleRemoveExistingImage(idx)}
+                                title={isThai ? "ลบรูปนี้" : "Remove"}
+                              >
+                                {isThai ? "ลบ" : "Delete"}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Newly selected files */}
+                      {selectedNewFiles.map((item, idx) => {
+                        const isCover = formImages.length === 0 && idx === 0;
+                        return (
+                          <div key={`new-${item.previewUrl}-${idx}`} className={`${styles.thumbCard} ${isCover ? styles.thumbCardCover : ""}`}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={item.previewUrl} alt={`New upload ${idx + 1}`} className={styles.thumbImage} />
+                            {isCover && (
+                              <span className={styles.thumbCoverBadge}>
+                                {isThai ? "หน้าปก" : "Cover"}
+                              </span>
+                            )}
+                            <div className={styles.thumbOverlayActions}>
+                              {!isCover && (
+                                <button
+                                  type="button"
+                                  className={styles.thumbActionBtn}
+                                  onClick={() => handleSetCoverNew(idx)}
+                                  title={isThai ? "ตั้งเป็นภาพหน้าปก" : "Set as cover"}
+                                >
+                                  {isThai ? "ตั้งหน้าปก" : "Cover"}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className={`${styles.thumbActionBtn} ${styles.thumbDeleteBtn}`}
+                                onClick={() => handleRemoveNewFile(idx)}
+                                title={isThai ? "ลบรูปนี้" : "Remove"}
+                              >
+                                {isThai ? "ลบ" : "Delete"}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
                 {/* Title */}
-                <div className={styles.formField}>
-                  <label>{isThai ? "หัวข้อกิจกรรม *" : "Activity Title *"}</label>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>
+                    <span>{isThai ? "ชื่อกิจกรรม (Title)" : "Title"}</span>
+                    <span className={styles.requiredDot} title={isThai ? "จำเป็นต้องระบุ" : "Required"} aria-label="required" />
+                  </label>
                   <input
                     type="text"
-                    required
                     className={styles.formInput}
-                    placeholder={isThai ? "เช่น กิจกรรม Big Cleaning Day 2026" : "e.g. Safety Training 2026"}
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
+                    placeholder={isThai ? "เช่น SNF CSR 2019 หรือ Leadership Workshop" : "e.g. SNF CSR 2019"}
+                    required
                   />
                 </div>
 
-                {/* Company & Date */}
-                <div className={styles.formRow}>
-                  <div className={styles.formField}>
-                    <label>{isThai ? "บริษัท / หน่วยงาน *" : "Company *"}</label>
-                    {isFactory ? (
-                      <div className={styles.lockedCompanyBox}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                        </svg>
-                        <span className={styles.lockedCompanyName}>
-                          {factoryOwnCompany?.name || userCompanyCode || (isThai ? "สังกัดของท่าน" : "Your Company")}
-                        </span>
-                        <span className={styles.lockedCompanyBadge}>
-                          {isThai ? "บริษัทของคุณ (ล็อกอัตโนมัติ)" : "Assigned (Locked)"}
-                        </span>
-                      </div>
-                    ) : (
-                      <select
-                        className={styles.formSelect}
-                        value={formCompanyId}
-                        onChange={(e) => setFormCompanyId(e.target.value)}
-                        required
-                      >
-                        <option value="center">{isThai ? "Center (ส่วนกลาง)" : "Center"}</option>
-                        {availableCompanies
-                          .filter((c) => c.id !== "center")
-                          .map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.name || c.code}
-                            </option>
-                          ))}
-                      </select>
-                    )}
-                  </div>
+                {/* Company */}
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>
+                    <span>{isThai ? "บริษัท (Company)" : "Company"}</span>
+                    <span className={styles.requiredDot} title={isThai ? "จำเป็นต้องระบุ" : "Required"} aria-label="required" />
+                  </label>
+                  {isFactory ? (
+                    <div className={styles.lockedCompanyBox}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                      <span className={styles.lockedCompanyName}>
+                        {factoryOwnCompany?.name || userCompanyCode || (isThai ? "สังกัดของท่าน" : "Your Company")}
+                      </span>
+                      <span className={styles.lockedCompanyBadge}>
+                        {isThai ? "บริษัทของคุณ (ล็อกอัตโนมัติ)" : "Assigned Company (Locked)"}
+                      </span>
+                    </div>
+                  ) : (
+                    <select
+                      className={styles.formSelect}
+                      value={formCompanyId}
+                      onChange={(e) => {
+                        const newCompanyId = e.target.value;
+                        setFormCompanyId(newCompanyId);
+                        setFormLinkedPlanId("");
+                        setFormLinkedCourseId("");
+                        setFormLinkedCourseCode("");
+                        setFormLinkedCourseName("");
+                        setFormLinkedTrainingDate("");
+                        setFormLinkedEndDate("");
+                        setFormRegistrationNote("");
+                      }}
+                      required
+                    >
+                      <option value="">
+                        {isThai ? "-- กรุณาเลือกบริษัท --" : "-- Please select company --"}
+                      </option>
+                      {availableCompanies.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.code === "CENTER" ? (isThai ? "Center (ส่วนกลาง)" : "Center") : c.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
 
-                  <div className={styles.formField}>
-                    <label>{isThai ? "วันที่จัดกิจกรรม *" : "Activity Date *"}</label>
+                {/* Date & Location row */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+                  <div className={styles.formGroup}>
+                    <label className={styles.formLabel}>
+                      {isThai ? "วันที่จัดกิจกรรม (Date)" : "Date"}
+                    </label>
                     <input
                       type="date"
-                      required
                       className={styles.formInput}
                       value={formDate}
                       onChange={(e) => setFormDate(e.target.value)}
                     />
                   </div>
-                </div>
 
-                {/* Location */}
-                <div className={styles.formField}>
-                  <label>{isThai ? "สถานที่จัดกิจกรรม" : "Location"}</label>
-                  <input
-                    type="text"
-                    className={styles.formInput}
-                    placeholder={isThai ? "เช่น ห้องประชุมใหญ่ อาคาร 2 หรือ โรงงาน ATA" : "e.g. Main Auditorium or ATA Plant"}
-                    value={formLocation}
-                    onChange={(e) => setFormLocation(e.target.value)}
-                  />
+                  <div className={styles.formGroup}>
+                    <label className={styles.formLabel}>
+                      {isThai ? "สถานที่ (Location)" : "Location"}
+                    </label>
+                    <input
+                      type="text"
+                      className={styles.formInput}
+                      value={formLocation}
+                      onChange={(e) => setFormLocation(e.target.value)}
+                      placeholder={isThai ? "เช่น Wat Nhongbua School, Saraburi" : "e.g. Training Room 1"}
+                    />
+                  </div>
                 </div>
 
                 {/* Description */}
-                <div className={styles.formField}>
-                  <label>{isThai ? "รายละเอียดกิจกรรม" : "Description"}</label>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>
+                    {isThai ? "คำบรรยายกิจกรรม (Description)" : "Description"}
+                  </label>
                   <textarea
-                    rows={4}
                     className={styles.formTextarea}
-                    placeholder={isThai ? "ระบุรายละเอียดกิจกรรมหรือเนื้อหาการฝึกอบรม..." : "Enter details about the event..."}
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
+                    placeholder={isThai ? "ระบุรายละเอียดกิจกรรมหรือโครงการฝึกอบรม..." : "Enter activity details..."}
+                    rows={4}
                   />
                 </div>
 
-                {/* Image Upload */}
-                <div className={styles.formField}>
-                  <label>{isThai ? "รูปภาพกิจกรรม (อัปโหลดไฟล์ หรือใส่ URL)" : "Activity Photo"}</label>
-                  
-                  {previewUrl ? (
-                    <div style={{ position: "relative", marginBottom: "8px" }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={previewUrl}
-                        alt="Preview"
-                        style={{ width: "100%", maxHeight: "240px", objectFit: "cover", borderRadius: "10px" }}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleRemoveImage}
-                        style={{
-                          position: "absolute",
-                          top: "10px",
-                          right: "10px",
-                          background: "rgba(239, 68, 68, 0.9)",
-                          color: "#ffffff",
-                          border: "none",
-                          padding: "6px 12px",
-                          borderRadius: "6px",
-                          cursor: "pointer",
-                          fontWeight: 700,
-                          fontSize: "0.78rem",
-                        }}
-                      >
-                        {isThai ? "ลบรูปภาพ" : "Remove"}
-                      </button>
+                {/* Course Linking Toggle & Selector */}
+                <div className={`${styles.courseLinkToggleCard} ${formIsCourseLinked ? styles.courseLinkToggleCardActive : ""}`}>
+                  <label className={styles.courseLinkCheckboxLabel}>
+                    <input
+                      type="checkbox"
+                      checked={formIsCourseLinked}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setFormIsCourseLinked(checked);
+                        if (!checked) {
+                          setFormLinkedPlanId("");
+                          setFormLinkedCourseId("");
+                          setFormLinkedCourseCode("");
+                          setFormLinkedCourseName("");
+                          setFormRegistrationNote("");
+                        }
+                      }}
+                      style={{ width: "18px", height: "18px", accentColor: "#0284c7", cursor: "pointer" }}
+                    />
+                    <span>
+                      {isThai ? "เชื่อมโยงกิจกรรมนี้กับการเปิดรับสมัครอบรม (Link to Training Course)" : "Link this activity to a Training Course for enrollment"}
+                    </span>
+                  </label>
+
+                  {formIsCourseLinked && (
+                    <div className={styles.courseLinkFields}>
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>
+                          <span>
+                            {isThai
+                              ? `เลือกหลักสูตรที่เปิดรับสมัคร (เฉพาะของ ${currentFormCompanyCode || "สังกัดตัวเอง"})`
+                              : `Select Course / Rolling Plan (Only for ${currentFormCompanyCode || "Your Company"})`}
+                          </span>
+                          <span className={styles.requiredDot} title={isThai ? "จำเป็นต้องระบุ" : "Required"} aria-label="required" />
+                        </label>
+                        <select
+                          className={styles.formSelect}
+                          value={formLinkedPlanId}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (!val) {
+                              setFormLinkedPlanId("");
+                              setFormLinkedCourseId("");
+                              setFormLinkedCourseCode("");
+                              setFormLinkedCourseName("");
+                              setFormLinkedTrainingDate("");
+                              setFormLinkedEndDate("");
+                              return;
+                            }
+                            const plan = availablePlans.find((p) => p.rollingId === val);
+                            if (plan) {
+                              setFormLinkedPlanId(plan.rollingId);
+                              setFormLinkedCourseId(plan.course?.id || "");
+                              setFormLinkedCourseCode(plan.course?.code || "");
+                              setFormLinkedCourseName(plan.course?.name || "");
+                              setFormLinkedTrainingDate(plan.trainingDate || "");
+                              setFormLinkedEndDate(plan.endDate || "");
+                            }
+                          }}
+                        >
+                          <option value="">
+                            {selectablePlans.length === 0
+                              ? (isThai ? `-- ไม่พบหลักสูตรฝึกอบรมของ ${currentFormCompanyCode || "บริษัทนี้"} --` : `-- No training courses for ${currentFormCompanyCode || "this company"} --`)
+                              : (isThai ? "-- กรุณาเลือกหลักสูตรฝึกอบรม --" : "-- Please select course --")}
+                          </option>
+                          {selectablePlans.map((plan) => (
+                            <option key={plan.rollingId} value={plan.rollingId}>
+                              [{plan.course?.code || "COURSE"}] {plan.course?.name || "Untitled Course"} {plan.batch ? `(${plan.batch})` : ""} {plan.trainingDate ? `• ${plan.trainingDate}` : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>
+                          {isThai ? "ข้อความประชาสัมพันธ์การรับสมัคร (Registration Note)" : "Registration Note"}
+                        </label>
+                        <input
+                          type="text"
+                          className={styles.formInput}
+                          value={formRegistrationNote}
+                          onChange={(e) => setFormRegistrationNote(e.target.value)}
+                          placeholder={isThai ? "เช่น เปิดรับสมัครจำนวนจำกัด 25 ท่าน ปิดรับสมัคร 20 ก.ย. นี้" : "e.g. Limited to 25 seats, register by Sep 20"}
+                        />
+                      </div>
                     </div>
-                  ) : null}
-
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    style={{ display: "none" }}
-                    accept="image/*"
-                    onChange={handleFileChange}
-                  />
-
-                  <div
-                    className={styles.fileDropZone}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                      <circle cx="8.5" cy="8.5" r="1.5" />
-                      <polyline points="21 15 16 10 5 21" />
-                    </svg>
-                    <span>{isThai ? "คลิกเพื่อเลือกไฟล์รูปภาพ (JPG, PNG, WebP สูงสุด 8MB)" : "Click to select photo (max 8MB)"}</span>
-                  </div>
+                  )}
                 </div>
 
                 {/* Visibility on Dashboard Toggle */}

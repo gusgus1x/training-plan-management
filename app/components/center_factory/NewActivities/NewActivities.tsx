@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useAuthenticatedUser } from "../../AuthenticatedUserContext";
@@ -118,15 +118,6 @@ export default function NewActivities({
     }
     return false;
   };
-
-  // Selectable plans: hide courses that have passed their date/time or are completed/cancelled
-  const selectablePlans = useMemo(() => {
-    return availablePlans.filter((plan) => {
-      if (formLinkedPlanId && plan.rollingId === formLinkedPlanId) return true;
-      if (plan.status === "Cancel" || String(plan.dbStatus || "").toUpperCase() === "COMPLETED" || String(plan.dbStatus || "").toUpperCase() === "CANCELLED") return false;
-      return !isCourseDateOrTimeEnded(plan.trainingDate, plan.endDate, plan.endTime);
-    });
-  }, [availablePlans, formLinkedPlanId]);
 
   // Employee enrollments state
   const [employeeEnrollments, setEmployeeEnrollments] = useState<EnrollmentRecord[]>([]);
@@ -257,6 +248,79 @@ export default function NewActivities({
     }
     return companies;
   }, [companies, isCenterOrAdmin, isFactory, factoryOwnCompany]);
+
+  // Determine the company code of the activity currently being added or edited
+  const currentFormCompanyCode = useMemo<string>(() => {
+    if (isFactory) {
+      if (factoryOwnCompany?.code) return factoryOwnCompany.code.toUpperCase().trim();
+      if (userCompanyCode) return userCompanyCode.toUpperCase().trim();
+    }
+    if (formCompanyId === "center" || formCompanyId === "ALL") return "CENTER";
+    const found = companies.find(
+      (c) =>
+        String(c.id).toLowerCase() === String(formCompanyId).toLowerCase() ||
+        (c.code && c.code.toUpperCase() === String(formCompanyId).toUpperCase())
+    );
+    if (found && found.code) return found.code.toUpperCase().trim();
+    if (!formCompanyId) return "CENTER";
+    return String(formCompanyId).toUpperCase().trim();
+  }, [isFactory, factoryOwnCompany, userCompanyCode, companies, formCompanyId]);
+
+  // Check if a rolling plan belongs strictly to the target company (company isolation)
+  const isPlanMatchingCompany = useCallback((plan: RollingPlan, targetCompanyCode: string): boolean => {
+    if (!targetCompanyCode) return false;
+    const target = targetCompanyCode.toUpperCase().trim();
+    if (target === "CENTER") {
+      return (
+        plan.owner === "CENTER" ||
+        plan.ownerCompany?.toUpperCase().trim() === "CENTER" ||
+        plan.company === "All Companies"
+      );
+    }
+    // Factory company (e.g. ATFB, SNF, NIC, TEP, SATI, ATA)
+    // Must strictly belong to this factory and never match Center's courses
+    if (
+      plan.owner === "CENTER" ||
+      plan.ownerCompany?.toUpperCase().trim() === "CENTER" ||
+      plan.company === "All Companies"
+    ) {
+      return false;
+    }
+    const planOwnerCompany = plan.ownerCompany?.toUpperCase().trim();
+    const planCompany = plan.company?.toUpperCase().trim();
+
+    return planOwnerCompany === target || planCompany === target;
+  }, []);
+
+  // Selectable plans: strictly filtered by the activity's company ("ของบริษัทใครบริษัทมัน")
+  // and hides courses that have passed their date/time or are completed/cancelled
+  const selectablePlans = useMemo(() => {
+    return availablePlans.filter((plan) => {
+      // 1. Strict company filter
+      if (!isPlanMatchingCompany(plan, currentFormCompanyCode)) {
+        return false;
+      }
+      // 2. Status & time filter
+      if (formLinkedPlanId && plan.rollingId === formLinkedPlanId) return true;
+      if (plan.status === "Cancel" || String(plan.dbStatus || "").toUpperCase() === "COMPLETED" || String(plan.dbStatus || "").toUpperCase() === "CANCELLED") return false;
+      return !isCourseDateOrTimeEnded(plan.trainingDate, plan.endDate, plan.endTime);
+    });
+  }, [availablePlans, formLinkedPlanId, currentFormCompanyCode, isPlanMatchingCompany]);
+
+  // Automatically reset linked plan if the form company changes and the previously linked plan belongs to another company
+  useEffect(() => {
+    if (!formLinkedPlanId || !currentFormCompanyCode) return;
+    const currentPlan = availablePlans.find((p) => p.rollingId === formLinkedPlanId);
+    if (currentPlan && !isPlanMatchingCompany(currentPlan, currentFormCompanyCode)) {
+      setFormLinkedPlanId("");
+      setFormLinkedCourseId("");
+      setFormLinkedCourseCode("");
+      setFormLinkedCourseName("");
+      setFormLinkedTrainingDate("");
+      setFormLinkedEndDate("");
+      setFormRegistrationNote("");
+    }
+  }, [currentFormCompanyCode, formLinkedPlanId, availablePlans, isPlanMatchingCompany]);
 
   const canManageActivity = (act: CourseActivity | null) => {
     if (!act || isEmployee) return false;
@@ -479,7 +543,28 @@ export default function NewActivities({
     setIsEditing(true);
     setFormId(activity.id);
     setFormTitle(activity.title);
-    setFormCompanyId(activity.companyId || (isFactory && factoryOwnCompany ? factoryOwnCompany.id : "center"));
+    let targetCompanyId = activity.companyId || "";
+    if (targetCompanyId && targetCompanyId !== "center" && targetCompanyId !== "ALL") {
+      const matchById = companies.find((c) => String(c.id).toLowerCase() === String(targetCompanyId).toLowerCase());
+      if (matchById) {
+        targetCompanyId = matchById.id;
+      } else {
+        const matchByCode = companies.find((c) => c.code && c.code.toUpperCase() === String(targetCompanyId).toUpperCase());
+        if (matchByCode) {
+          targetCompanyId = matchByCode.id;
+        }
+      }
+    }
+    if ((!targetCompanyId || targetCompanyId === "center") && activity.companyCode && activity.companyCode !== "CENTER") {
+      const matchByCode = companies.find((c) => c.code && c.code.toUpperCase() === activity.companyCode.toUpperCase());
+      if (matchByCode) {
+        targetCompanyId = matchByCode.id;
+      }
+    }
+    if (!targetCompanyId) {
+      targetCompanyId = isFactory && factoryOwnCompany ? factoryOwnCompany.id : "center";
+    }
+    setFormCompanyId(targetCompanyId);
     setFormIsVisibleOnDashboard(activity.isVisibleOnDashboard !== false && activity.status !== "ARCHIVED");
     setFormDate(activity.date || "");
     setFormLocation(activity.location || "");
@@ -1608,7 +1693,17 @@ export default function NewActivities({
                     <select
                       className={styles.formSelect}
                       value={formCompanyId}
-                      onChange={(e) => setFormCompanyId(e.target.value)}
+                      onChange={(e) => {
+                        const newCompanyId = e.target.value;
+                        setFormCompanyId(newCompanyId);
+                        setFormLinkedPlanId("");
+                        setFormLinkedCourseId("");
+                        setFormLinkedCourseCode("");
+                        setFormLinkedCourseName("");
+                        setFormLinkedTrainingDate("");
+                        setFormLinkedEndDate("");
+                        setFormRegistrationNote("");
+                      }}
                       required
                     >
                       <option value="">
@@ -1693,7 +1788,11 @@ export default function NewActivities({
                     <div className={styles.courseLinkFields}>
                       <div className={styles.formGroup}>
                         <label className={styles.formLabel}>
-                          <span>{isThai ? "เลือกหลักสูตรที่เปิดรับสมัคร (Select Course / Rolling Plan)" : "Select Course / Plan"}</span>
+                          <span>
+                            {isThai
+                              ? `เลือกหลักสูตรที่เปิดรับสมัคร (เฉพาะของ ${currentFormCompanyCode || "สังกัดตัวเอง"})`
+                              : `Select Course / Rolling Plan (Only for ${currentFormCompanyCode || "Your Company"})`}
+                          </span>
                           <span className={styles.requiredDot} title={isThai ? "จำเป็นต้องระบุ" : "Required"} aria-label="required" />
                         </label>
                         <select
@@ -1722,7 +1821,9 @@ export default function NewActivities({
                           }}
                         >
                           <option value="">
-                            {isThai ? "-- กรุณาเลือกหลักสูตรฝึกอบรม --" : "-- Please select course --"}
+                            {selectablePlans.length === 0
+                              ? (isThai ? `-- ไม่พบหลักสูตรฝึกอบรมของ ${currentFormCompanyCode || "บริษัทนี้"} --` : `-- No training courses for ${currentFormCompanyCode || "this company"} --`)
+                              : (isThai ? "-- กรุณาเลือกหลักสูตรฝึกอบรม --" : "-- Please select course --")}
                           </option>
                           {selectablePlans.map((plan) => (
                             <option key={plan.rollingId} value={plan.rollingId}>

@@ -890,6 +890,25 @@
   overflow: hidden;
 }
 
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.modalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 18px 24px;
+  border-top: 1px solid var(--ui-30-border, #e2e8f0);
+  flex-shrink: 0;
+  background: var(--ui-60-surface, #ffffff);
+}
+
 @keyframes scaleUp {
   from { transform: scale(0.95); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
