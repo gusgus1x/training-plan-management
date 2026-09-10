@@ -40,6 +40,7 @@ import FormPreviewRunner, { type PreviewItem, type PreviewKind } from "./FormPre
 import SearchableSelect from "../../../SearchableSelect";
 import TypewriterLoader from "../../../TypewriterLoader";
 import styles from "./EvaluationManagement.module.css";
+import { Building2, ClipboardList, Eye, Pencil, Star, X } from "../../../icons/LucideIcons";
 
 export const evaluationManagementModule = {
   title: "Evaluation Management",
@@ -877,12 +878,12 @@ export default function EvaluationManagement() {
     {mode === "new" ? (
       <div className={styles.templatePicker}>
         <span className={styles.templatePickerLabel}>
-          📋 สร้างจากแบบประเมินที่มีอยู่ (Use an existing evaluation as a template)
+          <><ClipboardList size={16} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} /> สร้างจากแบบประเมินที่มีอยู่ (Use an existing evaluation as a template)</>
         </span>
         <SearchableSelect
           value={templateSourceId}
           onChange={applyTemplate}
-          placeholder="🔍 ค้นหารหัสหรือชื่อแบบประเมิน..."
+          placeholder="ค้นหารหัสหรือชื่อแบบประเมิน..."
           options={[
             { value: "", label: "-- ไม่ใช้แม่แบบ (เริ่มจากหน้าว่าง) --" },
             ...items.map((item) => ({
@@ -994,7 +995,7 @@ export default function EvaluationManagement() {
       <div className={styles.questionGrid}><label className={styles.fullWidth}><span>Question <RequiredIndicator isFilled={Boolean(questionDraft.prompt.trim())} /></span><textarea aria-invalid={Boolean(errors.question)} className={errors.question ? styles.inputError : undefined} value={questionDraft.prompt} onChange={(event) => { setQuestionDraft({ ...questionDraft, prompt: event.target.value }); setErrors((current) => ({ ...current, question: undefined })); }} placeholder="Enter the question shown to respondents" /></label>
         <label>Answer Type<select value={questionDraft.type} onChange={(event) => setQuestionDraft({ ...questionDraft, type: event.target.value as EvaluationQuestionType })}>{EVALUATION_QUESTION_TYPES.map((type) => <option key={type} value={type}>{QUESTION_TYPE_LABELS[type]}</option>)}</select></label>
         <label className={styles.toggleLabel}><input checked={questionDraft.required} type="checkbox" onChange={(event) => setQuestionDraft({ ...questionDraft, required: event.target.checked })} />Required question</label>
-        {isChoiceType(questionDraft.type) ? questionDraft.options.map((option, index) => <label key={`choice-${index}`}>Choice {index + 1}<span style={{ display: "flex", alignItems: "center", gap: "6px" }}><input style={{ flex: 1, minWidth: 0 }} value={option} onChange={(event) => setQuestionDraft({ ...questionDraft, options: questionDraft.options.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} /><button type="button" title="ลบตัวเลือกนี้ / Remove this option" disabled={questionDraft.options.length <= MIN_OPTIONS} onClick={() => handleRemoveOption(index)} style={{ appearance: "none", border: "none", background: "transparent", color: questionDraft.options.length <= MIN_OPTIONS ? "var(--ui-30-muted)" : "#dc2626", cursor: questionDraft.options.length <= MIN_OPTIONS ? "not-allowed" : "pointer", fontSize: "0.9rem", fontWeight: 900, lineHeight: 1, padding: "2px 4px" }}>✕</button></span></label>) : null}
+        {isChoiceType(questionDraft.type) ? questionDraft.options.map((option, index) => <label key={`choice-${index}`}>Choice {index + 1}<span style={{ display: "flex", alignItems: "center", gap: "6px" }}><input style={{ flex: 1, minWidth: 0 }} value={option} onChange={(event) => setQuestionDraft({ ...questionDraft, options: questionDraft.options.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} /><button type="button" title="ลบตัวเลือกนี้ / Remove this option" disabled={questionDraft.options.length <= MIN_OPTIONS} onClick={() => handleRemoveOption(index)} style={{ appearance: "none", border: "none", background: "transparent", color: questionDraft.options.length <= MIN_OPTIONS ? "var(--ui-30-muted)" : "#dc2626", cursor: questionDraft.options.length <= MIN_OPTIONS ? "not-allowed" : "pointer", fontSize: "0.9rem", fontWeight: 900, lineHeight: 1, padding: "2px 4px" }}><X size={14} /></button></span></label>) : null}
         {isChoiceType(questionDraft.type) ? <div className={styles.fullWidth}><button className={styles.secondaryButton} type="button" onClick={handleAddOption}>+ เพิ่มตัวเลือก / Add option</button></div> : null}
         {/* A grid asks the same columns about every row, so the two axes are edited as two lists
             rather than one - which is also exactly how they are stored, tagged by axis. */}
@@ -1022,7 +1023,7 @@ export default function EvaluationManagement() {
                     ...questionDraft,
                     [axisField]: questionDraft[axisField].filter((unused, itemIndex) => itemIndex !== index),
                   })}
-                >✕</button>
+                ><X size={14} /></button>
               </span>
             ))}
             <button
@@ -1061,14 +1062,14 @@ export default function EvaluationManagement() {
               className={previewAsLearner ? styles.secondaryButton : styles.activePreviewButton}
               onClick={() => setPreviewAsLearner(false)}
             >
-              {t("✎ มุมมองผู้จัดทำ", "✎ Author view")}
+              <><Pencil size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> {t("มุมมองผู้จัดทำ", "Author view")}</>
             </button>
             <button
               type="button"
               className={previewAsLearner ? styles.activePreviewButton : styles.secondaryButton}
               onClick={() => setPreviewAsLearner(true)}
             >
-              {t("👁 มุมมองผู้เรียน", "👁 Learner view")}
+              <><Eye size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> {t("มุมมองผู้เรียน", "Learner view")}</>
             </button>
           </div>
           <span>{draft.timing} · {draft.respondent}</span>
@@ -1174,9 +1175,9 @@ export default function EvaluationManagement() {
                 onClick={() => toggleGroup(group.code)}
               >
                 <span className={styles.chevron} aria-hidden="true" />
-                <span aria-hidden="true">{group.code === "CENTRAL" ? "🏢" : "🏬"}</span>
+                <span aria-hidden="true">{group.code === "CENTRAL" ? <Building2 size={16} /> : <Building2 size={16} />}</span>
                 <strong>{group.label}</strong>
-                {group.isOwn ? <em className={styles.ownCompanyTag}>⭐ ของฉัน</em> : <span />}
+                {group.isOwn ? <em className={styles.ownCompanyTag}><Star size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> ของฉัน</em> : <span />}
                 <small>{group.rows.length} ชุด</small>
               </button>
               {groupOpen ? (
@@ -1328,7 +1329,7 @@ export default function EvaluationManagement() {
                                   title={detailAsLearner ? "กลับไปมุมมองผู้จัดทำ" : "ทดลองตอบแบบผู้เรียน"}
                                   onClick={() => setDetailAsLearner((current) => !current)}
                                 >
-                                  👁
+                                  <Eye size={16} />
                                 </button>
                                 <button className={styles.closeButton} type="button" onClick={() => setOpenDetailId("")}>
                                   Close

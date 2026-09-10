@@ -6,6 +6,7 @@ import { useAuthActions } from "../../AuthActionsContext";
 import { useAuthenticatedUser } from "../../AuthenticatedUserContext";
 import { useSectionNavigation } from "../../../lib/useSectionNavigation";
 import Navbar from "../../Navbar";
+import { Lock } from "../../icons/LucideIcons";
 import styles from "./CenterFactory_ReportManagement.module.css";
 import {
   centerReportItems,
@@ -101,7 +102,7 @@ export default function ReportManagement({
                   <span>{item.icon}</span>
                 </span>
                 <span className={styles.cardIndex} aria-hidden="true">
-                  {item.locked ? "🔒" : String(index + 1).padStart(2, "0")}
+                  {item.locked ? <Lock size={14} /> : String(index + 1).padStart(2, "0")}
                 </span>
                 <div>
                   <span className={styles.cardSubtitle} translate="no">{item.subtitle}</span>

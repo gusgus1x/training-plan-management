@@ -17,6 +17,28 @@ import type {
   NeedRequestStatus,
 } from "../../../../lib/trainingNeedRequests/types";
 import { APPROVED_TRAINING_NEED_STORAGE_KEY } from "../../../../lib/trainingRequests";
+import {
+  Inbox,
+  Factory,
+  Building2,
+  RefreshCw,
+  FileText,
+  BarChart3,
+  AlertTriangle,
+  User,
+  CalendarDays,
+  Tag,
+  Folder,
+  FileEdit,
+  Ban,
+  Clock,
+  Rocket,
+  RotateCcw,
+  X,
+  Check,
+  Users,
+  ClipboardList,
+} from "../../../icons/LucideIcons";
 import styles from "./RequestTrainingNeed.module.css";
 
 export const requestTrainingNeedModule = {
@@ -347,7 +369,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
       <header className={styles.heroHeader}>
         <div className={styles.heroContent}>
           <h2>
-            <span>📬</span> {t("คำขอจัดฝึกอบรมจากพนักงาน", "Training Need Requests Inbox")}
+            <Inbox size={20} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 8 }} />{t("คำขอจัดฝึกอบรมจากพนักงาน", "Training Need Requests Inbox")}
           </h2>
           <p>
             {t(
@@ -359,13 +381,13 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
         <div className={styles.heroActions}>
           <div className={styles.scopeBadge}>
             {isFactoryUser ? (
-              <span>🏬 {t(`HRD โรงงาน (${user?.companyCode || "Factory"})`, `Factory HRD (${user?.companyCode || "Factory"})`)}</span>
+              <span><Factory size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t(`HRD โรงงาน (${user?.companyCode || "Factory"})`, `Factory HRD (${user?.companyCode || "Factory"})`)}</span>
             ) : (
-              <span>🏢 {t("HRD ส่วนกลาง (Center - ทุกบริษัท)", "Center HRD (All Companies)")}</span>
+              <span><Building2 size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("HRD ส่วนกลาง (Center - ทุกบริษัท)", "Center HRD (All Companies)")}</span>
             )}
           </div>
           <button className={styles.refreshBtn} type="button" onClick={() => void loadRequests()} title="Refresh">
-            🔄 {t("รีเฟรช", "Refresh")}
+            <RefreshCw size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("รีเฟรช", "Refresh")}
           </button>
         </div>
       </header>
@@ -451,14 +473,14 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
             type="button"
             onClick={() => setActiveTab("list")}
           >
-            📑 {t("รายการคำขอ (รายคน)", "Request List")} ({visibleRequests.length})
+            <FileText size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />{t("รายการคำขอ (รายคน)", "Request List")} ({visibleRequests.length})
           </button>
           <button
             className={`${styles.viewTab} ${activeTab === "demand" ? styles.viewTabActive : ""}`}
             type="button"
             onClick={() => setActiveTab("demand")}
           >
-            📊 {t("รวมยอดตามหลักสูตร", "Demand by Course")} ({demandGroups.length})
+            <BarChart3 size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />{t("รวมยอดตามหลักสูตร", "Demand by Course")} ({demandGroups.length})
           </button>
         </div>
 
@@ -468,7 +490,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={t("🔍 ค้นหาเลขที่คำขอ, พนักงาน, หลักสูตร...", "Search request no, employee, course...")}
+            placeholder={t("ค้นหาเลขที่คำขอ, พนักงาน, หลักสูตร...", "Search request no, employee, course...")}
           />
 
           {!isFactoryUser && companies.length > 0 ? (
@@ -477,7 +499,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
               value={companyFilter}
               onChange={(e) => setCompanyFilter(e.target.value)}
             >
-              <option value="all">🏢 {t("ทุกบริษัท (All Companies)", "All Companies")}</option>
+              <option value="all">{t("ทุกบริษัท (All Companies)", "All Companies")}</option>
               {companies.map((c) => (
                 <option key={c.companyId} value={c.companyCode}>
                   {c.companyCode} - {language === "th" ? c.companyNameTh : (c.companyNameEn || c.companyNameTh)}
@@ -490,7 +512,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
 
       {loadError ? (
         <div className={styles.emptyStateContainer}>
-          <p style={{ color: "#ef4444", fontWeight: 700 }}>⚠️ {loadError}</p>
+          <p style={{ color: "#ef4444", fontWeight: 700 }}><AlertTriangle size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{loadError}</p>
         </div>
       ) : null}
 
@@ -501,7 +523,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
           <div className={styles.listPane}>
             {visibleRequests.length === 0 ? (
               <div className={styles.emptyStateContainer}>
-                <p>📭 {t("ไม่พบคำขอฝึกอบรมตามเงื่อนไขที่เลือก", "No training requests match your filters")}</p>
+                <p><Inbox size={24} style={{ display: "block", margin: "0 auto 8px" }} />{t("ไม่พบคำขอฝึกอบรมตามเงื่อนไขที่เลือก", "No training requests match your filters")}</p>
               </div>
             ) : (
               visibleRequests.map((req) => {
@@ -519,9 +541,9 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                     <h4 className={styles.requestCardTitle}>{req.requestedCourseName}</h4>
                     <div className={styles.requestCardMeta}>
                       <span className={styles.requesterBadge}>
-                        👤 {req.employeeName} ({req.companyCode})
+                        <><User size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{req.employeeName} ({req.companyCode})</>
                       </span>
-                      <span>📅 {formatDate(req.requestedAt)}</span>
+                      <span><CalendarDays size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{formatDate(req.requestedAt)}</span>
                     </div>
                   </div>
                 );
@@ -550,14 +572,14 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                 <div className={styles.profileInfo}>
                   <span className={styles.profileName}>{selectedRequest.employeeName}</span>
                   <span className={styles.profileOrg}>
-                    🆔 {selectedRequest.employeeCode} • 🏢 {selectedRequest.companyCode} • 📂 {selectedRequest.functionName || "-"}
+                    <><Tag size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />{selectedRequest.employeeCode} • <Building2 size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />{selectedRequest.companyCode} • <Folder size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />{selectedRequest.functionName || "-"}</>
                   </span>
                 </div>
               </div>
 
               {/* Request Reason */}
               <div className={styles.infoSection}>
-                <span className={styles.sectionLabel}>📝 {t("เหตุผลความจำเป็นในการขอรับการฝึกอบรม", "Reason for Request")}</span>
+                <span className={styles.sectionLabel}><FileEdit size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("เหตุผลความจำเป็นในการขอรับการฝึกอบรม", "Reason for Request")}</span>
                 <div className={styles.highlightBox}>
                   {selectedRequest.requestReason || "-"}
                 </div>
@@ -565,7 +587,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
 
               {/* Preferred Dates */}
               <div className={styles.infoSection}>
-                <span className={styles.sectionLabel}>📅 {t("ช่วงเวลาที่สะดวกในการเข้าอบรม", "Preferred Schedule")}</span>
+                <span className={styles.sectionLabel}><CalendarDays size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("ช่วงเวลาที่สะดวกในการเข้าอบรม", "Preferred Schedule")}</span>
                 <div className={styles.datesGrid}>
                   <div className={styles.dateCard}>
                     <span>{t("วันที่เริ่มต้นที่สะดวก", "Preferred Start Date")}</span>
@@ -581,7 +603,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
               {/* Rejection / Review info if present */}
               {selectedRequest.rejectionReason && (
                 <div className={styles.infoSection}>
-                  <span className={styles.sectionLabel} style={{ color: "#ef4444" }}>🚫 {t("เหตุผลที่ไม่อนุมัติ", "Rejection Reason")}</span>
+                  <span className={styles.sectionLabel} style={{ color: "#ef4444" }}><Ban size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("เหตุผลที่ไม่อนุมัติ", "Rejection Reason")}</span>
                   <div className={styles.highlightBox} style={{ borderColor: "rgba(239, 68, 68, 0.4)", background: "rgba(239, 68, 68, 0.06)" }}>
                     {selectedRequest.rejectionReason}
                   </div>
@@ -591,7 +613,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
               {selectedRequest.reviewedAt && (
                 <div className={styles.reviewHistoryCard}>
                   <span>
-                    ⏱️ {t("พิจารณาเมื่อ:", "Reviewed at:")} {formatDate(selectedRequest.reviewedAt)}
+                    <Clock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("พิจารณาเมื่อ:", "Reviewed at:")} {formatDate(selectedRequest.reviewedAt)}
                     {selectedRequest.reviewNote ? ` • Note: ${selectedRequest.reviewNote}` : ""}
                   </span>
                 </div>
@@ -607,7 +629,8 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                       disabled={pendingAction}
                       onClick={() => void handleApproveToPlan()}
                     >
-                      🚀 {selectedRequest.status === "APPROVED"
+                      <Rocket size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                      {selectedRequest.status === "APPROVED"
                         ? t("เปิดฟอร์มจัดทำแผน OAP อีกครั้ง", "Open OAP Plan Form")
                         : t("อนุมัติและจัดลงแผน OAP", "Approve & Plan in OAP")}
                     </button>
@@ -619,7 +642,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                         disabled={pendingAction}
                         onClick={() => void handleRevertToPending()}
                       >
-                        ↩️ {t("ย้อนกลับเป็นรอตรวจสอบ", "Revert to Pending")}
+                        <RotateCcw size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("ย้อนกลับเป็นรอตรวจสอบ", "Revert to Pending")}
                       </button>
                     )}
 
@@ -630,7 +653,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                         disabled={pendingAction}
                         onClick={() => handleOpenRejectModal()}
                       >
-                        ✕ {selectedRequest.status === "APPROVED" ? t("เปลี่ยนเป็นไม่อนุมัติ", "Change to Reject") : t("ไม่อนุมัติ", "Reject")}
+                        <X size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{selectedRequest.status === "APPROVED" ? t("เปลี่ยนเป็นไม่อนุมัติ", "Change to Reject") : t("ไม่อนุมัติ", "Reject")}
                       </button>
                     )}
 
@@ -641,7 +664,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                         disabled={pendingAction}
                         onClick={() => void handleRevertToPending()}
                       >
-                        ↩️ {t("เปิดพิจารณาใหม่ (รอตรวจสอบ)", "Reopen to Pending")}
+                        <RotateCcw size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("เปิดพิจารณาใหม่ (รอตรวจสอบ)", "Reopen to Pending")}
                       </button>
                     )}
                   </>
@@ -649,14 +672,14 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
 
                 {isFinalPlanned && (
                   <p style={{ margin: 0, fontSize: "0.86rem", color: "#2563eb", fontWeight: 700 }}>
-                    ✓ {t("คำขอนี้ได้รับการจัดทำแผนการอบรม (OAP / Rolling) เสร็จสมบูรณ์แล้ว", "Incorporated into training plan.")}
+                    <Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("คำขอนี้ได้รับการจัดทำแผนการอบรม (OAP / Rolling) เสร็จสมบูรณ์แล้ว", "Incorporated into training plan.")}
                   </p>
                 )}
               </div>
             </div>
           ) : (
             <div className={styles.emptyStateContainer}>
-              <p>👈 {t("เลือกคำขอจากรายการด้านซ้ายเพื่อดูรายละเอียด", "Select a request to inspect")}</p>
+              <p><FileText size={20} style={{ display: "block", margin: "0 auto 8px" }} />{t("เลือกคำขอจากรายการด้านซ้ายเพื่อดูรายละเอียด", "Select a request to inspect")}</p>
             </div>
           )}
         </div>
@@ -667,7 +690,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
         <div className={styles.demandGrid}>
           {demandGroups.length === 0 ? (
             <div className={styles.emptyStateContainer} style={{ gridColumn: "1 / -1" }}>
-              <p>📭 {t("ไม่มีข้อมูลความต้องการฝึกอบรม", "No course demand records")}</p>
+              <p><Inbox size={24} style={{ display: "block", margin: "0 auto 8px" }} />{t("ไม่มีข้อมูลความต้องการฝึกอบรม", "No course demand records")}</p>
             </div>
           ) : (
             demandGroups.map((group) => (
@@ -675,29 +698,29 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                 <div className={styles.demandCardHeader}>
                   <h4 className={styles.demandCourseTitle}>{group.courseTitle}</h4>
                   <span className={styles.demandCountBadge}>
-                    👥 {group.totalRequests} {t("คน", "requesters")}
+                    <><Users size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{group.totalRequests} {t("คน", "requesters")}</>
                   </span>
                 </div>
 
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                   {group.companies.map((comp) => (
                     <span key={comp} className={styles.scopeBadge} style={{ fontSize: "0.74rem", padding: "2px 8px" }}>
-                      🏢 {comp}
+                      <><Building2 size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />{comp}</>
                     </span>
                   ))}
                   {group.pendingCount > 0 && (
                     <span className={`${styles.statusBadge} ${styles.statusBadgePending}`}>
-                      ⏳ {group.pendingCount} {t("รอตรวจ", "Pending")}
+                      <><Clock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />{group.pendingCount} {t("รอตรวจ", "Pending")}</>
                     </span>
                   )}
                   {group.approvedCount > 0 && (
                     <span className={`${styles.statusBadge} ${styles.statusBadgeApproved}`}>
-                      ✓ {group.approvedCount} {t("อนุมัติแล้ว", "Approved")}
+                      <><Check size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />{group.approvedCount} {t("อนุมัติแล้ว", "Approved")}</>
                     </span>
                   )}
                   {group.plannedCount > 0 && (
                     <span className={`${styles.statusBadge} ${styles.statusBadgePlanned}`}>
-                      📋 {group.plannedCount} {t("ลงแผนแล้ว", "Planned")}
+                      <><ClipboardList size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />{group.plannedCount} {t("ลงแผนแล้ว", "Planned")}</>
                     </span>
                   )}
                 </div>
@@ -725,7 +748,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                     disabled={pendingAction}
                     onClick={() => void handleBatchApproveGroup(group)}
                   >
-                    🚀 {t("อนุมัติกลุ่มนี้ & เปิดแผน OAP", "Approve Group & Plan in OAP")}
+                    <Rocket size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("อนุมัติกลุ่มนี้ & เปิดแผน OAP", "Approve Group & Plan in OAP")}
                   </button>
                 </div>
               </div>
@@ -768,14 +791,15 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <h3 style={{ margin: 0, fontSize: "1.15rem", color: "#ef4444", display: "flex", alignItems: "center", gap: "8px" }}>
-                <span>🚫</span> {t("ระบุเหตุผลที่ไม่อนุมัติคำขอ", "Reject Training Request")}
+                <Ban size={18} color="#ef4444" style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />{t("ระบุเหตุผลที่ไม่อนุมัติคำขอ", "Reject Training Request")}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsRejectModalOpen(false)}
-                style={{ background: "none", border: "none", fontSize: "1.2rem", cursor: "pointer", color: "var(--ui-30-muted)" }}
+                style={{ background: "none", border: "none", display: "inline-flex", alignItems: "center", cursor: "pointer", color: "var(--ui-30-muted)" }}
+                aria-label="Close"
               >
-                ✕
+                <X size={18} />
               </button>
             </div>
 

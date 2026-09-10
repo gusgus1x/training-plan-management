@@ -10,6 +10,7 @@ import type {
 } from "../../../../lib/trainingRecord/types";
 import { useToast } from "../../../ToastHost";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
+import { Check, X, Lock } from "../../../icons/LucideIcons";
 import styles from "./ReviewerAssignmentPanel.module.css";
 
 /** Two characters, matching parseReviewerSearch on the server. Searching for less is refused
@@ -424,7 +425,7 @@ export default function ReviewerAssignmentPanel({ planId, attendees, evaluation,
                     title={t("เอาออกจากรายการ", "Remove from the tray")}
                     onClick={() => removeFromTray(candidate.reviewerUserId)}
                   >
-                    ✕
+                    <X size={12} />
                   </button>
                 </span>
               </li>
@@ -477,7 +478,7 @@ export default function ReviewerAssignmentPanel({ planId, attendees, evaluation,
                 onClick={() => toggleAttendee(attendee)}
               >
                 <span className={isHeldsOwn ? styles.tickOn : styles.tick} aria-hidden>
-                  {isHeldsOwn ? "✓" : ""}
+                  {isHeldsOwn ? <Check size={12} /> : null}
                 </span>
                 <span className={styles.attendeeText}>
                   <strong className={styles.ellipsis} title={attendee.name}>
@@ -524,7 +525,8 @@ export default function ReviewerAssignmentPanel({ planId, attendees, evaluation,
                     answered there is no Edit at all: the row is closed for good. */}
                 {locked ? (
                   <span className={styles.lockedTag} title={t("แก้ไขไม่ได้แล้ว", "Closed")}>
-                    🔒 {t("ล็อกแล้ว", "Locked")}
+                    <Lock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("ล็อกแล้ว", "Locked")}
                   </span>
                 ) : editable ? (
                   reviewer ? (

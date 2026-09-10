@@ -24,6 +24,23 @@ import { loadWorkflowRollingPlans, type RollingPlan } from "../center_factory/Tr
 import { useUiLanguage } from "../ThaiUiLocalization";
 import ModuleHeader from "./ModuleHeader";
 import styles from "./RoadmapModule.module.css";
+import {
+  User,
+  Building2,
+  Briefcase,
+  Star,
+  Globe,
+  Landmark,
+  Factory,
+  Search,
+  X,
+  Target,
+  Lock,
+  Laptop,
+  GraduationCap,
+  Settings,
+  Link2,
+} from "../icons/LucideIcons";
 
 type TargetScopeTab = "ALL" | "CENTER" | "COMPANY";
 
@@ -702,16 +719,24 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         {/* User Profile Bar */}
         <div className={styles.profileRow}>
           <div className={styles.profileMeta}>
-            <div className={styles.avatarBadge}>👤</div>
+            <div className={styles.avatarBadge}>
+              <User size={24} />
+            </div>
             <div className={styles.profileText}>
               <h2>{employeeName}</h2>
               <p>Your Target Group Profile</p>
             </div>
           </div>
           <div className={styles.profileBadges}>
-            <span className={styles.profileBadgeItem}>🏢 Company: <strong>{employeeCompany}</strong></span>
-            <span className={styles.profileBadgeItem}>💼 Position: <strong>{toEnglishText(employeePosition)}</strong></span>
-            <span className={styles.profileBadgeItem}>⭐ Level: <strong>{toEnglishText(employeeLevel)}</strong></span>
+            <span className={styles.profileBadgeItem}>
+              <Building2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> Company: <strong>{employeeCompany}</strong>
+            </span>
+            <span className={styles.profileBadgeItem}>
+              <Briefcase size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> Position: <strong>{toEnglishText(employeePosition)}</strong>
+            </span>
+            <span className={styles.profileBadgeItem}>
+              <Star size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> Level: <strong>{toEnglishText(employeeLevel)}</strong>
+            </span>
           </div>
         </div>
 
@@ -723,7 +748,8 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
               className={`${styles.scopeTab} ${selectedTab === "ALL" ? styles.activeScopeTab : ""}`}
               onClick={() => setSelectedTab("ALL")}
             >
-              🌐 {showCompleted ? t("คอร์สเป้าหมายทั้งหมด", "All Target Courses") : t("คอร์สเป้าหมายที่สมัครได้", "Available Target Courses")}
+              <Globe size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+              {showCompleted ? t("คอร์สเป้าหมายทั้งหมด", "All Target Courses") : t("คอร์สเป้าหมายที่สมัครได้", "Available Target Courses")}
               <span className={styles.tabBadge}>{totalCount}</span>
             </button>
             <button
@@ -731,7 +757,8 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
               className={`${styles.scopeTab} ${selectedTab === "CENTER" ? styles.activeScopeTab : ""}`}
               onClick={() => setSelectedTab("CENTER")}
             >
-              🏛️ {t("ส่วนกลาง (Center)", "Center Mandatory")}
+              <Landmark size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+              {t("ส่วนกลาง (Center)", "Center Mandatory")}
               <span className={styles.tabBadge}>{centerCount}</span>
             </button>
             <button
@@ -739,7 +766,8 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
               className={`${styles.scopeTab} ${selectedTab === "COMPANY" ? styles.activeScopeTab : ""}`}
               onClick={() => setSelectedTab("COMPANY")}
             >
-              🏭 {employeeCompany || t("โรงงาน (Factory)", "Factory")}
+              <Factory size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+              {employeeCompany || t("โรงงาน (Factory)", "Factory")}
               <span className={styles.tabBadge}>{companyCount}</span>
             </button>
           </div>
@@ -757,7 +785,9 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         {/* Search & Category Filter Row */}
         <div className={styles.filterControlsRow}>
           <div className={styles.searchBox}>
-            <span className={styles.searchIcon}>🔍</span>
+            <span className={styles.searchIcon}>
+              <Search size={14} />
+            </span>
             <input
               type="text"
               placeholder={t("ค้นหารหัส, ชื่อหลักสูตร, วิทยากร, เนื้อหา...", "Search code, title, instructor, content...")}
@@ -772,7 +802,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                 onClick={() => setSearchQuery("")}
                 aria-label="Clear search"
               >
-                ✕
+                <X size={14} />
               </button>
             ) : null}
           </div>
@@ -822,26 +852,40 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
               <div className={styles.cardHeaderRow}>
                 <div className={styles.tagGroup}>
                   <span className={`${styles.scopeBadge} ${isCenter ? styles.centerBadge : styles.factoryBadge}`}>
-                    {isCenter ? "🏛️ Center Mandatory" : `🏭 ${item.ownerCompany}`}
+                    {isCenter ? (
+                      <>
+                        <Landmark size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        Center Mandatory
+                      </>
+                    ) : (
+                      <>
+                        <Factory size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {item.ownerCompany}
+                      </>
+                    )}
                   </span>
                   <span className={styles.categoryPill}>{item.category}</span>
 
                   {/* Target Match Badge */}
                   {item.isBothPositionAndLevelMatch ? (
                     <span className={`${styles.targetMatchPill} ${styles.exactTargetPill}`}>
-                      🎯 Direct Target Match
+                      <Target size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                      Direct Target Match
                     </span>
                   ) : item.matchLevel ? (
                     <span className={`${styles.targetMatchPill} ${styles.levelMatchPill}`}>
-                      ⭐ Level Match: {toEnglishText(employeeLevel)}
+                      <Star size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                      Level Match: {toEnglishText(employeeLevel)}
                     </span>
                   ) : item.matchPosition ? (
                     <span className={`${styles.targetMatchPill} ${styles.positionMatchPill}`}>
-                      💼 Position Match: {toEnglishText(employeePosition)}
+                      <Briefcase size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                      Position Match: {toEnglishText(employeePosition)}
                     </span>
                   ) : (
                     <span className={`${styles.targetMatchPill} ${styles.generalMatchPill}`}>
-                      🏢 General Course
+                      <Building2 size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                      General Course
                     </span>
                   )}
                 </div>
@@ -928,7 +972,8 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                         `Requires completing ${item.missingPrerequisites.map((p) => `${p.courseCode} (${p.courseName})`).join(", ")} first`,
                       )}
                     >
-                      🔒 {t(
+                      <Lock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                      {t(
                         `ต้องผ่านหลักสูตร ${item.missingPrerequisites.map((p) => p.courseCode).join(", ")} ก่อน`,
                         `Must complete ${item.missingPrerequisites.map((p) => p.courseCode).join(", ")} first`,
                       )}
@@ -951,7 +996,8 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                   {/* Section 1: 5 Target Group Sub-Boxes */}
                   <div className={styles.targetGroupCardSection}>
                     <div className={styles.targetSectionHeader}>
-                      🎯 {t("รายละเอียดกลุ่มเป้าหมาย (TARGET GROUP DETAILS)", "TARGET GROUP DETAILS")}
+                      <Target size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                      {t("รายละเอียดกลุ่มเป้าหมาย (TARGET GROUP DETAILS)", "TARGET GROUP DETAILS")}
                     </div>
 
                     <div className={styles.targetSubBox}>
@@ -1001,7 +1047,8 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                     {/* Column 1: วัตถุประสงค์ & เนื้อหาการเรียนรู้ */}
                     <div className={styles.detailColCard}>
                       <div className={styles.detailColHeader}>
-                        💻 {t("วัตถุประสงค์ & เนื้อหาการเรียนรู้", "Objective & Learning Content")}
+                        <Laptop size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                        {t("วัตถุประสงค์ & เนื้อหาการเรียนรู้", "Objective & Learning Content")}
                       </div>
                       <div className={styles.detailColField}>
                         <span className={styles.fieldLabel}>{t("วัตถุประสงค์ (OBJECTIVE)", "OBJECTIVE")}</span>
@@ -1020,7 +1067,8 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                     {/* Column 2: รายละเอียดชั้นเรียน & ผู้จัด */}
                     <div className={styles.detailColCard}>
                       <div className={styles.detailColHeader}>
-                        🏫 {t("รายละเอียดชั้นเรียน & ผู้จัด", "Class Details & Provider")}
+                        <GraduationCap size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                        {t("รายละเอียดชั้นเรียน & ผู้จัด", "Class Details & Provider")}
                       </div>
                       <div className={styles.detailColField}>
                         <span className={styles.fieldLabel}>{t("รหัสวิชา / รุ่นการอบรม", "Course Code / Batch")}</span>
@@ -1047,7 +1095,8 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                     {/* Column 3: ข้อกำหนด & การอนุมัติ */}
                     <div className={styles.detailColCard}>
                       <div className={styles.detailColHeader}>
-                        ⚙️ {t("ข้อกำหนด & การอนุมัติ", "Requirements & Approval")}
+                        <Settings size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                        {t("ข้อกำหนด & การอนุมัติ", "Requirements & Approval")}
                       </div>
                       <div className={styles.detailColField}>
                         <span className={styles.fieldLabel}>{t("สายการอนุมัติ (APPROVAL FLOW)", "APPROVAL FLOW")}</span>
@@ -1062,7 +1111,8 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                         <div className={styles.detailColField}>
                           <span className={styles.fieldLabel}>{t("ลิงก์แบบทดสอบก่อนอบรม (PRE-TEST)", "PRE-TEST LINK")}</span>
                           <a className={styles.testLink} href={item.preTestLink} target="_blank" rel="noopener noreferrer">
-                            🔗 {t("เปิดทำแบบทดสอบก่อนอบรม", "Open Pre-Test")}
+                            <Link2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                            {t("เปิดทำแบบทดสอบก่อนอบรม", "Open Pre-Test")}
                           </a>
                         </div>
                       ) : null}
@@ -1071,7 +1121,8 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                         <div className={styles.detailColField}>
                           <span className={styles.fieldLabel}>{t("ลิงก์แบบทดสอบหลังอบรม (POST-TEST)", "POST-TEST LINK")}</span>
                           <a className={styles.testLink} href={item.postTestLink} target="_blank" rel="noopener noreferrer">
-                            🔗 {t("เปิดทำแบบทดสอบหลังอบรม", "Open Post-Test")}
+                            <Link2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                            {t("เปิดทำแบบทดสอบหลังอบรม", "Open Post-Test")}
                           </a>
                         </div>
                       ) : null}
@@ -1080,7 +1131,8 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
                         <div className={styles.detailColField}>
                           <span className={styles.fieldLabel}>{t("ลิงก์แบบประเมินผลหลังอบรม (EVALUATION)", "EVALUATION FORM LINK")}</span>
                           <a className={styles.testLink} href={item.evaluationLink} target="_blank" rel="noopener noreferrer">
-                            🔗 {t("เปิดทำแบบประเมินผล", "Open Evaluation Form")}
+                            <Link2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                            {t("เปิดทำแบบประเมินผล", "Open Evaluation Form")}
                           </a>
                         </div>
                       ) : null}
@@ -1094,7 +1146,9 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
 
         {filteredRoadmapItems.length === 0 ? (
           <div className={styles.emptyBox}>
-            <div className={styles.emptyIcon}>🎯</div>
+            <div className={styles.emptyIcon}>
+              <Target size={38} />
+            </div>
             <div className={styles.emptyTitle}>
               {t("ไม่มีหลักสูตรเป้าหมายที่เปิดรับสมัครในขณะนี้", "No open target courses available")}
             </div>

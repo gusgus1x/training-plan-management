@@ -9,6 +9,7 @@ import {
   type ToastVariant,
 } from "../lib/toastQueue";
 import styles from "./ToastHost.module.css";
+import { AlertTriangle, Check, Info, X } from "./icons/LucideIcons";
 
 const TOAST_CHANGE_EVENT = "attg-toast-change";
 
@@ -62,11 +63,11 @@ export const useToast = () =>
     [],
   );
 
-const ICONS: Record<ToastVariant, string> = {
-  success: "✓",
-  error: "✕",
-  warning: "!",
-  info: "i",
+const ICONS: Record<ToastVariant, React.ReactNode> = {
+  success: <Check size={16} />,
+  error: <X size={16} />,
+  warning: <AlertTriangle size={16} />,
+  info: <Info size={16} />,
 };
 
 export default function ToastHost() {
@@ -93,7 +94,7 @@ export default function ToastHost() {
             aria-label="ปิดการแจ้งเตือน (Dismiss)"
             onClick={() => handleDismiss(toast.id)}
           >
-            ×
+            <X size={14} />
           </button>
         </div>
       ))}

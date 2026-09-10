@@ -25,7 +25,48 @@ import {
 } from "../../TrainingPlanManagement/modules/TrainingRolling";
 import TypewriterLoader from "../../../TypewriterLoader";
 import { UNDER_DEVELOPMENT } from "../../../../lib/underDevelopment";
+import {
+  Download,
+  X,
+  Calendar,
+  Clock,
+  MapPin,
+  User,
+  Lightbulb,
+  BookOpen,
+  Target,
+  Settings,
+  Wallet,
+  Users,
+  BarChart3,
+  Search,
+  FileText,
+  Building2,
+  Factory,
+  Lock,
+  Home,
+  Utensils,
+} from "../../../icons/LucideIcons";
 import styles from "./TrainingRecord.module.css";
+
+function getExpenseIcon(key: string, size = 16) {
+  switch (key) {
+    case "instructor":
+      return <User size={size} />;
+    case "traveling":
+      return <MapPin size={size} />;
+    case "seminarRoom":
+      return <Building2 size={size} />;
+    case "accommodation":
+      return <Home size={size} />;
+    case "material":
+      return <BookOpen size={size} />;
+    case "foodBeverage":
+      return <Utensils size={size} />;
+    default:
+      return <Wallet size={size} />;
+  }
+}
 
 export const trainingRecordModule = {
   title: "Training Record",
@@ -676,7 +717,8 @@ const EvaluationResultsButton = ({ planId }: { planId: string }) => {
         target="_blank"
         rel="noopener noreferrer"
       >
-        📊 {language === "th" ? "ดูการตอบกลับแบบประเมิน" : "View evaluation responses"}
+        <BarChart3 size={16} />
+        {language === "th" ? "ดูการตอบกลับแบบประเมิน" : "View evaluation responses"}
         <span className={styles.evaluationResultsBadge}>{submitted > 99 ? "99+" : submitted}</span>
       </a>
     </div>
@@ -1101,14 +1143,16 @@ export default function TrainingRecord() {
                 className={styles.secondaryButton}
                 onClick={() => handleExportCourseSummary()}
               >
-                📥 Export Excel Summary
+                <Download size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                Export Excel Summary
               </button>
               <button
                 type="button"
                 className={styles.closeButton}
                 onClick={() => setIsCourseDetailOpen(false)}
               >
-                ✖ ปิดหน้ารายละเอียด
+                <X size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                ปิดหน้ารายละเอียด
               </button>
             </div>
           </section>
@@ -1116,28 +1160,28 @@ export default function TrainingRecord() {
           {/* Quick Schedule & Venue Card */}
           <div className={styles.heroMetaCardGrid}>
             <div className={styles.metaMiniCard}>
-              <div className={styles.metaMiniIcon}>📅</div>
+              <div className={styles.metaMiniIcon}><Calendar size={16} /></div>
               <div>
                 <span>วันที่ & เวลาอบรม</span>
                 <strong>{selectedCourse.date || "-"} ({selectedCourse.time || "09:00 - 16:00"})</strong>
               </div>
             </div>
             <div className={styles.metaMiniCard}>
-              <div className={styles.metaMiniIcon}>📍</div>
+              <div className={styles.metaMiniIcon}><MapPin size={16} /></div>
               <div>
                 <span>สถานที่ / ห้องอบรม</span>
                 <strong>{selectedCourse.room || "-"}</strong>
               </div>
             </div>
             <div className={styles.metaMiniCard}>
-              <div className={styles.metaMiniIcon}>👨‍🏫</div>
+              <div className={styles.metaMiniIcon}><User size={16} /></div>
               <div>
                 <span>วิทยากรผู้สอน</span>
                 <strong>{selectedCourse.instructor || "-"}</strong>
               </div>
             </div>
             <div className={styles.metaMiniCard}>
-              <div className={styles.metaMiniIcon}>⏱️</div>
+              <div className={styles.metaMiniIcon}><Clock size={16} /></div>
               <div>
                 <span>ระยะเวลาอบรม & สะสมผล</span>
                 <strong>{selectedCourse.durationHours ?? 6} ชม. / สะสม {selectedCourse.validityMonths ?? 12} เดือน</strong>
@@ -1157,7 +1201,7 @@ export default function TrainingRecord() {
 
             <div className={styles.masterSpecGrid}>
               <article className={styles.masterSpecCard}>
-                <div className={styles.specIcon}>💡</div>
+                <div className={styles.specIcon}><Lightbulb size={18} /></div>
                 <div className={styles.specContent}>
                   <span>วัตถุประสงค์ของการอบรม (Objective)</span>
                   <p>
@@ -1168,7 +1212,7 @@ export default function TrainingRecord() {
               </article>
 
               <article className={styles.masterSpecCard}>
-                <div className={styles.specIcon}>📚</div>
+                <div className={styles.specIcon}><BookOpen size={18} /></div>
                 <div className={styles.specContent}>
                   <span>เนื้อหาหลักสูตร (Learning Content)</span>
                   <p>
@@ -1179,7 +1223,7 @@ export default function TrainingRecord() {
               </article>
 
               <article className={styles.masterSpecCard}>
-                <div className={styles.specIcon}>🎯</div>
+                <div className={styles.specIcon}><Target size={18} /></div>
                 <div className={styles.specContent}>
                   <span>กลุ่มเป้าหมาย (Target Audience)</span>
                   <p>
@@ -1190,7 +1234,7 @@ export default function TrainingRecord() {
               </article>
 
               <article className={styles.masterSpecCard}>
-                <div className={styles.specIcon}>🛠️</div>
+                <div className={styles.specIcon}><Settings size={18} /></div>
                 <div className={styles.specContent}>
                   <span>รูปแบบการอบรม (Methodology)</span>
                   <p>
@@ -1242,7 +1286,7 @@ export default function TrainingRecord() {
             <div className={styles.costHighlightGrid}>
               <article className={styles.costHighlightCard}>
                 <div className={styles.costCardHeader}>
-                  <div className={styles.costIconBox}>💰</div>
+                  <div className={styles.costIconBox}><Wallet size={18} /></div>
                   <span>Total Actual Cost</span>
                 </div>
                 <strong className={styles.costValueText}>THB {formatNumber(selectedActualCost)}</strong>
@@ -1251,7 +1295,7 @@ export default function TrainingRecord() {
 
               <article className={styles.costHighlightCard}>
                 <div className={styles.costCardHeader}>
-                  <div className={styles.costIconBox}>👥</div>
+                  <div className={styles.costIconBox}><Users size={18} /></div>
                   <span>Actual Attendees</span>
                 </div>
                 <strong className={styles.costValueText}>
@@ -1271,7 +1315,7 @@ export default function TrainingRecord() {
 
               <article className={`${styles.costHighlightCard} ${styles.costHighlightPrimary}`}>
                 <div className={styles.costCardHeader}>
-                  <div className={styles.costIconBox}>📊</div>
+                  <div className={styles.costIconBox}><BarChart3 size={18} /></div>
                   <span>Cost / Person (Actual)</span>
                 </div>
                 <strong className={styles.costValueTextPrimary}>
@@ -1297,7 +1341,7 @@ export default function TrainingRecord() {
                 return (
                   <article key={item.key} className={styles.expenseItemCard}>
                     <div className={styles.expenseItemTop}>
-                      <span className={styles.expenseIcon}>{item.icon}</span>
+                      <span className={styles.expenseIcon}>{getExpenseIcon(item.key)}</span>
                       <div className={styles.expenseInfo}>
                         <span className={styles.expenseLabel}>{item.label}</span>
                         <strong className={styles.expenseAmount}>
@@ -1514,7 +1558,10 @@ export default function TrainingRecord() {
             <div className={styles.panelHeader}>
               <div>
                 <p className={styles.kicker}>Confirmed Attendees Workspace</p>
-                <h3>👥 รายชื่อผู้เข้าอบรมจริง & ผลการประเมิน (Confirmed Attendees & Evaluation)</h3>
+                <h3>
+                  <Users size={18} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                  รายชื่อผู้เข้าอบรมจริง & ผลการประเมิน (Confirmed Attendees & Evaluation)
+                </h3>
               </div>
               <div className={styles.attendeeHeaderActions}>
                 <span className={styles.attendeeCountChip}>
@@ -1543,7 +1590,8 @@ export default function TrainingRecord() {
                   disabled
                   title={`${UNDER_DEVELOPMENT.th} / ${UNDER_DEVELOPMENT.en}`}
                 >
-                  📥 Download All Forms (ZIP)
+                  <Download size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                  Download All Forms (ZIP)
                 </button>
               </div>
             </div>
@@ -1579,7 +1627,7 @@ export default function TrainingRecord() {
               </div>
 
               <div className={styles.attendeeSearchBox}>
-                <span className={styles.searchIcon}>🔍</span>
+                <span className={styles.searchIcon}><Search size={14} /></span>
                 <input
                   type="text"
                   placeholder="ค้นหาชื่อ, รหัสพนักงาน, แผนก..."
@@ -1592,7 +1640,7 @@ export default function TrainingRecord() {
                     className={styles.clearSearchBtn}
                     onClick={() => setAttendeeSearchQuery("")}
                   >
-                    ✖
+                    <X size={12} />
                   </button>
                 ) : null}
               </div>
@@ -1747,7 +1795,8 @@ export default function TrainingRecord() {
                               disabled
                               title={`${UNDER_DEVELOPMENT.th} / ${UNDER_DEVELOPMENT.en}`}
                             >
-                              📄 Form PDF
+                              <FileText size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                              Form PDF
                             </button>
                           </td>
                         </tr>
@@ -1757,7 +1806,10 @@ export default function TrainingRecord() {
                 </table>
               ) : (
                 <div className={styles.emptyAttendeeState}>
-                  <span>🔍 ไม่พบข้อมูลผู้เข้าอบรมตามเงื่อนไขค้นหา</span>
+                  <span>
+                    <Search size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    ไม่พบข้อมูลผู้เข้าอบรมตามเงื่อนไขค้นหา
+                  </span>
                 </div>
               )}
             </div>
@@ -1816,7 +1868,7 @@ export default function TrainingRecord() {
         <div className={styles.recordOwnerHeader}>
           <div>
             <div className={styles.ownerTitleRow}>
-              <span className={styles.ownerIconBadge}>{isCenter ? "🏢" : "🏭"}</span>
+              <span className={styles.ownerIconBadge}>{isCenter ? <Building2 size={15} /> : <Factory size={15} />}</span>
               <h3>{displayTitle}</h3>
             </div>
             <span className={styles.ownerSubCount}>{records.length} completed records</span>

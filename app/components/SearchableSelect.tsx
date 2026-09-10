@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { X } from "./icons/LucideIcons";
 import styles from "./SearchableSelect.module.css";
 
 export interface SearchableSelectOption {
   value: string;
   label: string;
   secondaryLabel?: string;
-  badge?: string;
+  badge?: React.ReactNode;
 }
 
 interface SearchableSelectProps {
@@ -25,7 +26,7 @@ export default function SearchableSelect({
   options,
   value,
   onChange,
-  placeholder = "🔍 พิมพ์เพื่อค้นหา... / Type to search...",
+  placeholder = "พิมพ์เพื่อค้นหา... / Type to search...",
   disabled = false,
   emptyText = "ไม่พบข้อมูลที่ตรงกัน / No matching results",
   className,
@@ -66,7 +67,7 @@ export default function SearchableSelect({
       const matchLabel = opt.label.toLowerCase().includes(query);
       const matchVal = opt.value.toLowerCase().includes(query);
       const matchSec = opt.secondaryLabel?.toLowerCase().includes(query) ?? false;
-      const matchBadge = opt.badge?.toLowerCase().includes(query) ?? false;
+      const matchBadge = typeof opt.badge === "string" ? opt.badge.toLowerCase().includes(query) : false;
       return matchLabel || matchVal || matchSec || matchBadge;
     });
   }, [options, searchQuery]);
@@ -167,7 +168,7 @@ export default function SearchableSelect({
             onClick={handleClear}
             title="Clear selection"
           >
-            ✕
+            <X size={14} />
           </button>
         ) : null}
 

@@ -1,4 +1,5 @@
-import type { ComponentType } from "react";
+import React, { type ComponentType } from "react";
+import { BarChart3, CalendarDays, Newspaper } from "../../../icons/LucideIcons";
 import { withSlug } from "../../../../lib/slug";
 import ScheduleCalendar, { scheduleCalendarModule } from "./ScheduleCalendar";
 import SummaryDashboard, {
@@ -16,7 +17,7 @@ export type ReportModuleProps = {
 };
 
 export type ReportModuleTopic = {
-  icon: string;
+  icon: React.ReactNode;
   title: string;
   subtitle: string;
   description: string;
@@ -26,7 +27,7 @@ export type ReportModuleTopic = {
 };
 
 export const centerReportItems: readonly ReportModuleTopic[] = [
-  { ...withSlug(summaryDashboardModule), icon: "📊", Component: SummaryDashboard },
-  { ...withSlug(scheduleCalendarModule), icon: "📅", Component: ScheduleCalendar },
-  { ...withSlug(newActivitiesReportModule), icon: "📰", Component: NewActivitiesReport },
+  { ...withSlug(summaryDashboardModule), icon: React.createElement(BarChart3, { size: 24 }), Component: SummaryDashboard },
+  { ...withSlug(scheduleCalendarModule), icon: React.createElement(CalendarDays, { size: 24 }), Component: ScheduleCalendar },
+  { ...withSlug(newActivitiesReportModule), icon: React.createElement(Newspaper, { size: 24 }), Component: NewActivitiesReport },
 ];

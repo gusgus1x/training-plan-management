@@ -14,6 +14,8 @@ import type { ClientRoleCode } from "../lib/auth/client";
 import { useUiLanguage } from "./ThaiUiLocalization";
 import { UNDER_DEVELOPMENT } from "../lib/underDevelopment";
 
+import LoginActivitiesWidget from "./LoginActivitiesWidget/LoginActivitiesWidget";
+
 type LoginPageProps = {
   onLogin: (username: string, password: string) => Promise<void>;
   onPreviewLogin?: (
@@ -118,8 +120,10 @@ export default function LoginPage({
               sizes="100vw"
             />
           </div>
+        </div>
 
-          <div className={styles.heroCopy}>
+        <div className={styles.heroColumn}>
+          <div className={styles.heroCopy} aria-hidden="true">
             <div className={`${styles.companySlide} ${styles.companyOne}`}>
               <p className={styles.companyEyebrow}>AISIN TAKAOKA THAILAND GROUP</p>
               <h1>The Siam Nawaloha Foundry Co.,Ltd (SNF)</h1>
@@ -146,6 +150,8 @@ export default function LoginPage({
               <span>A leading Aluminium casting partner of global OEMs in Thailand and ASEAN.</span>
             </div>
           </div>
+
+          <LoginActivitiesWidget />
         </div>
 
         <form className={styles.loginCard} onSubmit={handleSubmit}>

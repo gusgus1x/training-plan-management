@@ -1222,6 +1222,14 @@
   overflow: hidden;
 }
 
+.modalForm {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .modalHeader {
   display: flex;
   align-items: center;
@@ -1267,6 +1275,24 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+.modalBody::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modalBody::-webkit-scrollbar-track {
+  background: var(--ui-60-surface-soft, rgba(0, 0, 0, 0.05));
+  border-radius: 4px;
+}
+
+.modalBody::-webkit-scrollbar-thumb {
+  background: var(--ui-30-border, #cbd5e1);
+  border-radius: 4px;
+}
+
+.modalBody::-webkit-scrollbar-thumb:hover {
+  background: var(--ui-30-muted, #94a3b8);
 }
 
 .detailImageBanner {
@@ -1427,6 +1453,8 @@
   gap: 12px;
   padding: 18px 24px;
   border-top: 1px solid var(--ui-30-border);
+  flex-shrink: 0;
+  background: var(--ui-60-surface);
 }
 
 .cancelBtn {
@@ -1912,6 +1940,10 @@
   background: rgba(148, 163, 184, 0.1);
   color: #94a3b8;
   border-color: rgba(148, 163, 184, 0.2);
+}
+
+.fileInputHidden {
+  display: none;
 }
 
 .multiUploadZone {

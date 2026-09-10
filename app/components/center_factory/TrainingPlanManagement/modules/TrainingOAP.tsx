@@ -26,6 +26,32 @@ import { useToast } from "../../../ToastHost";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import TypewriterLoader from "../../../TypewriterLoader";
 import SearchableSelect from "../../../SearchableSelect";
+import {
+  FileText,
+  Target,
+  BookOpen,
+  Users,
+  Settings,
+  Briefcase,
+  Star,
+  Building2,
+  Tag,
+  Folder,
+  FileEdit,
+  ClipboardList,
+  Search,
+  Pin,
+  X,
+  User,
+  Factory,
+  AlertTriangle,
+  MessageSquare,
+  CheckCircle2,
+  Clock,
+  ClipboardCheck,
+  Coins,
+  Wallet,
+} from "../../../icons/LucideIcons";
 import styles from "./TrainingOAP.module.css";
 
 export const trainingOapModule = {
@@ -46,7 +72,7 @@ export type MissingCourseField = {
   key: string;
   labelTh: string;
   labelEn: string;
-  icon: string;
+  icon: React.ReactNode;
 };
 
 const getMissingCourseFields = (
@@ -56,66 +82,65 @@ const getMissingCourseFields = (
   if (!course) return [];
   const missing: MissingCourseField[] = [];
 
-  // 1. ที่มา (Background / Reason for training)
   if (!course.remark?.trim()) {
-    missing.push({ key: "remark", labelTh: "ที่มา (Background / Reason)", labelEn: "Background / Reason", icon: "📜" });
+    missing.push({ key: "remark", labelTh: "ที่มา (Background / Reason)", labelEn: "Background / Reason", icon: <FileText size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
   }
 
   // 2. วัตถุประสงค์การเรียนรู้ (Objective)
   if (!course.objective?.trim()) {
-    missing.push({ key: "objective", labelTh: "วัตถุประสงค์การเรียนรู้ (Objective)", labelEn: "Learning Objective", icon: "🎯" });
+    missing.push({ key: "objective", labelTh: "วัตถุประสงค์การเรียนรู้ (Objective)", labelEn: "Learning Objective", icon: <Target size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
   }
 
   // 3. หัวข้อการเรียนรู้ (Learning Content)
   if (!course.learningContent?.trim()) {
-    missing.push({ key: "learningContent", labelTh: "หัวข้อการเรียนรู้ (Learning Content)", labelEn: "Learning Content", icon: "📚" });
+    missing.push({ key: "learningContent", labelTh: "หัวข้อการเรียนรู้ (Learning Content)", labelEn: "Learning Content", icon: <BookOpen size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
   }
 
   // 4. กลุ่มผู้เข้าอบรม (Target Group)
   if (!course.targetGroup?.trim()) {
-    missing.push({ key: "targetGroup", labelTh: "กลุ่มผู้เข้าอบรม (Target Group)", labelEn: "Target Group", icon: "👥" });
+    missing.push({ key: "targetGroup", labelTh: "กลุ่มผู้เข้าอบรม (Target Group)", labelEn: "Target Group", icon: <Users size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
   }
 
   // 5. วิธีการอบรม (Methodology)
   if (!course.methodology?.trim()) {
-    missing.push({ key: "methodology", labelTh: "วิธีการอบรม (Methodology)", labelEn: "Methodology", icon: "🛠️" });
+    missing.push({ key: "methodology", labelTh: "วิธีการอบรม (Methodology)", labelEn: "Methodology", icon: <Settings size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
   }
 
   // 6. ตำแหน่งกลุ่มเป้าหมาย (Target Positions)
   const hasPositions = standard?.positions && standard.positions.length > 0;
   if (!hasPositions) {
-    missing.push({ key: "positions", labelTh: "ตำแหน่งกลุ่มเป้าหมาย (Target Positions)", labelEn: "Target Positions", icon: "💼" });
+    missing.push({ key: "positions", labelTh: "ตำแหน่งกลุ่มเป้าหมาย (Target Positions)", labelEn: "Target Positions", icon: <Briefcase size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
   }
 
   // 7. ระดับกลุ่มเป้าหมาย (Target Levels)
   const hasLevels = standard?.levels && standard.levels.length > 0;
   if (!hasLevels) {
-    missing.push({ key: "levels", labelTh: "ระดับกลุ่มเป้าหมาย (Target Levels)", labelEn: "Target Levels", icon: "⭐" });
+    missing.push({ key: "levels", labelTh: "ระดับกลุ่มเป้าหมาย (Target Levels)", labelEn: "Target Levels", icon: <Star size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
   }
 
   // 8. สายงานกลุ่มเป้าหมาย (Target Function)
   const hasFunction = Boolean(standard?.functionName?.trim() || standard?.functionCode?.trim());
   if (!hasFunction) {
-    missing.push({ key: "function", labelTh: "สายงานกลุ่มเป้าหมาย (Target Function)", labelEn: "Target Function", icon: "🏢" });
+    missing.push({ key: "function", labelTh: "สายงานกลุ่มเป้าหมาย (Target Function)", labelEn: "Target Function", icon: <Building2 size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
   }
 
   // 9. กลุ่มและประเภทหลักสูตร
   if (!course.courseGroup?.trim()) {
-    missing.push({ key: "courseGroup", labelTh: "กลุ่มหลักสูตร (Course Group)", labelEn: "Course Group", icon: "🏷️" });
+    missing.push({ key: "courseGroup", labelTh: "กลุ่มหลักสูตร (Course Group)", labelEn: "Course Group", icon: <Tag size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
   }
   if (!course.courseType?.trim()) {
-    missing.push({ key: "courseType", labelTh: "ประเภทหลักสูตร (Course Type)", labelEn: "Course Type", icon: "📂" });
+    missing.push({ key: "courseType", labelTh: "ประเภทหลักสูตร (Course Type)", labelEn: "Course Type", icon: <Folder size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
   }
 
   // 10. แบบทดสอบและแบบประเมิน
   if (!course.preTestId && !course.preTestLink && !course.preTest?.trim()) {
-    missing.push({ key: "preTest", labelTh: "แบบทดสอบก่อนเรียน (Pre-Test)", labelEn: "Pre-Test Form", icon: "📝" });
+    missing.push({ key: "preTest", labelTh: "แบบทดสอบก่อนเรียน (Pre-Test)", labelEn: "Pre-Test Form", icon: <FileEdit size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
   }
   if (!course.postTestId && !course.postTestLink && !course.postTest?.trim()) {
-    missing.push({ key: "postTest", labelTh: "แบบทดสอบหลังเรียน (Post-Test)", labelEn: "Post-Test Form", icon: "📋" });
+    missing.push({ key: "postTest", labelTh: "แบบทดสอบหลังเรียน (Post-Test)", labelEn: "Post-Test Form", icon: <ClipboardList size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
   }
   if (!course.evaluationId && !course.evaluationLink && !course.evaluation?.trim()) {
-    missing.push({ key: "evaluation", labelTh: "แบบประเมินผลการอบรม (Evaluation Form)", labelEn: "Evaluation Form", icon: "🌟" });
+    missing.push({ key: "evaluation", labelTh: "แบบประเมินผลการอบรม (Evaluation Form)", labelEn: "Evaluation Form", icon: <Star size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> });
   }
 
   return missing;
@@ -812,7 +837,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
         <section className={styles.toolbar} aria-label="Training OAP toolbar">
           <div className={styles.filterRow}>
             <div className={styles.searchWrapper}>
-              <span className={styles.searchIcon}>🔍</span>
+              <Search size={16} className={styles.searchIcon} />
               <input
                 className={styles.searchInput}
                 aria-label="Search annual training plan"
@@ -903,7 +928,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               <div className={styles.approvedRequestBanner}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
                   <span style={{ fontWeight: 800, color: "#007a3d", fontSize: "0.84rem" }}>
-                    📌 {t("สร้างแผนจากคำขอฝึกอบรม", "Created from Training Request")} #{approvedRequest.requestNo}
+                    <><Pin size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("สร้างแผนจากคำขอฝึกอบรม", "Created from Training Request")} #{approvedRequest.requestNo}</>
                   </span>
                   <button
                     type="button"
@@ -913,12 +938,12 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                     }}
                     style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "0.76rem" }}
                   >
-                    ✕ {t("ยกเลิกการเชื่อมโยงคำขอ", "Unlink request")}
+                    <><X size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("ยกเลิกการเชื่อมโยงคำขอ", "Unlink request")}</>
                   </button>
                 </div>
                 <strong style={{ fontSize: "0.95rem" }}>{approvedRequest.requestedCourseName}</strong>
                 <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "#475569" }}>
-                  👤 {approvedRequest.employeeName} ({approvedRequest.companyCode} / {approvedRequest.functionName || "-"})
+                  <><User size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{approvedRequest.employeeName} ({approvedRequest.companyCode} / {approvedRequest.functionName || "-"}</>
                   {approvedRequest.requestReason ? ` • เหตุผลที่ขอ: "${approvedRequest.requestReason}"` : ""}
                 </p>
               </div>
@@ -936,19 +961,19 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                       course.ownerCompany === "HRD Center" ||
                       !course.ownerCompany;
                     const ownerTag = isCenter
-                      ? "🏢 Center (ส่วนกลาง)"
-                      : `🏬 Factory (${course.ownerCompany || "โรงงาน"})`;
+                      ? "Center (ส่วนกลาง)"
+                      : `Factory (${course.ownerCompany || "โรงงาน"})`;
 
                     return {
                       value: course.courseCode,
                       label: `[${course.courseCode}] ${displayName}`,
                       secondaryLabel: secondaryName ? `${secondaryName} • ${ownerTag}` : ownerTag,
-                      badge: isCenter ? "🏢 Center" : `🏬 ${course.ownerCompany || "Factory"}`,
+                      badge: isCenter ? "Center" : (course.ownerCompany || "Factory"),
                     };
                   })}
                   value={form.courseCode}
                   onChange={(code) => updateForm("courseCode", code)}
-                  placeholder="🔍 พิมพ์เพื่อค้นหาหลักสูตร (รหัส/ชื่อ)... / Search course..."
+                  placeholder="พิมพ์เพื่อค้นหาหลักสูตร (รหัส/ชื่อ)... / Search course..."
                 />
               </div>
               {selectedCourse ? (
@@ -960,7 +985,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                         : styles.courseOwnerBannerFactory
                     }
                   >
-                    <span className={styles.courseOwnerIcon}>{isSelectedCourseCenter ? "🏢" : "🏬"}</span>
+                    <span className={styles.courseOwnerIcon}>{isSelectedCourseCenter ? <Building2 size={16} /> : <Factory size={16} />}</span>
                     <div className={styles.courseOwnerContent}>
                       <div className={styles.courseOwnerTitleRow}>
                         <strong>
@@ -976,8 +1001,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                           }
                         >
                           {isSelectedCourseCenter
-                            ? "🏢 Center (ส่วนกลาง)"
-                            : `🏬 Factory (${selectedCourse.ownerCompany || "โรงงาน"})`}
+                            ? "Center (ส่วนกลาง)"
+                            : `Factory (${selectedCourse.ownerCompany || "โรงงาน"})`}
                         </span>
                       </div>
                       <p className={styles.courseOwnerDesc}>
@@ -992,7 +1017,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                   {missingCourseFields.length > 0 ? (
                     <div className={styles.incompleteCourseAlert}>
                       <div className={styles.incompleteAlertHeader}>
-                        <span className={styles.incompleteAlertIcon}>⚠️</span>
+                        <span className={styles.incompleteAlertIcon}><AlertTriangle size={18} color="#f59e0b" /></span>
                         <div className={styles.incompleteAlertTitle}>
                           <strong>{t("ข้อมูลใน Course Master ยังไม่ครบถ้วน", "Course Master Information Incomplete")}</strong>
                           <span>
@@ -1014,7 +1039,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
                       <div className={styles.incompleteAlertFooter}>
                         <p className={styles.incompleteAlertQuestion}>
-                          💬 {t("ต้องการไปกรอกข้อมูลใน Course Master ก่อน หรือสร้างแผน OAP ต่อได้เลย?", "Would you like to complete the Course Master details first, or proceed with OAP anyway?")}
+                          <><MessageSquare size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("ต้องการไปกรอกข้อมูลใน Course Master ก่อน หรือสร้างแผน OAP ต่อได้เลย?", "Would you like to complete the Course Master details first, or proceed with OAP anyway?")}</>
                         </p>
                         <div className={styles.incompleteAlertActions}>
                           <button
@@ -1022,18 +1047,18 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                             className={styles.goToCourseMasterBtn}
                             onClick={() => router.push("/training-course")}
                           >
-                            ✏️ {t("ไปกรอกข้อมูลใน Course Master ก่อน", "Go to Course Master")}
+                            <><FileEdit size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("ไปกรอกข้อมูลใน Course Master ก่อน", "Go to Course Master")}</>
                           </button>
                           <span className={styles.orDivider}>{t("หรือ", "or")}</span>
                           <span className={styles.proceedNote}>
-                            👇 {t("กรอกข้อมูลด้านล่างแล้วสร้างแผน OAP ต่อได้เลย", "Fill in details below and create OAP plan directly")}
+                            {t("กรอกข้อมูลด้านล่างแล้วสร้างแผน OAP ต่อได้เลย", "Fill in details below and create OAP plan directly")}
                           </span>
                         </div>
                       </div>
                     </div>
                   ) : (
                     <div className={styles.completeCourseBadge}>
-                      <span>✅ {t("ข้อมูลใน Course Master ครบถ้วนสมบูรณ์แล้ว", "Course Master information is complete")}</span>
+                      <span><CheckCircle2 size={14} color="#10b981" style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("ข้อมูลใน Course Master ครบถ้วนสมบูรณ์แล้ว", "Course Master information is complete")}</span>
                     </div>
                   )}
                 </div>
@@ -1173,7 +1198,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                         }));
                       }}
                     >
-                      ✕ ล้างข้อมูลวิทยากร
+                      <><X size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> ล้างข้อมูลวิทยากร</>
                     </button>
                   ) : null}
                 </div>
@@ -1280,19 +1305,19 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                   <div className={styles.previewBadges}>
                     {selectedCourse.courseType ? (
                       <span className={`${styles.previewBadge} ${styles.previewBadgeHighlight}`}>
-                        🏷️ {selectedCourse.courseType}
+                        <><Tag size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{selectedCourse.courseType}</>
                       </span>
                     ) : null}
                     {selectedCourse.courseGroup ? (
                       <span className={styles.previewBadge} translate="no">
-                        📂 {selectedCourse.courseGroup}
+                        <><Folder size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{selectedCourse.courseGroup}</>
                       </span>
                     ) : null}
                     <span className={styles.previewBadge}>
-                      ⏱️ {!selectedCourse.lifeCycleMonth || selectedCourse.lifeCycleMonth === "0" || Number(selectedCourse.lifeCycleMonth) === 0 ? "ไม่มีการหมดอายุ" : `${selectedCourse.lifeCycleMonth} Months`}
+                      <><Clock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{!selectedCourse.lifeCycleMonth || selectedCourse.lifeCycleMonth === "0" || Number(selectedCourse.lifeCycleMonth) === 0 ? "ไม่มีการหมดอายุ" : `${selectedCourse.lifeCycleMonth} Months`}</>
                     </span>
                     <span className={styles.previewBadge}>
-                      🏢 {selectedCourse.ownerCompany || selectedCourse.owner}
+                      <><Building2 size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{selectedCourse.ownerCompany || selectedCourse.owner}</>
                     </span>
                   </div>
                 </div>
@@ -1300,7 +1325,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                 <div className={styles.previewSections}>
                   <div className={styles.previewCard}>
                     <div className={styles.previewCardHeader}>
-                      <span>🎯 Objectives & Content</span>
+                      <span><Target size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />Objectives & Content</span>
                     </div>
                     <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>ที่มา (Background)</span>
@@ -1324,7 +1349,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
                   <div className={styles.previewCard}>
                     <div className={styles.previewCardHeader}>
-                      <span>👥 Target & Standard</span>
+                      <span><Users size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />Target & Standard</span>
                     </div>
                     <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>Target Group</span>
@@ -1378,7 +1403,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
                   <div className={styles.previewCard}>
                     <div className={styles.previewCardHeader}>
-                      <span>📝 Assessment Forms</span>
+                      <span><ClipboardCheck size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />Assessment Forms</span>
                     </div>
                     <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>Pre-Test</span>
@@ -1392,7 +1417,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
                   <div className={styles.previewCard}>
                     <div className={styles.previewCardHeader}>
-                      <span>⭐ Evaluation Forms</span>
+                      <span><Star size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />Evaluation Forms</span>
                     </div>
                     <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>Evaluation</span>
@@ -1406,7 +1431,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
                   <div className={styles.previewCard}>
                     <div className={styles.previewCardHeader}>
-                      <span>👨‍🏫 รายละเอียดวิทยากร (Instructor Details)</span>
+                      <span><User size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />รายละเอียดวิทยากร (Instructor Details)</span>
                     </div>
                     <div className={styles.previewFieldRow}>
                       <span className={styles.previewFieldLabel}>ชื่อวิทยากร</span>
@@ -1545,9 +1570,9 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             <div key={section.companyName} className={styles.companySectionBlock}>
               <div className={`${styles.companySectionHeader} ${section.isUserCompany ? styles.ownCompanySectionHeader : ""}`}>
                 <div className={styles.companySectionTitle}>
-                  <span className={styles.companyIcon}>{section.companyName === "HRD Center" ? "🏢" : "🏬"}</span>
+                  <span className={styles.companyIcon}>{section.companyName === "HRD Center" ? <Building2 size={18} /> : <Factory size={18} />}</span>
                   <h4>แผนอบรม {section.companyName}</h4>
-                  {section.isUserCompany ? <span className={styles.ownCompanySectionTag}>⭐ บริษัทของฉัน ({userCompanyCode || "HRD Center"})</span> : null}
+                  {section.isUserCompany ? <span className={styles.ownCompanySectionTag}><Star size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />บริษัทของฉัน ({userCompanyCode || "HRD Center"})</span> : null}
                 </div>
                 <span className={styles.companyCountBadge}>{section.plans.length} หลักสูตร</span>
               </div>
@@ -1667,7 +1692,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                   </div>
                                   <div className={styles.previewSections}>
                                     <div className={`${styles.previewCard} ${styles.previewCardFull}`}>
-                                      <div className={styles.previewCardHeader}><span>📘 หลักสูตร (Course)</span></div>
+                                      <div className={styles.previewCardHeader}><span><BookOpen size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />หลักสูตร (Course)</span></div>
                                       <div className={styles.previewFieldGrid}>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>กลุ่มหลักสูตร</span><span className={styles.previewFieldValue} translate="no">{plan.course.courseGroup || "-"}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>รหัสหลักสูตร</span><span className={styles.previewFieldValue}>{plan.course.courseCode}</span></div>
@@ -1688,7 +1713,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                       const std = standards.find((item) => item.courseId === plan.course.id);
                                       return (
                                         <div className={styles.previewCard}>
-                                          <div className={styles.previewCardHeader}><span>🎯 กลุ่มเป้าหมาย (Target Group)</span></div>
+                                          <div className={styles.previewCardHeader}><span><Target size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />กลุ่มเป้าหมาย (Target Group)</span></div>
                                           <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>กลุ่มผู้เข้าอบรม</span><span className={styles.previewFieldValue}>{plan.course.targetGroup}</span></div>
                                           <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
                                             <span className={styles.previewFieldLabel}>Standard Companies</span>
@@ -1746,7 +1771,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                       );
                                       return (
                                         <div className={styles.previewCard}>
-                                          <div className={styles.previewCardHeader}><span>👨‍🏫 ข้อมูลวิทยากร &amp; สถาบัน (Instructor &amp; Provider)</span></div>
+                                          <div className={styles.previewCardHeader}><span><User size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />ข้อมูลวิทยากร &amp; สถาบัน (Instructor &amp; Provider)</span></div>
                                           <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ชื่อวิทยากร</span><span className={styles.previewFieldValue}>{plan.trainer || "-"}</span></div>
                                           {matchedPlanInstructor?.instructorCode ? (
                                             <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>รหัสวิทยากร</span><span className={styles.previewFieldValue}>{matchedPlanInstructor.instructorCode}</span></div>
@@ -1763,7 +1788,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                     })()}
 
                                     <div className={styles.previewCard}>
-                                      <div className={styles.previewCardHeader}><span>📝 แบบทดสอบ / แบบประเมิน</span></div>
+                                      <div className={styles.previewCardHeader}><span><ClipboardCheck size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />แบบทดสอบ / แบบประเมิน</span></div>
                                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>แบบทดสอบก่อนเรียน</span><span className={styles.previewFieldValue}>{plan.course.preTest || plan.course.preTestLink || "-"}</span></div>
                                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>แบบทดสอบหลังเรียน</span><span className={styles.previewFieldValue}>{plan.course.postTest || plan.course.postTestLink || "-"}</span></div>
                                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>แบบประเมิน</span><span className={styles.previewFieldValue}>{plan.course.evaluation || plan.course.evaluationLink || "-"}</span></div>
@@ -1771,7 +1796,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                     </div>
 
                                     <div className={styles.previewCard}>
-                                      <div className={styles.previewCardHeader}><span>💰 Budget</span></div>
+                                      <div className={styles.previewCardHeader}><span><Coins size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />Budget</span></div>
                                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>Instructor Budget</span><span className={styles.previewFieldValue}>฿{Number(plan.budgetInstructor || 0).toLocaleString("en-US")}</span></div>
                                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>Traveling Budget</span><span className={styles.previewFieldValue}>฿{Number(plan.budgetTraveling || 0).toLocaleString("en-US")}</span></div>
                                       <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>Seminar Room Budget</span><span className={styles.previewFieldValue}>฿{Number(plan.budgetSeminarRoom || 0).toLocaleString("en-US")}</span></div>
@@ -1793,7 +1818,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
                                       return (
                                         <div className={styles.previewCard}>
-                                          <div className={styles.previewCardHeader}><span>💵 ค่าใช้จ่ายประมาณการ</span></div>
+                                          <div className={styles.previewCardHeader}><span><Wallet size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />ค่าใช้จ่ายประมาณการ</span></div>
                                           <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
                                             <span className={styles.previewFieldLabel}>จำนวนที่แต่ละบริษัทส่งได้</span>
                                             <span className={styles.previewFieldValue}>

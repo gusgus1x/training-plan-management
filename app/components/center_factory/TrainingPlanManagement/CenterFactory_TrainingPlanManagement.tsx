@@ -8,6 +8,7 @@ import { useSectionNavigation } from "../../../lib/useSectionNavigation";
 import { isSectionHeadOrAbove } from "../../../lib/employeeMasterData";
 import Navbar from "../../Navbar";
 import { useToast } from "../../ToastHost";
+import { ShieldAlert, Home, Lock } from "../../icons/LucideIcons";
 import styles from "./CenterFactory_TrainingPlanManagement.module.css";
 import { planItems } from "./modules";
 
@@ -64,7 +65,7 @@ export default function TrainingPlanManagement({
         <div className={styles.accessDeniedContainer}>
           <div className={styles.accessDeniedCard}>
             <div className={styles.accessDeniedIconWrap}>
-              <span className={styles.accessDeniedBigIcon}>🚫</span>
+              <ShieldAlert size={48} color="#ef4444" />
             </div>
             <h1 className={styles.accessDeniedMainTitle}>ตำแหน่งของคุณไม่ถึงที่จะเข้าลิ้งค์</h1>
             <p className={styles.accessDeniedSubTitle}>
@@ -96,7 +97,8 @@ export default function TrainingPlanManagement({
                 className={styles.backToHomeBtn}
                 onClick={() => router.push("/")}
               >
-                🏠 กลับสู่หน้าหลักของคุณ (Home Dashboard)
+                <Home size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                กลับสู่หน้าหลักของคุณ (Home Dashboard)
               </button>
             </div>
           </div>
@@ -186,11 +188,24 @@ export default function TrainingPlanManagement({
                   <span className={styles.cardSubtitle} translate="no">{item.subtitle}</span>
                   <h3 translate="no">
                     {item.title}
-                    {item.locked ? <span className={styles.lockedTag}>🔒 Locked</span> : null}
+                    {item.locked ? (
+                      <span className={styles.lockedTag}>
+                        <Lock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        Locked
+                      </span>
+                    ) : null}
                   </h3>
                   <p>{item.description}</p>
                 </div>
-                <strong>{item.locked ? "🔒 Locked" : "Open"}</strong>
+                <strong>
+                  {item.locked ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <Lock size={14} /> Locked
+                    </span>
+                  ) : (
+                    "Open"
+                  )}
+                </strong>
               </button>
             ))}
           </div>

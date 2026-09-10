@@ -227,10 +227,10 @@ export const expiryFrom = (trainingDate: string, validityMonths: number | null) 
  * on the report - two different things to anyone reading them side by side.
  */
 export const EXPENSE_ITEMS: ReadonlyArray<{ key: ExpenseKey; label: string; icon: string }> = [
-  { key: "instructor", label: "ค่าวิทยากร (Instructor)", icon: "👨‍🏫" },
-  { key: "traveling", label: "ค่าเดินทาง (Traveling)", icon: "🚗" },
-  { key: "seminarRoom", label: "ค่าห้องอบรม & สถานที่ (Seminar Room)", icon: "🏢" },
-  { key: "accommodation", label: "ค่าที่พัก (Accommodation)", icon: "🏨" },
-  { key: "material", label: "ค่าเอกสาร & อุปกรณ์ (Material)", icon: "📚" },
-  { key: "foodBeverage", label: "ค่าอาหาร & เครื่องดื่ม (Food & Beverage)", icon: "🍱" },
+  { key: "instructor", label: "ค่าวิทยากร (Instructor)", icon: "instructor" },
+  { key: "traveling", label: "ค่าเดินทาง (Traveling)", icon: "traveling" },
+  { key: "seminarRoom", label: "ค่าห้องอบรม & สถานที่ (Seminar Room)", icon: "seminarRoom" },
+  { key: "accommodation", label: "ค่าที่พัก (Accommodation)", icon: "accommodation" },
+  { key: "material", label: "ค่าเอกสาร & อุปกรณ์ (Material)", icon: "material" },
+  { key: "foodBeverage", label: "ค่าอาหาร & เครื่องดื่ม (Food & Beverage)", icon: "foodBeverage" },
 ];

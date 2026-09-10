@@ -19,6 +19,26 @@ import ModuleHeader from "./ModuleHeader";
 import SearchableSelect from "../SearchableSelect";
 import shell from "../shared/ModuleShell.module.css";
 import styles from "./RequestTrainingModule.module.css";
+import {
+  Lightbulb,
+  Send,
+  FileEdit,
+  RefreshCw,
+  Info,
+  Building2,
+  Factory,
+  Landmark,
+  Calendar,
+  Clock,
+  User,
+  CheckCircle2,
+  Settings,
+  ClipboardList,
+  TrendingUp,
+  Rocket,
+  Link2,
+  Ban,
+} from "../icons/LucideIcons";
 
 type RequestTrainingModuleProps = {
   reason: string;
@@ -189,7 +209,8 @@ export default function RequestTrainingModule({
         <div className={styles.heroGuideCard}>
           <div className={styles.heroGuideText}>
             <h3>
-              <span>💡</span> {t("ต้องการอบรมทบทวน หรือเรียนรู้ทักษะใดเพิ่มเติม?", "Need a refresher or new training topic?")}
+              <Lightbulb size={20} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+              {t("ต้องการอบรมทบทวน หรือเรียนรู้ทักษะใดเพิ่มเติม?", "Need a refresher or new training topic?")}
             </h3>
             <p>
               {t(
@@ -206,7 +227,7 @@ export default function RequestTrainingModule({
               </span>
             </div>
             <div className={styles.statPill}>
-              <span>📨</span>
+              <Send size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
               <span>
                 {myRequests.length} {t("คำขอที่ส่งแล้ว", "requests sent")}
               </span>
@@ -220,7 +241,9 @@ export default function RequestTrainingModule({
           <section className={styles.mainCard}>
             <div className={styles.cardHeader}>
               <div className={styles.cardHeaderTitle}>
-                <span className={styles.cardHeaderIcon}>📝</span>
+                <span className={styles.cardHeaderIcon}>
+                  <FileEdit size={18} />
+                </span>
                 <h3>{t("สร้างคำขอฝึกอบรม (New Request)", "New Training Request")}</h3>
               </div>
             </div>
@@ -234,7 +257,8 @@ export default function RequestTrainingModule({
                   setRequestMode("record");
                 }}
               >
-                🔄 {t("ขออบรมทบทวนจากประวัติ (My Record)", "Refresher from My Record")}
+                <RefreshCw size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                {t("ขออบรมทบทวนจากประวัติ (My Record)", "Refresher from My Record")}
               </button>
               <button
                 className={`${styles.modeTab} ${requestMode === "custom" ? styles.modeTabActive : ""}`}
@@ -244,7 +268,8 @@ export default function RequestTrainingModule({
                   setSelectedCourseId("");
                 }}
               >
-                ✍️ {t("ระบุหัวข้อใหม่ / อื่นๆ", "New Course Topic")}
+                <FileEdit size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                {t("ระบุหัวข้อใหม่ / อื่นๆ", "New Course Topic")}
               </button>
             </div>
 
@@ -260,7 +285,7 @@ export default function RequestTrainingModule({
 
                 {completedCourses.length === 0 && !isLoadingRecords ? (
                   <div className={styles.emptyRecordsAlert}>
-                    <span>ℹ️</span>
+                    <Info size={18} style={{ flexShrink: 0, marginTop: 2, color: "var(--ui-30-primary)" }} />
                     <div>
                       <strong>{t("ยังไม่พบประวัติการอบรมที่เสร็จสมบูรณ์", "No completed training records found")}</strong>
                       <div>{t("คุณสามารถกดเลือกแท็บ 'ระบุหัวข้อใหม่' เพื่อพิมพ์ชื่อหลักสูตรที่ต้องการได้โดยตรง", "You can switch to 'New Course Topic' to type any course name directly.")}</div>
@@ -272,14 +297,22 @@ export default function RequestTrainingModule({
                       value: course.id,
                       label: `[${course.courseCode}] ${course.courseTitle}`,
                       secondaryLabel: `ผ่านเมื่อ: ${course.completedDate} • ${course.hours} ชม. • ${course.provider}`,
-                      badge: course.provider === "HRD Center" ? "🏢 Center" : "🏬 Factory",
+                      badge: course.provider === "HRD Center" ? (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <Building2 size={12} /> Center
+                        </span>
+                      ) : (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <Factory size={12} /> Factory
+                        </span>
+                      ),
                     }))}
                     value={selectedCourseId}
                     onChange={(val) => handleSelectCourse(val)}
                     placeholder={
                       isLoadingRecords
                         ? t("กำลังโหลดประวัติการอบรม...", "Loading training records...")
-                        : t("🔍 พิมพ์ค้นหาหลักสูตรที่เคยอบรมจาก My Record...", "Search completed course from My Record...")
+                        : t("พิมพ์ค้นหาหลักสูตรที่เคยอบรมจาก My Record...", "Search completed course from My Record...")
                     }
                     disabled={isLoadingRecords}
                   />
@@ -293,26 +326,46 @@ export default function RequestTrainingModule({
                         [{selectedCourse.courseCode}] {selectedCourse.courseTitle}
                       </h4>
                       <span className={styles.providerBadge}>
-                        {selectedCourse.provider === "HRD Center" ? "🏛️ HRD Center" : "🏭 Factory HRD"}
+                        {selectedCourse.provider === "HRD Center" ? (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            <Landmark size={13} /> HRD Center
+                          </span>
+                        ) : (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            <Factory size={13} /> Factory HRD
+                          </span>
+                        )}
                       </span>
                     </div>
 
                     <div className={styles.pastCourseGrid}>
                       <div className={styles.pastCourseMetaItem}>
                         <span>{t("วันที่เคยอบรม", "Completed Date")}</span>
-                        <strong>📅 {selectedCourse.completedDate}</strong>
+                        <strong>
+                          <Calendar size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                          {selectedCourse.completedDate}
+                        </strong>
                       </div>
                       <div className={styles.pastCourseMetaItem}>
                         <span>{t("จำนวนชั่วโมง", "Duration")}</span>
-                        <strong>⏱️ {selectedCourse.hours} {t("ชม.", "hrs")}</strong>
+                        <strong>
+                          <Clock size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                          {selectedCourse.hours} {t("ชม.", "hrs")}
+                        </strong>
                       </div>
                       <div className={styles.pastCourseMetaItem}>
                         <span>{t("วิทยากรผู้สอน", "Instructor")}</span>
-                        <strong>👨‍🏫 {selectedCourse.instructor || "-"}</strong>
+                        <strong>
+                          <User size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                          {selectedCourse.instructor || "-"}
+                        </strong>
                       </div>
                       <div className={styles.pastCourseMetaItem}>
                         <span>{t("ผลการอบรมเดิม", "Past Result")}</span>
-                        <strong>✅ {selectedCourse.result || "Completed"}</strong>
+                        <strong>
+                          <CheckCircle2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4, color: "var(--ui-color-green, #10b981)" }} />
+                          {selectedCourse.result || "Completed"}
+                        </strong>
                       </div>
                     </div>
                   </div>
@@ -360,28 +413,32 @@ export default function RequestTrainingModule({
                     type="button"
                     onClick={() => handleApplyQuickReason(t("ขออบรมทบทวนความรู้เดิม (Refresher Training)", "Refresher Training"))}
                   >
-                    🔄 {t("ขออบรมทบทวนความรู้เดิม", "Refresher")}
+                    <RefreshCw size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("ขออบรมทบทวนความรู้เดิม", "Refresher")}
                   </button>
                   <button
                     className={styles.quickTagBtn}
                     type="button"
                     onClick={() => handleApplyQuickReason(t("นำความรู้ไปประยุกต์ใช้กับโครงการ/หน้าที่รับผิดชอบใหม่", "Apply to new project"))}
                   >
-                    ⚙️ {t("ประยุกต์ใช้กับงานใหม่", "New Project")}
+                    <Settings size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("ประยุกต์ใช้กับงานใหม่", "New Project")}
                   </button>
                   <button
                     className={styles.quickTagBtn}
                     type="button"
                     onClick={() => handleApplyQuickReason(t("ทบทวนมาตรฐานและข้อกำหนดการปฏิบัติงาน", "Review standard requirements"))}
                   >
-                    📋 {t("ทบทวนมาตรฐานการทำงาน", "Standard Review")}
+                    <ClipboardList size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("ทบทวนมาตรฐานการทำงาน", "Standard Review")}
                   </button>
                   <button
                     className={styles.quickTagBtn}
                     type="button"
                     onClick={() => handleApplyQuickReason(t("พัฒนาทักษะเพิ่มเติมเพื่อเพิ่มประสิทธิภาพงาน", "Skill Enhancement"))}
                   >
-                    📈 {t("พัฒนาทักษะการทำงาน", "Skill Enhancement")}
+                    <TrendingUp size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("พัฒนาทักษะการทำงาน", "Skill Enhancement")}
                   </button>
                 </div>
               </div>
@@ -415,9 +472,14 @@ export default function RequestTrainingModule({
                 disabled={isSubmitting}
                 onClick={() => void handleSubmit()}
               >
-                {isSubmitting
-                  ? t("กำลังส่งคำขอ...", "Submitting...")
-                  : t("🚀 ส่งคำขอฝึกอบรมไปยัง HRD", "Submit Training Need Request")}
+                {isSubmitting ? (
+                  t("กำลังส่งคำขอ...", "Submitting...")
+                ) : (
+                  <>
+                    <Rocket size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                    {t("ส่งคำขอฝึกอบรมไปยัง HRD", "Submit Training Need Request")}
+                  </>
+                )}
               </button>
             </div>
           </section>
@@ -426,7 +488,9 @@ export default function RequestTrainingModule({
           <aside className={styles.sideCard}>
             <div className={styles.cardHeader}>
               <div className={styles.cardHeaderTitle}>
-                <span className={styles.cardHeaderIcon}>📋</span>
+                <span className={styles.cardHeaderIcon}>
+                  <ClipboardList size={18} />
+                </span>
                 <h3>{t("ประวัติคำขอของฉัน", "My Requests")}</h3>
               </div>
               <span style={{ fontSize: "0.82rem", fontWeight: 800, color: "var(--ui-30-primary)" }}>
@@ -442,7 +506,8 @@ export default function RequestTrainingModule({
                 <p>{reason || t("เหตุผลการขอจะแสดงที่นี่...", "Request reason will appear here...")}</p>
                 {selectedCourse ? (
                   <small style={{ color: "var(--ui-30-primary)", marginTop: "4px", display: "block", fontWeight: 600 }}>
-                    🔗 [{selectedCourse.courseCode}] {selectedCourse.courseTitle}
+                    <Link2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    [{selectedCourse.courseCode}] {selectedCourse.courseTitle}
                   </small>
                 ) : null}
               </div>
@@ -485,12 +550,14 @@ export default function RequestTrainingModule({
                       {/* Show Rejection note from HRD if rejected */}
                       {request.rejectionReason && (
                         <div className={styles.historyRejectionBox}>
-                          🚫 {t("เหตุผลจาก HRD:", "HRD Note:")} {request.rejectionReason}
+                          <Ban size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                          {t("เหตุผลจาก HRD:", "HRD Note:")} {request.rejectionReason}
                         </div>
                       )}
 
                       <span className={styles.historyDate}>
-                        📅 {new Date(request.requestedAt).toLocaleDateString(language === "th" ? "th-TH" : "en-GB")}
+                        <Calendar size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {new Date(request.requestedAt).toLocaleDateString(language === "th" ? "th-TH" : "en-GB")}
                       </span>
                     </div>
                   ))}

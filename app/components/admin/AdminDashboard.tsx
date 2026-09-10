@@ -31,6 +31,7 @@ import {
   type ActiveUserSession,
 } from "../../lib/audit/client";
 import styles from "./AdminDashboard.module.css";
+import { AlertTriangle, BarChart3, Check, ClipboardList, FileText, Lock, LogOut, Menu, Moon, Pencil, Plus, Search, Settings, Sun, Trash2, TrendingUp, User, Users } from "../icons/LucideIcons";
 
 type TabKey = "dashboard" | "users" | "audit" | "charts" | "tables";
 
@@ -548,15 +549,15 @@ export default function AdminDashboard({
   const renderAuditCategoryBadge = (category: string) => {
     switch (category) {
       case "AUTH":
-        return <span className={`${styles.categoryBadge} ${styles.catAuth}`}>🔐 AUTH</span>;
+        return <span className={`${styles.categoryBadge} ${styles.catAuth}`}><Lock size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> AUTH</span>;
       case "CREATE":
-        return <span className={`${styles.categoryBadge} ${styles.catCreate}`}>＋ CREATE</span>;
+        return <span className={`${styles.categoryBadge} ${styles.catCreate}`}><Plus size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> CREATE</span>;
       case "UPDATE":
-        return <span className={`${styles.categoryBadge} ${styles.catUpdate}`}>✏️ UPDATE</span>;
+        return <span className={`${styles.categoryBadge} ${styles.catUpdate}`}><Pencil size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> UPDATE</span>;
       case "DELETE":
-        return <span className={`${styles.categoryBadge} ${styles.catDelete}`}>🗑️ DELETE</span>;
+        return <span className={`${styles.categoryBadge} ${styles.catDelete}`}><Trash2 size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> DELETE</span>;
       case "ACCOUNT":
-        return <span className={`${styles.categoryBadge} ${styles.catAccount}`}>👤 ACCOUNT</span>;
+        return <span className={`${styles.categoryBadge} ${styles.catAccount}`}><User size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> ACCOUNT</span>;
       default:
         return <span className={`${styles.categoryBadge} ${styles.catDefault}`}>{category}</span>;
     }
@@ -591,9 +592,7 @@ export default function AdminDashboard({
             type="button"
             aria-label="Toggle navigation sidebar"
             onClick={() => setIsSidebarOpen((prev) => !prev)}
-          >
-            ☰
-          </button>
+          ><Menu size={18} /></button>
         </div>
 
         <div className={styles.navRight}>
@@ -611,9 +610,7 @@ export default function AdminDashboard({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <button className={styles.searchBtn} type="submit" aria-label="Submit search">
-              🔍
-            </button>
+            <button className={styles.searchBtn} type="submit" aria-label="Submit search"><Search size={16} /></button>
           </form>
 
           <div className={styles.userMenu}>
@@ -623,9 +620,7 @@ export default function AdminDashboard({
               aria-label="Settings and user menu"
               title="Settings"
               onClick={() => setIsUserMenuOpen((prev) => !prev)}
-            >
-              ⚙️
-            </button>
+            ><Settings size={18} /></button>
 
             {isUserMenuOpen ? (
               <div className={styles.userDropdown}>
@@ -640,13 +635,11 @@ export default function AdminDashboard({
                     setIsUserMenuOpen(false);
                     switchTab("users");
                   }}
-                >
-                  👥 Manage Users
-                </button>
+                ><Users size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} /> Manage Users</button>
                 <div className={styles.themeSection}>
                   <div className={styles.themeSectionLabel}>
-                    <span>🎨 ธีมหน้าจอ (Theme)</span>
-                    <span className={styles.themeActiveBadge}>{theme === "dark" ? "🌙 Dark" : "☀️ Light"}</span>
+                    <span>ธีมหน้าจอ (Theme)</span>
+                    <span className={styles.themeActiveBadge}>{theme === "dark" ? <><Moon size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 3 }} /> Dark</> : <><Sun size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 3 }} /> Light</>}</span>
                   </div>
                   <div className={styles.themeSegmentControl}>
                     <button
@@ -661,9 +654,7 @@ export default function AdminDashboard({
                           document.body.classList.remove("dark");
                         }
                       }}
-                    >
-                      ☀️ Light
-                    </button>
+                    ><Sun size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> Light</button>
                     <button
                       type="button"
                       className={`${styles.themeSegmentBtn} ${theme === "dark" ? styles.themeSegmentActive : ""}`}
@@ -676,9 +667,7 @@ export default function AdminDashboard({
                           document.body.classList.add("dark");
                         }
                       }}
-                    >
-                      🌙 Dark
-                    </button>
+                    ><Moon size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> Dark</button>
                   </div>
                 </div>
                 <button
@@ -688,9 +677,7 @@ export default function AdminDashboard({
                     setIsUserMenuOpen(false);
                     void logout();
                   }}
-                >
-                  🚪 Logout
-                </button>
+                ><LogOut size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} /> Logout</button>
               </div>
             ) : null}
           </div>
@@ -711,7 +698,7 @@ export default function AdminDashboard({
                 switchTab("dashboard");
               }}
             >
-              <span className={styles.navIcon}>📈</span>
+              <span className={styles.navIcon}><TrendingUp size={16} /></span>
               <span>Dashboard</span>
             </Link>
 
@@ -724,7 +711,7 @@ export default function AdminDashboard({
                 switchTab("users");
               }}
             >
-              <span className={styles.navIcon}>👥</span>
+              <span className={styles.navIcon}><Users size={16} /></span>
               <span>User Accounts</span>
             </Link>
             <Link
@@ -735,7 +722,7 @@ export default function AdminDashboard({
                 switchTab("audit");
               }}
             >
-              <span className={styles.navIcon}>📜</span>
+              <span className={styles.navIcon}><FileText size={16} /></span>
               <span>Audit Logs</span>
             </Link>
 
@@ -748,7 +735,7 @@ export default function AdminDashboard({
                 setActiveTab("charts");
               }}
             >
-              <span className={styles.navIcon}>📊</span>
+              <span className={styles.navIcon}><BarChart3 size={16} /></span>
               <span>Charts</span>
             </a>
             <a
@@ -759,7 +746,7 @@ export default function AdminDashboard({
                 setActiveTab("tables");
               }}
             >
-              <span className={styles.navIcon}>📋</span>
+              <span className={styles.navIcon}><ClipboardList size={16} /></span>
               <span>Tables</span>
             </a>
           </div>
@@ -777,7 +764,7 @@ export default function AdminDashboard({
           {/* Notifications */}
           {message ? (
             <div className={styles.alertSuccess} role="status">
-              <span>✓ {message}</span>
+              <span><Check size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> {message}</span>
               <button
                 className={styles.closeAlertBtn}
                 type="button"
@@ -790,7 +777,7 @@ export default function AdminDashboard({
 
           {error ? (
             <div className={styles.alertError} role="alert">
-              <span>⚠ {error}</span>
+              <span><AlertTriangle size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> {error}</span>
               <button
                 className={styles.closeAlertBtn}
                 type="button"
@@ -1481,7 +1468,7 @@ export default function AdminDashboard({
                 {/* Area Chart Card */}
                 <article className={styles.panelCard}>
                   <header className={styles.panelHeader}>
-                    <span>📈</span>
+                    <span><TrendingUp size={16} /></span>
                     <span>Area Chart Example</span>
                   </header>
                   <div className={styles.panelBody}>
@@ -1604,7 +1591,7 @@ export default function AdminDashboard({
                 {/* Bar Chart Card */}
                 <article className={styles.panelCard}>
                   <header className={styles.panelHeader}>
-                    <span>📊</span>
+                    <span><BarChart3 size={16} /></span>
                     <span>Bar Chart Example</span>
                   </header>
                   <div className={styles.panelBody}>
@@ -1668,7 +1655,7 @@ export default function AdminDashboard({
               {/* DataTable Card: Real database users in overview */}
               <article className={styles.panelCard} aria-label="Data table container">
                 <header className={styles.panelHeader}>
-                  <span>📋</span>
+                  <span><ClipboardList size={16} /></span>
                   <span>Database Users Overview</span>
                 </header>
 
@@ -1704,7 +1691,7 @@ export default function AdminDashboard({
                                   handleOpenEdit(acc);
                                 }}
                               >
-                                ✏️ จัดการ
+                                <Pencil size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> จัดการ
                               </button>
                             </td>
                           </tr>
@@ -1914,7 +1901,7 @@ export default function AdminDashboard({
                       fontSize: "0.88rem",
                     }}
                   >
-                    ⚠️ {modalError}
+                    <AlertTriangle size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} /> {modalError}
                   </div>
                 ) : null}
 

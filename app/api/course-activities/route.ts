@@ -101,11 +101,75 @@ const formatDisplayDate = (dateStr: string): { formatted: string; year: string }
   return { formatted: dateStr, year: fallbackYear };
 };
 
+function parseActivityDate(dateStr?: string | null): Date {
+  if (!dateStr || typeof dateStr !== "string") {
+    return new Date();
+  }
+  const trimmed = dateStr.trim();
+  // If YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    const d = new Date(`${trimmed}T00:00:00.000Z`);
+    if (!isNaN(d.getTime())) return d;
+  }
+  // If DD/MM/YYYY or DD-MM-YYYY
+  if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/.test(trimmed)) {
+    const parts = trimmed.split(/[\/\-]/).map(Number);
+    const day = parts[0];
+    const month = parts[1];
+    const year = parts[2];
+    const d = new Date(Date.UTC(year, month - 1, day));
+    if (!isNaN(d.getTime())) return d;
+  }
+  // If YYYY/MM/DD
+  if (/^\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2}$/.test(trimmed)) {
+    const parts = trimmed.split(/[\/\-]/).map(Number);
+    const year = parts[0];
+    const month = parts[1];
+    const day = parts[2];
+    const d = new Date(Date.UTC(year, month - 1, day));
+    if (!isNaN(d.getTime())) return d;
+  }
+  const fallback = new Date(trimmed);
+  if (!isNaN(fallback.getTime())) return fallback;
+
+  return new Date();
+}
+
+async function resolveCompanyId(companyIdVal: unknown): Promise<bigint | null> {
+  if (!companyIdVal || companyIdVal === "center" || companyIdVal === "ALL") {
+    return null;
+  }
+  const str = String(companyIdVal).trim();
+  if (!str) return null;
+  if (/^\d+$/.test(str)) {
+    return BigInt(str);
+  }
+  // If passed as code (e.g. "SATI", "ATFB")
+  try {
+    const prisma = getPrismaClient();
+    const comp = await prisma.company.findFirst({
+      where: { company_code: str },
+      select: { company_id: true },
+    });
+    if (comp) return comp.company_id;
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 async function getUserId(): Promise<bigint> {
   try {
     const session = await getServerSession();
-    if (session?.userId) {
-      return BigInt(session.userId);
+    if (session?.userId && /^\d+$/.test(String(session.userId))) {
+      const prisma = getPrismaClient();
+      const user = await prisma.user_account.findUnique({
+        where: { user_id: BigInt(session.userId) },
+        select: { user_id: true },
+      });
+      if (user?.user_id) {
+        return user.user_id;
+      }
     }
   } catch {
     // session lookup fallback
@@ -253,8 +317,9 @@ export async function GET() {
     const isEmployee = session?.role === "EMPLOYEE";
     const factoryCompanyId = session?.companyId ? BigInt(session.companyId) : null;
 
+    const isUnauthenticated = !session;
     const where: any = {
-      status: { in: ["PUBLISHED", "DRAFT", "INACTIVE"] },
+      status: isUnauthenticated ? "PUBLISHED" : { in: ["PUBLISHED", "DRAFT", "INACTIVE"] },
     };
 
     if ((isFactory || isEmployee) && factoryCompanyId) {
@@ -298,7 +363,12 @@ export async function GET() {
       })),
     ];
 
-    const activities = rows.map(mapAnnouncementToActivity);
+    let activities = rows.map(mapAnnouncementToActivity);
+    if (isUnauthenticated) {
+      activities = activities.filter(
+        (a) => a.isVisibleOnDashboard !== false && a.status === "PUBLISHED"
+      );
+    }
     return NextResponse.json({ activities, companies });
   } catch (error) {
     console.error("Failed to read activities from database:", error);
@@ -344,6 +414,34 @@ export async function POST(request: NextRequest) {
     const userId = await getUserId();
     const prisma = getPrismaClient();
 
+    const targetActivityCompanyId =
+      isFactory && session?.companyId
+        ? BigInt(session.companyId)
+        : await resolveCompanyId(companyId);
+
+    if (isCourseLinked && linkedPlanId) {
+      const planRow = await prisma.training_plan.findUnique({
+        where: { plan_id: BigInt(linkedPlanId) },
+        include: { training_plan_oap: true },
+      });
+      const planCompanyId = planRow?.training_plan_oap?.company_id ?? null;
+      if (targetActivityCompanyId !== null) {
+        if (planCompanyId !== targetActivityCompanyId) {
+          return NextResponse.json(
+            { error: "Forbidden: Cannot link training course of another company" },
+            { status: 403 }
+          );
+        }
+      } else {
+        if (planCompanyId !== null) {
+          return NextResponse.json(
+            { error: "Forbidden: Center activity can only link to Center training course" },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     let imageList: string[] = [];
     if (Array.isArray(images)) {
       imageList = images.filter((img: unknown) => typeof img === "string" && img.trim());
@@ -376,17 +474,8 @@ export async function POST(request: NextRequest) {
       status: showOnDashboard ? "PUBLISHED" : "ARCHIVED",
     });
 
-    const dateStr = date || new Date().toISOString().slice(0, 10);
-    const publishDate = new Date(`${dateStr}T00:00:00.000Z`);
-
-    let dbCompanyId =
-      !companyId || companyId === "center" || companyId === "ALL"
-        ? null
-        : BigInt(companyId);
-
-    if (isFactory && session?.companyId) {
-      dbCompanyId = BigInt(session.companyId);
-    }
+    const publishDate = parseActivityDate(date);
+    const dbCompanyId = targetActivityCompanyId;
 
     const created = await prisma.announcement.create({
       data: {
@@ -507,6 +596,36 @@ export async function PUT(request: NextRequest) {
       imageList.unshift(finalImageUrl);
     }
 
+    const targetActivityCompanyId =
+      isFactory && session?.companyId
+        ? BigInt(session.companyId)
+        : companyId !== undefined
+          ? await resolveCompanyId(companyId)
+          : existing.company_id ?? null;
+
+    if (isCourseLinked && linkedPlanId) {
+      const planRow = await prisma.training_plan.findUnique({
+        where: { plan_id: BigInt(linkedPlanId) },
+        include: { training_plan_oap: true },
+      });
+      const planCompanyId = planRow?.training_plan_oap?.company_id ?? null;
+      if (targetActivityCompanyId !== null) {
+        if (planCompanyId !== targetActivityCompanyId) {
+          return NextResponse.json(
+            { error: "Forbidden: Cannot link training course of another company" },
+            { status: 403 }
+          );
+        }
+      } else {
+        if (planCompanyId !== null) {
+          return NextResponse.json(
+            { error: "Forbidden: Center activity can only link to Center training course" },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     const showOnDashboard =
       isVisibleOnDashboard !== undefined
         ? Boolean(isVisibleOnDashboard)
@@ -548,15 +667,10 @@ export async function PUT(request: NextRequest) {
       updateData.title = title.trim();
     }
     if (date) {
-      updateData.publish_at = new Date(`${date}T00:00:00.000Z`);
+      updateData.publish_at = parseActivityDate(date);
     }
     if (companyId !== undefined) {
-      updateData.company_id =
-        isFactory && session?.companyId
-          ? BigInt(session.companyId)
-          : companyId === "center" || !companyId || companyId === "ALL"
-            ? null
-            : BigInt(companyId);
+      updateData.company_id = targetActivityCompanyId;
     }
 
     // If images were removed from existing set, delete them from disk

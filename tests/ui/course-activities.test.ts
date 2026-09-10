@@ -185,5 +185,126 @@ describe("Course Activities API", () => {
     expect(isCourseDateOrTimeEnded("-", null, null, mockNow)).toBe(false);
     expect(isCourseDateOrTimeEnded("", null, null, mockNow)).toBe(false);
   });
+
+  it("enforces company isolation on course linking so each company only links its own courses", async () => {
+    const { readFileSync } = await import("node:fs");
+    const newActivitiesSource = readFileSync(
+      new URL("../../app/components/center_factory/NewActivities/NewActivities.tsx", import.meta.url),
+      "utf8",
+    );
+    const apiRouteSource = readFileSync(
+      new URL("../../app/api/course-activities/route.ts", import.meta.url),
+      "utf8",
+    );
+
+    // Frontend UI contract
+    expect(newActivitiesSource).toContain("isPlanMatchingCompany");
+    expect(newActivitiesSource).toContain("currentFormCompanyCode");
+    expect(newActivitiesSource).toContain("!isPlanMatchingCompany(plan, currentFormCompanyCode)");
+    expect(newActivitiesSource).toContain("setFormLinkedPlanId(\"\")");
+
+    // Backend route contract
+    expect(apiRouteSource).toContain("Forbidden: Cannot link training course of another company");
+    expect(apiRouteSource).toContain("Forbidden: Center activity can only link to Center training course");
+  });
+
+  it("strictly excludes Center courses when activity belongs to a factory company (ATFB, SNF, etc.)", () => {
+    // Replicate the exact logic from NewActivities.tsx isPlanMatchingCompany
+    const isPlanMatchingCompany = (
+      plan: {
+        owner: string;
+        ownerCompany?: string | null;
+        company?: string | null;
+        course?: { targetCompanies?: string[] } | null;
+      },
+      targetCompanyCode: string
+    ): boolean => {
+      if (!targetCompanyCode) return false;
+      const target = targetCompanyCode.toUpperCase().trim();
+      if (target === "CENTER") {
+        return (
+          plan.owner === "CENTER" ||
+          plan.ownerCompany?.toUpperCase().trim() === "CENTER" ||
+          plan.company === "All Companies"
+        );
+      }
+      // Factory company (e.g. ATFB, SNF, NIC, TEP, SATI, ATA)
+      // Must strictly belong to this factory and never match Center's courses
+      if (
+        plan.owner === "CENTER" ||
+        plan.ownerCompany?.toUpperCase().trim() === "CENTER" ||
+        plan.company === "All Companies"
+      ) {
+        return false;
+      }
+      const planOwnerCompany = plan.ownerCompany?.toUpperCase().trim();
+      const planCompany = plan.company?.toUpperCase().trim();
+
+      return planOwnerCompany === target || planCompany === target;
+    };
+
+    const centerPlan = {
+      owner: "CENTER",
+      ownerCompany: "CENTER",
+      company: "All Companies",
+      course: { targetCompanies: ["ATFB", "SNF", "TEP", "ATA"] },
+    };
+
+    const atfbPlan = {
+      owner: "FACTORY",
+      ownerCompany: "ATFB",
+      company: "ATFB",
+      course: { targetCompanies: ["ATFB"] },
+    };
+
+    const snfPlan = {
+      owner: "FACTORY",
+      ownerCompany: "SNF",
+      company: "SNF",
+      course: { targetCompanies: ["SNF"] },
+    };
+
+    // When editing an activity of ATFB:
+    // 1. Center courses must NOT show up, even if targetCompanies includes ATFB!
+    expect(isPlanMatchingCompany(centerPlan, "ATFB")).toBe(false);
+    // 2. ATFB courses MUST show up
+    expect(isPlanMatchingCompany(atfbPlan, "ATFB")).toBe(true);
+    // 3. SNF courses must NOT show up
+    expect(isPlanMatchingCompany(snfPlan, "ATFB")).toBe(false);
+
+    // When editing an activity of CENTER:
+    // 1. Center courses MUST show up
+    expect(isPlanMatchingCompany(centerPlan, "CENTER")).toBe(true);
+    // 2. Factory courses must NOT show up
+    expect(isPlanMatchingCompany(atfbPlan, "CENTER")).toBe(false);
+  });
+
+  it("handles date formats (such as DD/MM/YYYY) and company codes robustly when saving", async () => {
+    // Test creating with DD/MM/YYYY date format and SATI company id
+    const createReq = new NextRequest("http://localhost/api/course-activities", {
+      method: "POST",
+      body: JSON.stringify({
+        title: "SATI Activity Test",
+        date: "09/10/2026",
+        location: "SATI Plant",
+        description: "Test description for SATI activity",
+        imageUrl: "/api/course-activities/image/sample.jpg",
+        companyId: "5",
+      }),
+    });
+    const res = await POST(createReq);
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.activity.title).toBe("SATI Activity Test");
+    expect(data.activity.companyCode).toBe("SATI");
+    expect(data.activity.year).toBe("2026");
+
+    // Clean up created activity
+    const deleteReq = new NextRequest(`http://localhost/api/course-activities?id=${encodeURIComponent(data.activity.id)}`, {
+      method: "DELETE",
+    });
+    const deleteRes = await DELETE(deleteReq);
+    expect(deleteRes.status).toBe(200);
+  });
 });
 

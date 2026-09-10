@@ -100,27 +100,39 @@
 }
 
 /* ═══════════════════════════════════════
-   HERO COPY (LEFT PANEL)
+   LEFT PANEL (HERO BRANDING + ANNOUNCEMENTS)
    ═══════════════════════════════════════ */
 
-.heroCopy {
-  position: absolute;
-  top: 50%;
-  left: max(40px, calc((100vw - 1280px) / 2 + 24px));
-  z-index: 4;
-  display: grid;
-  align-content: center;
-  width: min(580px, calc(100vw - 48px));
-  min-height: 260px;
-  transform: translateY(-50%);
+.heroColumn {
+  position: relative;
+  z-index: 5;
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 24px;
+  width: 100%;
+  max-width: 580px;
 }
 
-/* The hero copy is decorative background text (already aria-hidden) sized for the desktop's
-   580px-wide second column. Below that it has nowhere to fit and the 5 stacked slides overlap
-   into unreadable overlapping text - hiding it is correct, not a compromise, since the login
-   card carries the real logo/name at every width and the photo slideshow behind it stays.
-   Must come after the base .heroCopy rule above - CSS cascades by source order regardless of
-   @media nesting, so placed earlier in the file this loses to the base rule's `display: grid`. */
+@media (max-width: 640px) {
+  .heroColumn {
+    grid-column: 1;
+    grid-row: 3;
+    gap: 16px;
+    margin-top: 8px;
+    max-width: 100%;
+  }
+}
+
+.heroCopy {
+  position: relative;
+  width: 100%;
+  max-width: 580px;
+  min-height: 260px;
+}
+
 @media (max-width: 640px) {
   .heroCopy {
     display: none;
@@ -130,10 +142,10 @@
 .companySlide {
   position: absolute;
   left: 0;
-  top: 50%;
+  top: 0;
   max-width: 560px;
   opacity: 0;
-  transform: translateY(calc(-50% + 20px));
+  transform: translateY(18px);
   animation: textFade 30s infinite;
 }
 
@@ -144,10 +156,10 @@
 .companyFive { animation-delay: 24s; }
 
 @keyframes textFade {
-  0% { opacity: 0; transform: translateY(calc(-50% + 15px)); }
-  3% { opacity: 1; transform: translateY(-50%); }
-  17% { opacity: 1; transform: translateY(-50%); }
-  20% { opacity: 0; transform: translateY(calc(-50% - 15px)); }
+  0% { opacity: 0; transform: translateY(18px); }
+  3% { opacity: 1; transform: translateY(0); }
+  17% { opacity: 1; transform: translateY(0); }
+  20% { opacity: 0; transform: translateY(-18px); }
   100% { opacity: 0; }
 }
 

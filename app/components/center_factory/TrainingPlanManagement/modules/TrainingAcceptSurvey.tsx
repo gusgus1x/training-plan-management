@@ -29,6 +29,24 @@ import { createEnrollment, EnrollmentApiError, getCourseEnrollmentHistory, listE
 import type { CoursePriorHistoryRecord, EnrollmentRecord, EnrollmentSource, EnrollmentStatus } from "../../../../lib/trainingEnrollment/types";
 import { listPositions } from "../../../../lib/positions/client";
 import { getCurrentCalendarDate } from "../../../../lib/calendarDate";
+import {
+  Circle,
+  Check,
+  X,
+  Target,
+  ShieldAlert,
+  Home,
+  ClipboardList,
+  Building2,
+  Factory,
+  Lightbulb,
+  Link2,
+  CalendarDays,
+  Clock,
+  Users,
+  MessageSquare,
+  FileText,
+} from "../../../icons/LucideIcons";
 import styles from "./TrainingAcceptSurvey.module.css";
 
 export const trainingAcceptSurveyModule = {
@@ -341,7 +359,7 @@ function PaginatedEmployeeGrid({
           <input
             className={styles.dropdownSearchInput}
             type="text"
-            placeholder="🔍 ค้นหาพนักงาน (รหัส, คำนำหน้า, ชื่อ, นามสกุล, ส่วนงาน, ฝ่าย, แผนก, ตำแหน่ง, ระดับ)..."
+            placeholder="ค้นหาพนักงาน (รหัส, คำนำหน้า, ชื่อ, นามสกุล, ส่วนงาน, ฝ่าย, แผนก, ตำแหน่ง, ระดับ)..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -357,9 +375,7 @@ function PaginatedEmployeeGrid({
                 setCurrentPage(1);
               }}
               title="ล้างคำค้นหา"
-            >
-              ✕
-            </button>
+            ><X size={14} /></button>
           ) : null}
         </div>
         <span className={styles.dropdownSearchCount}>
@@ -411,7 +427,7 @@ function PaginatedEmployeeGrid({
               courseHistoryMap.get(employee.id) ||
               (employee.employeeCode ? courseHistoryMap.get(employee.employeeCode) : undefined);
 
-            let statusBadge = <span className={styles.badgeNone}>⚪ ยังไม่ลงทะเบียน</span>;
+            let statusBadge = <span className={styles.badgeNone}><Circle size={8} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} />ยังไม่ลงทะเบียน</span>;
             let buttonLabel = targetActionLabel;
             let isBtnDisabled = false;
             let isRetake = false;
@@ -422,7 +438,7 @@ function PaginatedEmployeeGrid({
                   <span className={styles.glowingDotYellow}></span> ดราฟ
                 </span>
               );
-              buttonLabel = "✓ ในดราฟแล้ว";
+              buttonLabel = "ในดราฟแล้ว";
               isBtnDisabled = true;
             } else if (enrollment && enrollment.status !== "Rejected") {
               if (enrollment.status === "Pending Approval") {
@@ -431,7 +447,7 @@ function PaginatedEmployeeGrid({
                     <span className={styles.glowingDotBlue}></span> รออนุมัติ
                   </span>
                 );
-                buttonLabel = "✓ รออนุมัติ";
+                buttonLabel = "รออนุมัติ";
                 isBtnDisabled = true;
               } else if (enrollment.status === "Factory Approved" || enrollment.status === "Center Approved") {
                 statusBadge = (
@@ -439,7 +455,7 @@ function PaginatedEmployeeGrid({
                     <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
                   </span>
                 );
-                buttonLabel = "✓ อนุมัติแล้ว";
+                buttonLabel = "อนุมัติแล้ว";
                 isBtnDisabled = true;
               }
             } else if (enrollment && enrollment.status === "Rejected") {
@@ -1464,7 +1480,7 @@ export default function TrainingAcceptSurvey({
 
     setIsSendingLineNotify(false);
     toast.success(
-      `💬 [LINE OA] ส่งข้อความแจ้งเตือนเข้าร่วมการอบรมวิชา "${selectedCourse.title}" ไปยังพนักงาน ${acceptedParticipants.length} ท่าน ผ่าน LINE Official Account เรียบร้อยแล้ว`,
+      `[LINE OA] ส่งข้อความแจ้งเตือนเข้าร่วมการอบรมวิชา "${selectedCourse.title}" ไปยังพนักงาน ${acceptedParticipants.length} ท่าน ผ่าน LINE Official Account เรียบร้อยแล้ว`,
     );
   };
 
@@ -1599,7 +1615,7 @@ export default function TrainingAcceptSurvey({
             <span style={{ opacity: 0.7, fontWeight: 500 }}>— {userCompanyLabel}</span>
           </div>
           <div className={styles.scopeBadge}>
-            <span>🎯 ขอบเขตการทำงาน:</span>
+            <span><Target size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />ขอบเขตการทำงาน:</span>
             <strong>
               {!selectedCourse
                 ? "กรุณาเลือกหลักสูตรด้านล่างเพื่อเริ่มต้นจัดการรายชื่อ"
@@ -1620,7 +1636,7 @@ export default function TrainingAcceptSurvey({
         <div className={styles.controlGrid}>
           <div className={styles.controlStepLabel}>
             <div className={styles.controlStepTitle}>
-              <span>1️⃣</span>
+              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: "50%", background: "var(--ui-60-surface)", border: "1px solid var(--ui-30-border)", fontSize: "0.75rem", fontWeight: 700 }}>1</span>
               <span>ผู้ดูแลหลักสูตร (Course Owner)</span>
             </div>
             <select
@@ -1641,7 +1657,7 @@ export default function TrainingAcceptSurvey({
 
           <div className={styles.controlStepLabel}>
             <div className={styles.controlStepTitle}>
-              <span>2️⃣</span>
+              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: "50%", background: "var(--ui-60-surface)", border: "1px solid var(--ui-30-border)", fontSize: "0.75rem", fontWeight: 700 }}>2</span>
               <span>หลักสูตรรายเดือนที่เผยแพร่แล้ว (Published Course)</span>
             </div>
             <select
@@ -1672,7 +1688,7 @@ export default function TrainingAcceptSurvey({
 
           <div className={styles.controlStepLabel}>
             <div className={styles.controlStepTitle}>
-              <span>3️⃣</span>
+              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: "50%", background: "var(--ui-60-surface)", border: "1px solid var(--ui-30-border)", fontSize: "0.75rem", fontWeight: 700 }}>3</span>
               <span>รอบการอบรม (Training Session)</span>
             </div>
             <select
@@ -1809,7 +1825,7 @@ export default function TrainingAcceptSurvey({
 
           {!canNominateByPosition && user?.roleCode === "EMPLOYEE" ? (
             <div className={styles.permissionWarningBanner} role="alert">
-              <span className={styles.permissionWarningIcon}>🚫</span>
+              <ShieldAlert size={48} color="#ef4444" />
               <div className={styles.permissionWarningBody}>
                 <strong className={styles.permissionWarningTitle}>
                   ตำแหน่งของคุณไม่ถึงที่จะเข้าลิ้งค์
@@ -1828,7 +1844,7 @@ export default function TrainingAcceptSurvey({
                     className={styles.permissionBackHomeBtn}
                     onClick={() => router.push("/")}
                   >
-                    🏠 กลับสู่หน้าหลักของคุณ (Home Dashboard)
+                    <Home size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} /> กลับสู่หน้าหลักของคุณ (Home Dashboard)
                   </button>
                 </div>
               </div>
@@ -2057,7 +2073,7 @@ export default function TrainingAcceptSurvey({
                           }
                         }}
                       >
-                        ✓ อนุมัติทั้งหมด ({approvalQueue.length})
+                        <><Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> อนุมัติทั้งหมด ({approvalQueue.length})</>
                       </button>
                     </div>
                   </div>
@@ -2109,17 +2125,13 @@ export default function TrainingAcceptSurvey({
                               type="button"
                               disabled={!canApprove}
                               onClick={() => void handleApprove(candidate.id)}
-                            >
-                              ✓ อนุมัติ
-                            </button>
+                            ><Check size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} /> อนุมัติ</button>
                             <button
                               className={styles.rejectCandidateBtn}
                               type="button"
                               disabled={!canReject}
                               onClick={() => void handleReject(candidate.id)}
-                            >
-                              ✕ ปฏิเสธ
-                            </button>
+                            ><X size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} /> ปฏิเสธ</button>
                           </div>
                           <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
                             <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.employeeCode}>{candidate.employeeCode}</span>
@@ -2155,7 +2167,7 @@ export default function TrainingAcceptSurvey({
                     })}
                     {visibleCandidates.length === 0 ? (
                       <div className={styles.emptyDraftBox}>
-                        📋 ไม่มีรายการส่งพนักงานจากโรงงานที่รออนุมัติในขณะนี้
+                        <><ClipboardList size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} /> ไม่มีรายการส่งพนักงานจากโรงงานที่รออนุมัติในขณะนี้</>
                       </div>
                     ) : null}
                   </div>
@@ -2218,7 +2230,7 @@ export default function TrainingAcceptSurvey({
                             }
                           }}
                         >
-                          💾 บันทึกและยืนยันส่งรายชื่อเข้าอบรมกลาง ({draftSubmittedEmployees.length})
+                          <><Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> บันทึกและยืนยันส่งรายชื่อเข้าอบรมกลาง ({draftSubmittedEmployees.length})</>
                         </button>
                       </div>
                     </div>
@@ -2278,7 +2290,7 @@ export default function TrainingAcceptSurvey({
                       })}
                       {draftSubmittedEmployees.length === 0 ? (
                         <div className={styles.emptyDraftBox}>
-                          📋 ยังไม่มีพนักงานในดราฟ (กรุณากดเลือกพนักงานจากตารางกลุ่มเป้าหมายด้านล่างเพื่อเตรียมส่งเข้าอบรมกลาง)
+                          <><ClipboardList size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} /> ยังไม่มีพนักงานในดราฟ (กรุณากดเลือกพนักงานจากตารางกลุ่มเป้าหมายด้านล่างเพื่อเตรียมส่งเข้าอบรมกลาง)</>
                         </div>
                       ) : null}
                     </div>
@@ -2425,7 +2437,7 @@ export default function TrainingAcceptSurvey({
                           }
                         }}
                       >
-                        ✓ อนุมัติทั้งหมด ({approvalQueue.length})
+                        <Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> อนุมัติทั้งหมด ({approvalQueue.length})
                       </button>
                     </div>
                   </div>
@@ -2477,18 +2489,14 @@ export default function TrainingAcceptSurvey({
                                 className={styles.approveCandidateBtn}
                                 type="button"
                                 onClick={() => void handleApprove(candidate.id)}
-                              >
-                                ✓ อนุมัติ
-                              </button>
+                              ><Check size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} /> อนุมัติ</button>
                             ) : null}
                             {canReject ? (
                               <button
                                 className={styles.rejectCandidateBtn}
                                 type="button"
                                 onClick={() => void handleReject(candidate.id)}
-                              >
-                                ✗ ปฏิเสธ
-                              </button>
+                              ><X size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} /> ปฏิเสธ</button>
                             ) : null}
                           </div>
                           <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
@@ -2525,7 +2533,7 @@ export default function TrainingAcceptSurvey({
                     })}
                     {visibleCandidates.length === 0 ? (
                       <div className={styles.emptyDraftBox}>
-                        📋 ยังไม่มีรายการพนักงานลงทะเบียนรออนุมัติในขณะนี้
+                        <><ClipboardList size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} /> ยังไม่มีรายการพนักงานลงทะเบียนรออนุมัติในขณะนี้</>
                       </div>
                     ) : null}
                   </div>
@@ -2561,7 +2569,7 @@ export default function TrainingAcceptSurvey({
                       >
                         <summary className={styles.companyGroupHeader}>
                           <div className={styles.companySectionTitle}>
-                            <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
+                            <span className={styles.companyIcon}>{group.company === "HRD Center" ? <Building2 size={16} /> : <Factory size={16} />}</span>
                             <h4>บริษัท {group.company}</h4>
                           </div>
                           <span className={styles.companyCountBadge}>
@@ -2602,7 +2610,7 @@ export default function TrainingAcceptSurvey({
                       </span>
                     </div>
                     <p className={styles.targetRuleNote}>
-                      💡 พนักงานที่มี Level ตรงตามกำหนด ({[...selectedCourse.targetLevels].sort((a, b) => getLevelRank(b) - getLevelRank(a)).join(", ")}) แต่ตำแหน่งอยู่นอกเหนือจาก {selectedCourse.targetPositions.join(", ")}
+                      <Lightbulb size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> พนักงานที่มี Level ตรงตามกำหนด ({[...selectedCourse.targetLevels].sort((a, b) => getLevelRank(b) - getLevelRank(a)).join(", ")}) แต่ตำแหน่งอยู่นอกเหนือจาก {selectedCourse.targetPositions.join(", ")}
                     </p>
                     <div className={styles.companyGroupGrid}>
                       {levelOnlyEmployeeGroups.map((group) => {
@@ -2614,7 +2622,7 @@ export default function TrainingAcceptSurvey({
                           >
                             <summary className={styles.companyGroupHeader}>
                               <div className={styles.companySectionTitle}>
-                                <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
+                                <span className={styles.companyIcon}>{group.company === "HRD Center" ? <Building2 size={16} /> : <Factory size={16} />}</span>
                                 <h4>บริษัท {group.company}</h4>
                               </div>
                               <span className={styles.companyCountBadge}>
@@ -2652,7 +2660,7 @@ export default function TrainingAcceptSurvey({
                   <span>{additionalEmployees.length} available</span>
                 </div>
                 <p className={styles.targetRuleNote}>
-                  💡 เลือกบริษัทด้านล่างเพื่อดูและเพิ่มพนักงานที่ตำแหน่งหรือระดับไม่ตรงตาม Course Standard
+                  <Lightbulb size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> เลือกบริษัทด้านล่างเพื่อดูและเพิ่มพนักงานที่ตำแหน่งหรือระดับไม่ตรงตาม Course Standard
                 </p>
                 <div className={styles.companyGroupGrid}>
                   {additionalEmployeeGroups.map((group) => {
@@ -2663,7 +2671,7 @@ export default function TrainingAcceptSurvey({
                       >
                         <summary className={styles.companyGroupHeader}>
                           <div className={styles.companySectionTitle}>
-                            <span className={styles.companyIcon}>{group.company === "HRD Center" ? "🏢" : "🏬"}</span>
+                            <span className={styles.companyIcon}>{group.company === "HRD Center" ? <Building2 size={16} /> : <Factory size={16} />}</span>
                             <h4>บริษัท {group.company}</h4>
                           </div>
                           <span className={styles.companyCountBadge}>
@@ -2704,7 +2712,7 @@ export default function TrainingAcceptSurvey({
           <div className={styles.nominationModal} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <div className={styles.modalHeaderTitle}>
-                <span aria-hidden="true">🔗</span>
+                <Link2 size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
                 <div>
                   <h3>ส่งต่อลิ้งก์เสนอชื่อเข้าอบรม</h3>
                   <small style={{ color: "var(--ui-30-muted)" }}>
@@ -2717,22 +2725,20 @@ export default function TrainingAcceptSurvey({
                 type="button"
                 onClick={() => setShowNominationModal(false)}
                 title="ปิดหน้าต่าง"
-              >
-                ✕
-              </button>
+              ><X size={16} /></button>
             </div>
 
             <div className={styles.courseSummaryBadge}>
               <strong>วิชา: {selectedCourse.title}</strong>
               <div className={styles.courseSummaryMeta}>
-                <span>🗓️ วันที่: {selectedCourse.date || "ไม่ระบุ"}</span>
-                <span>⏰ เวลา: {selectedCourse.startTime && selectedCourse.endTime ? `${selectedCourse.startTime} - ${selectedCourse.endTime}` : "ไม่ระบุ"}</span>
-                <span>👥 โควต้า: {selectedCourse.capacity} Seats</span>
+                <span><CalendarDays size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> วันที่: {selectedCourse.date || "ไม่ระบุ"}</span>
+                <span><Clock size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> เวลา: {selectedCourse.startTime && selectedCourse.endTime ? `${selectedCourse.startTime} - ${selectedCourse.endTime}` : "ไม่ระบุ"}</span>
+                <span><Users size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> โควต้า: {selectedCourse.capacity} Seats</span>
               </div>
             </div>
 
             <div className={styles.urlInputContainer}>
-              <label>🔗 ลิ้งก์สำหรับส่งต่อให้หัวหน้างาน (Direct Link):</label>
+              <label><Link2 size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> ลิ้งก์สำหรับส่งต่อให้หัวหน้างาน (Direct Link):</label>
               <div className={styles.urlBoxWrapper}>
                 <input
                   className={styles.urlInputText}
@@ -2750,15 +2756,15 @@ export default function TrainingAcceptSurvey({
                     setTimeout(() => setCopiedUrlSuccess(false), 2000);
                   }}
                 >
-                  {copiedUrlSuccess ? "✓ คัดลอกแล้ว!" : "📋 คัดลอก URL"}
+                  {copiedUrlSuccess ? <><Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> คัดลอกแล้ว!</> : <><ClipboardList size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> คัดลอก URL</>}
                 </button>
               </div>
             </div>
 
             <div className={styles.sharePresetContainer}>
-              <label>💬 ตัวอย่างข้อความสำเร็จรูปสำหรับส่งต่อ (LINE / Email Preset):</label>
+              <label><MessageSquare size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> ตัวอย่างข้อความสำเร็จรูปสำหรับส่งต่อ (LINE / Email Preset):</label>
               <div className={styles.presetMessageBox}>
-                {`📌 ขอเรียนเชิญหัวหน้างาน / Section Head เสนอชื่อพนักงานเข้าอบรม\n📚 วิชา: ${selectedCourse.title}\n🗓️ วันที่อบรม: ${selectedCourse.date || "ตามกำหนดการ"}\n🔗 ลิ้งก์เสนอชื่อพนักงาน: ${typeof window !== "undefined" ? window.location.origin : ""}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`}
+                {`[ประกาศ] ขอเรียนเชิญหัวหน้างาน / Section Head เสนอชื่อพนักงานเข้าอบรม\nวิชา: ${selectedCourse.title}\nวันที่อบรม: ${selectedCourse.date || "ตามกำหนดการ"}\nลิ้งก์เสนอชื่อพนักงาน: ${typeof window !== "undefined" ? window.location.origin : ""}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`}
               </div>
             </div>
 
@@ -2767,7 +2773,7 @@ export default function TrainingAcceptSurvey({
                 className={styles.copyPresetBtn}
                 type="button"
                 onClick={async () => {
-                  const msg = `📌 ขอเรียนเชิญหัวหน้างาน / Section Head เสนอชื่อพนักงานเข้าอบรม\n📚 วิชา: ${selectedCourse.title}\n🗓️ วันที่อบรม: ${selectedCourse.date || "ตามกำหนดการ"}\n🔗 ลิ้งก์เสนอชื่อพนักงาน: ${window.location.origin}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`;
+                  const msg = `[ประกาศ] ขอเรียนเชิญหัวหน้างาน / Section Head เสนอชื่อพนักงานเข้าอบรม\nวิชา: ${selectedCourse.title}\nวันที่อบรม: ${selectedCourse.date || "ตามกำหนดการ"}\nลิ้งก์เสนอชื่อพนักงาน: ${window.location.origin}/training-plan/training-accept-survey?courseId=${selectedCourse.id}`;
                   await copyTextToClipboard(msg);
                   setCopiedPresetSuccess(true);
                   setTimeout(() => setCopiedPresetSuccess(false), 2000);
@@ -2796,7 +2802,7 @@ export default function TrainingAcceptSurvey({
                     </defs>
                   </svg>
                 </span>
-                {copiedPresetSuccess ? "✓ คัดลอกข้อความแล้ว!" : "คัดลอกข้อความส่ง LINE / Email"}
+                {copiedPresetSuccess ? <><Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> คัดลอกข้อความแล้ว!</> : <><FileText size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> คัดลอกข้อความส่ง LINE / Email</>}
               </button>
             </div>
           </div>
