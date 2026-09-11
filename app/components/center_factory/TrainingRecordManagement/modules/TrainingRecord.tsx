@@ -83,6 +83,8 @@ type CompletedCourse = {
   code: string;
   title: string;
   titleEn?: string;
+  /** The Thai name, shown small under the English one. Empty when the course has only one name. */
+  titleTh?: string;
   objective?: string;
   learningContent?: string;
   targetGroup?: string;
@@ -796,6 +798,7 @@ export default function TrainingRecord() {
           code: rollingPlan?.course.code ?? "",
           title: rollingPlan?.course.name ?? "",
           titleEn: (rollingPlan?.course as any)?.courseNameEn ?? "",
+          titleTh: rollingPlan?.course.nameTh ?? "",
           objective: rollingPlan?.course.objective ?? "",
           learningContent: rollingPlan?.course.learningContent ?? "",
           targetGroup: rollingPlan?.course.targetGroup ?? "",
@@ -1127,7 +1130,11 @@ export default function TrainingRecord() {
                 ) : null}
               </div>
               <h3>{selectedCourse.title}</h3>
-              {selectedCourse.titleEn ? (
+              {/* The other name, whichever it is. The heading takes English first, so repeating
+                  `titleEn` here printed the same words twice. */}
+              {selectedCourse.titleTh && selectedCourse.titleTh !== selectedCourse.title ? (
+                <p className={styles.heroSubTitle}>{selectedCourse.titleTh}</p>
+              ) : selectedCourse.titleEn && selectedCourse.titleEn !== selectedCourse.title ? (
                 <p className={styles.heroSubTitle}>{selectedCourse.titleEn}</p>
               ) : null}
               <div className={styles.heroCodeMeta}>
@@ -1919,6 +1926,11 @@ export default function TrainingRecord() {
                         <td>
                           <div className={styles.courseTitleCell}>
                             <strong>{course.title}</strong>
+                            {/* The Thai name below the English one, as Course Master shows it. A
+                                course with only one name has nothing to repeat here. */}
+                            {course.titleTh && course.titleTh !== course.title ? (
+                              <span className={styles.courseTitleSecondary}>{course.titleTh}</span>
+                            ) : null}
                             <div className={styles.courseSubMeta}>
                               <span className={styles.codeBadge}>{course.code}</span>
                               <span className={styles.ownerPillTag}>{ownerTag}</span>

@@ -123,7 +123,7 @@ describe("Database Cascade Deletion Live Integration Tests", () => {
     }
   }, 30000);
 
-  it("verifies oapPlanRepository.delete() cascades all child sessions and removes OAP from database", async () => {
+  databaseMutationTest("verifies oapPlanRepository.delete() cascades all child sessions and removes OAP from database", async () => {
     const { getPrismaClient, resetPrismaClient } = await import(
       "../../app/lib/database/prisma"
     );
@@ -260,7 +260,7 @@ describe("Database Cascade Deletion Live Integration Tests", () => {
     }
   }, 30000);
 
-  it("verifies courseRepository.delete() cascades all OAPs, sessions, target scopes and removes course from database", async () => {
+  databaseMutationTest("verifies courseRepository.delete() cascades all OAPs, sessions, target scopes and removes course from database", async () => {
     const { getPrismaClient, resetPrismaClient } = await import(
       "../../app/lib/database/prisma"
     );
