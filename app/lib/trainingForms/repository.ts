@@ -6,7 +6,7 @@ import { getPrismaClient } from "../database/prisma";
 import { isFormBlockType } from "../formBlocks";
 import { isGridRowCorrect, isGridType, parseCorrectColumns } from "../formGrids";
 import { CLOSABLE_STAGES, stageAvailability, stageOpensAt, type FormStageKey } from "./availability";
-import { FREE_TEXT_MIN_RESPONDENTS } from "./types";
+import { ANSWER_TIME_CAP_SECONDS, FREE_TEXT_MIN_RESPONDENTS } from "./types";
 import type {
   AssessmentForEmployee,
   AssessmentReview,
@@ -71,6 +71,8 @@ const planWithCourseInclude = {
       company_id: true,
       // Named on the assignment list, which says which course a supervisor is being asked about.
       course_name_snapshot: true,
+      // The rest of the course header a printed report carries.
+      instructor_name_text: true,
       course: {
         select: {
           pre_assessment_id: true,
@@ -191,6 +193,35 @@ const markReviewerOpened = async (
   await db.training_evaluation_reviewer.updateMany({
     where: { enrollment_id: enrollment.enrollment_id, reviewer_user_id: respondentUserId, opened_at: null },
     data: { opened_at: new Date() },
+  });
+};
+
+/**
+ * Records the moment somebody opened the form, as a submission row that carries no answers yet.
+ *
+ * Nothing else in the system may read this row as "they have answered": every such test is on
+ * `submitted_at`, not on the row existing. An unfinished row is a person who opened the form and
+ * walked away, which is not the same fact and must never be reported as a reply.
+ *
+ * Two tabs opened at once race for the same unique key. The upsert's empty update makes the second
+ * one a no-op rather than an error, and leaves the first open time standing.
+ */
+const markEvaluationStarted = async (
+  db: DatabaseClient,
+  formId: bigint,
+  enrollmentId: bigint,
+  respondentUserId: string,
+) => {
+  await db.evaluation_submission.upsert({
+    where: submissionKey(formId, enrollmentId, respondentUserId),
+    update: {},
+    create: {
+      evaluation_form_id: formId,
+      enrollment_id: enrollmentId,
+      respondent_user_id: respondentUserId,
+      status: "IN_PROGRESS",
+      started_at: new Date(),
+    },
   });
 };
 
@@ -885,6 +916,8 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
           enrollment.training_plan.end_datetime,
         );
         await markReviewerOpened(db(), enrollment, respondentUserId);
+        // Before the form is read, so the clock starts when the questions reach the screen.
+        await markEvaluationStarted(db(), formId, enrollment.enrollment_id, respondentUserId);
 
         const [form, existing] = await Promise.all([
           db().evaluation_form.findUniqueOrThrow({
@@ -947,7 +980,9 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
               optionText: option.option_text,
             })),
           })),
-          alreadySubmitted: existing !== null,
+          // The row exists from the moment the form was opened, so only the submission time can say
+          // whether it was answered.
+          alreadySubmitted: existing?.submitted_at != null,
           submittedAt: existing?.submitted_at?.toISOString() ?? null,
         };
       });
@@ -977,23 +1012,34 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
 
         const existing = await db().evaluation_submission.findUnique({
           where: submissionKey(formId, enrollment.enrollment_id, respondentUserId),
-          select: { evaluation_submission_id: true },
+          select: { evaluation_submission_id: true, submitted_at: true },
         });
-        if (existing) {
+        // The row itself is no longer the answer: opening the form makes one. Only a submission time
+        // means this person has already had their say.
+        if (existing?.submitted_at != null) {
           throw new ApiError({ code: "ALREADY_SUBMITTED", message: "This evaluation has already been submitted", status: 409 });
         }
 
         await db().$transaction(async (tx) => {
-          const created = await tx.evaluation_submission.create({
-            data: {
-              evaluation_form_id: formId,
-              enrollment_id: enrollment.enrollment_id,
-              respondent_user_id: respondentUserId,
-              status: "SUBMITTED",
-              started_at: new Date(),
-              submitted_at: new Date(),
-            },
-          });
+          const now = new Date();
+          // The unfinished row from opening the form is the one being completed, and its `started_at`
+          // is the whole point - it must not be overwritten here. A row is still created for the
+          // paths that never passed through the form screen: an older reply, or an external link.
+          const created = existing
+            ? await tx.evaluation_submission.update({
+                where: { evaluation_submission_id: existing.evaluation_submission_id },
+                data: { status: "SUBMITTED", submitted_at: now },
+              })
+            : await tx.evaluation_submission.create({
+                data: {
+                  evaluation_form_id: formId,
+                  enrollment_id: enrollment.enrollment_id,
+                  respondent_user_id: respondentUserId,
+                  status: "SUBMITTED",
+                  started_at: now,
+                  submitted_at: now,
+                },
+              });
 
           const rows: Prisma.evaluation_answerCreateManyInput[] = [];
           for (const answer of input.answers) {
@@ -1112,6 +1158,9 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
           },
           select: {
             evaluation_submission_id: true,
+            // The two ends of "how long did this take", for the average on the results screen.
+            started_at: true,
+            submitted_at: true,
             // Which of the two audiences this row belongs to is "did the person who answered attend
             // the course themselves". SQL Server cannot compare two columns from inside a Prisma
             // filter, so the split happens here, over rows this query already had to load.
@@ -1139,6 +1188,61 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
 
         const submittedCount = submissions.length;
         const enoughForFreeText = submittedCount >= FREE_TEXT_MIN_RESPONDENTS;
+
+        /**
+         * How long the replies took, on average.
+         *
+         * Two kinds of row are left out rather than averaged in. Replies from before the form
+         * recorded an opening time have `started_at` equal to `submitted_at`, and counting those
+         * zeroes would report a course answered in no time at all. At the other end, somebody who
+         * opens the form and comes back after lunch is not evidence about the form, so anything
+         * past ANSWER_TIME_CAP_SECONDS is dropped too.
+         *
+         * With nothing left to average the answer is null, and the screen says so rather than
+         * showing a zero it cannot defend.
+         */
+        const durations = submissions
+          .map((submission) => {
+            const startedAt = submission.started_at ?? null;
+            const submittedAt = submission.submitted_at ?? null;
+            if (startedAt === null || submittedAt === null) return 0;
+            return Math.round((submittedAt.getTime() - startedAt.getTime()) / 1000);
+          })
+          .filter((seconds) => seconds > 0 && seconds <= ANSWER_TIME_CAP_SECONDS);
+        const averageAnswerSeconds =
+          durations.length === 0
+            ? null
+            : Math.round(durations.reduce((total, seconds) => total + seconds, 0) / durations.length);
+
+        // Which companies the replies came from. A count per company, never a person: this is the
+        // same projection the anonymous screens read, so it may carry no identities.
+        const respondentsByCompany: EvaluationSummary["respondentsByCompany"] = [];
+        if (submittedCount > 0) {
+          const employees = await db().employee.findMany({
+            where: { user_id: { in: [...new Set(submissions.map((s) => s.respondent_user_id))] } },
+            select: { user_id: true, company: { select: { company_code: true, company_name_th: true } } },
+          });
+          const companyOf = new Map(employees.map((employee) => [employee.user_id, employee.company]));
+          const counts = new Map<string, { companyCode: string; companyName: string; count: number }>();
+          for (const submission of submissions) {
+            const company = companyOf.get(submission.respondent_user_id);
+            // A reply from somebody with no company on their record still happened, and dropping it
+            // would make the slices add up to less than the response count.
+            const code = company?.company_code ?? "-";
+            const entry = counts.get(code) ?? {
+              companyCode: code,
+              companyName: company?.company_name_th ?? "",
+              count: 0,
+            };
+            entry.count += 1;
+            counts.set(code, entry);
+          }
+          respondentsByCompany.push(
+            ...[...counts.values()]
+              .sort((a, b) => b.count - a.count || a.companyCode.localeCompare(b.companyCode))
+              .map((entry) => ({ ...entry, percent: Math.round((entry.count / submittedCount) * 100) })),
+          );
+        }
 
         // Everything below counts PEOPLE. evaluation_answer holds one row per selected option, so
         // a three-tick MULTIPLE_CHOICE answer arrives as three rows from one respondent; a Set of
@@ -1209,6 +1313,19 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
           expectedCount,
           submittedCount,
           responseRatePercent: percent(submittedCount, expectedCount),
+          averageAnswerSeconds,
+          course: {
+            planCode: plan.plan_code,
+            courseName: plan.training_plan_oap.course_name_snapshot,
+            batchName: plan.batch_name,
+            startAt: plan.start_datetime.toISOString(),
+            endAt: plan.end_datetime.toISOString(),
+            venue: plan.venue,
+            instructor: plan.training_plan_oap.instructor_name_text,
+            // A plan under a company OAP belongs to that factory; otherwise the centre ran it.
+            organiser: plan.training_plan_oap.company_id === null ? ("CENTER" as const) : ("FACTORY" as const),
+          },
+          respondentsByCompany,
           questions: form.evaluation_question.map((question) => {
             const questionId = question.evaluation_question_id.toString();
             const answeredBy = respondentsByQuestion.get(questionId)?.size ?? 0;
@@ -1337,6 +1454,7 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
           },
           orderBy: { submitted_at: "asc" },
           select: {
+            started_at: true,
             submitted_at: true,
             respondent_user_id: true,
             // The attendee the reply is about, for a supervisor's 30-day answers: HRD reading those
@@ -1370,7 +1488,10 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
 
         // Names are looked up only when the form is not anonymous. On an anonymous form the query
         // is not run at all, so there is nothing to forget to strip later.
-        const respondentsByUserId = new Map<string, { name: string; position: string | null }>();
+        const respondentsByUserId = new Map<
+          string,
+          { name: string; position: string | null; companyCode: string | null; employeeCode: string | null }
+        >();
         if (!form.is_anonymous && submissions.length > 0) {
           const employees = await db().employee.findMany({
             where: { user_id: { in: [...new Set(submissions.map((s) => s.respondent_user_id))] } },
@@ -1381,6 +1502,9 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
               first_name_th: true,
               last_name_th: true,
               position: { select: { position_name_th: true } },
+              // The exported report groups the replies by company. It rides along on the query that
+              // already runs rather than a second one, so an anonymous form still runs none.
+              company: { select: { company_code: true } },
             },
           });
           for (const employee of employees) {
@@ -1388,7 +1512,28 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
               // The employee code is the fallback, and it too can be missing on an imported row.
               name: fullNameTh(employee) || employee.employee_code || "-",
               position: employee.position?.position_name_th ?? null,
+              companyCode: employee.company?.company_code ?? null,
+              employeeCode: employee.employee_code,
             });
+          }
+        }
+
+        /**
+         * The company, which an anonymous form carries too.
+         *
+         * HRD asked for it: the report groups replies by company, and a column of blanks made the
+         * export useless on the anonymous forms they actually run. It is looked up on its own
+         * query that selects nothing but the company code, so an anonymous form still never loads
+         * a name - the promise that matters, and the one the test above this enforces.
+         */
+        const companyByUserId = new Map<string, string | null>();
+        if (form.is_anonymous && submissions.length > 0) {
+          const companies = await db().employee.findMany({
+            where: { user_id: { in: [...new Set(submissions.map((s) => s.respondent_user_id))] } },
+            select: { user_id: true, company: { select: { company_code: true } } },
+          });
+          for (const employee of companies) {
+            companyByUserId.set(employee.user_id, employee.company?.company_code ?? null);
           }
         }
 
@@ -1450,6 +1595,10 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
               responseNo: index + 1,
               respondentName: respondent?.name ?? null,
               respondentPosition: respondent?.position ?? null,
+              companyCode:
+                respondent?.companyCode ?? companyByUserId.get(submission.respondent_user_id) ?? null,
+              employeeCode: respondent?.employeeCode ?? null,
+              startedAt: submission.started_at?.toISOString() ?? null,
               subjectName:
                 form.is_anonymous || !answeredBySomebodyElse
                   ? null

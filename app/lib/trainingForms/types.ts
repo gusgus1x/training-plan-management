@@ -144,6 +144,14 @@ export type EvaluationForEmployee = {
  *  form a written comment can identify its author when the batch is small enough. */
 export const FREE_TEXT_MIN_RESPONDENTS = 3;
 
+/**
+ * The longest a reply can take and still count towards the average answering time: two hours.
+ *
+ * Somebody who opens the form, leaves it on screen and finishes after lunch says nothing about how
+ * long the form takes, and one of them drags a mean of a dozen replies into nonsense.
+ */
+export const ANSWER_TIME_CAP_SECONDS = 2 * 60 * 60;
+
 export type EvaluationSummaryOption = {
   optionId: string;
   optionText: string;
@@ -234,6 +242,18 @@ export type EvaluationResponse = {
    *  when the form is anonymous. */
   respondentPosition: string | null;
   /**
+   * Which company the reply came from, for a report that groups the replies by it.
+   *
+   * Carried on an anonymous form too, at HRD's request: the same split is already published as a
+   * total on the summary, and a blank column made the export useless on the anonymous forms they
+   * run. On a company with a single attendee it does come close to naming them, which is why it is
+   * still never shown on the anonymous screen.
+   */
+  companyCode: string | null;
+  /** The respondent's employee code, for the raw response sheet an export writes. Null on an
+   *  anonymous form, where it would name them outright. */
+  employeeCode: string | null;
+  /**
    * Who the reply is ABOUT. Only meaningful when somebody other than the attendee answered - a
    * supervisor evaluating one of their people - so it is null for an attendee's own reply, where
    * the respondent and the subject are the same person.
@@ -242,6 +262,8 @@ export type EvaluationResponse = {
    * attendee, so naming the subject names the respondent.
    */
   subjectName: string | null;
+  /** When the form was first opened, which the raw response sheet reports beside the submission. */
+  startedAt: string | null;
   submittedAt: string | null;
   answers: EvaluationResponseAnswer[];
 };
@@ -261,6 +283,27 @@ export type EvaluationResponseList = {
   responses: EvaluationResponse[];
 };
 
+/** The course header a printed report carries: what was run, when, where and by whom. */
+export type EvaluationCourseHeader = {
+  planCode: string;
+  courseName: string;
+  batchName: string | null;
+  startAt: string;
+  endAt: string;
+  venue: string | null;
+  instructor: string | null;
+  /** Who ran it. A plan under a company OAP is that factory's; otherwise it is the centre's. */
+  organiser: "CENTER" | "FACTORY";
+};
+
+/** How the replies split across companies - the donut on the printed report. */
+export type EvaluationRespondentCompany = {
+  companyCode: string;
+  companyName: string;
+  count: number;
+  percent: number;
+};
+
 export type EvaluationSummary = {
   evaluationFormId: string;
   formName: string;
@@ -273,6 +316,16 @@ export type EvaluationSummary = {
   expectedCount: number;
   submittedCount: number;
   responseRatePercent: number;
+  /**
+   * Mean seconds between opening the form and submitting it, over the replies that can say. Null
+   * when none can: replies taken before the system recorded an opening time carry no duration, and
+   * so do the ones dropped by ANSWER_TIME_CAP_SECONDS.
+   */
+  averageAnswerSeconds: number | null;
+  /** The course this reports on, for a report that leaves the screen. */
+  course: EvaluationCourseHeader;
+  /** Respondents by company, largest first. Empty when nobody has answered. */
+  respondentsByCompany: EvaluationRespondentCompany[];
   questions: EvaluationSummaryQuestion[];
 };
 

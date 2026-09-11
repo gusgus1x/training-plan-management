@@ -47,18 +47,37 @@ const colourAt = (index: number) => SERIES_COLOURS[index % SERIES_COLOURS.length
  * one, neutral in the middle. Six unrelated hues said nothing about direction and left the chart
  * needing its legend read before any of it meant anything.
  */
-const GRID_NEGATIVE = ["#c2410c", "#ea7c3c", "#f0a06a"];
-const GRID_POSITIVE = ["#93b4f7", "#4f7fe8", "#1d4ed8"];
-const GRID_NEUTRAL = "#cbd5e1";
+const SCALE_STOPS = ["#dc2626", "#f97316", "#eab308", "#84cc16", "#16a34a"];
 
-const gridColourAt = (index: number, count: number) => {
-  const negatives = Math.floor(count / 2);
-  if (index < negatives) {
-    // Darkest at the far end of the scale, which is where the strongest answer sits.
-    return GRID_NEGATIVE[Math.min(negatives - 1 - index, GRID_NEGATIVE.length - 1)];
-  }
-  if (count % 2 === 1 && index === negatives) return GRID_NEUTRAL;
-  return GRID_POSITIVE[Math.min(index - negatives - (count % 2 === 1 ? 1 : 0), GRID_POSITIVE.length - 1)];
+/**
+ * Position on the scale, red at the first step and green at the last.
+ *
+ * Taken by ratio rather than by index, so a three-point scale still runs red to green and a
+ * seven-point one still reads in the same direction - the colour means "how far along", not "which
+ * option number".
+ */
+const scaleColourAt = (index: number, count: number) => {
+  if (count <= 1) return SCALE_STOPS[SCALE_STOPS.length - 1];
+  const ratio = index / (count - 1);
+  return SCALE_STOPS[Math.round(ratio * (SCALE_STOPS.length - 1))];
+};
+
+/**
+ * How long the average reply took, in the largest unit that still reads as a duration.
+ *
+ * A dash when there is nothing to average: the replies taken before the system recorded an opening
+ * time cannot say how long they took, and a zero there would read as "answered instantly".
+ */
+const formatAnswerTime = (seconds: number | null, t: (th: string, en: string) => string) => {
+  if (seconds === null) return "-";
+  if (seconds < 60) return `${seconds} ${t("วินาที", "sec")}`;
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} ${t("นาที", "min")}`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0
+    ? `${hours} ${t("ชม.", "hr")}`
+    : `${hours} ${t("ชม.", "hr")} ${rest} ${t("นาที", "min")}`;
 };
 
 /**
@@ -157,16 +176,27 @@ const Bar = ({
   );
 };
 
-/** Five stars with the average filled in, the way a rating question is read at a glance. */
-const Stars = ({ average }: { average: number }) => (
-  <span className={styles.stars} aria-hidden="true">
-    {[1, 2, 3, 4, 5].map((star) => (
-      <span key={star} className={star <= Math.round(average) ? styles.starOn : styles.starOff}>
-        <Star size={14} />
-      </span>
-    ))}
-  </span>
-);
+/**
+ * Five stars with the average filled in, the way a rating question is read at a glance. The filled
+ * ones take the colour of where the average sits on the scale, so a 1.4 reads red and a 4.8 green
+ * without anybody counting the stars.
+ */
+const Stars = ({ average }: { average: number }) => {
+  const filled = Math.round(average);
+  return (
+    <span className={styles.stars} aria-hidden="true">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <span
+          key={star}
+          className={styles.star}
+          style={{ color: star <= filled ? scaleColourAt(filled - 1, 5) : undefined }}
+        >
+          <Star size={14} />
+        </span>
+      ))}
+    </span>
+  );
+};
 
 const ChoiceChart = ({ question }: { question: EvaluationSummaryQuestion }) => (
   <div className={styles.chartSplit}>
@@ -199,7 +229,9 @@ const RatingChart = ({ question }: { question: EvaluationSummaryQuestion }) => (
           label={question.options[bucket.value - 1]?.optionText ?? `ระดับ ${bucket.value}`}
           count={bucket.count}
           total={question.answeredBy}
-          colour={colourAt(0)}
+          // Same ramp as the grid, and for the same reason: the bar's colour says where on the
+          // scale it sits, so a row of red at the top is legible before the labels are.
+          colour={scaleColourAt(bucket.value - 1, question.ratingDistribution.length)}
         />
       ))}
     </div>
@@ -239,7 +271,7 @@ const GridChart = ({ question }: { question: EvaluationSummaryQuestion }) => {
           <li key={column.columnId}>
             <span
               className={styles.legendDot}
-              style={{ background: gridColourAt(index, columns.length) }}
+              style={{ background: scaleColourAt(index, columns.length) }}
             />
             <span className={styles.legendLabel}>{column.columnText}</span>
           </li>
@@ -264,7 +296,7 @@ const GridChart = ({ question }: { question: EvaluationSummaryQuestion }) => {
                       className={styles.gridSegment}
                       style={{
                         width: `${cell.percent}%`,
-                        background: gridColourAt(index, columns.length),
+                        background: scaleColourAt(index, columns.length),
                       }}
                       title={`${cell.columnText}: ${cell.count} (${cell.percent}%)`}
                     />
@@ -280,7 +312,7 @@ const GridChart = ({ question }: { question: EvaluationSummaryQuestion }) => {
                       className={styles.gridSegment}
                       style={{
                         width: `${cell.percent}%`,
-                        background: gridColourAt(index, columns.length),
+                        background: scaleColourAt(index, columns.length),
                       }}
                       title={`${cell.columnText}: ${cell.count} (${cell.percent}%)`}
                     />
@@ -391,8 +423,22 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
   const otherAudience = respondents === "EMPLOYEE" ? "SUPERVISOR" : "EMPLOYEE";
   const otherAudienceCount = loaded?.[otherAudience][shownTiming]?.submittedCount ?? 0;
 
+  /**
+   * The questions, with the section breaks kept as the headings they are.
+   *
+   * They used to be filtered out with the text blocks, which hid the one thing that explains a
+   * question nobody answered: a branching form sends each respondent down one section, so the other
+   * section's questions read "0 answered" for them. Without the headings that looks like data loss
+   * rather than a question these people were never shown.
+   */
   const questions = useMemo(
-    () => (summary?.questions ?? []).filter((question) => !isFormBlockType(question.questionType)),
+    () => (summary?.questions ?? []).filter((question) => question.questionType !== "TEXT_BLOCK"),
+    [summary],
+  );
+
+  /** A form that branches. Only then is "nobody answered" ambiguous enough to need explaining. */
+  const hasSections = useMemo(
+    () => (summary?.questions ?? []).some((question) => question.questionType === "SECTION_BREAK"),
     [summary],
   );
 
@@ -514,8 +560,8 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                   <strong>{summary.submittedCount}</strong>
                 </article>
                 <article className={styles.tile}>
-                  <span>{t("ผู้ถูกถาม", "Asked")}</span>
-                  <strong>{summary.expectedCount}</strong>
+                  <span>{t("เวลาเฉลี่ยในการตอบ", "Average time to answer")}</span>
+                  <strong>{formatAnswerTime(summary.averageAnswerSeconds, t)}</strong>
                 </article>
                 <article className={styles.tile}>
                   <span>{t("อัตราการตอบกลับ", "Response rate")}</span>
@@ -539,6 +585,16 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
               ) : (
                 <div className={styles.questions}>
                   {questions.map((question, index) => {
+                    // A section break is a heading, not a question: it carries the name of the
+                    // branch the questions under it belong to, which is the only thing that
+                    // explains a question this audience was never shown.
+                    if (question.questionType === "SECTION_BREAK") {
+                      return (
+                        <h2 key={question.questionId} className={styles.sectionName}>
+                          {question.questionText}
+                        </h2>
+                      );
+                    }
                     const previousSection = index > 0 ? questions[index - 1].sectionName : null;
                     const startsSection =
                       question.sectionName !== null && question.sectionName !== previousSection;
@@ -560,6 +616,15 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                           </div>
                           <p className={styles.answeredBy}>
                             {t(`ตอบ ${question.answeredBy} คน`, `${question.answeredBy} answered`)}
+                            {/* On a branching form, zero usually means this audience was routed
+                                down the other section and never saw the question at all. Saying so
+                                keeps it from reading as an answer that went missing. */}
+                            {question.answeredBy === 0 && hasSections
+                              ? t(
+                                  " · ผู้ตอบกลุ่มนี้ไม่ได้ถูกพามาที่ข้อนี้ (ฟอร์มแยกสายตามคำตอบข้อก่อนหน้า)",
+                                  " - this audience was routed past it; the form branches on an earlier answer",
+                                )
+                              : ""}
                           </p>
 
                           {question.ratingDistribution.length > 0 ? <RatingChart question={question} /> : null}
@@ -585,10 +650,18 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
             <p className={styles.insightLabel}>
               {t("วิเคราะห์และสำรวจผลลัพธ์ล่าสุดใน Excel", "Analyse the latest results in Excel")}
             </p>
-            <button type="button" className={styles.insightAction} disabled>
+            {/* A plain link, not a fetch: the browser downloads it with the session cookie and
+                names the file from the header, which is the whole job. */}
+            <a
+              className={styles.insightAction}
+              href={`/api/training-plan/training-records/${planId}/evaluations/${shownTiming}/export?respondents=${respondents}`}
+              aria-disabled={!summary || summary.submittedCount === 0}
+              onClick={(event) => {
+                if (!summary || summary.submittedCount === 0) event.preventDefault();
+              }}
+            >
               <FileSpreadsheet size={15} style={{ verticalAlign: "middle", marginRight: 6 }} />{t("ดาวน์โหลดเป็น Excel", "Download as Excel")}
-              <em>{t("กำลังทำ", "Not built yet")}</em>
-            </button>
+            </a>
           </div>
 
           <div className={styles.insightBlock}>

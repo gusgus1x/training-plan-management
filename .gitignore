@@ -75,6 +75,9 @@ TrainingPlanManagement — Project & Database Handover Context.md
 real data employee.rpt
 *.rpt
 ResultData
+# Excel lock files, written while a workbook is open
+~$*.xlsx
+
 Position_Review.xlsx
 Function_Review.xlsx
 result-funtion

@@ -313,16 +313,10 @@
   gap: 3px;
 }
 
-.starOn,
-.starOff {
+/* The filled colour comes from the scale in the component; an unfilled star keeps the muted
+   default, which is why this is a colour the inline style can override rather than replace. */
+.star {
   display: inline-flex;
-}
-
-.starOn {
-  color: var(--chart-1);
-}
-
-.starOff {
   color: var(--ui-60-surface-muted);
 }
 
@@ -888,4 +882,15 @@
   .individualBlank {
     background: none;
   }
+}
+
+/* The Excel action is a link now, so it needs the button's own shape back, and a disabled look for
+   a report with nothing in it - `aria-disabled` marks it, the click handler stops it. */
+a.insightAction {
+  text-decoration: none;
+}
+
+a.insightAction[aria-disabled="true"] {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

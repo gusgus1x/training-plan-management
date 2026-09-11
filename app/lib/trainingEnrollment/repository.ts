@@ -256,8 +256,13 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
     // The employee's OWN answer, not anybody's. A supervisor answers the same form about the same
     // enrollment for the 30-day follow-up, so matching on the form alone told the attendee they had
     // already answered the moment their supervisor did - and their real answer was never collected.
+    // `submitted_at` and not the row: a row is created the moment somebody opens the form, so
+    // matching on existence told the employee they had answered as soon as they looked at it.
     const submitted = row.evaluation_submission.find(
-      (s) => s.evaluation_form_id === formId && s.respondent_user_id === row.employee_user_id,
+      (s) =>
+        s.evaluation_form_id === formId &&
+        s.respondent_user_id === row.employee_user_id &&
+        s.submitted_at !== null,
     );
     if (!submitted) return null;
     // Evaluations are never graded and never repeated - these three fields exist only because the

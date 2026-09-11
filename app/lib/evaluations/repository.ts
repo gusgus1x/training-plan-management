@@ -145,7 +145,9 @@ export const createEvaluationRepository = (client?: DatabaseClient) => {
     const [courseCount, oapCount, submissionCount] = await Promise.all([
       db().course.count({ where: { evaluation_form_id: id } }),
       db().training_plan_oap.count({ where: { evaluation_form_id: id } }),
-      db().evaluation_submission.count({ where: { evaluation_form_id: id } }),
+      // Only a submitted reply locks a form. A row also exists for everybody who opened the form
+      // and never finished, and those must not freeze a form nobody has actually answered.
+      db().evaluation_submission.count({ where: { evaluation_form_id: id, submitted_at: { not: null } } }),
     ]);
     return courseCount + oapCount + submissionCount > 0;
   };

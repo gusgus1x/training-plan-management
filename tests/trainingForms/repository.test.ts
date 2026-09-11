@@ -188,6 +188,8 @@ const buildFakeDb = (opts: {
     },
     evaluation_submission: {
       create: async ({ data }: any) => ({ evaluation_submission_id: BigInt(7001), ...data }),
+      // Submitting completes the row that opening the form created, where there is one.
+      update: async ({ where, data }: any) => ({ ...where, ...data }),
     },
     evaluation_answer: {
       createMany: async ({ data }: any) => {
@@ -266,13 +268,17 @@ const buildFakeDb = (opts: {
     },
     evaluation_submission: {
       findUnique: async () => null,
+      // Opening the form records the moment it was opened. Nothing here asserts on that; it only
+      // has to not blow up.
+      upsert: async () => ({ evaluation_submission_id: BigInt(7001) }),
     },
     $transaction: async (cb: (tx: unknown) => Promise<unknown>) => cb(tx),
   } as any;
 
   // `submissions` is handed back so a regrade test can read the score that was written -
   // gradeSubmission itself only answers { graded: true }.
-  return { db, submissions, evaluationAnswers, officialResult: () => trainingResult };
+  // `tx` comes back too, so a test can watch what the submit transaction writes.
+  return { db, tx, submissions, evaluationAnswers, officialResult: () => trainingResult };
 };
 
 describe("readAssessmentForEmployee - no answer-key leak", () => {
@@ -649,10 +655,73 @@ describe("gradeSubmission", () => {
   });
 });
 
+describe("opening an evaluation", () => {
+  // The row that records when somebody opened the form is the whole basis of "how long did this
+  // take". What matters just as much is that it is not mistaken for an answer.
+  it("records the moment the form was opened, without calling it an answer", async () => {
+    const { db } = buildFakeDb({ courseFormIds: { evaluation: BigInt(601) } });
+    const opened: unknown[] = [];
+    db.evaluation_submission.upsert = async (args: any) => {
+      opened.push(args);
+      return { evaluation_submission_id: BigInt(7001) };
+    };
+    const repo = createTrainingFormsRepository(db);
+
+    const evaluation = await repo.readEvaluationForEmployee("1", "EVALUATION", OWNER.employeeId, OWNER.employeeUserId);
+
+    expect(opened).toHaveLength(1);
+    expect((opened[0] as any).create).toMatchObject({ status: "IN_PROGRESS" });
+    expect((opened[0] as any).create.started_at).toBeInstanceOf(Date);
+    // Reopening must not restamp the clock, so the update half does nothing.
+    expect((opened[0] as any).update).toEqual({});
+    // And the person who just opened it has not answered it.
+    expect(evaluation.alreadySubmitted).toBe(false);
+  });
+
+  it("still calls an answered form answered", async () => {
+    const { db } = buildFakeDb({ courseFormIds: { evaluation: BigInt(601) } });
+    db.evaluation_submission.findUnique = async () => ({
+      submitted_at: new Date("2026-09-01T03:00:00.000Z"),
+    });
+    const repo = createTrainingFormsRepository(db);
+
+    const evaluation = await repo.readEvaluationForEmployee("1", "EVALUATION", OWNER.employeeId, OWNER.employeeUserId);
+
+    expect(evaluation.alreadySubmitted).toBe(true);
+  });
+});
+
 describe("submitEvaluation", () => {
+  it("completes the row that opening the form created, keeping its start time", async () => {
+    const { db, tx } = buildFakeDb({ courseFormIds: { evaluation: BigInt(601) } });
+    db.evaluation_submission.findUnique = async () => ({
+      evaluation_submission_id: BigInt(4242),
+      submitted_at: null,
+    });
+    const updates: unknown[] = [];
+    tx.evaluation_submission.update = async (args: any) => {
+      updates.push(args);
+      return { evaluation_submission_id: BigInt(4242) };
+    };
+    const repo = createTrainingFormsRepository(db);
+
+    await repo.submitEvaluation("1", "EVALUATION", { answers: [] }, OWNER.employeeId, OWNER.employeeUserId);
+
+    expect(updates).toHaveLength(1);
+    expect((updates[0] as any).where).toEqual({ evaluation_submission_id: BigInt(4242) });
+    expect((updates[0] as any).data.status).toBe("SUBMITTED");
+    // Overwriting started_at here would erase the only record of when they began.
+    expect((updates[0] as any).data.started_at).toBeUndefined();
+  });
+
   it("refuses a second submission of the same evaluation form", async () => {
     const { db } = buildFakeDb({ courseFormIds: { evaluation: BigInt(601) } });
-    db.evaluation_submission.findUnique = async () => ({ evaluation_submission_id: BigInt(1) });
+    // A submission time, not merely a row: opening the form creates a row, and only a submitted one
+    // may turn the second attempt away.
+    db.evaluation_submission.findUnique = async () => ({
+      evaluation_submission_id: BigInt(1),
+      submitted_at: new Date("2026-09-01T03:00:00.000Z"),
+    });
     const repo = createTrainingFormsRepository(db);
     await expect(
       repo.submitEvaluation("1", "EVALUATION", { answers: [] }, OWNER.employeeId, OWNER.employeeUserId),

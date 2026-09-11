@@ -38,6 +38,7 @@ const buildFakeDb = (opts: {
   }>;
 }) => {
   let employeeQueries = 0;
+  const employeeSelects: string[][] = [];
   const db = {
     training_plan: {
       findUniqueOrThrow: async () => ({
@@ -101,8 +102,9 @@ const buildFakeDb = (opts: {
         })),
     },
     employee: {
-      findMany: async () => {
+      findMany: async (query: { select?: Record<string, unknown> }) => {
         employeeQueries += 1;
+        employeeSelects.push(Object.keys(query?.select ?? {}));
         return [
           {
             user_id: ATTENDEE_USER_ID,
@@ -111,6 +113,7 @@ const buildFakeDb = (opts: {
             first_name_th: "ทดสอบ",
             last_name_th: "ระบบ",
             position: { position_name_th: "หัวหน้าแผนก" },
+            company: { company_code: "ATA" },
           },
         ];
       },
@@ -120,6 +123,7 @@ const buildFakeDb = (opts: {
   return {
     repository: createTrainingFormsRepository(db as unknown as Parameters<typeof createTrainingFormsRepository>[0]),
     employeeQueries: () => employeeQueries,
+    employeeSelects: () => employeeSelects,
   };
 };
 
@@ -149,10 +153,11 @@ describe("readEvaluationResponses", () => {
     expect(list!.responses[0].answers[0].choices).toEqual(["ความรู้", "ทักษะ"]);
   });
 
-  it("carries no name at all when the form is anonymous, and does not even look one up", async () => {
+  it("carries no name at all when the form is anonymous, and never asks the database for one", async () => {
     // The employee query is the leak that matters: a name fetched and then dropped is a name that
-    // somebody's next edit can forget to drop.
-    const { repository, employeeQueries } = buildFakeDb({
+    // somebody's next edit can forget to drop. An anonymous form does run one query now, for the
+    // company that the exported report groups by, and that query may select nothing else.
+    const { repository, employeeSelects } = buildFakeDb({
       isAnonymous: true,
       submissions: [
         {
@@ -166,15 +171,24 @@ describe("readEvaluationResponses", () => {
 
     expect(list!.isAnonymous).toBe(true);
     expect(list!.responses[0].respondentName).toBeNull();
-    expect(employeeQueries()).toBe(0);
+    // Every employee query this form ran asked for the user id and the company, and for nothing
+    // that could name anybody.
+    expect(employeeSelects()).toEqual([["user_id", "company"]]);
     // A respondent is a position in the list and nothing else: no submission id, no user id.
     expect(list!.responses[0].respondentPosition).toBeNull();
     expect(list!.responses[0].subjectName).toBeNull();
+    expect(list!.responses[0].employeeCode).toBeNull();
+    // The company is the one thing an anonymous reply still carries, because the report splits the
+    // replies by it.
+    expect(list!.responses[0].companyCode).toBe("ATA");
     expect(Object.keys(list!.responses[0]).sort()).toEqual([
       "answers",
+      "companyCode",
+      "employeeCode",
       "respondentName",
       "respondentPosition",
       "responseNo",
+      "startedAt",
       "subjectName",
       "submittedAt",
     ]);

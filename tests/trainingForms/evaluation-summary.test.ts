@@ -38,6 +38,10 @@ type FakeSubmission = {
   evaluation_answer: FakeAnswer[];
   /** Defaults to the attendee, which is what every row written before supervisors existed is. */
   respondent_user_id?: string;
+  /** The two ends of how long the reply took. Absent on the rows written before the form recorded
+   *  an opening time. */
+  started_at?: Date;
+  submitted_at?: Date;
 };
 
 const buildFakeDb = (opts: {
@@ -51,8 +55,15 @@ const buildFakeDb = (opts: {
   const db = {
     training_plan: {
       findUniqueOrThrow: async () => ({
+        plan_code: "OAP-TEST-B01",
+        batch_name: "1",
+        start_datetime: new Date("2026-08-11T02:00:00.000Z"),
+        end_datetime: new Date("2026-08-11T09:00:00.000Z"),
+        venue: "ห้องอบรม A",
         training_plan_oap: {
           company_id: opts.companyId ?? BigInt(2),
+          course_name_snapshot: "หลักสูตรทดสอบ",
+          instructor_name_text: "วิทยากรทดสอบ",
           course: {
             pre_assessment_id: null,
             pre_test_link: null,
@@ -95,6 +106,11 @@ const buildFakeDb = (opts: {
       }),
     },
     training_enrollment: { count: async () => opts.enrolledCount ?? 10 },
+    employee: {
+      findMany: async () => [
+        { user_id: ATTENDEE_USER_ID, company: { company_code: "ATA", company_name_th: "บริษัททดสอบ" } },
+      ],
+    },
     training_evaluation_reviewer: { count: async () => opts.reviewerCount ?? 0 },
     evaluation_submission: {
       findMany: async () =>
@@ -598,5 +614,79 @@ describe("readEvaluationSummary - grid questions", () => {
     }).readEvaluationSummary(PLAN_ID, "EVALUATION", null);
     expect(summary!.questions[0].gridRows).toEqual([]);
     expect(summary!.questions[0].options).toHaveLength(3);
+  });
+});
+
+describe("readEvaluationSummary - the report header", () => {
+  it("carries the course and the split by company, counted per person", async () => {
+    // Both exist for the printed report: its header names what was run, and its donut is the share
+    // of replies per company. Counts only - a company slice can never become a name.
+    const repository = buildFakeDb({
+      enrolledCount: 4,
+      submissions: [
+        {
+          evaluation_submission_id: BigInt(1),
+          evaluation_answer: [answer({ evaluation_question_id: BigInt(1), evaluation_option_id: BigInt(11) })],
+        },
+        {
+          evaluation_submission_id: BigInt(2),
+          evaluation_answer: [answer({ evaluation_question_id: BigInt(1), evaluation_option_id: BigInt(12) })],
+        },
+      ],
+    });
+
+    const summary = await repository.readEvaluationSummary(PLAN_ID, "EVALUATION", null);
+
+    expect(summary!.course.planCode).toBe("OAP-TEST-B01");
+    expect(summary!.course.courseName).toBe("หลักสูตรทดสอบ");
+    expect(summary!.course.batchName).toBe("1");
+    expect(summary!.course.instructor).toBe("วิทยากรทดสอบ");
+    // The fixture plan sits under a company OAP, so the factory ran it.
+    expect(summary!.course.organiser).toBe("FACTORY");
+
+    expect(summary!.respondentsByCompany).toEqual([
+      { companyCode: "ATA", companyName: "บริษัททดสอบ", count: 2, percent: 100 },
+    ]);
+  });
+
+  it("averages how long the replies took, ignoring the ones that cannot say", async () => {
+    const at = (minutes: number) => new Date(Date.UTC(2026, 8, 1, 3, minutes));
+    const repository = buildFakeDb({
+      enrolledCount: 4,
+      submissions: [
+        // Four minutes and six minutes: an average of five.
+        { evaluation_submission_id: BigInt(1), started_at: at(0), submitted_at: at(4), evaluation_answer: [] },
+        { evaluation_submission_id: BigInt(2), started_at: at(0), submitted_at: at(6), evaluation_answer: [] },
+        // Written before opening was recorded, so both ends are the same instant. Counting it would
+        // report a form answered in no time at all.
+        { evaluation_submission_id: BigInt(3), started_at: at(0), submitted_at: at(0), evaluation_answer: [] },
+        // Opened, left on screen, finished after lunch. Says nothing about the form.
+        { evaluation_submission_id: BigInt(4), started_at: at(0), submitted_at: at(300), evaluation_answer: [] },
+      ],
+    });
+
+    const summary = await repository.readEvaluationSummary(PLAN_ID, "EVALUATION", null);
+
+    expect(summary!.averageAnswerSeconds).toBe(5 * 60);
+  });
+
+  it("reports no average when no reply can say how long it took", async () => {
+    const repository = buildFakeDb({
+      enrolledCount: 4,
+      submissions: [{ evaluation_submission_id: BigInt(1), evaluation_answer: [] }],
+    });
+
+    const summary = await repository.readEvaluationSummary(PLAN_ID, "EVALUATION", null);
+
+    // A zero here would read as "answered instantly" rather than "nobody knows".
+    expect(summary!.averageAnswerSeconds).toBeNull();
+  });
+
+  it("leaves the company split empty when nobody has answered", async () => {
+    const repository = buildFakeDb({ enrolledCount: 4, submissions: [] });
+    const summary = await repository.readEvaluationSummary(PLAN_ID, "EVALUATION", null);
+
+    expect(summary!.submittedCount).toBe(0);
+    expect(summary!.respondentsByCompany).toEqual([]);
   });
 });
