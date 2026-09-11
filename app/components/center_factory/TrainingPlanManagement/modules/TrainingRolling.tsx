@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   getCourseDisplayName,
+  getCourseSecondaryName,
   isWorkflowOwner,
   type WorkflowCourse,
   type WorkflowOwner,
@@ -71,6 +72,8 @@ export type RollingCourseDetail = {
   id?: string;
   code: string;
   name: string;
+  nameEn?: string;
+  nameTh?: string;
   objective: string;
   learningContent: string;
   targetGroup: string;
@@ -450,6 +453,8 @@ const mapCourseDetail = (course: WorkflowCourse): RollingCourseDetail => ({
   id: course.id,
   code: course.courseCode,
   name: getCourseDisplayName(course),
+  nameEn: course.courseNameEn || "",
+  nameTh: course.courseNameTh || "",
   objective: course.objective,
   learningContent: course.learningContent,
   targetGroup: course.targetGroup,
@@ -944,13 +949,18 @@ export default function TrainingRolling() {
             (statusFilter === "all" || plan.status === statusFilter) &&
             [
               plan.course.name,
+              plan.course.nameEn,
+              plan.course.nameTh,
               plan.course.code,
+              plan.course.courseGroup,
+              plan.course.courseType,
               plan.batch,
               plan.location,
               formatRollingPlanCompanies(plan),
               plan.status,
               getJobStatus(plan),
             ]
+              .filter(Boolean)
               .join(" ")
               .toLowerCase()
               .includes(search.toLowerCase())
@@ -1649,11 +1659,18 @@ export default function TrainingRolling() {
                 <SearchableSelect
                   options={oapSources.map((source) => {
                     const tag = source.course.courseGroup || source.course.courseType;
+                    const primaryName = getCourseDisplayName(source.course);
+                    const secondaryName = getCourseSecondaryName(source.course);
+                    const oapDetails = `แผน OAP #${source.id}: ${source.participants} คน • ${source.hours} ชม. • ${source.ownerCompany || source.owner}`;
+                    const enName = source.course.courseNameEn?.trim() || "";
+                    const thName = source.course.courseNameTh?.trim() || "";
+
                     return {
                       value: source.id,
-                      label: `[${source.course.courseCode}] ${getCourseDisplayName(source.course)}`,
-                      secondaryLabel: `แผน OAP #${source.id}: ${source.participants} คน • ${source.hours} ชม. • ${source.ownerCompany || source.owner}`,
+                      label: `[${source.course.courseCode}] ${primaryName}`,
+                      secondaryLabel: secondaryName ? `${secondaryName} • ${oapDetails}` : oapDetails,
                       badge: tag || undefined,
+                      keywords: `${enName} ${thName} ${source.course.courseCode} ${source.id} ${tag || ""}`,
                     };
                   })}
                   value={form.oapId}
@@ -2235,7 +2252,10 @@ export default function TrainingRolling() {
                             </td>
                             <td>
                               <strong>{plan.course.name}</strong>
-                              <span>{plan.course.code}</span>
+                              <span>
+                                {plan.course.code}
+                                {plan.course.nameTh && plan.course.nameTh !== plan.course.name ? ` / ${plan.course.nameTh}` : ""}
+                              </span>
                               {isCenterGroup ? (
                                 <div>
                                   <span className={styles.creatorBadgeCenter}>

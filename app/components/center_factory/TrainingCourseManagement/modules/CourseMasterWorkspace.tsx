@@ -2249,21 +2249,21 @@ function CourseMaster() {
           />
         </label>
         <label>
-          <span className={styles.fieldLabel}>Course Name (TH) <RequiredIndicator isFilled={Boolean(form.courseNameTh.trim())} /></span>
-          <input
-            value={form.courseNameTh}
-            disabled={!isEditing}
-            placeholder="ตัวอย่าง: การอบรมความปลอดภัยพื้นฐาน"
-            onChange={(event) => updateForm("courseNameTh", event.target.value)}
-          />
-        </label>
-        <label>
           <span className={styles.fieldLabel}>Course Name (EN) <RequiredIndicator isFilled={Boolean(form.courseNameEn.trim())} /></span>
           <input
             value={form.courseNameEn}
             disabled={!isEditing}
             placeholder="Example: Basic Safety Course"
             onChange={(event) => updateForm("courseNameEn", event.target.value)}
+          />
+        </label>
+        <label>
+          <span className={styles.fieldLabel}>Course Name (TH) <RequiredIndicator isFilled={Boolean(form.courseNameTh.trim())} /></span>
+          <input
+            value={form.courseNameTh}
+            disabled={!isEditing}
+            placeholder="ตัวอย่าง: การอบรมความปลอดภัยพื้นฐาน"
+            onChange={(event) => updateForm("courseNameTh", event.target.value)}
           />
         </label>
         <label className={styles.fullWidth}>
@@ -2666,7 +2666,7 @@ function CourseMaster() {
             options={prerequisiteCandidates.map((c) => ({
               id: c.id,
               code: c.courseCode,
-              name: c.courseNameTh || c.courseNameEn,
+              name: c.courseNameEn || c.courseNameTh,
             }))}
             disabled={!isEditing}
             placeholder="ค้นหาหลักสูตรที่ต้องผ่านมาก่อน... / Search prerequisite courses..."
@@ -3506,8 +3506,8 @@ function CourseMaster() {
                         <tr style={{ background: "#0f172a", color: "#ffffff", textAlign: "left" }}>
                           <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>#</th>
                           <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>Course Code</th>
-                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700, minWidth: "220px" }}>Course Name (TH)</th>
                           <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700, minWidth: "220px" }}>Course Name (EN)</th>
+                          <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700, minWidth: "220px" }}>Course Name (TH)</th>
                           <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>Course Group</th>
                           <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>Course Type</th>
                           <th style={{ padding: "12px 14px", borderBottom: "2px solid #000000", borderRight: "1px solid #334155", color: "#ffffff", fontWeight: 700 }}>Target Levels (O-Z)</th>
@@ -3534,8 +3534,8 @@ function CourseMaster() {
                             >
                               <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 700 }}>{row.rowNum}</td>
                               <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", fontWeight: 800, color: "#000000" }}>{row.courseCode || "(Auto)"}</td>
-                              <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 700 }}>{row.courseNameTh}</td>
-                              <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 600 }}>{row.courseNameEn || "-"}</td>
+                              <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 700 }}>{row.courseNameEn || "-"}</td>
+                              <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0", color: "#000000", fontWeight: 600 }}>{row.courseNameTh}</td>
                               <td style={{ padding: "10px 14px", borderRight: "1px solid #e2e8f0" }}>
                                 <span style={{ background: "#dbeafe", color: "#000000", border: "1px solid #93c5fd", padding: "4px 9px", borderRadius: "6px", fontSize: "0.8rem", fontWeight: 700 }}>
                                   {row.courseGroup || "General"}

@@ -40,7 +40,7 @@ export const getCourseDisplayName = (course?: WorkflowCourse | null): string => 
     return "";
   }
 
-  const primaryName = course.courseNameTh.trim() || course.courseNameEn.trim();
+  const primaryName = course.courseNameEn.trim() || course.courseNameTh.trim();
   return primaryName || course.courseCode;
 };
 
@@ -50,9 +50,9 @@ export const getCourseSecondaryName = (course?: WorkflowCourse | null): string =
   }
 
   const primaryName = getCourseDisplayName(course);
-  const englishName = course.courseNameEn.trim();
+  const thaiName = course.courseNameTh.trim();
 
-  return englishName && englishName !== primaryName ? englishName : "";
+  return thaiName && thaiName !== primaryName ? thaiName : "";
 };
 
 export type WorkflowStandard = {

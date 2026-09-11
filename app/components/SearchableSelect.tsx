@@ -9,6 +9,7 @@ export interface SearchableSelectOption {
   label: string;
   secondaryLabel?: string;
   badge?: React.ReactNode;
+  keywords?: string;
 }
 
 interface SearchableSelectProps {
@@ -81,7 +82,8 @@ export default function SearchableSelect({
       const matchVal = opt.value.toLowerCase().includes(query);
       const matchSec = opt.secondaryLabel?.toLowerCase().includes(query) ?? false;
       const matchBadge = typeof opt.badge === "string" ? opt.badge.toLowerCase().includes(query) : false;
-      return matchLabel || matchVal || matchSec || matchBadge;
+      const matchKeywords = opt.keywords?.toLowerCase().includes(query) ?? false;
+      return matchLabel || matchVal || matchSec || matchBadge || matchKeywords;
     });
   }, [options, searchQuery]);
 

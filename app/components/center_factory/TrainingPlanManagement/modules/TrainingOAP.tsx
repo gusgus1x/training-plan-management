@@ -374,27 +374,28 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     () => {
       const standardizedCourses = courses.filter(
         (course) => {
-          if (!standardCourseIds.has(course.id)) return false;
+          if (course.status === "Inactive") return false;
           if (isFactoryUser) {
-            return (
-              course.owner === "FACTORY" &&
-              course.ownerCompany === userCompanyCode
-            );
-          }
-          if (isCenterUser) {
-            return (
+            // Factory users can select factory's own courses OR Center courses
+            const isCenter =
               course.owner === "CENTER" ||
               course.ownerCompany === "CENTER" ||
               course.ownerCompany === "HRD Center" ||
-              !course.ownerCompany
-            );
+              course.ownerCompany === "All Companies" ||
+              !course.ownerCompany;
+            const isOwnFactory = course.ownerCompany === userCompanyCode;
+            return isCenter || isOwnFactory;
+          }
+          if (isCenterUser) {
+            // Center users can see all courses
+            return true;
           }
           return isWorkflowOwner(course.owner, course.ownerCompany, user?.roleCode, userCompanyCode);
         },
       );
       return standardizedCourses;
     },
-    [courses, standardCourseIds, isFactoryUser, isCenterUser, user?.roleCode, userCompanyCode],
+    [courses, isFactoryUser, isCenterUser, user?.roleCode, userCompanyCode],
   );
   const selectedCourse =
     courseOptions.find((course) => course.courseCode === form.courseCode) ?? null;
@@ -423,10 +424,22 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   );
   const scopedPlans = useMemo(
     () =>
-      plans.filter((plan) =>
-        isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode),
-      ),
-    [plans, user?.roleCode, userCompanyCode],
+      plans.filter((plan) => {
+        if (isFactoryUser) {
+          // Factory users see plans from their factory OR plans from CENTER (which target all companies / factory)
+          const isCenter =
+            plan.owner === "CENTER" ||
+            plan.ownerCompany === "HRD Center" ||
+            plan.ownerCompany === "CENTER" ||
+            plan.ownerCompany === "All Companies";
+          const isOwnFactory =
+            plan.ownerCompany === userCompanyCode ||
+            (!plan.ownerCompany && !plan.owner);
+          return isCenter || isOwnFactory;
+        }
+        return isWorkflowOwner(plan.owner, plan.ownerCompany, user?.roleCode, userCompanyCode);
+      }),
+    [plans, isFactoryUser, user?.roleCode, userCompanyCode],
   );
 
   const allCompanyCodes = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
@@ -482,20 +495,28 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
           }
           return true;
         })
-        .filter((plan) =>
-          [
+        .filter((plan) => {
+          const primaryName = getCourseDisplayName(plan.course);
+          const secondaryName = getCourseSecondaryName(plan.course);
+          return [
             plan.course.courseCode,
             plan.course.courseNameTh,
             plan.course.courseNameEn,
+            primaryName,
+            secondaryName,
+            plan.course.courseGroup,
+            plan.course.courseType,
             plan.status,
+            getStatusLabel(plan.status),
             plan.trainer,
             plan.providerName,
             plan.owner === "CENTER" ? "HRD Center" : plan.ownerCompany,
           ]
+            .filter(Boolean)
             .join(" ")
             .toLowerCase()
-            .includes(search.toLowerCase()),
-        )
+            .includes(search.toLowerCase());
+        })
         .filter((plan) => statusFilter === "all" || plan.status === statusFilter)
         .sort((a, b) => {
           const weightA = getCompanySortWeight(a);
@@ -509,7 +530,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
           return a.sequence - b.sequence;
         })
         .map((plan, index) => ({ ...plan, sequence: index + 1 })),
-    [companyFilter, scopedPlans, search, statusFilter, userCompanyCode],
+    [companyFilter, scopedPlans, search, statusFilter, userCompanyCode, language],
   );
 
   const companySections = useMemo(() => {
@@ -963,12 +984,16 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                     const ownerTag = isCenter
                       ? "Center (ส่วนกลาง)"
                       : `Factory (${course.ownerCompany || "โรงงาน"})`;
+                    const tag = course.courseGroup || course.courseType;
+                    const enName = course.courseNameEn?.trim() || "";
+                    const thName = course.courseNameTh?.trim() || "";
 
                     return {
                       value: course.courseCode,
                       label: `[${course.courseCode}] ${displayName}`,
                       secondaryLabel: secondaryName ? `${secondaryName} • ${ownerTag}` : ownerTag,
-                      badge: isCenter ? "Center" : (course.ownerCompany || "Factory"),
+                      badge: tag || (isCenter ? "Center" : (course.ownerCompany || "Factory")),
+                      keywords: `${enName} ${thName} ${course.courseCode} ${tag || ""} ${ownerTag}`,
                     };
                   })}
                   value={form.courseCode}
@@ -1624,6 +1649,21 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                   ? ` / ${getCourseSecondaryName(plan.course)}`
                                   : ""}
                               </span>
+                              {isCenterPlan ? (
+                                <div>
+                                  <span className={styles.creatorBadgeCenter}>
+                                    <Building2 size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                                    จัดหลักสูตรโดย HRD Center
+                                  </span>
+                                </div>
+                              ) : plan.ownerCompany ? (
+                                <div>
+                                  <span className={styles.creatorBadgeFactory}>
+                                    <Factory size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                                    จัดหลักสูตรโดย {plan.ownerCompany}
+                                  </span>
+                                </div>
+                              ) : null}
                             </td>
                             <td translate="no">{plan.course.courseGroup || "-"}</td>
                             <td>

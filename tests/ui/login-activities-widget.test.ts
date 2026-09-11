@@ -68,6 +68,11 @@ describe("LoginActivitiesWidget contract", () => {
     expect(widgetStylesSource).toContain("z-index: 99999");
   });
 
+  it("filters activities specifically for showOnLoginPage", () => {
+    expect(widgetSource).toContain("item.showOnLoginPage === true");
+    expect(apiRouteSource).toContain("showOnLoginPage");
+  });
+
   it("strictly enforces zero emojis across widget source and styles", () => {
     const emojiRegex =
       /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E6}-\u{1F1FF}]/u;

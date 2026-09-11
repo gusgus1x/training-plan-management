@@ -22,6 +22,7 @@ export interface LoginActivityItem {
   companyName?: string | null;
   status?: string;
   isVisibleOnDashboard?: boolean;
+  showOnLoginPage?: boolean;
 }
 
 export type LoginActivitiesWidgetProps = {
@@ -73,9 +74,12 @@ export default function LoginActivitiesWidget({ className }: LoginActivitiesWidg
           ? data.activities
           : [];
 
-        // Filter activities that are published and visible
+        // Filter activities that are published, visible on dashboard, and explicitly selected for Login page
         const publishedList = list.filter(
-          (item) => item.status === "PUBLISHED" && item.isVisibleOnDashboard !== false
+          (item) =>
+            item.status === "PUBLISHED" &&
+            item.isVisibleOnDashboard !== false &&
+            item.showOnLoginPage === true
         );
 
         setActivities(publishedList);
