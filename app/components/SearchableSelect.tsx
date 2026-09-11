@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { X } from "./icons/LucideIcons";
+import { Check, Search, X } from "./icons/LucideIcons";
 import styles from "./SearchableSelect.module.css";
 
 export interface SearchableSelectOption {
@@ -9,6 +9,7 @@ export interface SearchableSelectOption {
   label: string;
   secondaryLabel?: string;
   badge?: React.ReactNode;
+  keywords?: string;
 }
 
 interface SearchableSelectProps {
@@ -35,13 +36,9 @@ export default function SearchableSelect({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
-  // The dropdown defaults to opening downward; on a short phone viewport with the field near
-  // the bottom (very common once the on-screen keyboard shrinks it further) that pushes most of
-  // the menu off-screen, so this flips it upward when there isn't enough room below.
-  const [openUpward, setOpenUpward] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const DROPDOWN_MAX_HEIGHT = 280;
+  const listRef = useRef<HTMLDivElement>(null);
 
   const selectedOption = useMemo(
     () => options.find((opt) => opt.value === value) ?? null,
@@ -60,6 +57,23 @@ export default function SearchableSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Focus input automatically and scroll into view when search opens
+  useEffect(() => {
+    if (isOpen) {
+      inputRef.current?.focus();
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const neededBottom = rect.bottom + 360;
+        if (neededBottom > window.innerHeight) {
+          window.scrollBy({
+            top: Math.min(260, neededBottom - window.innerHeight + 24),
+            behavior: "smooth",
+          });
+        }
+      }
+    }
+  }, [isOpen]);
+
   const filteredOptions = useMemo(() => {
     if (!searchQuery.trim()) return options;
     const query = searchQuery.toLowerCase().trim();
@@ -68,23 +82,14 @@ export default function SearchableSelect({
       const matchVal = opt.value.toLowerCase().includes(query);
       const matchSec = opt.secondaryLabel?.toLowerCase().includes(query) ?? false;
       const matchBadge = typeof opt.badge === "string" ? opt.badge.toLowerCase().includes(query) : false;
-      return matchLabel || matchVal || matchSec || matchBadge;
+      const matchKeywords = opt.keywords?.toLowerCase().includes(query) ?? false;
+      return matchLabel || matchVal || matchSec || matchBadge || matchKeywords;
     });
   }, [options, searchQuery]);
 
-  const openDropdown = () => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (rect) {
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
-      setOpenUpward(spaceBelow < DROPDOWN_MAX_HEIGHT && spaceAbove > spaceBelow);
-    }
-    setIsOpen(true);
-  };
-
   const handleOpen = () => {
     if (disabled) return;
-    openDropdown();
+    setIsOpen(true);
     setSearchQuery("");
     setHighlightedIndex(0);
   };
@@ -132,104 +137,194 @@ export default function SearchableSelect({
   };
 
   return (
-    <div ref={containerRef} className={`${styles.container} ${className || ""}`} style={style}>
-      <div
-        className={styles.inputWrapper}
-        onClick={() => {
-          if (!disabled && !isOpen) {
-            handleOpen();
-          }
-        }}
-      >
-        <input
-          ref={inputRef}
-          className={`${styles.input} ${isOpen ? styles.inputOpen : ""}`}
-          type="text"
-          disabled={disabled}
-          placeholder={isOpen ? placeholder : selectedOption ? selectedOption.label : placeholder}
-          value={isOpen ? searchQuery : selectedOption ? selectedOption.label : ""}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            setHighlightedIndex(0);
-            if (!isOpen) openDropdown();
+    <div
+      ref={containerRef}
+      className={`${styles.container} ${isOpen ? styles.containerOpen : ""} ${className || ""}`}
+      style={style}
+    >
+      {selectedOption && !isOpen ? (
+        /* ─── Rich Selected Display Box ─── */
+        <div
+          className={`${styles.selectedBox} ${disabled ? styles.selectedBoxDisabled : ""}`}
+          onClick={() => {
+            if (!disabled) {
+              handleOpen();
+            }
           }}
-          onFocus={() => {
+          role="button"
+          tabIndex={disabled ? -1 : 0}
+          onKeyDown={(e) => {
+            if (!disabled && (e.key === "Enter" || e.key === " " || e.key === "ArrowDown")) {
+              e.preventDefault();
+              handleOpen();
+            }
+          }}
+          title="คลิกเพื่อค้นหาและเปลี่ยนหลักสูตร / Click to change course"
+        >
+          <div className={styles.selectedContent}>
+            <div className={styles.selectedMainRow}>
+              <span className={styles.selectedLabel}>{selectedOption.label}</span>
+              {selectedOption.badge ? (
+                <span className={styles.selectedBadge}>{selectedOption.badge}</span>
+              ) : null}
+            </div>
+            {selectedOption.secondaryLabel ? (
+              <span className={styles.selectedSecondary}>{selectedOption.secondaryLabel}</span>
+            ) : null}
+          </div>
+          <div className={styles.selectedActions}>
+            {!disabled && (
+              <button
+                type="button"
+                className={styles.clearButton}
+                onClick={handleClear}
+                title="ล้างข้อมูล / Clear selection"
+              >
+                <X size={15} />
+              </button>
+            )}
+            <span className={styles.arrowIcon}>▼</span>
+          </div>
+        </div>
+      ) : (
+        /* ─── Interactive Search Input ─── */
+        <div
+          className={styles.inputWrapper}
+          onClick={() => {
             if (!disabled && !isOpen) {
               handleOpen();
             }
           }}
-          onKeyDown={handleKeyDown}
-        />
-
-        {value && !disabled ? (
-          <button
-            type="button"
-            className={styles.clearButton}
-            onClick={handleClear}
-            title="Clear selection"
-          >
-            <X size={14} />
-          </button>
-        ) : null}
-
-        <span
-          className={`${styles.arrowIcon} ${isOpen ? styles.arrowIconOpen : ""}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (!disabled) {
-              if (isOpen) {
-                setIsOpen(false);
-                setSearchQuery("");
-                inputRef.current?.blur();
-              } else {
-                handleOpen();
-                inputRef.current?.focus();
-              }
-            }
-          }}
         >
-          ▼
-        </span>
-      </div>
+          <span className={styles.searchIconLeft}>
+            <Search size={16} />
+          </span>
+          <input
+            ref={inputRef}
+            className={`${styles.input} ${isOpen ? styles.inputOpen : ""}`}
+            type="text"
+            disabled={disabled}
+            placeholder={
+              isOpen
+                ? placeholder
+                : selectedOption
+                ? selectedOption.label
+                : placeholder
+            }
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setHighlightedIndex(0);
+              if (!isOpen) setIsOpen(true);
+            }}
+            onFocus={() => {
+              if (!disabled && !isOpen) {
+                handleOpen();
+              }
+            }}
+            onKeyDown={handleKeyDown}
+          />
 
+          {searchQuery ? (
+            <button
+              type="button"
+              className={styles.inputClearBtn}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSearchQuery("");
+                inputRef.current?.focus();
+              }}
+              title="ล้างคำค้นหา"
+            >
+              <X size={14} />
+            </button>
+          ) : null}
+
+          <span
+            className={`${styles.arrowIcon} ${styles.inputArrowIcon} ${isOpen ? styles.arrowIconOpen : ""}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!disabled) {
+                if (isOpen) {
+                  setIsOpen(false);
+                  setSearchQuery("");
+                } else {
+                  handleOpen();
+                }
+              }
+            }}
+          >
+            ▼
+          </span>
+        </div>
+      )}
+
+      {/* ─── Options Dropdown Menu (Always drops DOWN below input) ─── */}
       {isOpen && !disabled ? (
-        <div className={`${styles.dropdownMenu} ${openUpward ? styles.dropdownMenuUp : ""}`} role="listbox">
-          {filteredOptions.length === 0 ? (
-            <div className={styles.noOptions}>{emptyText}</div>
-          ) : (
-            filteredOptions.map((opt, idx) => {
-              const isSelected = opt.value === value;
-              const isHighlighted = idx === highlightedIndex;
-              return (
-                <div
-                  key={opt.value || idx}
-                  className={`${styles.optionItem} ${isSelected ? styles.optionSelected : ""} ${
-                    isHighlighted ? styles.optionHighlighted : ""
-                  }`}
-                  role="option"
-                  aria-selected={isSelected}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleSelectOption(opt.value);
-                  }}
-                  onMouseEnter={() => setHighlightedIndex(idx)}
-                >
-                  <div className={styles.optionMainRow}>
-                    <span className={styles.optionLabel}>{opt.label}</span>
-                    {opt.badge ? <span className={styles.optionBadge}>{opt.badge}</span> : null}
+        <div className={styles.dropdownMenu} role="listbox">
+          <div className={styles.dropdownHeader}>
+            <span>
+              {filteredOptions.length === 0
+                ? "ไม่พบข้อมูล"
+                : `พบทั้งหมด ${filteredOptions.length} รายการ`}
+            </span>
+            {searchQuery.trim() ? (
+              <span style={{ fontWeight: 500, fontSize: "0.72rem" }}>
+                ค้นหา: &ldquo;{searchQuery}&rdquo;
+              </span>
+            ) : null}
+          </div>
+
+          <div ref={listRef} className={styles.optionsList}>
+            {filteredOptions.length === 0 ? (
+              <div className={styles.noOptions}>{emptyText}</div>
+            ) : (
+              filteredOptions.map((opt, idx) => {
+                const isSelected = opt.value === value;
+                const isHighlighted = idx === highlightedIndex;
+                return (
+                  <div
+                    key={opt.value || idx}
+                    className={`${styles.optionItem} ${
+                      isSelected ? styles.optionSelected : ""
+                    } ${isHighlighted ? styles.optionHighlighted : ""}`}
+                    role="option"
+                    aria-selected={isSelected}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSelectOption(opt.value);
+                    }}
+                    onMouseEnter={() => setHighlightedIndex(idx)}
+                  >
+                    {isSelected ? (
+                      <span className={styles.optionCheckmark}>
+                        <Check size={16} strokeWidth={2.5} />
+                      </span>
+                    ) : null}
+
+                    <div className={styles.optionTextWrap}>
+                      <div className={styles.optionMainRow}>
+                        <span className={styles.optionLabel}>{opt.label}</span>
+                        {opt.badge ? (
+                          <span className={styles.optionBadge}>{opt.badge}</span>
+                        ) : null}
+                      </div>
+                      {opt.secondaryLabel ? (
+                        <span className={styles.optionSecondary}>
+                          {opt.secondaryLabel}
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                  {opt.secondaryLabel ? (
-                    <span className={styles.optionSecondary}>{opt.secondaryLabel}</span>
-                  ) : null}
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
+          </div>
         </div>
       ) : null}
     </div>

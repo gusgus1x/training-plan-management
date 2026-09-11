@@ -41,8 +41,10 @@ export async function GET(
         "Cache-Control": "public, max-age=31536000, immutable",
       },
     });
-  } catch (error) {
-    console.error("Failed to serve activity image:", error);
+  } catch (error: any) {
+    if (error?.code !== "ENOENT") {
+      console.warn("Notice: Failed to serve activity image:", error?.message || error);
+    }
     return new NextResponse("Image not found", { status: 404 });
   }
 }

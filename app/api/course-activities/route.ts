@@ -68,7 +68,9 @@ export type CourseActivity = {
   linkedEndDate?: string | null;
   registrationNote?: string | null;
   isVisibleOnDashboard?: boolean;
+  showOnLoginPage?: boolean;
   status?: string;
+  sortOrder?: number;
   companyId: string;
   companyCode: string;
   companyName: string;
@@ -217,6 +219,8 @@ function mapAnnouncementToActivity(row: {
   let linkedEndDate: string | null = null;
   let registrationNote: string | null = null;
   let isVisibleOnDashboard = true;
+  let showOnLoginPage = false;
+  let sortOrder: number | undefined = undefined;
 
   try {
     if (row.content && row.content.trim().startsWith("{")) {
@@ -246,6 +250,12 @@ function mapAnnouncementToActivity(row: {
           isVisibleOnDashboard = Boolean(parsed.isVisibleOnDashboard);
         } else if (row.status === "INACTIVE" || row.status === "ARCHIVED") {
           isVisibleOnDashboard = false;
+        }
+        if (parsed.showOnLoginPage !== undefined) {
+          showOnLoginPage = Boolean(parsed.showOnLoginPage);
+        }
+        if (parsed.sortOrder !== undefined && typeof parsed.sortOrder === "number") {
+          sortOrder = parsed.sortOrder;
         }
       }
     }
@@ -302,7 +312,9 @@ function mapAnnouncementToActivity(row: {
     linkedEndDate,
     registrationNote,
     isVisibleOnDashboard,
+    showOnLoginPage,
     status: activityStatus,
+    sortOrder,
     companyId,
     companyCode,
     companyName,
@@ -369,6 +381,18 @@ export async function GET() {
         (a) => a.isVisibleOnDashboard !== false && a.status === "PUBLISHED"
       );
     }
+
+    // Sort order:
+    // 1. sortOrder (ascending: 0, 1, 2... or unassigned default)
+    // 2. publish_at / createdAt descending
+    activities.sort((a, b) => {
+      const orderA = a.sortOrder !== undefined ? a.sortOrder : 999999;
+      const orderB = b.sortOrder !== undefined ? b.sortOrder : 999999;
+      if (orderA !== orderB) return orderA - orderB;
+
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
     return NextResponse.json({ activities, companies });
   } catch (error) {
     console.error("Failed to read activities from database:", error);
@@ -395,7 +419,9 @@ export async function POST(request: NextRequest) {
       linkedEndDate,
       registrationNote,
       isVisibleOnDashboard,
+      showOnLoginPage,
       status,
+      sortOrder,
       companyId,
     } = body;
 
@@ -471,7 +497,9 @@ export async function POST(request: NextRequest) {
       linkedEndDate: linkedEndDate ? String(linkedEndDate).trim() : null,
       registrationNote: registrationNote ? String(registrationNote).trim() : null,
       isVisibleOnDashboard: showOnDashboard,
+      showOnLoginPage: Boolean(showOnLoginPage),
       status: showOnDashboard ? "PUBLISHED" : "ARCHIVED",
+      sortOrder: typeof sortOrder === "number" ? sortOrder : undefined,
     });
 
     const publishDate = parseActivityDate(date);
@@ -520,7 +548,9 @@ export async function PUT(request: NextRequest) {
       linkedEndDate,
       registrationNote,
       isVisibleOnDashboard,
+      showOnLoginPage,
       status,
+      sortOrder,
       companyId,
     } = body;
 
@@ -568,7 +598,9 @@ export async function PUT(request: NextRequest) {
       linkedEndDate?: string | null;
       registrationNote?: string | null;
       isVisibleOnDashboard?: boolean;
+      showOnLoginPage?: boolean;
       status?: string;
+      sortOrder?: number;
     } = { description: "", location: "", imageUrl: "", images: [] };
 
     try {
@@ -650,7 +682,14 @@ export async function PUT(request: NextRequest) {
       linkedEndDate: linkedEndDate !== undefined ? (linkedEndDate ? String(linkedEndDate).trim() : null) : (existingMeta.linkedEndDate || null),
       registrationNote: registrationNote !== undefined ? (registrationNote ? String(registrationNote).trim() : null) : (existingMeta.registrationNote || null),
       isVisibleOnDashboard: showOnDashboard,
+      showOnLoginPage:
+        showOnLoginPage !== undefined
+          ? Boolean(showOnLoginPage)
+          : existingMeta.showOnLoginPage !== undefined
+          ? Boolean(existingMeta.showOnLoginPage)
+          : false,
       status: showOnDashboard ? "PUBLISHED" : "ARCHIVED",
+      sortOrder: sortOrder !== undefined ? (typeof sortOrder === "number" ? sortOrder : undefined) : existingMeta.sortOrder,
     });
 
     const updateData: {
@@ -767,6 +806,206 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error("Failed to delete activity from database:", error);
     return NextResponse.json({ error: "Failed to delete activity from database" }, { status: 500 });
+  }
+}
+
+// PATCH endpoint: Quick toggle pin status or batch update reorder sequence
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await getServerSession().catch(() => null);
+    const isFactory = session?.role === "HRD_FACTORY";
+    const isEmployee = session?.role === "EMPLOYEE";
+
+    if (isEmployee) {
+      return NextResponse.json({ error: "Forbidden: Employees cannot reorder or pin activities" }, { status: 403 });
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const prisma = getPrismaClient();
+
+    // Mode 1: Move single activity to First Position ({ moveToFirstId: string } or { id, moveToFirst: true })
+    const targetMoveFirstId = body.moveToFirstId
+      ? String(body.moveToFirstId)
+      : body.moveToFirst && body.id
+      ? String(body.id)
+      : null;
+
+    if (targetMoveFirstId) {
+      const existing = await prisma.announcement.findUnique({
+        where: { announcement_id: BigInt(targetMoveFirstId) },
+      });
+
+      if (!existing) {
+        return NextResponse.json({ error: "Activity not found" }, { status: 404 });
+      }
+
+      if (isFactory && session?.companyId && existing.company_id !== BigInt(session.companyId)) {
+        return NextResponse.json(
+          { error: "Forbidden: Cannot modify activities of other companies" },
+          { status: 403 }
+        );
+      }
+
+      // Fetch all announcements in the current scope
+      const scopeWhere: any = {};
+      if (isFactory && session?.companyId) {
+        scopeWhere.company_id = BigInt(session.companyId);
+      }
+      const allScope = await prisma.announcement.findMany({
+        where: scopeWhere,
+        orderBy: { publish_at: "desc" },
+      });
+
+      const sorted = allScope.map((item) => {
+        let meta: any = {};
+        try {
+          if (item.content && item.content.trim().startsWith("{")) {
+            meta = JSON.parse(item.content);
+          }
+        } catch {}
+        return {
+          announcement_id: item.announcement_id,
+          sortOrder: typeof meta.sortOrder === "number" ? meta.sortOrder : 999999,
+          content: item.content,
+        };
+      });
+
+      sorted.sort((a, b) => a.sortOrder - b.sortOrder);
+
+      const targetItem = sorted.find((it) => it.announcement_id.toString() === targetMoveFirstId);
+      const remainingItems = sorted.filter((it) => it.announcement_id.toString() !== targetMoveFirstId);
+      const reorderedList = targetItem ? [targetItem, ...remainingItems] : sorted;
+
+      await Promise.all(
+        reorderedList.map(async (item, newIndex) => {
+          let meta: any = {};
+          try {
+            if (item.content && item.content.trim().startsWith("{")) {
+              meta = JSON.parse(item.content);
+            } else {
+              meta = { description: item.content };
+            }
+          } catch {
+            meta = { description: item.content };
+          }
+          meta.sortOrder = newIndex;
+          delete meta.isPinned;
+
+          await prisma.announcement.update({
+            where: { announcement_id: item.announcement_id },
+            data: { content: JSON.stringify(meta) },
+          });
+        })
+      );
+
+      return NextResponse.json({ success: true, movedId: targetMoveFirstId });
+    }
+
+    // Mode 2: Batch Reorder activities ({ reorderedIds: string[] })
+    if (Array.isArray(body.reorderedIds) && body.reorderedIds.length > 0) {
+      const ids: string[] = body.reorderedIds.map(String);
+
+      const announcements = await prisma.announcement.findMany({
+        where: {
+          announcement_id: { in: ids.map((id) => BigInt(id)) },
+        },
+      });
+
+      // Update sortOrder for each announcement
+      await Promise.all(
+        announcements.map(async (item) => {
+          // If HRD Factory, skip items not belonging to their company
+          if (isFactory && session?.companyId && item.company_id !== BigInt(session.companyId)) {
+            return;
+          }
+
+          const targetOrder = ids.indexOf(item.announcement_id.toString());
+          if (targetOrder === -1) return;
+
+          let meta: any = {};
+          try {
+            if (item.content && item.content.trim().startsWith("{")) {
+              meta = JSON.parse(item.content);
+            } else {
+              meta = { description: item.content };
+            }
+          } catch {
+            meta = { description: item.content };
+          }
+
+          meta.sortOrder = targetOrder;
+          delete meta.isPinned;
+
+          await prisma.announcement.update({
+            where: { announcement_id: item.announcement_id },
+            data: {
+              content: JSON.stringify(meta),
+            },
+          });
+        })
+      );
+
+      return NextResponse.json({ success: true, count: ids.length });
+    }
+
+    // Mode 3: Quick toggle showOnLoginPage ({ toggleLoginPageId: string } or { id, showOnLoginPage: boolean })
+    const targetLoginPageId = body.toggleLoginPageId
+      ? String(body.toggleLoginPageId)
+      : body.id && body.showOnLoginPage !== undefined
+      ? String(body.id)
+      : null;
+
+    if (targetLoginPageId) {
+      const existing = await prisma.announcement.findUnique({
+        where: { announcement_id: BigInt(targetLoginPageId) },
+        include: { company: true },
+      });
+
+      if (!existing) {
+        return NextResponse.json({ error: "Activity not found" }, { status: 404 });
+      }
+
+      if (isFactory && session?.companyId && existing.company_id !== BigInt(session.companyId)) {
+        return NextResponse.json(
+          { error: "Forbidden: Cannot modify activities of other companies" },
+          { status: 403 }
+        );
+      }
+
+      let meta: any = {};
+      try {
+        if (existing.content && existing.content.trim().startsWith("{")) {
+          meta = JSON.parse(existing.content);
+        } else {
+          meta = { description: existing.content };
+        }
+      } catch {
+        meta = { description: existing.content };
+      }
+
+      const nextShow =
+        body.showOnLoginPage !== undefined
+          ? Boolean(body.showOnLoginPage)
+          : !meta.showOnLoginPage;
+
+      meta.showOnLoginPage = nextShow;
+
+      const updated = await prisma.announcement.update({
+        where: { announcement_id: BigInt(targetLoginPageId) },
+        data: {
+          content: JSON.stringify(meta),
+        },
+        include: { company: true },
+      });
+
+      const updatedActivity = mapAnnouncementToActivity(updated);
+      return NextResponse.json({ success: true, activity: updatedActivity, showOnLoginPage: nextShow });
+    }
+
+    return NextResponse.json({ error: "Invalid PATCH request body" }, { status: 400 });
+  } catch (error) {
+    console.error("Failed to update activity ordering in database:", error);
+    return NextResponse.json({ error: "Failed to update activity ordering" }, { status: 500 });
   }
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useNotice } from "../../../NoticeDialog";
@@ -37,6 +38,7 @@ export type CourseActivity = {
   linkedEndDate?: string | null;
   registrationNote?: string | null;
   isVisibleOnDashboard?: boolean;
+  showOnLoginPage?: boolean;
   status?: string;
   companyId: string;
   companyCode: string;
@@ -93,6 +95,12 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
   const [activeActivity, setActiveActivity] = useState<CourseActivity | null>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
 
+  // Lightbox & Multi-Image Gallery states
+  const [lightboxIndex, setLightboxIndex] = useState<number>(0);
+  const [isLightboxHovered, setIsLightboxHovered] = useState<boolean>(false);
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState<boolean>(false);
+  const [fullscreenIndex, setFullscreenIndex] = useState<number>(0);
+
   // Form states
   const [formId, setFormId] = useState<string>("");
   const [formTitle, setFormTitle] = useState<string>("");
@@ -101,6 +109,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
   const [formLocation, setFormLocation] = useState<string>("");
   const [formDescription, setFormDescription] = useState<string>("");
   const [formIsVisibleOnDashboard, setFormIsVisibleOnDashboard] = useState<boolean>(true);
+  const [formShowOnLoginPage, setFormShowOnLoginPage] = useState<boolean>(false);
   const [selectedStatus, setSelectedStatus] = useState<"all" | "active" | "archived">("all");
 
   // Multi-image states
@@ -370,6 +379,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
     setFormLocation("");
     setFormDescription("");
     setFormIsVisibleOnDashboard(true);
+    setFormShowOnLoginPage(false);
 
     setFormIsCourseLinked(false);
     setFormLinkedPlanId("");
@@ -427,6 +437,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
     }
     setFormCompanyId(targetCompanyId);
     setFormIsVisibleOnDashboard(act.isVisibleOnDashboard !== false && act.status !== "ARCHIVED");
+    setFormShowOnLoginPage(Boolean(act.showOnLoginPage));
     setFormDate(act.date || "");
     setFormLocation(act.location || "");
     setFormDescription(act.description || "");
@@ -450,8 +461,65 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
   // View Activity Detail Modal
   const handleViewDetail = (act: CourseActivity) => {
     setActiveActivity(act);
+    setLightboxIndex(0);
+    setIsLightboxHovered(false);
+    setIsFullscreenOpen(false);
+    setFullscreenIndex(0);
     setIsDetailModalOpen(true);
   };
+
+  // Detail modal lightbox 5-second auto-advance (pauses on hover or manual interaction)
+  useEffect(() => {
+    if (!isDetailModalOpen || !activeActivity || isLightboxHovered) return;
+    const currentImages = activeActivity.images && activeActivity.images.length > 0
+      ? activeActivity.images
+      : activeActivity.imageUrl ? [activeActivity.imageUrl] : [];
+    if (currentImages.length <= 1) return;
+
+    const timer = setInterval(() => {
+      setLightboxIndex((prev) => (prev + 1) % currentImages.length);
+    }, 5000);
+
+    return () => clearInterval(timer);
+  }, [isDetailModalOpen, activeActivity, isLightboxHovered, lightboxIndex]);
+
+  // Keyboard navigation for lightbox and fullscreen view
+  useEffect(() => {
+    if (!isDetailModalOpen && !isFullscreenOpen) return;
+    const currentImages = activeActivity?.images && activeActivity.images.length > 0
+      ? activeActivity.images
+      : activeActivity?.imageUrl ? [activeActivity.imageUrl] : [];
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (isFullscreenOpen) {
+          setIsFullscreenOpen(false);
+        } else if (isDetailModalOpen) {
+          setIsDetailModalOpen(false);
+        }
+        return;
+      }
+
+      if (currentImages.length <= 1) return;
+
+      if (e.key === "ArrowLeft") {
+        if (isFullscreenOpen) {
+          setFullscreenIndex((prev) => (prev - 1 + currentImages.length) % currentImages.length);
+        } else {
+          setLightboxIndex((prev) => (prev - 1 + currentImages.length) % currentImages.length);
+        }
+      } else if (e.key === "ArrowRight") {
+        if (isFullscreenOpen) {
+          setFullscreenIndex((prev) => (prev + 1) % currentImages.length);
+        } else {
+          setLightboxIndex((prev) => (prev + 1) % currentImages.length);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isDetailModalOpen, isFullscreenOpen, activeActivity]);
 
   // Multiple files selection
   const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -595,6 +663,7 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
         linkedEndDate: formLinkedEndDate || null,
         registrationNote: formRegistrationNote.trim() || null,
         isVisibleOnDashboard: formIsVisibleOnDashboard,
+        showOnLoginPage: formShowOnLoginPage,
         status: formIsVisibleOnDashboard ? "PUBLISHED" : "ARCHIVED",
         companyId: formCompanyId || "center",
       };
@@ -1056,6 +1125,16 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                     </svg>
                   </div>
                 )}
+                {act.images && act.images.length > 1 && (
+                  <span className={styles.photoCountBadge} title={`${act.images.length} ${isThai ? "รูป" : "photos"}`}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <polyline points="21 15 16 10 5 21" />
+                    </svg>
+                    <span>{act.images.length} {isThai ? "รูป" : "photos"}</span>
+                  </span>
+                )}
               </div>
 
               <div className={styles.cardBody}>
@@ -1177,18 +1256,39 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                       {index + 1}
                     </td>
                     <td>
-                      {act.imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={act.imageUrl}
-                          alt={act.title}
-                          className={styles.tableThumb}
-                          onClick={() => handleViewDetail(act)}
-                          style={{ cursor: "pointer" }}
-                        />
-                      ) : (
-                        <div className={styles.tableThumbPlaceholder}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
-                      )}
+                      <div style={{ position: "relative", display: "inline-block" }}>
+                        {act.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={act.imageUrl}
+                            alt={act.title}
+                            className={styles.tableThumb}
+                            onClick={() => handleViewDetail(act)}
+                            style={{ cursor: "pointer" }}
+                          />
+                        ) : (
+                          <div className={styles.tableThumbPlaceholder}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
+                        )}
+                        {act.images && act.images.length > 1 && (
+                          <span
+                            style={{
+                              position: "absolute",
+                              bottom: -2,
+                              right: -2,
+                              background: "#0284c7",
+                              color: "#ffffff",
+                              fontSize: "0.62rem",
+                              fontWeight: 800,
+                              padding: "1px 5px",
+                              borderRadius: "9999px",
+                              boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
+                              pointerEvents: "none",
+                            }}
+                          >
+                            +{act.images.length}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ whiteSpace: "nowrap", fontWeight: 600 }}>
                       {act.formattedDate || act.date}
@@ -1342,24 +1442,113 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
               </button>
             </div>
 
-            <div className={styles.modalBody}>
-              {activeActivity.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={activeActivity.imageUrl}
-                  alt={activeActivity.title}
-                  className={styles.detailImageBanner}
-                />
-              ) : null}
+            {(() => {
+              const currentImages = activeActivity.images && activeActivity.images.length > 0
+                ? activeActivity.images
+                : activeActivity.imageUrl ? [activeActivity.imageUrl] : [];
+              const safeIdx = Math.min(lightboxIndex, Math.max(0, currentImages.length - 1));
 
-              <h2 style={{ fontSize: "1.35rem", fontWeight: 900, margin: 0, color: "var(--ui-30-ink)" }}>
-                {activeActivity.title}
-              </h2>
+              return (
+                <div className={styles.modalBody}>
+                  {/* Multi-Image Lightbox Gallery */}
+                  {currentImages.length > 0 ? (
+                    <div
+                      className={styles.lightboxGalleryContainer}
+                      onMouseEnter={() => setIsLightboxHovered(true)}
+                      onMouseLeave={() => setIsLightboxHovered(false)}
+                    >
+                      <div
+                        className={styles.lightboxMainStage}
+                        style={{ cursor: "pointer" }}
+                        onClick={() => {
+                          setFullscreenIndex(safeIdx);
+                          setIsFullscreenOpen(true);
+                        }}
+                        title={isThai ? "คลิกเพื่อดูรูปภาพขนาดเต็ม" : "Click to view full image"}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={currentImages[safeIdx]}
+                          alt={`${activeActivity.title} - ${safeIdx + 1}`}
+                          className={styles.lightboxMainImg}
+                        />
+
+                        <span className={styles.zoomHintBadge}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="15 3 21 3 21 9" />
+                            <polyline points="9 21 3 21 3 15" />
+                            <line x1="21" y1="3" x2="14" y2="10" />
+                            <line x1="3" y1="21" x2="10" y2="14" />
+                          </svg>
+                          {isThai ? "คลิกดูรูปใหญ่" : "Click to enlarge"}
+                        </span>
+
+                        {currentImages.length > 1 && (
+                          <>
+                            <button
+                              type="button"
+                              className={`${styles.lightboxNavBtn} ${styles.lightboxNavPrev}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLightboxIndex((prev) => (prev - 1 + currentImages.length) % currentImages.length);
+                              }}
+                              aria-label="Previous photo"
+                            >
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="15 18 9 12 15 6" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              className={`${styles.lightboxNavBtn} ${styles.lightboxNavNext}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLightboxIndex((prev) => (prev + 1) % currentImages.length);
+                              }}
+                              aria-label="Next photo"
+                            >
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="9 18 15 12 9 6" />
+                              </svg>
+                            </button>
+                            <span className={styles.lightboxCounter}>
+                              {safeIdx + 1} / {currentImages.length}
+                            </span>
+                          </>
+                        )}
+                      </div>
+
+                      {currentImages.length > 1 && (
+                        <div className={styles.lightboxThumbStrip}>
+                          {currentImages.map((img, idx) => (
+                            <button
+                              key={`${img}-${idx}`}
+                              type="button"
+                              className={`${styles.lightboxThumbBtn} ${safeIdx === idx ? styles.lightboxThumbBtnActive : ""}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLightboxIndex(idx);
+                              }}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={img} alt={`Thumb ${idx + 1}`} className={styles.lightboxThumbImg} />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+
+                  <h2 style={{ fontSize: "1.35rem", fontWeight: 900, margin: 0, color: "var(--ui-30-ink)" }}>
+                    {activeActivity.title}
+                  </h2>
 
               <div className={styles.detailDescription}>
                 {activeActivity.description}
               </div>
             </div>
+            );
+          })()}
 
             <div className={styles.modalFooter}>
               {canManageActivity(activeActivity) && (
@@ -1771,6 +1960,39 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
                     </div>
                   </label>
                 </div>
+
+                {/* Show on Login Page Toggle */}
+                <div className={`${styles.visibilityToggleCard} ${formShowOnLoginPage ? styles.visibilityToggleCardActive : styles.visibilityToggleCardArchived}`} style={{ marginTop: "12px" }}>
+                  <label className={styles.visibilityCheckboxLabel}>
+                    <input
+                      type="checkbox"
+                      checked={formShowOnLoginPage}
+                      onChange={(e) => setFormShowOnLoginPage(e.target.checked)}
+                      className={styles.visibilityCheckbox}
+                    />
+                    <div className={styles.visibilityTextGroup}>
+                      <div className={styles.visibilityHeaderRow}>
+                        <span className={styles.visibilityTitle}>
+                          {isThai ? "เลือกไปแสดงหน้า Login" : "Show on Login Page"}
+                        </span>
+                        <span className={formShowOnLoginPage ? styles.statusActiveBadge : styles.statusArchivedBadge}>
+                          {formShowOnLoginPage
+                            ? (isThai ? "แสดงหน้า Login" : "Visible on Login")
+                            : (isThai ? "ไม่แสดงหน้า Login" : "Hidden on Login")}
+                        </span>
+                      </div>
+                      <span className={styles.visibilitySubtitle}>
+                        {formShowOnLoginPage
+                          ? (isThai
+                              ? "กิจกรรมนี้จะถูกนำไปแสดงในกล่องข่าวสารและกิจกรรมประชาสัมพันธ์บนหน้าเข้าสู่ระบบ (Login Page)"
+                              : "This activity will be featured on the system Login page for public announcement")
+                          : (isThai
+                              ? "ไม่แสดงกิจกรรมนี้บนหน้า Login (ยังคงแสดงบน Dashboard หากเปิดตัวเลือกด้านบน)"
+                              : "Do not display this activity on the Login page")}
+                      </span>
+                    </div>
+                  </label>
+                </div>
               </div>
 
               <div className={styles.modalFooter}>
@@ -1797,6 +2019,126 @@ export default function NewActivitiesReport({ initialYear }: ReportModuleProps) 
           </div>
         </div>
       )}
+
+      {/* Fullscreen Image Lightbox Modal */}
+      {isFullscreenOpen && activeActivity && (() => {
+        const currentImages = activeActivity.images && activeActivity.images.length > 0
+          ? activeActivity.images
+          : activeActivity.imageUrl ? [activeActivity.imageUrl] : [];
+        const safeFsIdx = Math.min(fullscreenIndex, Math.max(0, currentImages.length - 1));
+
+        if (currentImages.length === 0 || typeof document === "undefined") return null;
+
+        return createPortal(
+          <div
+            className={styles.fullscreenLightboxOverlay}
+            onClick={() => {
+              setLightboxIndex(safeFsIdx);
+              setIsFullscreenOpen(false);
+            }}
+          >
+            <div
+              className={styles.fullscreenLightboxHeader}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={styles.fullscreenLightboxTitle}>
+                {activeActivity.title}
+              </div>
+              <div className={styles.fullscreenLightboxControls}>
+                <span className={styles.fullscreenLightboxCounter}>
+                  {safeFsIdx + 1} / {currentImages.length}
+                </span>
+                <button
+                  type="button"
+                  className={styles.fullscreenLightboxCloseBtn}
+                  onClick={() => {
+                    setLightboxIndex(safeFsIdx);
+                    setIsFullscreenOpen(false);
+                  }}
+                  aria-label="Close"
+                  title={isThai ? "ปิด (Esc)" : "Close (Esc)"}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div
+              className={styles.fullscreenLightboxStage}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {currentImages.length > 1 && (
+                <button
+                  type="button"
+                  className={`${styles.fullscreenLightboxNavBtn} ${styles.fullscreenLightboxNavPrev}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFullscreenIndex((prev) => (prev - 1 + currentImages.length) % currentImages.length);
+                  }}
+                  aria-label="Previous photo"
+                  title={isThai ? "รูปก่อนหน้า (ลูกศรซ้าย)" : "Previous photo (Left arrow)"}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                </button>
+              )}
+
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={currentImages[safeFsIdx]}
+                alt={`${activeActivity.title} - ${safeFsIdx + 1}`}
+                className={styles.fullscreenLightboxImg}
+                onClick={(e) => e.stopPropagation()}
+              />
+
+              {currentImages.length > 1 && (
+                <button
+                  type="button"
+                  className={`${styles.fullscreenLightboxNavBtn} ${styles.fullscreenLightboxNavNext}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFullscreenIndex((prev) => (prev + 1) % currentImages.length);
+                  }}
+                  aria-label="Next photo"
+                  title={isThai ? "รูปถัดไป (ลูกศรขวา)" : "Next photo (Right arrow)"}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {currentImages.length > 1 && (
+              <div
+                className={styles.fullscreenLightboxThumbStrip}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {currentImages.map((img, idx) => (
+                  <button
+                    key={`fs-thumb-${img}-${idx}`}
+                    type="button"
+                    className={`${styles.fullscreenLightboxThumbBtn} ${safeFsIdx === idx ? styles.fullscreenLightboxThumbBtnActive : ""}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFullscreenIndex(idx);
+                    }}
+                    title={`Photo ${idx + 1}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img} alt={`Thumb ${idx + 1}`} className={styles.fullscreenLightboxThumbImg} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>,
+          document.body
+        );
+      })()}
     </section>
   );
 }

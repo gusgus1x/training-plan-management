@@ -1094,7 +1094,10 @@ const thaiUiDictionary: Record<string, string> = {
   "Training Session": "รอบการอบรม",
   "Select training session": "เลือกรอบการอบรม",
   "Select course first": "เลือกหลักสูตรก่อน",
-  "Summary Dashboard": "แดชบอร์ดสรุปผล",
+  "Summary Dashboard": "แดชบอร์ดสรุปภาพรวม",
+  "Executive Financial & Attendance Overview": "สรุปภาพรวมงบประมาณ ค่าใช้จ่าย และการเข้าอบรม",
+  "Monitor planned course budgets, actual spending, balance variances, and completed training attendance in one unified dashboard.":
+    "ติดตามงบประมาณตามแผน ค่าใช้จ่ายจริง ยอดคงเหลือ และสถิติการเข้าอบรมในแดชบอร์ดเดียว",
   "Training attendance overview": "ภาพรวมการเข้าอบรม",
   "View attended and absent participant totals from completed Training Actual records.":
     "ดูจำนวนผู้เข้าอบรมและไม่เข้าอบรมจากข้อมูลการอบรมจริงที่บันทึกเสร็จแล้ว",

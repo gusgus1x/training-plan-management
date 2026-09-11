@@ -2725,3 +2725,216 @@
   border: 1px solid rgba(217, 119, 6, 0.3);
   white-space: nowrap;
 }
+
+
+/* ==========================================================================
+   Fullscreen Image Lightbox Modal
+   ========================================================================== */
+
+.fullscreenLightboxOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000000;
+  background: rgba(3, 7, 18, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  animation: fsFadeIn 0.25s ease-out;
+}
+
+@keyframes fsFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fullscreenLightboxHeader {
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: #ffffff;
+  padding: 8px 0;
+  z-index: 10;
+}
+
+.fullscreenLightboxTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+}
+
+.fullscreenLightboxControls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.fullscreenLightboxCounter {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.fullscreenLightboxCloseBtn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fullscreenLightboxCloseBtn:hover {
+  background: rgba(239, 68, 68, 0.85);
+  border-color: #ef4444;
+  transform: scale(1.08);
+}
+
+.fullscreenLightboxStage {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 10px 0;
+}
+
+.fullscreenLightboxImg {
+  max-width: 92vw;
+  max-height: 75vh;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+  user-select: none;
+  transition: transform 0.3s ease, opacity 0.25s ease;
+}
+
+.fullscreenLightboxNavBtn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.fullscreenLightboxNavBtn:hover {
+  background: rgba(56, 189, 248, 0.9);
+  color: #0f172a;
+  transform: translateY(-50%) scale(1.1);
+  border-color: #38bdf8;
+}
+
+.fullscreenLightboxNavPrev {
+  left: 20px;
+}
+
+.fullscreenLightboxNavNext {
+  right: 20px;
+}
+
+.fullscreenLightboxThumbStrip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  max-width: 90vw;
+  overflow-x: auto;
+  padding: 8px 12px;
+  scrollbar-width: thin;
+}
+
+.fullscreenLightboxThumbBtn {
+  position: relative;
+  width: 60px;
+  height: 44px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  background: #1e293b;
+  opacity: 0.55;
+  transition: all 0.2s ease;
+}
+
+.fullscreenLightboxThumbBtn:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+.fullscreenLightboxThumbBtnActive {
+  opacity: 1;
+  border-color: #38bdf8;
+  transform: scale(1.1);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+}
+
+.fullscreenLightboxThumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.zoomHintBadge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+  z-index: 4;
+}
+
+.lightboxMainStage:hover .zoomHintBadge {
+  opacity: 1;
+  background: rgba(2, 132, 199, 0.9);
+  border-color: #38bdf8;
+}

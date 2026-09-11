@@ -74,6 +74,8 @@ export default function NewActivities({
   const [activeActivity, setActiveActivity] = useState<CourseActivity | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number>(0);
   const [isLightboxHovered, setIsLightboxHovered] = useState<boolean>(false);
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState<boolean>(false);
+  const [fullscreenIndex, setFullscreenIndex] = useState<number>(0);
   const [cardImageTick, setCardImageTick] = useState<number>(0);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const detailModalDialogRef = useRef<HTMLDivElement>(null);
@@ -102,6 +104,15 @@ export default function NewActivities({
   const [formLinkedEndDate, setFormLinkedEndDate] = useState<string>("");
   const [formRegistrationNote, setFormRegistrationNote] = useState<string>("");
   const [formIsVisibleOnDashboard, setFormIsVisibleOnDashboard] = useState<boolean>(true);
+  const [formShowOnLoginPage, setFormShowOnLoginPage] = useState<boolean>(false);
+  const [togglingLoginPageId, setTogglingLoginPageId] = useState<string | null>(null);
+
+  // Reorder Mode state
+  const [isReorderMode, setIsReorderMode] = useState<boolean>(false);
+  const [reorderList, setReorderList] = useState<CourseActivity[]>([]);
+  const [isSavingReorder, setIsSavingReorder] = useState<boolean>(false);
+  const [draggedActId, setDraggedActId] = useState<string | null>(null);
+  const [dragOverActId, setDragOverActId] = useState<string | null>(null);
 
   // Determine if a linked training course has already ended (date/time passed or completed/cancelled)
   const isActivityCourseEnded = (act: CourseActivity | null): boolean => {
@@ -447,6 +458,44 @@ export default function NewActivities({
     return () => clearInterval(timer);
   }, [isDetailModalOpen, activeActivity, isLightboxHovered, lightboxIndex]);
 
+  // Keyboard navigation for lightbox and fullscreen view
+  useEffect(() => {
+    if (!isDetailModalOpen && !isFullscreenOpen) return;
+    const currentImages = activeActivity?.images && activeActivity.images.length > 0
+      ? activeActivity.images
+      : activeActivity?.imageUrl ? [activeActivity.imageUrl] : [];
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (isFullscreenOpen) {
+          setIsFullscreenOpen(false);
+        } else if (isDetailModalOpen) {
+          setIsDetailModalOpen(false);
+        }
+        return;
+      }
+
+      if (currentImages.length <= 1) return;
+
+      if (e.key === "ArrowLeft") {
+        if (isFullscreenOpen) {
+          setFullscreenIndex((prev) => (prev - 1 + currentImages.length) % currentImages.length);
+        } else {
+          setLightboxIndex((prev) => (prev - 1 + currentImages.length) % currentImages.length);
+        }
+      } else if (e.key === "ArrowRight") {
+        if (isFullscreenOpen) {
+          setFullscreenIndex((prev) => (prev + 1) % currentImages.length);
+        } else {
+          setLightboxIndex((prev) => (prev + 1) % currentImages.length);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isDetailModalOpen, isFullscreenOpen, activeActivity]);
+
   // Ensure detail modal always starts scrolled to the very top (so images are 100% visible)
   useEffect(() => {
     if (isDetailModalOpen) {
@@ -481,6 +530,7 @@ export default function NewActivities({
     setFormLinkedTrainingDate("");
     setFormLinkedEndDate("");
     setFormRegistrationNote("");
+    setFormShowOnLoginPage(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -508,6 +558,7 @@ export default function NewActivities({
     setFormLocation("");
     setFormDescription("");
     setFormIsVisibleOnDashboard(true);
+    setFormShowOnLoginPage(false);
     setFormIsCourseLinked(false);
     setFormLinkedPlanId("");
     setFormLinkedCourseId("");
@@ -566,6 +617,7 @@ export default function NewActivities({
     }
     setFormCompanyId(targetCompanyId);
     setFormIsVisibleOnDashboard(activity.isVisibleOnDashboard !== false && activity.status !== "ARCHIVED");
+    setFormShowOnLoginPage(Boolean(activity.showOnLoginPage));
     setFormDate(activity.date || "");
     setFormLocation(activity.location || "");
     setFormDescription(activity.description || "");
@@ -753,6 +805,7 @@ export default function NewActivities({
         linkedEndDate: formLinkedEndDate || null,
         registrationNote: formRegistrationNote.trim() || null,
         isVisibleOnDashboard: formIsVisibleOnDashboard,
+        showOnLoginPage: formShowOnLoginPage,
         status: formIsVisibleOnDashboard ? "PUBLISHED" : "ARCHIVED",
         companyId: formCompanyId,
       };
@@ -992,10 +1045,184 @@ export default function NewActivities({
     }
   };
 
+  // Quick 1-click Move activity to first position
+  const handleQuickMoveToFirst = async (e: React.MouseEvent, actId: string, title: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      const res = await fetch("/api/course-activities", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ moveToFirstId: actId }),
+      });
+
+      if (res.ok) {
+        toast.success(
+          isThai
+            ? `ย้าย "${title}" ไปอยู่อันดับแรกเรียบร้อยแล้ว`
+            : `Moved "${title}" to the first position`
+        );
+        // Instantly reorder local array for instant feedback
+        setActivities((prev) => {
+          const index = prev.findIndex((a) => a.id === actId);
+          if (index <= 0) return prev;
+          const target = prev[index];
+          const rest = prev.filter((a) => a.id !== actId);
+          return [target, ...rest];
+        });
+        await fetchActivities();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || (isThai ? "ไม่สามารถย้ายลำดับกิจกรรมได้" : "Failed to move activity"));
+      }
+    } catch {
+      toast.error(isThai ? "เกิดข้อผิดพลาดในการย้ายลำดับกิจกรรม" : "Error moving activity");
+    }
+  };
+
+  // Quick toggle show on login page directly from activity card
+  const handleQuickToggleLoginPage = async (e: React.MouseEvent, act: CourseActivity) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!canManageActivity(act)) return;
+
+    try {
+      setTogglingLoginPageId(act.id);
+      const nextVal = !act.showOnLoginPage;
+      const res = await fetch("/api/course-activities", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ toggleLoginPageId: act.id }),
+      });
+
+      if (res.ok) {
+        toast.success(
+          nextVal
+            ? (isThai ? `เลือกนำ "${act.title}" ไปแสดงบนหน้า Login แล้ว` : `Set "${act.title}" to show on Login page`)
+            : (isThai ? `ยกเลิกการแสดง "${act.title}" บนหน้า Login แล้ว` : `Removed "${act.title}" from Login page`)
+        );
+        setActivities((prev) =>
+          prev.map((item) =>
+            item.id === act.id ? { ...item, showOnLoginPage: nextVal } : item
+          )
+        );
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || (isThai ? "ไม่สามารถเปลี่ยนการแสดงผลหน้า Login ได้" : "Failed to toggle login page display"));
+      }
+    } catch {
+      toast.error(isThai ? "เกิดข้อผิดพลาดในการเปลี่ยนการแสดงผลหน้า Login" : "Error toggling login page display");
+    } finally {
+      setTogglingLoginPageId(null);
+    }
+  };
+
+  // Open / Close Reorder Mode
+  const handleToggleReorderMode = () => {
+    if (!isReorderMode) {
+      // Enter reorder mode: initialize list with current filtered activities
+      setReorderList([...filteredActivities]);
+      setIsReorderMode(true);
+    } else {
+      // Exit reorder mode
+      setIsReorderMode(false);
+      setDraggedActId(null);
+      setDragOverActId(null);
+    }
+  };
+
+  // Move single item to the top in reorder mode
+  const handleMoveToTop = (e: React.MouseEvent, actId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setReorderList((prev) => {
+      const index = prev.findIndex((item) => item.id === actId);
+      if (index <= 0) return prev;
+      const target = prev[index];
+      const rest = prev.filter((item) => item.id !== actId);
+      return [target, ...rest];
+    });
+  };
+
+  // Drag and Drop handlers
+  const handleDragStart = (e: React.DragEvent, actId: string) => {
+    setDraggedActId(actId);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", actId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, actId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverActId !== actId) {
+      setDragOverActId(actId);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent, targetActId: string) => {
+    e.preventDefault();
+    const sourceId = draggedActId || e.dataTransfer.getData("text/plain");
+    setDraggedActId(null);
+    setDragOverActId(null);
+
+    if (!sourceId || sourceId === targetActId) return;
+
+    setReorderList((prev) => {
+      const sourceIndex = prev.findIndex((item) => item.id === sourceId);
+      const targetIndex = prev.findIndex((item) => item.id === targetActId);
+      if (sourceIndex === -1 || targetIndex === -1) return prev;
+
+      const updated = [...prev];
+      const [movedItem] = updated.splice(sourceIndex, 1);
+      updated.splice(targetIndex, 0, movedItem);
+      return updated;
+    });
+  };
+
+  const handleDragEnd = () => {
+    setDraggedActId(null);
+    setDragOverActId(null);
+  };
+
+  // Save batch reorder to database
+  const handleSaveReorder = async () => {
+    try {
+      setIsSavingReorder(true);
+      const reorderedIds = reorderList.map((a) => a.id);
+
+      const res = await fetch("/api/course-activities", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reorderedIds }),
+      });
+
+      if (res.ok) {
+        toast.success(isThai ? "บันทึกลำดับกิจกรรมเรียบร้อยแล้ว" : "Activities reordered successfully");
+        setIsReorderMode(false);
+        await fetchActivities();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || (isThai ? "บันทึกลำดับไม่สำเร็จ" : "Failed to save order"));
+      }
+    } catch {
+      toast.error(isThai ? "เกิดข้อผิดพลาดในการบันทึก" : "Error saving order");
+    } finally {
+      setIsSavingReorder(false);
+    }
+  };
+
   const renderActivityCard = (act: CourseActivity) => (
     <div
       className={styles.activityCard}
-      onClick={() => handleOpenDetail(act)}
+      onClick={() => {
+        if (isReorderMode) return;
+        handleOpenDetail(act);
+      }}
       title={isThai ? "คลิกเพื่อดูรายละเอียด" : "Click to view details"}
     >
       {/* Card Image Banner */}
@@ -1019,8 +1246,8 @@ export default function NewActivities({
                   const fb = document.createElement("div");
                   fb.className = "img-load-fallback";
                   fb.style.cssText =
-                    "display:flex;align-items:center;justify-content:center;height:100%;width:100%;color:var(--ui-30-muted,#94a3b8);font-size:0.85rem;font-weight:600;background:var(--ui-60-surface-soft,#f1f5f9);";
-                  fb.innerText = isThai ? "ไม่สามารถแสดงรูปภาพได้" : "Image unavailable";
+                    "display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;width:100%;color:var(--ui-30-muted,#94a3b8);font-size:0.8rem;font-weight:600;background:var(--ui-60-surface-soft,#f1f5f9);gap:6px;";
+                  fb.innerHTML = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span>${isThai ? "ไม่มีรูปภาพ" : "No Image"}</span>`;
                   parent.appendChild(fb);
                 }
               }}
@@ -1068,6 +1295,21 @@ export default function NewActivities({
               <span>{isThai ? "เปิดรับสมัครอบรม" : "Enrollment Open"}</span>
             </span>
           )
+        )}
+
+        {/* Login Page showcase badge */}
+        {act.showOnLoginPage && (
+          <span
+            className={styles.loginPageBadge}
+            title={isThai ? "แสดงบนหน้า Login" : "Shown on Login Page"}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+              <polyline points="10 17 15 12 10 7" />
+              <line x1="15" y1="12" x2="3" y2="12" />
+            </svg>
+            <span>{isThai ? "หน้า Login" : "Login Page"}</span>
+          </span>
         )}
 
         {/* Floating company badge with frosted glass */}
@@ -1232,6 +1474,21 @@ export default function NewActivities({
 
           {canManageActivity(act) && (
             <div className={styles.cardActionsRow}>
+              {/* Quick Move to First button (shown if not already the first activity) */}
+              {filteredActivities.length > 1 && filteredActivities[0]?.id !== act.id && (
+                <button
+                  type="button"
+                  className={styles.cardActionBtnMoveFirst}
+                  onClick={(e) => handleQuickMoveToFirst(e, act.id, act.title)}
+                  title={isThai ? "ย้ายกิจกรรมนี้ไปอยู่อันดับแรกทันที" : "Move activity to first position"}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="18 15 12 9 6 15" />
+                  </svg>
+                  <span>{isThai ? "ไปอันแรก" : "To Top"}</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 className={`${styles.cardActionBtn} ${styles.cardActionBtnArchive}`}
@@ -1249,6 +1506,26 @@ export default function NewActivities({
                   <path d="M9.5 13.5L12 16l2.5-2.5" />
                 </svg>
               </button>
+
+              {/* Quick toggle Login Page showcase button */}
+              <button
+                type="button"
+                className={`${styles.cardActionBtn} ${act.showOnLoginPage ? styles.cardActionBtnLoginActive : styles.cardActionBtnLogin}`}
+                onClick={(e) => handleQuickToggleLoginPage(e, act)}
+                disabled={togglingLoginPageId === act.id}
+                title={
+                  act.showOnLoginPage
+                    ? (isThai ? "กำลังแสดงบนหน้า Login (คลิกเพื่อยกเลิก)" : "Showing on Login page (Click to remove)")
+                    : (isThai ? "คลิกเพื่อนำไปแสดงบนหน้า Login" : "Click to show on Login page")
+                }
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                  <polyline points="10 17 15 12 10 7" />
+                  <line x1="15" y1="12" x2="3" y2="12" />
+                </svg>
+              </button>
+
               <button
                 type="button"
                 className={`${styles.cardActionBtn} ${styles.cardActionBtnEdit}`}
@@ -1302,6 +1579,22 @@ export default function NewActivities({
           </div>
 
           <div className={styles.headerActions}>
+            {/* Reorder Button (Admins / HR, when > 1 activity) */}
+            {!isEmployee && filteredActivities.length > 1 && (
+              <button
+                type="button"
+                className={`${styles.reorderHeaderBtn} ${isReorderMode ? styles.reorderHeaderBtnActive : ""}`}
+                onClick={handleToggleReorderMode}
+                title={isThai ? "จัดเรียงลำดับกิจกรรม" : "Reorder Activities"}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M7 15l5 5 5-5" />
+                  <path d="M7 9l5-5 5 5" />
+                </svg>
+                <span>{isReorderMode ? (isThai ? "ปิดโหมดจัดเรียง" : "Exit Reorder") : (isThai ? "จัดเรียงลำดับ" : "Reorder")}</span>
+              </button>
+            )}
+
             {/* Add Activity Button (only for Admins / HR) */}
             {!isEmployee && (
               <button
@@ -1432,8 +1725,126 @@ export default function NewActivities({
         </div>
       </div>
 
+      {/* Reorder Mode Control Bar */}
+      {isReorderMode && (
+        <div className={styles.reorderControlBar}>
+          <div className={styles.reorderControlInfo}>
+            <div className={styles.reorderControlTitleRow}>
+              <span className={styles.reorderModeIconBadge}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M7 15l5 5 5-5" />
+                  <path d="M7 9l5-5 5 5" />
+                </svg>
+              </span>
+              <span className={styles.reorderControlTitle}>
+                {isThai ? "โหมดจัดเรียงลำดับกิจกรรม" : "Activity Reorder Mode"}
+              </span>
+              <span className={styles.reorderCountBadge}>
+                {reorderList.length} {isThai ? "กิจกรรม" : "items"}
+              </span>
+            </div>
+            <p className={styles.reorderGuideText}>
+              {isThai
+                ? "ลากวางการ์ดเพื่อสลับตำแหน่ง หรือคลิก \"ย้ายไปอันแรก\" บนการ์ดที่ต้องการ เพื่อดันขึ้นอันดับ 1 ทันที เมื่อจัดเรียงเสร็จแล้วให้กดบันทึกลำดับ"
+                : "Drag cards to rearrange, or click \"Move to Top\" to place an activity first. Click Save Order when done."}
+            </p>
+          </div>
+          <div className={styles.reorderControlActions}>
+            <button
+              type="button"
+              className={styles.reorderCancelBtn}
+              onClick={handleToggleReorderMode}
+              disabled={isSavingReorder}
+            >
+              {isThai ? "ยกเลิก" : "Cancel"}
+            </button>
+            <button
+              type="button"
+              className={styles.reorderSaveBtn}
+              onClick={handleSaveReorder}
+              disabled={isSavingReorder}
+            >
+              {isSavingReorder ? (
+                <span>{isThai ? "กำลังบันทึก..." : "Saving..."}</span>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  <span>{isThai ? "บันทึกลำดับ" : "Save Order"}</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Empty State or Cards Display */}
-      {filteredActivities.length === 0 ? (
+      {isReorderMode ? (
+        /* Clean Reorder Mode Grid with Dedicated Top Bars */
+        <div className={styles.reorderCardsGrid}>
+          {reorderList.map((act, index) => {
+            const isDragging = draggedActId === act.id;
+            const isDragOver = dragOverActId === act.id;
+            const isFirst = index === 0;
+            return (
+              <div
+                key={act.id}
+                className={`${styles.reorderCardItem} ${isDragging ? styles.cardDragging : ""} ${isDragOver ? styles.cardDragOver : ""}`}
+                draggable
+                onDragStart={(e) => handleDragStart(e, act.id)}
+                onDragOver={(e) => handleDragOver(e, act.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, act.id)}
+                onDragEnd={handleDragEnd}
+              >
+                {/* Dedicated Reorder Top Bar - outside and above the image */}
+                <div className={styles.reorderCardTopBar}>
+                  <div className={styles.reorderTopBarLeft}>
+                    <span className={styles.dragGripIcon} title={isThai ? "คลิกลากเพื่อย้ายตำแหน่ง" : "Drag to move"}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="9" cy="5" r="1.5" />
+                        <circle cx="9" cy="12" r="1.5" />
+                        <circle cx="9" cy="19" r="1.5" />
+                        <circle cx="15" cy="5" r="1.5" />
+                        <circle cx="15" cy="12" r="1.5" />
+                        <circle cx="15" cy="19" r="1.5" />
+                      </svg>
+                    </span>
+                    <span className={`${styles.orderRankBadge} ${isFirst ? styles.orderRankBadgeFirst : ""}`}>
+                      {isThai ? `อันดับที่ ${index + 1}` : `Rank #${index + 1}`}
+                    </span>
+                    {isFirst && (
+                      <span className={styles.firstPlacePill}>
+                        {isThai ? "อยู่อันแรก" : "First"}
+                      </span>
+                    )}
+                  </div>
+
+                  {!isFirst && (
+                    <button
+                      type="button"
+                      className={styles.moveToFirstBtn}
+                      onClick={(e) => handleMoveToTop(e, act.id)}
+                      title={isThai ? "ย้ายกิจกรรมนี้ไปอยู่อันดับแรกทันที" : "Move to first position"}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="18 15 12 9 6 15" />
+                      </svg>
+                      <span>{isThai ? "ย้ายไปอันแรก" : "Move to Top"}</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Card Container */}
+                <div className={styles.reorderCardContent}>
+                  {renderActivityCard(act)}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : filteredActivities.length === 0 ? (
         <div className={styles.emptyState}>
           <div className={styles.emptyIconCircle}>
             <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -1490,8 +1901,8 @@ export default function NewActivities({
         </div>
       )}
 
-      {/* Carousel Dots Indicator (shown when more than 3 activities) */}
-      {filteredActivities.length > 3 && (
+      {/* Carousel Dots Indicator (shown when more than 3 activities and not reordering) */}
+      {!isReorderMode && filteredActivities.length > 3 && (
         <div className={styles.paginationWrapper}>
           <div className={styles.carouselDots}>
             {filteredActivities.map((_, idx) => (
@@ -1881,6 +2292,46 @@ export default function NewActivities({
                     </div>
                   </label>
                 </div>
+
+                {/* Show on Login Page Toggle */}
+                <div className={`${styles.loginPageToggleCard} ${formShowOnLoginPage ? styles.loginPageToggleCardActive : styles.loginPageToggleCardInactive}`}>
+                  <label className={styles.visibilityCheckboxLabel}>
+                    <input
+                      type="checkbox"
+                      checked={formShowOnLoginPage}
+                      onChange={(e) => setFormShowOnLoginPage(e.target.checked)}
+                      className={styles.visibilityCheckbox}
+                    />
+                    <div className={styles.visibilityTextGroup}>
+                      <div className={styles.visibilityHeaderRow}>
+                        <span className={styles.visibilityTitle}>
+                          <span className={styles.loginToggleIconBadge}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                              <polyline points="10 17 15 12 10 7" />
+                              <line x1="15" y1="12" x2="3" y2="12" />
+                            </svg>
+                          </span>
+                          {isThai ? "แสดงบนหน้า Login (Show on Login Page)" : "Display on Login Page"}
+                        </span>
+                        <span className={formShowOnLoginPage ? styles.statusLoginActiveBadge : styles.statusLoginInactiveBadge}>
+                          {formShowOnLoginPage
+                            ? (isThai ? "เปิดแสดงหน้า Login" : "Active on Login Page")
+                            : (isThai ? "ไม่แสดงหน้า Login" : "Not shown on Login")}
+                        </span>
+                      </div>
+                      <span className={styles.visibilitySubtitle}>
+                        {formShowOnLoginPage
+                          ? (isThai
+                              ? "กิจกรรมนี้จะถูกนำไปแสดงในกล่องกิจกรรมและข่าวสารบนหน้าเข้าสู่ระบบ (Login) ให้ผู้ใช้ทั่วไปมองเห็นได้"
+                              : "This activity will be showcased in the activities box on the Login page.")
+                          : (isThai
+                              ? "ไม่นำกิจกรรมนี้ไปแสดงที่หน้าเข้าสู่ระบบ (หน้า Login จะแสดงเฉพาะกิจกรรมที่ถูกเลือกเท่านั้น)"
+                              : "This activity will not appear on the Login page.")}
+                      </span>
+                    </div>
+                  </label>
+                </div>
               </div>
 
               <div className={styles.modalFooter}>
@@ -1981,13 +2432,30 @@ export default function NewActivities({
                     onMouseEnter={() => setIsLightboxHovered(true)}
                     onMouseLeave={() => setIsLightboxHovered(false)}
                   >
-                    <div className={styles.lightboxMainStage}>
+                    <div
+                      className={styles.lightboxMainStage}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => {
+                        setFullscreenIndex(safeIdx);
+                        setIsFullscreenOpen(true);
+                      }}
+                      title={isThai ? "คลิกเพื่อดูรูปภาพขนาดเต็ม" : "Click to view full image"}
+                    >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={currentImages[safeIdx]}
                         alt={`${activeActivity.title} - ${safeIdx + 1}`}
                         className={styles.lightboxMainImg}
                       />
+                      <span className={styles.zoomHintBadge}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="15 3 21 3 21 9" />
+                          <polyline points="9 21 3 21 3 15" />
+                          <line x1="21" y1="3" x2="14" y2="10" />
+                          <line x1="3" y1="21" x2="10" y2="14" />
+                        </svg>
+                        {isThai ? "คลิกดูรูปใหญ่" : "Click to enlarge"}
+                      </span>
 
                       {currentImages.length > 1 && (
                         <>
@@ -2229,6 +2697,22 @@ export default function NewActivities({
                     </button>
                     <button
                       type="button"
+                      className={`${styles.loginPageActionBtn} ${activeActivity.showOnLoginPage ? styles.loginPageActionBtnActive : ""}`}
+                      onClick={(e) => {
+                        handleQuickToggleLoginPage(e, activeActivity);
+                        setActiveActivity((prev) => prev ? { ...prev, showOnLoginPage: !prev.showOnLoginPage } : null);
+                      }}
+                      title={activeActivity.showOnLoginPage ? (isThai ? "คลิกเพื่อยกเลิกการแสดงบนหน้า Login" : "Remove from Login page") : (isThai ? "คลิกเพื่อนำไปแสดงบนหน้า Login" : "Show on Login page")}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+                        <polyline points="10 17 15 12 10 7" />
+                        <line x1="15" y1="12" x2="3" y2="12" />
+                      </svg>
+                      <span>{activeActivity.showOnLoginPage ? (isThai ? "หน้า Login: แสดงอยู่" : "On Login") : (isThai ? "แสดงหน้า Login" : "Show on Login")}</span>
+                    </button>
+                    <button
+                      type="button"
                       className={styles.deleteActionBtn}
                       onClick={(e) => handleDelete(e, activeActivity)}
                     >
@@ -2249,6 +2733,126 @@ export default function NewActivities({
                 </button>
               </div>
             </div>
+          </div>,
+          document.body
+        );
+      })()}
+
+      {/* Fullscreen Image Lightbox Modal */}
+      {isFullscreenOpen && activeActivity && (() => {
+        const currentImages = activeActivity.images && activeActivity.images.length > 0
+          ? activeActivity.images
+          : activeActivity.imageUrl ? [activeActivity.imageUrl] : [];
+        const safeFsIdx = Math.min(fullscreenIndex, Math.max(0, currentImages.length - 1));
+
+        if (currentImages.length === 0 || typeof document === "undefined") return null;
+
+        return createPortal(
+          <div
+            className={styles.fullscreenLightboxOverlay}
+            onClick={() => {
+              setLightboxIndex(safeFsIdx);
+              setIsFullscreenOpen(false);
+            }}
+          >
+            <div
+              className={styles.fullscreenLightboxHeader}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className={styles.fullscreenLightboxTitle}>
+                {activeActivity.title}
+              </div>
+              <div className={styles.fullscreenLightboxControls}>
+                <span className={styles.fullscreenLightboxCounter}>
+                  {safeFsIdx + 1} / {currentImages.length}
+                </span>
+                <button
+                  type="button"
+                  className={styles.fullscreenLightboxCloseBtn}
+                  onClick={() => {
+                    setLightboxIndex(safeFsIdx);
+                    setIsFullscreenOpen(false);
+                  }}
+                  aria-label="Close"
+                  title={isThai ? "ปิด (Esc)" : "Close (Esc)"}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div
+              className={styles.fullscreenLightboxStage}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {currentImages.length > 1 && (
+                <button
+                  type="button"
+                  className={`${styles.fullscreenLightboxNavBtn} ${styles.fullscreenLightboxNavPrev}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFullscreenIndex((prev) => (prev - 1 + currentImages.length) % currentImages.length);
+                  }}
+                  aria-label="Previous photo"
+                  title={isThai ? "รูปก่อนหน้า (ลูกศรซ้าย)" : "Previous photo (Left arrow)"}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                </button>
+              )}
+
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={currentImages[safeFsIdx]}
+                alt={`${activeActivity.title} - ${safeFsIdx + 1}`}
+                className={styles.fullscreenLightboxImg}
+                onClick={(e) => e.stopPropagation()}
+              />
+
+              {currentImages.length > 1 && (
+                <button
+                  type="button"
+                  className={`${styles.fullscreenLightboxNavBtn} ${styles.fullscreenLightboxNavNext}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFullscreenIndex((prev) => (prev + 1) % currentImages.length);
+                  }}
+                  aria-label="Next photo"
+                  title={isThai ? "รูปถัดไป (ลูกศรขวา)" : "Next photo (Right arrow)"}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
+            {currentImages.length > 1 && (
+              <div
+                className={styles.fullscreenLightboxThumbStrip}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {currentImages.map((img, idx) => (
+                  <button
+                    key={`fs-thumb-${img}-${idx}`}
+                    type="button"
+                    className={`${styles.fullscreenLightboxThumbBtn} ${safeFsIdx === idx ? styles.fullscreenLightboxThumbBtnActive : ""}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFullscreenIndex(idx);
+                    }}
+                    title={`Photo ${idx + 1}`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img} alt={`Thumb ${idx + 1}`} className={styles.fullscreenLightboxThumbImg} />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>,
           document.body
         );

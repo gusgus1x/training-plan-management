@@ -9,18 +9,18 @@ import {
 const course = (courseNameTh: string, courseNameEn: string) =>
   ({ courseNameTh, courseNameEn }) as WorkflowCourse;
 
-describe("Thai-first course names", () => {
-  it("uses Thai as the primary name and English as secondary", () => {
+describe("English-first course names", () => {
+  it("uses English as the primary name and Thai as secondary", () => {
     expect(getCourseDisplayName(course("ความปลอดภัย", "Safety"))).toBe(
-      "ความปลอดภัย",
+      "Safety",
     );
     expect(getCourseSecondaryName(course("ความปลอดภัย", "Safety"))).toBe(
-      "Safety",
+      "ความปลอดภัย",
     );
   });
 
-  it("falls back to English when the Thai name is unavailable", () => {
-    expect(getCourseDisplayName(course("", "Safety"))).toBe("Safety");
-    expect(getCourseSecondaryName(course("", "Safety"))).toBe("");
+  it("falls back to Thai when the English name is unavailable", () => {
+    expect(getCourseDisplayName(course("ความปลอดภัย", ""))).toBe("ความปลอดภัย");
+    expect(getCourseSecondaryName(course("ความปลอดภัย", ""))).toBe("");
   });
 });

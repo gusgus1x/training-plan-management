@@ -57,6 +57,27 @@
 
   --background: var(--ui-60-canvas);
   --foreground: var(--ui-30-ink);
+
+  /* Semantic Status Tokens (Light Mode) */
+  --ui-status-draft-bg: #f1f5f9;
+  --ui-status-draft-text: #475569;
+  --ui-status-draft-border: #cbd5e1;
+
+  --ui-status-pending-bg: #fffbeb;
+  --ui-status-pending-text: #b45309;
+  --ui-status-pending-border: #fde68a;
+
+  --ui-status-approved-bg: #ecfdf5;
+  --ui-status-approved-text: #047857;
+  --ui-status-approved-border: #a7f3d0;
+
+  --ui-status-rejected-bg: #fef2f2;
+  --ui-status-rejected-text: #b91c1c;
+  --ui-status-rejected-border: #fecaca;
+
+  --ui-status-info-bg: #eff6ff;
+  --ui-status-info-text: #1d4ed8;
+  --ui-status-info-border: #bfdbfe;
 }
 
 [data-theme="dark"],
@@ -98,6 +119,27 @@
   --attg-ink: var(--ui-30-ink);
   --attg-muted: var(--ui-30-muted);
   --attg-line: var(--ui-30-border);
+
+  /* Semantic Status Tokens (Dark Mode) */
+  --ui-status-draft-bg: rgba(148, 163, 184, 0.12);
+  --ui-status-draft-text: #cbd5e1;
+  --ui-status-draft-border: rgba(148, 163, 184, 0.28);
+
+  --ui-status-pending-bg: rgba(245, 158, 11, 0.14);
+  --ui-status-pending-text: #fcd34d;
+  --ui-status-pending-border: rgba(245, 158, 11, 0.35);
+
+  --ui-status-approved-bg: rgba(16, 185, 129, 0.14);
+  --ui-status-approved-text: #6ee7b7;
+  --ui-status-approved-border: rgba(16, 185, 129, 0.35);
+
+  --ui-status-rejected-bg: rgba(244, 63, 94, 0.14);
+  --ui-status-rejected-text: #fda4af;
+  --ui-status-rejected-border: rgba(244, 63, 94, 0.35);
+
+  --ui-status-info-bg: rgba(59, 130, 246, 0.14);
+  --ui-status-info-text: #93c5fd;
+  --ui-status-info-border: rgba(59, 130, 246, 0.35);
 }
 
 /* Global Dark Mode Overrides & Contrast Enhancements */
@@ -472,12 +514,12 @@ textarea {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--ui-30-border, #cbd5e1);
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--ui-30-border-strong, #94a3b8);
 }
 
 /* Impeccable Utility Animations & Effects */
@@ -525,6 +567,12 @@ textarea {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+[data-theme="dark"] .glass-card,
+.dark .glass-card {
+  background: rgba(19, 27, 46, 0.85);
+  border-color: rgba(46, 61, 88, 0.8);
 }
 
 @media (prefers-reduced-motion: reduce) {

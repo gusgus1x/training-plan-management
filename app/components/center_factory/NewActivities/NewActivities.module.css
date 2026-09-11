@@ -794,6 +794,65 @@
   box-shadow: 0 0 16px rgba(251, 191, 36, 0.5) !important;
 }
 
+/* Login Page Quick Toggle Button (Indigo) */
+.cardActionBtnLogin {
+  background: #f8fafc;
+  border: 1.5px solid rgba(148, 163, 184, 0.6);
+  color: #64748b;
+}
+
+.cardActionBtnLogin:hover {
+  background: #e0e7ff !important;
+  border-color: #6366f1 !important;
+  color: #4338ca !important;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25) !important;
+}
+
+.cardActionBtnLoginActive {
+  background: #eef2ff;
+  border: 1.5px solid #6366f1;
+  color: #4f46e5;
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2);
+}
+
+.cardActionBtnLoginActive:hover {
+  background: #4f46e5 !important;
+  border-color: #4338ca !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4) !important;
+}
+
+:global([data-theme="dark"]) .cardActionBtnLogin,
+:global(.dark) .cardActionBtnLogin {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1.5px solid rgba(148, 163, 184, 0.3);
+  color: #94a3b8;
+}
+
+:global([data-theme="dark"]) .cardActionBtnLogin:hover,
+:global(.dark) .cardActionBtnLogin:hover {
+  background: rgba(99, 102, 241, 0.2) !important;
+  border-color: #818cf8 !important;
+  color: #c7d2fe !important;
+  box-shadow: 0 0 14px rgba(99, 102, 241, 0.35) !important;
+}
+
+:global([data-theme="dark"]) .cardActionBtnLoginActive,
+:global(.dark) .cardActionBtnLoginActive {
+  background: rgba(99, 102, 241, 0.22);
+  border: 1.5px solid #818cf8;
+  color: #a5b4fc;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.25);
+}
+
+:global([data-theme="dark"]) .cardActionBtnLoginActive:hover,
+:global(.dark) .cardActionBtnLoginActive:hover {
+  background: #6366f1 !important;
+  border-color: #818cf8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 16px rgba(129, 140, 248, 0.5) !important;
+}
+
 /* 2. Edit Button (Royal Blue) */
 .cardActionBtnEdit {
   background: #eff6ff;
@@ -1294,7 +1353,7 @@
   border-radius: 10px;
   border: 1px solid var(--ui-30-border, #cbd5e1);
   background: var(--ui-60-surface, #ffffff);
-  color: var(--ui-30-muted, #475569);
+  color: var(--ui-30-muted, #64748b);
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
@@ -2150,6 +2209,32 @@
 :global(.dark) .courseEndedBadge {
   background: linear-gradient(135deg, #475569 0%, #334155 100%);
   color: #cbd5e1;
+}
+
+/* Login Page showcase badge on activity card */
+.loginPageBadge {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  color: #ffffff;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+  z-index: 3;
+}
+
+:global([data-theme="dark"]) .loginPageBadge,
+:global(.dark) .loginPageBadge {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.45);
 }
 
 /* Quick course action container on card */
@@ -3290,6 +3375,172 @@
   border-color: rgba(245, 158, 11, 0.45);
 }
 
+/* Login Page Showcase Toggle Card in Form Modal */
+.loginPageToggleCard {
+  border: 1.5px solid var(--ui-30-border, #cbd5e1);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--ui-60-surface-soft, #f8fafc);
+  margin-top: 8px;
+  margin-bottom: 12px;
+  transition: all 0.22s ease;
+}
+
+.loginPageToggleCardActive {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.loginPageToggleCardInactive {
+  border-color: var(--ui-30-border, #cbd5e1);
+  background: var(--ui-60-surface-soft, #f8fafc);
+  opacity: 0.95;
+}
+
+:global([data-theme="dark"]) .loginPageToggleCard,
+:global(.dark) .loginPageToggleCard {
+  background: #182234;
+  border-color: #2e3d58;
+}
+
+:global([data-theme="dark"]) .loginPageToggleCardActive,
+:global(.dark) .loginPageToggleCardActive {
+  border-color: #818cf8;
+  background: rgba(99, 102, 241, 0.12);
+}
+
+:global([data-theme="dark"]) .loginPageToggleCardInactive,
+:global(.dark) .loginPageToggleCardInactive {
+  background: #182234;
+  border-color: #2e3d58;
+}
+
+.loginToggleIconBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+:global([data-theme="dark"]) .loginToggleIconBadge,
+:global(.dark) .loginToggleIconBadge {
+  background: rgba(99, 102, 241, 0.25);
+  color: #a5b4fc;
+}
+
+.statusLoginActiveBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  white-space: nowrap;
+}
+
+:global([data-theme="dark"]) .statusLoginActiveBadge,
+:global(.dark) .statusLoginActiveBadge {
+  background: rgba(99, 102, 241, 0.25);
+  color: #a5b4fc;
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+.statusLoginInactiveBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  background: rgba(100, 116, 139, 0.1);
+  color: #64748b;
+  border: 1px solid rgba(100, 116, 139, 0.25);
+  white-space: nowrap;
+}
+
+:global([data-theme="dark"]) .statusLoginInactiveBadge,
+:global(.dark) .statusLoginInactiveBadge {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+/* Detail Modal Login Page Action Button */
+.loginPageActionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.08);
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.loginPageActionBtn:hover {
+  background: #e0e7ff;
+  border-color: #6366f1;
+  color: #4338ca;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+}
+
+.loginPageActionBtnActive {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+}
+
+.loginPageActionBtnActive:hover {
+  background: #6366f1;
+  color: #ffffff;
+  border-color: #4338ca;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+}
+
+:global([data-theme="dark"]) .loginPageActionBtn,
+:global(.dark) .loginPageActionBtn {
+  background: rgba(148, 163, 184, 0.1);
+  color: #cbd5e1;
+  border-color: rgba(148, 163, 184, 0.25);
+}
+
+:global([data-theme="dark"]) .loginPageActionBtn:hover,
+:global(.dark) .loginPageActionBtn:hover {
+  background: rgba(99, 102, 241, 0.25);
+  color: #c7d2fe;
+  border-color: #818cf8;
+}
+
+:global([data-theme="dark"]) .loginPageActionBtnActive,
+:global(.dark) .loginPageActionBtnActive {
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+  border-color: #818cf8;
+}
+
+:global([data-theme="dark"]) .loginPageActionBtnActive:hover,
+:global(.dark) .loginPageActionBtnActive:hover {
+  background: #6366f1;
+  color: #ffffff;
+}
+
 .archiveActionBtn {
   display: inline-flex;
   align-items: center;
@@ -3332,3 +3583,707 @@
   color: #0f172a;
 }
 
+/* ==========================================================================
+   Activity Reorder Mode & Move-to-First Enhancements (Zero-Pin, Clean Design)
+   ========================================================================== */
+
+/* Move to First Quick Button on Card Actions Row */
+.cardActionBtnMoveFirst {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: #f0fdf4;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #059669;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.cardActionBtnMoveFirst:hover {
+  background: #059669 !important;
+  border-color: #047857 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+}
+
+:global([data-theme="dark"]) .cardActionBtnMoveFirst,
+:global(.dark) .cardActionBtnMoveFirst {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(52, 211, 153, 0.4);
+  color: #34d399;
+}
+
+:global([data-theme="dark"]) .cardActionBtnMoveFirst:hover,
+:global(.dark) .cardActionBtnMoveFirst:hover {
+  background: #059669 !important;
+  border-color: #10b981 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.45) !important;
+}
+
+/* Reorder Header Toggle Button */
+.reorderHeaderBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid var(--ui-30-border, #cbd5e1);
+  background: var(--ui-60-surface, #ffffff);
+  color: var(--ui-30-muted, #475569);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+}
+
+.reorderHeaderBtn:hover {
+  border-color: #0284c7;
+  color: #0284c7;
+  background: rgba(2, 132, 199, 0.05);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.12);
+}
+
+.reorderHeaderBtnActive {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  border-color: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+}
+
+.reorderHeaderBtnActive:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+  border-color: #0369a1;
+  color: #ffffff;
+}
+
+:global([data-theme="dark"]) .reorderHeaderBtn,
+:global(.dark) .reorderHeaderBtn {
+  background: var(--ui-60-surface, #131b2e);
+  border-color: var(--ui-30-border, #2e3d58);
+  color: #cbd5e1;
+}
+
+:global([data-theme="dark"]) .reorderHeaderBtn:hover,
+:global(.dark) .reorderHeaderBtn:hover {
+  border-color: #38bdf8;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+}
+
+/* Reorder Control Bar */
+.reorderControlBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 22px;
+  margin-bottom: 24px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.06) 0%, rgba(16, 185, 129, 0.06) 100%);
+  border: 1.5px solid rgba(2, 132, 199, 0.25);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  flex-wrap: wrap;
+  animation: fadeInControl 0.25s ease-out;
+}
+
+@keyframes fadeInControl {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+:global([data-theme="dark"]) .reorderControlBar,
+:global(.dark) .reorderControlBar {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.12) 0%, rgba(16, 185, 129, 0.08) 100%);
+  border-color: rgba(56, 189, 248, 0.3);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+}
+
+.reorderControlInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 260px;
+}
+
+.reorderControlTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reorderModeIconBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.reorderControlTitle {
+  font-size: 0.98rem;
+  font-weight: 800;
+  color: var(--ui-30-ink, #0f172a);
+}
+
+:global([data-theme="dark"]) .reorderControlTitle,
+:global(.dark) .reorderControlTitle {
+  color: #f8fafc;
+}
+
+.reorderCountBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 9999px;
+  background: rgba(2, 132, 199, 0.15);
+  color: #0284c7;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+:global([data-theme="dark"]) .reorderCountBadge,
+:global(.dark) .reorderCountBadge {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+}
+
+.reorderGuideText {
+  font-size: 0.82rem;
+  color: var(--ui-30-muted, #64748b);
+  margin: 0;
+  line-height: 1.45;
+}
+
+:global([data-theme="dark"]) .reorderGuideText,
+:global(.dark) .reorderGuideText {
+  color: #94a3b8;
+}
+
+.reorderControlActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.reorderCancelBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--ui-30-border, #cbd5e1);
+  background: var(--ui-60-surface, #ffffff);
+  color: var(--ui-30-muted, #64748b);
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.reorderCancelBtn:hover:not(:disabled) {
+  background: var(--ui-60-surface-soft, #f1f5f9);
+  color: var(--ui-30-ink, #0f172a);
+}
+
+.reorderCancelBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+:global([data-theme="dark"]) .reorderCancelBtn,
+:global(.dark) .reorderCancelBtn {
+  background: var(--ui-60-surface, #131b2e);
+  border-color: var(--ui-30-border, #2e3d58);
+  color: #94a3b8;
+}
+
+.reorderSaveBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 22px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
+  transition: all 0.15s ease;
+}
+
+.reorderSaveBtn:hover:not(:disabled) {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(5, 150, 105, 0.45);
+}
+
+.reorderSaveBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Reorder Cards Grid */
+.reorderCardsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  width: 100%;
+  align-items: stretch;
+}
+
+@media (max-width: 1024px) {
+  .reorderCardsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .reorderCardsGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+/* Reorder Card Item: Self-contained card with dedicated top bar stacked on top */
+.reorderCardItem {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  background: var(--ui-60-surface, #ffffff);
+  border: 1.5px solid var(--ui-30-border, #e2e8f0);
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  cursor: grab;
+  user-select: none;
+}
+
+.reorderCardItem:hover {
+  border-color: #0284c7;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.16);
+}
+
+.reorderCardItem:active {
+  cursor: grabbing;
+}
+
+.cardDragging {
+  opacity: 0.45;
+  transform: scale(0.97);
+}
+
+.cardDragOver {
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.35) !important;
+  transform: scale(1.02);
+}
+
+:global([data-theme="dark"]) .reorderCardItem,
+:global(.dark) .reorderCardItem {
+  background: var(--ui-60-surface, #131b2e);
+  border-color: var(--ui-30-border, #243049);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+}
+
+:global([data-theme="dark"]) .reorderCardItem:hover,
+:global(.dark) .reorderCardItem:hover {
+  border-color: #38bdf8;
+  box-shadow: 0 8px 24px rgba(56, 189, 248, 0.2);
+}
+
+/* Dedicated Reorder Top Bar - strictly horizontal bar on top of the card */
+.reorderCardTopBar {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 11px 16px !important;
+  background: var(--ui-60-surface-soft, #f8fafc);
+  border-bottom: 1px solid var(--ui-30-border, #e2e8f0);
+  gap: 12px;
+  flex-shrink: 0 !important;
+}
+
+:global([data-theme="dark"]) .reorderCardTopBar,
+:global(.dark) .reorderCardTopBar {
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom-color: var(--ui-30-border, #243049);
+}
+
+.reorderTopBarLeft {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 9px !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+
+.dragGripIcon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 7px;
+  background: var(--ui-60-surface, #ffffff);
+  border: 1px solid var(--ui-30-border, #cbd5e1);
+  color: var(--ui-30-muted, #64748b);
+  cursor: grab;
+  flex-shrink: 0 !important;
+}
+
+:global([data-theme="dark"]) .dragGripIcon,
+:global(.dark) .dragGripIcon {
+  background: var(--ui-60-surface, #1e293b);
+  border-color: var(--ui-30-border, #334155);
+  color: #94a3b8;
+}
+
+.orderRankBadge {
+  font-size: 0.88rem !important;
+  font-weight: 800 !important;
+  color: var(--ui-30-ink, #0f172a);
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  letter-spacing: -0.01em;
+}
+
+:global([data-theme="dark"]) .orderRankBadge,
+:global(.dark) .orderRankBadge {
+  color: #f1f5f9;
+}
+
+.orderRankBadgeFirst {
+  color: #059669 !important;
+  font-weight: 900 !important;
+}
+
+:global([data-theme="dark"]) .orderRankBadgeFirst,
+:global(.dark) .orderRankBadgeFirst {
+  color: #34d399 !important;
+}
+
+.firstPlacePill {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 3px 9px !important;
+  border-radius: 6px !important;
+  background: #ecfdf5 !important;
+  color: #059669 !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  font-size: 0.76rem !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+:global([data-theme="dark"]) .firstPlacePill,
+:global(.dark) .firstPlacePill {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+  border-color: rgba(52, 211, 153, 0.3) !important;
+}
+
+.moveToFirstBtn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 6px 13px !important;
+  border-radius: 8px !important;
+  background: #ecfdf5 !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  color: #059669 !important;
+  font-size: 0.78rem !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+
+.moveToFirstBtn:hover {
+  background: #059669 !important;
+  border-color: #047857 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(5, 150, 105, 0.3) !important;
+}
+
+:global([data-theme="dark"]) .moveToFirstBtn,
+:global(.dark) .moveToFirstBtn {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(52, 211, 153, 0.35) !important;
+  color: #34d399 !important;
+}
+
+:global([data-theme="dark"]) .moveToFirstBtn:hover,
+:global(.dark) .moveToFirstBtn:hover {
+  background: #059669 !important;
+  color: #ffffff !important;
+}
+
+.reorderCardContent {
+  flex: 1 1 auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Ensure the card inside reorder content removes double outer shadow/border */
+.reorderCardContent > div {
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 0 16px 16px !important;
+  background: transparent !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  cursor: grab !important;
+}
+
+
+/* ==========================================================================
+   Fullscreen Image Lightbox Modal
+   ========================================================================== */
+
+.fullscreenLightboxOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000000;
+  background: rgba(3, 7, 18, 0.95);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  animation: fsFadeIn 0.25s ease-out;
+}
+
+@keyframes fsFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fullscreenLightboxHeader {
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: #ffffff;
+  padding: 8px 0;
+  z-index: 10;
+}
+
+.fullscreenLightboxTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+}
+
+.fullscreenLightboxControls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.fullscreenLightboxCounter {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.fullscreenLightboxCloseBtn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.fullscreenLightboxCloseBtn:hover {
+  background: rgba(239, 68, 68, 0.85);
+  border-color: #ef4444;
+  transform: scale(1.08);
+}
+
+.fullscreenLightboxStage {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 10px 0;
+}
+
+.fullscreenLightboxImg {
+  max-width: 92vw;
+  max-height: 75vh;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+  user-select: none;
+  transition: transform 0.3s ease, opacity 0.25s ease;
+}
+
+.fullscreenLightboxNavBtn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+}
+
+.fullscreenLightboxNavBtn:hover {
+  background: rgba(56, 189, 248, 0.9);
+  color: #0f172a;
+  transform: translateY(-50%) scale(1.1);
+  border-color: #38bdf8;
+}
+
+.fullscreenLightboxNavPrev {
+  left: 20px;
+}
+
+.fullscreenLightboxNavNext {
+  right: 20px;
+}
+
+.fullscreenLightboxThumbStrip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  max-width: 90vw;
+  overflow-x: auto;
+  padding: 8px 12px;
+  scrollbar-width: thin;
+}
+
+.fullscreenLightboxThumbBtn {
+  position: relative;
+  width: 60px;
+  height: 44px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+  background: #1e293b;
+  opacity: 0.55;
+  transition: all 0.2s ease;
+}
+
+.fullscreenLightboxThumbBtn:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+.fullscreenLightboxThumbBtnActive {
+  opacity: 1;
+  border-color: #38bdf8;
+  transform: scale(1.1);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+}
+
+.fullscreenLightboxThumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.zoomHintBadge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #ffffff;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+  z-index: 4;
+}
+
+.lightboxMainStage:hover .zoomHintBadge {
+  opacity: 1;
+  background: rgba(2, 132, 199, 0.9);
+  border-color: #38bdf8;
+}
