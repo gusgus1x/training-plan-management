@@ -52,6 +52,10 @@ import {
   User,
   Wallet,
   CalendarDays,
+  Eye,
+  Trash2,
+  CheckCircle2,
+  XCircle,
 } from "../../../icons/LucideIcons";
 import styles from "./TrainingRolling.module.css";
 
@@ -2215,13 +2219,13 @@ export default function TrainingRolling() {
                     <tr>
                       <th>Seq.</th>
                       <th>Course Name</th>
+                      <th>Actions</th>
                       <th>Course Group</th>
                       <th>Batch</th>
                       <th>Date &amp; Time</th>
                       <th>Location</th>
                       <th>Status</th>
                       <th>Job Status</th>
-                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2272,20 +2276,6 @@ export default function TrainingRolling() {
                                 </div>
                               )}
                             </td>
-                            <td translate="no">{plan.course.courseGroup || "-"}</td>
-                            <td translate="no">{plan.batch}</td>
-                            <td translate="no">
-                              {plan.trainingDate}
-                              <span>{plan.startTime} - {plan.endTime}</span>
-                            </td>
-                            <td translate="no">{plan.location || "-"}</td>
-                            <td>
-                              <span className={`${styles.statusPill} ${styles[`status${plan.status}`]}`}>
-                                <span className={styles.statusDot} />
-                                {getStatusLabel(plan.status)}
-                              </span>
-                            </td>
-                            <td><span className={`${styles.jobPill} ${styles[`job${jobStatus}`]}`}>{jobStatus}</span></td>
                             <td className={styles.actionCell} onClick={(e) => e.stopPropagation()}>
                               <div className={styles.actionButtons}>
                                 <button className={styles.detailButton} type="button" onClick={() => setOpenDetailId(isOpen ? "" : plan.rollingId)}>
@@ -2346,6 +2336,20 @@ export default function TrainingRolling() {
                                 )}
                               </div>
                             </td>
+                            <td translate="no">{plan.course.courseGroup || "-"}</td>
+                            <td translate="no">{plan.batch}</td>
+                            <td translate="no">
+                              {plan.trainingDate}
+                              <span>{plan.startTime} - {plan.endTime}</span>
+                            </td>
+                            <td translate="no">{plan.location || "-"}</td>
+                            <td>
+                              <span className={`${styles.statusPill} ${styles[`status${plan.status}`]}`}>
+                                <span className={styles.statusDot} />
+                                {getStatusLabel(plan.status)}
+                              </span>
+                            </td>
+                            <td><span className={`${styles.jobPill} ${styles[`job${jobStatus}`]}`}>{jobStatus}</span></td>
                           </tr>
                           {isOpen ? (
                             <tr className={styles.detailRow}>

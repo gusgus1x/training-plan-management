@@ -3175,11 +3175,11 @@ function CourseMaster() {
                         <th style={{ width: "48px", textAlign: "center" }}>#</th>
                         <th style={{ width: "135px", whiteSpace: "nowrap" }}>{language === 'th' ? 'รหัสหลักสูตร' : 'Course Code'}</th>
                         <th style={{ minWidth: "220px" }}>{language === 'th' ? 'ชื่อหลักสูตร' : 'Course Name'}</th>
+                        <th style={{ width: "200px", textAlign: "center", whiteSpace: "nowrap" }}>{language === 'th' ? 'การดำเนินการ' : 'Actions'}</th>
                         <th style={{ width: "110px", whiteSpace: "nowrap" }}>{language === 'th' ? 'บริษัท' : 'Company'}</th>
                         <th style={{ width: "160px" }}>{language === 'th' ? 'ประเภทและกลุ่มหลักสูตร' : 'Classification'}</th>
                         <th style={{ width: "185px" }}>{language === 'th' ? 'มาตรฐานหลักสูตร' : 'Course Standard'}</th>
                         <th style={{ width: "130px", whiteSpace: "nowrap" }}>{language === 'th' ? 'คอร์สต่อเนื่อง' : 'Prerequisites'}</th>
-                        <th style={{ width: "200px", textAlign: "center", whiteSpace: "nowrap" }}>{language === 'th' ? 'การดำเนินการ' : 'Actions'}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3209,6 +3209,36 @@ function CourseMaster() {
                                   {getCourseSecondaryName(course) ? (
                                     <span className={styles.courseNameSecondary}>{getCourseSecondaryName(course)}</span>
                                   ) : null}
+                                </div>
+                              </td>
+                              <td className={styles.actionCell} onClick={(e) => e.stopPropagation()}>
+                                <div className={styles.actionButtonsWrap}>
+                                  <button
+                                    className={styles.detailButton}
+                                    type="button"
+                                    onClick={() => handleShowDetails(course)}
+                                    title={isOpen && !isEditing ? (language === 'th' ? "ซ่อนรายละเอียด" : "Hide details") : (language === 'th' ? "ดูรายละเอียด" : "Show details")}
+                                  >
+                                    {isOpen && !isEditing ? (language === 'th' ? "ซ่อน" : "Hide") : (language === 'th' ? "รายละเอียด" : "Details")}
+                                  </button>
+                                  <button
+                                    className={styles.secondaryButton}
+                                    type="button"
+                                    disabled={isRowReadOnlyForFactory}
+                                    title={isRowReadOnlyForFactory ? "หลักสูตรของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้" : undefined}
+                                    onClick={() => !isRowReadOnlyForFactory && openCourseEditor(course)}
+                                  >
+                                    {language === 'th' ? "แก้ไข" : "Edit"}
+                                  </button>
+                                  <button
+                                    className={styles.dangerButton}
+                                    type="button"
+                                    disabled={isRowReadOnlyForFactory}
+                                    title={isRowReadOnlyForFactory ? "หลักสูตรของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
+                                    onClick={() => !isRowReadOnlyForFactory && void handleDeleteCourse(course)}
+                                  >
+                                    {language === 'th' ? "ลบ" : "Delete"}
+                                  </button>
                                 </div>
                               </td>
                               <td style={{ whiteSpace: "nowrap" }}>
@@ -3255,36 +3285,6 @@ function CourseMaster() {
                                 ) : (
                                   <span className={styles.mutedDash}>—</span>
                                 )}
-                              </td>
-                              <td className={styles.actionCell} onClick={(e) => e.stopPropagation()}>
-                                <div className={styles.actionButtonsWrap}>
-                                  <button
-                                    className={styles.detailButton}
-                                    type="button"
-                                    onClick={() => handleShowDetails(course)}
-                                    title={isOpen && !isEditing ? (language === 'th' ? "ซ่อนรายละเอียด" : "Hide details") : (language === 'th' ? "ดูรายละเอียด" : "Show details")}
-                                  >
-                                    {isOpen && !isEditing ? (language === 'th' ? "ซ่อน" : "Hide") : (language === 'th' ? "รายละเอียด" : "Details")}
-                                  </button>
-                                  <button
-                                    className={styles.secondaryButton}
-                                    type="button"
-                                    disabled={isRowReadOnlyForFactory}
-                                    title={isRowReadOnlyForFactory ? "หลักสูตรของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้" : undefined}
-                                    onClick={() => !isRowReadOnlyForFactory && openCourseEditor(course)}
-                                  >
-                                    {language === 'th' ? "แก้ไข" : "Edit"}
-                                  </button>
-                                  <button
-                                    className={styles.dangerButton}
-                                    type="button"
-                                    disabled={isRowReadOnlyForFactory}
-                                    title={isRowReadOnlyForFactory ? "หลักสูตรของส่วนกลาง (HRD Center) โรงงานไม่สามารถลบได้" : undefined}
-                                    onClick={() => !isRowReadOnlyForFactory && void handleDeleteCourse(course)}
-                                  >
-                                    {language === 'th' ? "ลบ" : "Delete"}
-                                  </button>
-                                </div>
                               </td>
                             </tr>
                             {isOpen ? (

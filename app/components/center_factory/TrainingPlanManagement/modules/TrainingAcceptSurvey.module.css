@@ -1420,7 +1420,7 @@
   flex-direction: column;
   gap: 0;
   width: max-content;
-  min-width: 2480px;
+  min-width: 2780px;
 }
 
 .targetEmployeeHeader,
@@ -1428,8 +1428,8 @@
   display: grid;
   align-items: center;
   box-sizing: border-box;
-  width: 2480px;
-  min-width: 2480px;
+  width: max-content;
+  min-width: 2780px;
   border: 0;
   padding: 10px 16px;
 }
@@ -1491,13 +1491,13 @@
     115px
     190px
     65px
-    125px
-    135px
+    140px
+    150px
     65px
-    240px
-    240px
-    240px
-    220px
+    380px
+    440px
+    440px
+    260px
     65px;
 }
 
@@ -1507,7 +1507,7 @@
 
 .targetEmployeeHeader .targetEmployeeLine span {
   overflow: hidden;
-  text-overflow: clip;
+  text-overflow: ellipsis;
   white-space: nowrap;
   line-height: 1.4;
 }
@@ -1518,13 +1518,13 @@
 }
 
 .targetEmployeeCell {
-  overflow: hidden;
   color: var(--ui-30-text);
   font-size: 0.86rem;
   font-weight: 500;
   line-height: 1.4;
-  text-overflow: clip;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .targetEmployeeCell:first-child {
@@ -2280,15 +2280,52 @@
 .badgeNone {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
+  gap: 5px;
+  padding: 3px 9px;
   border-radius: 9999px;
-  background: rgba(148, 163, 184, 0.12);
+  background: rgba(100, 116, 139, 0.12);
   color: #94a3b8;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  font-size: 0.72rem;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  font-size: 0.73rem;
   font-weight: 700;
   white-space: nowrap;
+  letter-spacing: 0.01em;
+  transition: all 0.15s ease;
+}
+
+.badgeNone:hover {
+  background: rgba(100, 116, 139, 0.2);
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #cbd5e1;
+}
+
+@keyframes pulseSlateDot {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(148, 163, 184, 0.8);
+    opacity: 0.8;
+  }
+  60% {
+    transform: scale(1.25);
+    box-shadow: 0 0 0 6px rgba(148, 163, 184, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(148, 163, 184, 0);
+    opacity: 0.8;
+  }
+}
+
+.statusDotNone {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #94a3b8;
+  box-shadow: 0 0 6px #94a3b8;
+  animation: pulseSlateDot 1.6s infinite ease-in-out;
+  flex-shrink: 0;
 }
 
 .badgeCompletedPrior {

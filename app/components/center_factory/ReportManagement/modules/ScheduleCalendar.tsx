@@ -36,6 +36,217 @@ const calendarMonths = monthOptions.map((month) => ({
 
 const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
+export const getPlanEndDate = (plan: RollingPlan): string => {
+  if (plan.endDate && plan.endDate >= plan.trainingDate) {
+    return plan.endDate;
+  }
+  return plan.trainingDate;
+};
+
+export const getPlanDaysCount = (startDate: string, endDate: string): number => {
+  if (!startDate || !endDate || endDate <= startDate) return 1;
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  const diffTime = end.getTime() - start.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  return Math.max(1, diffDays);
+};
+
+export const isPlanInMonth = (plan: RollingPlan, year: string, month: string): boolean => {
+  const planStart = plan.trainingDate;
+  const planEnd = getPlanEndDate(plan);
+  const yearNumber = Number(year);
+  const monthIndex = Number(month) - 1;
+  const daysInMonth = new Date(yearNumber, monthIndex + 1, 0).getDate();
+  const monthStart = `${year}-${month}-01`;
+  const monthEnd = `${year}-${month}-${String(daysInMonth).padStart(2, "0")}`;
+  return planStart <= monthEnd && planEnd >= monthStart;
+};
+
+export interface CalendarWeekDay {
+  date: string;
+  dayNumber: number;
+  isCurrentMonth: boolean;
+  weekdayIndex: number;
+}
+
+export interface CalendarEventSegment {
+  plan: RollingPlan;
+  startCol: number;
+  endCol: number;
+  span: number;
+  slot: number;
+  isMultiDay: boolean;
+  totalDays: number;
+  isContinuationFromPrev: boolean;
+  continuesToNext: boolean;
+}
+
+export interface CalendarWeek {
+  days: CalendarWeekDay[];
+  eventSegments: CalendarEventSegment[];
+  maxSlots: number;
+}
+
+export const buildCalendarWeeks = (
+  year: string,
+  month: string,
+  plans: RollingPlan[],
+): CalendarWeek[] => {
+  const yearNumber = Number(year);
+  const monthIndex = Number(month) - 1;
+  const firstWeekday = new Date(yearNumber, monthIndex, 1).getDay();
+  const daysInMonth = new Date(yearNumber, monthIndex + 1, 0).getDate();
+
+  const rawDays: CalendarWeekDay[] = [];
+
+  // Previous month padding
+  const prevMonthDaysCount = new Date(yearNumber, monthIndex, 0).getDate();
+  for (let i = firstWeekday - 1; i >= 0; i -= 1) {
+    const dayNum = prevMonthDaysCount - i;
+    const prevDate = new Date(yearNumber, monthIndex - 1, dayNum);
+    const dateStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+    rawDays.push({
+      date: dateStr,
+      dayNumber: dayNum,
+      isCurrentMonth: false,
+      weekdayIndex: rawDays.length % 7,
+    });
+  }
+
+  // Current month days
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const dateStr = `${year}-${month}-${String(day).padStart(2, "0")}`;
+    rawDays.push({
+      date: dateStr,
+      dayNumber: day,
+      isCurrentMonth: true,
+      weekdayIndex: rawDays.length % 7,
+    });
+  }
+
+  // Next month padding to fill out the last week
+  let nextDay = 1;
+  while (rawDays.length % 7 !== 0) {
+    const nextDate = new Date(yearNumber, monthIndex + 1, nextDay);
+    const dateStr = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, "0")}-${String(nextDay).padStart(2, "0")}`;
+    rawDays.push({
+      date: dateStr,
+      dayNumber: nextDay,
+      isCurrentMonth: false,
+      weekdayIndex: rawDays.length % 7,
+    });
+    nextDay += 1;
+  }
+
+  // Group into 7-day weeks
+  const weeks: CalendarWeek[] = [];
+  for (let i = 0; i < rawDays.length; i += 7) {
+    const weekDaysChunk = rawDays.slice(i, i + 7);
+    const weekStartDate = weekDaysChunk[0].date;
+    const weekEndDate = weekDaysChunk[6].date;
+
+    const segmentsRaw: Omit<CalendarEventSegment, "slot">[] = [];
+
+    for (const plan of plans) {
+      const planStart = plan.trainingDate;
+      const planEnd = getPlanEndDate(plan);
+
+      // Check if plan overlaps this week
+      if (planStart <= weekEndDate && planEnd >= weekStartDate) {
+        let startCol = 0;
+        let isContinuationFromPrev = false;
+        if (planStart < weekStartDate) {
+          startCol = 0;
+          isContinuationFromPrev = true;
+        } else {
+          const idx = weekDaysChunk.findIndex((d) => d.date === planStart);
+          startCol = idx !== -1 ? idx : 0;
+        }
+
+        let endCol = 6;
+        let continuesToNext = false;
+        if (planEnd > weekEndDate) {
+          endCol = 6;
+          continuesToNext = true;
+        } else {
+          const idx = weekDaysChunk.findIndex((d) => d.date === planEnd);
+          endCol = idx !== -1 ? idx : 6;
+        }
+
+        const span = Math.max(1, endCol - startCol + 1);
+        const totalDays = getPlanDaysCount(planStart, planEnd);
+        const isMultiDay = totalDays > 1;
+
+        segmentsRaw.push({
+          plan,
+          startCol,
+          endCol,
+          span,
+          isMultiDay,
+          totalDays,
+          isContinuationFromPrev,
+          continuesToNext,
+        });
+      }
+    }
+
+    // Sort: place single-day events first so multi-day continuous bars stack nicely beneath them
+    segmentsRaw.sort((a, b) => {
+      if (a.isMultiDay !== b.isMultiDay) {
+        return a.isMultiDay ? 1 : -1;
+      }
+      if (a.startCol !== b.startCol) {
+        return a.startCol - b.startCol;
+      }
+      if (b.span !== a.span) {
+        return b.span - a.span;
+      }
+      return a.plan.trainingDate.localeCompare(b.plan.trainingDate);
+    });
+
+    // Assign non-colliding row slots
+    const occupied: boolean[][] = [];
+    const assignedSegments: CalendarEventSegment[] = [];
+
+    for (const seg of segmentsRaw) {
+      let slot = 0;
+      while (true) {
+        if (!occupied[slot]) {
+          occupied[slot] = new Array(7).fill(false);
+        }
+        let canFit = true;
+        for (let col = seg.startCol; col <= seg.endCol; col += 1) {
+          if (occupied[slot][col]) {
+            canFit = false;
+            break;
+          }
+        }
+        if (canFit) {
+          for (let col = seg.startCol; col <= seg.endCol; col += 1) {
+            occupied[slot][col] = true;
+          }
+          break;
+        }
+        slot += 1;
+      }
+
+      assignedSegments.push({
+        ...seg,
+        slot,
+      });
+    }
+
+    weeks.push({
+      days: weekDaysChunk,
+      eventSegments: assignedSegments,
+      maxSlots: occupied.length,
+    });
+  }
+
+  return weeks;
+};
+
 const buildCalendarCells = (year: string, month: string, plans: RollingPlan[]) => {
   const yearNumber = Number(year);
   const monthIndex = Number(month) - 1;
@@ -52,7 +263,11 @@ const buildCalendarCells = (year: string, month: string, plans: RollingPlan[]) =
     cells.push({
       date,
       day,
-      plans: plans.filter((plan) => plan.trainingDate === date),
+      plans: plans.filter((plan) => {
+        const planStart = plan.trainingDate;
+        const planEnd = getPlanEndDate(plan);
+        return planStart <= date && planEnd >= date;
+      }),
     });
   }
 
@@ -231,11 +446,7 @@ export default function ScheduleCalendar({
       calendarMonths.map((month) => ({
         ...month,
         plans: schedulePlans
-          .filter(
-            (plan) =>
-              plan.trainingDate.startsWith(selectedYear) &&
-              plan.trainingDate.slice(5, 7) === month.value,
-          )
+          .filter((plan) => isPlanInMonth(plan, selectedYear, month.value))
           .sort((a, b) => a.trainingDate.localeCompare(b.trainingDate)),
       })),
     [schedulePlans, selectedYear],
@@ -250,11 +461,21 @@ export default function ScheduleCalendar({
     selectedMonth === "all" || !selectedMonthDetail
       ? []
       : buildCalendarCells(selectedYear, selectedMonth, selectedMonthDetail.plans);
+  const calendarWeeks = useMemo(
+    () =>
+      selectedMonth === "all" || !selectedMonthDetail
+        ? []
+        : buildCalendarWeeks(selectedYear, selectedMonth, selectedMonthDetail.plans),
+    [selectedMonth, selectedMonthDetail, selectedYear],
+  );
   const scheduleCount = monthSummaries.reduce((sum, month) => sum + month.plans.length, 0);
   const exportPlans = displayedMonths.flatMap((month) =>
     month.plans.map((plan) => ({
       month: month.label,
-      date: plan.trainingDate,
+      date:
+        plan.endDate && plan.endDate !== plan.trainingDate
+          ? `${plan.trainingDate} - ${plan.endDate}`
+          : plan.trainingDate,
       courseCode: plan.course.code,
       courseName: plan.course.name,
       time: `${plan.startTime}-${plan.endTime}`,
@@ -514,12 +735,23 @@ export default function ScheduleCalendar({
               {expandedTrainingMonth === month.value && month.plans.length > 0 ? (
                 <div className={styles.monthCoursePreview}>
                   <span className={styles.previewLabel}>Training list</span>
-                  {month.plans.map((plan) => (
-                    <div key={plan.rollingId}>
-                      <time dateTime={plan.trainingDate}>{Number(plan.trainingDate.slice(8, 10))}</time>
-                      <span>{plan.course.name}</span>
-                    </div>
-                  ))}
+                  {month.plans.map((plan) => {
+                    const isMulti = Boolean(plan.endDate && plan.endDate !== plan.trainingDate);
+                    const startDay = Number(plan.trainingDate.slice(8, 10));
+                    const endDay = isMulti ? Number(plan.endDate.slice(8, 10)) : startDay;
+                    const dateDisplay = isMulti ? `${startDay}-${endDay}` : startDay;
+                    return (
+                      <div key={plan.rollingId}>
+                        <time dateTime={plan.trainingDate}>{dateDisplay}</time>
+                        <span>{plan.course.name}</span>
+                        {isMulti ? (
+                          <span className={styles.multiDayMiniBadge}>
+                            {getPlanDaysCount(plan.trainingDate, plan.endDate)}d
+                          </span>
+                        ) : null}
+                      </div>
+                    );
+                  })}
                 </div>
               ) : null}
             </article>
@@ -544,56 +776,180 @@ export default function ScheduleCalendar({
           </div>
 
           <div className={styles.calendarGrid}>
-            {weekDays.map((day, idx) => (
-              <div
-                className={`${styles.calendarWeekHeader} ${idx === 0 || idx === 6 ? styles.weekendHeader : ""}`}
-                key={day}
-              >
-                {day}
-              </div>
-            ))}
-            {calendarCells.map((cell, index) => {
-              const isWeekend = index % 7 === 0 || index % 7 === 6;
-              return (
+            <div className={styles.calendarWeekHeaderRow}>
+              {weekDays.map((day, idx) => (
                 <div
-                  className={`${styles.calendarDayCell} ${cell.day ? "" : styles.blankDayCell} ${
-                    isWeekend ? styles.weekendDayCell : ""
-                  } ${cell.date === todayDate ? styles.todayDayCell : ""}`}
-                  key={`${cell.date || "blank"}-${index}`}
+                  className={`${styles.calendarWeekHeader} ${idx === 0 || idx === 6 ? styles.weekendHeader : ""}`}
+                  key={day}
                 >
-                {cell.day ? (
-                  <>
-                    <span className={styles.dayNumber}>{cell.day}</span>
-                    <div className={styles.calendarEventsList}>
-                      {cell.plans.map((plan) => {
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            <div className={styles.calendarWeeksContainer}>
+              {calendarWeeks.map((week, weekIdx) => (
+                <div className={styles.calendarWeekRow} key={`week-${weekIdx}`}>
+                  {/* Background Day Cells Layer */}
+                  <div className={styles.calendarWeekDaysBackground}>
+                    {week.days.map((cell, dayIdx) => {
+                      const isWeekend = dayIdx === 0 || dayIdx === 6;
+                      const isToday = cell.date === todayDate;
+                      return (
+                        <div
+                          className={`${styles.calendarDayCell} ${!cell.isCurrentMonth ? styles.blankDayCell : ""} ${
+                            isWeekend ? styles.weekendDayCell : ""
+                          } ${isToday ? styles.todayDayCell : ""}`}
+                          key={cell.date || `blank-${weekIdx}-${dayIdx}`}
+                        >
+                          {cell.isCurrentMonth ? (
+                            <span className={styles.dayNumber}>{cell.dayNumber}</span>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Events Overlay Grid Layer */}
+                  {week.eventSegments.length > 0 ? (
+                    <div
+                      className={styles.calendarWeekEventsGrid}
+                      style={{
+                        gridTemplateRows: `repeat(${Math.max(1, week.maxSlots)}, minmax(auto, 1fr))`,
+                      }}
+                    >
+                      {week.eventSegments.map((segment) => {
+                        const {
+                          plan,
+                          startCol,
+                          span,
+                          slot,
+                          isMultiDay,
+                          totalDays,
+                          isContinuationFromPrev,
+                          continuesToNext,
+                        } = segment;
                         const companyKey = getPlanCompanyKey(plan);
                         const companyCardClass = styles[`eventCard_${companyKey}`] || styles.eventCard_ALL;
                         const capacity = Number(plan.participants || 0);
-                        const enrolled = enrollments.filter(e => e.planId === plan.rollingId && ACTIVE_ENROLLMENT_STATUSES.includes(e.status)).length;
+                        const enrolled = enrollments.filter(
+                          (e) => e.planId === plan.rollingId && ACTIVE_ENROLLMENT_STATUSES.includes(e.status),
+                        ).length;
                         const remaining = Math.max(0, capacity - enrolled);
+                        const isWideMultiDay = isMultiDay && span > 1;
+
                         return (
                           <article
-                            className={`${styles.calendarEventCard} ${companyCardClass}`}
-                            key={plan.rollingId}
+                            key={`${plan.rollingId}-w${weekIdx}-s${startCol}`}
+                            className={`${styles.calendarEventCard} ${companyCardClass} ${
+                              isWideMultiDay ? styles.multiDayEventCard : ""
+                            }`}
+                            style={{
+                              gridColumn: `${startCol + 1} / span ${span}`,
+                              gridRow: `${slot + 1}`,
+                            }}
+                            title={`${plan.course.name} (${plan.trainingDate}${plan.endDate && plan.endDate !== plan.trainingDate ? ` ถึง ${plan.endDate}` : ""})`}
+                            onClick={() => {
+                              setExpandedOverviewCourse(plan.rollingId);
+                              const targetEl = document.getElementById(`course-overview-${plan.rollingId}`);
+                              if (targetEl) {
+                                targetEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                              }
+                            }}
                           >
-                            <strong>{plan.course.name}</strong>
-                            <small>{plan.startTime}-{plan.endTime} / {formatRollingPlanCompanies(plan)}</small>
-                            {capacity > 0 ? (
-                              <span className={remaining > 0 ? styles.eventSeatBadge : styles.eventSeatBadgeFull}>
-                                {uiLang === "th"
-                                  ? (remaining > 0 ? `เหลือ ${remaining}/${capacity} คน` : "เต็มแล้ว")
-                                  : (remaining > 0 ? `${remaining}/${capacity} left` : "Full")}
-                              </span>
-                            ) : null}
+                            {isWideMultiDay ? (
+                              <>
+                                <div className={styles.multiDayTitleGroup}>
+                                  {isContinuationFromPrev ? (
+                                    <span
+                                      className={styles.eventSpanArrow}
+                                      title={uiLang === "th" ? "ต่อเนื่องจากสัปดาห์ก่อน" : "Continued from previous week"}
+                                    >
+                                      ←
+                                    </span>
+                                  ) : null}
+                                  <strong>{plan.course.name}</strong>
+                                  <span className={styles.multiDayBadge}>
+                                    {uiLang === "th" ? `${totalDays} วัน` : `${totalDays} Days`}
+                                  </span>
+                                  {continuesToNext ? (
+                                    <span
+                                      className={styles.eventSpanArrow}
+                                      title={uiLang === "th" ? "ต่อเนื่องไปยังสัปดาห์ถัดไป" : "Continues next week"}
+                                    >
+                                      →
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <div className={styles.multiDayMetaGroup}>
+                                  <small>
+                                    {plan.startTime}-{plan.endTime} / {formatRollingPlanCompanies(plan)}
+                                  </small>
+                                  {capacity > 0 ? (
+                                    <span className={remaining > 0 ? styles.eventSeatBadge : styles.eventSeatBadgeFull}>
+                                      {uiLang === "th"
+                                        ? remaining > 0
+                                          ? `เหลือ ${remaining}/${capacity} คน`
+                                          : "เต็มแล้ว"
+                                        : remaining > 0
+                                          ? `${remaining}/${capacity} left`
+                                          : "Full"}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className={styles.singleEventTitleRow}>
+                                  {isContinuationFromPrev ? (
+                                    <span
+                                      className={styles.eventSpanArrow}
+                                      title={uiLang === "th" ? "ต่อเนื่องจากสัปดาห์ก่อน" : "Continued from previous week"}
+                                    >
+                                      ←
+                                    </span>
+                                  ) : null}
+                                  <strong>{plan.course.name}</strong>
+                                  {continuesToNext ? (
+                                    <span
+                                      className={styles.eventSpanArrow}
+                                      title={uiLang === "th" ? "ต่อเนื่องไปยังสัปดาห์ถัดไป" : "Continues next week"}
+                                    >
+                                      →
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <small>
+                                  {plan.startTime}-{plan.endTime} / {formatRollingPlanCompanies(plan)}
+                                </small>
+                                <div className={styles.singleEventMetaRow}>
+                                  {isMultiDay ? (
+                                    <span className={styles.multiDayBadge}>
+                                      {uiLang === "th" ? `${totalDays} วัน` : `${totalDays}d`}
+                                    </span>
+                                  ) : null}
+                                  {capacity > 0 ? (
+                                    <span className={remaining > 0 ? styles.eventSeatBadge : styles.eventSeatBadgeFull}>
+                                      {uiLang === "th"
+                                        ? remaining > 0
+                                          ? `เหลือ ${remaining}/${capacity} คน`
+                                          : "เต็มแล้ว"
+                                        : remaining > 0
+                                          ? `${remaining}/${capacity} left`
+                                          : "Full"}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </>
+                            )}
                           </article>
                         );
                       })}
                     </div>
-                  </>
-                ) : null}
-              </div>
-            );
-          })}
+                  ) : null}
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       )}
@@ -619,8 +975,12 @@ export default function ScheduleCalendar({
             ) : (
               selectedMonthDetail?.plans.map((plan) => {
                 const isExpanded = expandedOverviewCourse === plan.rollingId;
-                const dayNumber = Number(plan.trainingDate.slice(8, 10));
-                const endDateStr = plan.endDate || plan.trainingDate;
+                const startDateStr = plan.trainingDate;
+                const endDateStr = getPlanEndDate(plan);
+                const isMultiDay = startDateStr !== endDateStr;
+                const startDayNumber = Number(startDateStr.slice(8, 10));
+                const endDayNumber = Number(endDateStr.slice(8, 10));
+                const totalDays = getPlanDaysCount(startDateStr, endDateStr);
                 const isEnded = plan.dbStatus === "COMPLETED" || (Boolean(endDateStr) && endDateStr < todayDate);
                 const isFactoryPlanOfOtherCompany =
                   !isCenterUser &&
@@ -629,16 +989,29 @@ export default function ScheduleCalendar({
                   Boolean(userCompanyCode) &&
                   plan.ownerCompany !== userCompanyCode;
 
+                const dateBadgeLabel = isMultiDay
+                  ? `${startDayNumber}-${endDayNumber}`
+                  : startDayNumber;
+
                 return (
-                  <article className={styles.courseDirectCard} key={plan.rollingId}>
+                  <article
+                    className={styles.courseDirectCard}
+                    key={plan.rollingId}
+                    id={`course-overview-${plan.rollingId}`}
+                  >
                     <div className={styles.courseCardMain}>
                       <div className={styles.courseDateBadge}>
-                        <strong>{dayNumber}</strong>
+                        <strong>{dateBadgeLabel}</strong>
                         <span>
                           {uiLang === "th"
                             ? thMonthLabels[Number(selectedMonth) - 1]
                             : displayedMonths[0]?.shortLabel}
                         </span>
+                        {isMultiDay ? (
+                          <span className={styles.courseDaysSubBadge}>
+                            {uiLang === "th" ? `${totalDays} วัน` : `${totalDays}d`}
+                          </span>
+                        ) : null}
                       </div>
 
                       <div className={styles.courseMetaInfo}>

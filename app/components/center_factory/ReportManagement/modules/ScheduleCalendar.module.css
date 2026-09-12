@@ -510,13 +510,20 @@
 }
 
 .calendarGrid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 1px;
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-lg);
   background: var(--ui-30-border);
   overflow: hidden;
+}
+
+.calendarWeekHeaderRow {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--ui-30-border);
+  border-bottom: 1px solid var(--ui-30-border);
 }
 
 .calendarWeekHeader {
@@ -537,10 +544,39 @@
   background: rgba(225, 29, 72, 0.06) !important;
 }
 
-.calendarDayCell {
-  min-height: 120px;
+:global([data-theme="dark"]) .weekendHeader,
+:global(.dark) .weekendHeader {
+  color: #fb7185 !important;
+  background: rgba(244, 63, 94, 0.14) !important;
+}
+
+.calendarWeeksContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--ui-30-border);
+}
+
+.calendarWeekRow {
+  position: relative;
+  min-height: 124px;
   background: var(--ui-60-surface);
-  padding: 10px;
+}
+
+.calendarWeekDaysBackground {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--ui-30-border);
+  pointer-events: none;
+}
+
+.calendarDayCell {
+  min-height: 100%;
+  background: var(--ui-60-surface);
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -572,10 +608,25 @@
   color: #e11d48 !important;
 }
 
+:global([data-theme="dark"]) .weekendDayCell .dayNumber,
+:global(.dark) .weekendDayCell .dayNumber {
+  color: #fb7185 !important;
+}
+
 .todayDayCell .dayNumber {
   background: var(--ui-30-primary);
   color: #ffffff;
   box-shadow: 0 2px 8px var(--ui-30-primary-soft);
+}
+
+.calendarWeekEventsGrid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  column-gap: 0;
+  row-gap: 6px;
+  padding: 38px 0 8px 0;
 }
 
 .calendarEventsList {
@@ -585,16 +636,128 @@
 }
 
 .calendarEventCard {
+  margin: 0 4px;
   border: 1px solid var(--ui-30-primary-border);
   border-radius: var(--ui-radius-md);
   background: var(--ui-60-surface-soft);
   color: var(--ui-30-ink);
-  padding: 8px 10px;
+  padding: 7px 9px;
   display: flex;
   flex-direction: column;
   gap: 3px;
   font-size: 0.74rem;
   transition: all 0.18s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.multiDayEventCard {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  gap: 8px;
+}
+
+.multiDayTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.multiDayTitleGroup strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--ui-30-ink);
+}
+
+.multiDayMetaGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.multiDayMetaGroup small {
+  white-space: nowrap;
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.singleEventTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.singleEventTitleRow strong {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--ui-30-ink);
+}
+
+.singleEventMetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.multiDayBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: var(--ui-30-primary-soft);
+  border: 1px solid var(--ui-30-primary-border);
+  color: var(--ui-30-primary-strong);
+  font-size: 0.65rem;
+  font-weight: 800;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.eventSpanArrow {
+  font-size: 0.8rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--ui-30-muted);
+  flex-shrink: 0;
+}
+
+.courseDaysSubBadge {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+  font-size: 0.65rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.multiDayMiniBadge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+  font-size: 0.65rem;
+  font-weight: 800;
 }
 
 /* The 7-column month grid otherwise runs the exact same cell size from desktop down to phone -
@@ -604,8 +767,16 @@
     padding: 16px;
   }
 
+  .calendarWeekRow {
+    min-height: 96px;
+  }
+
+  .calendarWeekEventsGrid {
+    padding: 30px 0 6px 0;
+    row-gap: 4px;
+  }
+
   .calendarDayCell {
-    min-height: 92px;
     padding: 6px;
     gap: 4px;
   }
@@ -626,6 +797,11 @@
     font-size: 0.66rem;
   }
 
+  .multiDayEventCard {
+    padding: 5px 8px;
+    gap: 6px;
+  }
+
   .calendarEventCard strong {
     font-size: 0.68rem;
   }
@@ -636,8 +812,16 @@
 }
 
 @media (max-width: 560px) {
+  .calendarWeekRow {
+    min-height: 72px;
+  }
+
+  .calendarWeekEventsGrid {
+    padding: 24px 0 4px 0;
+    row-gap: 3px;
+  }
+
   .calendarDayCell {
-    min-height: 68px;
     padding: 4px;
   }
 
@@ -650,6 +834,19 @@
     width: 20px;
     height: 20px;
     font-size: 0.68rem;
+  }
+
+  .multiDayEventCard {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 4px 6px;
+  }
+
+  .multiDayMetaGroup {
+    width: 100%;
+    justify-content: space-between;
+    gap: 4px;
   }
 
   /* Below phone width there is no room left to show event text inside a cell at all - the day

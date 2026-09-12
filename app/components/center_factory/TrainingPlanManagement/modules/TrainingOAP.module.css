@@ -869,28 +869,31 @@
 }
 
 .tableWrap {
+  max-height: min(65vh, 640px);
+  overflow: auto;
   border: 1px solid var(--ui-30-border);
   border-radius: 12px;
   background: var(--ui-60-surface);
   padding: 0;
-  overflow-x: auto;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
   scrollbar-width: thin;
   scrollbar-color: var(--ui-30-border) var(--ui-60-surface-soft);
 }
 
 .tableWrap::-webkit-scrollbar {
+  width: 8px;
   height: 8px;
 }
 
 .tableWrap::-webkit-scrollbar-track {
   background: var(--ui-60-surface-soft);
-  border-radius: 10px;
+  border-radius: 6px;
+  margin: 4px;
 }
 
 .tableWrap::-webkit-scrollbar-thumb {
   background-color: var(--ui-30-border);
-  border-radius: 10px;
+  border-radius: 6px;
 }
 
 .tableWrap::-webkit-scrollbar-thumb:hover {
@@ -908,13 +911,13 @@
 .planTable th {
   position: sticky;
   top: 0;
-  z-index: 1;
-  border-bottom: 1px solid var(--ui-30-border);
+  z-index: 10;
+  border-bottom: 2px solid var(--ui-30-border);
   background: var(--ui-60-surface-soft);
   padding: 12px 14px;
   color: var(--ui-30-muted);
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 700;
   text-align: left;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -964,9 +967,9 @@
   font-weight: 500;
   line-height: 1.35;
 }
-.planTable th:nth-child(3), .planTable td:nth-child(3) { min-width: 110px; white-space: nowrap; }
-.planTable th:nth-child(4), .planTable td:nth-child(4) { min-width: 120px; white-space: nowrap; }
-.planTable th:nth-child(5), .planTable td:nth-child(5) { min-width: 140px; white-space: nowrap; }
+.planTable th:nth-child(3), .planTable td:nth-child(3) { width: 1%; white-space: nowrap; }
+.planTable th:nth-child(4), .planTable td:nth-child(4) { min-width: 110px; white-space: nowrap; }
+.planTable th:nth-child(5), .planTable td:nth-child(5) { min-width: 120px; white-space: nowrap; }
 .planTable th:nth-child(6), .planTable td:nth-child(6) {
   min-width: 95px;
   text-align: right;
@@ -1010,7 +1013,105 @@
 .actionButtons {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+}
+
+.rowActionButton {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 6px !important;
+  padding: 4px 12px !important;
+  min-height: 28px !important;
+  font: inherit !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease;
+}
+
+/* Detail Button - Blue Theme */
+.rowActionButton.detailsAction {
+  border: 1px solid #3b82f6 !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+}
+
+:global([data-theme="dark"]) .rowActionButton.detailsAction,
+:global(.dark) .rowActionButton.detailsAction {
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #60a5fa !important;
+}
+
+.rowActionButton.detailsAction:hover {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(37, 99, 235, 0.3);
+}
+
+/* Edit Button - Amber Theme */
+.rowActionButton.secondaryButton {
+  border: 1px solid #f59e0b !important;
+  background: #fffbeb !important;
+  color: #b45309 !important;
+}
+
+:global([data-theme="dark"]) .rowActionButton.secondaryButton,
+:global(.dark) .rowActionButton.secondaryButton {
+  border-color: rgba(245, 158, 11, 0.5) !important;
+  background: rgba(245, 158, 11, 0.15) !important;
+  color: #fbbf24 !important;
+}
+
+.rowActionButton.secondaryButton:hover:not(:disabled) {
+  background: #d97706 !important;
+  border-color: #d97706 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(217, 119, 6, 0.3);
+}
+
+.rowActionButton.secondaryButton:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Delete Button - Red Theme */
+.rowActionButton.dangerAction {
+  border: 1px solid #ef4444 !important;
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+}
+
+:global([data-theme="dark"]) .rowActionButton.dangerAction,
+:global(.dark) .rowActionButton.dangerAction {
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #f87171 !important;
+}
+
+.rowActionButton.dangerAction:hover:not(:disabled) {
+  border-color: #dc2626 !important;
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(220, 38, 38, 0.3);
+}
+
+.rowActionButton.dangerAction:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 .planTable td strong {

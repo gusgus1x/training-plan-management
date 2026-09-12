@@ -51,6 +51,8 @@ import {
   ClipboardCheck,
   Coins,
   Wallet,
+  Eye,
+  Trash2,
 } from "../../../icons/LucideIcons";
 import styles from "./TrainingOAP.module.css";
 
@@ -1608,9 +1610,9 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                     <tr>
                       <th>Seq.</th>
                       <th>Course Name</th>
+                      <th>Actions</th>
                       <th>Course Group</th>
                       <th>Status</th>
-                      <th>Actions</th>
                       <th>Participants</th>
                       <th>Hours</th>
                       <th>Budget (THB)</th>
@@ -1665,13 +1667,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                 </div>
                               ) : null}
                             </td>
-                            <td translate="no">{plan.course.courseGroup || "-"}</td>
-                            <td>
-                              <span className={`${styles.statusPill} ${styles[`status${plan.status}`]}`}>
-                                <span className={styles.statusDot} />
-                                {getStatusLabel(plan.status)}
-                              </span>
-                            </td>
                             <td className={styles.actionCell} onClick={(e) => e.stopPropagation()}>
                               <div className={styles.actionButtons}>
                                 <button
@@ -1686,7 +1681,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                   {isOpen ? "Hide" : "Details"}
                                 </button>
                                 <button
-                                  className={`${styles.rowActionButton} ${styles.detailsAction}`}
+                                  className={`${styles.rowActionButton} ${styles.secondaryButton}`}
                                   disabled={isRowReadOnlyForFactory || plan.status === "Cancel"}
                                   title={isRowReadOnlyForFactory ? "แผนจัดอบรมของส่วนกลาง (HRD Center) โรงงานไม่สามารถแก้ไขได้" : undefined}
                                   type="button"
@@ -1712,6 +1707,13 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                   Delete
                                 </button>
                               </div>
+                            </td>
+                            <td translate="no">{plan.course.courseGroup || "-"}</td>
+                            <td>
+                              <span className={`${styles.statusPill} ${styles[`status${plan.status}`]}`}>
+                                <span className={styles.statusDot} />
+                                {getStatusLabel(plan.status)}
+                              </span>
                             </td>
                             <td>{plan.participants}</td>
                             <td>{plan.hours}</td>
