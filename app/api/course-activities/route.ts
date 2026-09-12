@@ -285,12 +285,14 @@ function mapAnnouncementToActivity(row: {
     ? `${row.company.company_code} - ${row.company.company_name_en}`
     : "Center (ส่วนกลาง)";
 
+  const isVisibleSomewhere = isVisibleOnDashboard || showOnLoginPage;
   const activityStatus =
-    row.status === "INACTIVE" || row.status === "ARCHIVED" || !isVisibleOnDashboard
+    row.status === "INACTIVE" || row.status === "ARCHIVED" || !isVisibleSomewhere
       ? "ARCHIVED"
       : row.status || "PUBLISHED";
   if (activityStatus === "ARCHIVED") {
     isVisibleOnDashboard = false;
+    showOnLoginPage = false;
   }
 
   return {
@@ -383,7 +385,7 @@ export async function GET() {
     }
 
     // Sort order:
-    // 1. sortOrder (ascending: 0, 1, 2... or unassigned default)
+    // 1. sortOrder (ascending: 0, 1, 2... custom order from Dashboard)
     // 2. publish_at / createdAt descending
     activities.sort((a, b) => {
       const orderA = a.sortOrder !== undefined ? a.sortOrder : 999999;
@@ -481,7 +483,9 @@ export async function POST(request: NextRequest) {
       isVisibleOnDashboard !== undefined
         ? Boolean(isVisibleOnDashboard)
         : status !== "ARCHIVED" && status !== "INACTIVE";
-    const dbStatus = showOnDashboard ? "PUBLISHED" : "INACTIVE";
+    const showOnLogin = Boolean(showOnLoginPage);
+    const isVisibleSomewhere = showOnDashboard || showOnLogin;
+    const dbStatus = isVisibleSomewhere ? "PUBLISHED" : "INACTIVE";
 
     const content = JSON.stringify({
       description: (description || "").trim(),
@@ -497,8 +501,8 @@ export async function POST(request: NextRequest) {
       linkedEndDate: linkedEndDate ? String(linkedEndDate).trim() : null,
       registrationNote: registrationNote ? String(registrationNote).trim() : null,
       isVisibleOnDashboard: showOnDashboard,
-      showOnLoginPage: Boolean(showOnLoginPage),
-      status: showOnDashboard ? "PUBLISHED" : "ARCHIVED",
+      showOnLoginPage: showOnLogin,
+      status: isVisibleSomewhere ? "PUBLISHED" : "ARCHIVED",
       sortOrder: typeof sortOrder === "number" ? sortOrder : undefined,
     });
 
@@ -662,11 +666,20 @@ export async function PUT(request: NextRequest) {
       isVisibleOnDashboard !== undefined
         ? Boolean(isVisibleOnDashboard)
         : status !== undefined
-        ? status !== "ARCHIVED" && status !== "INACTIVE"
+        ? status !== "ARCHIVED" && status !== "INACTIVE" && status !== "Draft"
         : existingMeta.isVisibleOnDashboard !== undefined
         ? Boolean(existingMeta.isVisibleOnDashboard)
         : existing.status !== "INACTIVE" && existing.status !== "ARCHIVED";
-    const dbStatus = showOnDashboard ? "PUBLISHED" : "INACTIVE";
+
+    const showOnLogin =
+      showOnLoginPage !== undefined
+        ? Boolean(showOnLoginPage)
+        : existingMeta.showOnLoginPage !== undefined
+        ? Boolean(existingMeta.showOnLoginPage)
+        : false;
+
+    const isVisibleSomewhere = showOnDashboard || showOnLogin;
+    const dbStatus = isVisibleSomewhere ? "PUBLISHED" : "INACTIVE";
 
     const newContent = JSON.stringify({
       description: description !== undefined ? description.trim() : (existingMeta.description || ""),
@@ -682,13 +695,8 @@ export async function PUT(request: NextRequest) {
       linkedEndDate: linkedEndDate !== undefined ? (linkedEndDate ? String(linkedEndDate).trim() : null) : (existingMeta.linkedEndDate || null),
       registrationNote: registrationNote !== undefined ? (registrationNote ? String(registrationNote).trim() : null) : (existingMeta.registrationNote || null),
       isVisibleOnDashboard: showOnDashboard,
-      showOnLoginPage:
-        showOnLoginPage !== undefined
-          ? Boolean(showOnLoginPage)
-          : existingMeta.showOnLoginPage !== undefined
-          ? Boolean(existingMeta.showOnLoginPage)
-          : false,
-      status: showOnDashboard ? "PUBLISHED" : "ARCHIVED",
+      showOnLoginPage: showOnLogin,
+      status: isVisibleSomewhere ? "PUBLISHED" : "ARCHIVED",
       sortOrder: sortOrder !== undefined ? (typeof sortOrder === "number" ? sortOrder : undefined) : existingMeta.sortOrder,
     });
 
@@ -990,10 +998,14 @@ export async function PATCH(request: NextRequest) {
 
       meta.showOnLoginPage = nextShow;
 
+      const isVisibleSomewhere = Boolean(meta.isVisibleOnDashboard) || nextShow;
+      const dbStatus = isVisibleSomewhere ? "PUBLISHED" : "INACTIVE";
+
       const updated = await prisma.announcement.update({
         where: { announcement_id: BigInt(targetLoginPageId) },
         data: {
           content: JSON.stringify(meta),
+          status: dbStatus,
         },
         include: { company: true },
       });

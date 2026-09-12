@@ -22,8 +22,11 @@ import styles from "./ScheduleCalendar.module.css";
 
 export const scheduleCalendarModule = {
   title: "Schedule calendar",
+  titleTh: "ปฏิทินการฝึกอบรม (Schedule Calendar)",
   subtitle: "Training schedule",
+  subtitleTh: "กำหนดการจัดฝึกอบรมประจำเดือน",
   description: "Show monthly training details from Training Rolling data",
+  descriptionTh: "แสดงรายละเอียดกำหนดการฝึกอบรมรายเดือนจากข้อมูลแผน Training Rolling",
 } as const;
 
 const thMonthLabels = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];

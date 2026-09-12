@@ -43,9 +43,13 @@ import {
 
 export const summaryDashboardModule = {
   title: "Summary Dashboard",
+  titleTh: "แดชบอร์ดสรุปภาพรวม (Summary Dashboard)",
   subtitle: "Executive Financial & Attendance Overview",
+  subtitleTh: "สรุปภาพรวมงบประมาณและการเข้าอบรม",
   description:
     "Monitor planned course budgets, actual spending, balance variances, and completed training attendance in one unified dashboard.",
+  descriptionTh:
+    "ติดตามงบประมาณตามแผน ค่าใช้จ่ายจริง ส่วนต่างคงเหลือ และการเข้าอบรมที่เสร็จสิ้นในแดชบอร์ดเดียว",
 } as const;
 
 const formatNumber = (value: number) =>
@@ -422,7 +426,7 @@ export default function SummaryDashboard() {
       <header className={styles.commandHeader}>
         <div className={styles.headerTitleGroup}>
           <div className={styles.titleRow}>
-            <h2>{isThai ? "แดชบอร์ดสรุปภาพรวม" : summaryDashboardModule.title}</h2>
+            <h2 translate="no">{summaryDashboardModule.title}</h2>
             <span
               className={`${styles.scopeBadge} ${
                 isFactoryUser ? styles.factoryScopeBadge : styles.centerScopeBadge

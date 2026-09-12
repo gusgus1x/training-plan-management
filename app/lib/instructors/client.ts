@@ -82,3 +82,71 @@ export const deleteInstructor = async (id: string, fetcher: Fetcher = fetch) =>
       credentials: "include",
     }),
   );
+
+export type InstructorImportSummary = {
+  total: number;
+  valid: number;
+  invalid: number;
+  newCount: number;
+  updateCount: number;
+};
+
+export type ParseInstructorResult = {
+  success: boolean;
+  fileName: string;
+  rowCount: number;
+  rows: Array<{
+    rowNum: number;
+    instructorCode: string;
+    firstName: string;
+    lastName: string;
+    telephone: string | null;
+    email: string | null;
+    education: string | null;
+    university: string | null;
+    organizationName: string | null;
+    status: "ACTIVE" | "INACTIVE";
+    isValid: boolean;
+    errors: string[];
+    dbStatus?: "NEW" | "UPDATE" | "ERROR";
+    existingInstructorId?: string | null;
+  }>;
+  summary: InstructorImportSummary;
+};
+
+export const parseInstructorFile = async (
+  file: File,
+  fetcher: Fetcher = fetch,
+): Promise<ParseInstructorResult> => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetcher("/api/master-data/instructors/import", {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+
+  return read<ParseInstructorResult>(res);
+};
+
+export type CommitInstructorImportResult = {
+  success: boolean;
+  createdCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  totalProcessed: number;
+  results: Array<{ instructorCode: string; status: string }>;
+};
+
+export const commitInstructorImport = async (
+  rows: ParseInstructorResult["rows"],
+  overwriteExisting: boolean = true,
+  fetcher: Fetcher = fetch,
+): Promise<CommitInstructorImportResult> => {
+  const res = await fetcher(
+    "/api/master-data/instructors/import",
+    json("POST", { rows, overwriteExisting }),
+  );
+  return read<CommitInstructorImportResult>(res);
+};

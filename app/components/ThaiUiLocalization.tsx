@@ -184,6 +184,10 @@ const thaiUiDictionary: Record<string, string> = {
     "ค้นหาบริษัท ระดับ รหัสเฉพาะบริษัท หรือชื่อข้อมูลหลัก",
   "Search mappings": "ค้นหาข้อมูลการเชื่อมโยง",
   "Select a company": "เลือกบริษัท",
+  "Company news, training events & CSR activities":
+    "ข่าวสารบริษัท กิจกรรมฝึกอบรม และกิจกรรม CSR",
+  "COMPANY NEWS, TRAINING EVENTS & CSR ACTIVITIES":
+    "ข่าวสารบริษัท กิจกรรมฝึกอบรม และกิจกรรม CSR",
   "Completed Course": "หลักสูตรที่เรียนจบ",
   "Completed History": "ประวัติการอบรมที่จบแล้ว",
   "Completed Hours": "ชั่วโมงอบรมสะสม",
@@ -341,6 +345,12 @@ const thaiUiDictionary: Record<string, string> = {
   "Name(EN)": "ชื่อ (อังกฤษ)",
   "Name(TH)": "ชื่อ (ไทย)",
   New: "เพิ่ม",
+  "Browse, search, and analyze all training activities, CSR highlights, and company announcements with rich gallery and tabular reporting.":
+    "เรียกดู ค้นหา และวิเคราะห์กิจกรรมการฝึกอบรม ข่าวสารประชาสัมพันธ์ และกิจกรรมเพื่อสังคม (CSR) พร้อมแกลเลอรีรูปภาพและตารางรายงานสรุป",
+  "EXECUTIVE FINANCIAL & ATTENDANCE OVERVIEW": "สรุปภาพรวมงบประมาณและการเข้าอบรม",
+  "TRAINING SCHEDULE": "กำหนดการจัดฝึกอบรมประจำเดือน",
+  "Review training schedules, summary analytics, and new activities reporting outputs in one workspace.":
+    "ตรวจสอบปฏิทินการอบรม บทวิเคราะห์สรุปผลภาพรวม และรายงานผลกิจกรรมในพื้นที่ทำงานเดียว",
   "New annual plan": "เพิ่มแผนประจำปี",
   "New monthly plan": "เพิ่มแผนรายเดือน",
   "No approved participants yet.": "ยังไม่มีผู้เข้าอบรมที่ได้รับอนุมัติ",
