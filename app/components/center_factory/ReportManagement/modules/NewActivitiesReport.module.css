@@ -111,42 +111,59 @@
   flex-shrink: 0;
 }
 
+/* Add New Activity Header Button (identical to Dashboard) */
+.addActivityHeaderBtn,
 .addBtnPrimary {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  height: 42px;
+  height: 38px;
   padding: 0 20px;
-  border-radius: 12px;
+  border-radius: 9999px;
   border: 1px solid #005c2e;
   border-bottom: 3px solid #004221;
   background: linear-gradient(135deg, #008744 0%, #005c2e 100%);
   color: #ffffff;
-  font-weight: 700;
+  font-weight: 800;
   font-size: 0.88rem;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  line-height: 1;
+  transition: all 0.15s ease;
   box-shadow: 0 4px 14px rgba(0, 122, 61, 0.28);
 }
 
+.addActivityHeaderBtn:hover,
 .addBtnPrimary:hover {
+  filter: brightness(1.12);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 122, 61, 0.38);
-  filter: brightness(1.08);
+  box-shadow: 0 6px 18px rgba(0, 122, 61, 0.38);
 }
 
+.addActivityHeaderBtn:active,
 .addBtnPrimary:active {
   transform: translateY(1px);
   border-bottom-width: 1px;
 }
 
+:global([data-theme="dark"]) .addActivityHeaderBtn,
+:global(.dark) .addActivityHeaderBtn,
 :global([data-theme="dark"]) .addBtnPrimary,
 :global(.dark) .addBtnPrimary {
   border-color: #059669;
   border-bottom-color: #047857;
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.32);
+}
+
+:global([data-theme="dark"]) .addActivityHeaderBtn:hover,
+:global(.dark) .addActivityHeaderBtn:hover,
+:global([data-theme="dark"]) .addBtnPrimary:hover,
+:global(.dark) .addBtnPrimary:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
 }
 
 /* KPI Stat Cards Grid */
@@ -223,7 +240,6 @@
   color: var(--ui-30-muted);
 }
 
-/* 2. Controls & Filter Bar */
 /* 2. Controls & Filter Bar */
 .filterBar {
   padding: 16px 20px;
@@ -1397,6 +1413,61 @@
   box-shadow: 0 0 10px rgba(255, 77, 77, 0.95), 0 0 16px rgba(255, 133, 51, 0.75);
 }
 
+/* Required field blinking dot indicator styles (consistent with system standards) */
+.indicatorPending,
+.indicatorDone {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  vertical-align: middle;
+  border-radius: 50%;
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.indicatorPending {
+  background: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+  animation: pulseRadar 1.6s ease-in-out infinite;
+}
+
+.indicatorDone {
+  background: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+  animation: scaleInCheck 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.indicatorPending .indicatorDot,
+.indicatorDone .indicatorDot {
+  display: none;
+}
+
+@keyframes pulseRadar {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+  }
+  70% {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 5px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+@keyframes scaleInCheck {
+  0% {
+    transform: scale(0.6);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .formInput,
 .formTextarea,
 .formSelect {
@@ -1460,18 +1531,23 @@
 .cancelBtn {
   padding: 9px 18px;
   border-radius: 10px;
-  border: 1px solid var(--ui-30-border);
-  background: var(--ui-60-surface);
-  color: var(--ui-30-text);
-  font-size: 0.85rem;
+  border: 1px solid var(--ui-30-border, #cbd5e1);
+  background: var(--ui-60-surface, #ffffff);
+  color: var(--ui-30-muted, #475569);
+  font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.cancelBtn:hover {
-  background: var(--ui-60-surface-soft);
-  color: var(--ui-30-ink);
+.cancelBtn:hover:not(:disabled) {
+  background: var(--ui-60-surface-soft, #f1f5f9);
+  color: var(--ui-30-ink, #0f172a);
+}
+
+.cancelBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .submitBtn {
@@ -1481,28 +1557,27 @@
   border-bottom: 3px solid #004221;
   background: linear-gradient(135deg, #007a3d 0%, #005c2e 100%);
   color: #ffffff;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 122, 61, 0.25);
   transition: all 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 122, 61, 0.25);
 }
 
-.submitBtn:hover {
+.submitBtn:hover:not(:disabled) {
   filter: brightness(1.1);
   transform: translateY(-1px);
 }
 
-.submitBtn:active {
+.submitBtn:active:not(:disabled) {
   transform: translateY(1px);
   border-bottom-width: 1px;
 }
 
-:global([data-theme="dark"]) .submitBtn,
-:global(.dark) .submitBtn {
-  border-color: #059669;
-  border-bottom-color: #047857;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+.submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 @keyframes fadeIn {
@@ -1525,6 +1600,7 @@
   .heroActions {
     width: 100%;
   }
+  .addActivityHeaderBtn,
   .addBtnPrimary {
     width: 100%;
     justify-content: center;
@@ -2938,3 +3014,4 @@
   background: rgba(2, 132, 199, 0.9);
   border-color: #38bdf8;
 }
+

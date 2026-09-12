@@ -1,0 +1,392 @@
+/* ═══════════════════════════════════════════════════
+   Post-Save Activity Dialog Styles (Shared Component)
+   Refined, Modern High-Craft Aesthetic
+   ═══════════════════════════════════════════════════ */
+
+.postSaveOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 7, 18, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: postSaveFadeIn 0.22s ease-out;
+  padding: 20px;
+}
+
+@keyframes postSaveFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes postSaveSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.postSaveDialog {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  background: linear-gradient(160deg, #0d1b33 0%, #091224 100%);
+  border: 1.5px solid rgba(56, 189, 248, 0.22);
+  border-radius: 22px;
+  box-shadow:
+    0 28px 70px -15px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+    0 1px 0 rgba(255, 255, 255, 0.12) inset;
+  animation: postSaveSlideUp 0.3s cubic-bezier(0.34, 1.45, 0.64, 1);
+  overflow: hidden;
+}
+
+@keyframes postSaveSlideUp {
+  from { opacity: 0; transform: translateY(22px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Header */
+.postSaveHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 26px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+}
+
+.postSaveSuccessIcon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.24) 0%, rgba(5, 150, 105, 0.12) 100%);
+  border: 1.5px solid rgba(52, 211, 153, 0.45);
+  color: #34d399;
+  flex-shrink: 0;
+  box-shadow: 0 0 24px rgba(16, 185, 129, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.postSaveHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.postSaveTitle {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.015em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.postSaveSubtitle {
+  font-size: 0.84rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.55;
+}
+
+.postSaveCloseBtn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.postSaveCloseBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Options list */
+.postSaveOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px 24px 18px;
+}
+
+/* Option card (base) */
+.postSaveOptionCard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 18px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.postSaveOptionCard:hover {
+  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(255, 255, 255, 0.055);
+  transform: translateY(-1px);
+}
+
+/* Dashboard active state */
+.postSaveOptionCardActive {
+  border-color: rgba(56, 189, 248, 0.6) !important;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.12) 0%, rgba(30, 58, 138, 0.08) 100%) !important;
+  box-shadow: 0 4px 20px rgba(14, 165, 233, 0.15), inset 0 0 0 1px rgba(56, 189, 248, 0.15);
+}
+
+/* Login page active state */
+.postSaveOptionCardLoginActive {
+  border-color: rgba(168, 85, 247, 0.6) !important;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.12) 0%, rgba(88, 28, 135, 0.08) 100%) !important;
+  box-shadow: 0 4px 20px rgba(168, 85, 247, 0.15), inset 0 0 0 1px rgba(168, 85, 247, 0.15);
+}
+
+/* Custom styled checkbox indicator */
+.customCheckbox {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+}
+
+.customCheckboxChecked {
+  border-color: #38bdf8;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.45);
+}
+
+.customCheckboxLoginChecked {
+  border-color: #c084fc;
+  background: linear-gradient(135deg, #9333ea 0%, #7e22ce 100%);
+  box-shadow: 0 0 12px rgba(192, 132, 252, 0.45);
+}
+
+/* Option Icon */
+.postSaveOptionIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+}
+
+.postSaveOptionCardActive .postSaveOptionIcon {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.2);
+}
+
+.postSaveOptionCardLoginActive .postSaveOptionIcon {
+  color: #c084fc;
+  background: rgba(168, 85, 247, 0.15);
+  box-shadow: 0 0 14px rgba(168, 85, 247, 0.2);
+}
+
+.postSaveOptionText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.postSaveOptionLabel {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  line-height: 1.35;
+}
+
+.postSaveOptionDesc {
+  font-size: 0.79rem;
+  color: #8899a6;
+  line-height: 1.5;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* Status Chip */
+.statusChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.statusChipActive {
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.statusChipLoginActive {
+  background: rgba(192, 132, 252, 0.16);
+  color: #c084fc;
+  border: 1px solid rgba(192, 132, 252, 0.35);
+}
+
+.statusChipInactive {
+  background: rgba(255, 255, 255, 0.05);
+  color: #64748b;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.statusChipActive .statusDot,
+.statusChipLoginActive .statusDot {
+  box-shadow: 0 0 6px currentColor;
+  animation: statusPulse 1.8s infinite ease-in-out;
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.85); }
+}
+
+/* Notice (amber) shown when nothing is selected */
+.postSaveNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 24px 18px;
+  padding: 13px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.08) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fde68a;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  animation: postSaveFadeIn 0.2s ease;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.08);
+}
+
+.postSaveNoticeIcon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #f59e0b;
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.4));
+}
+
+.postSaveNotice strong {
+  color: #fde047;
+  font-weight: 700;
+}
+
+/* Footer */
+.postSaveFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 18px 24px 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.postSaveSkipBtn {
+  padding: 10px 20px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.postSaveSkipBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.09);
+  color: #f1f5f9;
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.postSaveSkipBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.postSaveConfirmBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-radius: 11px;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 18px rgba(2, 132, 199, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.01em;
+}
+
+.postSaveConfirmBtn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 24px rgba(2, 132, 199, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  border-color: rgba(56, 189, 248, 0.6);
+}
+
+.postSaveConfirmBtn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.postSaveConfirmBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}

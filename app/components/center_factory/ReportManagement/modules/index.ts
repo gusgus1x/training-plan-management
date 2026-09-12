@@ -21,6 +21,9 @@ export type ReportModuleTopic = {
   title: string;
   subtitle: string;
   description: string;
+  titleTh?: string;
+  subtitleTh?: string;
+  descriptionTh?: string;
   slug: string;
   Component: ComponentType<ReportModuleProps>;
   locked?: boolean;

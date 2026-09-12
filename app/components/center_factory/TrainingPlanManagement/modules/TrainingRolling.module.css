@@ -797,7 +797,8 @@
 }
 
 .tableWrap {
-  overflow-x: auto;
+  max-height: min(65vh, 640px);
+  overflow: auto;
   border: 1px solid var(--ui-30-border);
   border-radius: 12px;
   background: var(--ui-60-surface);
@@ -808,7 +809,8 @@
 }
 
 .tableWrap::-webkit-scrollbar {
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 .tableWrap::-webkit-scrollbar-track {
@@ -819,6 +821,11 @@
 
 .tableWrap::-webkit-scrollbar-thumb {
   background: var(--ui-30-border);
+  border-radius: 6px;
+}
+
+.tableWrap::-webkit-scrollbar-thumb:hover {
+  background: var(--ui-30-primary);
 }
 
 .rollingTable {
@@ -832,12 +839,12 @@
 .rollingTable th {
   position: sticky;
   top: 0;
-  z-index: 1;
-  border-bottom: 1px solid var(--ui-30-border);
+  z-index: 10;
+  border-bottom: 2px solid var(--ui-30-border);
   background: var(--ui-60-surface-soft);
   color: var(--ui-30-muted);
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 700;
   padding: 12px 14px;
   text-align: left;
   text-transform: uppercase;
@@ -858,14 +865,18 @@
   background: rgba(255, 255, 255, 0.02);
 }
 
-/* Percentage widths to fit exactly 100% screen width without scrollbar */
-.rollingTable th:nth-child(1), .rollingTable td:nth-child(1) { width: 4%; text-align: center; }
-.rollingTable th:nth-child(2), .rollingTable td:nth-child(2) { width: 18%; text-align: left; overflow: hidden; text-overflow: ellipsis; }
-.rollingTable th:nth-child(3), .rollingTable td:nth-child(3) { width: 12%; text-align: left; }
-.rollingTable th:nth-child(4), .rollingTable td:nth-child(4) { width: 12%; text-align: left; }
-.rollingTable th:nth-child(5), .rollingTable td:nth-child(5) { width: 14%; text-align: left; }
-.rollingTable th:nth-child(6), .rollingTable td:nth-child(6) { width: 26%; text-align: left; }
-.rollingTable th:nth-child(7), .rollingTable td:nth-child(7) { width: 14%; text-align: left; }
+/* Column widths: clean auto-fit with natural text wrapping */
+.rollingTable th:nth-child(1), .rollingTable td:nth-child(1) { width: 48px; text-align: center; white-space: nowrap; }
+.rollingTable th:nth-child(2), .rollingTable td:nth-child(2) {
+  white-space: normal;
+  word-break: break-word;
+  min-width: 220px;
+  max-width: 380px;
+}
+.rollingTable th:nth-child(3), .rollingTable td:nth-child(3) {
+  width: 1%;
+  white-space: nowrap;
+}
 
 .rollingTable td strong {
   display: block;
@@ -992,7 +1003,7 @@
 .actionButtons {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .actionButtons .detailButton,
@@ -1002,63 +1013,119 @@
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  border-radius: 4px !important;
-  padding: 4px 8px !important;
+  border-radius: 6px !important;
+  padding: 4px 12px !important;
   min-height: 28px !important;
   font: inherit !important;
-  font-size: 0.72rem !important;
+  font-size: 0.75rem !important;
   font-weight: 700 !important;
   line-height: 1.2 !important;
   white-space: nowrap !important;
   flex-shrink: 0 !important;
   cursor: pointer;
-  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease;
 }
 
-.actionButtons .detailButton,
-.actionButtons .secondaryButton {
-  border: 1px solid var(--ui-30-border, #cbd5e1) !important;
-  background: var(--ui-60-surface-soft, #f1f5f9) !important;
-  color: var(--ui-30-ink) !important;
+/* Detail Button - Blue Theme */
+.actionButtons .detailButton {
+  border: 1px solid #3b82f6 !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
 }
 
-.actionButtons .detailButton:hover,
-.actionButtons .secondaryButton:hover {
-  border-color: var(--ui-30-primary, #007a3d) !important;
-  background: var(--ui-60-surface, #ffffff) !important;
-  color: var(--ui-30-primary, #007a3d) !important;
+:global([data-theme="dark"]) .actionButtons .detailButton,
+:global(.dark) .actionButtons .detailButton {
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #60a5fa !important;
 }
 
-.actionButtons .dangerButton {
-  border: 1px solid rgba(239, 68, 68, 0.3) !important;
-  background: rgba(239, 68, 68, 0.1) !important;
-  color: #ef4444 !important;
-}
-
-.actionButtons .dangerButton:hover {
-  border-color: #ef4444 !important;
-  background: #ef4444 !important;
+.actionButtons .detailButton:hover {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
   color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(37, 99, 235, 0.3);
 }
 
+/* Edit Button - Amber Theme */
+.actionButtons .secondaryButton {
+  border: 1px solid #f59e0b !important;
+  background: #fffbeb !important;
+  color: #b45309 !important;
+}
+
+:global([data-theme="dark"]) .actionButtons .secondaryButton,
+:global(.dark) .actionButtons .secondaryButton {
+  border-color: rgba(245, 158, 11, 0.5) !important;
+  background: rgba(245, 158, 11, 0.15) !important;
+  color: #fbbf24 !important;
+}
+
+.actionButtons .secondaryButton:hover:not(:disabled) {
+  background: #d97706 !important;
+  border-color: #d97706 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(217, 119, 6, 0.3);
+}
+
+.actionButtons .secondaryButton:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Delete / Cancel Button - Red Theme */
+.actionButtons .dangerButton {
+  border: 1px solid #ef4444 !important;
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+}
+
+:global([data-theme="dark"]) .actionButtons .dangerButton,
+:global(.dark) .actionButtons .dangerButton {
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #f87171 !important;
+}
+
+.actionButtons .dangerButton:hover:not(:disabled) {
+  border-color: #dc2626 !important;
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(220, 38, 38, 0.3);
+}
+
+.actionButtons .dangerButton:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Publish Button - Green Theme */
 .actionButtons .primaryButton {
-  border: 1px solid #10b981 !important;
+  border: 1px solid #059669 !important;
   background: #10b981 !important;
   color: #ffffff !important;
 }
 
 .actionButtons .primaryButton:hover:not(:disabled) {
   background: #059669 !important;
-  border-color: #059669 !important;
-  transform: translateY(-1px) !important;
+  border-color: #047857 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(16, 185, 129, 0.35);
 }
 
 .actionButtons .primaryButton:disabled {
-  background: transparent !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
-  color: var(--ui-30-muted) !important;
-  cursor: default;
-  transform: none;
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 .detailRow td {

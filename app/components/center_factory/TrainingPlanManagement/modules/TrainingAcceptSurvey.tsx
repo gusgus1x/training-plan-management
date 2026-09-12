@@ -46,6 +46,7 @@ import {
   Users,
   MessageSquare,
   FileText,
+  Search,
 } from "../../../icons/LucideIcons";
 import styles from "./TrainingAcceptSurvey.module.css";
 
@@ -233,6 +234,19 @@ const getEmployeePositionLevelDisplay = (emp: { position?: string; level?: strin
   return "-";
 };
 
+const formatFullName = (profile: { prefix?: string; firstName: string; lastName: string }) => {
+  const p = profile.prefix && profile.prefix !== "-" ? `${profile.prefix} ` : "";
+  const l = profile.lastName && profile.lastName !== "-" ? ` ${profile.lastName}` : "";
+  return `${p}${profile.firstName}${l}`.trim();
+};
+
+const getEmployeeOrgDisplay = (emp: { department?: string; section?: string; division?: string }) => {
+  const main = emp.department || emp.section || emp.division || "-";
+  const subParts = [emp.section, emp.division].filter(Boolean).filter((s) => s !== main);
+  const sub = subParts.length > 0 ? subParts.join(" • ") : "";
+  return { main, sub };
+};
+
 const POSITION_RANKS: Record<string, number> = {
   president: 13,
   "executive vice president": 12,
@@ -359,7 +373,7 @@ function PaginatedEmployeeGrid({
           <input
             className={styles.dropdownSearchInput}
             type="text"
-            placeholder="ค้นหาพนักงาน (รหัส, คำนำหน้า, ชื่อ, นามสกุล, ส่วนงาน, ฝ่าย, แผนก, ตำแหน่ง, ระดับ)..."
+            placeholder="ค้นหาพนักงาน (รหัส, ชื่อ-สกุล, แผนก, ตำแหน่ง)..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -427,7 +441,12 @@ function PaginatedEmployeeGrid({
               courseHistoryMap.get(employee.id) ||
               (employee.employeeCode ? courseHistoryMap.get(employee.employeeCode) : undefined);
 
-            let statusBadge = <span className={styles.badgeNone}><Circle size={8} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} />ยังไม่ลงทะเบียน</span>;
+            let statusBadge = (
+              <span className={styles.badgeNone}>
+                <span className={styles.statusDotNone}></span>
+                <span>ยังไม่ลงทะเบียน</span>
+              </span>
+            );
             let buttonLabel = targetActionLabel;
             let isBtnDisabled = false;
             let isRetake = false;

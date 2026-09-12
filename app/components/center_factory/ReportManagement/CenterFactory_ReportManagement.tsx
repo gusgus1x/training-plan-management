@@ -6,6 +6,7 @@ import { useAuthActions } from "../../AuthActionsContext";
 import { useAuthenticatedUser } from "../../AuthenticatedUserContext";
 import { useSectionNavigation } from "../../../lib/useSectionNavigation";
 import Navbar from "../../Navbar";
+import { useUiLanguage } from "../../ThaiUiLocalization";
 import { Lock } from "../../icons/LucideIcons";
 import styles from "./CenterFactory_ReportManagement.module.css";
 import {
@@ -25,6 +26,8 @@ export default function ReportManagement({
 }: ReportManagementProps) {
   const router = useRouter();
   const { logout } = useAuthActions();
+  const { language } = useUiLanguage();
+  const isThai = language === "th";
   const username = useAuthenticatedUser()?.username ?? "";
   const { selectedItem, openSection, goToGrid } = useSectionNavigation(
     "/report",
@@ -46,7 +49,13 @@ export default function ReportManagement({
     <main className={styles.page}>
       <Navbar
         username={username}
-        contextTitle={selectedItem ? `Report Management / ${selectedItem.title}` : "Report Management"}
+        contextTitle={
+          selectedItem
+            ? `Report Management / ${selectedItem.title}`
+            : isThai
+              ? "ระบบรายงานและการวิเคราะห์ผล"
+              : "Report Management"
+        }
         contextItems={centerReportItems.map((item) => ({
           title: item.title,
           active: item.title === selectedItem?.title,
@@ -60,14 +69,26 @@ export default function ReportManagement({
 
       <section className={styles.header}>
         <div className={styles.headerTop}>
-          <span className={styles.sectionBadge}>Report Workspace</span>
+          <span className={styles.sectionBadge}>
+            {isThai ? "พื้นที่รายงาน" : "Report Workspace"}
+          </span>
         </div>
         <div className={styles.heroPanel}>
           <div>
-            <p className={styles.kicker} translate="no">Report</p>
-            <h1 translate="no">{selectedItem ? selectedItem.title : "Report Management"}</h1>
+            <p className={styles.kicker} translate="no">
+              Report
+            </p>
+            <h1 translate="no">
+              {selectedItem
+                ? selectedItem.title
+                : isThai
+                  ? "ระบบรายงานและการวิเคราะห์ผล"
+                  : "Report Management"}
+            </h1>
             <p>
-              Review training schedules, summary analytics, and new activities reporting outputs in one workspace.
+              {isThai
+                ? "ตรวจสอบปฏิทินการอบรม บทวิเคราะห์สรุปผลภาพรวม และรายงานผลกิจกรรมในพื้นที่ทำงานเดียว"
+                : "Review training schedules, summary analytics, and new activities reporting outputs in one workspace."}
             </p>
           </div>
         </div>
@@ -82,17 +103,22 @@ export default function ReportManagement({
         <section className={styles.moduleSection} aria-label="Report Management modules">
           <div className={styles.moduleHeader}>
             <div>
-              <span>Report Operation</span>
-              <h2 translate="no">Select a workspace</h2>
+              <span>{isThai ? "เมนูรายงาน" : "Report Operation"}</span>
+              <h2 translate="no">
+                Select a workspace
+              </h2>
             </div>
-            <p>{centerReportItems.length} modules</p>
+            <p>
+              {centerReportItems.length} {isThai ? "โมดูล" : "modules"}
+            </p>
           </div>
 
           <div className={styles.moduleGrid}>
             {centerReportItems.map((item, index) => (
               <button
-                className={`${styles.moduleCard} ${item.locked ? styles.lockedModuleCard : ""
-                  }`}
+                className={`${styles.moduleCard} ${
+                  item.locked ? styles.lockedModuleCard : ""
+                }`}
                 disabled={item.locked}
                 key={item.title}
                 type="button"
@@ -105,11 +131,19 @@ export default function ReportManagement({
                   {item.locked ? <Lock size={14} /> : String(index + 1).padStart(2, "0")}
                 </span>
                 <div>
-                  <span className={styles.cardSubtitle} translate="no">{item.subtitle}</span>
-                  <h3 translate="no">{item.title}</h3>
+                  <span className={styles.cardSubtitle} translate="no">
+                    {item.subtitle}
+                  </span>
+                  <h3 translate="no">
+                    {item.title}
+                  </h3>
                   <p>{item.description}</p>
                 </div>
-                <strong>{item.locked ? "Locked" : "Open"}</strong>
+                <strong>
+                  {item.locked
+                    ? isThai ? "ล็อก" : "Locked"
+                    : isThai ? "เปิด" : "Open"}
+                </strong>
               </button>
             ))}
           </div>

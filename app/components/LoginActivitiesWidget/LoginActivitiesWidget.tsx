@@ -74,11 +74,10 @@ export default function LoginActivitiesWidget({ className }: LoginActivitiesWidg
           ? data.activities
           : [];
 
-        // Filter activities that are published, visible on dashboard, and explicitly selected for Login page
+        // Filter activities that are published and explicitly selected for Login page
         const publishedList = list.filter(
           (item) =>
             item.status === "PUBLISHED" &&
-            item.isVisibleOnDashboard !== false &&
             item.showOnLoginPage === true
         );
 

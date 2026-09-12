@@ -346,12 +346,24 @@
 
 .tableWrap {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: min(65vh, 640px);
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
 }
 
 .courseTable {
   width: 100%;
   min-width: 920px;
   border-collapse: collapse;
+}
+
+.courseTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--ui-60-surface-soft);
+  box-shadow: 0 1px 0 var(--ui-30-border);
 }
 
 .courseTable th,
@@ -582,32 +594,103 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .actionButtonsWrap button {
-  min-height: 32px !important;
-  padding: 5px 10px !important;
-  font-size: 0.8rem !important;
+  min-height: 28px !important;
+  padding: 4px 12px !important;
+  font-size: 0.75rem !important;
   font-weight: 700 !important;
   border-radius: 6px !important;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   cursor: pointer;
-  transition: all 120ms ease;
+  transition: all 0.15s ease;
   white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.detailButton {
-  border: 1px solid var(--ui-30-border);
-  background: var(--ui-60-surface);
-  color: var(--ui-30-primary);
+/* Detail Button - Blue Theme */
+.actionButtonsWrap .detailButton {
+  border: 1px solid #3b82f6 !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
 }
 
-.detailButton:hover {
-  border-color: var(--ui-30-primary);
-  background: var(--ui-30-primary-soft);
+:global([data-theme="dark"]) .actionButtonsWrap .detailButton,
+:global(.dark) .actionButtonsWrap .detailButton {
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  background: rgba(59, 130, 246, 0.15) !important;
+  color: #60a5fa !important;
+}
+
+.actionButtonsWrap .detailButton:hover {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(37, 99, 235, 0.3);
+}
+
+/* Edit Button - Amber Theme */
+.actionButtonsWrap .secondaryButton {
+  border: 1px solid #f59e0b !important;
+  background: #fffbeb !important;
+  color: #b45309 !important;
+}
+
+:global([data-theme="dark"]) .actionButtonsWrap .secondaryButton,
+:global(.dark) .actionButtonsWrap .secondaryButton {
+  border-color: rgba(245, 158, 11, 0.5) !important;
+  background: rgba(245, 158, 11, 0.15) !important;
+  color: #fbbf24 !important;
+}
+
+.actionButtonsWrap .secondaryButton:hover:not(:disabled) {
+  background: #d97706 !important;
+  border-color: #d97706 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(217, 119, 6, 0.3);
+}
+
+.actionButtonsWrap .secondaryButton:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Delete Button - Red Theme */
+.actionButtonsWrap .dangerButton {
+  border: 1px solid #ef4444 !important;
+  background: #fef2f2 !important;
+  color: #dc2626 !important;
+}
+
+:global([data-theme="dark"]) .actionButtonsWrap .dangerButton,
+:global(.dark) .actionButtonsWrap .dangerButton {
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #f87171 !important;
+}
+
+.actionButtonsWrap .dangerButton:hover:not(:disabled) {
+  border-color: #dc2626 !important;
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(220, 38, 38, 0.3);
+}
+
+.actionButtonsWrap .dangerButton:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
 }
 
 .closeButton {

@@ -1,0 +1,47 @@
+/* Add New Activity Header Button */
+.addActivityBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 20px;
+  border-radius: 9999px;
+  border: 1px solid #005c2e;
+  border-bottom: 3px solid #004221;
+  background: linear-gradient(135deg, #008744 0%, #005c2e 100%);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.88rem;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 14px rgba(0, 122, 61, 0.28);
+}
+
+.addActivityBtn:hover {
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 122, 61, 0.38);
+}
+
+.addActivityBtn:active {
+  transform: translateY(1px);
+  border-bottom-width: 1px;
+}
+
+:global([data-theme="dark"]) .addActivityBtn,
+:global(.dark) .addActivityBtn {
+  border-color: #059669;
+  border-bottom-color: #047857;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.32);
+}
+
+:global([data-theme="dark"]) .addActivityBtn:hover,
+:global(.dark) .addActivityBtn:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+}
