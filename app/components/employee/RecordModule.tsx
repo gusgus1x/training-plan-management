@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { certificateFileUrl } from "../../lib/certificates/client";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
@@ -196,6 +196,52 @@ export const resolveStageState = (stage: EnrollmentStageInfo): StageDisplayState
   if (stage.submission) return "DONE";
   return "TODO";
 };
+
+/**
+ * The stages of a finished course that are open and still waiting on the employee.
+ *
+ * "TODO" and nothing else. A stage that is not open yet, one HRD closed, or one already submitted
+ * is not something they can act on, and a LINK stage is somebody else's form - this system never
+ * learns whether it was answered, so treating it as outstanding would leave the course waiting for
+ * ever.
+ */
+/** Short names for the waiting pill, where the full row titles would not fit. */
+const STAGE_LABELS_TH: Record<AssessmentFlowStep["key"], string> = {
+  pre: "แบบทดสอบก่อนอบรม",
+  post: "แบบทดสอบหลังอบรม",
+  evaluation: "แบบประเมินผล",
+  evaluation30: "แบบประเมินหลัง 30 วัน",
+};
+
+const STAGE_LABELS_EN: Record<AssessmentFlowStep["key"], string> = {
+  pre: "Pre-test",
+  post: "Post-test",
+  evaluation: "Evaluation",
+  evaluation30: "30-day evaluation",
+};
+
+export const outstandingStageKeys = (assessment: EnrollmentAssessmentInfo): AssessmentFlowStep["key"][] =>
+  (
+    [
+      ["pre", assessment.preTest],
+      ["post", assessment.postTest],
+      ["evaluation", assessment.evaluation],
+      ["evaluation30", assessment.evaluationAfter30Day],
+    ] as const
+  )
+    .filter(([, stage]) => resolveStageState(stage) === "TODO")
+    .map(([key]) => key);
+
+/**
+ * A finished course with a form still to answer.
+ *
+ * The course's own status does not change - HRD marked it complete and it stays complete. This
+ * only decides which of the two lists it is read under, so somebody can see at a glance what is
+ * still theirs to do. A 30-day evaluation that opens a month later turns this true again, and the
+ * course moves back up on its own.
+ */
+export const isAwaitingForms = (assessment: EnrollmentAssessmentInfo) =>
+  outstandingStageKeys(assessment).length > 0;
 
 /**
  * The 4-row "what can I do about this course's tests" panel, shared by both the completed-course
@@ -602,6 +648,26 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
     [query, records, selectedProvider],
   );
 
+  /**
+   * The same records, read under two headings: the ones with a form still to answer first, then
+   * the ones that are finished with.
+   *
+   * Nothing about the courses changes - every one of these is complete as far as HRD and the
+   * database are concerned. This is the employee's own to-do list, drawn out of what they have
+   * already been asked for, and a 30-day evaluation opening a month later quietly moves its course
+   * back to the top.
+   */
+  const groupedRecords = useMemo(() => {
+    const grouped = filteredRecords.map((record) => ({
+      record,
+      group: isAwaitingForms(record.assessment) ? ("awaiting" as const) : ("done" as const),
+    }));
+    return [
+      ...grouped.filter((entry) => entry.group === "awaiting"),
+      ...grouped.filter((entry) => entry.group === "done"),
+    ];
+  }, [filteredRecords]);
+
   const passportSummary = useMemo(() => {
     const totalHours = records.reduce((sum, r) => sum + r.hours, 0);
     const completedCount = records.length;
@@ -958,16 +1024,50 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
 
           {/* Cards List matching Image 2 Design */}
           <div className={styles.cardList}>
-            {filteredRecords.map((record) => {
+            {groupedRecords.map(({ record, group }, index) => {
               const isExpanded = expandedCardIds.has(record.id);
+              // The heading is emitted by the first card of each run rather than by wrapping each
+              // group in its own list: the card below is two hundred lines, and two copies of it
+              // would drift apart the first time one of them was touched.
+              const startsGroup = index === 0 || groupedRecords[index - 1].group !== group;
+              const outstanding = group === "awaiting" ? outstandingStageKeys(record.assessment) : [];
               return (
+                <Fragment key={record.id}>
+                  {startsGroup ? (
+                    <h4 className={styles.recordGroupHeading} data-group={group}>
+                      {group === "awaiting" ? (
+                        <>
+                          <FileText size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                          {t("แบบทดสอบ & แบบประเมินที่รอทำ", "Tests and evaluations still to do")}
+                        </>
+                      ) : (
+                        <>
+                          <Award size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                          {t("อบรมสำเร็จ", "Training complete")}
+                        </>
+                      )}
+                      <span className={styles.recordGroupCount}>
+                        {groupedRecords.filter((entry) => entry.group === group).length}
+                      </span>
+                    </h4>
+                  ) : null}
                 <div className={styles.recordCard} key={record.id}>
                   {/* Top Row matching Image 2 with Completed status dot */}
                   <div className={styles.cardHeaderRow}>
+                    {/* The course's own status is unchanged - HRD marked it complete and it stays
+                        complete. The pill beside it says what is still the employee's to do. */}
                     <span className={`${styles.statusPill} ${styles.statusCompleted}`}>
                       <span className={styles.statusDot} />
                       {t("ผ่านการอบรมเสร็จสมบูรณ์", "Completed")}
                     </span>
+                    {outstanding.length > 0 ? (
+                      <span className={styles.statusPillWaiting}>
+                        {t(
+                          `รอทำ ${outstanding.map((key) => STAGE_LABELS_TH[key]).join(" · ")}`,
+                          `To do: ${outstanding.map((key) => STAGE_LABELS_EN[key]).join(" · ")}`,
+                        )}
+                      </span>
+                    ) : null}
 
                     <div className={styles.cardRightHeaderGroup}>
                       <span className={styles.providerTag}>
@@ -1156,6 +1256,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                     </>
                   ) : null}
                 </div>
+                </Fragment>
               );
             })}
 

@@ -118,6 +118,15 @@ export type TrainingRecordAttendee = {
   attended: boolean;
   preTestPassed: boolean | null;
   postTestPassed: boolean | null;
+  /**
+   * Whether the test was handed in at all, published or not.
+   *
+   * A different question from `preTestPassed`, which only speaks for a RELEASED attempt: somebody
+   * who sat the test and is waiting on HRD to release it has answered, and reads as null there.
+   * The donuts on the record screen count answers, so they need this rather than the verdict.
+   */
+  preTestSubmitted: boolean;
+  postTestSubmitted: boolean;
   /** The attendee's own evaluation. A reviewer's answers never count towards this. */
   evaluationCompleted: boolean;
   /** null until HRD records one. */
@@ -160,6 +169,9 @@ export type TrainingRecordSummary = {
   expenses: TrainingRecordExpenses;
   preTestPassCount: number;
   postTestPassCount: number;
+  /** How many attendees handed each test in - what the record screen's donuts report. */
+  preTestSubmittedCount: number;
+  postTestSubmittedCount: number;
   evaluationCompletedCount: number;
   attendees: TrainingRecordAttendee[];
   savedAt: string;

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildRecords, resolveStageState, toRecord } from "../../app/components/employee/RecordModule";
+import {
+  buildRecords,
+  isAwaitingForms,
+  outstandingStageKeys,
+  resolveStageState,
+  toRecord,
+} from "../../app/components/employee/RecordModule";
 import { emptyEnrollmentStage, type EnrollmentRecord, type EnrollmentStageInfo } from "../../app/lib/trainingEnrollment/types";
 
 const enrollment = (overrides: Partial<EnrollmentRecord> = {}): EnrollmentRecord => ({
@@ -184,5 +190,60 @@ describe("resolveStageState - the assessment/evaluation button and label state",
 
   it("reports TODO for an open FORM stage nobody has attempted", () => {
     expect(resolveStageState(stage({}))).toBe("TODO");
+  });
+});
+
+describe("the two lists a completed course is read under", () => {
+  const stage = (overrides: Partial<EnrollmentStageInfo>): EnrollmentStageInfo => ({
+    ...emptyEnrollmentStage,
+    mode: "FORM",
+    availability: "OPEN",
+    ...overrides,
+  });
+
+  const submitted = stage({
+    submission: { submissionId: "1", attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: 8, scoreMax: 10, passStatus: "PASS", gradingStatus: "REVIEWED", resultsPublished: true },
+    attempts: [],
+    totalScore: 10,
+  });
+
+  const assessment = (overrides: Partial<Record<"preTest" | "postTest" | "evaluation" | "evaluationAfter30Day", EnrollmentStageInfo>> = {}) => ({
+    preTest: emptyEnrollmentStage,
+    postTest: emptyEnrollmentStage,
+    evaluation: emptyEnrollmentStage,
+    evaluationAfter30Day: emptyEnrollmentStage,
+    ...overrides,
+  });
+
+  it("waits on a course whose open form nobody has answered", () => {
+    expect(outstandingStageKeys(assessment({ postTest: stage({}) }))).toEqual(["post"]);
+    expect(isAwaitingForms(assessment({ postTest: stage({}) }))).toBe(true);
+  });
+
+  it("counts a course as finished once every open form is in", () => {
+    // Handed in and waiting on HRD is still nothing the employee can act on.
+    const reviewing = stage({
+      submission: { submissionId: "1", attemptNo: 1, submittedAt: "2026-05-12T00:00:00.000Z", score: null, scoreMax: 10, passStatus: "PENDING", gradingStatus: "PENDING_REVIEW", resultsPublished: false },
+      attempts: [],
+      totalScore: 10,
+    });
+    expect(isAwaitingForms(assessment({ postTest: submitted, evaluation: reviewing }))).toBe(false);
+  });
+
+  it("does not wait on a form that is not open yet, and waits on it once it is", () => {
+    // The 30-day evaluation: nothing to do for a month, then the course moves back up on its own.
+    const notYet = stage({ availability: "NOT_YET", opensAt: "2026-06-30T00:00:00.000Z" });
+    expect(isAwaitingForms(assessment({ evaluationAfter30Day: notYet }))).toBe(false);
+    expect(outstandingStageKeys(assessment({ evaluationAfter30Day: stage({}) }))).toEqual(["evaluation30"]);
+  });
+
+  it("never waits on a form this system cannot see the answer to, or one HRD closed", () => {
+    // An external LINK is somebody else's form; waiting on it would park the course for ever.
+    const link = stage({ mode: "LINK", link: "https://forms.example.com/x" });
+    const closed = stage({ availability: "CLOSED_BY_HRD" });
+    expect(isAwaitingForms(assessment({ evaluation: link }))).toBe(false);
+    expect(isAwaitingForms(assessment({ postTest: closed }))).toBe(false);
+    // A course with no forms at all was never waiting on anything.
+    expect(isAwaitingForms(assessment())).toBe(false);
   });
 });

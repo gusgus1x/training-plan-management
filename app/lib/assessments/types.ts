@@ -94,6 +94,8 @@ export type AssessmentRecord = {
   status: AssessmentStatus;
   questions: AssessmentQuestionRecord[];
   isUsed: boolean;
+  /** Who made it. "My forms" on the gallery means this, not the company it belongs to. */
+  createdBy: string;
   canModify: boolean;
   canCreateVersion: boolean;
   createdAt: string;

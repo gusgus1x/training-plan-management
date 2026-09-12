@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useToast } from "../../../ToastHost";
@@ -394,6 +395,7 @@ const RequiredIndicator = ({ isFilled }: { isFilled: boolean }) => (
 
 export default function Assessment() {
   const user = useAuthenticatedUser();
+  const router = useRouter();
   const confirm = useConfirm();
   const isCenter = user?.roleCode === "HRD_CENTER";
   const [items, setItems] = useState<AssessmentRecord[]>([]);
@@ -1799,8 +1801,14 @@ export default function Assessment() {
             />
           </div>
         ) : null}
-        <button className={styles.primaryButton} type="button" disabled={busy} onClick={startNew}>+ เพิ่มแบบทดสอบ</button>
-        <button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canModify} onClick={startEdit} title={disabledReason("edit")}>แก้ไข</button>
+        {/* The gallery, not the panel below: making a form is its own screen now. */}
+        <button className={styles.primaryButton} type="button" disabled={busy} onClick={() => router.push("/forms/assessment")}>+ เพิ่มแบบทดสอบ</button>
+        {/* Still the only way to build a grid question, so it keeps its own way in. */}
+        <button className={styles.secondaryButton} type="button" disabled={busy} onClick={startNew}>+ สร้างแบบเดิม (ตาราง)</button>
+        {/* The builder, not the panel below. `startEdit` stays for the grid questions this screen
+            is still the only editor of. */}
+        <button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canModify} onClick={() => selected && router.push(`/forms/assessment/${selected.assessmentId}`)} title={disabledReason("edit")}>แก้ไข</button>
+        <button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canModify} onClick={startEdit} title={disabledReason("edit")}>แก้ไขแบบเดิม (ตาราง)</button>
         <button className={styles.secondaryButton} type="button" disabled={busy || !selected?.canCreateVersion} onClick={startVersion} title={disabledReason("version")}>สร้างเวอร์ชันใหม่</button>
         <button className={styles.dangerButton} type="button" disabled={busy || !selected?.canModify} onClick={() => void remove()} title={disabledReason("edit")}>ลบ</button>
         <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void load()}>รีเฟรช</button>

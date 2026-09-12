@@ -212,6 +212,9 @@ const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
       // PRESENT only, matching Training Actual and the cost breakdown. Counting any attendance row
       // meant somebody marked ABSENT was still reported as having attended.
       attended: enrollment.attendance?.attendance_status === "PRESENT",
+      // Handed in at all, whatever HRD has done with it since.
+      preTestSubmitted: submittedAssessments.some((s) => s.assessment_stage === "PRE_TEST"),
+      postTestSubmitted: submittedAssessments.some((s) => s.assessment_stage === "POST_TEST"),
       preTestPassed: preTest ? preTest.pass_status?.toUpperCase() === "PASS" : null,
       postTestPassed: postTest ? postTest.pass_status?.toUpperCase() === "PASS" : null,
       // The attendee's own answer to the AFTER-TRAINING form, and nothing else. Two things get
@@ -297,6 +300,8 @@ const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
     postTestPassCount: attendees.filter(
       (a) => a.result?.completionStatus === "COMPLETED" || a.postTestPassed,
     ).length,
+    preTestSubmittedCount: attendees.filter((a) => a.preTestSubmitted).length,
+    postTestSubmittedCount: attendees.filter((a) => a.postTestSubmitted).length,
     evaluationCompletedCount: attendees.filter((a) => a.evaluationCompleted).length,
     attendees,
     savedAt: (savedAt ?? new Date(0)).toISOString(),

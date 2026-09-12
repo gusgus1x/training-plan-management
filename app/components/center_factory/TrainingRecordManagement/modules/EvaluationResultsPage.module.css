@@ -12,9 +12,18 @@
   --chart-5: #ea580c;
   --chart-6: #65a30d;
 
-  min-height: 100vh;
-  padding: 18px 24px 48px;
-  background: var(--ui-60-canvas);
+  /* The page itself does not scroll. It fills the viewport and hands the only scrollbar to the
+     question list, so the header, the three counts and the actions column stay put while somebody
+     reads down the charts - the way Microsoft Forms reads its own results. */
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 24px 24px;
+  /* Grey in the bottom-right corner, rising to white at the top, so the card reads as a sheet
+     lifted off the page rather than another panel on a flat background. `fixed` because the page
+     itself never scrolls - the gradient has to stay put while the question list moves under it. */
+  background: linear-gradient(to top left, #64748b 0%, #94a3b8 28%, #e2e8f0 62%, #ffffff 100%) fixed;
   color: var(--ui-30-text);
 }
 
@@ -22,6 +31,12 @@
   margin-bottom: 14px;
 }
 
+/* The same rise across the page, landing on the dark theme's own canvas instead of white. */
+:global([data-theme="dark"]) .page {
+  background: linear-gradient(to top left, #1e293b 0%, #334155 28%, var(--ui-60-canvas) 75%) fixed;
+}
+
+/* The top of the page is the light end of the gradient, so the label is written in the ink. */
 .backButton {
   border: none;
   background: none;
@@ -32,27 +47,65 @@
   cursor: pointer;
 }
 
-/* The insights column keeps its width and drops under the charts when there is no room for both. */
+/* One card, two columns. The two panels are joined rather than floated apart: only the change of
+   background and a hairline divider separate them, which is how Forms sets its results beside its
+   actions. */
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 18px;
-  align-items: start;
-}
-
-@media (max-width: 1100px) {
-  .layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
+  gap: 0;
+  align-items: stretch;
+  /* Takes the height the page has left, and no more: `min-height: 0` is what lets the grid child
+     shrink far enough for the list inside it to scroll rather than push the card taller. */
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-60-surface);
+  box-shadow: 0 10px 30px -6px rgba(15, 23, 42, 0.28), 0 2px 6px rgba(15, 23, 42, 0.12);
+  /* Clips both panels to the rounded corners, so neither squares off the card. */
+  overflow: hidden;
 }
 
 .main,
 .insights {
-  border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-md);
-  background: var(--ui-60-surface);
-  box-shadow: var(--ui-card-shadow);
   padding: 20px 22px;
+  min-height: 0;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+}
+
+.insights {
+  background: var(--ui-60-surface-soft);
+  border-left: 1px solid var(--ui-30-border);
+  overflow-y: auto;
+}
+
+/* Narrow enough that the two columns stack, and a fixed-height page stops making sense: there is
+   no room to keep a header and a chart on screen at once, so the whole page scrolls again. */
+@media (max-width: 1100px) {
+  .page {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+    padding-bottom: 48px;
+  }
+
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  /* Stacked, the divider belongs on top rather than on the side. */
+  .insights {
+    max-height: none;
+    overflow-y: visible;
+    border-left: none;
+    border-top: 1px solid var(--ui-30-border);
+  }
 }
 
 .header {
@@ -130,30 +183,44 @@
 
 .tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
   margin-bottom: 18px;
 }
 
 .tile {
   border: 1px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-sm);
-  background: var(--ui-60-surface-soft);
-  padding: 12px 14px;
-  display: grid;
-  gap: 4px;
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-60-surface);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .tile span {
-  color: var(--ui-30-muted);
-  font-size: 0.74rem;
+  display: block;
+  color: var(--ui-30-primary-strong);
+  font-size: 0.78rem;
   font-weight: 700;
 }
 
 .tile strong {
-  color: var(--ui-30-ink);
-  font-size: 1.7rem;
+  display: block;
+  margin-top: 6px;
+  /* The number is the thing being read, so it carries the weight and the house green, the way the
+     counts do on a Forms summary. */
+  color: var(--ui-30-primary-strong);
+  font-size: 2rem;
+  font-weight: 800;
   line-height: 1;
+}
+
+.tileIcon {
+  flex: none;
+  color: var(--ui-30-primary-strong);
+  opacity: 0.6;
 }
 
 .note {
@@ -161,10 +228,28 @@
   font-size: 0.82rem;
 }
 
+/* The one scrollbar on the page. `min-height: 0` again, for the same reason as on the layout: a
+   flex child refuses to shrink below its content without it, and the list would grow the card
+   instead of scrolling inside it. */
 .questions {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  /* Room for the scrollbar, so it never sits on top of a chart. */
+  padding-right: 8px;
+  margin-right: -8px;
+  scrollbar-gutter: stable;
+}
+
+@media (max-width: 1100px) {
+  .questions {
+    overflow-y: visible;
+    padding-right: 0;
+    margin-right: 0;
+  }
 }
 
 .sectionName {

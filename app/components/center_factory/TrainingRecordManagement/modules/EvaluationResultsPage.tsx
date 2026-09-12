@@ -14,7 +14,7 @@ import {
 } from "../../../../lib/trainingForms/types";
 import { isFormBlockType } from "../../../../lib/formBlocks";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
-import { FileSpreadsheet, FileText, Lock, Printer, Star, X } from "../../../icons/LucideIcons";
+import { Clock, FileSpreadsheet, FileText, Lock, Printer, Star, Target, Users, X } from "../../../icons/LucideIcons";
 import styles from "./EvaluationResultsPage.module.css";
 
 /**
@@ -482,6 +482,8 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
     if (list && list.responses.length > 0) setIndividualIndex(0);
   };
 
+  /**
+
   /** The replies on screen, or nothing while they are still on their way. */
   const shownResponses = responsesKey === loadedKey ? responses : null;
   const individual: EvaluationResponse | null =
@@ -554,18 +556,29 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
             </p>
           ) : (
             <>
+              {/* Label, then a number big enough to read across a desk, with the icon out of the
+                  way on the right - the shape a reader already knows from Microsoft Forms. */}
               <div className={styles.tiles}>
                 <article className={styles.tile}>
-                  <span>{t("การตอบกลับ", "Responses")}</span>
-                  <strong>{summary.submittedCount}</strong>
+                  <div>
+                    <span>{t("การตอบกลับ", "Responses")}</span>
+                    <strong>{summary.submittedCount}</strong>
+                  </div>
+                  <Users size={26} className={styles.tileIcon} />
                 </article>
                 <article className={styles.tile}>
-                  <span>{t("เวลาเฉลี่ยในการตอบ", "Average time to answer")}</span>
-                  <strong>{formatAnswerTime(summary.averageAnswerSeconds, t)}</strong>
+                  <div>
+                    <span>{t("เวลาเฉลี่ยในการตอบ", "Average time to answer")}</span>
+                    <strong>{formatAnswerTime(summary.averageAnswerSeconds, t)}</strong>
+                  </div>
+                  <Clock size={26} className={styles.tileIcon} />
                 </article>
                 <article className={styles.tile}>
-                  <span>{t("อัตราการตอบกลับ", "Response rate")}</span>
-                  <strong>{summary.responseRatePercent}%</strong>
+                  <div>
+                    <span>{t("อัตราการตอบกลับ", "Response rate")}</span>
+                    <strong>{summary.responseRatePercent}%</strong>
+                  </div>
+                  <Target size={26} className={styles.tileIcon} />
                 </article>
               </div>
 
@@ -677,6 +690,7 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
           </div>
         </aside>
       </div>
+
 
       {detail ? (
         <div className={styles.overlay} onClick={() => setDetail(null)}>

@@ -244,6 +244,44 @@
   color: #10b981;
 }
 
+/* Beside the completed pill, never instead of it: the course is finished, this is what the
+   employee still owes it. */
+.statusPillWaiting {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #b45309;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+/* The two headings inside the completed list. */
+.recordGroupHeading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 0;
+  color: var(--ui-30-ink);
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.recordGroupHeading[data-group="awaiting"] {
+  color: #b45309;
+}
+
+.recordGroupCount {
+  padding: 1px 10px;
+  border-radius: 999px;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
 .statusPending {
   background: rgba(245, 158, 11, 0.14);
   border: 1px solid rgba(245, 158, 11, 0.35);

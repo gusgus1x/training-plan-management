@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useConfirm } from "../ConfirmDialog";
 import { useToast } from "../ToastHost";
@@ -101,7 +101,16 @@ const questionDomId = (questionId: string) => `training-form-q-${questionId}`;
  *  assessment_submission (status IN_PROGRESS + started_at already exist) if resuming on another
  *  device is ever asked for. */
 const DRAFT_STORAGE_PREFIX = "training-form:draft";
-type StoredDraft = { answers: Record<string, AnswerState>; deadlineAt: number | null };
+/**
+ * `remainingMs` rather than a deadline: the clock only runs while the form is actually on screen,
+ * so there is no wall-clock moment it expires at. Drafts written before that change carry
+ * `deadlineAt` instead and are converted when they are read.
+ */
+type StoredDraft = {
+  answers: Record<string, AnswerState>;
+  remainingMs?: number | null;
+  deadlineAt?: number | null;
+};
 const draftKey = (enrollmentId: string, stage: string) => `${DRAFT_STORAGE_PREFIX}:${enrollmentId}:${stage}`;
 
 const loadDraft = (key: string): StoredDraft | null => {
@@ -128,6 +137,26 @@ const clearDraft = (key: string) => {
     // as above
   }
 };
+
+/**
+ * A time limit that only runs while somebody is looking at the form.
+ *
+ * `runningSince` is when it was last started, or null while paused. Banking on pause and reading
+ * through `clockRemaining` is what makes a dropped connection cost nothing: the arithmetic happens
+ * once, when the clock stops, rather than against a wall-clock deadline that never stopped.
+ */
+export type FormClock = { remainingMs: number; runningSince: number | null };
+
+export const clockRemaining = (clock: FormClock, now: number) =>
+  Math.max(0, clock.remainingMs - (clock.runningSince === null ? 0 : now - clock.runningSince));
+
+/** Stops the clock, keeping what is left of it. Calling it on a stopped clock changes nothing. */
+export const pausedClock = (clock: FormClock, now: number): FormClock =>
+  clock.runningSince === null ? clock : { remainingMs: clockRemaining(clock, now), runningSince: null };
+
+/** Starts it again from where it stopped. Calling it on a running clock changes nothing. */
+export const runningClock = (clock: FormClock, now: number): FormClock =>
+  clock.runningSince === null ? { ...clock, runningSince: now } : clock;
 
 const countdownLabel = (msLeft: number) => {
   const total = Math.max(0, Math.ceil(msLeft / 1000));
@@ -252,7 +281,15 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showMissing, setShowMissing] = useState(false);
   const [instructions, setInstructions] = useState<string | null>(null);
-  const [deadlineAt, setDeadlineAt] = useState<number | null>(null);
+  /**
+   * The time limit, as time left rather than as a moment it runs out at.
+   *
+   * `runningSince` is when the clock was last started, or null while it is paused. Leaving the tab,
+   * losing focus or dropping off the network banks whatever has run so far and stops it; coming
+   * back starts it again from there. A deadline could not do that: it keeps counting down while
+   * nobody is looking at the form.
+   */
+  const [clock, setClock] = useState<{ remainingMs: number; runningSince: number | null } | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [draftRestored, setDraftRestored] = useState(false);
 
@@ -315,7 +352,14 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
           setDraftRestored(true);
         }
         if (timeLimitMinutes !== null && timeLimitMinutes > 0) {
-          setDeadlineAt(draft?.deadlineAt ?? Date.now() + timeLimitMinutes * 60_000);
+          // A draft from before the clock could pause carries a deadline; what is left of it is the
+          // time that draft still has. It starts paused either way, and the watcher below starts it
+          // as soon as it sees the form on screen.
+          const stored =
+            draft?.remainingMs ??
+            (draft?.deadlineAt != null ? draft.deadlineAt - Date.now() : null) ??
+            timeLimitMinutes * 60_000;
+          setClock({ remainingMs: Math.max(0, stored), runningSince: null });
         }
       })
       .catch((error) => {
@@ -440,19 +484,66 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
   // draft behind that would later restore an empty answer set over a fresh start.
   useEffect(() => {
     if (!storageKey || alreadySubmitted) return;
-    if (!hasStartedAnswering && deadlineAt === null) return;
-    saveDraft(storageKey, { answers, deadlineAt });
-  }, [storageKey, answers, deadlineAt, hasStartedAnswering, alreadySubmitted]);
+    if (!hasStartedAnswering && clock === null) return;
+    // Written whenever the clock is banked - which is every pause - so a tab that dies mid-answer
+    // comes back with the time it had when it was last put down.
+    saveDraft(storageKey, { answers, remainingMs: clock?.remainingMs ?? null });
+  }, [storageKey, answers, clock, hasStartedAnswering, alreadySubmitted]);
 
-  // One ticker drives the countdown; it stops itself once the deadline passes.
+  const pauseClock = useCallback(() => {
+    setClock((current) => (current === null ? current : pausedClock(current, Date.now())));
+  }, []);
+
+  const resumeClock = useCallback(() => {
+    setClock((current) => (current === null ? current : runningClock(current, Date.now())));
+  }, []);
+
+  /**
+   * The clock runs only while the form is on screen and the browser is online.
+   *
+   * Switching tab, moving to another window, closing the laptop or dropping the connection all stop
+   * it, and it starts again when the form is back in front of somebody. That is a deliberate choice
+   * about what the limit means: it is time spent on the form, not time on the wall, so a dropped
+   * connection cannot cost somebody their test. It also means the limit cannot be enforced against
+   * a determined respondent, who can simply switch tabs - which is the trade this design accepts.
+   */
+  const hasClock = clock !== null;
   useEffect(() => {
-    if (deadlineAt === null) return;
+    if (!hasClock) return;
+    const sync = () => {
+      if (document.hidden || !navigator.onLine) pauseClock();
+      else resumeClock();
+    };
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    window.addEventListener("focus", sync);
+    window.addEventListener("blur", pauseClock);
+    // `pagehide` rather than `unload`: it is the one a phone fires when the browser is put away.
+    window.addEventListener("pagehide", pauseClock);
+    return () => {
+      document.removeEventListener("visibilitychange", sync);
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+      window.removeEventListener("focus", sync);
+      window.removeEventListener("blur", pauseClock);
+      window.removeEventListener("pagehide", pauseClock);
+    };
+  }, [hasClock, pauseClock, resumeClock]);
+
+  // One ticker drives the countdown, and only while the clock is actually running.
+  const runningSince = clock?.runningSince ?? null;
+  useEffect(() => {
+    if (runningSince === null) return;
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
-  }, [deadlineAt]);
+  }, [runningSince]);
 
-  const msLeft = deadlineAt === null ? null : deadlineAt - now;
+  const msLeft = clock === null ? null : clockRemaining(clock, now);
   const timeIsUp = msLeft !== null && msLeft <= 0;
+  /** Paused with time still on it, which is worth saying out loud so nobody thinks it froze. */
+  const clockIsPaused = clock !== null && clock.runningSince === null && !timeIsUp;
 
   const handleBack = async () => {
     if (hasStartedAnswering && !alreadySubmitted) {
@@ -602,9 +693,13 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
             ) : null}
 
             {msLeft !== null ? (
-              <div className={styles.timerBox} data-urgent={msLeft <= 60_000}>
+              <div className={styles.timerBox} data-urgent={msLeft <= 60_000} data-paused={clockIsPaused}>
                 <span>{t("เวลาที่เหลือ", "Time remaining")}</span>
                 <strong>{countdownLabel(msLeft)}</strong>
+                {/* A stopped countdown looks broken unless it says why it stopped. */}
+                {clockIsPaused ? (
+                  <em>{t("หยุดชั่วคราว · กลับมาที่หน้านี้เพื่อทำต่อ", "Paused - return to this page to carry on")}</em>
+                ) : null}
               </div>
             ) : null}
 

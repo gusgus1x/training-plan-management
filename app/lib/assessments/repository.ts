@@ -20,6 +20,7 @@ const detailSelect = {
   passing_score_percent: true,
   time_limit_minutes: true,
   status: true,
+  created_by: true,
   created_at: true,
   updated_at: true,
   assessment_series: {
@@ -141,6 +142,7 @@ const map = (row: DetailRow, isUsed: boolean): StoredAssessmentRecord => ({
     })),
   })),
   isUsed,
+  createdBy: row.created_by.toString(),
   createdAt: row.created_at.toISOString(),
   updatedAt: row.updated_at?.toISOString() ?? null,
 });

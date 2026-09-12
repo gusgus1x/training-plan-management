@@ -45,6 +45,7 @@ const stored = {
   status: "DRAFT",
   questions: [],
   isUsed: false,
+  createdBy: "1",
   createdAt: new Date(0).toISOString(),
   updatedAt: null,
 } as Omit<EvaluationRecord, "canModify" | "canDuplicate">;
@@ -335,5 +336,23 @@ describe("SUBMIT_SECTION in validation", () => {
   it("still rejects a negative target", () => {
     expect(reasonOf(() => parse([question(), sectionBreak({ nextSection: -1 }), question()])))
       .toMatch(/whole number/);
+  });
+});
+
+describe("what the centre may write", () => {
+  /** The same rule the assessments keep: read everything, write only the central forms. */
+  it("refuses HRD_CENTER a company's form, draft or not", async () => {
+    const repo = repository();
+    await expect(createEvaluationService(repo).updateEvaluation(
+      "10",
+      parseEvaluationWriteInput(baseInput),
+      principal("HRD_CENTER", null),
+    )).rejects.toMatchObject({ code: "EVALUATION_SCOPE_FORBIDDEN", status: 403 });
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  it("reports a company's form as read-only to HRD_CENTER", async () => {
+    const result = await createEvaluationService(repository()).getEvaluation("10", principal("HRD_CENTER", null));
+    expect(result.canModify).toBe(false);
   });
 });

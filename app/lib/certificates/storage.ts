@@ -16,20 +16,37 @@ import { ApiError } from "../api/errors";
 export const STORED_FILE_NAME_PATTERN =
   /^cert_\d+_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.pdf$/;
 
+/** Where the PDFs go when nothing says otherwise: a folder beside the app, never inside it. */
+export const DEFAULT_STORAGE_DIRECTORY = "Certificate_Storage";
+
 /**
- * No silent default. A mistyped or missing env var quietly writing PDFs into the repo - or into
- * public/ - is exactly the failure this module exists to prevent, so it fails loudly instead.
+ * Where certificates are stored: `CERTIFICATE_STORAGE_ROOT` when it is set, and
+ * `<working directory>/Certificate_Storage` when it is not.
+ *
+ * It used to refuse to run without the variable, which meant every deployment began by editing an
+ * .env on the server before certificates worked at all. The variable is now an override for a host
+ * that keeps its data on another volume, not a thing to remember.
+ *
+ * What has NOT been relaxed is the rule the refusal was really protecting: the root must be outside
+ * `public/`. Next serves everything under that directory with no authentication, so a certificate
+ * written there is one URL guess away from anybody. A root that lands inside it is refused, whether
+ * it was configured or defaulted.
  */
 export const resolveStorageRoot = (env: Record<string, string | undefined> = process.env): string => {
   const configured = (env.CERTIFICATE_STORAGE_ROOT ?? "").trim();
-  if (!configured) {
+  const root = path.resolve(configured || DEFAULT_STORAGE_DIRECTORY);
+
+  const servedPublicly = path.resolve("public");
+  if (root === servedPublicly || root.startsWith(servedPublicly + path.sep)) {
     throw new ApiError({
-      code: "CERTIFICATE_STORAGE_UNCONFIGURED",
-      message: "CERTIFICATE_STORAGE_ROOT is not set. Certificates cannot be stored or served.",
+      code: "CERTIFICATE_STORAGE_UNSAFE",
+      message:
+        "CERTIFICATE_STORAGE_ROOT points inside public/, where files are served without " +
+        "authentication. Certificates cannot be stored there.",
       status: 500,
     });
   }
-  return path.resolve(configured);
+  return root;
 };
 
 /**

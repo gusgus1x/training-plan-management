@@ -1,6 +1,7 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_STORAGE_DIRECTORY,
   generateStoredFileName,
   relativeStoragePath,
   resolveAbsolutePath,
@@ -46,15 +47,28 @@ describe("resolveAbsolutePath", () => {
 });
 
 describe("resolveStorageRoot", () => {
-  it("fails loudly when unset rather than defaulting somewhere surprising", () => {
-    // A silent default is how PDFs end up inside the repo, or inside public/ where anyone can read
-    // them. Refusing to start is the safer failure.
-    expect(() => resolveStorageRoot({})).toThrow();
-    expect(() => resolveStorageRoot({ CERTIFICATE_STORAGE_ROOT: "   " })).toThrow();
+  it("works with nothing configured, so a deployment needs no .env edit to store a certificate", () => {
+    const root = resolveStorageRoot({});
+
+    expect(path.isAbsolute(root)).toBe(true);
+    expect(path.basename(root)).toBe(DEFAULT_STORAGE_DIRECTORY);
+    // Whitespace is not configuration.
+    expect(resolveStorageRoot({ CERTIFICATE_STORAGE_ROOT: "   " })).toBe(root);
   });
 
-  it("resolves a configured root to an absolute path", () => {
-    const root = resolveStorageRoot({ CERTIFICATE_STORAGE_ROOT: "Certificate_Storage" });
+  it("lets the variable override the default, for a host that keeps data on another volume", () => {
+    const root = resolveStorageRoot({ CERTIFICATE_STORAGE_ROOT: path.join("data", "certificates") });
+
     expect(path.isAbsolute(root)).toBe(true);
+    expect(path.basename(root)).toBe("certificates");
+  });
+
+  it("refuses a root inside public/, configured or not", () => {
+    // Next serves that directory with no authentication at all, and these are personal documents.
+    expect(() => resolveStorageRoot({ CERTIFICATE_STORAGE_ROOT: "public" })).toThrow();
+    expect(() => resolveStorageRoot({ CERTIFICATE_STORAGE_ROOT: "public/certificates" })).toThrow();
+    expect(() =>
+      resolveStorageRoot({ CERTIFICATE_STORAGE_ROOT: path.resolve("public", "uploads") }),
+    ).toThrow();
   });
 });

@@ -15,6 +15,7 @@ const detailSelect = {
   respondent_type: true,
   is_anonymous: true,
   status: true,
+  created_by: true,
   created_at: true,
   updated_at: true,
   company: { select: { company_code: true, company_name_th: true } },
@@ -83,6 +84,7 @@ const map = (row: DetailRow, isUsed: boolean): StoredEvaluation => ({
     })),
   })),
   isUsed,
+  createdBy: row.created_by.toString(),
   createdAt: row.created_at.toISOString(),
   updatedAt: row.updated_at?.toISOString() ?? null,
 });

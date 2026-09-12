@@ -40,6 +40,11 @@ export const listAssessments = async (
   return read<{ items: AssessmentRecord[] }>(await fetcher(`/api/training-course/assessments?${params}`, { credentials: "include", cache: "no-store" }));
 };
 
+export const getAssessment = async (assessmentId: string, fetcher: Fetcher = fetch) =>
+  read<{ assessment: AssessmentRecord }>(
+    await fetcher(`/api/training-course/assessments/${assessmentId}`, { credentials: "include", cache: "no-store" }),
+  );
+
 export const createAssessment = async (input: AssessmentWriteInput, fetcher: Fetcher = fetch) =>
   read<{ assessment: AssessmentRecord }>(await fetcher("/api/training-course/assessments", json("POST", input)));
 

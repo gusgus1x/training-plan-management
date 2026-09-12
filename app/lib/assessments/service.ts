@@ -18,9 +18,17 @@ const requireFactoryCompany = (principal: AuthenticatedPrincipal) => {
 
 type StoredAssessmentRecord = Omit<AssessmentRecord, "canModify" | "canCreateVersion">;
 
+/**
+ * Who may write an assessment: the company that owns it, and nobody else.
+ *
+ * The centre reads everything and writes only the central forms. It used to own every record in the
+ * system, which meant a factory's half-written draft could be edited by somebody who had never seen
+ * the course it belongs to. Reading is untouched - the centre still sees all of it.
+ */
 const owns = (record: StoredAssessmentRecord, principal: AuthenticatedPrincipal) =>
-  principal.role === "HRD_CENTER" ||
-  (record.companyId !== null && record.companyId === principal.companyId);
+  principal.role === "HRD_CENTER"
+    ? record.companyId === null
+    : record.companyId !== null && record.companyId === principal.companyId;
 
 const writable = (record: StoredAssessmentRecord, principal: AuthenticatedPrincipal) =>
   owns(record, principal) && !record.isUsed;

@@ -12,6 +12,8 @@ const attendee = (overrides: Partial<TrainingRecordAttendee> = {}): TrainingReco
   position: "Officer",
   company: "ATA",
   attended: true,
+  preTestSubmitted: false,
+  postTestSubmitted: false,
   preTestPassed: null,
   postTestPassed: null,
   orgUnit: {

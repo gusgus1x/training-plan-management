@@ -47,6 +47,7 @@ const stored = {
   status: "ACTIVE",
   questions: [],
   isUsed: false,
+  createdBy: "1",
   createdAt: new Date(0).toISOString(),
   updatedAt: null,
 } as Omit<AssessmentRecord, "canModify" | "canCreateVersion">;
@@ -338,5 +339,43 @@ describe("assessment answer types stay in sync with the editor dropdown", () => 
       "MULTIPLE_CHOICE_GRID",
       "CHECKBOX_GRID",
     ]);
+  });
+});
+
+describe("what the centre may write", () => {
+  /**
+   * The centre reads every form in the system and writes only the central ones. It used to own
+   * every record, which let somebody at head office edit a factory's unfinished draft.
+   */
+  it("refuses HRD_CENTER a company's form, draft or not", async () => {
+    const repo = repository();
+    await expect(createAssessmentService(repo).updateAssessment(
+      "10",
+      parseAssessmentWriteInput(baseInput),
+      principal("HRD_CENTER", null),
+    )).rejects.toMatchObject({ code: "ASSESSMENT_SCOPE_FORBIDDEN", status: 403 });
+    expect(repo.update).not.toHaveBeenCalled();
+  });
+
+  it("reports a company's form as read-only to HRD_CENTER", async () => {
+    const result = await createAssessmentService(repository()).getAssessment("10", principal("HRD_CENTER", null));
+    expect(result.canModify).toBe(false);
+  });
+
+  it("still lets HRD_CENTER write a central form", async () => {
+    const repo = repository();
+    (repo.findById as unknown as { mockResolvedValue: (value: unknown) => void }).mockResolvedValue({
+      ...stored,
+      companyId: null,
+      companyCode: null,
+      scope: "CENTRAL",
+      status: "DRAFT",
+    });
+    await createAssessmentService(repo).updateAssessment(
+      "10",
+      parseAssessmentWriteInput({ ...baseInput, scope: "CENTRAL", companyId: null }),
+      principal("HRD_CENTER", null),
+    );
+    expect(repo.update).toHaveBeenCalled();
   });
 });

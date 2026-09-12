@@ -1,0 +1,271 @@
+/* The form gallery: a wall of cards under three headings, the way a form tool opens. */
+
+.page {
+  min-height: 100vh;
+  padding: 22px 28px 48px;
+  background: var(--ui-60-canvas);
+  color: var(--ui-30-text);
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.backButton:hover {
+  border-color: var(--ui-30-primary);
+}
+
+.kicker {
+  margin: 0;
+  color: var(--ui-30-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.header h1 {
+  margin: 2px 0 0;
+  color: var(--ui-30-ink);
+  font-size: 1.4rem;
+}
+
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 999px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-muted);
+}
+
+/* The global rule forces every input to fill its box, so the width is set on the track instead of
+   fought for here. */
+.searchBox input {
+  width: 260px;
+  max-width: 40vw;
+  border: none;
+  background: none;
+  color: var(--ui-30-text);
+  font-size: 0.86rem;
+  outline: none;
+}
+
+.section {
+  margin-bottom: 28px;
+}
+
+.section h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--ui-30-ink);
+  font-size: 1rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.card,
+.blankCard {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-60-surface);
+  box-shadow: var(--ui-card-shadow);
+  text-align: left;
+  cursor: pointer;
+}
+
+.card:hover,
+.blankCard:hover {
+  border-color: var(--ui-30-primary-border);
+  box-shadow: var(--ui-card-shadow-hover);
+}
+
+.card {
+  position: relative;
+  align-items: flex-start;
+}
+
+/* The blank card is the one thing on the page that is not a form, so it does not look like one. */
+.blankCard {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 116px;
+  border-style: dashed;
+  color: var(--ui-30-primary-strong);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.blankPlus {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--ui-30-primary-soft);
+}
+
+.thumb {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+}
+
+.cardBody {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cardTitle {
+  color: var(--ui-30-ink);
+  font-size: 0.9rem;
+  /* Two lines, then an ellipsis: a form name can run long and a card that grows with it breaks the
+     row it sits in. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cardMeta {
+  color: var(--ui-30-muted);
+  font-size: 0.74rem;
+}
+
+.draftTag,
+.liveTag {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.draftTag {
+  background: rgba(245, 158, 11, 0.16);
+  color: #b45309;
+}
+
+.liveTag {
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+}
+
+/* The tag and the card's own button share one row under the meta lines, so neither has to be
+   positioned over the other. */
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cardAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 999px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-primary-strong);
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.cardAction:hover {
+  border-color: var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+}
+
+.readOnlyTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--ui-30-surface-soft, rgba(100, 116, 139, 0.14));
+  color: var(--ui-30-muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.companyBlock + .companyBlock {
+  margin-top: 18px;
+}
+
+.companyName {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 10px;
+  color: var(--ui-30-text);
+  font-size: 0.88rem;
+}
+
+.companyName small {
+  color: var(--ui-30-muted);
+  font-weight: 400;
+}
+
+.companyCount {
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.note {
+  color: var(--ui-30-muted);
+  font-size: 0.84rem;
+}

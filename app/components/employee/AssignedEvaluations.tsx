@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { listAssignedEvaluations, markAssignedEvaluationOpened } from "../../lib/trainingForms/client";
 import type { AssignedEvaluation } from "../../lib/trainingForms/types";
 import { useUiLanguage } from "../ThaiUiLocalization";
+import { ChevronDown, ChevronUp } from "../icons/LucideIcons";
 import styles from "./AssignedEvaluations.module.css";
 
 const formatDate = (iso: string, isThai: boolean) =>
@@ -13,6 +14,60 @@ const formatDate = (iso: string, isThai: boolean) =>
     month: "short",
     year: "numeric",
   });
+
+const formatTime = (iso: string, isThai: boolean) =>
+  new Date(iso).toLocaleTimeString(isThai ? "th-TH" : "en-GB", { hour: "2-digit", minute: "2-digit" });
+
+/** When the round ran, as one line: the date, then the hours it covered. */
+const formatWhen = (startAt: string, endAt: string, isThai: boolean) => {
+  const startDate = formatDate(startAt, isThai);
+  const endDate = formatDate(endAt, isThai);
+  const hours = `${formatTime(startAt, isThai)} - ${formatTime(endAt, isThai)}`;
+  return startDate === endDate ? `${startDate} · ${hours}` : `${startDate} - ${endDate} · ${hours}`;
+};
+
+/**
+ * One round of one course, with the people on it whose evaluations are this supervisor's to fill
+ * in.
+ *
+ * The list used to be one flat row per person, which named the course again on every line and left
+ * the supervisor working out for themselves which of their people had been on what. Grouping says
+ * it once: this course, this round, these dates, this form - and then the names.
+ */
+export type AssignedGroup = {
+  key: string;
+  courseName: string;
+  batchName: string | null;
+  startAt: string;
+  endAt: string;
+  stage: AssignedEvaluation["stage"];
+  rows: AssignedEvaluation[];
+};
+
+export const groupByRound = (rows: AssignedEvaluation[]): AssignedGroup[] => {
+  const groups = new Map<string, AssignedGroup>();
+  for (const row of rows) {
+    // The stage is part of the key: the same round can carry both an after-training evaluation and
+    // a 30-day follow-up, and they are two different things to answer.
+    const key = `${row.courseName}|${row.batchName ?? ""}|${row.startAt}|${row.stage}`;
+    const group = groups.get(key);
+    if (group) {
+      group.rows.push(row);
+      continue;
+    }
+    groups.set(key, {
+      key,
+      courseName: row.courseName,
+      batchName: row.batchName,
+      startAt: row.startAt,
+      endAt: row.endAt,
+      stage: row.stage,
+      rows: [row],
+    });
+  }
+  // Most recent round first, which is the one a supervisor has just been asked about.
+  return [...groups.values()].sort((left, right) => right.startAt.localeCompare(left.startAt));
+};
 
 /**
  * The evaluations a supervisor has been asked to fill in about the people they manage.
@@ -28,6 +83,8 @@ export default function AssignedEvaluations() {
 
   const [rows, setRows] = useState<AssignedEvaluation[] | null>(null);
   const [error, setError] = useState("");
+  /** Rounds the supervisor has folded away. Open is the default: the names are the point. */
+  const [collapsed, setCollapsed] = useState<Record<string, true>>({});
 
   useEffect(() => {
     listAssignedEvaluations()
@@ -53,6 +110,8 @@ export default function AssignedEvaluations() {
       // supervisor over, and the next open records it.
       .catch(() => undefined);
 
+  const groups = useMemo(() => groupByRound(rows ?? []), [rows]);
+
   // Renders nothing at all while loading, on error, or with nothing assigned. Most employees are
   // not a supervisor and never will be, and this sits inside My Record - an empty panel telling
   // them so would be permanent noise on somebody else's screen.
@@ -61,22 +120,50 @@ export default function AssignedEvaluations() {
   return (
     <section className={styles.panel} aria-label="Assigned evaluations">
       <h2 className={styles.title}>{t("แบบประเมินที่ได้รับมอบหมาย", "Evaluations assigned to you")}</h2>
+      {groups.map((group) => {
+        const isOpen = !collapsed[group.key];
+        return (
+          <article className={styles.group} key={group.key}>
+            {/* The course said once, at the top of its own round, rather than on every name. */}
+            <button
+              type="button"
+              className={styles.groupHead}
+              aria-expanded={isOpen}
+              onClick={() =>
+                setCollapsed((current) => {
+                  const next = { ...current };
+                  if (isOpen) next[group.key] = true;
+                  else delete next[group.key];
+                  return next;
+                })
+              }
+            >
+              <span className={styles.groupAbout}>
+                <strong>{group.courseName}</strong>
+                <span className={styles.meta}>
+                  {group.batchName ? `${t("รุ่นที่", "Batch")} ${group.batchName} · ` : ""}
+                  {formatWhen(group.startAt, group.endAt, isThai)}
+                </span>
+                <span className={styles.groupForm}>
+                  {t("แบบประเมินที่คุณต้องตอบ", "The evaluation you are asked for")}:{" "}
+                  {group.stage === "EVALUATION"
+                    ? t("ประเมินหลังอบรม", "After training")
+                    : t("ติดตามผลหลังอบรม 30 วัน", "30-day follow-up")}
+                </span>
+              </span>
+              <span className={styles.groupCount}>
+                {t(`${group.rows.length} คน`, `${group.rows.length} people`)}
+              </span>
+              {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+
+            {isOpen ? (
       <ul className={styles.list}>
-        {rows.map((row) => (
+        {group.rows.map((row) => (
           <li key={`${row.enrollmentId}-${row.stage}`} className={styles.row}>
             <div className={styles.about}>
               <strong>{row.attendeeName}</strong>
-              <span className={styles.meta}>
-                {row.attendeeEmployeeCode}
-                {row.batchName ? ` · ${t("รุ่นที่", "Batch")} ${row.batchName}` : ""}
-              </span>
-              <span className={styles.meta}>{row.courseName}</span>
-              <span className={styles.meta}>
-                {row.stage === "EVALUATION"
-                  ? t("ประเมินหลังอบรม", "After training")
-                  : t("ติดตามผล 30 วัน", "30-day follow-up")}
-                {` · ${formatDate(row.startAt, isThai)}`}
-              </span>
+              <span className={styles.meta}>{row.attendeeEmployeeCode}</span>
             </div>
 
             <div className={styles.action}>
@@ -116,6 +203,10 @@ export default function AssignedEvaluations() {
           </li>
         ))}
       </ul>
+            ) : null}
+          </article>
+        );
+      })}
     </section>
   );
 }

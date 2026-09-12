@@ -116,6 +116,12 @@ type CompletedCourse = {
   prePostPassPercent: number;
   postTestPassPercent: number;
   preTestPassPercent: number;
+  /** Share of the attendees who answered each test, and the heads behind it - what the donuts
+   *  report. An imported row carries neither: an uploaded spreadsheet has no submissions. */
+  preTestAnsweredPercent: number;
+  postTestAnsweredPercent: number;
+  preTestAnsweredCount: number;
+  postTestAnsweredCount: number;
   evaluationCompleted: number;
   evaluationTotal: number;
   /** The 30-day follow-up, which is the only stage a supervisor is asked to fill in. The reviewer
@@ -477,6 +483,12 @@ const mapImportRowToCourse = (
     prePostPassPercent: parseNumber(getCellValue(row, ["prepostpasspercent"]), 0),
     postTestPassPercent: parseNumber(getCellValue(row, ["posttestpasspercent", "posttest"]), 0),
     preTestPassPercent: parseNumber(getCellValue(row, ["pretestpasspercent", "pretest"]), 0),
+    // An uploaded spreadsheet has no submissions behind it, so there is nothing to report as
+    // answered. Zero is the truth here, not a missing value.
+    preTestAnsweredPercent: 0,
+    postTestAnsweredPercent: 0,
+    preTestAnsweredCount: 0,
+    postTestAnsweredCount: 0,
     evaluationCompleted: parseNumber(
       getCellValue(row, ["evaluationcompleted", "evaluationdone"]),
       0,
@@ -823,6 +835,10 @@ export default function TrainingRecord() {
           prePostPassPercent: postTestPassPercent,
           postTestPassPercent,
           preTestPassPercent: percent(record.preTestPassCount, record.attendedCount),
+          preTestAnsweredPercent: percent(record.preTestSubmittedCount, record.attendedCount),
+          postTestAnsweredPercent: percent(record.postTestSubmittedCount, record.attendedCount),
+          preTestAnsweredCount: record.preTestSubmittedCount,
+          postTestAnsweredCount: record.postTestSubmittedCount,
           evaluationCompleted: record.evaluationCompletedCount,
           evaluationTotal: record.attendedCount,
           evaluationAfter30Day: record.evaluationAfter30Day,
@@ -934,6 +950,9 @@ export default function TrainingRecord() {
     selectedCourse && selectedCourse.evaluationTotal > 0
       ? Math.round((selectedCourse.evaluationCompleted / selectedCourse.evaluationTotal) * 100)
       : 0;
+
+  const preTestAnsweredCount = selectedCourse?.preTestAnsweredCount ?? 0;
+  const postTestAnsweredCount = selectedCourse?.postTestAnsweredCount ?? 0;
 
   const selectedActualCost = selectedCourse ? getActualCostTotal(selectedCourse) : 0;
   const selectedCostPerPerson = selectedCourse ? getCostPerPerson(selectedCourse) : 0;
@@ -1499,36 +1518,43 @@ export default function TrainingRecord() {
             )}
           </section>
 
+          {/* All three donuts count the same thing: how many of the attendees have answered. A pass
+              rate answered a different question, and on a roster where half the class has not sat
+              the test yet it reads as a failure rather than as work outstanding. */}
           <section className={styles.recordChartGrid}>
             <article className={styles.chartPanel}>
               <div
                 className={styles.donutChart}
-                style={{ "--value": `${selectedCourse.preTestPassPercent}%` } as CSSProperties}
-                aria-label={`Pre test pass rate ${selectedCourse.preTestPassPercent}%`}
+                style={{ "--value": `${selectedCourse.preTestAnsweredPercent}%` } as CSSProperties}
+                aria-label={`Pre test response rate ${selectedCourse.preTestAnsweredPercent}%`}
               >
-                <strong>{selectedCourse.preTestPassPercent}%</strong>
-                <span>Pass</span>
+                <strong>{selectedCourse.preTestAnsweredPercent}%</strong>
+                <span>Answered</span>
               </div>
               <div>
                 <p className={styles.kicker}>Pre Test</p>
-                <h3>Before Training</h3>
-                <span>Most attendees did not pass before training.</span>
+                <h3>
+                  {preTestAnsweredCount}/{selectedCourse.actualAttendees} answered
+                </h3>
+                <span>Share of attendees who have answered the pre-test.</span>
               </div>
             </article>
 
             <article className={styles.chartPanel}>
               <div
                 className={styles.donutChart}
-                style={{ "--value": `${selectedCourse.postTestPassPercent}%` } as CSSProperties}
-                aria-label={`Post test pass rate ${selectedCourse.postTestPassPercent}%`}
+                style={{ "--value": `${selectedCourse.postTestAnsweredPercent}%` } as CSSProperties}
+                aria-label={`Post test response rate ${selectedCourse.postTestAnsweredPercent}%`}
               >
-                <strong>{selectedCourse.postTestPassPercent}%</strong>
-                <span>Pass</span>
+                <strong>{selectedCourse.postTestAnsweredPercent}%</strong>
+                <span>Answered</span>
               </div>
               <div>
                 <p className={styles.kicker}>Post Test</p>
-                <h3>After Training</h3>
-                <span>Pass rate after course completion.</span>
+                <h3>
+                  {postTestAnsweredCount}/{selectedCourse.actualAttendees} answered
+                </h3>
+                <span>Share of attendees who have answered the post-test.</span>
               </div>
             </article>
 

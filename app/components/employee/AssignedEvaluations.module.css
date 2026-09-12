@@ -17,10 +17,67 @@
   color: #64748b;
 }
 
+/* One round of one course: its own card, with the names folded inside it. */
+.group {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.group + .group {
+  margin-top: 10px;
+}
+
+.groupHead {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: none;
+  background: #f8fafc;
+  color: #0f172a;
+  text-align: left;
+  cursor: pointer;
+}
+
+.groupHead:hover {
+  background: #f1f5f9;
+}
+
+.groupAbout {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+  font-size: 14px;
+}
+
+.groupAbout strong {
+  font-size: 15px;
+}
+
+/* Which of the two forms this round is asking for - the one thing the supervisor has to act on. */
+.groupForm {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1d4ed8;
+}
+
+.groupCount {
+  flex: none;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .list {
   list-style: none;
   margin: 0;
-  padding: 0;
+  padding: 10px;
   display: grid;
   gap: 8px;
 }

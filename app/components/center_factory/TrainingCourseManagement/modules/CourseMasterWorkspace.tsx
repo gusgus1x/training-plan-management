@@ -115,7 +115,6 @@ type TrainingEvaluationOption = {
   code: string;
   name: string;
   timing: "After Training" | "30-Day Follow-up";
-  respondent: "Employee" | "Manager";
   scope: "Central" | "Company";
   company: string;
   questionCount: number;
@@ -1719,7 +1718,6 @@ function CourseMaster() {
           code: evaluation.formCode,
           name: evaluation.formName,
           timing: evaluation.timing === "AFTER_TRAINING" ? "After Training" : "30-Day Follow-up",
-          respondent: evaluation.respondentType === "EMPLOYEE" ? "Employee" : "Manager",
           scope: evaluation.scope === "CENTRAL" ? "Central" : "Company",
           company: evaluation.companyName || "-",
           questionCount: evaluation.questions.length,
@@ -2508,7 +2506,7 @@ function CourseMaster() {
           ) : null}
           <small className={styles.catalogHint}>
             {selectedEvaluation
-              ? `${selectedEvaluation.questionCount} questions · ${selectedEvaluation.respondent} · ${selectedEvaluation.scope}`
+              ? `${selectedEvaluation.questionCount} questions · ${selectedEvaluation.scope}`
               : linkModeFields.has("evaluation")
                 ? "Manual form link will be used."
                 : `${publishedCourseEvaluations.length} published After Training option${publishedCourseEvaluations.length === 1 ? "" : "s"}`}
@@ -2575,7 +2573,7 @@ function CourseMaster() {
           ) : null}
           <small className={styles.catalogHint}>
             {selectedFollowUpEvaluation
-              ? `${selectedFollowUpEvaluation.questionCount} questions · ${selectedFollowUpEvaluation.respondent} · ${selectedFollowUpEvaluation.scope}`
+              ? `${selectedFollowUpEvaluation.questionCount} questions · ${selectedFollowUpEvaluation.scope}`
               : linkModeFields.has("evaluationAfter30Day")
                 ? "Manual form link will be used."
                 : `${publishedFollowUpEvaluations.length} published 30-Day Follow-up option${publishedFollowUpEvaluations.length === 1 ? "" : "s"}`}

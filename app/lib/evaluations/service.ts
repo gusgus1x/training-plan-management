@@ -12,9 +12,14 @@ const requireFactoryCompany = (principal: AuthenticatedPrincipal) => {
   }
 };
 
+/**
+ * Who may write an evaluation: the company that owns it, and nobody else. The centre reads all of
+ * them and writes only the central ones, the same rule the assessments keep.
+ */
 const owns = (record: StoredEvaluation, principal: AuthenticatedPrincipal) =>
-  principal.role === "HRD_CENTER" ||
-  (record.companyId !== null && record.companyId === principal.companyId);
+  principal.role === "HRD_CENTER"
+    ? record.companyId === null
+    : record.companyId !== null && record.companyId === principal.companyId;
 
 const readable = (record: StoredEvaluation, principal: AuthenticatedPrincipal) =>
   principal.role === "HRD_CENTER" || record.companyId === null || record.companyId === principal.companyId;

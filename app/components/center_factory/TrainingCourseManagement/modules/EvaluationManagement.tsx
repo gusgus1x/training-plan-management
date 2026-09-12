@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useToast } from "../../../ToastHost";
@@ -266,12 +267,11 @@ const SHOW_CSV_EXPORT = false;
 
 const csvCell = (value: string | number | boolean) => `"${String(value).replaceAll('"', '""')}"`;
 const createEvaluationCsv = (items: EvaluationRecord[]) => [
-  ["Code", "Evaluation Name", "Timing", "Respondent", "Scope", "Company", "Anonymous", "Questions", "Required Questions", "Status", "Updated At"],
+  ["Code", "Evaluation Name", "Timing", "Scope", "Company", "Anonymous", "Questions", "Required Questions", "Status", "Updated At"],
   ...items.map((item) => [
     item.formCode,
     item.formName,
     timingFromApi(item.timing),
-    respondentFromApi(item.respondentType),
     item.scope === "CENTRAL" ? "Central" : "Company",
     item.companyCode ?? "-",
     item.isAnonymous,
@@ -298,6 +298,7 @@ const generateNextEvaluationCode = (timing: TimingLabel, existingItems: Evaluati
 
 export default function EvaluationManagement() {
   const user = useAuthenticatedUser();
+  const router = useRouter();
   const confirm = useConfirm();
   const isFactory = user?.roleCode === "HRD_FACTORY";
   const [items, setItems] = useState<EvaluationRecord[]>([]);
@@ -351,7 +352,7 @@ export default function EvaluationManagement() {
   const selected = useMemo(() => items.find((item) => item.evaluationFormId === selectedId) ?? null, [items, selectedId]);
   const visible = useMemo(() => {
     const query = search.trim().toLowerCase();
-    const bySearch = query ? items.filter((item) => [item.formCode, item.formName, item.companyCode, timingFromApi(item.timing), respondentFromApi(item.respondentType), statusFromApi(item.status)].filter(Boolean).join(" ").toLowerCase().includes(query)) : items;
+    const bySearch = query ? items.filter((item) => [item.formCode, item.formName, item.companyCode, timingFromApi(item.timing), statusFromApi(item.status)].filter(Boolean).join(" ").toLowerCase().includes(query)) : items;
     // "CENTRAL" is its own bucket rather than a company - a central form has no companyCode.
     return companyFilter
       ? bySearch.filter((item) => companyFilter === "CENTRAL" ? item.companyCode === null : item.companyCode === companyFilter)
@@ -969,15 +970,6 @@ export default function EvaluationManagement() {
           <option>30-Day Follow-up</option>
         </select>
       </label>
-      <label>Respondent
-        <select
-          value={draft.respondent}
-          onChange={(event) => setDraft({ ...draft, respondent: event.target.value as RespondentLabel })}
-        >
-          <option>Employee</option>
-          <option>Manager</option>
-        </select>
-      </label>
       <label>Evaluation Code
         <input disabled value={draft.formCode} placeholder="Auto-generated" />
       </label>
@@ -1072,7 +1064,7 @@ export default function EvaluationManagement() {
               <><Eye size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> {t("มุมมองผู้เรียน", "Learner view")}</>
             </button>
           </div>
-          <span>{draft.timing} · {draft.respondent}</span>
+          <span>{draft.timing}</span>
         </div>
       </div>
       {previewAsLearner ? (
@@ -1080,7 +1072,7 @@ export default function EvaluationManagement() {
           <FormPreviewRunner
             title={draft.formName.trim() || "Untitled evaluation form"}
             instructions={draft.description}
-            meta={`${draft.timing} · ${draft.respondent}`}
+            meta={draft.timing}
             items={toPreviewItems(questions)}
           />
         ) : (
@@ -1143,8 +1135,18 @@ export default function EvaluationManagement() {
               />
             </div>
           ) : null}
-          <button className={styles.primaryButton} type="button" disabled={busy} onClick={handleNew}>
+          {/* The gallery, not the panel below: making a form is its own screen now. */}
+          <button
+            className={styles.primaryButton}
+            type="button"
+            disabled={busy}
+            onClick={() => router.push("/forms/evaluation")}
+          >
             + เพิ่มแบบประเมิน
+          </button>
+          {/* Still the only way to build a grid question, so it keeps its own way in. */}
+          <button className={styles.secondaryButton} type="button" disabled={busy} onClick={handleNew}>
+            + สร้างแบบเดิม (ตาราง)
           </button>
           <button className={styles.secondaryButton} type="button" disabled={busy} onClick={() => void load()}>
             รีเฟรช
@@ -1188,7 +1190,6 @@ export default function EvaluationManagement() {
                 <th>รหัสแบบประเมิน</th>
                 <th>ชื่อแบบประเมิน</th>
                 <th>ช่วงเวลา</th>
-                <th>กลุ่มผู้ตอบ</th>
                 <th>ขอบเขต</th>
                 <th>จำนวนคำถาม</th>
                 <th>สถานะ</th>
@@ -1228,7 +1229,6 @@ export default function EvaluationManagement() {
                       <td>{item.formCode}</td>
                       <td>{item.formName}</td>
                       <td>{timingFromApi(item.timing)}</td>
-                      <td>{respondentFromApi(item.respondentType)}</td>
                       <td>{item.scope === "CENTRAL" ? "Central" : `Company · ${item.companyCode}`}</td>
                       <td>{item.questions.length}</td>
                       {/* The pill IS the switch - see Assessment. A DRAFT keeps the plain badge. */}
@@ -1290,10 +1290,24 @@ export default function EvaluationManagement() {
                             title={item.canModify ? "" : item.isUsed ? "ถูกใช้งานแล้ว แก้ไขไม่ได้ — ปิดใช้งานหรือใช้เป็นแม่แบบแทน" : "แบบประเมินของส่วนกลาง ดูได้อย่างเดียว"}
                             onClick={(event) => {
                               event.stopPropagation();
-                              openEditForItem(item);
+                              // The builder, not the panel below. `openEditForItem` stays for the
+                              // grid questions this screen is still the only editor of.
+                              router.push(`/forms/evaluation/${item.evaluationFormId}`);
                             }}
                           >
                             แก้ไข
+                          </button>
+                          <button
+                            className={styles.secondaryButton}
+                            type="button"
+                            style={{ whiteSpace: "nowrap", padding: "3px 8px", fontSize: "0.74rem" }}
+                            disabled={busy || !item.canModify}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openEditForItem(item);
+                            }}
+                          >
+                            แก้ไขแบบเดิม (ตาราง)
                           </button>
                           <button
                             className={styles.dangerButton}
@@ -1342,10 +1356,6 @@ export default function EvaluationManagement() {
                                 <strong>{timingFromApi(item.timing)}</strong>
                               </article>
                               <article>
-                                <span>Respondent</span>
-                                <strong>{respondentFromApi(item.respondentType)}</strong>
-                              </article>
-                              <article>
                                 <span>Scope</span>
                                 <strong>{item.companyCode ?? "All companies"}</strong>
                               </article>
@@ -1358,7 +1368,7 @@ export default function EvaluationManagement() {
                               <FormPreviewRunner
                                 title={item.formName}
                                 instructions={item.description}
-                                meta={`${timingFromApi(item.timing)} · ${respondentFromApi(item.respondentType)}`}
+                                meta={timingFromApi(item.timing)}
                                 items={toPreviewItems(draftQuestions)}
                                 emptyLabel="ยังไม่มีคำถามให้ทดลองตอบ"
                               />

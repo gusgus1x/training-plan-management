@@ -92,6 +92,8 @@ export type EvaluationRecord = {
   status: EvaluationStatus;
   questions: EvaluationQuestionRecord[];
   isUsed: boolean;
+  /** Who made it. "My forms" on the gallery means this, not the company it belongs to. */
+  createdBy: string;
   canModify: boolean;
   canDuplicate: boolean;
   createdAt: string;
