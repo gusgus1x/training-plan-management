@@ -34,10 +34,6 @@ export default function AdminSectionPage({
     tab = "users";
   } else if (normalized === "audit_logs" || normalized === "audit" || normalized === "audit_log") {
     tab = "audit";
-  } else if (normalized === "charts" || normalized === "chart") {
-    tab = "charts";
-  } else if (normalized === "tables" || normalized === "table") {
-    tab = "tables";
   }
 
   return <AdminDashboard initialTab={tab} />;

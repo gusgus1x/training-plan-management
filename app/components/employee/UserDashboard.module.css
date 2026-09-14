@@ -675,13 +675,52 @@
 }
 
 .kpiSummaryBar {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  align-items: center;
   border: 1px solid var(--ui-30-border, rgba(226, 232, 240, 0.8));
   border-radius: var(--ui-radius-xl, 14px);
   background: var(--ui-60-surface-soft, rgba(248, 250, 252, 0.8));
-  padding: 12px 6px;
+  padding: 6px 10px;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  flex-shrink: 0;
+}
+
+.kpiColBtn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 14px;
+  border-radius: 10px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font: inherit;
+  border-right: 1px solid var(--ui-30-border);
+  position: relative;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.kpiColBtn:last-child {
+  border-right: none;
+}
+
+.kpiColBtn:hover {
+  background: rgba(16, 185, 129, 0.08);
+  transform: translateY(-1px);
+}
+
+:global([data-theme="dark"]) .kpiColBtn:hover,
+:global(.dark) .kpiColBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.kpiColBtn:active {
+  transform: translateY(0);
 }
 
 .kpiCol {
@@ -700,29 +739,32 @@
 
 .kpiLabel {
   color: var(--ui-30-muted, #64748b);
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   font-weight: 800;
   text-transform: uppercase;
+  letter-spacing: 0.03em;
   white-space: nowrap;
 }
 
 .kpiValueRow {
   display: flex;
   align-items: baseline;
+  justify-content: center;
   gap: 4px;
 }
 
 .kpiValue {
   color: var(--ui-30-primary, #059669);
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 900;
   line-height: 1;
 }
 
 .kpiHelper {
   color: var(--ui-30-muted, #64748b);
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .panelTitleGroup {

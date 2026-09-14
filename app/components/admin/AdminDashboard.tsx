@@ -27,13 +27,41 @@ import {
   listAuditLogs,
   listActiveUsers,
   sendHeartbeat,
+  fetchSystemStats,
+  purgeAuditLogs,
   type AuditLogRecord,
   type ActiveUserSession,
+  type SystemStatsResponse,
 } from "../../lib/audit/client";
 import styles from "./AdminDashboard.module.css";
-import { AlertTriangle, BarChart3, Check, ClipboardList, FileText, Lock, LogOut, Menu, Moon, Pencil, Plus, Search, Settings, Sun, Trash2, TrendingUp, User, Users } from "../icons/LucideIcons";
+import {
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  Check,
+  ClipboardList,
+  Clock,
+  Database,
+  FileText,
+  Lock,
+  LogOut,
+  Menu,
+  Moon,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Search,
+  Server,
+  Settings,
+  ShieldAlert,
+  Sun,
+  Trash2,
+  TrendingUp,
+  User,
+  Users,
+} from "../icons/LucideIcons";
 
-type TabKey = "dashboard" | "users" | "audit" | "charts" | "tables";
+type TabKey = "dashboard" | "users" | "audit";
 
 const needsCompany = (roleCode: RoleCode) =>
   roleCode === "HRD_FACTORY" || roleCode === "EMPLOYEE";
@@ -235,6 +263,12 @@ export default function AdminDashboard({
   const [activeStats, setActiveStats] = useState({ onlineCount: 0, idleCount: 0, totalActive: 0 });
   const [isActiveLoading, setIsActiveLoading] = useState(false);
 
+  // ════════════════════ SYSTEM STATS & MAINTENANCE STATE ════════════════════
+  const [systemStats, setSystemStats] = useState<SystemStatsResponse | null>(null);
+  const [isStatsLoading, setIsStatsLoading] = useState(false);
+  const [isPurging, setIsPurging] = useState(false);
+  const [isPurgeModalOpen, setIsPurgeModalOpen] = useState(false);
+
   // Load accounts and companies on mount
   const loadAccounts = async () => {
     setIsLoading(true);
@@ -245,6 +279,37 @@ export default function AdminDashboard({
       setError(err instanceof UserAccountClientError ? err.message : "ไม่สามารถโหลดข้อมูลผู้ใช้ได้");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadSystemStats = async () => {
+    setIsStatsLoading(true);
+    try {
+      const res = await fetchSystemStats();
+      setSystemStats(res);
+    } catch (err) {
+      console.error("Failed to load system stats", err);
+    } finally {
+      setIsStatsLoading(false);
+    }
+  };
+
+  const handlePurgeLogs = async () => {
+    setIsPurging(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const res = await purgeAuditLogs();
+      setMessage(res.message || `ล้างข้อมูล Audit Log ที่หมดอายุแล้วจำนวน ${res.deletedCount} รายการเรียบร้อย`);
+      setIsPurgeModalOpen(false);
+      await loadSystemStats();
+      if (activeTab === "audit") {
+        await loadAuditLogs();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการล้างข้อมูล Audit Log");
+    } finally {
+      setIsPurging(false);
     }
   };
 
@@ -289,10 +354,17 @@ export default function AdminDashboard({
 
   useEffect(() => {
     void loadAccounts();
+    void loadSystemStats();
     void listCompanies()
       .then((res) => setCompanies(res.items ?? []))
       .catch(() => setCompanies([]));
   }, []);
+
+  useEffect(() => {
+    if (activeTab === "dashboard") {
+      void loadSystemStats();
+    }
+  }, [activeTab]);
 
   // Send activity heartbeat on mount and tab switch
   useEffect(() => {
@@ -770,29 +842,6 @@ export default function AdminDashboard({
               <span>Audit Logs</span>
             </Link>
 
-            <div className={styles.navHeading}>ADDONS</div>
-            <a
-              href="#"
-              className={`${styles.navItem} ${activeTab === "charts" ? styles.active : ""}`}
-              onClick={(e) => {
-                e.preventDefault();
-                setActiveTab("charts");
-              }}
-            >
-              <span className={styles.navIcon}><BarChart3 size={16} /></span>
-              <span>Charts</span>
-            </a>
-            <a
-              href="#"
-              className={`${styles.navItem} ${activeTab === "tables" ? styles.active : ""}`}
-              onClick={(e) => {
-                e.preventDefault();
-                setActiveTab("tables");
-              }}
-            >
-              <span className={styles.navIcon}><ClipboardList size={16} /></span>
-              <span>Tables</span>
-            </a>
           </div>
 
           <div className={styles.sidebarFooter}>
@@ -1413,360 +1462,425 @@ export default function AdminDashboard({
             /* ════════════════════ TAB: DASHBOARD OVERVIEW ════════════════════ */
             <section aria-label="Dashboard Overview">
               <div className={styles.pageHeader}>
-                <h1 className={styles.pageTitle}>Dashboard</h1>
-                <nav className={styles.breadcrumb} aria-label="breadcrumb">
-                  <Link href="/admin" className={styles.breadcrumbActive}>
-                    Dashboard
-                  </Link>
-                </nav>
-              </div>
-
-              {/* 4 Colored Stat Cards with Real Database Counts */}
-              <section className={styles.cardsRow} aria-label="Summary statistics">
-                {/* Primary Blue */}
-                <article className={`${styles.statCard} ${styles.primaryCard}`}>
-                  <div className={styles.statCardBody}>
-                    <div style={{ fontSize: "0.85rem", opacity: 0.85, fontWeight: 500 }}>
-                      Total Accounts
-                    </div>
-                    <div style={{ fontSize: "1.7rem", fontWeight: 800, marginTop: "4px" }}>
-                      {stats.total}
-                    </div>
+                <div className={styles.headerTopRow}>
+                  <div>
+                    <h1 className={styles.pageTitle}>Dashboard ภาพรวมระบบ</h1>
+                    <nav className={styles.breadcrumb} aria-label="breadcrumb">
+                      <span className={styles.breadcrumbActive}>System Health &amp; Overview</span>
+                    </nav>
                   </div>
-                  <Link
-                    href="/admin/user_accounts"
-                    className={styles.statCardFooter}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      switchTab("users");
-                    }}
-                  >
-                    <span>View User Accounts</span>
-                    <span>›</span>
-                  </Link>
-                </article>
-
-                {/* Warning Yellow */}
-                <article className={`${styles.statCard} ${styles.warningCard}`}>
-                  <div className={styles.statCardBody}>
-                    <div style={{ fontSize: "0.85rem", opacity: 0.85, fontWeight: 500 }}>
-                      Inactive / Locked
-                    </div>
-                    <div style={{ fontSize: "1.7rem", fontWeight: 800, marginTop: "4px" }}>
-                      {stats.inactive}
-                    </div>
-                  </div>
-                  <Link
-                    href="/admin/user_accounts"
-                    className={styles.statCardFooter}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setStatusFilter("INACTIVE");
-                      switchTab("users");
-                    }}
-                  >
-                    <span>View Details</span>
-                    <span>›</span>
-                  </Link>
-                </article>
-
-                {/* Success Green */}
-                <article className={`${styles.statCard} ${styles.successCard}`}>
-                  <div className={styles.statCardBody}>
-                    <div style={{ fontSize: "0.85rem", opacity: 0.85, fontWeight: 500 }}>
-                      Active Users
-                    </div>
-                    <div style={{ fontSize: "1.7rem", fontWeight: 800, marginTop: "4px" }}>
-                      {stats.active}
-                    </div>
-                  </div>
-                  <Link
-                    href="/admin/user_accounts"
-                    className={styles.statCardFooter}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setStatusFilter("ACTIVE");
-                      switchTab("users");
-                    }}
-                  >
-                    <span>View Details</span>
-                    <span>›</span>
-                  </Link>
-                </article>
-
-                {/* Danger Red */}
-                <article className={`${styles.statCard} ${styles.dangerCard}`}>
-                  <div className={styles.statCardBody}>
-                    <div style={{ fontSize: "0.85rem", opacity: 0.85, fontWeight: 500 }}>
-                      Administrators
-                    </div>
-                    <div style={{ fontSize: "1.7rem", fontWeight: 800, marginTop: "4px" }}>
-                      {stats.admins}
-                    </div>
-                  </div>
-                  <Link
-                    href="/admin/user_accounts"
-                    className={styles.statCardFooter}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setRoleFilter("ADMIN");
-                      switchTab("users");
-                    }}
-                  >
-                    <span>View Details</span>
-                    <span>›</span>
-                  </Link>
-                </article>
-              </section>
-
-              {/* 2 Charts Row */}
-              <section className={styles.chartsRow} aria-label="Analytics charts">
-                {/* Area Chart Card */}
-                <article className={styles.panelCard}>
-                  <header className={styles.panelHeader}>
-                    <span><TrendingUp size={16} /></span>
-                    <span>Area Chart Example</span>
-                  </header>
-                  <div className={styles.panelBody}>
-                    <div className={styles.chartContainer}>
-                      <svg viewBox="0 0 500 240" preserveAspectRatio="none" aria-label="Area chart visual">
-                        <defs>
-                          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#0d6efd" stopOpacity="0.35" />
-                            <stop offset="100%" stopColor="#0d6efd" stopOpacity="0.02" />
-                          </linearGradient>
-                        </defs>
-
-                        {/* Horizontal Grid lines */}
-                        <line x1="50" y1="30" x2="480" y2="30" stroke="#e9ecef" strokeWidth="1" />
-                        <line x1="50" y1="75" x2="480" y2="75" stroke="#e9ecef" strokeWidth="1" />
-                        <line x1="50" y1="120" x2="480" y2="120" stroke="#e9ecef" strokeWidth="1" />
-                        <line x1="50" y1="165" x2="480" y2="165" stroke="#e9ecef" strokeWidth="1" />
-                        <line x1="50" y1="210" x2="480" y2="210" stroke="#ced4da" strokeWidth="1.5" />
-
-                        {/* Y-axis Labels */}
-                        <text x="42" y="34" textAnchor="end" fontSize="10" fill="#6c757d">
-                          40000
-                        </text>
-                        <text x="42" y="79" textAnchor="end" fontSize="10" fill="#6c757d">
-                          30000
-                        </text>
-                        <text x="42" y="124" textAnchor="end" fontSize="10" fill="#6c757d">
-                          20000
-                        </text>
-                        <text x="42" y="169" textAnchor="end" fontSize="10" fill="#6c757d">
-                          10000
-                        </text>
-                        <text x="42" y="214" textAnchor="end" fontSize="10" fill="#6c757d">
-                          0
-                        </text>
-
-                        {/* Area polygon fill */}
-                        <polygon
-                          points="
-                            65,165
-                            120,75
-                            175,100
-                            230,135
-                            285,85
-                            340,70
-                            395,110
-                            450,55
-                            450,210
-                            65,210
-                          "
-                          fill="url(#areaGrad)"
-                        />
-
-                        {/* Smooth Line Path */}
-                        <polyline
-                          points="
-                            65,165
-                            120,75
-                            175,100
-                            230,135
-                            285,85
-                            340,70
-                            395,110
-                            450,55
-                          "
-                          fill="none"
-                          stroke="#0d6efd"
-                          strokeWidth="2.5"
-                        />
-
-                        {/* Data Points */}
-                        {[
-                          { cx: 65, cy: 165 },
-                          { cx: 120, cy: 75 },
-                          { cx: 175, cy: 100 },
-                          { cx: 230, cy: 135 },
-                          { cx: 285, cy: 85 },
-                          { cx: 340, cy: 70 },
-                          { cx: 395, cy: 110 },
-                          { cx: 450, cy: 55 },
-                        ].map((pt, idx) => (
-                          <circle
-                            key={idx}
-                            cx={pt.cx}
-                            cy={pt.cy}
-                            r="4"
-                            fill="#0d6efd"
-                            stroke="#ffffff"
-                            strokeWidth="2"
-                          />
-                        ))}
-
-                        {/* X-axis Labels */}
-                        <text x="65" y="228" textAnchor="middle" fontSize="10" fill="#6c757d">
-                          Mar 1
-                        </text>
-                        <text x="120" y="228" textAnchor="middle" fontSize="10" fill="#6c757d">
-                          Mar 3
-                        </text>
-                        <text x="175" y="228" textAnchor="middle" fontSize="10" fill="#6c757d">
-                          Mar 5
-                        </text>
-                        <text x="230" y="228" textAnchor="middle" fontSize="10" fill="#6c757d">
-                          Mar 7
-                        </text>
-                        <text x="285" y="228" textAnchor="middle" fontSize="10" fill="#6c757d">
-                          Mar 9
-                        </text>
-                        <text x="340" y="228" textAnchor="middle" fontSize="10" fill="#6c757d">
-                          Mar 11
-                        </text>
-                        <text x="410" y="228" textAnchor="middle" fontSize="10" fill="#6c757d">
-                          Mar 13
-                        </text>
-                      </svg>
-                    </div>
-                  </div>
-                </article>
-
-                {/* Bar Chart Card */}
-                <article className={styles.panelCard}>
-                  <header className={styles.panelHeader}>
-                    <span><BarChart3 size={16} /></span>
-                    <span>Bar Chart Example</span>
-                  </header>
-                  <div className={styles.panelBody}>
-                    <div className={styles.chartContainer}>
-                      <svg viewBox="0 0 500 240" preserveAspectRatio="none" aria-label="Bar chart visual">
-                        {/* Horizontal Grid lines */}
-                        <line x1="50" y1="30" x2="480" y2="30" stroke="#e9ecef" strokeWidth="1" />
-                        <line x1="50" y1="90" x2="480" y2="90" stroke="#e9ecef" strokeWidth="1" />
-                        <line x1="50" y1="150" x2="480" y2="150" stroke="#e9ecef" strokeWidth="1" />
-                        <line x1="50" y1="210" x2="480" y2="210" stroke="#ced4da" strokeWidth="1.5" />
-
-                        {/* Y-axis Labels */}
-                        <text x="42" y="34" textAnchor="end" fontSize="10" fill="#6c757d">
-                          15000
-                        </text>
-                        <text x="42" y="94" textAnchor="end" fontSize="10" fill="#6c757d">
-                          10000
-                        </text>
-                        <text x="42" y="154" textAnchor="end" fontSize="10" fill="#6c757d">
-                          5000
-                        </text>
-                        <text x="42" y="214" textAnchor="end" fontSize="10" fill="#6c757d">
-                          0
-                        </text>
-
-                        {/* Vertical Bars */}
-                        {[
-                          { x: 75, height: 50, label: "January" },
-                          { x: 140, height: 65, label: "February" },
-                          { x: 205, height: 75, label: "March" },
-                          { x: 270, height: 95, label: "April" },
-                          { x: 335, height: 120, label: "May" },
-                          { x: 400, height: 180, label: "June" },
-                        ].map((bar, idx) => (
-                          <g key={idx}>
-                            <rect
-                              x={bar.x}
-                              y={210 - bar.height}
-                              width="42"
-                              height={bar.height}
-                              rx="2"
-                              fill="#0d6efd"
-                            />
-                            <text
-                              x={bar.x + 21}
-                              y="228"
-                              textAnchor="middle"
-                              fontSize="10"
-                              fill="#6c757d"
-                            >
-                              {bar.label}
-                            </text>
-                          </g>
-                        ))}
-                      </svg>
-                    </div>
-                  </div>
-                </article>
-              </section>
-
-              {/* DataTable Card: Real database users in overview */}
-              <article className={styles.panelCard} aria-label="Data table container">
-                <header className={styles.panelHeader}>
-                  <span><ClipboardList size={16} /></span>
-                  <span>Database Users Overview</span>
-                </header>
-
-                <div className={styles.panelBody}>
-                  <div className={styles.tableResponsive}>
-                    <table className={styles.dataTable}>
-                      <thead>
-                        <tr>
-                          <th>ID</th>
-                          <th>Username</th>
-                          <th>Role</th>
-                          <th>Company</th>
-                          <th>Email</th>
-                          <th>Status</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {accounts.slice(0, 5).map((acc) => (
-                          <tr key={acc.userId}>
-                            <td style={{ color: "#64748b" }}>#{acc.userId}</td>
-                            <td style={{ fontWeight: 600 }}>{acc.username}</td>
-                            <td>{renderRoleBadge(acc.roleCode)}</td>
-                            <td>{acc.companyCode || "-"}</td>
-                            <td>{acc.email || "-"}</td>
-                            <td>{renderStatusBadge(acc.status)}</td>
-                            <td>
-                              <button
-                                className={`${styles.actionIconBtn} ${styles.editBtn}`}
-                                type="button"
-                                onClick={() => {
-                                  switchTab("users");
-                                  handleOpenEdit(acc);
-                                }}
-                              >
-                                <Pencil size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} /> จัดการ
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div style={{ marginTop: "14px", textAlign: "right" }}>
+                  <div className={styles.actionButtonsGroup}>
                     <button
                       className={styles.btnSecondaryAction}
                       type="button"
-                      onClick={() => switchTab("users")}
+                      disabled={isStatsLoading}
+                      onClick={() => void loadSystemStats()}
+                      title="รีเฟรชข้อมูลสถานะล่าสุด"
                     >
-                      ดูผู้ใช้งานทั้งหมด ({accounts.length} บัญชี) →
+                      <RefreshCw size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
+                      <span>{isStatsLoading ? "กำลังอัปเดต..." : "รีเฟรชสถานะ"}</span>
                     </button>
                   </div>
                 </div>
-              </article>
+              </div>
+
+              {/* System Health Status Bar */}
+              <div className={styles.systemStatusBar}>
+                <div className={styles.statusGroup}>
+                  <div className={styles.pulseDot} />
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>
+                      สถานะฐานข้อมูล: <span style={{ color: "#10b981" }}>{systemStats?.database.status ?? "ONLINE"}</span>
+                    </div>
+                    <div style={{ fontSize: "0.75rem", color: "var(--ui-30-muted, #64748b)" }}>
+                      ตรวจสอบล่าสุด: {systemStats?.database.checkedAt ? new Date(systemStats.database.checkedAt).toLocaleTimeString("th-TH") : "กำลังตรวจสอบ..."}
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.systemStatusMeta}>
+                  <span className={styles.statusMetaPill}>
+                    <Server size={13} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} />
+                    Prisma ORM &amp; SQL Server
+                  </span>
+                  <span className={styles.statusMetaPill}>
+                    <Activity size={13} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} />
+                    {activeStats.totalActive > 0 ? `${activeStats.totalActive} คนกำลังใช้งานระบบ` : "ไม่มีผู้ใช้ออนไลน์"}
+                  </span>
+                </div>
+              </div>
+
+              {/* 4 Core Metric Cards */}
+              <section className={styles.cardsRow} aria-label="Summary statistics">
+                {/* 1. User Accounts Card */}
+                <article className={`${styles.statCard} ${styles.primaryCard}`}>
+                  <div className={styles.statCardBody}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div>
+                        <div style={{ fontSize: "0.85rem", opacity: 0.88, fontWeight: 600 }}>
+                          บัญชีผู้ใช้ในระบบ
+                        </div>
+                        <div style={{ fontSize: "1.8rem", fontWeight: 800, marginTop: "2px" }}>
+                          {systemStats?.counts.users ?? accounts.length}
+                        </div>
+                      </div>
+                      <Users size={28} style={{ opacity: 0.3 }} />
+                    </div>
+                    <div style={{ fontSize: "0.78rem", marginTop: "6px", opacity: 0.85 }}>
+                      ใช้งานปกติ {systemStats?.counts.activeUsers ?? stats.active} | แอดมิน {stats.admins} บัญชี
+                    </div>
+                  </div>
+                  <Link
+                    href="/admin/user_accounts"
+                    className={styles.statCardFooter}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      switchTab("users");
+                    }}
+                  >
+                    <span>จัดการบัญชีผู้ใช้ (User Accounts)</span>
+                    <span>›</span>
+                  </Link>
+                </article>
+
+                {/* 2. Organization Master Data */}
+                <article className={`${styles.statCard} ${styles.infoCard}`}>
+                  <div className={styles.statCardBody}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div>
+                        <div style={{ fontSize: "0.85rem", opacity: 0.88, fontWeight: 600 }}>
+                          ข้อมูลองค์กร &amp; พนักงาน
+                        </div>
+                        <div style={{ fontSize: "1.8rem", fontWeight: 800, marginTop: "2px" }}>
+                          {systemStats?.counts.employees ?? 0}
+                        </div>
+                      </div>
+                      <Database size={28} style={{ opacity: 0.3 }} />
+                    </div>
+                    <div style={{ fontSize: "0.78rem", marginTop: "6px", opacity: 0.85 }}>
+                      สังกัด {systemStats?.counts.companies ?? companies.length} บริษัทในเครือ
+                    </div>
+                  </div>
+                  <div className={styles.statCardFooter} style={{ cursor: "default" }}>
+                    <span>ข้อมูลหลักจาก Master Data</span>
+                    <span>✓</span>
+                  </div>
+                </article>
+
+                {/* 3. Training & Courses */}
+                <article className={`${styles.statCard} ${styles.successCard}`}>
+                  <div className={styles.statCardBody}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div>
+                        <div style={{ fontSize: "0.85rem", opacity: 0.88, fontWeight: 600 }}>
+                          หลักสูตร &amp; แผนฝึกอบรม
+                        </div>
+                        <div style={{ fontSize: "1.8rem", fontWeight: 800, marginTop: "2px" }}>
+                          {systemStats?.counts.courses ?? 0}
+                        </div>
+                      </div>
+                      <ClipboardList size={28} style={{ opacity: 0.3 }} />
+                    </div>
+                    <div style={{ fontSize: "0.78rem", marginTop: "6px", opacity: 0.85 }}>
+                      {systemStats?.counts.plans ?? 0} แผนอบรม | {systemStats?.counts.enrollments ?? 0} รายการลงทะเบียน
+                    </div>
+                  </div>
+                  <div className={styles.statCardFooter} style={{ cursor: "default" }}>
+                    <span>หลักสูตรทั้งหมดในระบบ</span>
+                    <span>✓</span>
+                  </div>
+                </article>
+
+                {/* 4. Audit & Security Trail */}
+                <article className={`${styles.statCard} ${styles.warningCard}`}>
+                  <div className={styles.statCardBody}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div>
+                        <div style={{ fontSize: "0.85rem", opacity: 0.88, fontWeight: 600 }}>
+                          บันทึกความปลอดภัย (Logs)
+                        </div>
+                        <div style={{ fontSize: "1.8rem", fontWeight: 800, marginTop: "2px" }}>
+                          {systemStats?.auditStats.totalLogs ?? auditTotal}
+                        </div>
+                      </div>
+                      <FileText size={28} style={{ opacity: 0.3 }} />
+                    </div>
+                    <div style={{ fontSize: "0.78rem", marginTop: "6px", opacity: 0.85 }}>
+                      หมดอายุแล้ว {systemStats?.auditStats.expiredLogs ?? 0} รายการ (รอเคลียร์)
+                    </div>
+                  </div>
+                  <Link
+                    href="/admin/audit_logs"
+                    className={styles.statCardFooter}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      switchTab("audit");
+                    }}
+                  >
+                    <span>ตรวจสอบ Audit Logs</span>
+                    <span>›</span>
+                  </Link>
+                </article>
+              </section>
+
+              {/* Middle Section: Real 7-Day Security/Activity Chart + Log Retention Management Card */}
+              <section className={styles.chartsRow} aria-label="System Analytics &amp; Security">
+                {/* Panel 1: 7-Day Activity & Login Stats */}
+                <article className={styles.panelCard}>
+                  <header className={styles.panelHeader} style={{ justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <TrendingUp size={16} />
+                      <span style={{ fontWeight: 700 }}>สถิติกิจกรรมและการล็อกอิน 7 วันล่าสุด</span>
+                    </div>
+                    <div style={{ display: "flex", gap: "12px", fontSize: "0.78rem" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                        <span style={{ width: 10, height: 10, background: "#10b981", borderRadius: 2 }} />
+                        สำเร็จ ({systemStats?.securitySummary.logins7Days ?? 0})
+                      </span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                        <span style={{ width: 10, height: 10, background: "#ef4444", borderRadius: 2 }} />
+                        ล้มเหลว ({systemStats?.securitySummary.failedLogins7Days ?? 0})
+                      </span>
+                    </div>
+                  </header>
+
+                  <div className={styles.panelBody}>
+                    {/* Security Warning if failed logins exist */}
+                    {(systemStats?.securitySummary.failedLogins7Days ?? 0) > 0 ? (
+                      <div className={styles.securityWarningBanner}>
+                        <ShieldAlert size={18} />
+                        <div>
+                          <strong>แจ้งเตือนความปลอดภัย:</strong> พบการพยายามเข้าสู่ระบบไม่สำเร็จ{" "}
+                          <strong>{systemStats?.securitySummary.failedLogins7Days} ครั้ง</strong> ในรอบ 7 วันที่ผ่านมา
+                          กรุณาตรวจสอบในแท็บ Audit Logs หมวด AUTH เพื่อเฝ้าระวัง
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* CSS Bar Chart for 7-Day Activity */}
+                    <div className={styles.activityChartContainer}>
+                      {(systemStats?.securitySummary.dailyActivity ?? []).map((day, idx) => {
+                        const total = day.success + day.failed + day.other;
+                        const maxVal = Math.max(
+                          10,
+                          ...((systemStats?.securitySummary.dailyActivity ?? []).map((d) => d.success + d.failed + d.other))
+                        );
+                        const heightPct = Math.max(8, Math.round((total / maxVal) * 100));
+
+                        return (
+                          <div key={day.date || idx} className={styles.activityDayCol}>
+                            <div className={styles.activityBarTrack}>
+                              <div
+                                className={styles.activityBarFill}
+                                style={{ height: `${heightPct}%` }}
+                                title={`${day.label}: สำเร็จ ${day.success}, ล้มเหลว ${day.failed}, กิจกรรมอื่น ${day.other}`}
+                              >
+                                {day.failed > 0 ? (
+                                  <div
+                                    className={styles.barFailedPortion}
+                                    style={{ height: `${(day.failed / Math.max(1, total)) * 100}%` }}
+                                  />
+                                ) : null}
+                              </div>
+                            </div>
+                            <span className={styles.activityDayLabel}>{day.label}</span>
+                            <span className={styles.activityDayCount}>{total}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </article>
+
+                {/* Panel 2: Audit Log Retention & Storage Management */}
+                <article className={styles.panelCard}>
+                  <header className={styles.panelHeader}>
+                    <Clock size={16} />
+                    <span style={{ fontWeight: 700 }}>นโยบายและการจัดเก็บ Audit Logs (PDPA &amp; Storage)</span>
+                  </header>
+
+                  <div className={styles.panelBody} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    <div className={styles.retentionInfoBox}>
+                      <div className={styles.retentionRow}>
+                        <span className={styles.retentionLabel}>ระยะเวลาจัดเก็บ (Retention Period):</span>
+                        <span className={styles.retentionValue}>90 วัน (ตามนโยบาย PDPA)</span>
+                      </div>
+                      <div className={styles.retentionRow}>
+                        <span className={styles.retentionLabel}>จำนวนบันทึกทั้งหมดในฐานข้อมูล:</span>
+                        <span className={styles.retentionValue}>
+                          <strong>{(systemStats?.auditStats.totalLogs ?? 0).toLocaleString()}</strong> รายการ
+                        </span>
+                      </div>
+                      <div className={styles.retentionRow}>
+                        <span className={styles.retentionLabel}>วันที่ของ Log ที่เก่าที่สุด:</span>
+                        <span className={styles.retentionValue}>
+                          {systemStats?.auditStats.oldestLogDate
+                            ? new Date(systemStats.auditStats.oldestLogDate).toLocaleDateString("th-TH", {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              })
+                            : "ยังไม่มีประวัติ"}
+                        </span>
+                      </div>
+                      <div className={styles.retentionRow} style={{ borderTop: "1px dashed #cbd5e1", paddingTop: "8px" }}>
+                        <span className={styles.retentionLabel}>Log ที่ครบกำหนดล้างแล้ว (เกิน 90 วัน):</span>
+                        <span className={styles.retentionValue} style={{ color: (systemStats?.auditStats.expiredLogs ?? 0) > 0 ? "#d97706" : "#10b981", fontWeight: 700 }}>
+                          {(systemStats?.auditStats.expiredLogs ?? 0).toLocaleString()} รายการ
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className={styles.purgeActionCard}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: "0.92rem" }}>
+                          ล้างประวัติที่หมดอายุเพื่อเพิ่มประสิทธิภาพฐานข้อมูล
+                        </div>
+                        <div style={{ fontSize: "0.78rem", color: "var(--ui-30-muted, #64748b)", marginTop: "2px" }}>
+                          ลบเฉพาะ Log ที่เกิน 90 วัน ข้อมูลที่ยังอยู่ในระยะเวลาจะไม่ได้รับผลกระทบ
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", gap: "10px", marginTop: "10px", alignItems: "center" }}>
+                        <button
+                          type="button"
+                          className={styles.btnPurgeAction}
+                          disabled={(systemStats?.auditStats.expiredLogs ?? 0) === 0 || isPurging}
+                          onClick={() => setIsPurgeModalOpen(true)}
+                        >
+                          <Trash2 size={14} style={{ display: "inline", verticalAlign: "middle", marginRight: 6 }} />
+                          {(systemStats?.auditStats.expiredLogs ?? 0) > 0
+                            ? `ล้าง Log หมดอายุ (${systemStats?.auditStats.expiredLogs} รายการ)`
+                            : "ไม่มี Log ที่หมดอายุ"}
+                        </button>
+
+                        <button
+                          type="button"
+                          className={styles.btnSecondaryAction}
+                          onClick={() => switchTab("audit")}
+                        >
+                          ดู Log ทั้งหมด →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              </section>
+
+              {/* Bottom Section: Recent Events Feed & User Accounts Table */}
+              <section className={styles.chartsRow} aria-label="Recent Events and Users" style={{ marginTop: "20px" }}>
+                {/* Left: Recent System Events */}
+                <article className={styles.panelCard} style={{ flex: "1 1 50%" }}>
+                  <header className={styles.panelHeader} style={{ justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <Activity size={16} />
+                      <span style={{ fontWeight: 700 }}>เหตุการณ์ล่าสุดในระบบ (Recent System Events)</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.linkButton}
+                      onClick={() => switchTab("audit")}
+                    >
+                      ดูทั้งหมด →
+                    </button>
+                  </header>
+
+                  <div className={styles.panelBody} style={{ padding: "8px 16px" }}>
+                    {(!systemStats?.recentEvents || systemStats.recentEvents.length === 0) ? (
+                      <div style={{ textAlign: "center", padding: "24px", color: "var(--ui-30-muted, #64748b)", fontSize: "0.88rem" }}>
+                        ยังไม่มีกิจกรรมบันทึกไว้ในระบบ
+                      </div>
+                    ) : (
+                      <div className={styles.recentEventList}>
+                        {systemStats.recentEvents.map((evt) => (
+                          <div key={evt.id} className={styles.recentEventItem}>
+                            <div className={styles.recentEventHeader}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                {renderAuditCategoryBadge(evt.category)}
+                                <strong style={{ fontSize: "0.85rem" }}>{evt.action}</strong>
+                              </div>
+                              <span style={{ fontSize: "0.75rem", color: "var(--ui-30-muted, #64748b)" }}>
+                                {new Date(evt.occurredAt).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            </div>
+                            <div className={styles.recentEventMeta}>
+                              <span>
+                                โดย: <strong>{evt.actorUsername || "System"}</strong>{" "}
+                                {evt.actorRole ? `(${evt.actorRole})` : ""}
+                              </span>
+                              {evt.entityLabel ? (
+                                <span className={styles.recentEventEntity}>
+                                  เป้าหมาย: {evt.entityLabel}
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </article>
+
+                {/* Right: Database Users Overview */}
+                <article className={styles.panelCard} style={{ flex: "1 1 50%" }}>
+                  <header className={styles.panelHeader} style={{ justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <Users size={16} />
+                      <span style={{ fontWeight: 700 }}>ผู้ใช้งานระบบล่าสุด</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.linkButton}
+                      onClick={() => switchTab("users")}
+                    >
+                      จัดการผู้ใช้ทั้งหมด →
+                    </button>
+                  </header>
+
+                  <div className={styles.panelBody} style={{ padding: "0" }}>
+                    <div className={styles.tableResponsive}>
+                      <table className={styles.dataTable}>
+                        <thead>
+                          <tr>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Company</th>
+                            <th>Status</th>
+                            <th style={{ textAlign: "center" }}>จัดการ</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {accounts.slice(0, 5).map((acc) => (
+                            <tr key={acc.userId}>
+                              <td>
+                                <div style={{ fontWeight: 700, fontSize: "0.88rem" }}>{acc.username}</div>
+                                <div style={{ fontSize: "0.72rem", color: "var(--ui-30-muted, #64748b)" }}>
+                                  #{acc.userId} {acc.email ? `• ${acc.email}` : ""}
+                                </div>
+                              </td>
+                              <td>{renderRoleBadge(acc.roleCode)}</td>
+                              <td>{acc.companyCode || "-"}</td>
+                              <td>{renderStatusBadge(acc.status)}</td>
+                              <td style={{ textAlign: "center" }}>
+                                <button
+                                  className={`${styles.actionIconBtn} ${styles.editBtn}`}
+                                  type="button"
+                                  onClick={() => {
+                                    switchTab("users");
+                                    handleOpenEdit(acc);
+                                  }}
+                                >
+                                  แก้ไข
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </article>
+              </section>
             </section>
           )}
         </main>
@@ -2315,6 +2429,63 @@ export default function AdminDashboard({
                 onClick={() => setSelectedAuditLog(null)}
               >
                 ปิดหน้าต่าง
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ════════════════════ MODAL: PURGE EXPIRED AUDIT LOGS ════════════════════ */}
+      {isPurgeModalOpen ? (
+        <div className={styles.modalOverlay} onClick={() => setIsPurgeModalOpen(false)}>
+          <div className={styles.modalDialog} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3 style={{ color: "#d97706" }}>ยืนยันการล้างประวัติ Audit Log ที่หมดอายุ</h3>
+              <button
+                className={styles.modalCloseBtn}
+                type="button"
+                onClick={() => setIsPurgeModalOpen(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className={styles.modalBody}>
+              <p className={styles.deleteConfirmText}>
+                ระบบจะทำการลบข้อมูล Audit Log ที่เกินกำหนดระยะเวลาจัดเก็บ (90 วัน) ออกจากฐานข้อมูลถาวร
+              </p>
+              <div style={{ background: "var(--ui-60-surface-soft, #f8fafc)", padding: "14px", borderRadius: "8px", margin: "12px 0", border: "1px solid var(--ui-30-border, #cbd5e1)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                  <span>จำนวนบันทึกที่ครบกำหนดล้าง:</span>
+                  <strong style={{ color: "#d97706", fontSize: "1.1rem" }}>
+                    {(systemStats?.auditStats.expiredLogs ?? 0).toLocaleString()} รายการ
+                  </strong>
+                </div>
+                <div style={{ fontSize: "0.8rem", color: "var(--ui-30-muted, #64748b)" }}>
+                  บันทึกที่ยังไม่ครบกำหนด (ภายใน 90 วัน) จะยังคงถูกเก็บรักษาไว้อย่างสมบูรณ์
+                </div>
+              </div>
+              <div className={styles.deleteWarningBox}>
+                <strong>คำเตือน:</strong> ข้อมูลที่ถูกล้างจะไม่สามารถกู้คืนได้ และระบบจะบันทึกกิจกรรมการล้างนี้ลงใน Audit Log อัตโนมัติ
+              </div>
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.btnCancel}
+                type="button"
+                onClick={() => setIsPurgeModalOpen(false)}
+              >
+                ยกเลิก
+              </button>
+              <button
+                className={styles.btnDangerSubmit}
+                type="button"
+                style={{ backgroundColor: "#d97706", borderColor: "#b45309" }}
+                disabled={isPurging || (systemStats?.auditStats.expiredLogs ?? 0) === 0}
+                onClick={() => void handlePurgeLogs()}
+              >
+                {isPurging ? "กำลังดำเนินการ..." : "ยืนยันการล้างข้อมูล"}
               </button>
             </div>
           </div>

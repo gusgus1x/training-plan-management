@@ -1899,4 +1899,314 @@
   word-break: break-word;
 }
 
+.infoCard {
+  background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+  color: #ffffff;
+}
+
+/* ── System Status Bar ── */
+.systemStatusBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: var(--ui-60-surface, #ffffff);
+  border: 1px solid var(--ui-30-border, #cbd5e1);
+  border-radius: 10px;
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+:global([data-theme="dark"]) .systemStatusBar,
+:global(.dark) .systemStatusBar {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+.statusGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.systemStatusMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.statusMetaPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: var(--ui-60-surface-soft, #f1f5f9);
+  color: var(--ui-30-muted, #475569);
+  border: 1px solid var(--ui-30-border, #e2e8f0);
+}
+
+:global([data-theme="dark"]) .statusMetaPill,
+:global(.dark) .statusMetaPill {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+/* ── Security Alert Banner ── */
+.securityWarningBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #9f1239;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.84rem;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+:global([data-theme="dark"]) .securityWarningBanner,
+:global(.dark) .securityWarningBanner {
+  background: rgba(225, 29, 72, 0.15) !important;
+  border-color: rgba(225, 29, 72, 0.3) !important;
+  color: #fda4af !important;
+}
+
+/* ── 7-Day Activity Chart ── */
+.activityChartContainer {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 160px;
+  padding-top: 20px;
+  gap: 8px;
+}
+
+.activityDayCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  height: 100%;
+}
+
+.activityBarTrack {
+  position: relative;
+  width: 28px;
+  flex: 1;
+  background: var(--ui-60-surface-soft, #f1f5f9);
+  border-radius: 6px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+:global([data-theme="dark"]) .activityBarTrack,
+:global(.dark) .activityBarTrack {
+  background: #0f172a !important;
+}
+
+.activityBarFill {
+  width: 100%;
+  background: linear-gradient(to top, #059669, #10b981);
+  border-radius: 6px 6px 0 0;
+  position: relative;
+  transition: height 300ms ease;
+  min-height: 4px;
+}
+
+.barFailedPortion {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #ef4444;
+  border-radius: 6px 6px 0 0;
+}
+
+.activityDayLabel {
+  font-size: 0.72rem;
+  color: var(--ui-30-muted, #64748b);
+  margin-top: 8px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.activityDayCount {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ui-30-ink, #0f172a);
+}
+
+:global([data-theme="dark"]) .activityDayCount,
+:global(.dark) .activityDayCount {
+  color: #f8fafc !important;
+}
+
+/* ── Retention Info Box & Purge Button ── */
+.retentionInfoBox {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--ui-60-surface-soft, #f8fafc);
+  border: 1px solid var(--ui-30-border, #e2e8f0);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+:global([data-theme="dark"]) .retentionInfoBox,
+:global(.dark) .retentionInfoBox {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+.retentionRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.retentionLabel {
+  color: var(--ui-30-muted, #64748b);
+}
+
+.retentionValue {
+  color: var(--ui-30-ink, #0f172a);
+}
+
+:global([data-theme="dark"]) .retentionValue,
+:global(.dark) .retentionValue {
+  color: #f8fafc !important;
+}
+
+.purgeActionCard {
+  background: var(--ui-60-surface-soft, #fffbeb);
+  border: 1px solid #fef3c7;
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+:global([data-theme="dark"]) .purgeActionCard,
+:global(.dark) .purgeActionCard {
+  background: rgba(217, 119, 6, 0.1) !important;
+  border-color: rgba(217, 119, 6, 0.25) !important;
+}
+
+.btnPurgeAction {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 140ms ease, transform 140ms ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btnPurgeAction:hover:not(:disabled) {
+  opacity: 0.92;
+  transform: translateY(-1px);
+}
+
+.btnPurgeAction:disabled {
+  background: #cbd5e1;
+  color: #64748b;
+  cursor: not-allowed;
+  transform: none;
+}
+
+:global([data-theme="dark"]) .btnPurgeAction:disabled,
+:global(.dark) .btnPurgeAction:disabled {
+  background: #334155 !important;
+  color: #64748b !important;
+}
+
+/* ── Recent Events Feed ── */
+.recentEventList {
+  display: flex;
+  flex-direction: column;
+}
+
+.recentEventItem {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--ui-30-border, #e2e8f0);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.recentEventItem:last-child {
+  border-bottom: none;
+}
+
+:global([data-theme="dark"]) .recentEventItem,
+:global(.dark) .recentEventItem {
+  border-bottom-color: #334155 !important;
+}
+
+.recentEventHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.recentEventMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  color: var(--ui-30-muted, #64748b);
+}
+
+.recentEventEntity {
+  background: var(--ui-60-surface-soft, #f1f5f9);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:global([data-theme="dark"]) .recentEventEntity,
+:global(.dark) .recentEventEntity {
+  background: #0f172a !important;
+  color: #94a3b8 !important;
+}
+
+.linkButton {
+  background: transparent;
+  border: none;
+  color: #0284c7;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: color 120ms ease;
+}
+
+.linkButton:hover {
+  color: #0369a1;
+  text-decoration: underline;
+}
+
+:global([data-theme="dark"]) .linkButton,
+:global(.dark) .linkButton {
+  color: #38bdf8 !important;
+}
+
+
 

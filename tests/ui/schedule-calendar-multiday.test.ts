@@ -3,6 +3,7 @@ import {
   buildCalendarWeeks,
   getPlanDaysCount,
   getPlanEndDate,
+  isEmployeeEnrolledInPlan,
   isPlanInMonth,
 } from "../../app/components/center_factory/ReportManagement/modules/ScheduleCalendar";
 import type { RollingPlan } from "../../app/components/center_factory/TrainingPlanManagement/modules/TrainingRolling";
@@ -163,3 +164,52 @@ describe("Schedule Calendar Multi-Day Spanning", () => {
     expect(segA?.slot).not.toBe(segB?.slot);
   });
 });
+
+describe("Schedule Calendar employee personal course filtering", () => {
+  it("identifies active and completed enrollments as employee courses", () => {
+    const plan = createMockPlan({ rollingId: "RP-100", id: "RP-100" });
+
+    // Active enrollment
+    expect(
+      isEmployeeEnrolledInPlan(plan, [
+        { planId: "RP-100", status: "Center Approved", attendance: null, result: null, certificate: null } as any,
+      ]),
+    ).toBe(true);
+
+    // Pending approval enrollment
+    expect(
+      isEmployeeEnrolledInPlan(plan, [
+        { planId: "RP-100", status: "Pending Approval", attendance: null, result: null, certificate: null } as any,
+      ]),
+    ).toBe(true);
+
+    // Attended enrollment
+    expect(
+      isEmployeeEnrolledInPlan(plan, [
+        { planId: "RP-100", status: "Rejected", attendance: { status: "PRESENT" }, result: null, certificate: null } as any,
+      ]),
+    ).toBe(true);
+
+    // Certificate present
+    expect(
+      isEmployeeEnrolledInPlan(plan, [
+        { planId: "RP-100", status: "Rejected", attendance: null, result: null, certificate: { certificateFileId: "file-1" } } as any,
+      ]),
+    ).toBe(true);
+
+    // Cancelled or Rejected without attendance/cert -> not enrolled
+    expect(
+      isEmployeeEnrolledInPlan(plan, [
+        { planId: "RP-100", status: "Cancelled", attendance: null, result: null, certificate: null } as any,
+      ]),
+    ).toBe(false);
+
+    // Unrelated plan
+    expect(
+      isEmployeeEnrolledInPlan(plan, [
+        { planId: "RP-999", status: "Center Approved", attendance: null, result: null, certificate: null } as any,
+      ]),
+    ).toBe(false);
+  });
+});
+

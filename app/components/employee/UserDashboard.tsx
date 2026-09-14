@@ -32,6 +32,7 @@ import RegisterTrainingModule from "./RegisterTrainingModule";
 import RequestTrainingModule from "./RequestTrainingModule";
 import RoadmapModule from "./RoadmapModule";
 import NewActivities from "../center_factory/NewActivities/NewActivities";
+import ScheduleCalendar from "../center_factory/ReportManagement/modules/ScheduleCalendar";
 import styles from "./UserDashboard.module.css";
 import {
   buildCalendarYearOptions,
@@ -803,21 +804,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
             <button
               type="button"
               onClick={() => setActiveModule("record")}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                width: "100%",
-                textAlign: "left",
-                margin: "0 0 16px",
-                padding: "12px 16px",
-                borderRadius: "12px",
-                background: "rgba(234, 179, 8, 0.12)",
-                border: "1px solid rgba(234, 179, 8, 0.35)",
-                color: "#854d0e",
-                cursor: "pointer",
-                font: "inherit",
-              }}
+              className={styles.followUpBanner}
               aria-label="30-day follow-up evaluation reminder"
             >
               <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center" }}>
@@ -842,34 +829,10 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
               key={enrollment.certificate!.certificateFileId}
               type="button"
               onClick={() => setOpenCertificateId(enrollment.certificate!.certificateFileId)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "14px",
-                width: "100%",
-                textAlign: "left",
-                margin: "0 0 16px",
-                padding: "12px 16px",
-                borderRadius: "12px",
-                background: "rgba(34, 197, 94, 0.12)",
-                border: "1px solid rgba(34, 197, 94, 0.35)",
-                color: "#166534",
-                cursor: "pointer",
-                font: "inherit",
-              }}
+              className={styles.certificateBanner}
               aria-label={t("ใบเกียรติบัตรที่ได้รับ", "Certificate received")}
             >
-              <span
-                style={{
-                  flexShrink: 0,
-                  width: "120px",
-                  height: "85px",
-                  overflow: "hidden",
-                  borderRadius: "8px",
-                  border: "1px solid rgba(34, 197, 94, 0.35)",
-                  background: "#ffffff",
-                }}
-              >
+              <span className={styles.certificatePreviewThumb}>
                 <iframe
                   src={certificateFileUrl(enrollment.certificate!.certificateFileId)}
                   title={enrollment.plan.courseName}
@@ -936,18 +899,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                 <button
                   type="button"
                   onClick={() => setOpenCertificateId(null)}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    padding: "8px 16px",
-                    borderRadius: "999px",
-                    border: 0,
-                    background: "#ffffff",
-                    fontWeight: 800,
-                    fontSize: "0.82rem",
-                    cursor: "pointer",
-                  }}
+                  className={styles.certificateCloseBtn}
                 >
                   {t("ปิด", "Close")} <X size={14} />
                 </button>
@@ -961,9 +913,10 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
             </div>
           ) : null}
 
-          <div className={styles.topRow}>
-            <section className={styles.employeePanel} aria-label="My employee information">
-              <div className={styles.profileHeaderBanner}>
+          {/* 1. Profile - Full-width Row */}
+          <section className={styles.employeePanel} aria-label="My employee information">
+            <div className={styles.profileHeaderBanner}>
+              <div className={styles.profileUserGroup}>
                 <div className={styles.photoBox} aria-hidden="true">
                   {initialsOf(username)}
                 </div>
@@ -982,437 +935,93 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                 </div>
               </div>
 
-              <div className={styles.employeeDetailsGrid}>
-                {fullEmployeeProfileItems.map((item) => (
-                  <div className={styles.detailCard} key={item.label}>
-                    <span className={styles.detailLabel}>{item.label}</span>
-                    <strong className={styles.detailValue} title={item.value}>
-                      {item.value}
-                    </strong>
-                  </div>
-                ))}
-              </div>
-
               <div className={styles.kpiSummaryBar} aria-label="Training summary">
-                <div className={styles.kpiCol}>
+                <button
+                  type="button"
+                  className={styles.kpiColBtn}
+                  onClick={() => setActiveModule("record")}
+                  title={t("ดูประวัติการอบรม", "View training records")}
+                >
                   <span className={styles.kpiLabel}>{t("ลงทะเบียน", "Registered")}</span>
                   <div className={styles.kpiValueRow}>
                     <strong className={styles.kpiValue}>{enrolledPlanIds.size}</strong>
                     <small className={styles.kpiHelper}>{t("หลักสูตร", "courses")}</small>
                   </div>
-                </div>
-                <div className={styles.kpiCol}>
-                  <span className={styles.kpiLabel}>{t("สำเร็จแล้ว", "Completed")}</span>
-                  <div className={styles.kpiValueRow}>
-                    <strong className={styles.kpiValue}>{completedHours}</strong>
-                    <small className={styles.kpiHelper}>{t("ชั่วโมง", "hours")}</small>
-                  </div>
-                </div>
-                <div className={styles.kpiCol}>
-                  <span className={styles.kpiLabel}>{t("เปิดรับ", "Open")}</span>
-                  <div className={styles.kpiValueRow}>
-                    <strong className={styles.kpiValue}>{openToRegister.length}</strong>
-                    <small className={styles.kpiHelper}>{t("หลักสูตร", "courses")}</small>
-                  </div>
-                </div>
-              </div>
+                </button>
 
-            </section>
-
-            <section className={styles.calendarPanel} aria-label="Employee training calendar">
-              <div className={styles.panelHeader}>
-                <div>
-                  <span>{selectedMonthLabel} {selectedCalendarYear}</span>
-                  <h2>{t("ปฏิทินการฝึกอบรม", "Training Calendar")}</h2>
-                </div>
-                <div className={styles.calendarHeaderActions}>
-                  <b className={styles.courseCountBadge}>
-                    <span className={styles.badgeDot} />
-                    {filteredCalendarTrainings.length} {t("หลักสูตร", "courses")}
-                  </b>
-                  <button
-                    type="button"
-                    className={styles.fullCalendarBtn}
-                    onClick={() => setActiveModule("calendar")}
-                    title={t("ดูปฏิทินแบบเต็ม (Full Calendar)", "View Full Calendar")}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                      <polyline points="15 3 21 3 21 9" />
-                      <line x1="10" y1="14" x2="21" y2="3" />
-                    </svg>
-                    <span>{t("ปฏิทินใหญ่", "Full Calendar")}</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className={styles.calendarFilters}>
-                <div className={styles.filterItem}>
-                  <span className={styles.filterTitle}>{t("บริษัท", "Company")}</span>
-                  <div className={styles.selectWrapper}>
-                    <select
-                      className={styles.filterSelect}
-                      disabled
-                      value={employeeCompany}
-                    >
-                      <option value={employeeCompany}>{employeeCompany} + Center</option>
-                    </select>
-                    <svg className={styles.selectChevron} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className={styles.filterItem}>
-                  <span className={styles.filterTitle}>{t("ปี", "Year")}</span>
-                  <div className={styles.selectWrapper}>
-                    <select
-                      className={styles.filterSelect}
-                      value={selectedCalendarYear}
-                      onChange={(event) => {
-                        setSelectedCalendarYear(event.target.value);
-                        setSelectedDay(null);
-                      }}
-                    >
-                      {calendarYears.map((year) => (
-                        <option key={year} value={year}>{year}</option>
-                      ))}
-                    </select>
-                    <svg className={styles.selectChevron} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                  </div>
-                </div>
-
-                <div className={styles.filterItem}>
-                  <span className={styles.filterTitle}>{t("เดือน", "Month")}</span>
-                  <div className={styles.selectWrapper}>
-                    <select
-                      className={styles.filterSelect}
-                      value={selectedCalendarMonth}
-                      onChange={(event) => {
-                        setSelectedCalendarMonth(event.target.value);
-                        setSelectedDay(null);
-                      }}
-                    >
-                      {calendarMonths.map((month) => (
-                        <option key={month.value} value={month.value}>{monthLabel(month.value, month.label)}</option>
-                      ))}
-                    </select>
-                    <svg className={styles.selectChevron} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {selectedCalendarMonth === "all" ? null : (
-                <div className={styles.calendarGrid} aria-label={`Training calendar in ${selectedMonthLabel} ${selectedCalendarYear}`}>
-                  {weekDayNames.map((day, idx) => (
-                    <b key={day} className={idx === 0 ? styles.sunHeader : idx === 6 ? styles.satHeader : undefined}>
-                      {day}
-                    </b>
-                  ))}
-                  {calendarDays.map((item, index) => {
-                    const isWeekend = index % 7 === 0 || index % 7 === 6;
-                    const isToday = isViewingCurrentMonth && item.day === calendarToday.day;
-                    const hasTrainings = item.trainings.length > 0;
-                    const isSelected = item.day !== null && item.day === selectedDay;
-
-                    const className = [
-                      styles.calendarDay,
-                      hasTrainings ? styles.trainingDay : "",
-                      isToday ? styles.today : "",
-                      isSelected ? styles.selectedDay : "",
-                      isWeekend ? styles.weekendDay : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" ");
-
-                    return (
-                      <div
-                        className={className}
-                        key={`${item.day ?? "empty"}-${index}`}
-                        onClick={() => {
-                          if (item.day !== null && hasTrainings) {
-                            setSelectedDay(item.day === selectedDay ? null : item.day);
-                          }
-                        }}
-                        style={hasTrainings ? { cursor: "pointer" } : undefined}
-                        title={hasTrainings ? `${item.trainings.length} ${isThai ? "หลักสูตร (กดเพื่อดูรายละเอียด)" : "courses (click for details)"}` : undefined}
-                      >
-                        {item.day ? (
-                          <>
-                            <div className={styles.dayCellTop}>
-                              <span className={styles.dayNumberBadge}>{item.day}</span>
-                              {isToday && <span className={styles.todayDotIndicator} title={isThai ? "วันนี้" : "Today"} />}
-                            </div>
-                            {hasTrainings && (
-                              <span className={styles.topRightBadge}>
-                                {item.trainings.length}
-                              </span>
-                            )}
-                          </>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {selectedCalendarMonth !== "all" && selectedDay !== null && (() => {
-                const dayTrainings = filteredCalendarTrainings.filter(
-                  (item) => Number(item.date.slice(8, 10)) === selectedDay,
-                );
-                if (dayTrainings.length === 0) return null;
-                const dateStr = `${selectedCalendarYear}-${selectedCalendarMonth}-${String(selectedDay).padStart(2, "0")}`;
-                const dateLabel = new Date(`${dateStr}T00:00:00`).toLocaleDateString(isThai ? "th-TH" : "en-US", {
-                  weekday: "long", day: "numeric", month: "long", year: "numeric",
-                });
-                return (
-                  <div className={styles.dayDetailPanel} aria-label={`Training detail for day ${selectedDay}`}>
-                    <div className={styles.dayDetailHeader}>
-                      <div>
-                        <strong><Calendar size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />{dateLabel}</strong>
-                        <span>{dayTrainings.length} {isThai ? "รายการอบรมในวันนี้" : "training courses scheduled today"}</span>
-                      </div>
-                      <button
-                        className={styles.dayDetailClose}
-                        type="button"
-                        onClick={() => setSelectedDay(null)}
-                        aria-label="Close"
-                      >
-                        <X size={16} />
-                      </button>
-                    </div>
-                    <div className={styles.dayDetailList}>
-                      {dayTrainings.map((training) => (
-                        <div className={styles.dayDetailItem} key={training.title}>
-                          <div className={styles.dayDetailItemTop}>
-                            <span className={styles.dayDetailCompanyTag}>
-                              <Building2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                              {employeeCompany}
-                            </span>
-                            <span className={styles.dayDetailStatusBadge}>
-                              <span className={styles.pulseDot} />
-                              {training.status}
-                            </span>
-                          </div>
-                          <strong className={styles.dayDetailCourseName}>{training.title}</strong>
-                          <div className={styles.dayDetailInfo}>
-                            <span><Clock size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{training.time}</span>
-                            <span><MapPin size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{training.place}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {isMonthListOpen ? (
-                <div className={styles.calendarTrainingList}>
-                  {filteredCalendarTrainings.map((training) => {
-                    const date = new Date(`${training.date}T00:00:00`);
-                    const dayNum = date.getDate();
-                    const monthName = date.toLocaleDateString(locale, { month: "short" });
-
-                    return (
-                      <article key={training.title} className={styles.calendarListCard}>
-                        <div className={styles.listDateBox}>
-                          <strong>{dayNum}</strong>
-                          <span>{monthName}</span>
-                        </div>
-                        <div className={styles.listCardContent}>
-                          <strong>{training.title}</strong>
-                          <span>
-                            <Clock size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                            {training.time} • <MapPin size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                            {training.place}
-                          </span>
-                        </div>
-                        <span className={styles.listStatusBadge}>{training.status}</span>
-                      </article>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </section>
-          </div>
-
-          {upcomingApprovedTrainings.length > 0 ? (
-            <section className={styles.upcomingTrainingsSection} aria-label="Upcoming approved trainings">
-              <div
-                className={styles.upcomingSectionHeader}
-                onClick={() => setIsUpcomingSectionOpen((prev) => !prev)}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    setIsUpcomingSectionOpen((prev) => !prev);
-                  }
-                }}
-              >
-                <div className={styles.upcomingSectionTitleBox}>
-                  <span className={styles.upcomingSectionIcon} aria-hidden="true">
-                    <Calendar size={22} />
-                  </span>
-                  <div>
-                    <div className={styles.upcomingSectionTitleRow}>
-                      <h3 className={styles.upcomingSectionTitle}>
-                        {isThai ? "หลักสูตรที่ต้องเข้าอบรม" : "Upcoming Scheduled Trainings"}
-                      </h3>
-                      <span className={styles.upcomingCountBadge}>
-                        <span className={styles.badgePulseDot} aria-hidden="true" />
-                        {upcomingApprovedTrainings.length} {isThai ? "หลักสูตร" : "courses"}
-                      </span>
-                    </div>
-                    <p className={styles.upcomingSectionSubtitle}>
-                      {isThai
-                        ? "หลักสูตรที่ได้รับการอนุมัติแล้ว พร้อมกำหนดการและห้องอบรม"
-                        : "Approved courses with schedules, venue, and examination links"}
-                    </p>
-                  </div>
-                </div>
                 <button
                   type="button"
-                  className={styles.upcomingAccordionBtn}
-                  aria-expanded={isUpcomingSectionOpen}
-                  title={isThai ? "ย่อ / ขยายรายการ" : "Toggle list"}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsUpcomingSectionOpen((prev) => !prev);
-                  }}
+                  className={styles.kpiColBtn}
+                  onClick={() => setActiveModule("record")}
+                  title={t("ดูประวัติการอบรมที่สำเร็จแล้ว", "View completed records")}
                 >
-                  <span>{isUpcomingSectionOpen ? (isThai ? "ย่อรายการ" : "Collapse") : (isThai ? "ดูรายการ" : "Expand")}</span>
-                  <span style={{ fontSize: "0.75rem", transition: "transform 0.2s ease", transform: isUpcomingSectionOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
-                    ▼
-                  </span>
+                  <span className={styles.kpiLabel}>{t("สำเร็จแล้ว", "Completed")}</span>
+                  <div className={styles.kpiValueRow}>
+                    <strong className={`${styles.kpiValue} ${styles.kpiCompletedVal}`}>{completedHours}</strong>
+                    <small className={styles.kpiHelper}>{t("ชั่วโมง", "hours")}</small>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.kpiColBtn}
+                  onClick={() => setActiveModule("register")}
+                  title={t("ดูหลักสูตรที่เปิดรับสมัคร", "View open courses")}
+                >
+                  <span className={styles.kpiLabel}>{t("เปิดรับสมัคร", "Open")}</span>
+                  <div className={styles.kpiValueRow}>
+                    <strong className={`${styles.kpiValue} ${styles.kpiOpenVal}`}>{openToRegister.length}</strong>
+                    <small className={styles.kpiHelper}>{t("หลักสูตร", "courses")}</small>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.kpiColBtn}
+                  onClick={() => setActiveModule("register")}
+                  title={t("ดูรายการรออนุมัติ", "View awaiting approval")}
+                >
+                  <span className={styles.kpiLabel}>{t("รออนุมัติ", "Pending")}</span>
+                  <div className={styles.kpiValueRow}>
+                    <strong className={`${styles.kpiValue} ${styles.kpiPendingVal}`}>{awaitingApproval.length}</strong>
+                    <small className={styles.kpiHelper}>{t("รายการ", "items")}</small>
+                  </div>
                 </button>
               </div>
+            </div>
 
-              {isUpcomingSectionOpen ? (
-                <div className={styles.upcomingItemsList}>
-                  {upcomingApprovedTrainings.map((enrollment) => {
-                    const startDate = new Date(enrollment.plan.startAt);
-                    const endDate = new Date(enrollment.plan.endAt);
-                    const days = daysUntil(enrollment.plan.startAt);
-                    const isTodayOrSoon = days !== null && days <= 3;
-
-                    return (
-                      <article key={enrollment.id} className={styles.upcomingCourseRow}>
-                        <div className={styles.upcomingDateColumn}>
-                          <div className={styles.upcomingDateBadge}>
-                            <div className={styles.upcomingDateMonthBanner}>
-                              {startDate.toLocaleDateString(locale, { month: "short" })}
-                            </div>
-                            <div className={styles.upcomingDateDayNumber}>
-                              {startDate.getDate()}
-                            </div>
-                            <div className={styles.upcomingDateYear}>
-                              {startDate.getFullYear()}
-                            </div>
-                          </div>
-                          {days !== null ? (
-                            <span
-                              className={
-                                days < 0
-                                  ? styles.countdownBadgeOngoing
-                                  : isTodayOrSoon
-                                    ? styles.countdownBadgeSoon
-                                    : styles.countdownBadgeNormal
-                              }
-                            >
-                              <span className={styles.badgePulseDot} style={{ width: 5, height: 5 }} aria-hidden="true" />
-                              {countdownLabel(days, language)}
-                            </span>
-                          ) : null}
-                        </div>
-
-                        <div className={styles.upcomingMainInfo}>
-                          <div className={styles.upcomingHeaderRow}>
-                            <div className={styles.upcomingCourseMetaTop}>
-                              <span className={styles.upcomingCourseCode}>
-                                {enrollment.plan.courseCode || "TR-COURSE"}
-                              </span>
-                              <span className={styles.upcomingStatusTag}>
-                                <Check size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                                {isThai ? "อนุมัติแล้ว" : "Approved"}
-                              </span>
-                              <span className={styles.upcomingOwnerTag}>
-                                <Building2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                                {enrollment.plan.owner === "CENTER" ? "HRD Center" : `${employeeCompany || "Factory"}`}
-                              </span>
-                            </div>
-                            <h4 className={styles.upcomingCourseName} title={enrollment.plan.courseName}>
-                              {enrollment.plan.courseName}
-                            </h4>
-                          </div>
-
-                          <div className={styles.upcomingDetailsRow}>
-                            <div className={styles.upcomingDetailChip}>
-                              <span className={styles.upcomingDetailChipLabel}>
-                                <Clock size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                                {isThai ? "เวลา" : "Time"}:
-                              </span>
-                              <span className={styles.upcomingDetailChipValue}>
-                                {startDate.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })} -{" "}
-                                {endDate.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}{" "}
-                                ({enrollment.plan.hours} {isThai ? "ชม." : "hrs"})
-                              </span>
-                            </div>
-                            <div className={styles.upcomingDetailChip}>
-                              <span className={styles.upcomingDetailChipLabel}>
-                                <MapPin size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                                {isThai ? "สถานที่" : "Venue"}:
-                              </span>
-                              <span className={styles.upcomingDetailChipValue}>{enrollment.plan.venue || "-"}</span>
-                            </div>
-                            <div className={styles.upcomingDetailChip}>
-                              <span className={styles.upcomingDetailChipLabel}>
-                                <User size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                                {isThai ? "วิทยากร" : "Instructor"}:
-                              </span>
-                              <span className={styles.upcomingDetailChipValue}>{enrollment.plan.instructor || "-"}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className={styles.upcomingControls}>
-                          <button
-                            type="button"
-                            className={styles.upcomingActionPrimaryBtn}
-                            onClick={() => setActiveModule("record")}
-                            title={isThai ? "ไปที่หน้าประวัติและแบบทดสอบ" : "Go to My Record & Tests"}
-                          >
-                            <FileEdit size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
-                            {isThai ? "แบบทดสอบ & ผล" : "Tests & Record"}
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.upcomingActionSecondaryBtn}
-                            onClick={() => setActiveModule("calendar")}
-                            title={isThai ? "ดูตารางในปฏิทิน" : "View in Calendar"}
-                          >
-                            <Calendar size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
-                            {isThai ? "ดูในปฏิทิน" : "Calendar"}
-                          </button>
-                        </div>
-                      </article>
-                    );
-                  })}
+            <div className={styles.employeeDetailsGrid}>
+              {fullEmployeeProfileItems.map((item) => (
+                <div className={styles.detailCard} key={item.label}>
+                  <span className={styles.detailLabel}>{item.label}</span>
+                  <strong className={styles.detailValue} title={item.value}>
+                    {item.value}
+                  </strong>
                 </div>
-              ) : null}
-            </section>
-          ) : null}
+              ))}
+            </div>
+          </section>
 
+          {/* 2. New Activities */}
           <NewActivities
             isThai={isThai}
             readOnly={true}
             onOpenModule={() => setActiveModule("activities")}
           />
 
+          {/* 3. Schedule Calendar - Interactive Module */}
+          <section className={styles.calendarSection} aria-label="Schedule Calendar">
+            <ScheduleCalendar
+              initialMonth={calendarToday.month}
+              initialYear={calendarToday.year}
+              defaultOverviewOpen={false}
+              filterMode="my-trainings"
+              onNavigateRegister={() => setActiveModule("register")}
+              onNavigateRecord={() => setActiveModule("record")}
+            />
+          </section>
+
+          {/* 4. Workspace Module */}
           <section className={styles.menuPanel} aria-label="Main workspace menu">
             <div className={styles.menuHeader}>
               <div>

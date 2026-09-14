@@ -98,3 +98,56 @@ export const sendHeartbeat = async (currentPage?: string): Promise<{ success: bo
     return { success: false, activeCount: 0 };
   }
 };
+
+export type SystemStatsResponse = {
+  database: {
+    status: "ONLINE" | "OFFLINE";
+    checkedAt: string;
+  };
+  counts: {
+    users: number;
+    activeUsers: number;
+    companies: number;
+    employees: number;
+    courses: number;
+    plans: number;
+    enrollments: number;
+  };
+  auditStats: {
+    totalLogs: number;
+    expiredLogs: number;
+    oldestLogDate: string | null;
+  };
+  securitySummary: {
+    logins7Days: number;
+    failedLogins7Days: number;
+    dailyActivity: Array<{ date: string; label: string; success: number; failed: number; other: number }>;
+    categoryBreakdown: Array<{ category: string; count: number }>;
+  };
+  recentEvents: Array<{
+    id: string;
+    occurredAt: string;
+    category: string;
+    action: string;
+    actorUsername: string | null;
+    actorRole: string | null;
+    entityLabel: string | null;
+  }>;
+};
+
+export const fetchSystemStats = async (): Promise<SystemStatsResponse> => {
+  const res = await fetch("/api/admin/system-stats", {
+    credentials: "include",
+    cache: "no-store",
+  });
+  return read<SystemStatsResponse>(res);
+};
+
+export const purgeAuditLogs = async (): Promise<{ success: boolean; deletedCount: number; message: string }> => {
+  const res = await fetch("/api/admin/audit/purge", {
+    method: "POST",
+    credentials: "include",
+    cache: "no-store",
+  });
+  return read<{ success: boolean; deletedCount: number; message: string }>(res);
+};

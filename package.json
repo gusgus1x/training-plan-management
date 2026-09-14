@@ -17,7 +17,8 @@
     "employee:seed": "node scripts/seed-employee-master.mjs",
     "employee:backfill-thai-titles": "node scripts/backfill-employee-thai-titles.mjs",
     "type-check": "tsc --noEmit --incremental false",
-    "test": "vitest run"
+    "test": "vitest run",
+    "purge:audit": "node scripts/purge-audit-log.mjs"
   },
   "dependencies": {
     "@prisma/adapter-mssql": "^7.9.1",

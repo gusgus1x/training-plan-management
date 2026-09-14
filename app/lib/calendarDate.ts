@@ -29,6 +29,7 @@ export const buildCalendarYearOptions = (
   trainingDates: string[],
 ) =>
   [...new Set([
+    String(Number(currentYear) - 1),
     currentYear,
     String(Number(currentYear) + 1),
     ...trainingDates

@@ -1258,19 +1258,93 @@
   gap: 18px;
 }
 
-.courseOverview header {
+.courseOverviewCollapsed {
+  padding: 16px 26px;
+  gap: 0;
+}
+
+.courseOverview header,
+.courseOverviewHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding-bottom: 14px;
   border-bottom: 1px solid var(--ui-30-border);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
 }
 
-.courseOverview header h3 {
+.courseOverviewHeaderCollapsed {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.courseOverviewHeader:hover .overviewTitleText {
+  color: var(--ui-30-primary);
+}
+
+.headerTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.courseOverview header h3,
+.overviewTitleText {
   margin: 0;
   color: var(--ui-30-ink);
   font-size: 1.15rem;
   font-weight: 900;
+  transition: color 0.2s ease;
+}
+
+.overviewCountBadge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  background: var(--ui-60-surface-soft);
+  border: 1px solid var(--ui-30-border);
+  color: var(--ui-30-muted);
+}
+
+.headerRightActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.overviewToggleBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: var(--ui-radius-full);
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.overviewToggleBtn:hover {
+  border-color: var(--ui-30-primary-border);
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+}
+
+.toggleChevron {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
 }
 
 .headerMonthBadge {
@@ -1962,3 +2036,327 @@
   border-radius: 50%;
 }
 
+
+
+/* Employee Personal View Mode Tabs */
+.viewModeTabs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--ui-60-surface-soft, rgba(241, 245, 249, 0.8));
+  padding: 4px;
+  border-radius: var(--ui-radius-lg, 12px);
+  border: 1px solid var(--ui-30-border, rgba(226, 232, 240, 0.8));
+}
+
+.viewModeTab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--ui-30-muted, #64748b);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: var(--ui-radius-md, 8px);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.viewModeTab:hover {
+  color: var(--ui-30-ink, #0f172a);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+:global([data-theme="dark"]) .viewModeTab:hover,
+:global(.dark) .viewModeTab:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ui-30-ink);
+}
+
+.viewModeTabActive {
+  background: var(--ui-60-surface, #ffffff);
+  color: var(--ui-30-primary, #059669);
+  font-weight: 900;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+:global([data-theme="dark"]) .viewModeTabActive,
+:global(.dark) .viewModeTabActive {
+  background: var(--ui-60-surface);
+  color: var(--ui-30-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--ui-30-border);
+}
+
+.tabIcon {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.tabBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--ui-30-primary, #059669);
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+/* Employee Personal Status Badges for Calendar Cards */
+.badgeAttended {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+  color: #065f46 !important;
+  font-weight: 800 !important;
+  padding: 2px 6px !important;
+  border-radius: 6px !important;
+  font-size: 0.72rem !important;
+}
+
+:global([data-theme="dark"]) .badgeAttended,
+:global(.dark) .badgeAttended {
+  background: rgba(16, 185, 129, 0.22) !important;
+  border-color: rgba(16, 185, 129, 0.55) !important;
+  color: #6ee7b7 !important;
+}
+
+.badgeApproved {
+  background: rgba(37, 99, 235, 0.15) !important;
+  border: 1px solid rgba(37, 99, 235, 0.4) !important;
+  color: #1e40af !important;
+  font-weight: 800 !important;
+  padding: 2px 6px !important;
+  border-radius: 6px !important;
+  font-size: 0.72rem !important;
+}
+
+:global([data-theme="dark"]) .badgeApproved,
+:global(.dark) .badgeApproved {
+  background: rgba(59, 130, 246, 0.22) !important;
+  border-color: rgba(59, 130, 246, 0.55) !important;
+  color: #93c5fd !important;
+}
+
+.badgePending {
+  background: rgba(234, 179, 8, 0.15) !important;
+  border: 1px solid rgba(234, 179, 8, 0.4) !important;
+  color: #854d0e !important;
+  font-weight: 800 !important;
+  padding: 2px 6px !important;
+  border-radius: 6px !important;
+  font-size: 0.72rem !important;
+}
+
+:global([data-theme="dark"]) .badgePending,
+:global(.dark) .badgePending {
+  background: rgba(245, 158, 11, 0.22) !important;
+  border-color: rgba(245, 158, 11, 0.55) !important;
+  color: #fcd34d !important;
+}
+
+/* Status Chips on Course Overview */
+.badgeAttendedChip,
+.badgeApprovedChip,
+.badgePendingChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.badgeAttendedChip {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #065f46;
+}
+
+:global([data-theme="dark"]) .badgeAttendedChip,
+:global(.dark) .badgeAttendedChip {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #6ee7b7;
+}
+
+.badgeApprovedChip {
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(37, 99, 235, 0.35);
+  color: #1e40af;
+}
+
+:global([data-theme="dark"]) .badgeApprovedChip,
+:global(.dark) .badgeApprovedChip {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: #93c5fd;
+}
+
+.badgePendingChip {
+  background: rgba(234, 179, 8, 0.15);
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  color: #854d0e;
+}
+
+:global([data-theme="dark"]) .badgePendingChip,
+:global(.dark) .badgePendingChip {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #fcd34d;
+}
+
+/* Action Buttons for Employee */
+.recordActionBtn,
+.registerActionBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.recordActionBtn {
+  background: #10b981;
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.recordActionBtn:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.registerActionBtn {
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.registerActionBtn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+/* Empty State for Employee View */
+.emptyEmployeeState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 24px;
+  border: 2px dashed var(--ui-30-border, rgba(226, 232, 240, 0.8));
+  border-radius: var(--ui-radius-xl, 16px);
+  background: var(--ui-60-surface-soft, rgba(248, 250, 252, 0.6));
+  margin: 12px 0;
+}
+
+:global([data-theme="dark"]) .emptyEmployeeState,
+:global(.dark) .emptyEmployeeState {
+  background: var(--ui-60-surface-soft);
+  border-color: var(--ui-30-border);
+}
+
+.emptyStateIcon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+  line-height: 1;
+}
+
+.emptyEmployeeState h4 {
+  margin: 0 0 6px;
+  color: var(--ui-30-ink, #0f172a);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.emptyEmployeeState p {
+  margin: 0 0 18px;
+  color: var(--ui-30-muted, #64748b);
+  font-size: 0.85rem;
+  max-width: 480px;
+  line-height: 1.5;
+}
+
+.emptyStateActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.switchTabBtn,
+.registerShortcutBtn {
+  appearance: none;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 8px 16px;
+  border-radius: var(--ui-radius-lg, 10px);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.switchTabBtn {
+  background: var(--ui-60-surface, #ffffff);
+  border: 1px solid var(--ui-30-border, rgba(226, 232, 240, 0.8));
+  color: var(--ui-30-ink, #0f172a);
+}
+
+:global([data-theme="dark"]) .switchTabBtn,
+:global(.dark) .switchTabBtn {
+  background: var(--ui-60-surface);
+  border-color: var(--ui-30-border);
+  color: var(--ui-30-ink);
+}
+
+.switchTabBtn:hover {
+  border-color: var(--ui-30-primary, #059669);
+  color: var(--ui-30-primary, #059669);
+  transform: translateY(-1px);
+}
+
+:global([data-theme="dark"]) .switchTabBtn:hover,
+:global(.dark) .switchTabBtn:hover {
+  border-color: var(--ui-30-primary);
+  color: var(--ui-30-primary);
+}
+
+.registerShortcutBtn {
+  background: var(--ui-30-primary, #059669);
+  border: 1px solid var(--ui-30-primary, #059669);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
+}
+
+.registerShortcutBtn:hover {
+  background: #047857;
+  transform: translateY(-1px);
+}

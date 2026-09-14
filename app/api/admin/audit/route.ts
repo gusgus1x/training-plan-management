@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { apiSuccess } from "../../../lib/api/response";
 import { createProtectedRoute } from "../../../lib/auth/guard";
 import { getPrismaClient } from "../../../lib/database/prisma";
+import { triggerAuditPurgeIfDue } from "../../../lib/audit/purge";
 import type { Prisma } from "../../../generated/prisma/client";
 
 const adminOptions = { allowedRoles: ["ADMIN"] as const };
@@ -24,6 +25,9 @@ export type AuditLogRecord = {
 
 export const GET = createProtectedRoute(
   async (request: NextRequest) => {
+    // Check and trigger auto-purge in background if due (daily)
+    triggerAuditPurgeIfDue();
+
     const prisma = getPrismaClient();
     const searchParams = request.nextUrl.searchParams;
 

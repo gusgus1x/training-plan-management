@@ -55,6 +55,21 @@ export const getPlanDaysCount = (startDate: string, endDate: string): number => 
   return Math.max(1, diffDays);
 };
 
+export const isEmployeeEnrolledInPlan = (
+  plan: RollingPlan,
+  enrollments: EnrollmentRecord[],
+): boolean => {
+  return enrollments.some((enr) => {
+    const isPlanMatch = enr.planId === plan.rollingId || enr.planId === plan.id || enr.planId === plan.oapId;
+    if (!isPlanMatch) return false;
+    const isActive = ACTIVE_ENROLLMENT_STATUSES.includes(enr.status);
+    const isAttended = enr.attendance?.status === "PRESENT";
+    const hasResult = enr.result !== null;
+    const hasCert = enr.certificate !== null;
+    return isActive || isAttended || hasResult || hasCert;
+  });
+};
+
 export const isPlanInMonth = (plan: RollingPlan, year: string, month: string): boolean => {
   const planStart = plan.trainingDate;
   const planEnd = getPlanEndDate(plan);
@@ -345,14 +360,22 @@ const COMPANY_LEGEND_ITEMS: { key: CalendarCompanyKey; labelTh: string; labelEn:
   { key: "SNF", labelTh: "SNF", labelEn: "SNF" },
 ];
 
-type ScheduleCalendarProps = {
+export type ScheduleCalendarProps = {
   initialYear?: string;
   initialMonth?: string;
+  defaultOverviewOpen?: boolean;
+  filterMode?: "all" | "my-trainings";
+  onNavigateRegister?: () => void;
+  onNavigateRecord?: () => void;
 };
 
 export default function ScheduleCalendar({
   initialYear,
   initialMonth,
+  defaultOverviewOpen = false,
+  filterMode,
+  onNavigateRegister,
+  onNavigateRecord,
 }: ScheduleCalendarProps = {}) {
   const user = useAuthenticatedUser();
   const router = useRouter();
@@ -362,6 +385,7 @@ export default function ScheduleCalendar({
   const [selectedMonth, setSelectedMonth] = useState<"all" | string>(() => initialMonth || "all");
   const [expandedTrainingMonth, setExpandedTrainingMonth] = useState("");
   const [expandedOverviewMonth, setExpandedOverviewMonth] = useState("");
+  const [isOverviewOpen, setIsOverviewOpen] = useState(defaultOverviewOpen);
   const [expandedOverviewCourse, setExpandedOverviewCourse] = useState("");
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
@@ -369,6 +393,30 @@ export default function ScheduleCalendar({
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const isCenterUser = user?.roleCode === "HRD_CENTER";
   const userCompanyCode = profileValue(user?.companyCode);
+  const isEmployeeRole = user?.roleCode === "EMPLOYEE";
+  const isEmployeeView = filterMode === "my-trainings" || (isEmployeeRole && filterMode !== "all");
+  const [employeeTab, setEmployeeTab] = useState<"my-trainings" | "all">(
+    isEmployeeView ? "my-trainings" : "all",
+  );
+
+  // Map of planId -> EnrollmentRecord for the current user
+  const myEnrollmentMap = useMemo(() => {
+    const map = new Map<string, EnrollmentRecord>();
+    for (const enr of enrollments) {
+      const isActive = ACTIVE_ENROLLMENT_STATUSES.includes(enr.status);
+      const isAttended = enr.attendance?.status === "PRESENT";
+      const hasResult = enr.result !== null;
+      const hasCert = enr.certificate !== null;
+      if (isActive || isAttended || hasResult || hasCert) {
+        map.set(enr.planId, enr);
+      }
+    }
+    return map;
+  }, [enrollments]);
+
+  const getEmployeeEnrollment = (plan: RollingPlan): EnrollmentRecord | undefined => {
+    return myEnrollmentMap.get(plan.rollingId) || myEnrollmentMap.get(plan.id) || myEnrollmentMap.get(plan.oapId);
+  };
 
   const loadWorkspace = async () => {
     setIsLoading(true);
@@ -396,6 +444,11 @@ export default function ScheduleCalendar({
             return false;
           }
 
+          // If in Employee view and employeeTab is "my-trainings", show only employee's courses
+          if (isEmployeeView && employeeTab === "my-trainings") {
+            return Boolean(getEmployeeEnrollment(plan));
+          }
+
           const planCompanies = getRollingPlanCompanies(plan);
           const isCenterPlan =
             plan.ownerScope === "CENTER" ||
@@ -413,7 +466,7 @@ export default function ScheduleCalendar({
             );
           }
 
-          // Factory User Scope (e.g. ATA): Sees own courses + Center-created courses!
+          // Factory User / Employee "All" Scope (e.g. ATA): Sees own courses + Center-created courses!
           const isOwnCompany =
             plan.company === userCompanyCode ||
             planCompanies.includes(userCompanyCode || "");
@@ -430,8 +483,18 @@ export default function ScheduleCalendar({
           return isOwnCompany;
         })
         .sort((a, b) => a.trainingDate.localeCompare(b.trainingDate)),
-    [companyFilter, isCenterUser, rollingPlans, userCompanyCode],
+    [companyFilter, isCenterUser, rollingPlans, userCompanyCode, isEmployeeView, employeeTab, myEnrollmentMap],
   );
+
+  const myCoursesCount = useMemo(() => {
+    return rollingPlans.filter((p) => p.status === "Planned" && Boolean(getEmployeeEnrollment(p))).length;
+  }, [rollingPlans, myEnrollmentMap]);
+
+  const myCompletedCount = useMemo(() => {
+    return Array.from(myEnrollmentMap.values()).filter(
+      (e) => e.attendance?.status === "PRESENT" || e.result !== null || e.certificate !== null,
+    ).length;
+  }, [myEnrollmentMap]);
   const calendarYears = useMemo(
     () =>
       buildCalendarYearOptions(
@@ -559,24 +622,38 @@ export default function ScheduleCalendar({
         <div className={styles.heroTitleGroup}>
           <div className={styles.heroTag}>
             <span className={styles.heroDot} />
-            <span>Live Rolling Schedule</span>
+            <span>{isEmployeeView ? (uiLang === "th" ? "ตารางการอบรมของฉัน" : "My Training Schedule") : "Live Rolling Schedule"}</span>
           </div>
-          <h2>Training Schedule Calendar</h2>
-          <p>Monthly & annual training schedules synced directly from Training Rolling plans</p>
+          <h2>{isEmployeeView ? (uiLang === "th" ? "ปฏิทินการฝึกอบรมของฉัน" : "My Training Schedule Calendar") : "Training Schedule Calendar"}</h2>
+          <p>
+            {isEmployeeView
+              ? (uiLang === "th"
+                  ? "ตารางเวลาหลักสูตรที่คุณลงทะเบียนหรือเข้าร่วมฝึกอบรม พร้อมสลับดูหลักสูตรทั้งหมดของบริษัทได้"
+                  : "Monthly & annual schedule of your enrolled and attended trainings with view toggle")
+              : "Monthly & annual training schedules synced directly from Training Rolling plans"}
+          </p>
         </div>
 
         <div className={styles.heroMetrics}>
           <div className={styles.metricCard}>
-            <span>Year Schedules</span>
-            <strong>{scheduleCount}</strong>
+            <span>{isEmployeeView ? (uiLang === "th" ? "หลักสูตรของฉัน" : "My Courses") : "Year Schedules"}</span>
+            <strong>{isEmployeeView ? myCoursesCount : scheduleCount}</strong>
           </div>
           <div className={styles.metricCard}>
-            <span>Selected Period</span>
-            <strong>{selectedMonth === "all" ? "All Year" : selectedMonthDetail?.label}</strong>
+            <span>{uiLang === "th" ? "ช่วงเวลาที่เลือก" : "Selected Period"}</span>
+            <strong>{selectedMonth === "all" ? (uiLang === "th" ? "ทั้งปี" : "All Year") : selectedMonthDetail?.label}</strong>
           </div>
           <div className={styles.metricCard}>
-            <span>Company Scope</span>
-            <strong>{isCenterUser ? (companyFilter === "all" ? "All" : companyFilter) : userCompanyCode}</strong>
+            <span>{isEmployeeView ? (uiLang === "th" ? "อบรมสำเร็จแล้ว" : "Completed") : "Company Scope"}</span>
+            <strong>
+              {isEmployeeView
+                ? myCompletedCount
+                : isCenterUser
+                  ? companyFilter === "all"
+                    ? "All"
+                    : companyFilter
+                  : userCompanyCode}
+            </strong>
           </div>
         </div>
       </header>
@@ -585,6 +662,31 @@ export default function ScheduleCalendar({
       <section className={styles.controlPanel}>
         <div className={styles.toolbar}>
           <div className={styles.filterGroup}>
+            {isEmployeeView ? (
+              <div className={styles.viewModeTabs} role="tablist" aria-label="Schedule view tabs">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={employeeTab === "my-trainings"}
+                  className={`${styles.viewModeTab} ${employeeTab === "my-trainings" ? styles.viewModeTabActive : ""}`}
+                  onClick={() => setEmployeeTab("my-trainings")}
+                >
+                  <span className={styles.tabIcon}>👤</span>
+                  <span>{uiLang === "th" ? "หลักสูตรของฉัน" : "My Schedule"}</span>
+                  <span className={styles.tabBadge}>{myCoursesCount}</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={employeeTab === "all"}
+                  className={`${styles.viewModeTab} ${employeeTab === "all" ? styles.viewModeTabActive : ""}`}
+                  onClick={() => setEmployeeTab("all")}
+                >
+                  <span className={styles.tabIcon}>🌐</span>
+                  <span>{uiLang === "th" ? "หลักสูตรทั้งหมด" : "All Available"}</span>
+                </button>
+              </div>
+            ) : null}
             <div className={styles.filterItem}>
               <span className={styles.filterTitle}>{uiLang === "th" ? "บริษัท" : "Company"}</span>
               <div className={styles.selectWrapper}>
@@ -767,15 +869,32 @@ export default function ScheduleCalendar({
             <span className={styles.calendarCountBadge}>{selectedMonthDetail?.plans.length ?? 0} Schedules</span>
           </div>
 
-          {/* Company Color Legend Bar */}
-          <div className={styles.calendarLegendBar} aria-label="Company Color Legend">
-            <span className={styles.legendTitle}>{uiLang === "th" ? "สัญลักษณ์สี:" : "Colors:"}</span>
-            {COMPANY_LEGEND_ITEMS.map((item) => (
-              <div key={item.key} className={styles.legendItem}>
-                <span className={`${styles.legendDot} ${styles[`legendDot_${item.key}`]}`} />
-                <span>{uiLang === "th" ? item.labelTh : item.labelEn}</span>
-              </div>
-            ))}
+          {/* Legend Bar */}
+          <div className={styles.calendarLegendBar} aria-label="Legend">
+            <span className={styles.legendTitle}>{uiLang === "th" ? "สัญลักษณ์:" : "Legend:"}</span>
+            {isEmployeeView && employeeTab === "my-trainings" ? (
+              <>
+                <div className={styles.legendItem}>
+                  <span className={styles.legendDot} style={{ background: "#10b981" }} />
+                  <span>{uiLang === "th" ? "เข้าอบรมแล้ว / สำเร็จ" : "Attended / Completed"}</span>
+                </div>
+                <div className={styles.legendItem}>
+                  <span className={styles.legendDot} style={{ background: "#2563eb" }} />
+                  <span>{uiLang === "th" ? "ได้รับอนุมัติ (รอเข้าอบรม)" : "Approved (Upcoming)"}</span>
+                </div>
+                <div className={styles.legendItem}>
+                  <span className={styles.legendDot} style={{ background: "#f59e0b" }} />
+                  <span>{uiLang === "th" ? "รออนุมัติการสมัคร" : "Pending Approval"}</span>
+                </div>
+              </>
+            ) : (
+              COMPANY_LEGEND_ITEMS.map((item) => (
+                <div key={item.key} className={styles.legendItem}>
+                  <span className={`${styles.legendDot} ${styles[`legendDot_${item.key}`]}`} />
+                  <span>{uiLang === "th" ? item.labelTh : item.labelEn}</span>
+                </div>
+              ))
+            )}
           </div>
 
           <div className={styles.calendarGrid}>
@@ -840,6 +959,41 @@ export default function ScheduleCalendar({
                         ).length;
                         const remaining = Math.max(0, capacity - enrolled);
                         const isWideMultiDay = isMultiDay && span > 1;
+                        const myEnr = getEmployeeEnrollment(plan);
+
+                        const renderBadge = () => {
+                          if (isEmployeeView) {
+                            if (!myEnr) {
+                              if (capacity <= 0) return null;
+                              return (
+                                <span className={remaining > 0 ? styles.eventSeatBadge : styles.eventSeatBadgeFull}>
+                                  {uiLang === "th"
+                                    ? remaining > 0 ? `เหลือ ${remaining}/${capacity} คน` : "เต็มแล้ว"
+                                    : remaining > 0 ? `${remaining}/${capacity} left` : "Full"}
+                                </span>
+                              );
+                            }
+                            if (myEnr.attendance?.status === "PRESENT" || myEnr.result !== null || myEnr.certificate !== null) {
+                              return <span className={styles.badgeAttended}>{uiLang === "th" ? "✓ เข้าอบรมแล้ว" : "✓ Attended"}</span>;
+                            }
+                            if (myEnr.status === "Center Approved" || myEnr.status === "Factory Approved") {
+                              return <span className={styles.badgeApproved}>{uiLang === "th" ? "✓ ได้รับอนุมัติ" : "✓ Approved"}</span>;
+                            }
+                            if (myEnr.status === "Pending Approval") {
+                              return <span className={styles.badgePending}>{uiLang === "th" ? "⏳ รออนุมัติ" : "⏳ Pending"}</span>;
+                            }
+                            return <span className={styles.badgeApproved}>{uiLang === "th" ? "ลงทะเบียนแล้ว" : "Enrolled"}</span>;
+                          }
+
+                          if (capacity <= 0) return null;
+                          return (
+                            <span className={remaining > 0 ? styles.eventSeatBadge : styles.eventSeatBadgeFull}>
+                              {uiLang === "th"
+                                ? remaining > 0 ? `เหลือ ${remaining}/${capacity} คน` : "เต็มแล้ว"
+                                : remaining > 0 ? `${remaining}/${capacity} left` : "Full"}
+                            </span>
+                          );
+                        };
 
                         return (
                           <article
@@ -854,6 +1008,7 @@ export default function ScheduleCalendar({
                             title={`${plan.course.name} (${plan.trainingDate}${plan.endDate && plan.endDate !== plan.trainingDate ? ` ถึง ${plan.endDate}` : ""})`}
                             onClick={() => {
                               setExpandedOverviewCourse(plan.rollingId);
+                              setIsOverviewOpen(true);
                               const targetEl = document.getElementById(`course-overview-${plan.rollingId}`);
                               if (targetEl) {
                                 targetEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -888,17 +1043,7 @@ export default function ScheduleCalendar({
                                   <small>
                                     {plan.startTime}-{plan.endTime} / {formatRollingPlanCompanies(plan)}
                                   </small>
-                                  {capacity > 0 ? (
-                                    <span className={remaining > 0 ? styles.eventSeatBadge : styles.eventSeatBadgeFull}>
-                                      {uiLang === "th"
-                                        ? remaining > 0
-                                          ? `เหลือ ${remaining}/${capacity} คน`
-                                          : "เต็มแล้ว"
-                                        : remaining > 0
-                                          ? `${remaining}/${capacity} left`
-                                          : "Full"}
-                                    </span>
-                                  ) : null}
+                                  {renderBadge()}
                                 </div>
                               </>
                             ) : (
@@ -931,17 +1076,7 @@ export default function ScheduleCalendar({
                                       {uiLang === "th" ? `${totalDays} วัน` : `${totalDays}d`}
                                     </span>
                                   ) : null}
-                                  {capacity > 0 ? (
-                                    <span className={remaining > 0 ? styles.eventSeatBadge : styles.eventSeatBadgeFull}>
-                                      {uiLang === "th"
-                                        ? remaining > 0
-                                          ? `เหลือ ${remaining}/${capacity} คน`
-                                          : "เต็มแล้ว"
-                                        : remaining > 0
-                                          ? `${remaining}/${capacity} left`
-                                          : "Full"}
-                                    </span>
-                                  ) : null}
+                                  {renderBadge()}
                                 </div>
                               </>
                             )}
@@ -959,23 +1094,108 @@ export default function ScheduleCalendar({
 
       {/* 6. Course Overview Section */}
       {selectedMonth !== "all" ? (
-        <section className={styles.courseOverview} aria-label="Monthly course overview">
-          <header>
-            <div>
-              <h3>{uiLang === "th" ? "ภาพรวมคอร์สอบรมประจำเดือน" : "Monthly Course Overview"}</h3>
+        <section
+          className={`${styles.courseOverview} ${!isOverviewOpen ? styles.courseOverviewCollapsed : ""}`}
+          aria-label="Monthly course overview"
+        >
+          <header
+            className={`${styles.courseOverviewHeader} ${!isOverviewOpen ? styles.courseOverviewHeaderCollapsed : ""}`}
+            onClick={() => setIsOverviewOpen((prev) => !prev)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setIsOverviewOpen((prev) => !prev);
+              }
+            }}
+          >
+            <div className={styles.headerTitleGroup}>
+              <h3 className={styles.overviewTitleText}>
+                {uiLang === "th" ? "ภาพรวมคอร์สอบรมประจำเดือน" : "Monthly Course Overview"}
+              </h3>
+              {selectedMonthDetail?.plans && selectedMonthDetail.plans.length > 0 ? (
+                <span className={styles.overviewCountBadge}>
+                  {selectedMonthDetail.plans.length} {uiLang === "th" ? "หลักสูตร" : "courses"}
+                </span>
+              ) : null}
             </div>
-            <span className={styles.headerMonthBadge}>
-              {thMonthLabels[Number(selectedMonth) - 1] && uiLang === "th"
-                ? monthOptions[Number(selectedMonth) - 1]?.label
-                : displayedMonths[0]?.label}
-            </span>
+            <div className={styles.headerRightActions}>
+              <span className={styles.headerMonthBadge}>
+                {thMonthLabels[Number(selectedMonth) - 1] && uiLang === "th"
+                  ? monthOptions[Number(selectedMonth) - 1]?.label
+                  : displayedMonths[0]?.label}
+              </span>
+              <button
+                type="button"
+                className={styles.overviewToggleBtn}
+                aria-expanded={isOverviewOpen}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsOverviewOpen((prev) => !prev);
+                }}
+                title={isOverviewOpen
+                  ? (uiLang === "th" ? "พับปิดเนื้อหา" : "Collapse overview")
+                  : (uiLang === "th" ? "เปิดขยายเนื้อหา" : "Expand overview")}
+              >
+                <span>
+                  {isOverviewOpen
+                    ? (uiLang === "th" ? "พับปิด" : "Collapse")
+                    : (uiLang === "th" ? "ขยาย" : "Expand")}
+                </span>
+                <svg
+                  className={`${styles.toggleChevron} ${isOverviewOpen ? styles.chevronOpen : ""}`}
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+            </div>
           </header>
-          <div className={styles.courseOverviewList}>
+          {isOverviewOpen ? (
+            <div className={styles.courseOverviewList}>
             {selectedMonthDetail?.plans.length === 0 ? (
-              <div className={styles.emptyCourseState}>
-                {uiLang === "th" ? "ไม่มีกำหนดการอบรมในเดือนนี้" : "No training schedules found in this month"}
-              </div>
-            ) : (
+                isEmployeeView && employeeTab === "my-trainings" ? (
+                  <div className={styles.emptyEmployeeState}>
+                    <div className={styles.emptyStateIcon}>📅</div>
+                    <h4>{uiLang === "th" ? "ไม่มีหลักสูตรที่คุณลงทะเบียนหรือเข้าอบรมในเดือนนี้" : "No registered or attended trainings in this month"}</h4>
+                    <p>
+                      {uiLang === "th"
+                        ? "คุณสามารถสลับไปดูหลักสูตรทั้งหมดที่เปิดรับเพื่อเลือกสมัครหลักสูตรใหม่ได้"
+                        : "You can switch to All Available Courses to view and enroll in open courses."}
+                    </p>
+                    <div className={styles.emptyStateActions}>
+                      <button
+                        type="button"
+                        className={styles.switchTabBtn}
+                        onClick={() => setEmployeeTab("all")}
+                      >
+                        🌐 {uiLang === "th" ? "ดูหลักสูตรทั้งหมดที่เปิดรับ" : "Browse All Available Courses"}
+                      </button>
+                      {onNavigateRegister ? (
+                        <button
+                          type="button"
+                          className={styles.registerShortcutBtn}
+                          onClick={onNavigateRegister}
+                        >
+                          📝 {uiLang === "th" ? "ไปที่หน้าลงทะเบียนหลักสูตร" : "Go to Course Registration"}
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : (
+                  <div className={styles.emptyCourseState}>
+                    {uiLang === "th" ? "ไม่มีกำหนดการอบรมในเดือนนี้" : "No training schedules found in this month"}
+                  </div>
+                )
+              ) : (
               selectedMonthDetail?.plans.map((plan) => {
                 const isExpanded = expandedOverviewCourse === plan.rollingId;
                 const startDateStr = plan.trainingDate;
@@ -1078,7 +1298,56 @@ export default function ScheduleCalendar({
                       <div className={styles.courseCardActions}>
                         <span className={styles.targetGroupBadge}>{plan.course.courseGroup}</span>
 
-                        {isEnded ? (
+                        {isEmployeeView ? (
+                          (() => {
+                            const myEnr = getEmployeeEnrollment(plan);
+                            if (myEnr) {
+                              if (myEnr.attendance?.status === "PRESENT" || myEnr.result !== null || myEnr.certificate !== null || isEnded) {
+                                return (
+                                  <button
+                                    type="button"
+                                    className={styles.recordActionBtn}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (onNavigateRecord) {
+                                        onNavigateRecord();
+                                      } else {
+                                        router.push("/training-record");
+                                      }
+                                    }}
+                                    title={uiLang === "th" ? "ดูประวัติการอบรมของคุณ" : "View your training record"}
+                                  >
+                                    <span>{uiLang === "th" ? "ดูประวัติการอบรม" : "My Record"}</span>
+                                  </button>
+                                );
+                              }
+                              return (
+                                <span className={myEnr.status === "Pending Approval" ? styles.badgePendingChip : styles.badgeApprovedChip}>
+                                  {myEnr.status === "Pending Approval"
+                                    ? (uiLang === "th" ? "⏳ รออนุมัติ" : "⏳ Pending")
+                                    : (uiLang === "th" ? "✓ อนุมัติแล้ว (รอเข้าอบรม)" : "✓ Approved")}
+                                </span>
+                              );
+                            }
+                            return (
+                              <button
+                                type="button"
+                                className={styles.registerActionBtn}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (onNavigateRegister) {
+                                    onNavigateRegister();
+                                  } else {
+                                    router.push("/?module=register");
+                                  }
+                                }}
+                                title={uiLang === "th" ? "กดเพื่อสมัครเข้าอบรมหลักสูตรนี้" : "Register for this course"}
+                              >
+                                <span>{uiLang === "th" ? "สมัครเข้าอบรม" : "Register"}</span>
+                              </button>
+                            );
+                          })()
+                        ) : isEnded ? (
                           <button
                             type="button"
                             className={styles.endedBtn}
@@ -1358,7 +1627,8 @@ export default function ScheduleCalendar({
                 );
               })
             )}
-          </div>
+            </div>
+          ) : null}
         </section>
       ) : null}
     </section>
