@@ -99,13 +99,7 @@
 
 /* `.questionGrid input` was missing here while select and textarea were listed, so the choice
    option fields rendered with no border or background and disappeared into the panel. */
-.toolbar input,
-.formGrid input,
-.formGrid select,
-.formGrid textarea,
-.questionGrid input,
-.questionGrid select,
-.questionGrid textarea {
+.toolbar input {
   border: 1px solid var(--ui-30-border);
   border-radius: 8px;
   background: var(--ui-60-surface);
@@ -118,29 +112,14 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.toolbar input:focus,
-.formGrid input:focus,
-.formGrid select:focus,
-.formGrid textarea:focus,
-.questionGrid input:focus,
-.questionGrid select:focus,
-.questionGrid textarea:focus {
+.toolbar input:focus {
   border-color: var(--ui-30-primary);
   box-shadow: 0 0 0 3px var(--ui-focus-ring);
 }
 
-.toolbar input::placeholder,
-.formGrid input::placeholder,
-.formGrid textarea::placeholder,
-.questionGrid input::placeholder,
-.questionGrid textarea::placeholder {
+.toolbar input::placeholder {
   color: var(--ui-30-muted);
   opacity: 0.8;
-}
-
-.inputError {
-  border-color: var(--ui-10-accent) !important;
-  box-shadow: 0 0 0 2px var(--ui-10-accent-glow) !important;
 }
 
 /* Button System */
@@ -215,7 +194,6 @@
 }
 
 /* Editor & Detail Panels */
-.editorPanel,
 .detailPanel {
   background: var(--ui-60-surface-soft);
   border: 1px solid var(--ui-30-border);
@@ -248,139 +226,12 @@
 }
 
 /* Form Grids */
-.formGrid,
-.questionGrid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.formGrid label,
-.questionGrid label {
-  display: grid;
-  gap: 6px;
-  color: var(--ui-30-text);
-  font-size: 0.78rem;
-  font-weight: 800;
-}
-
-.formGrid label small,
-.questionGrid label small {
-  color: var(--ui-10-accent);
-  font-size: 0.72rem;
-  font-weight: 600;
-}
-
-.fullWidth {
-  grid-column: 1 / -1;
-}
-
-.toggleLabel {
-  display: flex !important;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.82rem !important;
-  color: var(--ui-30-ink) !important;
-  cursor: pointer;
-}
-
-.toggleLabel input {
-  accent-color: var(--ui-30-primary);
-  width: 16px;
-  height: 16px;
-  min-height: auto !important;
-}
-
-.toggleLabel small {
-  color: var(--ui-30-muted) !important;
-  font-size: 0.74rem !important;
-  font-weight: 500 !important;
-}
-
-.formActions,
-.editorActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 14px;
-}
 
 /* Template Picker */
-.templatePicker {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 16px;
-  padding: 14px 16px;
-  border: 1px solid rgba(37, 99, 235, 0.28);
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(59, 130, 246, 0.02));
-}
-
-.templatePickerLabel {
-  color: #2563eb;
-  font-size: 0.84rem;
-  font-weight: 800;
-}
-
-.templatePickerHint {
-  color: var(--ui-30-muted);
-  font-size: 0.74rem;
-  line-height: 1.5;
-}
 
 /* Question Builder & Preview Cards */
-.questionBuilder,
-.previewPanel {
-  border: 1px solid var(--ui-30-border);
-  border-radius: 10px;
-  background: var(--ui-60-surface);
-  padding: 14px;
-  margin-top: 14px;
-}
-
-.questionGrid textarea {
-  min-height: 82px;
-  resize: vertical;
-}
-
-.helperText {
-  margin: 8px 0 0;
-  color: var(--ui-30-muted);
-  font-size: 0.76rem;
-  font-style: italic;
-}
-
-.validationMessage {
-  margin: 8px 0 0;
-  color: var(--ui-10-accent);
-  font-size: 0.74rem;
-  font-weight: 700;
-}
 
 /* Preview Options in Evaluation */
-.previewOptions {
-  display: grid;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.previewOptions label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: fit-content;
-  color: var(--ui-30-text);
-  cursor: pointer;
-  font-size: 0.82rem;
-  line-height: 1.4;
-}
-
-.previewOptions input {
-  accent-color: var(--ui-30-primary);
-  margin: 0;
-}
 
 /* Question List in Editor */
 .questionList {
@@ -401,60 +252,6 @@
 .questionList article[data-dragging="true"] {
   opacity: 0.45;
   border-style: dashed;
-}
-
-.questionHeading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.questionHeading strong {
-  min-width: 0;
-  color: var(--ui-30-ink);
-  font-size: 0.86rem;
-}
-
-.questionHeading b {
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary);
-  border: 1px solid var(--ui-30-primary-border);
-  padding: 3px 8px;
-  font-size: 0.7rem;
-  font-weight: 800;
-}
-
-.dragHandle {
-  cursor: grab;
-  color: var(--ui-30-muted);
-  margin-right: 6px;
-  user-select: none;
-  font-size: 1rem;
-}
-
-.requiredMark {
-  color: var(--ui-10-accent);
-  font-style: normal;
-  font-weight: 800;
-}
-
-.questionActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: flex-end;
-  margin-top: 10px;
-  border-top: 1px solid var(--ui-30-border);
-  padding-top: 10px;
-}
-
-.questionActions button {
-  min-height: 30px;
-  font-size: 0.72rem;
-  padding: 4px 9px;
 }
 
 /* Empty State */
@@ -740,10 +537,6 @@
 
 /* Responsive Styles */
 @media (max-width: 900px) {
-  .formGrid,
-  .questionGrid {
-    grid-template-columns: 1fr;
-  }
 
   .detailMeta {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -765,20 +558,6 @@
     max-width: none;
   }
 
-  .formActions,
-  .editorActions {
-    flex-direction: column;
-  }
-
-  .formActions button,
-  .editorActions button {
-    width: 100%;
-  }
-
-  .questionHeading {
-    flex-direction: column;
-  }
-
   .detailMeta {
     grid-template-columns: 1fr;
   }
@@ -786,56 +565,35 @@
 
 /* Dark Mode Specific Overrides */
 [data-theme="dark"] .statusInactive,
-.dark .statusInactive {
+:global(.dark) .statusInactive {
   color: #fbbf24;
 }
 
-[data-theme="dark"] .templatePicker,
-.dark .templatePicker {
-  border-color: rgba(96, 165, 250, 0.35);
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.16), rgba(30, 58, 138, 0.08));
-}
-
-[data-theme="dark"] .templatePickerLabel,
-.dark .templatePickerLabel {
-  color: #60a5fa;
-}
-
 [data-theme="dark"] .companyGroup_CENTRAL,
-.dark .companyGroup_CENTRAL { border-left-color: #10b981; }
+:global(.dark) .companyGroup_CENTRAL { border-left-color: #10b981; }
 
 [data-theme="dark"] .companyGroup_ATA,
-.dark .companyGroup_ATA { border-left-color: #3b82f6; }
+:global(.dark) .companyGroup_ATA { border-left-color: #3b82f6; }
 
 [data-theme="dark"] .companyGroup_TEP,
-.dark .companyGroup_TEP { border-left-color: #facc15; }
+:global(.dark) .companyGroup_TEP { border-left-color: #facc15; }
 
 [data-theme="dark"] .companyGroup_ATFB,
-.dark .companyGroup_ATFB { border-left-color: #fb923c; }
+:global(.dark) .companyGroup_ATFB { border-left-color: #fb923c; }
 
 [data-theme="dark"] .companyGroup_NIC,
-.dark .companyGroup_NIC { border-left-color: #c084fc; }
+:global(.dark) .companyGroup_NIC { border-left-color: #c084fc; }
 
 [data-theme="dark"] .companyGroup_SATI,
-.dark .companyGroup_SATI { border-left-color: #f87171; }
+:global(.dark) .companyGroup_SATI { border-left-color: #f87171; }
 
 [data-theme="dark"] .companyGroup_SNF,
-.dark .companyGroup_SNF { border-left-color: #22d3ee; }
+:global(.dark) .companyGroup_SNF { border-left-color: #22d3ee; }
 
 /* --- Section breaks, text blocks, and the floating item toolbar ------------------ */
 
 /* The toolbar is absolutely positioned against this, and needs room to its right so it does not
    overlap the cards. Google Forms reserves the same gutter. */
-.previewCanvas {
-  position: relative;
-  padding-right: 58px;
-}
-
-@media (max-width: 900px) {
-  .previewCanvas {
-    padding-right: 0;
-  }
-}
 
 /* Clicking a card makes it the toolbar's anchor, so it needs to be visibly the active one. */
 .questionList article[data-focused="true"] {
@@ -850,43 +608,6 @@
   border-left: 3px solid var(--ui-30-primary);
 }
 
-.blockTitleInput,
-.blockBodyInput {
-  width: 100%;
-  margin-top: 8px;
-  padding: 8px 10px;
-  border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
-  color: var(--ui-30-ink);
-  font: inherit;
-}
-
-.blockTitleInput {
-  font-weight: 800;
-}
-
-.blockBodyInput {
-  resize: vertical;
-}
-
-.blockTitleInput:focus,
-.blockBodyInput:focus {
-  outline: none;
-  border-color: var(--ui-30-primary);
-  box-shadow: 0 0 0 3px var(--ui-30-primary-soft);
-}
-
-.blockTitleInput::placeholder,
-.blockBodyInput::placeholder {
-  color: var(--ui-30-muted);
-}
-
-.blockTitleStatic {
-  display: block;
-  margin-top: 6px;
-}
-
 .blockBodyStatic {
   margin: 4px 0 0;
   color: var(--ui-30-muted);
@@ -896,195 +617,20 @@
 }
 
 /* "After this section" and the per-option branch targets. */
-.branchRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.branchLabel {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 10px;
-  color: var(--ui-30-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
-}
-
-.branchLabel select {
-  padding: 6px 8px;
-  border: 1px solid var(--ui-30-border);
-  border-radius: 8px;
-  background: var(--ui-60-surface);
-  color: var(--ui-30-ink);
-  font-size: 0.8rem;
-}
-
-.branchLabel select:focus {
-  outline: none;
-  border-color: var(--ui-30-primary);
-  box-shadow: 0 0 0 3px var(--ui-30-primary-soft);
-}
 
 /* Author / learner view switch on the editor's preview panel. Copied to match Assessment exactly -
    the two editors sit side by side in the same menu, so a different-looking switch reads as a
    different feature rather than the same one. */
-.previewToggle {
-  display: inline-flex;
-  gap: 4px;
-  padding: 3px;
-  border-radius: 8px;
-  background: var(--ui-60-surface-soft);
-  border: 1px solid var(--ui-30-border);
-}
-
-.activePreviewButton {
-  min-height: 32px;
-  border: 0;
-  border-radius: 6px;
-  background: var(--ui-30-primary);
-  color: #ffffff;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 0.74rem;
-  font-weight: 800;
-  padding: 5px 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-}
 
 /* Keeps the timing/respondent line the header used to show, now stacked under the view switch. */
-.previewHeaderSide {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-}
-
-.previewHeaderSide span {
-  color: var(--ui-30-muted);
-  font-size: 0.74rem;
-  font-weight: 700;
-}
 
 /* Field Indicator Dots */
-.indicatorPending,
-.indicatorDone {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-left: 6px;
-  vertical-align: middle;
-  border-radius: 50%;
-  position: relative;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.indicatorPending {
-  background: var(--ui-10-accent);
-  box-shadow: 0 0 0 2px var(--ui-10-accent-glow);
-  animation: pulseRadar 1.6s ease-in-out infinite;
-}
-
-.indicatorDone {
-  background: var(--ui-30-primary);
-  box-shadow: 0 0 0 2px var(--ui-30-primary-border);
-  animation: scaleInCheck 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.indicatorPending .indicatorDot,
-.indicatorDone .indicatorDot {
-  display: none;
-}
-
-@keyframes pulseRadar {
-  0% {
-    transform: scale(0.9);
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
-  }
-  70% {
-    transform: scale(1.1);
-    box-shadow: 0 0 0 5px rgba(239, 68, 68, 0);
-  }
-  100% {
-    transform: scale(0.9);
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-  }
-}
-
-@keyframes scaleInCheck {
-  0% { transform: scale(0.6); }
-  100% { transform: scale(1); }
-}
 
 /* Grid row/column editor. Two plain lists, because that is literally how a grid is stored. */
-.gridAxisLabel {
-  display: block;
-  margin: 10px 0 6px;
-  color: var(--ui-30-muted);
-  font-size: 0.75rem;
-  font-weight: 800;
-}
 
 /* Grid, not flex, for the same reason as Assessment's: app/globals.css gives every input
    `width: 100%` at a specificity no single class here can outrank, which overflowed the row and
    pushed the remove button outside the card. Inside a grid track that width means 100% of the
    track, so the track sizing wins without a specificity fight. */
-.gridAxisRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-}
-
-.gridAxisRemove {
-  appearance: none;
-  border: none;
-  background: transparent;
-  color: #dc2626;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 900;
-  line-height: 1;
-  padding: 2px 4px;
-}
-
-.gridAxisRemove:disabled {
-  color: var(--ui-30-muted);
-  cursor: not-allowed;
-}
 
 /* Grid preview inside the author's question list. */
-.gridPreviewScroll {
-  overflow-x: auto;
-  margin-top: 8px;
-}
-
-.gridPreviewTable {
-  border-collapse: collapse;
-  width: 100%;
-  min-width: 280px;
-  font-size: 0.78rem;
-}
-
-.gridPreviewTable th,
-.gridPreviewTable td {
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--ui-30-border);
-  text-align: center;
-}
-
-.gridPreviewTable thead th {
-  color: var(--ui-30-muted);
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.gridPreviewTable tbody th {
-  color: var(--ui-30-ink);
-  font-weight: 700;
-  text-align: left;
-  min-width: 100px;
-}
