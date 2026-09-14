@@ -316,6 +316,15 @@ export const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
     });
   }, [availablePlans, currentFormCompanyCode, isPlanMatchingCompany]);
 
+  useEffect(() => {
+    if (formLinkedPlanId) {
+      const plan = availablePlans.find((p) => p.rollingId === formLinkedPlanId);
+      if (plan && !isPlanMatchingCompany(plan, currentFormCompanyCode)) {
+        setFormLinkedPlanId("");
+      }
+    }
+  }, [currentFormCompanyCode, availablePlans, formLinkedPlanId, isPlanMatchingCompany]);
+
   // File selection
   const handleFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);

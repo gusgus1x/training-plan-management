@@ -187,11 +187,12 @@ describe("Course Activities API", () => {
   });
 
   it("enforces company isolation on course linking so each company only links its own courses", async () => {
-    const { readFileSync } = await import("node:fs");
-    const newActivitiesSource = readFileSync(
-      new URL("../../app/components/center_factory/NewActivities/NewActivities.tsx", import.meta.url),
-      "utf8",
-    );
+    const { readFileSync, existsSync } = await import("node:fs");
+    const modalUrl = new URL("../../app/components/center_factory/NewActivities/components/ActivityFormModal.tsx", import.meta.url);
+    const mainUrl = new URL("../../app/components/center_factory/NewActivities/NewActivities.tsx", import.meta.url);
+    const newActivitiesSource = existsSync(modalUrl)
+      ? readFileSync(modalUrl, "utf8")
+      : readFileSync(mainUrl, "utf8");
     const apiRouteSource = readFileSync(
       new URL("../../app/api/course-activities/route.ts", import.meta.url),
       "utf8",
