@@ -1554,7 +1554,7 @@ export default function NewActivities({
 
       {/* Carousel Dots & Prev/Next Controls (shown when more than 3 activities and not reordering) */}
       {!isReorderMode && filteredActivities.length > 3 && (
-        <div className={styles.paginationWrapper}>
+        <div className={styles.carouselPaginationWrapper}>
           <button
             type="button"
             className={styles.bottomNavBtn}

@@ -5,9 +5,21 @@ import { useRouter } from "next/navigation";
 import { listAssessments } from "../../lib/assessments/client";
 import { listEvaluations } from "../../lib/evaluations/client";
 import { useAuthenticatedUser } from "../AuthenticatedUserContext";
+import { useAuthActions } from "../AuthActionsContext";
 import { useUiLanguage } from "../ThaiUiLocalization";
 import { isBlockType, type DraftItemType } from "./formDraft";
-import { Building2, ChevronLeft, Eye, FileText, Pencil, Plus, Search, Star } from "../icons/LucideIcons";
+import Navbar from "../Navbar";
+import {
+  Building2,
+  ChevronLeft,
+  Eye,
+  FileText,
+  Pencil,
+  Plus,
+  Search,
+  Star,
+  X,
+} from "../icons/LucideIcons";
 import styles from "./FormGallery.module.css";
 
 /**
@@ -113,11 +125,14 @@ export const sortIntoSections = (
 const formatDate = (iso: string | null) =>
   iso === null
     ? ""
-    : new Intl.DateTimeFormat("th-TH", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(iso));
+    : new Intl.DateTimeFormat("th-TH", { day: "2-digit", month: "short", year: "numeric" }).format(
+        new Date(iso),
+      );
 
 export default function FormGallery({ kind }: { kind: FormKind }) {
   const router = useRouter();
   const user = useAuthenticatedUser();
+  const { logout } = useAuthActions();
   const { language } = useUiLanguage();
   /** The same helper the builder and both old editors use. */
   const t = (th: string, en: string) => (language === "th" ? th : en);
@@ -191,115 +206,285 @@ export default function FormGallery({ kind }: { kind: FormKind }) {
   const card = (form: GalleryForm) => (
     // The card opens on a click anywhere, and carries its own button as well: the button is what
     // says the card is for opening, and what a keyboard can reach.
-    <div key={form.id} className={styles.card} onClick={() => openBuilder(form.id)}>
-      <span className={styles.thumb} aria-hidden="true">
-        <FileText size={26} />
-      </span>
-      <span className={styles.cardBody}>
-        <strong className={styles.cardTitle}>{form.name || form.code}</strong>
-        <span className={styles.cardMeta}>{form.code}</span>
-        <span className={styles.cardMeta}>
-          {t(`${form.questionCount} ข้อ`, `${form.questionCount} questions`)}
-          {form.updatedAt ? ` · ${formatDate(form.updatedAt)}` : ""}
+    <div
+      key={form.id}
+      className={styles.card}
+      onClick={() => openBuilder(form.id)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openBuilder(form.id);
+        }
+      }}
+    >
+      {/* Top row: thumb icon and status badge in normal document flow to eliminate overlap */}
+      <div className={styles.cardTopRow}>
+        <span className={styles.thumb} aria-hidden="true">
+          <FileText size={20} />
         </span>
-        <span className={styles.cardFooter}>
-          {/* A form outside my scope opens, but only to be read. */}
-          {form.canModify ? null : (
-            <span className={styles.readOnlyTag}>
-              <Eye size={12} /> {t("ดูอย่างเดียว", "Read-only")}
-            </span>
+        <span
+          className={
+            form.isDraft
+              ? styles.draftTag
+              : form.statusLabel === "INACTIVE"
+                ? styles.retiredTag
+                : styles.liveTag
+          }
+        >
+          {form.isDraft ? (
+            <>
+              <span className={styles.statusDotAmber} aria-hidden="true" />
+              {t("ยังไม่เผยแพร่", "Draft")}
+            </>
+          ) : form.statusLabel === "INACTIVE" ? (
+            <>
+              <span className={styles.statusDotGray} aria-hidden="true" />
+              {t("ปลดระวางแล้ว", "Retired")}
+            </>
+          ) : (
+            <>
+              <span className={styles.statusDotGreen} aria-hidden="true" />
+              {t("เผยแพร่แล้ว", "Published")}
+            </>
           )}
-          <button type="button" className={styles.cardAction} onClick={() => openBuilder(form.id)}>
-            {form.canModify ? (
-              <>
-                <Pencil size={13} /> {t("แก้ไข", "Edit")}
-              </>
-            ) : (
-              <>
-                <Eye size={13} /> {t("ดู", "View")}
-              </>
-            )}
-          </button>
         </span>
-      </span>
-      <span className={form.isDraft || form.statusLabel === "INACTIVE" ? styles.draftTag : styles.liveTag}>
-        {form.isDraft ? t("ยังไม่เผยแพร่", "Not published") : form.statusLabel === "INACTIVE" ? t("ปลดระวางแล้ว", "Retired") : t("เผยแพร่แล้ว", "Published")}
-      </span>
+      </div>
+
+      {/* Body: Title and Code/Meta with full width */}
+      <div className={styles.cardBody}>
+        <strong className={styles.cardTitle} title={form.name || form.code}>
+          {form.name || form.code}
+        </strong>
+        <div className={styles.cardCodeBadge}>{form.code}</div>
+        <div className={styles.cardMeta}>
+          <span>{t(`${form.questionCount} ข้อ`, `${form.questionCount} questions`)}</span>
+          {form.updatedAt && (
+            <>
+              <span className={styles.metaDivider}>•</span>
+              <span>{formatDate(form.updatedAt)}</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Footer: Read-only hint and Action button */}
+      <div className={styles.cardFooter}>
+        {!form.canModify ? (
+          <span className={styles.readOnlyTag}>
+            <Eye size={12} /> {t("ดูอย่างเดียว", "Read-only")}
+          </span>
+        ) : (
+          <span />
+        )}
+        <button
+          type="button"
+          className={`${styles.cardAction} ${form.canModify ? styles.cardActionEdit : styles.cardActionView}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            openBuilder(form.id);
+          }}
+        >
+          {form.canModify ? (
+            <>
+              <Pencil size={13} /> {t("แก้ไข", "Edit")}
+            </>
+          ) : (
+            <>
+              <Eye size={13} /> {t("ดูรายละเอียด", "View")}
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 
   return (
     <main className={styles.page}>
-      <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <button type="button" className={styles.backButton} onClick={() => router.push(OWNER_SECTION[kind])}>
-            <ChevronLeft size={16} /> {t("กลับ", "Back")}
-          </button>
-          <div>
-            <p className={styles.kicker}>{label.en} forms</p>
-            <h1>{label.th}</h1>
-          </div>
-        </div>
-        <div className={styles.searchBox}>
-          <Search size={14} aria-hidden="true" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t(`ค้นหา${label.th} หรือรหัสฟอร์ม`, `Search ${label.en.toLowerCase()} or form code`)}
-          />
-        </div>
-      </header>
+      <Navbar
+        username={user?.username}
+        userLevel={user?.roleCode === "HRD_CENTER" ? "Admin" : "User"}
+        company={user?.companyCode ?? undefined}
+        contextTitle={`Training Course Management / ${label.th}`}
+        contextItems={[
+          {
+            title: "Course Outline",
+            active: false,
+            onClick: () => router.push("/training-course/course-outline"),
+          },
+          {
+            title: "Assessment",
+            active: kind === "assessment",
+            onClick: () => {
+              if (kind !== "assessment") router.push("/forms/assessment");
+            },
+          },
+          {
+            title: "Evaluation Management",
+            active: kind === "evaluation",
+            onClick: () => {
+              if (kind !== "evaluation") router.push("/forms/evaluation");
+            },
+          },
+        ]}
+        onBack={() => router.push(OWNER_SECTION[kind])}
+        onHome={() => router.push("/")}
+        onLogout={logout}
+      />
 
-      {loadError ? <p className={styles.note}>{t("โหลดรายการไม่สำเร็จ: ", "Could not load the list: ")}{loadError}</p> : null}
-      {forms === null ? <p className={styles.note}>{t("กำลังโหลด...", "Loading...")}</p> : null}
-
-      <section className={styles.section}>
-        <h2>
-          <Plus size={16} aria-hidden="true" /> {t("แบบฟอร์มใหม่", "New forms")}
-        </h2>
-        <div className={styles.grid}>
-          <button type="button" className={styles.blankCard} onClick={() => router.push(`/forms/${kind}/new`)}>
-            <span className={styles.blankPlus} aria-hidden="true">
-              <Plus size={30} />
-            </span>
-            <strong>{t(`สร้าง${label.th}ใหม่`, `Create ${label.en.toLowerCase()}`)}</strong>
-          </button>
-          {/* Unpublished forms belong here rather than in a list of things in use: they are the
-              work somebody has not finished, which is what this section is for. */}
-          {drafts.map(card)}
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <h2>
-          <Star size={16} aria-hidden="true" /> {t("แบบฟอร์มของฉัน", "My forms")}
-        </h2>
-        {mine.length === 0 ? (
-          <p className={styles.note}>{t(`คุณยังไม่ได้เผยแพร่${label.th}ไว้`, `You have not published any ${label.en.toLowerCase()} yet`)}</p>
-        ) : (
-          <div className={styles.grid}>{mine.map(card)}</div>
-        )}
-      </section>
-
-      <section className={styles.section}>
-        <h2>
-          <Building2 size={16} aria-hidden="true" /> {t("แบบฟอร์มบริษัท", "Company forms")}
-        </h2>
-        {companies.length === 0 ? (
-          <p className={styles.note}>{t(`ยังไม่มี${label.th}ที่เผยแพร่แล้ว`, `No ${label.en.toLowerCase()} from other companies yet`)}</p>
-        ) : (
-          companies.map((group) => (
-            <div className={styles.companyBlock} key={group.code}>
-              <h3 className={styles.companyName}>
-                {group.code === CENTRAL ? t("ส่วนกลาง", "Central") : group.code}
-                {group.name && group.name !== group.code ? <small>{group.name}</small> : null}
-                <span className={styles.companyCount}>{group.rows.length}</span>
-              </h3>
-              <div className={styles.grid}>{group.rows.map(card)}</div>
+      <div className={styles.content}>
+        <header className={styles.header}>
+          <div className={styles.headerLeft}>
+            <button
+              type="button"
+              className={styles.backButton}
+              onClick={() => router.push(OWNER_SECTION[kind])}
+            >
+              <ChevronLeft size={16} /> {t("กลับ", "Back")}
+            </button>
+            <div>
+              <p className={styles.kicker}>{label.en} forms</p>
+              <h1>{label.th}</h1>
             </div>
-          ))
-        )}
-      </section>
+          </div>
+          <div className={styles.searchBox}>
+            <Search size={15} aria-hidden="true" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t(
+                `ค้นหา${label.th} หรือรหัส...`,
+                `Search ${label.en.toLowerCase()} or code...`,
+              )}
+            />
+            {query && (
+              <button
+                type="button"
+                className={styles.clearSearchBtn}
+                onClick={() => setQuery("")}
+                title={t("ล้างคำค้นหา", "Clear")}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </header>
+
+        {loadError ? (
+          <p className={styles.note}>
+            {t("โหลดรายการไม่สำเร็จ: ", "Could not load the list: ")}
+            {loadError}
+          </p>
+        ) : null}
+        {forms === null ? (
+          <p className={styles.note}>{t("กำลังโหลด...", "Loading...")}</p>
+        ) : null}
+
+        <section className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>
+              <span className={styles.sectionIconWrap}>
+                <Plus size={16} aria-hidden="true" />
+              </span>
+              {t("แบบฟอร์มใหม่", "New forms")}
+            </h2>
+            <span className={styles.sectionCountBadge}>
+              {drafts.length + 1} {t("รายการ", "items")}
+            </span>
+          </div>
+          <div className={styles.grid}>
+            <button
+              type="button"
+              className={styles.blankCard}
+              onClick={() => router.push(`/forms/${kind}/new`)}
+            >
+              <span className={styles.blankPlus} aria-hidden="true">
+                <Plus size={28} />
+              </span>
+              <div className={styles.blankCardTextGroup}>
+                <strong className={styles.blankCardTitle}>
+                  {t(`สร้าง${label.th}ใหม่`, `Create new ${label.en.toLowerCase()}`)}
+                </strong>
+                <span className={styles.blankCardSubtitle}>
+                  {t("เริ่มต้นสร้างจากแบบฟอร์มเปล่า", "Start with a blank form")}
+                </span>
+              </div>
+            </button>
+            {/* Unpublished forms belong here rather than in a list of things in use */}
+            {drafts.map(card)}
+          </div>
+        </section>
+
+        <section className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>
+              <span className={styles.sectionIconWrap}>
+                <Star size={16} aria-hidden="true" />
+              </span>
+              {t("แบบฟอร์มของฉัน", "My forms")}
+            </h2>
+            <span className={styles.sectionCountBadge}>
+              {mine.length} {t("รายการ", "items")}
+            </span>
+          </div>
+          {mine.length === 0 ? (
+            <div className={styles.emptyState}>
+              <p className={styles.note}>
+                {t(
+                  `คุณยังไม่ได้เผยแพร่${label.th}ไว้`,
+                  `You have not published any ${label.en.toLowerCase()} yet`,
+                )}
+              </p>
+            </div>
+          ) : (
+            <div className={styles.grid}>{mine.map(card)}</div>
+          )}
+        </section>
+
+        <section className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>
+              <span className={styles.sectionIconWrap}>
+                <Building2 size={16} aria-hidden="true" />
+              </span>
+              {t("แบบฟอร์มบริษัท", "Company forms")}
+            </h2>
+            <span className={styles.sectionCountBadge}>
+              {companies.reduce((sum, g) => sum + g.rows.length, 0)} {t("รายการ", "items")}
+            </span>
+          </div>
+          {companies.length === 0 ? (
+            <div className={styles.emptyState}>
+              <p className={styles.note}>
+                {t(
+                  `ยังไม่มี${label.th}ที่เผยแพร่แล้ว`,
+                  `No ${label.en.toLowerCase()} from other companies yet`,
+                )}
+              </p>
+            </div>
+          ) : (
+            companies.map((group) => (
+              <div className={styles.companyBlock} key={group.code}>
+                <div className={styles.companyHeaderBar}>
+                  <div className={styles.companyInfoGroup}>
+                    <span className={styles.companyCodeBadge}>
+                      {group.code === CENTRAL ? t("ส่วนกลาง", "Central") : group.code}
+                    </span>
+                    {group.name && group.name !== group.code ? (
+                      <span className={styles.companyFullName}>{group.name}</span>
+                    ) : null}
+                  </div>
+                  <span className={styles.companyItemCount}>
+                    {group.rows.length} {t("ฟอร์ม", "forms")}
+                  </span>
+                </div>
+                <div className={styles.grid}>{group.rows.map(card)}</div>
+              </div>
+            ))
+          )}
+        </section>
+      </div>
     </main>
   );
 }

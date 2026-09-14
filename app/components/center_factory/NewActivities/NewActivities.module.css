@@ -1294,8 +1294,8 @@
   white-space: pre-wrap;
 }
 
-/* Pagination Controls */
-.paginationWrapper {
+/* Legacy Pagination Controls */
+.legacyPaginationWrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2208,13 +2208,15 @@
   }
 }
 
-/* Pagination / Dots wrapper */
-.paginationWrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  margin-top: 14px;
+/* Carousel Dots & Controls wrapper */
+.carouselPaginationWrapper {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 16px !important;
+  margin-top: 18px !important;
 }
 
 .bottomNavBtn {
