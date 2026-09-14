@@ -31,7 +31,7 @@ const RequiredIndicator = ({ isFilled }: { isFilled: boolean }) => (
 export interface ActivityFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: (newActivityId?: string, isEdit?: boolean) => void;
+  onSuccess?: (newActivityId?: string, isEdit?: boolean, activityData?: CourseActivity) => void;
   activityToEdit?: CourseActivity | null;
   isThai?: boolean;
 }
@@ -490,13 +490,14 @@ export const ActivityFormModal: React.FC<ActivityFormModalProps> = ({
           toast.success(isThai ? "แก้ไขกิจกรรมเรียบร้อยแล้ว" : "Activity updated");
           cleanupPreviewUrls();
           onClose();
-          onSuccess?.(formId, true);
+          onSuccess?.(formId, true, activityToEdit ? { ...activityToEdit, ...payload, id: formId } as CourseActivity : undefined);
         } else {
           const created = await res.json().catch(() => ({}));
-          const newId = created?.activity?.id ?? created?.id ?? "";
+          const newActivity = created?.activity as CourseActivity | undefined;
+          const newId = newActivity?.id ?? created?.id ?? "";
           cleanupPreviewUrls();
           onClose();
-          onSuccess?.(String(newId), false);
+          onSuccess?.(String(newId), false, newActivity);
         }
       } else {
         toast.error(isThai ? "ไม่สามารถบันทึกข้อมูลได้" : "Failed to save activity");

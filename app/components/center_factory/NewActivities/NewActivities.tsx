@@ -1485,6 +1485,54 @@ export default function NewActivities({
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
         >
+          {/* Left Arrow Navigation Button */}
+          <button
+            type="button"
+            className={`${styles.carouselNavBtn} ${styles.carouselNavPrev}`}
+            onClick={handlePrevSlide}
+            disabled={isSliding}
+            aria-label={isThai ? "กิจกรรมก่อนหน้า" : "Previous activities"}
+            title={isThai ? "กิจกรรมก่อนหน้า (เลื่อนซ้าย)" : "Previous activities"}
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+
+          {/* Right Arrow Navigation Button */}
+          <button
+            type="button"
+            className={`${styles.carouselNavBtn} ${styles.carouselNavNext}`}
+            onClick={handleNextSlide}
+            disabled={isSliding}
+            aria-label={isThai ? "กิจกรรมถัดไป" : "Next activities"}
+            title={isThai ? "กิจกรรมถัดไป (เลื่อนขวา)" : "Next activities"}
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+
           <div
             className={`${styles.carouselTrack} ${
               isSliding && slideDirection === "next"
@@ -1504,9 +1552,22 @@ export default function NewActivities({
         </div>
       )}
 
-      {/* Carousel Dots Indicator (shown when more than 3 activities and not reordering) */}
+      {/* Carousel Dots & Prev/Next Controls (shown when more than 3 activities and not reordering) */}
       {!isReorderMode && filteredActivities.length > 3 && (
         <div className={styles.paginationWrapper}>
+          <button
+            type="button"
+            className={styles.bottomNavBtn}
+            onClick={handlePrevSlide}
+            disabled={isSliding}
+            title={isThai ? "ย้อนกลับ" : "Previous"}
+            aria-label="Previous slide"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+
           <div className={styles.carouselDots}>
             {filteredActivities.map((_, idx) => (
               <button
@@ -1523,6 +1584,19 @@ export default function NewActivities({
               />
             ))}
           </div>
+
+          <button
+            type="button"
+            className={styles.bottomNavBtn}
+            onClick={handleNextSlide}
+            disabled={isSliding}
+            title={isThai ? "ถัดไป" : "Next"}
+            aria-label="Next slide"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
         </div>
       )}
 

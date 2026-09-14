@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import styles from "./AddActivityButton.module.css";
 import { ActivityFormModal } from "./ActivityFormModal";
 import { ActivityPostSaveDialog } from "./ActivityPostSaveDialog";
+import type { CourseActivity } from "../../../../api/course-activities/route";
 
 export interface AddActivityButtonProps {
   onClick?: () => void;
@@ -25,27 +26,44 @@ export const AddActivityButton: React.FC<AddActivityButtonProps> = ({
   const [isFormModalOpen, setIsFormModalOpen] = useState<boolean>(false);
   const [isPostSaveOpen, setIsPostSaveOpen] = useState<boolean>(false);
   const [savedActivityId, setSavedActivityId] = useState<string>("");
+  const [savedActivity, setSavedActivity] = useState<CourseActivity | null>(null);
+  const [editingActivity, setEditingActivity] = useState<CourseActivity | null>(null);
 
   const handleClick = () => {
     if (onClick) {
       onClick();
       return;
     }
+    setEditingActivity(null);
     setIsFormModalOpen(true);
   };
 
-  const handleFormSuccess = (newActivityId?: string) => {
+  const handleFormSuccess = (
+    newActivityId?: string,
+    isEdit?: boolean,
+    activityData?: CourseActivity
+  ) => {
     setIsFormModalOpen(false);
-    if (newActivityId) {
+    setEditingActivity(null);
+
+    if (newActivityId && !isEdit) {
       setSavedActivityId(newActivityId);
+      setSavedActivity(activityData || null);
       setIsPostSaveOpen(true);
     } else {
-      onSuccess?.();
+      onSuccess?.(newActivityId);
     }
+  };
+
+  const handleBackToEdit = (activity: CourseActivity) => {
+    setIsPostSaveOpen(false);
+    setEditingActivity(activity);
+    setIsFormModalOpen(true);
   };
 
   const handlePostSaveClose = () => {
     setIsPostSaveOpen(false);
+    setSavedActivity(null);
     onSuccess?.(savedActivityId);
   };
 
@@ -80,15 +98,21 @@ export const AddActivityButton: React.FC<AddActivityButtonProps> = ({
         <>
           <ActivityFormModal
             isOpen={isFormModalOpen}
-            onClose={() => setIsFormModalOpen(false)}
+            activityToEdit={editingActivity}
+            onClose={() => {
+              setIsFormModalOpen(false);
+              setEditingActivity(null);
+            }}
             onSuccess={handleFormSuccess}
             isThai={isThai}
           />
           <ActivityPostSaveDialog
             isOpen={isPostSaveOpen}
             activityId={savedActivityId}
+            activity={savedActivity}
             onClose={handlePostSaveClose}
             onSuccess={handlePostSaveClose}
+            onBackToEdit={handleBackToEdit}
             isThai={isThai}
           />
         </>
