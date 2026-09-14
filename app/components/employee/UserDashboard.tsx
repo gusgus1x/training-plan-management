@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useUiLanguage, type UiLanguage } from "../ThaiUiLocalization";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
 import {
@@ -27,6 +27,7 @@ import CalendarModule from "./CalendarModule";
 import ActivitiesModule from "./ActivitiesModule";
 import RecordModule from "./RecordModule";
 import EmployeeNoticeCards from "./EmployeeNoticeCards";
+import { recordFocusHref } from "./recordLink";
 import RegisterTrainingModule from "./RegisterTrainingModule";
 import RequestTrainingModule from "./RequestTrainingModule";
 import RoadmapModule from "./RoadmapModule";
@@ -403,6 +404,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
     isThai,
   ]);
   const searchParams = useSearchParams();
+  const router = useRouter();
   // Read once, as the initial value only - a page returning from /training-form links back to
   // "/?module=record" so the employee lands on My Record instead of the bare dashboard home.
   // Switching modules afterward does not sync back into the URL; this only covers the return trip.
@@ -890,7 +892,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
               defaultOverviewOpen={false}
               filterMode="my-trainings"
               onNavigateRegister={() => setActiveModule("register")}
-              onNavigateRecord={() => setActiveModule("record")}
+              onNavigateRecord={(enrollment) => router.push(recordFocusHref(enrollment))}
             />
           </section>
 

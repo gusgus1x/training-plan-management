@@ -1673,15 +1673,18 @@
   flex-shrink: 0;
 }
 
+/* Course group label, not a control - kept well clear of the action buttons so it is not read as one. */
 .targetGroupBadge {
+  margin-right: 18px;
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-sm);
   background: var(--ui-60-surface-soft);
-  color: var(--ui-30-ink);
+  color: var(--ui-30-muted);
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: 700;
   padding: 4px 10px;
   white-space: nowrap;
+  cursor: default;
 }
 
 .toggleDetailBtn {

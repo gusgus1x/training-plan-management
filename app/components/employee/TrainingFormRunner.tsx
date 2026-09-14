@@ -30,6 +30,7 @@ import type {
   GradedStage,
   SubmissionSummary,
 } from "../../lib/trainingForms/types";
+import { recordFocusHref } from "./recordLink";
 import styles from "./TrainingFormRunner.module.css";
 
 type TrainingFormRunnerProps = {
@@ -295,7 +296,10 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
 
   const storageKey = stage ? draftKey(enrollmentId, stage) : "";
 
-  const goBackToRecord = () => router.push("/?module=record");
+  // Back to the course card the form was opened from. Someone with no enrollment of their own on
+  // the course (a supervisor answering a 30-day follow-up) just lands on My Record.
+  const [backHref, setBackHref] = useState("/?module=record");
+  const goBackToRecord = () => router.push(backHref);
 
   useEffect(() => {
     if (!stage || !kind) return;
@@ -310,7 +314,11 @@ export default function TrainingFormRunner({ enrollmentId, stage: rawStage }: Tr
     // locked them out of a form the server had already agreed to hand over. Access is the form
     // request's decision, which enforces it against the assignment as well as the enrolment.
     const loadCourseTitle = listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
-      .then((result) => result.enrollments.find((e) => e.id === enrollmentId)?.plan.courseName ?? "")
+      .then((result) => {
+        const enrollment = result.enrollments.find((e) => e.id === enrollmentId);
+        if (enrollment && !cancelled) setBackHref(recordFocusHref(enrollment));
+        return enrollment?.plan.courseName ?? "";
+      })
       .catch(() => "");
 
     const loadForm = kind === "assessment" ? readAssessment(enrollmentId, stage as GradedStage) : readEvaluation(enrollmentId, stage as "EVALUATION" | "EVALUATION_30DAY");

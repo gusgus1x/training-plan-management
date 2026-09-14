@@ -366,7 +366,8 @@ export type ScheduleCalendarProps = {
   defaultOverviewOpen?: boolean;
   filterMode?: "all" | "my-trainings";
   onNavigateRegister?: () => void;
-  onNavigateRecord?: () => void;
+  /** Lands on this enrollment's own card in My Record. */
+  onNavigateRecord?: (enrollment: EnrollmentRecord) => void;
 };
 
 export default function ScheduleCalendar({
@@ -1296,7 +1297,9 @@ export default function ScheduleCalendar({
                       </div>
 
                       <div className={styles.courseCardActions}>
-                        <span className={styles.targetGroupBadge}>{plan.course.courseGroup}</span>
+                        <span className={styles.targetGroupBadge} title={uiLang === "th" ? "กลุ่มหลักสูตร" : "Course group"}>
+                          {plan.course.courseGroup}
+                        </span>
 
                         {isEmployeeView ? (
                           (() => {
@@ -1310,7 +1313,7 @@ export default function ScheduleCalendar({
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       if (onNavigateRecord) {
-                                        onNavigateRecord();
+                                        onNavigateRecord(myEnr);
                                       } else {
                                         router.push("/training-record");
                                       }
