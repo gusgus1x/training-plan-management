@@ -31,7 +31,8 @@
   transform: translateY(-1px);
 }
 
-:global(.dark) .card {
+:global(.dark) .card,
+:global([data-theme="dark"]) .card {
   --notice-bg: #262117;
   --notice-border: #463d2b;
   --notice-ink: #f3ecdc;
@@ -39,7 +40,8 @@
   --notice-accent: #f59e0b;
 }
 
-:global(.dark) .card[data-kind="certificate"] {
+:global(.dark) .card[data-kind="certificate"],
+:global([data-theme="dark"]) .card[data-kind="certificate"] {
   --notice-accent: #34d399;
 }
 

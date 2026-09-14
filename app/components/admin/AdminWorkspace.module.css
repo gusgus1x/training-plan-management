@@ -59,10 +59,20 @@
   color: #b91c1c;
 }
 
+:global([data-theme="dark"]) .error,
+:global(.dark) .error {
+  color: #fca5a5 !important;
+}
+
 .success {
   border: 1px solid rgba(16, 185, 129, 0.35);
   background: rgba(16, 185, 129, 0.1);
   color: #047857;
+}
+
+:global([data-theme="dark"]) .success,
+:global(.dark) .success {
+  color: #6ee7b7 !important;
 }
 
 .formPanel {

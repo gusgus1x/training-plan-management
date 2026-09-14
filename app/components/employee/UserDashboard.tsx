@@ -54,6 +54,7 @@ import {
   X,
   Check,
   FileEdit,
+  ArrowRight,
 } from "../icons/LucideIcons";
 
 const RegisterIcon = () => (
@@ -913,42 +914,42 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                   { icon: React.ReactNode; accent: string; accentSoft: string; accentBorder: string; badgeText?: string }
                 > = {
                   register: {
-                    icon: <BookOpen size={24} color="#2563eb" />,
+                    icon: <BookOpen size={24} color="currentColor" strokeWidth={2.2} />,
                     accent: "#2563eb",
                     accentSoft: "rgba(37, 99, 235, 0.12)",
                     accentBorder: "rgba(37, 99, 235, 0.3)",
                     badgeText: openToRegister.length > 0 ? (isThai ? `เปิดรับ ${openToRegister.length} คอร์ส` : `${openToRegister.length} open`) : undefined,
                   },
                   roadmap: {
-                    icon: <MapIcon size={24} color="#0d9488" />,
+                    icon: <MapIcon size={24} color="currentColor" strokeWidth={2.2} />,
                     accent: "#0d9488",
                     accentSoft: "rgba(13, 148, 136, 0.12)",
                     accentBorder: "rgba(13, 148, 136, 0.3)",
                     badgeText: isThai ? "เส้นทางฝึกอบรม" : "Personal Path",
                   },
                   request: {
-                    icon: <Lightbulb size={24} color="#7c3aed" />,
+                    icon: <Lightbulb size={24} color="currentColor" strokeWidth={2.2} />,
                     accent: "#7c3aed",
                     accentSoft: "rgba(124, 58, 237, 0.12)",
                     accentBorder: "rgba(124, 58, 237, 0.3)",
                     badgeText: awaitingApproval.length > 0 ? (isThai ? `รออนุมัติ ${awaitingApproval.length}` : `${awaitingApproval.length} pending`) : undefined,
                   },
                   record: {
-                    icon: <ClipboardList size={24} color="#d97706" />,
+                    icon: <ClipboardList size={24} color="currentColor" strokeWidth={2.2} />,
                     accent: "#d97706",
                     accentSoft: "rgba(217, 119, 6, 0.12)",
                     accentBorder: "rgba(217, 119, 6, 0.3)",
                     badgeText: isThai ? `สะสม ${completedHours} ชม.` : `${completedHours} hrs`,
                   },
                   calendar: {
-                    icon: <Calendar size={24} color="#059669" />,
+                    icon: <Calendar size={24} color="currentColor" strokeWidth={2.2} />,
                     accent: "#059669",
                     accentSoft: "rgba(5, 150, 105, 0.12)",
                     accentBorder: "rgba(5, 150, 105, 0.3)",
                     badgeText: isThai ? "ตารางการอบรม" : "Schedules",
                   },
                   activities: {
-                    icon: <Camera size={24} color="#0284c7" />,
+                    icon: <Camera size={24} color="currentColor" strokeWidth={2.2} />,
                     accent: "#0284c7",
                     accentSoft: "rgba(2, 132, 199, 0.12)",
                     accentBorder: "rgba(2, 132, 199, 0.3)",
@@ -1000,14 +1001,23 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                     </div>
 
                     <div className={styles.cardFooterAction}>
-                      <span className={styles.openBtn}>
+                      <span className={styles.moduleStatusHint}>
+                        <span className={isLocked ? styles.lockedDot : styles.activeDot} aria-hidden="true" />
+                        {isLocked
+                          ? (isThai ? "ยังไม่เปิด" : "Unavailable")
+                          : (isThai ? "พร้อมใช้งาน" : "Active")}
+                      </span>
+                      <span className={`${styles.openBtn} ${isLocked ? styles.openBtnLocked : ""}`}>
                         {isLocked ? (
                           <>
-                            <Lock size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} />
-                            {isThai ? "ล็อกอยู่" : "Locked"}
+                            <Lock size={12} />
+                            <span>{isThai ? "ล็อกอยู่" : "Locked"}</span>
                           </>
                         ) : (
-                          isThai ? "เปิด" : "Open"
+                          <>
+                            <span>{isThai ? "เข้าใช้งาน" : "Access"}</span>
+                            <ArrowRight size={13} className={styles.btnArrow} />
+                          </>
                         )}
                       </span>
                     </div>

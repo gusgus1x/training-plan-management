@@ -100,11 +100,13 @@
   --item-accent: #047857;
 }
 
-:global(.dark) .item {
+:global(.dark) .item,
+:global([data-theme="dark"]) .item {
   --item-accent: #f59e0b;
 }
 
-:global(.dark) .item[data-kind="certificate"] {
+:global(.dark) .item[data-kind="certificate"],
+:global([data-theme="dark"]) .item[data-kind="certificate"] {
   --item-accent: #34d399;
 }
 

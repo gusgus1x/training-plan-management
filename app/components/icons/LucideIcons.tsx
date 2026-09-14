@@ -58,6 +58,14 @@ export const TrendingUp = createIcon(
   </>
 );
 
+export const ArrowRight = createIcon(
+  <>
+    <path d="M5 12h14" />
+    <path d="m12 5 7 7-7 7" />
+  </>
+);
+
+
 export const Calendar = createIcon(
   <>
     <rect width="18" height="18" x="3" y="4" rx="2" />
@@ -757,5 +765,12 @@ export const Database = createIcon(
     <ellipse cx="12" cy="5" rx="9" ry="3" />
     <path d="M3 5V19A9 3 0 0 0 21 19V5" />
     <path d="M3 12A9 3 0 0 0 21 12" />
+  </>
+);
+
+export const Megaphone = createIcon(
+  <>
+    <path d="m3 11 18-5v12L3 14v-3z" />
+    <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
   </>
 );

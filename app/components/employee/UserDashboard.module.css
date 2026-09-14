@@ -350,13 +350,15 @@
   width: 48px;
   height: 48px;
   place-items: center;
-  border: 1.5px solid var(--ui-30-primary-border);
+  border: 1.5px solid var(--ui-30-border);
   border-radius: 12px;
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink, #0f172a);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
+
+
 
 .cardEmojiIcon {
   font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
@@ -366,6 +368,7 @@
 
 .menuBox:hover .cardIconBox {
   border-color: var(--ui-30-primary);
+  background: var(--ui-30-primary-soft);
   transform: scale(1.05);
 }
 
@@ -394,12 +397,22 @@
 }
 
 .cardKicker {
-  display: block;
-  color: var(--ui-30-muted);
-  font-size: 0.7rem;
-  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+  border: 1px solid var(--ui-30-primary-border);
+  font-size: 0.72rem;
+  font-weight: 700;
   letter-spacing: 0.01em;
+  margin-bottom: 3px;
 }
+
+
 
 .cardMainTitle {
   display: block;
@@ -421,32 +434,73 @@
 .cardFooterAction {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
+  width: 100%;
   margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px dashed var(--ui-30-border);
+}
+
+.moduleStatusHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--ui-30-muted);
+}
+
+.activeDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 0 6px rgba(22, 163, 74, 0.6);
+}
+
+.lockedDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #94a3b8;
 }
 
 .openBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 60px;
-  height: 30px;
+  gap: 6px;
+  min-width: 96px;
+  height: 32px;
   border-radius: 999px;
   background: var(--ui-30-primary);
   color: #ffffff;
   font-size: 0.8rem;
-  font-weight: 800;
-  padding: 0 18px;
+  font-weight: 700;
+  padding: 0 16px;
   box-shadow: 0 2px 8px rgba(0, 122, 61, 0.25);
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btnArrow {
+  transition: transform 0.2s ease;
 }
 
 .menuBox:hover .openBtn {
-  opacity: 0.92;
-  transform: scale(1.04);
+  background: var(--ui-30-primary-strong);
+  box-shadow: 0 4px 14px rgba(0, 122, 61, 0.35);
 }
 
+.menuBox:hover .btnArrow {
+  transform: translateX(3px);
+}
 
+.openBtnLocked {
+  background: var(--ui-60-surface-muted) !important;
+  color: var(--ui-30-muted) !important;
+  box-shadow: none !important;
+  cursor: not-allowed;
+}
 
 .topRow {
   display: grid;
@@ -523,8 +577,10 @@
 .profileHeaderBanner {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding-bottom: 14px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding-bottom: 16px;
   border-bottom: 1px solid var(--ui-30-border);
 }
 
@@ -565,11 +621,18 @@
   font-weight: 900;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--ui-10-accent);
-  background: var(--ui-10-accent-soft);
-  border: 1px solid var(--ui-10-accent-border);
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
   border-radius: 9999px;
   padding: 2px 8px;
+}
+
+:global([data-theme="dark"]) .userRoleTag,
+:global(.dark) .userRoleTag {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(16, 185, 129, 0.38);
+  color: #34d399;
 }
 
 .profileName {
@@ -596,14 +659,21 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  border: 1px solid var(--ui-10-accent-border);
+  border: 1px solid #a7f3d0;
   border-radius: 9999px;
-  background: var(--ui-10-accent-soft);
-  color: var(--ui-10-accent);
+  background: #ecfdf5;
+  color: #047857;
   font-size: 0.68rem;
   font-weight: 900;
   padding: 2px 8px;
   line-height: 1;
+}
+
+:global([data-theme="dark"]) .onlineBadge,
+:global(.dark) .onlineBadge {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(16, 185, 129, 0.38);
+  color: #34d399;
 }
 
 .onlineDot {
@@ -677,6 +747,7 @@
 .kpiSummaryBar {
   display: flex;
   align-items: center;
+  margin-left: auto;
   border: 1px solid var(--ui-30-border, rgba(226, 232, 240, 0.8));
   border-radius: var(--ui-radius-xl, 14px);
   background: var(--ui-60-surface-soft, rgba(248, 250, 252, 0.8));
@@ -2341,4 +2412,191 @@
   font-size: 0.72rem;
   font-weight: 800;
   white-space: nowrap;
+}
+
+/* ── Dark Theme Overrides for Module Cards ── */
+:global([data-theme="dark"]) .menuBox,
+:global(.dark) .menuBox {
+  background: var(--ui-60-surface);
+  border-color: rgba(16, 185, 129, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+:global([data-theme="dark"]) .menuBox:hover,
+:global(.dark) .menuBox:hover {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.25);
+}
+
+:global([data-theme="dark"]) .cardIconBox,
+:global(.dark) .cardIconBox {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #f8fafc;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+:global([data-theme="dark"]) .menuBox:hover .cardIconBox,
+:global(.dark) .menuBox:hover .cardIconBox {
+  border-color: var(--ui-30-primary-strong);
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+:global([data-theme="dark"]) .cardIndexPill,
+:global(.dark) .cardIndexPill {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #f8fafc;
+}
+
+:global([data-theme="dark"]) .cardKicker,
+:global(.dark) .cardKicker {
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+:global([data-theme="dark"]) .cardFooterAction,
+:global(.dark) .cardFooterAction {
+  border-top-color: rgba(255, 255, 255, 0.14);
+}
+
+:global([data-theme="dark"]) .moduleStatusHint,
+:global(.dark) .moduleStatusHint {
+  color: #94a3b8;
+}
+
+:global([data-theme="dark"]) .openBtn,
+:global(.dark) .openBtn {
+  background: #10b981;
+  color: #0b0f19;
+  font-weight: 800;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.35);
+}
+
+:global([data-theme="dark"]) .menuBox:hover .openBtn,
+:global(.dark) .menuBox:hover .openBtn {
+  background: #34d399;
+  color: #0b0f19;
+  box-shadow: 0 4px 16px rgba(52, 211, 153, 0.45);
+}
+
+
+/* ── Dark Theme Overrides for Profile & KPI Banner ── */
+:global([data-theme="dark"]) .employeePanel,
+:global(.dark) .employeePanel {
+  background: linear-gradient(145deg, #131b2e 0%, #0d1424 100%);
+  border-color: rgba(46, 61, 88, 0.85);
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+:global([data-theme="dark"]) .employeePanel::before,
+:global(.dark) .employeePanel::before {
+  width: 3px;
+  background: linear-gradient(180deg, #10b981 0%, rgba(16, 185, 129, 0.2) 100%);
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.5);
+}
+
+:global([data-theme="dark"]) .photoBox,
+:global(.dark) .photoBox {
+  border-color: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.35);
+}
+
+:global([data-theme="dark"]) .profileHeaderBanner,
+:global(.dark) .profileHeaderBanner {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+:global([data-theme="dark"]) .kpiSummaryBar,
+:global(.dark) .kpiSummaryBar {
+  background: linear-gradient(135deg, rgba(26, 37, 60, 0.75) 0%, rgba(19, 27, 46, 0.85) 100%);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+:global([data-theme="dark"]) .kpiColBtn,
+:global(.dark) .kpiColBtn {
+  border-right-color: rgba(255, 255, 255, 0.08);
+}
+
+:global([data-theme="dark"]) .kpiColBtn:hover,
+:global(.dark) .kpiColBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+:global([data-theme="dark"]) .kpiLabel,
+:global(.dark) .kpiLabel {
+  color: #94a3b8;
+}
+
+:global([data-theme="dark"]) .kpiHelper,
+:global(.dark) .kpiHelper {
+  color: #94a3b8;
+}
+
+.kpiCompletedVal {
+  color: #007a3d;
+}
+
+.kpiOpenVal {
+  color: #2563eb;
+}
+
+.kpiPendingVal {
+  color: #d97706;
+}
+
+:global([data-theme="dark"]) .kpiValue,
+:global(.dark) .kpiValue {
+  color: #38bdf8;
+  text-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+}
+
+:global([data-theme="dark"]) .kpiCompletedVal,
+:global(.dark) .kpiCompletedVal {
+  color: #34d399;
+  text-shadow: 0 0 16px rgba(52, 211, 153, 0.4);
+}
+
+:global([data-theme="dark"]) .kpiOpenVal,
+:global(.dark) .kpiOpenVal {
+  color: #818cf8;
+  text-shadow: 0 0 16px rgba(129, 140, 248, 0.35);
+}
+
+:global([data-theme="dark"]) .kpiPendingVal,
+:global(.dark) .kpiPendingVal {
+  color: #fbbf24;
+  text-shadow: 0 0 16px rgba(251, 191, 36, 0.35);
+}
+
+:global([data-theme="dark"]) .detailCard,
+:global(.dark) .detailCard {
+  background: rgba(26, 37, 60, 0.6);
+  border-color: rgba(46, 61, 88, 0.8);
+}
+
+:global([data-theme="dark"]) .detailCard:first-child,
+:global(.dark) .detailCard:first-child {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(26, 37, 60, 0.6) 100%);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+:global([data-theme="dark"]) .detailCard:hover,
+:global(.dark) .detailCard:hover {
+  background: rgba(26, 37, 60, 0.95);
+  border-color: var(--ui-30-primary, #10b981);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+:global([data-theme="dark"]) .detailLabel,
+:global(.dark) .detailLabel {
+  color: #94a3b8;
+}
+
+:global([data-theme="dark"]) .detailValue,
+:global(.dark) .detailValue {
+  color: #f8fafc;
 }

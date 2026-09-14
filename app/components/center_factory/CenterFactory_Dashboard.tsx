@@ -29,6 +29,7 @@ import {
   ClipboardCheck,
   BarChart3,
   Folder,
+  ArrowRight,
 } from "../icons/LucideIcons";
 const calendarMonths = [
   { value: "all", label: "All year" },
@@ -411,7 +412,7 @@ export default function Dashboard({
     {
       badge: isThai ? "จัดการหลักสูตร" : "COURSE MANAGEMENT",
       step: "01",
-      icon: <BookOpen size={28} />,
+      icon: <BookOpen size={26} color="currentColor" strokeWidth={2.2} />,
       title: "Training Course",
       subTitle: "Training Course Management",
       description: isThai
@@ -426,7 +427,7 @@ export default function Dashboard({
     {
       badge: isThai ? "จัดการแผนอบรม" : "PLAN MANAGEMENT",
       step: "02",
-      icon: <CalendarDays size={28} />,
+      icon: <CalendarDays size={26} color="currentColor" strokeWidth={2.2} />,
       title: "Training Plan",
       subTitle: "Training Plan Management",
       description: isThai
@@ -441,7 +442,7 @@ export default function Dashboard({
     {
       badge: isThai ? "บันทึกผลอบรม" : "RECORD MANAGEMENT",
       step: "03",
-      icon: <ClipboardCheck size={28} />,
+      icon: <ClipboardCheck size={26} color="currentColor" strokeWidth={2.2} />,
       title: "Training Record",
       subTitle: "Training Record Management",
       description: isThai
@@ -456,7 +457,7 @@ export default function Dashboard({
     {
       badge: isThai ? "รายงาน" : "REPORT MANAGEMENT",
       step: "04",
-      icon: <BarChart3 size={28} />,
+      icon: <BarChart3 size={26} color="currentColor" strokeWidth={2.2} />,
       title: "Reports & Analytics",
       subTitle: "Reports & Analytics Management",
       description: isThai
@@ -471,7 +472,7 @@ export default function Dashboard({
     {
       badge: isThai ? "ข้อมูลหลัก" : "MASTER DATA",
       step: "05",
-      icon: <Folder size={28} />,
+      icon: <Folder size={26} color="currentColor" strokeWidth={2.2} />,
       title: "Master Data",
       subTitle: "Master Data Management",
       description: isThai
@@ -611,7 +612,14 @@ export default function Dashboard({
               </div>
 
               <div className={styles.cardFooterAction}>
-                <span className={styles.openBtn}>{isThai ? "เปิด" : "Open"}</span>
+                <span className={styles.moduleStatusHint}>
+                  <span className={styles.activeDot} aria-hidden="true" />
+                  {isThai ? "พร้อมใช้งาน" : "Active"}
+                </span>
+                <span className={styles.openBtn}>
+                  <span>{isThai ? "เข้าใช้งาน" : "Access"}</span>
+                  <ArrowRight size={13} className={styles.btnArrow} />
+                </span>
               </div>
             </button>
           ))}

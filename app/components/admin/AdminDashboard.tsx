@@ -33,6 +33,7 @@ import {
   type ActiveUserSession,
   type SystemStatsResponse,
 } from "../../lib/audit/client";
+import NewActivitiesReport from "../center_factory/ReportManagement/modules/NewActivitiesReport";
 import styles from "./AdminDashboard.module.css";
 import {
   Activity,
@@ -42,9 +43,11 @@ import {
   ClipboardList,
   Clock,
   Database,
+  Download,
   FileText,
   Lock,
   LogOut,
+  Megaphone,
   Menu,
   Moon,
   Pencil,
@@ -57,11 +60,12 @@ import {
   Sun,
   Trash2,
   TrendingUp,
+  Unlock,
   User,
   Users,
 } from "../icons/LucideIcons";
 
-type TabKey = "dashboard" | "users" | "audit";
+type TabKey = "dashboard" | "users" | "audit" | "announcements";
 
 const needsCompany = (roleCode: RoleCode) =>
   roleCode === "HRD_FACTORY" || roleCode === "EMPLOYEE";
@@ -160,6 +164,8 @@ export default function AdminDashboard({
           ? "/admin/user_accounts"
           : tab === "audit"
           ? "/admin/audit_logs"
+          : tab === "announcements"
+          ? "/admin/announcements"
           : "/admin";
       if (window.location.pathname !== targetUrl) {
         window.history.pushState(null, "", targetUrl);
@@ -178,6 +184,11 @@ export default function AdminDashboard({
         decodeURIComponent(path) === "/admin/audit logs"
       ) {
         setActiveTab("audit");
+      } else if (
+        path === "/admin/announcements" ||
+        path === "/admin/announcement"
+      ) {
+        setActiveTab("announcements");
       } else if (path === "/admin") {
         setActiveTab("dashboard");
       }
@@ -604,6 +615,57 @@ export default function AdminDashboard({
     }
   };
 
+  const handleQuickUnlock = async (account: UserAccountRecord) => {
+    setIsSubmitting(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await updateUserAccount(account.userId, { status: "ACTIVE" });
+      setMessage(`ปลดล็อกบัญชีผู้ใช้ "${account.username}" สำเร็จ (สถานะเป็น ACTIVE แล้ว)`);
+      await loadAccounts();
+    } catch (err) {
+      setError(err instanceof UserAccountClientError ? err.message : "เกิดข้อผิดพลาดในการปลดล็อกบัญชี");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleExportUsers = () => {
+    if (visibleAccounts.length === 0) {
+      setError("ไม่มีข้อมูลบัญชีผู้ใช้สำหรับส่งออก");
+      return;
+    }
+
+    const headers = ["User ID", "Username", "Role", "Company Code", "Company Name", "Email", "Status", "Created At"];
+    const rows = visibleAccounts.map((acc) => {
+      const comp = companies.find(
+        (c) => c.companyCode === acc.companyCode || c.companyId === acc.companyId
+      );
+      return [
+        acc.userId,
+        `"${acc.username.replace(/"/g, '""')}"`,
+        acc.roleCode,
+        acc.companyCode || "",
+        `"${(comp?.companyNameTh || "").replace(/"/g, '""')}"`,
+        acc.email || "",
+        acc.status,
+        new Date(acc.createdAt).toLocaleString("th-TH"),
+      ];
+    });
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `UserAccounts_Export_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setMessage(`ส่งออกรายชื่อผู้ใช้ ${visibleAccounts.length} บัญชีเป็นไฟล์ CSV สำเร็จ`);
+  };
+
   const handleOpenDelete = (account: UserAccountRecord) => {
     setDeleteAccount(account);
     setError(null);
@@ -841,7 +903,17 @@ export default function AdminDashboard({
               <span className={styles.navIcon}><FileText size={16} /></span>
               <span>Audit Logs</span>
             </Link>
-
+            <Link
+              href="/admin/announcements"
+              className={`${styles.navItem} ${activeTab === "announcements" ? styles.active : ""}`}
+              onClick={(e) => {
+                e.preventDefault();
+                switchTab("announcements");
+              }}
+            >
+              <span className={styles.navIcon}><Megaphone size={16} /></span>
+              <span>Announcements</span>
+            </Link>
           </div>
 
           <div className={styles.sidebarFooter}>
@@ -906,6 +978,15 @@ export default function AdminDashboard({
                   </div>
 
                   <div className={styles.actionButtonsGroup}>
+                    <button
+                      className={styles.exportBtn}
+                      type="button"
+                      onClick={handleExportUsers}
+                      title="ส่งออกรายชื่อผู้ใช้เป็นไฟล์ CSV"
+                    >
+                      <Download size={15} style={{ display: "inline", verticalAlign: "middle" }} />
+                      <span>ส่งออก (Export CSV)</span>
+                    </button>
                     <button
                       className={styles.btnPrimaryAction}
                       type="button"
@@ -1040,7 +1121,7 @@ export default function AdminDashboard({
                                             fontWeight: 400,
                                             color: "var(--ui-30-muted, #64748b)",
                                             display: "block",
-                                            marginTop: "1px",
+                                            marginTop: "2px",
                                           }}
                                         >
                                           {comp.companyNameTh}
@@ -1049,20 +1130,10 @@ export default function AdminDashboard({
                                     })()}
                                   </div>
                                 ) : (
-                                  "-"
+                                  <span style={{ color: "#94a3b8" }}>-</span>
                                 )}
                               </td>
-                              <td
-                                style={{
-                                  maxWidth: "200px",
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                }}
-                                title={acc.email || undefined}
-                              >
-                                {acc.email || "-"}
-                              </td>
+                              <td style={{ fontSize: "0.82rem" }}>{acc.email || "-"}</td>
                               <td>{renderStatusBadge(acc.status)}</td>
                               <td style={{ fontSize: "0.82rem", whiteSpace: "nowrap" }}>
                                 {new Date(acc.createdAt).toLocaleDateString("th-TH", {
@@ -1073,6 +1144,17 @@ export default function AdminDashboard({
                               </td>
                               <td>
                                 <div className={styles.actionsCell} style={{ justifyContent: "center" }}>
+                                  {acc.status === "LOCKED" ? (
+                                    <button
+                                      className={`${styles.actionIconBtn} ${styles.unlockBtn}`}
+                                      type="button"
+                                      title="ปลดล็อกบัญชีทันที (Unlock Account)"
+                                      onClick={() => void handleQuickUnlock(acc)}
+                                    >
+                                      <Unlock size={13} style={{ display: "inline", verticalAlign: "middle" }} />
+                                      ปลดล็อก
+                                    </button>
+                                  ) : null}
                                   <button
                                     className={`${styles.actionIconBtn} ${styles.editBtn}`}
                                     type="button"
@@ -1457,6 +1539,36 @@ export default function AdminDashboard({
                   </div>
                 </div>
               </article>
+            </section>
+          ) : activeTab === "announcements" ? (
+            /* ════════════════════ TAB: ANNOUNCEMENTS & NEWS ════════════════════ */
+            <section aria-label="Announcements and Activities Management">
+              <div className={styles.pageHeader}>
+                <div className={styles.headerTopRow}>
+                  <div>
+                    <h1 className={styles.pageTitle}>ระบบประกาศและกิจกรรม (Announcements)</h1>
+                    <nav className={styles.breadcrumb} aria-label="breadcrumb">
+                      <Link
+                        href="/admin"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          switchTab("dashboard");
+                        }}
+                      >
+                        Dashboard
+                      </Link>
+                      <span className={styles.breadcrumbSeparator}>›</span>
+                      <span>Interface</span>
+                      <span className={styles.breadcrumbSeparator}>›</span>
+                      <span className={styles.breadcrumbActive}>Announcements</span>
+                    </nav>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ marginTop: "12px" }}>
+                <NewActivitiesReport />
+              </div>
             </section>
           ) : (
             /* ════════════════════ TAB: DASHBOARD OVERVIEW ════════════════════ */
