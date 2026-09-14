@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { certificateFileUrl } from "../../lib/certificates/client";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
 import { scoreLabel } from "../../lib/trainingEnrollment/types";
@@ -206,14 +206,14 @@ export const resolveStageState = (stage: EnrollmentStageInfo): StageDisplayState
  * ever.
  */
 /** Short names for the waiting pill, where the full row titles would not fit. */
-const STAGE_LABELS_TH: Record<AssessmentFlowStep["key"], string> = {
+export const STAGE_LABELS_TH: Record<AssessmentFlowStep["key"], string> = {
   pre: "แบบทดสอบก่อนอบรม",
   post: "แบบทดสอบหลังอบรม",
   evaluation: "แบบประเมินผล",
   evaluation30: "แบบประเมินหลัง 30 วัน",
 };
 
-const STAGE_LABELS_EN: Record<AssessmentFlowStep["key"], string> = {
+export const STAGE_LABELS_EN: Record<AssessmentFlowStep["key"], string> = {
   pre: "Pre-test",
   post: "Post-test",
   evaluation: "Evaluation",
@@ -553,6 +553,27 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
       return next;
     });
 
+  // A dashboard notice or the navbar bell lands here with ?tab=&focus=<enrollmentId>&at=<click time>.
+  // Handled once per click, after the list has loaded: open the tab, clear filters that could hide
+  // the card, open the card, then scroll to it once it is on screen.
+  const searchParams = useSearchParams();
+  const focusId = searchParams.get("focus");
+  const focusTab = searchParams.get("tab");
+  const focusAt = searchParams.get("at");
+  const [handledFocusAt, setHandledFocusAt] = useState<string | null>(null);
+  if (focusId && focusAt && focusAt !== handledFocusAt && !isLoading) {
+    setHandledFocusAt(focusAt);
+    if (focusTab === "completed" || focusTab === "pending") setActiveTab(focusTab);
+    setQuery("");
+    setSelectedProvider("all");
+    setExpandedCardIds((current) => new Set(current).add(focusId));
+  }
+  useEffect(() => {
+    if (handledFocusAt && focusId) {
+      document.getElementById(`record-card-${focusId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [handledFocusAt, focusId]);
+
   const openTrainingForm = (target: FormRunnerTarget) =>
     router.push(`/training-form/${target.enrollmentId}/${target.stage}`);
 
@@ -854,7 +875,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
               const isExpanded = expandedCardIds.has(enrollment.id);
 
               return (
-                <div className={styles.recordCard} key={enrollment.id}>
+                <div className={styles.recordCard} key={enrollment.id} id={`record-card-${enrollment.id}`} data-focused={focusId === enrollment.id || undefined}>
                   {/* Top row matching Image 2 */}
                   <div className={styles.cardHeaderRow}>
                     <span
@@ -1051,7 +1072,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                       </span>
                     </h4>
                   ) : null}
-                <div className={styles.recordCard} key={record.id}>
+                <div className={styles.recordCard} key={record.id} id={`record-card-${record.id}`} data-focused={focusId === record.id || undefined}>
                   {/* Top Row matching Image 2 with Completed status dot */}
                   <div className={styles.cardHeaderRow}>
                     {/* The course's own status is unchanged - HRD marked it complete and it stays

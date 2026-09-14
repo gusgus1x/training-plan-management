@@ -3,9 +3,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";
 import { useUiLanguage, type UiLanguage } from "../ThaiUiLocalization";
-import { certificateFileUrl } from "../../lib/certificates/client";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
-import { followUpReminderAt } from "../../lib/trainingForms/availability";
 import {
   ACTIVE_ENROLLMENT_STATUSES,
   type EnrollmentRecord,
@@ -28,6 +26,7 @@ import {
 import CalendarModule from "./CalendarModule";
 import ActivitiesModule from "./ActivitiesModule";
 import RecordModule from "./RecordModule";
+import EmployeeNoticeCards from "./EmployeeNoticeCards";
 import RegisterTrainingModule from "./RegisterTrainingModule";
 import RequestTrainingModule from "./RequestTrainingModule";
 import RoadmapModule from "./RoadmapModule";
@@ -53,7 +52,6 @@ import {
   Lock,
   X,
   Check,
-  Award,
   FileEdit,
 } from "../icons/LucideIcons";
 
@@ -319,24 +317,7 @@ export const resolveCompany = (
   return rawName || rawCode || "-";
 };
 
-/** Enrollments whose 30-day follow-up evaluation is due for a reminder and still unanswered - the
- *  set the dashboard's reminder banner nags about. Fires from FOLLOW_UP_REMINDER_AFTER_DAYS, which
- *  is earlier than the form itself opens (FOLLOW_UP_OPENS_AFTER_DAYS), so employees see it coming.
- *  A pure function of the list the page already loads, so it is testable without rendering the
- *  whole dashboard. */
-export const pendingFollowUpEvaluationsOf = (enrollments: EnrollmentRecord[], now: Date = new Date()) =>
-  enrollments.filter(
-    (enrollment) =>
-      enrollment.plan.assessment.evaluationAfter30Day.mode === "FORM" &&
-      enrollment.plan.assessment.evaluationAfter30Day.submission === null &&
-      now.getTime() >= new Date(followUpReminderAt(enrollment.plan.endAt)).getTime(),
-  );
-
-/** Enrollments carrying an issued certificate. Pure for the same reason as the function above: the
- *  banner's contents are testable without rendering the dashboard. The repository has already
- *  filtered to CONFIRMED + ACTIVE, so anything present here is a certificate HRD signed off. */
-export const certificatesOf = (enrollments: EnrollmentRecord[]) =>
-  enrollments.filter((enrollment) => enrollment.certificate !== null);
+export { certificatesOf, pendingFollowUpEvaluationsOf } from "./employeeNotices";
 
 export default function UserDashboard({ username, onHome, onLogout }: UserDashboardProps) {
   const authenticatedUser = useAuthenticatedUser();
@@ -429,6 +410,15 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
     const requested = searchParams.get("module");
     return moduleCards.some((module) => module.key === requested) ? (requested as UserModule) : null;
   });
+  // A notice (dashboard card or navbar bell) pushes "/?module=record&...&at=<now>" while this page
+  // is already mounted, so the initial read above is not enough. `at` changes on every click.
+  const requestedModule = searchParams.get("module");
+  const requestedAt = searchParams.get("at");
+  const [handledAt, setHandledAt] = useState(requestedAt);
+  if (requestedAt !== handledAt) {
+    setHandledAt(requestedAt);
+    if (moduleCards.some((module) => module.key === requestedModule)) setActiveModule(requestedModule as UserModule);
+  }
   const [trainingNeed, setTrainingNeed] = useState("");
   const [reason, setReason] = useState("");
   const [requestCourseId, setRequestCourseId] = useState("");
@@ -553,12 +543,6 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
       )
       .sort((left, right) => left.plan.startAt.localeCompare(right.plan.startAt));
   }, [enrollments]);
-  // Everything this needs already rides on the same enrollments list (Phase 3.1) - no extra
-  // request just to know whether to nag someone about a survey.
-  const pendingFollowUpEvaluations = useMemo(() => pendingFollowUpEvaluationsOf(enrollments), [enrollments]);
-  const certificateEnrollments = useMemo(() => certificatesOf(enrollments), [enrollments]);
-  // One certificate open at a time; null means the large view is closed.
-  const [openCertificateId, setOpenCertificateId] = useState<string | null>(null);
   const employeeCalendarTrainings = useMemo<CalendarTraining[]>(
     () =>
       availableRollingPlans.map((plan) => ({
@@ -714,6 +698,8 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
         </>
       ) : (
         <>
+          <EmployeeNoticeCards enrollments={enrollments} />
+
           <div className={styles.workspaceBadge}>{t("พื้นที่ทำงานพนักงาน", "Employee Workspace")}</div>
 
           <section className={styles.heroPanel} aria-label="Employee dashboard overview">
@@ -799,119 +785,6 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
               <span className={styles.actionChevron} aria-hidden="true">›</span>
             </button>
           </div>
-
-          {pendingFollowUpEvaluations.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => setActiveModule("record")}
-              className={styles.followUpBanner}
-              aria-label="30-day follow-up evaluation reminder"
-            >
-              <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center" }}>
-                <ClipboardList size={18} />
-              </span>
-              <span style={{ fontSize: "0.84rem", fontWeight: 700 }}>
-                {isThai
-                  ? `มีแบบประเมินหลัง 30 วันรอทำ ${pendingFollowUpEvaluations.length} รายการ: ${pendingFollowUpEvaluations
-                      .map((e) => e.plan.courseName)
-                      .join(", ")} — กดเพื่อไปทำ`
-                  : `${pendingFollowUpEvaluations.length} 30-day follow-up evaluation${pendingFollowUpEvaluations.length > 1 ? "s" : ""} waiting: ${pendingFollowUpEvaluations
-                      .map((e) => e.plan.courseName)
-                      .join(", ")} — tap to complete`}
-              </span>
-            </button>
-          ) : null}
-
-          {/* Good news, so green rather than the reminder's amber. Each card previews the real PDF
-              scaled down - the browser renders it, no PDF library involved. */}
-          {certificateEnrollments.map((enrollment) => (
-            <button
-              key={enrollment.certificate!.certificateFileId}
-              type="button"
-              onClick={() => setOpenCertificateId(enrollment.certificate!.certificateFileId)}
-              className={styles.certificateBanner}
-              aria-label={t("ใบเกียรติบัตรที่ได้รับ", "Certificate received")}
-            >
-              <span className={styles.certificatePreviewThumb}>
-                <iframe
-                  src={certificateFileUrl(enrollment.certificate!.certificateFileId)}
-                  title={enrollment.plan.courseName}
-                  style={{
-                    width: "400%",
-                    height: "400%",
-                    border: 0,
-                    transform: "scale(0.25)",
-                    transformOrigin: "top left",
-                    // The wrapping button owns the click; the iframe must not swallow it.
-                    pointerEvents: "none",
-                  }}
-                />
-              </span>
-              <span style={{ fontSize: "0.86rem", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: "8px" }}>
-                <Award size={18} style={{ flexShrink: 0 }} />
-                <span>
-                  {t(
-                    `คุณได้รับใบเกียรติบัตรของคอร์สอบรม ${enrollment.plan.courseName} — กดเพื่อดูและบันทึก`,
-                    `You received a certificate for ${enrollment.plan.courseName} — tap to view and save`,
-                  )}
-                </span>
-              </span>
-            </button>
-          ))}
-
-          {openCertificateId ? (
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-label={t("ใบเกียรติบัตร", "Certificate")}
-              onClick={() => setOpenCertificateId(null)}
-              style={{
-                position: "fixed",
-                inset: 0,
-                zIndex: 60,
-                background: "rgba(15, 23, 42, 0.75)",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "12px",
-                padding: "16px",
-              }}
-            >
-              <div
-                onClick={(event) => event.stopPropagation()}
-                style={{ display: "flex", gap: "8px", alignSelf: "flex-end" }}
-              >
-                <a
-                  href={certificateFileUrl(openCertificateId, { download: true })}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: "999px",
-                    background: "#16a34a",
-                    color: "#ffffff",
-                    fontWeight: 800,
-                    fontSize: "0.82rem",
-                    textDecoration: "none",
-                  }}
-                >
-                  {t("บันทึกไฟล์", "Download")}
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setOpenCertificateId(null)}
-                  className={styles.certificateCloseBtn}
-                >
-                  {t("ปิด", "Close")} <X size={14} />
-                </button>
-              </div>
-              <iframe
-                src={certificateFileUrl(openCertificateId)}
-                title={t("ใบเกียรติบัตร", "Certificate")}
-                onClick={(event) => event.stopPropagation()}
-                style={{ width: "min(960px, 100%)", height: "85vh", border: 0, borderRadius: "12px", background: "#fff" }}
-              />
-            </div>
-          ) : null}
 
           {/* 1. Profile - Full-width Row */}
           <section className={styles.employeePanel} aria-label="My employee information">

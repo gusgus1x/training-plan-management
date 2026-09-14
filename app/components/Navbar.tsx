@@ -8,6 +8,7 @@ import { profileValue, useAuthenticatedUser } from "./AuthenticatedUserContext";
 import { useUiLanguage } from "./ThaiUiLocalization";
 import styles from "./Navbar.module.css";
 import { Lock } from "./icons/LucideIcons";
+import NotificationBell from "./employee/NotificationBell";
 
 type NavbarProps = {
   username?: string;
@@ -268,6 +269,8 @@ export default function Navbar({
                 </div>
               </div>
             ) : null}
+
+            {user?.roleCode === "EMPLOYEE" ? <NotificationBell /> : null}
 
             <button
               className={styles.collapseButton}

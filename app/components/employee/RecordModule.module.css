@@ -206,6 +206,13 @@
   transition: all 0.18s ease;
 }
 
+/* The card a notice brought the employee to. */
+.recordCard[data-focused] {
+  scroll-margin-top: 140px;
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px var(--ui-30-primary-soft), var(--ui-shadow-sm);
+}
+
 .recordCard:hover {
   border-color: var(--ui-30-primary-border);
   box-shadow: var(--ui-card-shadow-hover);
