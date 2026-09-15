@@ -85,3 +85,8 @@ result-funtion
 
 .codex/
 .gemini/
+
+# Real Microsoft Forms export used only to check the evaluation converter - holds respondent data
+/Way of working customer focus in agile context(1-28).xlsx
+/1. Evaluation Form.xlsx
+/Evaluation Way of working custommer focus in agile context.xlsx

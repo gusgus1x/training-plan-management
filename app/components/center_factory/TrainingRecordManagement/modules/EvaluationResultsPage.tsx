@@ -68,7 +68,7 @@ const scaleColourAt = (index: number, count: number) => {
  * A dash when there is nothing to average: the replies taken before the system recorded an opening
  * time cannot say how long they took, and a zero there would read as "answered instantly".
  */
-const formatAnswerTime = (seconds: number | null, t: (th: string, en: string) => string) => {
+export const formatAnswerTime = (seconds: number | null, t: (th: string, en: string) => string) => {
   if (seconds === null) return "-";
   if (seconds < 60) return `${seconds} ${t("วินาที", "sec")}`;
   const minutes = Math.round(seconds / 60);
@@ -198,7 +198,7 @@ const Stars = ({ average }: { average: number }) => {
   );
 };
 
-const ChoiceChart = ({ question }: { question: EvaluationSummaryQuestion }) => (
+export const ChoiceChart = ({ question }: { question: EvaluationSummaryQuestion }) => (
   <div className={styles.chartSplit}>
     <ul className={styles.legend}>
       {question.options.map((option, index) => (
@@ -213,7 +213,7 @@ const ChoiceChart = ({ question }: { question: EvaluationSummaryQuestion }) => (
   </div>
 );
 
-const RatingChart = ({ question, isThai }: { question: EvaluationSummaryQuestion; isThai: boolean }) => (
+export const RatingChart = ({ question, isThai }: { question: EvaluationSummaryQuestion; isThai: boolean }) => (
   <div className={styles.chartSplit}>
     <div className={styles.average}>
       <strong>{(question.averageRating ?? 0).toFixed(2)}</strong>
@@ -339,7 +339,7 @@ const GridChart = ({ question }: { question: EvaluationSummaryQuestion }) => {
 };
 
 /** The first few written answers, with the rest behind "รายละเอียดเพิ่มเติม". */
-const TextAnswers = ({
+export const TextAnswers = ({
   question,
   onOpen,
   isThai,

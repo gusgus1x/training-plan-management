@@ -174,3 +174,80 @@ export const readXlsxEntry = (workbook: Buffer, entryName: string) => {
   if (!entry) throw new Error(`Excel entry ${entryName} was not found.`);
   return entry.data;
 };
+
+// --- Worksheet cell helpers, shared by the report builders ----------------------------------
+
+export const columnLetter = (index: number) => {
+  let letters = "";
+  for (let value = index; value > 0; value = Math.floor((value - 1) / 26)) {
+    letters = String.fromCharCode(65 + ((value - 1) % 26)) + letters;
+  }
+  return letters;
+};
+
+export const cellXml = (reference: string, style: string | undefined, value: string | number | null) => {
+  const attrs = `r="${reference}"${style ? ` s="${style}"` : ""}`;
+  if (value === null || value === "") return `<c ${attrs}/>`;
+  if (typeof value === "number") return `<c ${attrs}><v>${value}</v></c>`;
+  return `<c ${attrs} t="inlineStr"><is><t xml:space="preserve">${escapeXlsxXml(value)}</t></is></c>`;
+};
+
+/**
+ * One element, whether the template wrote it self-closing or with a body.
+ *
+ * The quantifier before the alternation is lazy on purpose. Greedy, it runs past the `/` of an
+ * empty element, fails to match `/>`, and settles for the second branch instead - swallowing every
+ * element up to the next closing tag, which is a whole row of somebody else's cells.
+ */
+export const elementPattern = (tag: string, reference: string) =>
+  new RegExp(`<${tag}\\b[^>]*?\\br="${reference}"[^>]*?(?:\\/>|>[\\s\\S]*?<\\/${tag}>)`);
+
+const cellPattern = (reference: string) => elementPattern("c", reference);
+
+const styleOf = (worksheet: string, reference: string) =>
+  cellPattern(reference).exec(worksheet)?.[0].match(/\bs="([^"]+)"/)?.[1];
+
+/** Writes a cell, whether or not the template drew one there, keeping any formatting it had. */
+export const setCell = (
+  worksheet: string,
+  reference: string,
+  value: string | number | null,
+  fallbackStyle?: string,
+) => {
+  const existing = cellPattern(reference).exec(worksheet);
+  const cell = cellXml(reference, styleOf(worksheet, reference) ?? fallbackStyle, value);
+  if (existing) return worksheet.replace(existing[0], cell);
+  if (value === null || value === "") return worksheet;
+
+  const row = Number(/\d+/.exec(reference)![0]);
+  const rowMatch = elementPattern("row", String(row)).exec(worksheet);
+  if (rowMatch) {
+    // An empty row is written self-closing and has to be opened up before a cell can go in it.
+    if (rowMatch[0].endsWith("/>")) return worksheet.replace(rowMatch[0], `${rowMatch[0].slice(0, -2)}>${cell}</row>`);
+    // Cells, like rows, have to stay in column order: appending an A cell after an AT cell is a
+    // file Excel refuses to open.
+    const columnOf = (letters: string) => [...letters].reduce((total, letter) => total * 26 + letter.charCodeAt(0) - 64, 0);
+    const target = columnOf(/^[A-Z]+/.exec(reference)![0]);
+    const later = [...rowMatch[0].matchAll(/<c\b[^>]*?\br="([A-Z]+)\d+"[^>]*?(?:\/>|>[\s\S]*?<\/c>)/g)].find(
+      (candidate) => columnOf(candidate[1]) > target,
+    );
+    const opened = later ? rowMatch[0].replace(later[0], `${cell}${later[0]}`) : rowMatch[0].replace("</row>", `${cell}</row>`);
+    return worksheet.replace(rowMatch[0], opened);
+  }
+
+  // Rows have to stay in ascending order or Excel calls the file corrupt.
+  const rows = [...worksheet.matchAll(/<row\b[^>]*?\br="(\d+)"[^>]*?(?:\/>|>[\s\S]*?<\/row>)/g)];
+  const next = rows.find((candidate) => Number(candidate[1]) > row);
+  const newRow = `<row r="${row}">${cell}</row>`;
+  return next
+    ? worksheet.replace(next[0], `${newRow}${next[0]}`)
+    : worksheet.replace("</sheetData>", `${newRow}</sheetData>`);
+};
+
+export const replaceRowsFrom = (worksheet: string, firstRow: number, rows: string) => {
+  const start = worksheet.search(new RegExp(`<row\\b[^>]*\\br="${firstRow}"`));
+  const end = worksheet.indexOf("</sheetData>");
+  return start === -1
+    ? worksheet.slice(0, end) + rows + worksheet.slice(end)
+    : worksheet.slice(0, start) + rows + worksheet.slice(end);
+};

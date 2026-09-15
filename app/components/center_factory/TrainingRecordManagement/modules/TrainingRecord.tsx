@@ -2124,6 +2124,29 @@ export default function TrainingRecord() {
         </article>
       </section>
 
+      {/* Always shown: the converter works on any response file, linked to a course or not. Its own
+          tab, for the same reason as the evaluation results page - this workspace keeps its state
+          in memory. */}
+      <a
+        className={styles.converterCard}
+        href="/training-record/evaluation-converter"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <span className={styles.converterIcon} aria-hidden="true">
+          <BarChart3 size={22} />
+        </span>
+        <span className={styles.converterCopy}>
+          <strong>{language === "th" ? "แปลงผลแบบประเมินเป็นกราฟ" : "Turn evaluation results into charts"}</strong>
+          <small>
+            {language === "th"
+              ? "นำไฟล์ Excel จาก Google Form หรือ Microsoft Form มาสร้างเป็นไฟล์ Excel แบบกราฟให้อัตโนมัติได้ที่นี่"
+              : "Bring an Excel file from Google Forms or Microsoft Forms and get a chart workbook built automatically"}
+          </small>
+        </span>
+        <span className={styles.converterArrow} aria-hidden="true">›</span>
+      </a>
+
       {/* Primary Section: Completed Course Records by Owner */}
       <section className={styles.recordOwnerOverview} aria-label="Completed course records by owner">
         <div className={styles.panelHeader}>

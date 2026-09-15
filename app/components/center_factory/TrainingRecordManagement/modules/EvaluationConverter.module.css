@@ -1,0 +1,303 @@
+/* The converter borrows the results page's shell, tiles and charts; only what that page has no
+   counterpart for lives here. */
+
+/* The results page scrolls its question list alone. Here the steps above the charts grow with the
+   file, so the whole left panel scrolls instead. */
+.scrollMain {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.step {
+  display: grid;
+  gap: 10px;
+  padding: 16px 0;
+  border-top: 1px solid var(--ui-30-border);
+}
+
+.step:first-of-type {
+  margin-top: 14px;
+}
+
+.step h2 {
+  margin: 0;
+  color: var(--ui-30-ink);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.dropZone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  border: 2px dashed var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-text);
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.dropZone:hover {
+  border-color: var(--ui-30-primary);
+  background: var(--ui-30-primary-soft);
+}
+
+.dropZone[data-busy] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.dropZone input {
+  display: none;
+}
+
+.error {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-status-danger-border, rgba(220, 38, 38, 0.35));
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-status-danger-bg, rgba(220, 38, 38, 0.08));
+  color: var(--ui-status-danger-text, #b91c1c);
+  font-weight: 700;
+}
+
+.columnTableWrap {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-sm);
+}
+
+.columnTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.columnTable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 12px;
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-muted);
+  text-align: left;
+  font-weight: 800;
+}
+
+.columnTable td {
+  padding: 6px 12px;
+  border-top: 1px solid var(--ui-30-border);
+  color: var(--ui-30-text);
+  vertical-align: middle;
+}
+
+.columnTable tr[data-question] td:first-child {
+  color: var(--ui-30-ink);
+  font-weight: 700;
+}
+
+/* Column tracks, not width - globals.css forces width:100% on controls. */
+.columnTable td:last-child {
+  width: 260px;
+}
+
+.columnTable select {
+  padding: 6px 8px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font: inherit;
+}
+
+.questionStack {
+  display: grid;
+  gap: 14px;
+}
+
+.headerFields {
+  display: grid;
+  gap: 10px;
+}
+
+.headerFields label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--ui-30-muted);
+  font-weight: 700;
+}
+
+.headerFields input {
+  padding: 8px 10px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font: inherit;
+}
+
+.dateRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* ---- Mode switch ---- */
+
+.modeSwitch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.modeSwitch button {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 2px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.modeSwitch button[aria-checked="true"] {
+  border-color: var(--ui-30-primary);
+  background: var(--ui-30-primary-soft);
+}
+
+.modeSwitch strong {
+  color: var(--ui-30-ink);
+  font-size: 0.95rem;
+}
+
+.modeSwitch span {
+  color: var(--ui-30-muted);
+  font-size: 0.8rem;
+}
+
+/* ---- Sections ---- */
+
+.muted {
+  color: var(--ui-30-muted);
+}
+
+.columnTable select[data-missing] {
+  border-color: var(--ui-status-pending-border, #f59e0b);
+}
+
+.sectionList {
+  display: grid;
+  gap: 8px;
+}
+
+.sectionRow {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.sectionNumber {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary-strong);
+  font-weight: 800;
+}
+
+.sectionRow input {
+  padding: 8px 10px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font: inherit;
+}
+
+.sectionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-30-primary-strong);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.warning {
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--ui-status-pending-border, rgba(245, 158, 11, 0.35));
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-status-pending-bg, rgba(245, 158, 11, 0.12));
+  color: var(--ui-status-pending-text, #92400e);
+  font-weight: 700;
+}
+
+.sectionTitle {
+  color: var(--ui-30-primary-strong);
+}
+
+.averageBars {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.averageRow {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) 48px;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.84rem;
+}
+
+.averageLabel {
+  color: var(--ui-30-text);
+}
+
+.averageTrack {
+  height: 18px;
+  border-radius: 4px;
+  background: var(--ui-60-surface-soft);
+  overflow: hidden;
+}
+
+.averageFill {
+  display: block;
+  height: 100%;
+}
+
+.commentBlock {
+  margin-top: 12px;
+}
+
+.commentQuestion {
+  margin: 0 0 4px;
+  color: var(--ui-30-ink);
+  font-weight: 700;
+}
+
+.commentAnswer {
+  margin: 0 0 2px;
+  color: var(--ui-30-text);
+  font-size: 0.84rem;
+}

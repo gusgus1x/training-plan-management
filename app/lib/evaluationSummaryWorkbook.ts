@@ -1,4 +1,13 @@
-import { escapeXlsxXml, readXlsxEntries, writeXlsxEntries, type XlsxEntry } from "./xlsxTemplate";
+import {
+  cellXml,
+  columnLetter,
+  escapeXlsxXml,
+  readXlsxEntries,
+  replaceRowsFrom,
+  setCell,
+  writeXlsxEntries,
+  type XlsxEntry,
+} from "./xlsxTemplate";
 import type {
   EvaluationResponse,
   EvaluationResponseList,
@@ -76,75 +85,6 @@ const ANONYMOUS = "anonymous";
 
 /** Ratings are answered on a fixed 1-5 scale, so a value nobody picked is still a bar at zero. */
 const RATING_VALUES = [1, 2, 3, 4, 5];
-
-const columnLetter = (index: number) => {
-  let letters = "";
-  for (let value = index; value > 0; value = Math.floor((value - 1) / 26)) {
-    letters = String.fromCharCode(65 + ((value - 1) % 26)) + letters;
-  }
-  return letters;
-};
-
-const cellXml = (reference: string, style: string | undefined, value: string | number | null) => {
-  const attrs = `r="${reference}"${style ? ` s="${style}"` : ""}`;
-  if (value === null || value === "") return `<c ${attrs}/>`;
-  if (typeof value === "number") return `<c ${attrs}><v>${value}</v></c>`;
-  return `<c ${attrs} t="inlineStr"><is><t xml:space="preserve">${escapeXlsxXml(value)}</t></is></c>`;
-};
-
-/**
- * One element, whether the template wrote it self-closing or with a body.
- *
- * The quantifier before the alternation is lazy on purpose. Greedy, it runs past the `/` of an
- * empty element, fails to match `/>`, and settles for the second branch instead - swallowing every
- * element up to the next closing tag, which is a whole row of somebody else's cells.
- */
-const elementPattern = (tag: string, reference: string) =>
-  new RegExp(`<${tag}\\b[^>]*?\\br="${reference}"[^>]*?(?:\\/>|>[\\s\\S]*?<\\/${tag}>)`);
-
-const cellPattern = (reference: string) => elementPattern("c", reference);
-
-const styleOf = (worksheet: string, reference: string) =>
-  cellPattern(reference).exec(worksheet)?.[0].match(/\bs="([^"]+)"/)?.[1];
-
-/** Writes a cell, whether or not the template drew one there, keeping any formatting it had. */
-const setCell = (
-  worksheet: string,
-  reference: string,
-  value: string | number | null,
-  fallbackStyle?: string,
-) => {
-  const existing = cellPattern(reference).exec(worksheet);
-  const cell = cellXml(reference, styleOf(worksheet, reference) ?? fallbackStyle, value);
-  if (existing) return worksheet.replace(existing[0], cell);
-  if (value === null || value === "") return worksheet;
-
-  const row = Number(/\d+/.exec(reference)![0]);
-  const rowMatch = elementPattern("row", String(row)).exec(worksheet);
-  if (rowMatch) {
-    // An empty row is written self-closing and has to be opened up before a cell can go in it.
-    const opened = rowMatch[0].endsWith("/>")
-      ? `${rowMatch[0].slice(0, -2)}>${cell}</row>`
-      : rowMatch[0].replace("</row>", `${cell}</row>`);
-    return worksheet.replace(rowMatch[0], opened);
-  }
-
-  // Rows have to stay in ascending order or Excel calls the file corrupt.
-  const rows = [...worksheet.matchAll(/<row\b[^>]*?\br="(\d+)"[^>]*?(?:\/>|>[\s\S]*?<\/row>)/g)];
-  const next = rows.find((candidate) => Number(candidate[1]) > row);
-  const newRow = `<row r="${row}">${cell}</row>`;
-  return next
-    ? worksheet.replace(next[0], `${newRow}${next[0]}`)
-    : worksheet.replace("</sheetData>", `${newRow}</sheetData>`);
-};
-
-const replaceRowsFrom = (worksheet: string, firstRow: number, rows: string) => {
-  const start = worksheet.search(new RegExp(`<row\\b[^>]*\\br="${firstRow}"`));
-  const end = worksheet.indexOf("</sheetData>");
-  return start === -1
-    ? worksheet.slice(0, end) + rows + worksheet.slice(end)
-    : worksheet.slice(0, start) + rows + worksheet.slice(end);
-};
 
 // --- What the form asks, flattened into columns ------------------------------------------------
 
@@ -296,6 +236,9 @@ const chartXml = (template: string, block: ChartBlock, labels: string, values: s
         "</c:ser>",
       )
       .replace(/<c:val><c:numRef>[\s\S]*?<\/c:numRef><\/c:val>/, series)
+      // The template's bar chart pins its value axis at 0-5, drawn for an average score. The bars
+      // written here are percentages, so anything over 5% ran straight through the plot area.
+      .replace(/<c:max val="5"\/>/, '<c:max val="100"/>')
       .replace(/(<c:title>[\s\S]*?)<a:t>[\s\S]*?<\/a:t>/, `$1<a:t>${escapeXlsxXml(block.title)}</a:t>`)
   );
 };
@@ -578,7 +521,12 @@ export const buildEvaluationSummaryWorkbook = (
     let worksheet = xml;
     worksheet = setCell(worksheet, "C2", summary.course.courseName);
     worksheet = setCell(worksheet, "H5", summary.course.courseName);
-    worksheet = setCell(worksheet, "H6", thaiDateRange(summary.course.startAt, summary.course.endAt));
+    // A report converted from an uploaded file may not be tied to any course, and so have no dates.
+    worksheet = setCell(
+      worksheet,
+      "H6",
+      summary.course.startAt ? thaiDateRange(summary.course.startAt, summary.course.endAt || summary.course.startAt) : "-",
+    );
     worksheet = setCell(worksheet, "H7", summary.course.venue ?? "-");
     worksheet = setCell(worksheet, "H8", summary.course.instructor ?? "-");
     worksheet = setCell(worksheet, "B6", summary.submittedCount);
