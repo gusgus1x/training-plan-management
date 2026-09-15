@@ -10,7 +10,7 @@ import type {
 } from "../../../../lib/trainingRecord/types";
 import { useToast } from "../../../ToastHost";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
-import { Check, X, Lock } from "../../../icons/LucideIcons";
+import { Check, X, Lock, Search } from "../../../icons/LucideIcons";
 import styles from "./ReviewerAssignmentPanel.module.css";
 
 /** Two characters, matching parseReviewerSearch on the server. Searching for less is refused
@@ -99,7 +99,15 @@ export default function ReviewerAssignmentPanel({ planId, attendees, evaluation,
   // enrollmentId -> the supervisor picked but not yet saved. null is an explicit "remove", which is
   // why this is a Map with a nullable value rather than an object of ids.
   const [draft, setDraft] = useState<Map<string, ReviewerCandidate | null>>(new Map());
-  const [search, setSearch] = useState("");
+
+  // Searchable Section Head combobox state
+  const [isHeadDropdownOpen, setIsHeadDropdownOpen] = useState(false);
+  const [headQuery, setHeadQuery] = useState("");
+  const headComboboxRef = useRef<HTMLDivElement>(null);
+
+  // Search attendees within this course roster
+  const [attendeeSearch, setAttendeeSearch] = useState("");
+
   const [candidates, setCandidates] = useState<ReviewerCandidate[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState("");
@@ -121,7 +129,41 @@ export default function ReviewerAssignmentPanel({ planId, attendees, evaluation,
   const inCompany = (candidate: ReviewerCandidate) =>
     companyFilter === "" || candidate.company === companyFilter;
   const visibleHeads = sectionHeads.filter(inCompany);
+
+  const filteredSectionHeads = useMemo(() => {
+    const q = headQuery.trim().toLowerCase();
+    if (!q) return visibleHeads;
+    return visibleHeads.filter((head) => {
+      const name = head.name.toLowerCase();
+      const code = (head.employeeCode || "").toLowerCase();
+      const pos = (head.position || "").toLowerCase();
+      const org = orgUnitLine(head).toLowerCase();
+      const comp = (head.company || "").toLowerCase();
+      return (
+        name.includes(q) ||
+        code.includes(q) ||
+        pos.includes(q) ||
+        org.includes(q) ||
+        comp.includes(q)
+      );
+    });
+  }, [visibleHeads, headQuery]);
+
   const visibleCandidates = candidates.filter(inCompany);
+
+  // Close head combobox on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        headComboboxRef.current &&
+        !headComboboxRef.current.contains(event.target as Node)
+      ) {
+        setIsHeadDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     searchReviewerCandidates(planId, "")
@@ -131,9 +173,7 @@ export default function ReviewerAssignmentPanel({ planId, attendees, evaluation,
   }, [planId]);
 
   useEffect(() => {
-    const term = search.trim();
-    // Each keystroke invalidates the one before it: without the token, a slow early request can
-    // land after a later one and repopulate the list with results for text nobody typed.
+    const term = headQuery.trim();
     const token = ++requestRef.current;
     const timer = setTimeout(() => {
       if (term.length < SEARCH_MIN_LENGTH) {
@@ -146,7 +186,8 @@ export default function ReviewerAssignmentPanel({ planId, attendees, evaluation,
       searchReviewerCandidates(planId, term)
         .then((result) => {
           if (token !== requestRef.current) return;
-          setCandidates(result.candidates);
+          const headIds = new Set(sectionHeads.map((h) => h.reviewerUserId));
+          setCandidates(result.candidates.filter((c) => !headIds.has(c.reviewerUserId)));
           setSearchError("");
         })
         .catch((error: Error) => {
@@ -159,7 +200,7 @@ export default function ReviewerAssignmentPanel({ planId, attendees, evaluation,
         });
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [search, planId]);
+  }, [headQuery, planId, sectionHeads]);
 
   /** Department and section as one line, in the screen's language, falling back to the other when a
    *  name exists in only one. An empty part is left out rather than shown as a dangling separator. */
@@ -175,6 +216,17 @@ export default function ReviewerAssignmentPanel({ planId, attendees, evaluation,
 
   const pendingCount = useMemo(() => draft.size, [draft]);
   const held = tray.find((candidate) => candidate.reviewerUserId === heldUserId) ?? null;
+
+  const filteredAttendees = useMemo(() => {
+    const q = attendeeSearch.trim().toLowerCase();
+    if (!q) return attendees;
+    return attendees.filter((attendee) => {
+      const name = attendee.name.toLowerCase();
+      const code = (attendee.employeeCode || "").toLowerCase();
+      const unit = orgUnitOf(attendee).toLowerCase();
+      return name.includes(q) || code.includes(q) || unit.includes(q);
+    });
+  }, [attendees, attendeeSearch, language]);
 
   const countFor = (reviewerUserId: string) =>
     attendees.filter((attendee) => reviewerOf(attendee)?.reviewerUserId === reviewerUserId).length;
@@ -204,7 +256,7 @@ export default function ReviewerAssignmentPanel({ planId, attendees, evaluation,
       current.some((entry) => entry.reviewerUserId === candidate.reviewerUserId) ? current : [...current, candidate],
     );
     setHeldUserId(candidate.reviewerUserId);
-    setSearch("");
+    setHeadQuery("");
     setCandidates([]);
   };
 
@@ -248,36 +300,45 @@ export default function ReviewerAssignmentPanel({ planId, attendees, evaluation,
       return;
     }
     if (!held) {
-      toast.warning(t("เลือกหัวหน้าจากด้านบนก่อน", "Pick a supervisor above first"));
+      toast.warning(t("เลือกหัวหน้าจากด้านบนก่อน", "Hold a supervisor first"));
       return;
     }
-    const current = reviewerOf(attendee);
-    setReviewer(attendee.enrollmentId, current?.reviewerUserId === held.reviewerUserId ? null : held);
+    const currentReviewer = reviewerOf(attendee);
+    const isMine = currentReviewer?.reviewerUserId === held.reviewerUserId;
+    setReviewer(attendee.enrollmentId, isMine ? null : held);
   };
 
   const assignHeldToUnassigned = () => {
     if (!held) return;
-    for (const attendee of attendees) {
-      if (!isLocked(attendee) && reviewerOf(attendee) === null) setReviewer(attendee.enrollmentId, held);
-    }
+    setDraft((current) => {
+      const next = new Map(current);
+      for (const attendee of attendees) {
+        if (isEditable(attendee) && reviewerOf(attendee) === null) {
+          next.set(attendee.enrollmentId, held);
+        }
+      }
+      return next;
+    });
   };
 
-  const save = () => {
+  const save = async () => {
+    if (pendingCount === 0 || isSaving) return;
     setIsSaving(true);
-    saveTrainingReviewers(planId, {
-      assignments: [...draft.entries()].map(([enrollmentId, candidate]) => ({
+    try {
+      const assignments = Array.from(draft.entries()).map(([enrollmentId, candidate]) => ({
         enrollmentId,
-        reviewerUserId: candidate?.reviewerUserId ?? null,
-      })),
-    })
-      .then((result) => {
-        setDraft(new Map());
-        setUnlocked(new Set());
-        onSaved(result.trainingRecord);
-        toast.success(t("บันทึกหัวหน้าผู้ประเมินแล้ว", "Reviewers saved"));
-      })
-      .catch((error: Error) => toast.error(error.message))
-      .finally(() => setIsSaving(false));
+        reviewerUserId: candidate ? candidate.reviewerUserId : null,
+      }));
+      const result = await saveTrainingReviewers(planId, { assignments });
+      toast.success(t("บันทึกการมอบหมายผู้ประเมินเรียบร้อยแล้ว", "Reviewer assignments saved"));
+      setDraft(new Map());
+      setUnlocked(new Set());
+      onSaved(result.trainingRecord);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t("บันทึกไม่สำเร็จ", "Could not save assignments"));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (evaluation.mode === "NONE") {
@@ -310,10 +371,17 @@ export default function ReviewerAssignmentPanel({ planId, attendees, evaluation,
             )}
           </p>
         </div>
-        <button type="button" className={styles.saveButton} disabled={pendingCount === 0 || isSaving} onClick={save}>
+        <button
+          type="button"
+          className={styles.saveButton}
+          disabled={pendingCount === 0 || isSaving}
+          onClick={save}
+        >
           {isSaving
             ? t("กำลังบันทึก...", "Saving...")
-            : t(`บันทึก (${pendingCount} รายการ)`, `Save (${pendingCount})`)}
+            : pendingCount > 0
+              ? t(`บันทึกการมอบหมาย (${pendingCount})`, `Save assignments (${pendingCount})`)
+              : t("บันทึกการมอบหมาย", "Save assignments")}
         </button>
       </div>
 
@@ -341,60 +409,156 @@ export default function ReviewerAssignmentPanel({ planId, attendees, evaluation,
             </option>
           ))}
         </select>
-        {/* The dropdown carries everyone whose position says section head. The box beside it
-            searches wider - by level and by manager-and-above titles - for a head the position
-            records do not name as one. */}
-        <select
-          className={styles.headSelect}
-          value=""
-          onChange={(event) => {
-            const picked = sectionHeads.find((head) => head.reviewerUserId === event.target.value);
-            if (picked) addToTray(picked);
-          }}
-        >
-          <option value="">
-            {visibleHeads.length === 0
-              ? t("ไม่พบหัวหน้าแผนกในระบบ", "No section heads on file")
-              : t(`เลือกหัวหน้าแผนก (${visibleHeads.length} คน)`, `Pick a section head (${visibleHeads.length})`)}
-          </option>
-          {visibleHeads.map((head) => (
-            <option key={head.reviewerUserId} value={head.reviewerUserId}>
-              {[head.company, head.name, head.position, orgUnitLine(head)].filter(Boolean).join(" · ")}
-            </option>
-          ))}
-        </select>
-        <input
-          type="search"
-          className={styles.searchInput}
-          value={search}
-          placeholder={t("หรือค้นหาด้วยชื่อ / รหัสพนักงาน", "Or search by name or employee code")}
-          onChange={(event) => setSearch(event.target.value)}
-        />
+
+        {/* Searchable Combobox for Section Heads */}
+        <div className={styles.comboboxWrapper} ref={headComboboxRef}>
+          <div
+            className={styles.comboboxTrigger}
+            onClick={() => setIsHeadDropdownOpen(true)}
+          >
+            <Search size={14} className={styles.comboboxSearchIcon} />
+            <input
+              type="text"
+              className={styles.comboboxInput}
+              value={headQuery}
+              placeholder={
+                visibleHeads.length === 0
+                  ? t("ไม่พบหัวหน้าแผนกในระบบ", "No section heads on file")
+                  : t(`เลือก/ค้นหาหัวหน้าแผนก (${visibleHeads.length} คน)...`, `Pick a section head (${visibleHeads.length})...`)
+              }
+              onFocus={() => setIsHeadDropdownOpen(true)}
+              onChange={(e) => {
+                setHeadQuery(e.target.value);
+                setIsHeadDropdownOpen(true);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setIsHeadDropdownOpen(false);
+              }}
+            />
+            <div className={styles.comboboxActions}>
+              {headQuery ? (
+                <button
+                  type="button"
+                  className={styles.comboboxClearBtn}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setHeadQuery("");
+                  }}
+                  title={t("ล้างการค้นหา", "Clear search")}
+                >
+                  <X size={13} />
+                </button>
+              ) : null}
+              <span className={styles.comboboxArrow} aria-hidden>▾</span>
+            </div>
+          </div>
+
+          {isHeadDropdownOpen ? (
+            <div className={styles.comboboxDropdown}>
+              {filteredSectionHeads.length > 0 ? (
+                <>
+                  <div className={styles.comboboxGroupHeader}>
+                    {t(`หัวหน้าแผนก (${filteredSectionHeads.length})`, `Section Heads (${filteredSectionHeads.length})`)}
+                  </div>
+                  {filteredSectionHeads.map((head) => (
+                    <button
+                      key={head.reviewerUserId}
+                      type="button"
+                      className={styles.comboboxOption}
+                      onClick={() => {
+                        addToTray(head);
+                        setIsHeadDropdownOpen(false);
+                      }}
+                    >
+                      <div className={styles.comboboxOptionTitle}>
+                        <strong>{head.name}</strong>
+                        {head.company ? (
+                          <span className={styles.optionCompanyTag}>{head.company}</span>
+                        ) : null}
+                        {head.employeeCode ? (
+                          <span className={styles.optionCodeTag}>{head.employeeCode}</span>
+                        ) : null}
+                      </div>
+                      <span className={styles.comboboxOptionSub}>
+                        {[head.position, orgUnitLine(head)].filter(Boolean).join(" · ")}
+                      </span>
+                    </button>
+                  ))}
+                </>
+              ) : (
+                <div className={styles.comboboxEmpty}>
+                  {t("ไม่พบหัวหน้าแผนกที่ตรงกับคำค้นหา", "No section heads match")}
+                </div>
+              )}
+
+              {/* Show wider search candidates if user typed search query */}
+              {isSearching ? (
+                <div className={styles.comboboxSearching}>
+                  {t("กำลังค้นหาตำแหน่งอื่นๆ...", "Searching other candidates...")}
+                </div>
+              ) : visibleCandidates.length > 0 ? (
+                <>
+                  <div className={styles.comboboxGroupHeader}>
+                    {t(`ตำแหน่ง/หัวหน้างานอื่น (${visibleCandidates.length})`, `Other Candidates (${visibleCandidates.length})`)}
+                  </div>
+                  {visibleCandidates.map((candidate) => (
+                    <button
+                      key={candidate.reviewerUserId}
+                      type="button"
+                      className={styles.comboboxOption}
+                      onClick={() => {
+                        addToTray(candidate);
+                        setIsHeadDropdownOpen(false);
+                      }}
+                    >
+                      <div className={styles.comboboxOptionTitle}>
+                        <strong>{candidate.name}</strong>
+                        {candidate.company ? (
+                          <span className={styles.optionCompanyTag}>{candidate.company}</span>
+                        ) : null}
+                        {candidate.employeeCode ? (
+                          <span className={styles.optionCodeTag}>{candidate.employeeCode}</span>
+                        ) : null}
+                      </div>
+                      <span className={styles.comboboxOptionSub}>
+                        {[candidate.position, orgUnitLine(candidate)].filter(Boolean).join(" · ")}
+                      </span>
+                    </button>
+                  ))}
+                </>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        {/* Right input: Attendee Search within Course Roster */}
+        <div className={styles.attendeeSearchWrap}>
+          <Search size={14} className={styles.attendeeSearchIcon} />
+          <input
+            type="search"
+            className={styles.attendeeSearchInput}
+            value={attendeeSearch}
+            placeholder={t("ค้นหาผู้เข้าอบรมด้วยชื่อ / รหัสพนักงาน", "Search attendees by name or employee code")}
+            onChange={(event) => setAttendeeSearch(event.target.value)}
+          />
+          {attendeeSearch ? (
+            <button
+              type="button"
+              className={styles.clearAttendeeSearch}
+              onClick={() => setAttendeeSearch("")}
+              title={t("ล้างคำค้นหา", "Clear attendee search")}
+            >
+              <X size={12} />
+            </button>
+          ) : null}
+        </div>
+
         <span className={styles.searchState}>
-          {isSearching
-            ? t("กำลังค้นหา...", "Searching...")
-            : searchError ||
-              (search.trim().length >= SEARCH_MIN_LENGTH
-                ? t(`พบ ${visibleCandidates.length} คน`, `${visibleCandidates.length} found`)
-                : "")}
+          {attendeeSearch.trim()
+            ? t(`พบ ${filteredAttendees.length}/${attendees.length} คน`, `${filteredAttendees.length}/${attendees.length} found`)
+            : t(`ผู้เข้าอบรม ${attendees.length} คน`, `${attendees.length} attendees`)}
         </span>
       </div>
-
-      {visibleCandidates.length > 0 ? (
-        <ul className={styles.candidateList}>
-          {visibleCandidates.map((candidate) => (
-            <li key={candidate.reviewerUserId}>
-              <button type="button" className={styles.candidateButton} onClick={() => addToTray(candidate)}>
-                <strong>{candidate.name}</strong>
-                <span className={styles.candidateMeta}>
-                  {[candidate.company, candidate.employeeCode, candidate.position].filter(Boolean).join(" · ")}
-                </span>
-                <span className={styles.candidateMeta}>{orgUnitLine(candidate) || "-"}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
 
       {tray.length === 0 ? (
         <p className={styles.trayEmpty}>
@@ -453,106 +617,110 @@ export default function ReviewerAssignmentPanel({ planId, attendees, evaluation,
       </div>
 
       <ul className={styles.attendeeList}>
-        {attendees.map((attendee) => {
-          const reviewer = reviewerOf(attendee);
-          const isChanged = draft.has(attendee.enrollmentId);
-          const isHeldsOwn = held !== null && reviewer?.reviewerUserId === held.reviewerUserId;
-          const saved = attendee.reviewer;
-          const locked = isLocked(attendee);
-          const editable = isEditable(attendee);
-          return (
-            <li
-              key={attendee.enrollmentId}
-              className={isHeldsOwn ? styles.attendeeRowHeld : styles.attendeeRow}
-            >
-              <button
-                type="button"
-                className={styles.attendeePick}
-                aria-pressed={isHeldsOwn}
-                disabled={locked || !editable || !held}
-                title={
-                  locked
-                    ? t("หัวหน้าตอบแบบประเมินไปแล้ว แก้ไขไม่ได้", "The reviewer has already answered")
-                    : undefined
-                }
-                onClick={() => toggleAttendee(attendee)}
+        {filteredAttendees.length > 0 ? (
+          filteredAttendees.map((attendee) => {
+            const reviewer = reviewerOf(attendee);
+            const isChanged = draft.has(attendee.enrollmentId);
+            const isHeldsOwn = held !== null && reviewer?.reviewerUserId === held.reviewerUserId;
+            const saved = attendee.reviewer;
+            const locked = isLocked(attendee);
+            const editable = isEditable(attendee);
+            return (
+              <li
+                key={attendee.enrollmentId}
+                className={isHeldsOwn ? styles.attendeeRowHeld : styles.attendeeRow}
               >
-                <span className={isHeldsOwn ? styles.tickOn : styles.tick} aria-hidden>
-                  {isHeldsOwn ? <Check size={12} /> : null}
-                </span>
-                <span className={styles.attendeeText}>
-                  <strong className={styles.ellipsis} title={attendee.name}>
-                    {attendee.name}
-                  </strong>
-                  {/* One line, cut with an ellipsis when the unit names run long, and the full text
-                      on hover - a section name can easily be longer than the column. */}
-                  <span className={styles.attendeeMeta + " " + styles.ellipsis} title={orgUnitOf(attendee)}>
-                    {[attendee.employeeCode, orgUnitOf(attendee)].filter(Boolean).join(" · ")}
+                <button
+                  type="button"
+                  className={styles.attendeePick}
+                  aria-pressed={isHeldsOwn}
+                  disabled={locked || !editable || !held}
+                  title={
+                    locked
+                      ? t("หัวหน้าตอบแบบประเมินไปแล้ว แก้ไขไม่ได้", "The reviewer has already answered")
+                      : undefined
+                  }
+                  onClick={() => toggleAttendee(attendee)}
+                >
+                  <span className={isHeldsOwn ? styles.tickOn : styles.tick} aria-hidden>
+                    {isHeldsOwn ? <Check size={12} /> : null}
                   </span>
-                </span>
-              </button>
-
-              <div className={styles.reviewerCell}>
-                {reviewer ? (
-                  <>
-                    <strong className={styles.ellipsis} title={reviewer.name}>
-                      {reviewer.name}
+                  <span className={styles.attendeeText}>
+                    <strong className={styles.ellipsis} title={attendee.name}>
+                      {attendee.name}
                     </strong>
-                    <span
-                      className={styles.attendeeMeta + " " + styles.ellipsis}
-                      title={orgUnitLine(reviewer) || reviewer.position}
-                    >
-                      {orgUnitLine(reviewer) || "-"}
+                    <span className={styles.attendeeMeta + " " + styles.ellipsis} title={orgUnitOf(attendee)}>
+                      {[attendee.employeeCode, orgUnitOf(attendee)].filter(Boolean).join(" · ")}
                     </span>
-                  </>
-                ) : (
-                  <span className={styles.attendeeMeta}>{t("ยังไม่ได้มอบหมาย", "Not assigned")}</span>
-                )}
-              </div>
-
-              <div className={styles.statusCell}>
-                {isChanged ? (
-                  <span className={styles.draftTag}>{t("ยังไม่บันทึก", "Unsaved")}</span>
-                ) : saved?.submitted ? (
-                  // Only an in-system form can report this. A LINK course never sets it.
-                  <span className={styles.doneTag}>{t("ตอบแล้ว", "Answered")}</span>
-                ) : saved?.openedAt ? (
-                  <span className={styles.openedTag}>{t("เปิดแล้ว", "Opened")}</span>
-                ) : saved ? (
-                  <span className={styles.waitingTag}>{t("ยังไม่เปิด", "Not opened")}</span>
-                ) : null}
-                {/* A saved row is read-only until Edit is pressed on it. Once the reviewer has
-                    answered there is no Edit at all: the row is closed for good. */}
-                {locked ? (
-                  <span className={styles.lockedTag} title={t("แก้ไขไม่ได้แล้ว", "Closed")}>
-                    <Lock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                    {t("ล็อกแล้ว", "Locked")}
                   </span>
-                ) : editable ? (
-                  reviewer ? (
+                </button>
+
+                <div className={styles.reviewerCell}>
+                  {reviewer ? (
+                    <>
+                      <strong className={styles.ellipsis} title={reviewer.name}>
+                        {reviewer.name}
+                      </strong>
+                      <span
+                        className={styles.attendeeMeta + " " + styles.ellipsis}
+                        title={orgUnitLine(reviewer) || reviewer.position}
+                      >
+                        {orgUnitLine(reviewer) || "-"}
+                      </span>
+                    </>
+                  ) : (
+                    <span className={styles.attendeeMeta}>{t("ยังไม่ได้มอบหมาย", "Not assigned")}</span>
+                  )}
+                </div>
+
+                <div className={styles.statusCell}>
+                  {isChanged ? (
+                    <span className={styles.draftTag}>{t("ยังไม่บันทึก", "Unsaved")}</span>
+                  ) : saved?.submitted ? (
+                    // Only an in-system form can report this. A LINK course never sets it.
+                    <span className={styles.doneTag}>{t("ตอบแล้ว", "Answered")}</span>
+                  ) : saved?.openedAt ? (
+                    <span className={styles.openedTag}>{t("เปิดแล้ว", "Opened")}</span>
+                  ) : saved ? (
+                    <span className={styles.waitingTag}>{t("รอกรอก", "Waiting")}</span>
+                  ) : null}
+                  {/* A saved row is read-only until Edit is pressed on it. Once the reviewer has
+                      answered there is no Edit at all: the row is closed for good. */}
+                  {locked ? (
+                    <span className={styles.lockedTag} title={t("แก้ไขไม่ได้แล้ว", "Closed")}>
+                      <Lock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                      {t("ล็อกแล้ว", "Locked")}
+                    </span>
+                  ) : editable ? (
+                    reviewer ? (
+                      <button
+                        type="button"
+                        className={styles.removeButton}
+                        onClick={() => setReviewer(attendee.enrollmentId, null)}
+                      >
+                        {t("ถอดออก", "Remove")}
+                      </button>
+                    ) : null
+                  ) : (
                     <button
                       type="button"
-                      className={styles.removeButton}
-                      onClick={() => setReviewer(attendee.enrollmentId, null)}
+                      className={styles.editButton}
+                      onClick={() =>
+                        setUnlocked((current) => new Set(current).add(attendee.enrollmentId))
+                      }
                     >
-                      {t("ถอดออก", "Remove")}
+                      {t("แก้ไข", "Edit")}
                     </button>
-                  ) : null
-                ) : (
-                  <button
-                    type="button"
-                    className={styles.editButton}
-                    onClick={() =>
-                      setUnlocked((current) => new Set(current).add(attendee.enrollmentId))
-                    }
-                  >
-                    {t("แก้ไข", "Edit")}
-                  </button>
-                )}
-              </div>
-            </li>
-          );
-        })}
+                  )}
+                </div>
+              </li>
+            );
+          })
+        ) : (
+          <li className={styles.noAttendeeMatch}>
+            {t("ไม่พบผู้เข้าอบรมที่ตรงกับคำค้นหา", "No attendees match your search")}
+          </li>
+        )}
       </ul>
     </section>
   );
