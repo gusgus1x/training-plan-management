@@ -8,7 +8,7 @@ import {
   writeXlsxEntries,
   type XlsxEntry,
 } from "../xlsxTemplate";
-import type { SectionReport, StandardSection } from "./sections";
+import type { SectionReport } from "./sections";
 
 /**
  * Advanced mode's report, written into the company's own evaluation workbook
@@ -117,40 +117,6 @@ const thaiDateRange = (startAt: string, endAt: string) => {
   const start = format(startAt);
   const end = format(endAt || startAt);
   return start === end ? start : `${start} - ${end}`;
-};
-
-/** The sections the template itself defines: its row-8 bands and the headers under them. */
-export const readStandardSections = (template: Buffer): StandardSection[] => {
-  const entries = readXlsxEntries(template);
-  const read = (name: string) => entries.find((entry) => entry.name === name)?.data.toString("utf8") ?? "";
-  const decode = (value: string) =>
-    value.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, "&");
-  const shared = [...read("xl/sharedStrings.xml").matchAll(/<si>([\s\S]*?)<\/si>/g)].map((match) =>
-    decode([...match[1].matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)].map((text) => text[1]).join("")),
-  );
-  const database = read(DATABASE);
-  const textAt = (reference: string) => {
-    const cell = new RegExp(`<c\\b([^>]*?)\\br="${reference}"([^>]*?)(?:\\/>|>([\\s\\S]*?)<\\/c>)`).exec(database);
-    if (!cell) return "";
-    const attributes = cell[1] + cell[2];
-    const inner = cell[3] ?? "";
-    if (/t="s"/.test(attributes)) return shared[Number(inner.match(/<v>(\d+)<\/v>/)?.[1])] ?? "";
-    if (/t="inlineStr"/.test(attributes)) return decode(inner.match(/<t[^>]*>([\s\S]*?)<\/t>/)?.[1] ?? "");
-    return decode(inner.match(/<v>([\s\S]*?)<\/v>/)?.[1] ?? "");
-  };
-  const columnNumber = (letters: string) => [...letters].reduce((total, letter) => total * 26 + letter.charCodeAt(0) - 64, 0);
-  return [...database.matchAll(/<mergeCell ref="([A-Z]+)8:([A-Z]+)8"\/>/g)]
-    .map((match) => ({ from: columnNumber(match[1]), to: columnNumber(match[2]) }))
-    .filter((band) => band.from >= FIRST_QUESTION_COLUMN)
-    .sort((left, right) => left.from - right.from)
-    .map((band) => ({
-      name: textAt(`${columnLetter(band.from)}${BAND_ROW}`).trim(),
-      headers: Array.from({ length: band.to - band.from + 1 }, (_, offset) =>
-        textAt(`${columnLetter(band.from + offset)}${HEADER_ROW}`).trim(),
-      ).filter(Boolean),
-    }))
-    // The test-score band sits after the questions and is typed by HRD, not answered on the form.
-    .filter((section) => section.headers.length > 0 && !/test/i.test(section.name));
 };
 
 export const buildSectionWorkbook = (template: Buffer, report: SectionReport): Buffer => {
@@ -303,7 +269,10 @@ export const buildSectionWorkbook = (template: Buffer, report: SectionReport): B
       row += 1;
     }
 
-    sheet = setFormula(sheet, "AV13", `COUNTA(${DATABASE_SHEET}!$B$${FIRST_DATA_ROW}:$B$${LAST_FORMULA_ROW})`, report.respondents.length);
+    // A reply is a row with anything in it. Counting the timestamp column alone gave 0 for a file
+    // with no time column.
+    const filled = Array.from({ length: lastColumn - 1 }, (_, offset) => `(${rangeOf(2 + offset)}<>"")`).join("+");
+    sheet = setFormula(sheet, "AV13", `SUMPRODUCT(--((${filled})>0))`, report.respondents.length);
     sheet = setFormula(sheet, "AZ13", `COUNTIF($B$${COMPANY_FIRST_ROW}:$B$${companyLastRow},">0")`, report.companies.length);
     const headerText = {
       BB3: [`${DATABASE_SHEET}!D3`, report.course.courseName || "-"],

@@ -12,6 +12,21 @@ import { QUESTION_ROLES, type SheetAnalysis } from "./convert";
 
 export type ReportSection = { id: string; name: string };
 
+/** What the one-page company dashboard holds legibly: past these, a chart runs into the footer or its
+ *  bars get too thin to read. Measured by opening generated workbooks in Excel. */
+export const LAYOUT_LIMITS = { chartSections: 3, ratingsPerSection: 10 };
+
+/** Where a report goes past LAYOUT_LIMITS: 0 and [] when it fits. */
+export const layoutWarnings = (report: SectionReport) => {
+  const charted = report.sections.filter((section) => section.questions.some((question) => question.kind === "RATING"));
+  return {
+    tooManySections: charted.length > LAYOUT_LIMITS.chartSections ? charted.length : 0,
+    crowdedSections: charted
+      .map((section) => ({ name: section.name, ratings: section.questions.filter((question) => question.kind === "RATING").length }))
+      .filter((section) => section.ratings > LAYOUT_LIMITS.ratingsPerSection),
+  };
+};
+
 /** columnIndex -> section id. A question with no entry is left out of the report. */
 export type SectionAssignment = Record<number, string>;
 
@@ -124,51 +139,5 @@ export const buildSectionReport = (
     respondents,
     sections: reportSections,
     companies: [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([companyCode, count]) => ({ companyCode, count })),
-  };
-};
-
-/** Header text compared loosely: spacing, case, and the digit Excel appends to a duplicate table
- *  column name ("เอกสารประกอบการเรียน4") do not make it a different question. */
-export const normaliseHeader = (value: string) => value.replace(/\s+/g, " ").trim().replace(/\d+$/, "").trim().toLowerCase();
-
-export type StandardSection = { name: string; headers: string[] };
-
-/**
- * Sections taken from the company template for every question whose header matches one there.
- * Questions that match nothing are left unassigned for HRD.
- */
-export const assignFromStandard = (
-  analysis: SheetAnalysis,
-  standard: StandardSection[],
-): { sections: ReportSection[]; assignment: SectionAssignment; matched: number; total: number } => {
-  const sections = standard.map((section, index) => ({ id: `std-${index}`, name: section.name }));
-  const lookup = new Map<string, string>();
-  standard.forEach((section, index) => {
-    for (const header of section.headers) lookup.set(normaliseHeader(header), `std-${index}`);
-  });
-  const questionColumns = analysis.columns.filter((column) => QUESTION_ROLES.includes(column.role));
-  const assignment: SectionAssignment = {};
-  for (const column of questionColumns) {
-    const id = lookup.get(normaliseHeader(column.header));
-    if (id) assignment[column.index] = id;
-  }
-  // A template whose header row holds placeholders ("Column1") cannot be matched by text. When the
-  // file has exactly as many questions as the template has slots, fill the sections in order.
-  const slots = standard.reduce((total, section) => total + section.headers.length, 0);
-  if (Object.keys(assignment).length < questionColumns.length && questionColumns.length === slots) {
-    let position = 0;
-    standard.forEach((section, index) => {
-      for (let slot = 0; slot < section.headers.length; slot += 1) {
-        assignment[questionColumns[position].index] = `std-${index}`;
-        position += 1;
-      }
-    });
-  }
-  const used = new Set(Object.values(assignment));
-  return {
-    sections: sections.filter((section) => used.has(section.id)),
-    assignment,
-    matched: Object.keys(assignment).length,
-    total: questionColumns.length,
   };
 };

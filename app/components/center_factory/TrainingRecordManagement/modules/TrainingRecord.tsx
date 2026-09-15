@@ -40,7 +40,6 @@ import {
   Users,
   BarChart3,
   Search,
-  FileText,
   Building2,
   Factory,
   Lock,
@@ -233,7 +232,6 @@ const ATTENDEE_COLUMNS = [
   { key: "prePost", th: "แบบทดสอบหลังอบรม", en: "Post test", width: 140 },
   { key: "evaluation", th: "สถานะแบบประเมิน", en: "Evaluation", width: 150 },
   { key: "budget", th: "งบปันส่วนต่อคน", en: "Cost per person", width: 130 },
-  { key: "actions", th: "จัดการ", en: "Manage", width: 140 },
 ] as const;
 
 /** Narrower than this and a column shows nothing but its own ellipsis. */
@@ -1646,7 +1644,7 @@ export default function TrainingRecord() {
                 <h3>
                   {selectedCourse.evaluationCompleted}/{selectedCourse.evaluationTotal} completed
                 </h3>
-                <span>Download by person or export all evaluation forms.</span>
+                <span>{isThai ? "ดูผลการประเมินได้ที่ปุ่มด้านล่าง" : "See the evaluation results with the button below."}</span>
               </div>
             </article>
           </section>
@@ -1690,15 +1688,6 @@ export default function TrainingRecord() {
                 >
                   {showAllUserIds ? <EyeClosedIcon /> : <EyeOpenIcon />}
                   {showAllUserIds ? (isThai ? " ซ่อน UserID" : " Hide UserID") : (isThai ? " เปิดดู UserID" : " Reveal UserID")}
-                </button>
-                <button
-                  type="button"
-                  className={styles.secondaryButton}
-                  disabled
-                  title={`${UNDER_DEVELOPMENT.th} / ${UNDER_DEVELOPMENT.en}`}
-                >
-                  <Download size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                  Download All Forms (ZIP)
                 </button>
               </div>
             </div>
@@ -1894,17 +1883,6 @@ export default function TrainingRecord() {
                             <strong className={styles.attendeeCostBadge}>
                               THB {formatNumber(selectedCostPerPerson)}
                             </strong>
-                          </td>
-                          <td>
-                            <button
-                              type="button"
-                              className={styles.individualDownloadBtn}
-                              disabled
-                              title={`${UNDER_DEVELOPMENT.th} / ${UNDER_DEVELOPMENT.en}`}
-                            >
-                              <FileText size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                              Form PDF
-                            </button>
                           </td>
                         </tr>
                       );
