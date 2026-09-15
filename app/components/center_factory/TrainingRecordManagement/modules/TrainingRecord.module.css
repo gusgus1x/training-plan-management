@@ -3326,29 +3326,6 @@
   animation: pulseGlowRed 1.8s infinite ease-in-out;
 }
 
-.individualDownloadBtn {
-  min-height: 32px;
-  border: 1px solid var(--ui-30-primary-border);
-  border-radius: 999px;
-  background: var(--ui-30-primary-soft);
-  color: var(--ui-30-primary);
-  font-size: 0.76rem;
-  font-weight: 800;
-  padding: 0 12px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 140ms ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.individualDownloadBtn:hover {
-  border-color: var(--ui-30-primary);
-  background: var(--ui-30-primary);
-  color: #ffffff;
-}
-
 .emptyAttendeeState {
   padding: 32px 20px;
   text-align: center;

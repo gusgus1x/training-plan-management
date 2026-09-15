@@ -1,12 +1,7 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createProtectedRoute } from "../../../../lib/auth/guard";
 import { readResponseSheet } from "../../../../lib/externalEvaluation/readSheet";
-import { readStandardSections } from "../../../../lib/externalEvaluation/sectionWorkbook";
-
-const COMPANY_TEMPLATE = path.join(process.cwd(), "app", "Excel", "1. Evaluation Form.xlsx");
 
 export const runtime = "nodejs";
 
@@ -34,9 +29,7 @@ export const POST = createProtectedRoute(
       if (rows.length < 2) {
         return NextResponse.json({ error: "ไม่พบคำตอบในไฟล์ (ต้องมีหัวคอลัมน์และข้อมูลอย่างน้อย 1 แถว)" }, { status: 400 });
       }
-      // The company template's own sections, so Advanced mode can group a standard form for HRD.
-      const standardSections = readStandardSections(await readFile(COMPANY_TEMPLATE));
-      return NextResponse.json({ fileName: file.name, rows, standardSections });
+      return NextResponse.json({ fileName: file.name, rows });
     } catch (error) {
       return NextResponse.json({ error: error instanceof Error ? error.message : "อ่านไฟล์ไม่สำเร็จ" }, { status: 400 });
     }

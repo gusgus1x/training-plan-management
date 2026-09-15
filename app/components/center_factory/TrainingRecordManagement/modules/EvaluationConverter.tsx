@@ -11,11 +11,11 @@ import {
   type SheetAnalysis,
 } from "../../../../lib/externalEvaluation/convert";
 import {
-  assignFromStandard,
   buildSectionReport,
+  LAYOUT_LIMITS,
+  layoutWarnings,
   type ReportSection,
   type SectionAssignment,
-  type StandardSection,
 } from "../../../../lib/externalEvaluation/sections";
 import type { EvaluationCourseHeader } from "../../../../lib/trainingForms/types";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
@@ -67,16 +67,9 @@ export default function EvaluationConverter() {
   const [busy, setBusy] = useState(false);
   /** Simple: one chart per question. Advanced: HRD's own sections, in the company workbook. */
   const [mode, setMode] = useState<"simple" | "advanced">("simple");
-  const [standard, setStandard] = useState<StandardSection[]>([]);
   const [sections, setSections] = useState<ReportSection[]>([]);
   const [assignment, setAssignment] = useState<SectionAssignment>({});
 
-  const applyStandard = (target: SheetAnalysis, source: StandardSection[]) => {
-    const auto = assignFromStandard(target, source);
-    setSections(auto.matched ? auto.sections : [{ id: `s-${Date.now()}`, name: "" }]);
-    setAssignment(auto.assignment);
-    return auto;
-  };
   const addSection = () => setSections((current) => [...current, { id: `s-${Date.now()}`, name: "" }]);
   const renameSection = (id: string, name: string) =>
     setSections((current) => current.map((section) => (section.id === id ? { ...section, name } : section)));
@@ -136,6 +129,7 @@ export default function EvaluationConverter() {
     () => (analysis && mode === "advanced" ? buildSectionReport(analysis, sections, assignment, course) : null),
     [analysis, mode, sections, assignment, course],
   );
+  const layout = sectionReport ? layoutWarnings(sectionReport) : null;
   const unassigned = analysis
     ? analysis.columns.filter((column) => QUESTION_ROLES.includes(column.role) && !sections.some((section) => section.id === assignment[column.index])).length
     : 0;
@@ -156,10 +150,10 @@ export default function EvaluationConverter() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? t("อ่านไฟล์ไม่สำเร็จ", "Could not read the file"));
       setFileName(result.fileName);
-      const next = analyseSheet(result.rows);
-      setAnalysis(next);
-      setStandard(result.standardSections ?? []);
-      applyStandard(next, result.standardSections ?? []);
+      setAnalysis(analyseSheet(result.rows));
+      // Every course has its own form, so the grouping always starts empty and is HRD's to make.
+      setSections([{ id: `s-${Date.now()}`, name: "" }]);
+      setAssignment({});
     } catch (cause) {
       setAnalysis(null);
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -252,6 +246,32 @@ export default function EvaluationConverter() {
               <span>{t("กำหนด Section เอง · กราฟค่าเฉลี่ยตาม Section แบบฟอร์มบริษัท", "Your own sections · average per section, company layout")}</span>
             </button>
           </div>
+
+          {mode === "advanced" ? (
+            <details className={styles.guide} open>
+              <summary>{t("วิธีใช้โหมด Advanced และข้อจำกัด", "How Advanced mode works, and its limits")}</summary>
+              <p className={styles.guideHeading}>{t("ขั้นตอน", "Steps")}</p>
+              <ul className={styles.guideSteps}>
+                <li>{t("อัปโหลดไฟล์คำตอบ .xlsx หรือ .csv ที่ export จาก Microsoft Forms หรือ Google Forms", "Upload the .xlsx or .csv response export from Microsoft Forms or Google Forms.")}</li>
+                <li>{t("ตรวจช่อง \"ใช้เป็น\" ของทุกคอลัมน์ ระบบเดาให้แล้ว แต่ควรเช็กว่าคอลัมน์ชื่อ นามสกุล รหัสพนักงาน บริษัท และคำถามคะแนน 1-5 ถูกต้อง", "Check \"Use as\" for every column. It is guessed, but confirm name, surname, employee code, company and the 1-5 rating questions.")}</li>
+                <li>{t("ในข้อ 3 สร้าง Section และตั้งชื่อ เช่น \"Part 2 : ความพึงพอใจต่อวิทยากร\" ชื่อนี้จะเป็นหัวกราฟในไฟล์ Excel", "In step 3, add and name sections, e.g. \"Part 2 : Instructor\". The name becomes the chart title in Excel.")}</li>
+                <li>{t("กลับไปที่ตารางข้อ 2 แล้วเลือก Section ให้คำถามทีละข้อ ระบบไม่จัดให้อัตโนมัติ เพราะแต่ละคอร์สใช้แบบฟอร์มต่างกัน", "Back in the step 2 table, pick a section for each question. Nothing is grouped for you, because every course uses a different form.")}</li>
+                <li>{t("ดูตัวอย่างในข้อ 4 กรอกหัวรายงานด้านขวา แล้วกดดาวน์โหลด", "Check the preview in step 4, fill in the report header on the right, then download.")}</li>
+              </ul>
+              <p className={styles.guideHeading}>{t("ข้อจำกัดที่ควรรู้", "Limits to know")}</p>
+              <ul className={styles.guideLimits}>
+                <li>{t("คำถามที่ไม่ได้เลือก Section จะไม่อยู่ในไฟล์ Excel เลย", "A question with no section is left out of the workbook entirely.")}</li>
+                <li>{t("จำนวนคำถามทั้งหมดไม่จำกัด แต่หน้ารายงานมีแค่ 1 หน้า ควรมี Section ที่มีคำถามประเภทคะแนน (มีกราฟ) ไม่เกิน 3 Section และคำถามประเภทคะแนนไม่เกิน 10 ข้อต่อ Section ส่วน Section ที่มีแต่ความคิดเห็นเพิ่มได้โดยไม่นับรวม ถ้าเกิน กราฟจะล้นหน้าหรืออ่านยาก ระบบจะเตือนในข้อ 3", "No limit on total questions, but the report is one page: keep to 3 sections with rating questions (charted) and 10 rating questions per section. Comment-only sections do not count. Past that, charts overflow or become hard to read. Step 3 warns you.")}</li>
+                <li>{t("คำถามประเภทคะแนน: 1 Section ได้ 1 กราฟ แต่ละแท่งคือค่าเฉลี่ยของคำถาม 1 ข้อ (เต็ม 5) คำตอบที่ไม่ใช่ตัวเลขไม่นับในค่าเฉลี่ย", "Rating questions: one chart per section, one bar per question showing its average (out of 5). Non-numeric answers are not averaged.")}</li>
+                <li>{t("คำถามประเภทข้อความ: หน้ารายงานแสดงข้อละ 5 คำตอบแรก ตัดที่ 90 ตัวอักษร ส่วนคำตอบทั้งหมดอยู่ในชีต 02-Comment", "Written questions: the report page shows the first 5 answers per question, cut at 90 characters. Every answer is on the 02-Comment sheet.")}</li>
+                <li>{t("คำถามแบบตัวเลือก: ไม่มีกราฟในโหมดนี้ คำตอบอยู่แค่ในชีต 01-Database ถ้าต้องการกราฟสัดส่วนคำตอบ ให้ใช้โหมดธรรมดา", "Choice questions: no chart in this mode, answers only on 01-Database. Use Simple mode for an answer-split chart.")}</li>
+                <li>{t("Section ที่มีแต่คำถามข้อความจะไม่มีกราฟ มีแค่ส่วนความคิดเห็น", "A section with only written questions gets no chart, only the comments block.")}</li>
+                <li>{t("ลำดับกราฟเป็นไปตามลำดับ Section ในข้อ 3 และลำดับคำถามใน Section เป็นไปตามลำดับคอลัมน์ในไฟล์", "Charts follow the section order in step 3; questions inside a section follow the file's column order.")}</li>
+                <li>{t("กราฟวงกลมนับตามคอลัมน์บริษัท", "The company doughnut counts the company column.")}</li>
+                <li>{t("ระบบไม่ได้บันทึกข้อมูลใดๆลงฐานข้อมูล", "Nothing is saved to the database.")}</li>
+              </ul>
+            </details>
+          ) : null}
 
           <div className={styles.step}>
             <h2>1. {t("ไฟล์คำตอบ", "Response file")}</h2>
@@ -377,11 +397,6 @@ export default function EvaluationConverter() {
                 <button type="button" className={styles.linkButton} onClick={addSection}>
                   + {t("เพิ่ม Section", "Add section")}
                 </button>
-                {standard.length ? (
-                  <button type="button" className={styles.linkButton} onClick={() => applyStandard(analysis, standard)}>
-                    {t("จัดอัตโนมัติตามแบบฟอร์มมาตรฐานบริษัท", "Group by the company standard form")}
-                  </button>
-                ) : null}
               </div>
               {unassigned > 0 ? (
                 <p className={styles.warning} role="status">
@@ -391,6 +406,22 @@ export default function EvaluationConverter() {
                   )}
                 </p>
               ) : null}
+              {layout?.tooManySections ? (
+                <p className={styles.warning} role="status">
+                  {t(
+                    `มี ${layout.tooManySections} Section ที่มีกราฟ หน้ารายงานวางได้สวยไม่เกิน ${LAYOUT_LIMITS.chartSections} กราฟ กราฟที่เกินจะทับแถบท้ายหน้าและล้นไปหน้า 2 ลองรวม Section ให้เหลือไม่เกิน ${LAYOUT_LIMITS.chartSections} (ยังดาวน์โหลดได้)`,
+                    `${layout.tooManySections} sections have a chart; the report page fits ${LAYOUT_LIMITS.chartSections}. Extra charts run over the footer onto page 2. Try merging sections (download still works).`,
+                  )}
+                </p>
+              ) : null}
+              {layout?.crowdedSections.map((section, index) => (
+                <p key={index}className={styles.warning} role="status">
+                  {t(
+                    `Section "${section.name}" มีคำถามคะแนน ${section.ratings} ข้อ เกิน ${LAYOUT_LIMITS.ratingsPerSection} ข้อแท่งกราฟจะบางและชื่อคำถามแสดงไม่ครบ ลองแบ่งเป็นหลาย Section (ยังดาวน์โหลดได้)`,
+                    `Section "${section.name}" has ${section.ratings} rating questions; past ${LAYOUT_LIMITS.ratingsPerSection} the bars get thin and not every label shows. Try splitting it (download still works).`,
+                  )}
+                </p>
+              ))}
             </div>
           ) : null}
 

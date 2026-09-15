@@ -4,8 +4,8 @@ import { analyseSheet, convertSheet } from "../../app/lib/externalEvaluation/con
 import { parseCsv, readResponseSheet } from "../../app/lib/externalEvaluation/readSheet";
 import { buildEvaluationSummaryWorkbook } from "../../app/lib/evaluationSummaryWorkbook";
 import { readXlsxEntries, setCell } from "../../app/lib/xlsxTemplate";
-import { assignFromStandard, buildSectionReport } from "../../app/lib/externalEvaluation/sections";
-import { buildSectionWorkbook, readStandardSections } from "../../app/lib/externalEvaluation/sectionWorkbook";
+import { buildSectionReport, layoutWarnings } from "../../app/lib/externalEvaluation/sections";
+import { buildSectionWorkbook } from "../../app/lib/externalEvaluation/sectionWorkbook";
 import type { EvaluationCourseHeader } from "../../app/lib/trainingForms/types";
 
 // Made-up rows in the shape each service exports. No real respondent data.
@@ -135,28 +135,6 @@ describe("the chart workbook", () => {
 
 describe("Advanced mode: sections", () => {
   const template = readFileSync("app/Excel/1. Evaluation Form.xlsx");
-  const standard = readStandardSections(template);
-
-  it("reads the company template's sections from its row-8 bands", () => {
-    expect(standard.map((section) => section.headers.length)).toEqual([6, 3, 3, 5, 2]);
-  });
-
-  it("groups by header text, and by position when the template headers are placeholders", () => {
-    const analysis = analyseSheet(microsoftSheet);
-    const named = assignFromStandard(analysis, [
-      { name: "Ratings", headers: ["ความพึงพอใจโดยรวม"] },
-      { name: "Written", headers: ["ข้อเสนอแนะ "] },
-    ]);
-    expect(named.matched).toBe(2);
-    expect(named.sections.map((section) => section.name)).toEqual(["Ratings", "Written"]);
-
-    const byPosition = assignFromStandard(analysis, [
-      { name: "A", headers: ["Column1", "Column2"] },
-      { name: "B", headers: ["Column3"] },
-    ]);
-    expect(byPosition.matched).toBe(3);
-    expect(Object.values(byPosition.assignment)).toEqual(["std-0", "std-0", "std-1"]);
-  });
 
   it("averages each rating and keeps written answers in respondent order", () => {
     const analysis = analyseSheet(microsoftSheet);
@@ -168,6 +146,16 @@ describe("Advanced mode: sections", () => {
     expect(report.sections[1].questions[0].answers).toHaveLength(3);
     expect(report.respondents[0]).toMatchObject({ firstName: "สมชาย", lastName: "ทดสอบ", employeeCode: "0001", companyCode: "ATA" });
     expect(report.companies).toEqual([{ companyCode: "ATA", count: 2 }, { companyCode: "TEP", count: 1 }]);
+  });
+
+  it("flags a report the one-page dashboard cannot hold legibly", () => {
+    const rating = { header: "q", kind: "RATING" as const, answers: [], average: null };
+    const section = (name: string, ratings: number) => ({ name, questions: Array.from({ length: ratings }, () => rating) });
+    const report = (sections: ReturnType<typeof section>[]) => ({ course, respondents: [], companies: [], sections });
+    expect(layoutWarnings(report([section("a", 10), section("b", 1), section("c", 1)]))).toEqual({ tooManySections: 0, crowdedSections: [] });
+    const over = layoutWarnings(report([section("a", 11), section("b", 1), section("c", 1), section("d", 1)]));
+    expect(over.tooManySections).toBe(4);
+    expect(over.crowdedSections).toEqual([{ name: "a", ratings: 11 }]);
   });
 
   it("writes a company-layout workbook Excel can open: one chart per rating section, each with its own style part", () => {
@@ -188,6 +176,11 @@ describe("Advanced mode: sections", () => {
     expect(text(charts[0].name)).toContain("Part 2 : ความพึงพอใจ");
     // The title keeps its run formatting whole; cutting it at the first "/>" broke the file.
     expect(text(charts[0].name)).toMatch(/<a:r><a:rPr\b[^>]*>[\s\S]*?<\/a:rPr><a:t>Part 2 : ความพึงพอใจ<\/a:t><\/a:r>/);
+
+    // Replies are counted from any filled cell, not only the timestamp column.
+    const responds = text("xl/worksheets/sheet2.xml").match(/<c r="AV13"[^>]*><f>([^<]*)<\/f><v>(\d+)<\/v>/)!;
+    expect(responds[1]).toContain("$C$10:$C$5000");
+    expect(responds[2]).toBe("3");
 
     expect(text("xl/workbook.xml")).toContain('fullCalcOnLoad="1"');
     expect(entries.some((entry) => entry.name === "xl/calcChain.xml")).toBe(false);
