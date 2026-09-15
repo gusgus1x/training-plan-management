@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthActions } from "../../AuthActionsContext";
 import { useAuthenticatedUser } from "../../AuthenticatedUserContext";
@@ -24,6 +25,16 @@ export default function TrainingCourseManagement({
     selectedSlug,
   );
   const SelectedModule = selectedItem?.Component;
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && !selectedSlug) {
+      const params = new URLSearchParams(window.location.search);
+      const editCourse = params.get("editCourse") || params.get("courseCode") || params.get("courseId");
+      if (editCourse) {
+        router.replace(`/training-course/course-master-standard?${params.toString()}`);
+      }
+    }
+  }, [selectedSlug, router]);
 
   const handleBack = () => {
     if (selectedItem) {

@@ -405,7 +405,7 @@ const RequiredIndicator = ({ isFilled }: { isFilled: boolean }) => (
 const rollingCompanyOptions = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"] as const;
 
 export const getRollingPlanCompanies = (plan: RollingPlan): string[] => {
-  if (plan.relatedCompanies.length) {
+  if (plan.relatedCompanies?.length) {
     return plan.relatedCompanies;
   }
 

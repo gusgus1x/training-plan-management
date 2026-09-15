@@ -652,58 +652,90 @@
 }
 
 .multiDayEventCard {
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 12px;
-  gap: 8px;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  padding: 6px 10px !important;
+  gap: 4px !important;
 }
 
 .multiDayTitleGroup {
   display: flex;
   align-items: center;
   gap: 6px;
+  width: 100%;
   min-width: 0;
-  overflow: hidden;
 }
 
-.multiDayTitleGroup strong {
+.multiDayTitleGroup strong,
+.multiDayTitleGroup .eventCourseTitle {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 0.78rem;
-  font-weight: 800;
-  color: var(--ui-30-ink);
+  flex: 1;
+}
+
+:global([data-theme="light"]) .multiDayTitleGroup strong,
+:global([data-theme="light"]) .multiDayTitleGroup .eventCourseTitle,
+:global(.light) .multiDayTitleGroup strong,
+:global(.light) .multiDayTitleGroup .eventCourseTitle {
+  color: #0f172a !important;
+  text-shadow: none;
 }
 
 .multiDayMetaGroup {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
 }
 
 .multiDayMetaGroup small {
   white-space: nowrap;
-  color: var(--ui-30-muted);
+  color: rgba(255, 255, 255, 0.85);
   font-size: 0.68rem;
-  font-weight: 600;
+  font-weight: 700;
+}
+:global([data-theme="light"]) .multiDayMetaGroup small,
+:global(.light) .multiDayMetaGroup small {
+  color: rgba(15, 23, 42, 0.75);
 }
 
 .singleEventTitleRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
+  width: 100%;
   min-width: 0;
 }
 
-.singleEventTitleRow strong {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 0.76rem;
+.singleEventTitleRow strong,
+.singleEventTitleRow .eventCourseTitle {
+  font-size: 0.82rem;
   font-weight: 800;
-  color: var(--ui-30-ink);
+  line-height: 1.25;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+  white-space: normal;
+  flex: 1;
+}
+
+:global([data-theme="light"]) .singleEventTitleRow strong,
+:global([data-theme="light"]) .singleEventTitleRow .eventCourseTitle,
+:global(.light) .singleEventTitleRow strong,
+:global(.light) .singleEventTitleRow .eventCourseTitle {
+  color: #0f172a !important;
+  text-shadow: none;
 }
 
 .singleEventMetaRow {
@@ -711,6 +743,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 4px;
+  width: 100%;
   margin-top: 2px;
 }
 
@@ -865,139 +898,290 @@
   transform: translateY(-1px);
 }
 
-/* Company-specific event card borders and subtle tinted backgrounds */
+/* ============================================================
+   Company-specific Event Card Themes (Vivid, Saturated, Distinct)
+   ============================================================ */
+
+/* 1. ALL (ทุกบริษัท / HRD Center) -> Rich Emerald */
 .eventCard_ALL {
-  border-color: #10b981 !important;
-  background: rgba(16, 185, 129, 0.08) !important;
+  border: 1px solid #10b981 !important;
+  border-left: 5px solid #059669 !important;
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%) !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
 }
 .eventCard_ALL:hover {
   border-color: #059669 !important;
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25) !important;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35) !important;
 }
-
-.eventCard_ATA {
-  border-color: #2563eb !important;
-  background: rgba(37, 99, 235, 0.08) !important;
-}
-.eventCard_ATA:hover {
-  border-color: #1d4ed8 !important;
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25) !important;
-}
-
-.eventCard_TEP {
-  border-color: #eab308 !important;
-  background: rgba(234, 179, 8, 0.08) !important;
-}
-.eventCard_TEP:hover {
-  border-color: #ca8a04 !important;
-  box-shadow: 0 4px 14px rgba(234, 179, 8, 0.25) !important;
-}
-
-.eventCard_ATFB {
-  border-color: #f97316 !important;
-  background: rgba(249, 115, 22, 0.08) !important;
-}
-.eventCard_ATFB:hover {
-  border-color: #ea580c !important;
-  box-shadow: 0 4px 14px rgba(249, 115, 22, 0.25) !important;
-}
-
-.eventCard_NIC {
-  border-color: #a855f7 !important;
-  background: rgba(168, 85, 247, 0.08) !important;
-}
-.eventCard_NIC:hover {
-  border-color: #9333ea !important;
-  box-shadow: 0 4px 14px rgba(168, 85, 247, 0.25) !important;
-}
-
-.eventCard_SATI {
-  border-color: #ef4444 !important;
-  background: rgba(239, 68, 68, 0.08) !important;
-}
-.eventCard_SATI:hover {
-  border-color: #dc2626 !important;
-  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25) !important;
-}
-
-.eventCard_SNF {
-  border-color: #06b6d4 !important;
-  background: rgba(6, 182, 212, 0.08) !important;
-}
-.eventCard_SNF:hover {
-  border-color: #0891b2 !important;
-  box-shadow: 0 4px 14px rgba(6, 182, 212, 0.25) !important;
-}
-
-/* Dark mode enhancements for vivid glow and high legibility */
 :global([data-theme="dark"]) .eventCard_ALL,
 :global(.dark) .eventCard_ALL {
-  border-color: #10b981 !important;
-  background: rgba(16, 185, 129, 0.14) !important;
+  border: 1px solid #10b981 !important;
+  border-left: 5px solid #34d399 !important;
+  background: linear-gradient(135deg, #065f46 0%, #047857 100%) !important;
+  box-shadow: 0 4px 14px rgba(6, 95, 70, 0.5) !important;
 }
 :global([data-theme="dark"]) .eventCard_ALL:hover,
 :global(.dark) .eventCard_ALL:hover {
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.45) !important;
+  border-color: #34d399 !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.55) !important;
 }
 
+/* 2. ATA -> Rich Royal Blue */
+.eventCard_ATA {
+  border: 1px solid #3b82f6 !important;
+  border-left: 5px solid #1d4ed8 !important;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%) !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25) !important;
+}
+.eventCard_ATA:hover {
+  border-color: #1d4ed8 !important;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35) !important;
+}
 :global([data-theme="dark"]) .eventCard_ATA,
 :global(.dark) .eventCard_ATA {
-  border-color: #3b82f6 !important;
-  background: rgba(59, 130, 246, 0.14) !important;
+  border: 1px solid #3b82f6 !important;
+  border-left: 5px solid #60a5fa !important;
+  background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%) !important;
+  box-shadow: 0 4px 14px rgba(30, 64, 175, 0.5) !important;
 }
 :global([data-theme="dark"]) .eventCard_ATA:hover,
 :global(.dark) .eventCard_ATA:hover {
-  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.45) !important;
+  border-color: #60a5fa !important;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.55) !important;
 }
 
+/* 3. TEP -> Rich Amber / Gold */
+.eventCard_TEP {
+  border: 1px solid #f59e0b !important;
+  border-left: 5px solid #d97706 !important;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%) !important;
+  box-shadow: 0 2px 8px rgba(234, 179, 8, 0.25) !important;
+}
+.eventCard_TEP:hover {
+  border-color: #ca8a04 !important;
+  box-shadow: 0 4px 16px rgba(234, 179, 8, 0.35) !important;
+}
 :global([data-theme="dark"]) .eventCard_TEP,
 :global(.dark) .eventCard_TEP {
-  border-color: #facc15 !important;
-  background: rgba(250, 204, 21, 0.14) !important;
+  border: 1px solid #facc15 !important;
+  border-left: 5px solid #fde047 !important;
+  background: linear-gradient(135deg, #854d0e 0%, #a16207 100%) !important;
+  box-shadow: 0 4px 14px rgba(133, 77, 14, 0.5) !important;
 }
 :global([data-theme="dark"]) .eventCard_TEP:hover,
 :global(.dark) .eventCard_TEP:hover {
-  box-shadow: 0 4px 16px rgba(250, 204, 21, 0.45) !important;
+  border-color: #fde047 !important;
+  box-shadow: 0 6px 20px rgba(250, 204, 21, 0.55) !important;
 }
 
+/* 4. ATFB -> Rich Tangerine Orange */
+.eventCard_ATFB {
+  border: 1px solid #f97316 !important;
+  border-left: 5px solid #ea580c !important;
+  background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%) !important;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.25) !important;
+}
+.eventCard_ATFB:hover {
+  border-color: #ea580c !important;
+  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.35) !important;
+}
 :global([data-theme="dark"]) .eventCard_ATFB,
 :global(.dark) .eventCard_ATFB {
-  border-color: #fb923c !important;
-  background: rgba(251, 146, 60, 0.14) !important;
+  border: 1px solid #fb923c !important;
+  border-left: 5px solid #fdba74 !important;
+  background: linear-gradient(135deg, #9a3412 0%, #c2410c 100%) !important;
+  box-shadow: 0 4px 14px rgba(154, 52, 18, 0.5) !important;
 }
 :global([data-theme="dark"]) .eventCard_ATFB:hover,
 :global(.dark) .eventCard_ATFB:hover {
-  box-shadow: 0 4px 16px rgba(251, 146, 60, 0.45) !important;
+  border-color: #fed7aa !important;
+  box-shadow: 0 6px 20px rgba(251, 146, 60, 0.45) !important;
 }
 
+/* 5. NIC -> Rich Violet Purple */
+.eventCard_NIC {
+  border: 1px solid #a855f7 !important;
+  border-left: 5px solid #9333ea !important;
+  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%) !important;
+  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.25) !important;
+}
+.eventCard_NIC:hover {
+  border-color: #9333ea !important;
+  box-shadow: 0 4px 16px rgba(168, 85, 247, 0.35) !important;
+}
 :global([data-theme="dark"]) .eventCard_NIC,
 :global(.dark) .eventCard_NIC {
-  border-color: #c084fc !important;
-  background: rgba(192, 132, 252, 0.14) !important;
+  border: 1px solid #c084fc !important;
+  border-left: 5px solid #d8b4fe !important;
+  background: linear-gradient(135deg, #6b21a8 0%, #7e22ce 100%) !important;
+  box-shadow: 0 4px 14px rgba(107, 33, 168, 0.5) !important;
 }
 :global([data-theme="dark"]) .eventCard_NIC:hover,
 :global(.dark) .eventCard_NIC:hover {
-  box-shadow: 0 4px 16px rgba(192, 132, 252, 0.45) !important;
+  border-color: #e9d5ff !important;
+  box-shadow: 0 6px 20px rgba(192, 132, 252, 0.55) !important;
 }
 
+/* 6. SATI -> Rich Crimson Red */
+.eventCard_SATI {
+  border: 1px solid #ef4444 !important;
+  border-left: 5px solid #dc2626 !important;
+  background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%) !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25) !important;
+}
+.eventCard_SATI:hover {
+  border-color: #dc2626 !important;
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.35) !important;
+}
 :global([data-theme="dark"]) .eventCard_SATI,
 :global(.dark) .eventCard_SATI {
-  border-color: #f87171 !important;
-  background: rgba(248, 113, 113, 0.14) !important;
+  border: 1px solid #f87171 !important;
+  border-left: 5px solid #fca5a5 !important;
+  background: linear-gradient(135deg, #991b1b 0%, #b91c1c 100%) !important;
+  box-shadow: 0 4px 14px rgba(153, 27, 27, 0.5) !important;
 }
 :global([data-theme="dark"]) .eventCard_SATI:hover,
 :global(.dark) .eventCard_SATI:hover {
-  box-shadow: 0 4px 16px rgba(248, 113, 113, 0.45) !important;
+  border-color: #fca5a5 !important;
+  box-shadow: 0 6px 20px rgba(248, 113, 113, 0.55) !important;
 }
 
+/* 7. SNF -> Rich Cyan / Teal */
+.eventCard_SNF {
+  border: 1px solid #06b6d4 !important;
+  border-left: 5px solid #0891b2 !important;
+  background: linear-gradient(135deg, #cffafe 0%, #a5f3fc 100%) !important;
+  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.25) !important;
+}
+.eventCard_SNF:hover {
+  border-color: #0891b2 !important;
+  box-shadow: 0 4px 16px rgba(6, 182, 212, 0.35) !important;
+}
 :global([data-theme="dark"]) .eventCard_SNF,
 :global(.dark) .eventCard_SNF {
-  border-color: #22d3ee !important;
-  background: rgba(34, 211, 238, 0.14) !important;
+  border: 1px solid #22d3ee !important;
+  border-left: 5px solid #67e8f9 !important;
+  background: linear-gradient(135deg, #155e75 0%, #0e7490 100%) !important;
+  box-shadow: 0 4px 14px rgba(21, 94, 117, 0.5) !important;
 }
 :global([data-theme="dark"]) .eventCard_SNF:hover,
 :global(.dark) .eventCard_SNF:hover {
-  box-shadow: 0 4px 16px rgba(34, 211, 238, 0.45) !important;
+  border-color: #67e8f9 !important;
+  box-shadow: 0 6px 20px rgba(34, 211, 238, 0.55) !important;
+}
+
+/* Company Pill Badges inside Event Cards */
+.companyPillBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  line-height: 1.3;
+}
+
+.companyPill_ALL {
+  background: rgba(16, 185, 129, 0.2);
+  color: #047857;
+  border: 1px solid rgba(16, 185, 129, 0.55);
+}
+:global([data-theme="dark"]) .companyPill_ALL,
+:global(.dark) .companyPill_ALL {
+  background: rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+  border: 1px solid rgba(52, 211, 153, 0.65);
+}
+
+.companyPill_ATA {
+  background: rgba(37, 99, 235, 0.2);
+  color: #1d4ed8;
+  border: 1px solid rgba(37, 99, 235, 0.55);
+}
+:global([data-theme="dark"]) .companyPill_ATA,
+:global(.dark) .companyPill_ATA {
+  background: rgba(37, 99, 235, 0.35);
+  color: #93c5fd;
+  border: 1px solid rgba(96, 165, 250, 0.65);
+}
+
+.companyPill_TEP {
+  background: rgba(234, 179, 8, 0.2);
+  color: #a16207;
+  border: 1px solid rgba(234, 179, 8, 0.55);
+}
+:global([data-theme="dark"]) .companyPill_TEP,
+:global(.dark) .companyPill_TEP {
+  background: rgba(234, 179, 8, 0.35);
+  color: #fde68a;
+  border: 1px solid rgba(250, 204, 21, 0.65);
+}
+
+.companyPill_ATFB {
+  background: rgba(249, 115, 22, 0.2);
+  color: #c2410c;
+  border: 1px solid rgba(249, 115, 22, 0.55);
+}
+:global([data-theme="dark"]) .companyPill_ATFB,
+:global(.dark) .companyPill_ATFB {
+  background: rgba(249, 115, 22, 0.35);
+  color: #fed7aa;
+  border: 1px solid rgba(251, 146, 60, 0.65);
+}
+
+.companyPill_NIC {
+  background: rgba(168, 85, 247, 0.2);
+  color: #7e22ce;
+  border: 1px solid rgba(168, 85, 247, 0.55);
+}
+:global([data-theme="dark"]) .companyPill_NIC,
+:global(.dark) .companyPill_NIC {
+  background: rgba(168, 85, 247, 0.35);
+  color: #e9d5ff;
+  border: 1px solid rgba(192, 132, 252, 0.65);
+}
+
+.companyPill_SATI {
+  background: rgba(239, 68, 68, 0.2);
+  color: #b91c1c;
+  border: 1px solid rgba(239, 68, 68, 0.55);
+}
+:global([data-theme="dark"]) .companyPill_SATI,
+:global(.dark) .companyPill_SATI {
+  background: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  border: 1px solid rgba(248, 113, 113, 0.65);
+}
+
+.companyPill_SNF {
+  background: rgba(6, 182, 212, 0.2);
+  color: #0e7490;
+  border: 1px solid rgba(6, 182, 212, 0.55);
+}
+:global([data-theme="dark"]) .companyPill_SNF,
+:global(.dark) .companyPill_SNF {
+  background: rgba(6, 182, 212, 0.35);
+  color: #a5f3fc;
+  border: 1px solid rgba(34, 211, 238, 0.65);
+}
+
+.eventTimeText {
+  white-space: nowrap;
+  font-size: 0.67rem;
+  font-weight: 700;
+  color: var(--ui-30-muted);
+}
+
+.singleEventBottomRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-top: 1px;
 }
 
 /* Company Color Legend Bar */
@@ -1630,23 +1814,27 @@
 }
 
 .eventSeatBadge {
-  display: inline-block;
-  margin-top: 3px;
+  display: inline-flex;
+  align-items: center;
+  margin-top: 2px;
   padding: 1px 6px;
   border-radius: 4px;
-  background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  background: rgba(15, 23, 42, 0.07);
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  color: #334155;
   font-size: 0.65rem;
-  font-weight: 800;
+  font-weight: 700;
   white-space: nowrap;
 }
 
 .eventSeatBadgeFull {
-  display: inline-block;
-  margin-top: 3px;
+  display: inline-flex;
+  align-items: center;
+  margin-top: 2px;
   padding: 1px 6px;
   border-radius: 4px;
-  background: rgba(239, 68, 68, 0.12);
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
   color: #dc2626;
   font-size: 0.65rem;
   font-weight: 800;
@@ -1655,14 +1843,16 @@
 
 :global([data-theme="dark"]) .eventSeatBadge,
 :global(.dark) .eventSeatBadge {
-  background: rgba(16, 185, 129, 0.22);
-  color: #34d399;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #e2e8f0;
 }
 
 :global([data-theme="dark"]) .eventSeatBadgeFull,
 :global(.dark) .eventSeatBadgeFull {
-  background: rgba(239, 68, 68, 0.22);
-  color: #f87171;
+  background: rgba(239, 68, 68, 0.28);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
 }
 
 .courseCardActions {

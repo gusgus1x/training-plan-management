@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCalendarWeeks,
+  getPlanCompanyKey,
   getPlanDaysCount,
   getPlanEndDate,
   isEmployeeEnrolledInPlan,
@@ -21,6 +22,7 @@ const createMockPlan = (overrides: Partial<RollingPlan> = {}): RollingPlan =>
     ownerScope: "CENTER",
     ownerCompany: "HRD Center",
     company: "All Companies",
+    relatedCompanies: [],
     batchNo: 1,
     batch: "รุ่น 1",
     trainingDate: "2026-08-28",
@@ -210,6 +212,29 @@ describe("Schedule Calendar employee personal course filtering", () => {
         { planId: "RP-999", status: "Center Approved", attendance: null, result: null, certificate: null } as any,
       ]),
     ).toBe(false);
+  });
+
+  it("accurately resolves company key for calendar color tagging", () => {
+    const centerPlan = createMockPlan({ owner: "CENTER", ownerCompany: "HRD Center", company: "All Companies" });
+    expect(getPlanCompanyKey(centerPlan)).toBe("ALL");
+
+    const ataPlan = createMockPlan({ owner: "FACTORY", ownerCompany: "ATA", company: "ATA" });
+    expect(getPlanCompanyKey(ataPlan)).toBe("ATA");
+
+    const tepPlan = createMockPlan({ owner: "FACTORY", ownerCompany: "TEP", company: "TEP" });
+    expect(getPlanCompanyKey(tepPlan)).toBe("TEP");
+
+    const atfbPlan = createMockPlan({ owner: "FACTORY", ownerCompany: "ATFB", company: "ATFB" });
+    expect(getPlanCompanyKey(atfbPlan)).toBe("ATFB");
+
+    const nicPlan = createMockPlan({ owner: "FACTORY", ownerCompany: "NIC", company: "NIC" });
+    expect(getPlanCompanyKey(nicPlan)).toBe("NIC");
+
+    const satiPlan = createMockPlan({ owner: "FACTORY", ownerCompany: "SATI", company: "SATI" });
+    expect(getPlanCompanyKey(satiPlan)).toBe("SATI");
+
+    const snfPlan = createMockPlan({ owner: "FACTORY", ownerCompany: "SNF", company: "SNF" });
+    expect(getPlanCompanyKey(snfPlan)).toBe("SNF");
   });
 });
 

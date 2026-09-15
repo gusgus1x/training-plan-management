@@ -959,6 +959,10 @@ export default function ScheduleCalendar({
                         } = segment;
                         const companyKey = getPlanCompanyKey(plan);
                         const companyCardClass = styles[`eventCard_${companyKey}`] || styles.eventCard_ALL;
+                        const companyLabel =
+                          companyKey === "ALL"
+                            ? (uiLang === "th" ? "ทุกบริษัท" : "All Companies")
+                            : companyKey;
                         const capacity = Number(plan.participants || 0);
                         const enrolled = enrollments.filter(
                           (e) => e.planId === plan.rollingId && ACTIVE_ENROLLMENT_STATUSES.includes(e.status),
@@ -1032,7 +1036,7 @@ export default function ScheduleCalendar({
                                       ←
                                     </span>
                                   ) : null}
-                                  <strong>{plan.course.name}</strong>
+                                  <strong className={styles.eventCourseTitle}>{plan.course.name}</strong>
                                   <span className={styles.multiDayBadge}>
                                     {uiLang === "th" ? `${totalDays} วัน` : `${totalDays} Days`}
                                   </span>
@@ -1046,9 +1050,15 @@ export default function ScheduleCalendar({
                                   ) : null}
                                 </div>
                                 <div className={styles.multiDayMetaGroup}>
-                                  <small>
-                                    {plan.startTime}-{plan.endTime} / {formatRollingPlanCompanies(plan)}
+                                  <small className={styles.eventTimeText}>
+                                    {plan.startTime}-{plan.endTime}
                                   </small>
+                                  <span
+                                    className={`${styles.companyPillBadge} ${styles[`companyPill_${companyKey}`] || styles.companyPill_ALL}`}
+                                  >
+                                    {companyKey === "ALL" ? "🏢 " : "🏭 "}
+                                    {companyLabel}
+                                  </span>
                                   {renderBadge()}
                                 </div>
                               </>
@@ -1063,7 +1073,7 @@ export default function ScheduleCalendar({
                                       ←
                                     </span>
                                   ) : null}
-                                  <strong>{plan.course.name}</strong>
+                                  <strong className={styles.eventCourseTitle}>{plan.course.name}</strong>
                                   {continuesToNext ? (
                                     <span
                                       className={styles.eventSpanArrow}
@@ -1073,10 +1083,18 @@ export default function ScheduleCalendar({
                                     </span>
                                   ) : null}
                                 </div>
-                                <small>
-                                  {plan.startTime}-{plan.endTime} / {formatRollingPlanCompanies(plan)}
-                                </small>
                                 <div className={styles.singleEventMetaRow}>
+                                  <small className={styles.eventTimeText}>
+                                    {plan.startTime}-{plan.endTime}
+                                  </small>
+                                  <span
+                                    className={`${styles.companyPillBadge} ${styles[`companyPill_${companyKey}`] || styles.companyPill_ALL}`}
+                                  >
+                                    {companyKey === "ALL" ? "🏢 " : "🏭 "}
+                                    {companyLabel}
+                                  </span>
+                                </div>
+                                <div className={styles.singleEventBottomRow}>
                                   {isMultiDay ? (
                                     <span className={styles.multiDayBadge}>
                                       {uiLang === "th" ? `${totalDays} วัน` : `${totalDays}d`}

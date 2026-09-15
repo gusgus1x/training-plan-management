@@ -536,95 +536,6 @@ function CourseMaster() {
     [centerCoursesForTemplate, language],
   );
 
-  const handleApplyCenterTemplate = (courseId: string) => {
-    setSelectedTemplateCourseId(courseId);
-
-    if (!courseId) {
-      setForm(emptyCourseForm);
-      setLinkModeFields(new Set());
-      resetStandardForm();
-      return;
-    }
-
-    const templateCourse = centerCoursesForTemplate.find((c) => c.id === courseId);
-    if (!templateCourse) return;
-
-    const courseGroup = templateCourse.courseGroup;
-    let nextCode = "";
-    const matchedGroup = courseGroupOptions.find((g) => g.name === courseGroup);
-    if (matchedGroup && matchedGroup.code) {
-      if (isFactoryUser) {
-        const companyGroupCourses = courses.filter(
-          (c) => c.courseGroup === courseGroup && c.ownerCompany === userCompanyCode,
-        );
-        let maxSeq = 0;
-        for (const c of companyGroupCourses) {
-          const parts = (c.courseCode || "").split("-");
-          const num = parseInt(parts[parts.length - 1], 10);
-          if (!isNaN(num) && num > maxSeq) {
-            maxSeq = num;
-          }
-        }
-        nextCode = `${userCompanyCode}-${matchedGroup.code.trim()}-${String(maxSeq + 1).padStart(6, "0")}`;
-      } else {
-        const groupCourses = courses.filter((c) => c.courseGroup === courseGroup);
-        let maxSeq = 0;
-        for (const c of groupCourses) {
-          const parts = (c.courseCode || "").split("-");
-          const num = parseInt(parts[parts.length - 1], 10);
-          if (!isNaN(num) && num > maxSeq) {
-            maxSeq = num;
-          }
-        }
-        const nextNum = groupCourses.length === 0 ? 1 : Math.max(maxSeq + 1, (matchedGroup.lastCourseNumber ?? 0) + 1);
-        nextCode = `${matchedGroup.code.trim()}-${String(nextNum).padStart(6, "0")}`;
-      }
-    }
-
-    let resolvedCourseType = templateCourse.courseType;
-    if (isFactoryUser && !factoryCourseTypeAllowlist.includes(resolvedCourseType)) {
-      resolvedCourseType = courseTypes[0] || "IN-HOUSE";
-    }
-
-    setForm({
-      ...emptyCourseForm,
-      courseCode: nextCode,
-      courseGroup: templateCourse.courseGroup,
-      courseType: resolvedCourseType,
-      courseNameTh: templateCourse.courseNameTh,
-      courseNameEn: templateCourse.courseNameEn || templateCourse.courseNameTh,
-      objective: templateCourse.objective || "",
-      learningContent: templateCourse.learningContent || "",
-      targetGroup: templateCourse.targetGroup || "",
-      methodology: templateCourse.methodology || "",
-      lifeCycleMonth: templateCourse.lifeCycleMonth || "0",
-      remark: templateCourse.remark || "",
-      status: "Active",
-
-      // Reset tests & evaluations per requirement
-      preTestId: "",
-      preTest: "",
-      preTestLink: "",
-      postTestId: "",
-      postTest: "",
-      postTestLink: "",
-      evaluationId: "",
-      evaluation: "",
-      evaluationLink: "",
-      evaluationAfter30DayId: "",
-      evaluationAfter30Day: "",
-      evaluationAfter30DayLink: "",
-    });
-
-    setLinkModeFields(new Set());
-    resetStandardForm();
-
-    toast.success(
-      language === "th"
-        ? `คัดลอกรายละเอียดจากหลักสูตรส่วนกลาง "${templateCourse.courseCode}" แล้ว (สามารถแก้ไขรายละเอียดเพิ่มเติมได้ก่อนบันทึก)`
-        : `Copied details from Center course template "${templateCourse.courseCode}". You can edit details before saving.`,
-    );
-  };
   const [linkModeFields, setLinkModeFields] = useState<Set<LinkModeField>>(new Set());
   const [isEditing, setIsEditing] = useState(false);
   const [isNewOpen, setIsNewOpen] = useState(false);
@@ -1356,6 +1267,147 @@ function CourseMaster() {
     setAutoAddedPrerequisites([]);
   };
 
+  const handleApplyCenterTemplate = (courseId: string) => {
+    setSelectedTemplateCourseId(courseId);
+
+    if (!courseId) {
+      setForm(emptyCourseForm);
+      setLinkModeFields(new Set());
+      resetStandardForm();
+      return;
+    }
+
+    const templateCourse = centerCoursesForTemplate.find((c) => c.id === courseId);
+    if (!templateCourse) return;
+
+    const courseGroup = templateCourse.courseGroup;
+    let nextCode = "";
+    const matchedGroup = courseGroupOptions.find((g) => g.name === courseGroup);
+    if (matchedGroup && matchedGroup.code) {
+      if (isFactoryUser) {
+        const companyGroupCourses = courses.filter(
+          (c) => c.courseGroup === courseGroup && c.ownerCompany === userCompanyCode,
+        );
+        let maxSeq = 0;
+        for (const c of companyGroupCourses) {
+          const parts = (c.courseCode || "").split("-");
+          const num = parseInt(parts[parts.length - 1], 10);
+          if (!isNaN(num) && num > maxSeq) {
+            maxSeq = num;
+          }
+        }
+        nextCode = `${userCompanyCode}-${matchedGroup.code.trim()}-${String(maxSeq + 1).padStart(6, "0")}`;
+      } else {
+        const groupCourses = courses.filter((c) => c.courseGroup === courseGroup);
+        let maxSeq = 0;
+        for (const c of groupCourses) {
+          const parts = (c.courseCode || "").split("-");
+          const num = parseInt(parts[parts.length - 1], 10);
+          if (!isNaN(num) && num > maxSeq) {
+            maxSeq = num;
+          }
+        }
+        const nextNum = groupCourses.length === 0 ? 1 : Math.max(maxSeq + 1, (matchedGroup.lastCourseNumber ?? 0) + 1);
+        nextCode = `${matchedGroup.code.trim()}-${String(nextNum).padStart(6, "0")}`;
+      }
+    }
+
+    let resolvedCourseType = templateCourse.courseType;
+    if (isFactoryUser && !factoryCourseTypeAllowlist.includes(resolvedCourseType)) {
+      resolvedCourseType = courseTypes[0] || "IN-HOUSE";
+    }
+
+    // 1. ดึงข้อมูลรายละเอียดหลักสูตรทั้งหมด ยกเว้น แบบทดสอบ กับ แบบประเมิน
+    setForm({
+      ...emptyCourseForm,
+      courseCode: nextCode,
+      courseGroup: templateCourse.courseGroup,
+      courseType: resolvedCourseType,
+      courseNameTh: templateCourse.courseNameTh,
+      courseNameEn: templateCourse.courseNameEn || templateCourse.courseNameTh,
+      objective: templateCourse.objective || "",
+      learningContent: templateCourse.learningContent || "",
+      targetGroup: templateCourse.targetGroup || "",
+      methodology: templateCourse.methodology || "",
+      lifeCycleMonth: templateCourse.lifeCycleMonth || "0",
+      remark: templateCourse.remark || "",
+      status: "Active",
+
+      // ยกเว้น: แบบทดสอบ กับ แบบประเมิน ให้เป็นค่าว่าง
+      preTestId: "",
+      preTest: "",
+      preTestLink: "",
+      postTestId: "",
+      postTest: "",
+      postTestLink: "",
+      evaluationId: "",
+      evaluation: "",
+      evaluationLink: "",
+      evaluationAfter30DayId: "",
+      evaluationAfter30Day: "",
+      evaluationAfter30DayLink: "",
+    });
+
+    setLinkModeFields(new Set());
+
+    // 2. ดึงข้อมูลเกณฑ์มาตรฐานจากหลักสูตรส่วนกลาง (Template Standard)
+    const templateStandard = standards.find(
+      (item) => item.courseId === templateCourse.id || item.courseCode === templateCourse.courseCode,
+    );
+
+    // ยกเว้น: กลุ่มเป้าหมายสายงาน (Function, Division, Department, Section) ให้เว้นว่างไว้กำหนดเอง
+    setStandardFunctionCode("");
+    setStandardDivisionCode("");
+    setStandardDepartmentCode("");
+    setStandardSectionCode("");
+    setTargetOrgScopes([{ id: "1", functionCode: "", divisionCode: "", departmentCode: "", sectionCode: "" }]);
+
+    // ยกเว้น: Check List Company ให้ใช้เฉพาะบริษัทของโรงงานตนเอง (ไม่ดึงของ Center มา)
+    if (isFactoryUser && userCompanyCode) {
+      setSelectedCompanies([userCompanyCode]);
+    } else {
+      setSelectedCompanies([]);
+    }
+
+    // ดึงมาให้หมด: ตำแหน่งกลุ่มเป้าหมาย (Target Positions) จาก Center
+    if (templateStandard?.positions && templateStandard.positions.length > 0) {
+      setSelectedPositions(
+        positionChecklist.filter((position) =>
+          templateStandard.positions.some(
+            (savedPosition) =>
+              normalizeTargetPosition(savedPosition) === normalizeTargetPosition(position),
+          ),
+        ),
+      );
+    } else {
+      setSelectedPositions([]);
+    }
+
+    // ดึงมาให้หมด: ระดับกลุ่มเป้าหมาย (Target Levels) จาก Center
+    if (templateStandard?.levels && templateStandard.levels.length > 0) {
+      setSelectedLevels(
+        levelChecklist.filter((level) =>
+          templateStandard.levels.some(
+            (savedLevel) =>
+              normalizeEmployeeLevel(savedLevel) === normalizeEmployeeLevel(level),
+          ),
+        ),
+      );
+    } else {
+      setSelectedLevels([]);
+    }
+
+    // ดึงมาให้หมด: คอร์สต่อเนื่อง (Prerequisites) จาก Center
+    setSelectedPrerequisiteCourseIds((templateCourse.prerequisites ?? []).map((p) => p.id));
+    setAutoAddedPrerequisites([]);
+
+    toast.success(
+      language === "th"
+        ? `คัดลอกรายละเอียดและกลุ่มเป้าหมาย (ตำแหน่ง/ระดับ) จากหลักสูตรส่วนกลาง "${templateCourse.courseCode}" แล้ว`
+        : `Copied course details, target positions, and levels from Center course "${templateCourse.courseCode}".`,
+    );
+  };
+
   const loadStandardForm = (course: CourseRecord) => {
     const standard = standards.find(
       (item) => item.courseId === course.id || item.courseCode === course.courseCode,
@@ -1814,6 +1866,75 @@ function CourseMaster() {
     setOpenDetailCourseId(course.id);
   };
 
+  const hasHandledUrlCourseRef = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || hasHandledUrlCourseRef.current || courses.length === 0 || isLoadingData) {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const targetCourseQuery = params.get("editCourse") || params.get("courseCode") || params.get("courseId");
+    if (!targetCourseQuery) return;
+
+    const trimmedQuery = targetCourseQuery.trim();
+    const matched = courses.find(
+      (c) =>
+        c.courseCode.toLowerCase() === trimmedQuery.toLowerCase() ||
+        c.id.toLowerCase() === trimmedQuery.toLowerCase() ||
+        c.courseNameTh.toLowerCase().includes(trimmedQuery.toLowerCase()) ||
+        (c.courseNameEn && c.courseNameEn.toLowerCase().includes(trimmedQuery.toLowerCase())),
+    );
+
+    if (matched) {
+      hasHandledUrlCourseRef.current = true;
+      setSearch(matched.courseCode);
+      setListCourseCodeFilter("");
+      setListCourseGroupFilter("");
+      setListCompanyFilter("");
+
+      const companyKey = matched.ownerCompany || "HRD Center";
+      setCollapsedCompanySections((prev) =>
+        prev.filter((c) => c !== companyKey && c !== "HRD Center" && c !== matched.ownerCompany),
+      );
+
+      const isCenterCourse =
+        matched.owner === "CENTER" ||
+        matched.ownerCompany === "CENTER" ||
+        matched.ownerCompany === "HRD Center" ||
+        !matched.ownerCompany;
+      const isRowReadOnlyForFactory = isFactoryUser && isCenterCourse;
+
+      if (!isRowReadOnlyForFactory) {
+        openCourseEditor(matched);
+      } else {
+        void loadPublishedForms();
+        setSelectedCourseId(matched.id);
+        setForm(buildCourseForm(matched));
+        setLinkModeFields(deriveLinkModeFields(matched));
+        loadStandardForm(matched);
+        setIsEditing(false);
+        setIsNewOpen(false);
+        setOpenDetailCourseId(matched.id);
+      }
+
+      toast.info(
+        language === "th"
+          ? `เปิดแก้ไขข้อมูลหลักสูตร [${matched.courseCode}] ใน Course Master แล้ว`
+          : `Opened course [${matched.courseCode}] in Course Master`,
+      );
+
+      setTimeout(() => {
+        const el =
+          document.getElementById(`course-row-${matched.id}`) ||
+          document.querySelector(`.${styles.inlinePanel}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 350);
+    }
+  }, [courses, isLoadingData, isFactoryUser, language, toast]);
+
   const handleDeleteCourse = async (course: CourseRecord) => {
     const courseName = getCourseDisplayName(course);
     if (
@@ -2191,8 +2312,8 @@ function CourseMaster() {
             />
             <small className={styles.fieldHint} style={{ color: "#64748b", marginTop: "4px" }}>
               {language === "th"
-                ? "* ระบบจะดึงเฉพาะข้อมูลรายละเอียดหลักสูตร (กลุ่มหลักสูตร, ประเภทหลักสูตร, ชื่อหลักสูตร, วัตถุประสงค์, เนื้อหา, ที่มา) โดยจะเว้นแบบทดสอบ แบบประเมิน และเกณฑ์มาตรฐานให้คุณระบุเอง"
-                : "* Copies course details (Group, Type, Name, Objective, Content, Reason). Tests, Evaluations, and Target Standards are left blank for you to define."}
+                ? "* ระบบจะดึงข้อมูลรายละเอียดหลักสูตร พร้อมตำแหน่งและระดับกลุ่มเป้าหมายจากหลักสูตรส่วนกลาง (โดยจะเว้นแบบทดสอบ, แบบประเมิน, สายงานกลุ่มเป้าหมาย และบริษัท ให้คุณกำหนดเอง)"
+                : "* Copies course details, target positions, and levels from Center course (tests, evaluations, target org scopes, and company checklist are left for you to define)."}
             </small>
           </div>
         </div>
@@ -3193,6 +3314,7 @@ function CourseMaster() {
                         return (
                           <Fragment key={course.id}>
                             <tr
+                              id={`course-row-${course.id}`}
                               className={course.id === selectedCourseId ? styles.selectedRow : undefined}
                               onClick={() => setSelectedCourseId(course.id === selectedCourseId ? "" : course.id)}
                               style={{ cursor: "pointer" }}
