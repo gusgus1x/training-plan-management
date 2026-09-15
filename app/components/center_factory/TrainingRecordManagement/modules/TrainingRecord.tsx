@@ -766,6 +766,8 @@ export default function TrainingRecord() {
   const [showAllUserIds, setShowAllUserIds] = useState(false);
   const [revealedUserIds, setRevealedUserIds] = useState<Set<string>>(new Set());
   const [selectedAttendeeCompanyFilter, setSelectedAttendeeCompanyFilter] = useState("ALL");
+  const [selectedScopeTab, setSelectedScopeTab] = useState<"ALL" | "CENTER" | "FACTORY">("ALL");
+  const [selectedDetailTab, setSelectedDetailTab] = useState<"overview" | "financial" | "roster" | "operations" | "all">("overview");
   // Column widths for the roster, dragged from the header the way a spreadsheet's are, and
   // remembered per browser so a layout somebody set up survives a refresh.
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(loadColumnWidths);
@@ -1188,47 +1190,106 @@ export default function TrainingRecord() {
             </div>
           </section>
 
-          {/* Quick Schedule & Venue Card */}
-          <div className={styles.heroMetaCardGrid}>
-            <div className={styles.metaMiniCard}>
-              <div className={styles.metaMiniIcon}><Calendar size={16} /></div>
-              <div>
-                <span>{isThai ? "วันที่ & เวลาอบรม" : "Date & Time"}</span>
-                <strong>{selectedCourse.date || "-"} ({selectedCourse.time || "09:00 - 16:00"})</strong>
-              </div>
-            </div>
-            <div className={styles.metaMiniCard}>
-              <div className={styles.metaMiniIcon}><MapPin size={16} /></div>
-              <div>
-                <span>{isThai ? "สถานที่ / ห้องอบรม" : "Venue / Room"}</span>
-                <strong>{selectedCourse.room || "-"}</strong>
-              </div>
-            </div>
-            <div className={styles.metaMiniCard}>
-              <div className={styles.metaMiniIcon}><User size={16} /></div>
-              <div>
-                <span>{isThai ? "วิทยากรผู้สอน" : "Instructor"}</span>
-                <strong>{selectedCourse.instructor || "-"}</strong>
-              </div>
-            </div>
-            <div className={styles.metaMiniCard}>
-              <div className={styles.metaMiniIcon}><Clock size={16} /></div>
-              <div>
-                <span>{isThai ? "ระยะเวลาอบรม & สะสมผล" : "Duration & Validity"}</span>
-                <strong>{selectedCourse.durationHours ?? 6} {isThai ? "ชม." : "hrs"} / {isThai ? "สะสม" : "valid for"} {selectedCourse.validityMonths ?? 12} {isThai ? "เดือน" : "months"}</strong>
-              </div>
-            </div>
+          {/* Section Navigation Tabs for Course Detail */}
+          <div className={styles.detailNavTabs} role="tablist" aria-label="Course detail sections">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selectedDetailTab === "overview"}
+              className={selectedDetailTab === "overview" ? styles.detailNavTabActive : styles.detailNavTab}
+              onClick={() => setSelectedDetailTab("overview")}
+            >
+              <Lightbulb size={16} />
+              <span>{isThai ? "ข้อมูล & สเปกหลักสูตร" : "Course & Specs"}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selectedDetailTab === "financial"}
+              className={selectedDetailTab === "financial" ? styles.detailNavTabActive : styles.detailNavTab}
+              onClick={() => setSelectedDetailTab("financial")}
+            >
+              <Wallet size={16} />
+              <span>{isThai ? "ค่าใช้จ่าย & ปันส่วนงบ" : "Cost & Allocation"}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selectedDetailTab === "roster"}
+              className={selectedDetailTab === "roster" ? styles.detailNavTabActive : styles.detailNavTab}
+              onClick={() => setSelectedDetailTab("roster")}
+            >
+              <Users size={16} />
+              <span>{isThai ? "รายชื่อผู้เข้าอบรม & ผล" : "Attendees & Results"}</span>
+              <span className={styles.detailTabBadge}>{filteredCourseAttendees.length}</span>
+            </button>
+            {Boolean(selectedCourse.rollingId) ? (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={selectedDetailTab === "operations"}
+                className={selectedDetailTab === "operations" ? styles.detailNavTabActive : styles.detailNavTab}
+                onClick={() => setSelectedDetailTab("operations")}
+              >
+                <Target size={16} />
+                <span>{isThai ? "ผู้ประเมิน & ใบประกาศฯ" : "Reviewers & Certs"}</span>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selectedDetailTab === "all"}
+              className={selectedDetailTab === "all" ? styles.detailNavTabActive : styles.detailNavTab}
+              onClick={() => setSelectedDetailTab("all")}
+            >
+              <BookOpen size={16} />
+              <span>{isThai ? "แสดงทั้งหมด" : "View All"}</span>
+            </button>
           </div>
 
-          {/* Training Course Master Details Panel */}
-          <section className={styles.courseMasterDetailPanel}>
-            <div className={styles.panelHeader}>
-              <div>
-                <p className={styles.kicker}>Course Master Specifications</p>
-                <h3>{isThai ? "รายละเอียดการอบรมหลักสูตร (Training Course Master Details)" : "Training Course Master Details"}</h3>
+          {(selectedDetailTab === "overview" || selectedDetailTab === "all") && (
+            <div className={styles.courseDetailSectionGroup}>
+              {/* Quick Schedule & Venue Card */}
+              <div className={styles.heroMetaCardGrid}>
+                <div className={styles.metaMiniCard}>
+                  <div className={styles.metaMiniIcon}><Calendar size={18} /></div>
+                  <div>
+                    <span>{isThai ? "วันที่ & เวลาอบรม" : "Date & Time"}</span>
+                    <strong>{selectedCourse.date || "-"} ({selectedCourse.time || "09:00 - 16:00"})</strong>
+                  </div>
+                </div>
+                <div className={styles.metaMiniCard}>
+                  <div className={styles.metaMiniIcon}><MapPin size={18} /></div>
+                  <div>
+                    <span>{isThai ? "สถานที่ / ห้องอบรม" : "Venue / Room"}</span>
+                    <strong>{selectedCourse.room || "-"}</strong>
+                  </div>
+                </div>
+                <div className={styles.metaMiniCard}>
+                  <div className={styles.metaMiniIcon}><User size={18} /></div>
+                  <div>
+                    <span>{isThai ? "วิทยากรผู้สอน" : "Instructor"}</span>
+                    <strong>{selectedCourse.instructor || "-"}</strong>
+                  </div>
+                </div>
+                <div className={styles.metaMiniCard}>
+                  <div className={styles.metaMiniIcon}><Clock size={18} /></div>
+                  <div>
+                    <span>{isThai ? "ระยะเวลาอบรม & สะสมผล" : "Duration & Validity"}</span>
+                    <strong>{selectedCourse.durationHours ?? 6} {isThai ? "ชม." : "hrs"} / {isThai ? "สะสม" : "valid for"} {selectedCourse.validityMonths ?? 12} {isThai ? "เดือน" : "months"}</strong>
+                  </div>
+                </div>
               </div>
-              <span>Master Specs</span>
-            </div>
+
+              {/* Training Course Master Details Panel */}
+              <section className={styles.courseMasterDetailPanel}>
+                <div className={styles.panelHeader}>
+                  <div>
+                    <p className={styles.kicker}>Course Master Specifications</p>
+                    <h3>{isThai ? "รายละเอียดการอบรมหลักสูตร (Training Course Master Details)" : "Training Course Master Details"}</h3>
+                  </div>
+                  <span>Master Specs</span>
+                </div>
 
             <div className={styles.masterSpecGrid}>
               <article className={styles.masterSpecCard}>
@@ -1300,7 +1361,11 @@ export default function TrainingRecord() {
               </div>
             </div>
           </section>
+        </div>
+      )}
 
+      {(selectedDetailTab === "financial" || selectedDetailTab === "all") && (
+        <div className={styles.courseDetailSectionGroup}>
           {/* Executive Actual Cost Summary & Breakdown Panel */}
           <section className={styles.costBreakdownPanel} aria-label="Actual cost breakdown">
             <div className={styles.panelHeader}>
@@ -1445,7 +1510,11 @@ export default function TrainingRecord() {
               </div>
             ) : null}
           </section>
+        </div>
+      )}
 
+      {(selectedDetailTab === "roster" || selectedDetailTab === "all") && (
+        <div className={styles.courseDetailSectionGroup}>
           <section
             className={styles.courseExcelRecordPanel}
             aria-label="Course uploaded record details"
@@ -1854,33 +1923,35 @@ export default function TrainingRecord() {
 
             {downloadMessage ? <p className={styles.downloadMessage}>{downloadMessage}</p> : null}
 
-            {/* Only for a batch this system actually holds. A course imported from a spreadsheet has
-                no enrollment rows, so there is nobody to assign a reviewer to. */}
-            {selectedCourse.rollingId && selectedCourse.evaluationAfter30Day ? (
-              <ReviewerAssignmentPanel
-                // Remounts on batch change, so an unsaved basket never follows HRD to another batch.
-                key={selectedCourse.rollingId}
-                planId={selectedCourse.rollingId}
-                evaluation={selectedCourse.evaluationAfter30Day}
-                attendees={filteredCourseAttendees.map((attendee) => ({
-                  enrollmentId: attendee.id,
-                  name: attendee.name,
-                  employeeCode: attendee.employeeCode,
-                  orgUnit: attendee.orgUnit ?? EMPTY_ORG_UNIT,
-                  reviewer: attendee.reviewer ?? null,
-                }))}
-                // The save returns the updated record, but the screen rebuilds a course out of a
-                // training record AND its rolling plan, so a reload is the honest way to show it.
-                onSaved={() => void reloadCourses()}
-              />
-            ) : null}
+            {downloadMessage ? <p className={styles.downloadMessage}>{downloadMessage}</p> : null}
           </section>
+        </div>
+      )}
 
-          {/* Scoped to the selected batch by construction: rendered inside the batch detail, and
-              certificate_import_batch requires a plan_id anyway. */}
+      {(selectedDetailTab === "operations" || selectedDetailTab === "all") && (
+        <div className={styles.courseDetailSectionGroup}>
+          {/* Operations & Verification Section: Reviewer Assignment & Certificate Upload */}
+          {selectedCourse.rollingId && selectedCourse.evaluationAfter30Day ? (
+            <ReviewerAssignmentPanel
+              key={selectedCourse.rollingId}
+              planId={selectedCourse.rollingId}
+              evaluation={selectedCourse.evaluationAfter30Day}
+              attendees={filteredCourseAttendees.map((attendee) => ({
+                enrollmentId: attendee.id,
+                name: attendee.name,
+                employeeCode: attendee.employeeCode,
+                orgUnit: attendee.orgUnit ?? EMPTY_ORG_UNIT,
+                reviewer: attendee.reviewer ?? null,
+              }))}
+              onSaved={() => void reloadCourses()}
+            />
+          ) : null}
+
           {selectedCourse.rollingId ? <CertificateUploadPanel planId={selectedCourse.rollingId} /> : null}
         </div>
-      </section>
+      )}
+    </div>
+  </section>
     );
   };
 
@@ -2152,26 +2223,68 @@ export default function TrainingRecord() {
         <div className={styles.panelHeader}>
           <div>
             <p className={styles.kicker}>Training Record Details</p>
-            <h3>Completed records by owner</h3>
+            <h3>{isThai ? "ประวัติการฝึกอบรมที่เสร็จสิ้น" : "Completed records by owner"}</h3>
           </div>
           <span className={styles.scopeBadge}>
-            {isFactoryUser ? `${userCompanyCode} Factory Scope` : "All Scopes (Center & Factory)"}
+            {isFactoryUser ? `${userCompanyCode} Factory Scope` : (isThai ? "ทุกสังกัด (Center & Factory)" : "All Scopes (Center & Factory)")}
           </span>
         </div>
 
+        {!isFactoryUser ? (
+          <div className={styles.scopeSegmentedControl} role="tablist" aria-label="Filter scope">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selectedScopeTab === "ALL"}
+              className={selectedScopeTab === "ALL" ? styles.scopeSegmentActive : styles.scopeSegmentBtn}
+              onClick={() => setSelectedScopeTab("ALL")}
+            >
+              <Building2 size={16} />
+              <span>{isThai ? "ทั้งหมด (All Scopes)" : "All Scopes"}</span>
+              <span className={styles.segmentCountBadge}>{availableCourses.length}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selectedScopeTab === "CENTER"}
+              className={selectedScopeTab === "CENTER" ? styles.scopeSegmentActive : styles.scopeSegmentBtn}
+              onClick={() => setSelectedScopeTab("CENTER")}
+            >
+              <Building2 size={16} />
+              <span>{isThai ? "ส่วนกลาง (Center)" : "Center"}</span>
+              <span className={styles.segmentCountBadge}>{centerCourses.length}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selectedScopeTab === "FACTORY"}
+              className={selectedScopeTab === "FACTORY" ? styles.scopeSegmentActive : styles.scopeSegmentBtn}
+              onClick={() => setSelectedScopeTab("FACTORY")}
+            >
+              <Factory size={16} />
+              <span>{isThai ? "โรงงาน (Factory)" : "Factory"}</span>
+              <span className={styles.segmentCountBadge}>{factoryCourses.length}</span>
+            </button>
+          </div>
+        ) : null}
+
         <div className={styles.recordOwnerGrid}>
-          {renderRecordTable(
-            "Center",
-            centerCourses,
-            "No center completed records found.",
-          )}
-          {renderRecordTable(
-            "Factory",
-            factoryCourses,
-            isFactoryUser
-              ? `No completed records owned by ${userCompanyCode || "your company"} yet.`
-              : "No factory completed records found.",
-          )}
+          {!isFactoryUser && (selectedScopeTab === "ALL" || selectedScopeTab === "CENTER") ? (
+            renderRecordTable(
+              "Center",
+              centerCourses,
+              isThai ? "ไม่พบข้อมูลประวัติการฝึกอบรมของส่วนกลาง" : "No center completed records found.",
+            )
+          ) : null}
+          {(isFactoryUser || selectedScopeTab === "ALL" || selectedScopeTab === "FACTORY") ? (
+            renderRecordTable(
+              "Factory",
+              factoryCourses,
+              isFactoryUser
+                ? (isThai ? `ยังไม่มีประวัติการฝึกอบรมของ ${userCompanyCode || "โรงงานของคุณ"}` : `No completed records owned by ${userCompanyCode || "your company"} yet.`)
+                : (isThai ? "ไม่พบข้อมูลประวัติการฝึกอบรมของโรงงาน" : "No factory completed records found."),
+            )
+          ) : null}
         </div>
       </section>
 
