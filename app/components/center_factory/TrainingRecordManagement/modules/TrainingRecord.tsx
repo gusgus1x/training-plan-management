@@ -1975,7 +1975,7 @@ export default function TrainingRecord() {
                 <th>Company / Scope</th>
                 <th>Actual Attendees</th>
                 <th>Actual Cost</th>
-                <th>Evaluation</th>
+                <th className={styles.evalHeader}>Evaluation</th>
                 <th>Source</th>
                 <th className={styles.actionHeader}>Action</th>
               </tr>
@@ -2042,17 +2042,46 @@ export default function TrainingRecord() {
                         </td>
                         <td>
                           <div className={styles.evaluationProgressCell}>
-                            <span className={styles.evalCountText}>
-                              {course.evaluationCompleted} / {course.evaluationTotal}
-                            </span>
-                            <span
-                              className={`${styles.evalRateBadge} ${
-                                evaluationRate === 100
-                                  ? styles.evalComplete
-                                  : styles.evalPending
-                              }`}
-                            >
-                              {evaluationRate}% done
+                            <div className={styles.evalMetaRow}>
+                              <strong className={styles.evalCountText}>
+                                {course.evaluationCompleted} / {course.evaluationTotal}
+                              </strong>
+                              <span
+                                className={`${styles.evalRateBadge} ${
+                                  course.evaluationTotal === 0
+                                    ? styles.evalZero
+                                    : evaluationRate === 100
+                                    ? styles.evalComplete
+                                    : styles.evalPending
+                                }`}
+                              >
+                                {course.evaluationTotal === 0 ? "N/A" : `${evaluationRate}%`}
+                              </span>
+                            </div>
+                            <div className={styles.evalProgressTrack} aria-hidden="true">
+                              <div
+                                className={`${styles.evalProgressFill} ${
+                                  evaluationRate === 100
+                                    ? styles.evalCompleteFill
+                                    : evaluationRate > 0
+                                    ? styles.evalPendingFill
+                                    : styles.evalZeroFill
+                                }`}
+                                style={{
+                                  width: `${
+                                    course.evaluationTotal === 0
+                                      ? 0
+                                      : Math.min(100, Math.max(0, evaluationRate))
+                                  }%`,
+                                }}
+                              />
+                            </div>
+                            <span className={styles.ratioLabel}>
+                              {course.evaluationTotal === 0
+                                ? "No evals"
+                                : evaluationRate === 100
+                                ? "Completed"
+                                : "Responses"}
                             </span>
                           </div>
                         </td>
