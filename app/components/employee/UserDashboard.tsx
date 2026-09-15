@@ -654,7 +654,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
       onLogout={onLogout}
     >
       {isLoading ? (
-        <TypewriterLoader label="กำลังโหลดข้อมูลแดชบอร์ด..." />
+        <TypewriterLoader label={t("กำลังโหลดข้อมูลแดชบอร์ด...", "Loading dashboard...")} />
       ) : activeModule ? (
         <>
           {activeModule === "register" ? (

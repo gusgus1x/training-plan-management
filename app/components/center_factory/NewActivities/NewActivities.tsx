@@ -109,12 +109,20 @@ export default function NewActivities({
     if (act.linkedPlanId) {
       const plan = availablePlans.find((p) => p.rollingId === act.linkedPlanId);
       if (plan) {
-        if (plan.status === "Cancel" || String(plan.dbStatus || "").toUpperCase() === "COMPLETED" || String(plan.dbStatus || "").toUpperCase() === "CANCELLED") return true;
+        if (
+          plan.status === "Cancel" ||
+          String(plan.dbStatus || "").toUpperCase() === "COMPLETED" ||
+          String(plan.dbStatus || "").toUpperCase() === "CANCELLED"
+        ) {
+          return true;
+        }
         return isCourseDateOrTimeEnded(plan.trainingDate, plan.endDate, plan.endTime);
       }
     }
-    if (act.linkedTrainingDate) {
-      return isCourseDateOrTimeEnded(act.linkedTrainingDate, act.linkedEndDate);
+    const effectiveStartDate = act.linkedTrainingDate || act.date;
+    const effectiveEndDate = act.linkedEndDate || act.linkedTrainingDate || act.date;
+    if (effectiveStartDate) {
+      return isCourseDateOrTimeEnded(effectiveStartDate, effectiveEndDate);
     }
     return false;
   };
@@ -985,27 +993,56 @@ export default function NewActivities({
 
                 <div className={styles.cardCourseActionFooter}>
                   {isHrd ? (
-                    <button
-                      type="button"
-                      className={styles.cardHrdDispatchBtn}
-                      onClick={() => handleNavigateToTrainingSurvey(act)}
-                      title={
-                        isThai
-                          ? "ไปที่หน้า Training Survey เพื่อส่งคนเข้าอบรม"
-                          : "Open Training Survey to dispatch participants"
-                      }
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                        <circle cx="9" cy="7" r="4" />
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                      </svg>
-                      <span>{isThai ? "ส่งคนเข้าอบรม" : "Dispatch Trainees"}</span>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="9 18 15 12 9 6" />
-                      </svg>
-                    </button>
+                    isEnded ? (
+                      <div className={styles.cardEndedPill} title={isThai ? "หลักสูตรนี้จัดเสร็จสิ้นแล้ว" : "Course has ended"}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="12" y1="8" x2="12" y2="12" />
+                          <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <span>{isThai ? "สิ้นสุดการอบรม" : "Ended"}</span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className={styles.cardHrdDispatchBtn}
+                        onClick={() => handleNavigateToTrainingSurvey(act)}
+                        title={
+                          isThai
+                            ? "ไปที่หน้า Training Survey เพื่อส่งคนเข้าอบรม"
+                            : "Open Training Survey to dispatch participants"
+                        }
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                          <circle cx="9" cy="7" r="4" />
+                          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                        </svg>
+                        <span>{isThai ? "ส่งคนเข้าอบรม" : "Dispatch Trainees"}</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </button>
+                    )
+                  ) : isEnded ? (
+                    isEnrolled ? (
+                      <div className={styles.cardEnrolledPill} title={isThai ? "คุณได้ลงทะเบียนเข้าร่วมหลักสูตรนี้แล้ว (เสร็จสิ้น)" : "Attended / Enrolled"}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        <span>{isThai ? "เข้าร่วมแล้ว" : "Attended"}</span>
+                      </div>
+                    ) : (
+                      <div className={styles.cardEndedPill} title={isThai ? "การอบรมนี้ได้ผ่านพ้นหรือสิ้นสุดไปแล้ว" : "Course has ended. Registration is closed."}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="12" y1="8" x2="12" y2="12" />
+                          <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <span>{isThai ? "สิ้นสุดการรับสมัคร" : "Closed"}</span>
+                      </div>
+                    )
                   ) : isEnrolled ? (
                     <div className={styles.cardEnrolledActionGroup}>
                       <div className={styles.cardEnrolledPill}>
@@ -1029,15 +1066,6 @@ export default function NewActivities({
                         </svg>
                         <span>{isThai ? "ยกเลิก" : "Cancel"}</span>
                       </button>
-                    </div>
-                  ) : isEnded ? (
-                    <div className={styles.cardEndedPill}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="12" y1="8" x2="12" y2="12" />
-                        <line x1="12" y1="16" x2="12.01" y2="16" />
-                      </svg>
-                      <span>{isThai ? "สิ้นสุดการรับสมัคร" : "Closed"}</span>
                     </div>
                   ) : (
                     <button
@@ -1816,7 +1844,68 @@ export default function NewActivities({
                       ) : null}
 
                       {/* Course Action: HRD Dispatch vs Employee Enrollment */}
-                      {isHrd ? (
+                      {isDetailEnded ? (
+                        <div className={styles.linkedCourseEnrollCta}>
+                          {isHrd ? (
+                            <div className={styles.endedNoticeBadge} style={{ width: "100%", justifyContent: "center" }}>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                              </svg>
+                              <span>
+                                {isThai
+                                  ? "การอบรมหลักสูตรนี้จัดเสร็จสิ้นไปแล้ว (ปิดรับการส่งรายชื่อเข้าอบรม)"
+                                  : "This training course has already ended. Trainee nomination is closed."}
+                              </span>
+                            </div>
+                          ) : isAlreadyEnrolled ? (
+                            <div className={styles.enrolledButtonGroup}>
+                              <div className={styles.enrolledSuccessBadge}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                <span>
+                                  {isThai
+                                    ? "ท่านได้ลงทะเบียนเข้าร่วมหลักสูตรนี้แล้ว (การอบรมสิ้นสุดแล้ว)"
+                                    : "You registered for this course (Training Completed)"}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                className={styles.detailRecordLinkBtn}
+                                onClick={() => {
+                                  setIsDetailModalOpen(false);
+                                  router.push("/training-record");
+                                }}
+                                title={isThai ? "ดูผลและประวัติการอบรมของคุณ" : "View your training record"}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                  <polyline points="14 2 14 8 20 8" />
+                                  <line x1="16" y1="13" x2="8" y2="13" />
+                                  <line x1="16" y1="17" x2="8" y2="17" />
+                                  <polyline points="10 9 9 9 8 9" />
+                                </svg>
+                                <span>{isThai ? "ดูประวัติการอบรม" : "Training Record"}</span>
+                              </button>
+                            </div>
+                          ) : (
+                            <div className={styles.endedNoticeBadge}>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="8" x2="12" y2="12" />
+                                <line x1="12" y1="16" x2="12.01" y2="16" />
+                              </svg>
+                              <span>
+                                {isThai
+                                  ? "การอบรมนี้ได้ผ่านพ้นหรือสิ้นสุดไปแล้ว จึงไม่เปิดให้ลงทะเบียนสมัคร"
+                                  : "This training course has already ended. Registration is closed."}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ) : isHrd ? (
                         <div className={styles.hrdDispatchPanel}>
                           <div className={styles.hrdDispatchHeader}>
                             <div className={styles.hrdDispatchBadge}>
@@ -1879,19 +1968,6 @@ export default function NewActivities({
                                 </svg>
                                 <span>{isThai ? "ยกเลิกการสมัคร" : "Cancel Registration"}</span>
                               </button>
-                            </div>
-                          ) : isDetailEnded ? (
-                            <div className={styles.endedNoticeBadge}>
-                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="10" />
-                                <line x1="12" y1="8" x2="12" y2="12" />
-                                <line x1="12" y1="16" x2="12.01" y2="16" />
-                              </svg>
-                              <span>
-                                {isThai
-                                  ? "การอบรมนี้ได้ผ่านพ้นหรือสิ้นสุดไปแล้ว จึงไม่เปิดให้ลงทะเบียนสมัคร"
-                                  : "This training course has already ended. Registration is closed."}
-                              </span>
                             </div>
                           ) : activeActivity.linkedPlanId ? (
                             <button

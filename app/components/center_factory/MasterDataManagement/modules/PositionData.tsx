@@ -30,9 +30,13 @@ export type PositionRecord = {
 
 export const positionDataModule = {
   title: "Position Data",
+  titleTh: "ข้อมูลตำแหน่ง",
   subtitle: "Position master",
+  subtitleTh: "ระบบจัดการข้อมูลตำแหน่ง",
   description:
     "Maintain the shared position catalog used by every company.",
+  descriptionTh:
+    "จัดการข้อมูลตำแหน่งงานมาตรฐานที่ใช้ร่วมกันในทุกบริษัท",
 } as const;
 
 type PositionForm = {
@@ -220,7 +224,7 @@ export default function PositionData() {
   if (isLoading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "400px", padding: "40px" }}>
-        <TypewriterLoader label="กำลังโหลดข้อมูลตำแหน่งงาน (Position Master)..." />
+        <TypewriterLoader label={isThai ? "กำลังโหลดข้อมูลตำแหน่งงาน..." : "Loading position master data..."} />
       </div>
     );
   }
@@ -229,13 +233,13 @@ export default function PositionData() {
     <section className={styles.page} aria-label="Position Data module">
       <section className={styles.hero}>
         <div>
-          <p className={styles.kicker}>{positionDataModule.subtitle}</p>
-          <h2>{positionDataModule.title}</h2>
-          <p>{positionDataModule.description}</p>
+          <p className={styles.kicker}>{isThai ? positionDataModule.subtitleTh : positionDataModule.subtitle}</p>
+          <h2>{isThai ? positionDataModule.titleTh : positionDataModule.title}</h2>
+          <p>{isThai ? positionDataModule.descriptionTh : positionDataModule.description}</p>
         </div>
         <div className={styles.heroMetric}>
           <strong>{rows.length}</strong>
-          <span>Positions</span>
+          <span>{isThai ? "ตำแหน่งทั้งหมด" : "Positions"}</span>
         </div>
       </section>
 
@@ -245,7 +249,7 @@ export default function PositionData() {
             aria-label="Search position data"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search position code or name"
+            placeholder={isThai ? "ค้นหารหัสหรือชื่อตำแหน่ง..." : "Search position code or name"}
           />
           {isCenter ? (
             <>
@@ -284,13 +288,14 @@ export default function PositionData() {
 
         {formMode ? (
           <section className={styles.editorPanel}>
-            <h3>{formMode === "new" ? "Create Position" : "Edit Position"}</h3>
+            <h3>{formMode === "new" ? (isThai ? "เพิ่มข้อมูลตำแหน่ง" : "Create Position") : (isThai ? "แก้ไขข้อมูลตำแหน่ง" : "Edit Position")}</h3>
             <div className={styles.formGrid}>
               <label>
-                Position Code
+                {isThai ? "รหัสตำแหน่ง" : "Position Code"}
                 <input
                   value={form.positionCode}
                   maxLength={30}
+                  placeholder={isThai ? "เช่น M01, ENG01" : "e.g. M01, ENG01"}
                   onChange={(event) =>
                     setForm((current) => ({
                       ...current,
@@ -300,10 +305,11 @@ export default function PositionData() {
                 />
               </label>
               <label>
-                Position Name(TH)
+                {isThai ? "ชื่อตำแหน่ง (ไทย)" : "Position Name (TH)"}
                 <input
                   value={form.positionNameTh}
                   maxLength={255}
+                  placeholder={isThai ? "เช่น ผู้จัดการฝ่าย" : "e.g. Department Manager"}
                   onChange={(event) =>
                     setForm((current) => ({
                       ...current,
@@ -313,10 +319,11 @@ export default function PositionData() {
                 />
               </label>
               <label>
-                Position Name(EN)
+                {isThai ? "ชื่อตำแหน่ง (อังกฤษ)" : "Position Name (EN)"}
                 <input
                   value={form.positionNameEn}
                   maxLength={255}
+                  placeholder={isThai ? "เช่น General Manager" : "e.g. General Manager"}
                   onChange={(event) =>
                     setForm((current) => ({
                       ...current,
@@ -351,19 +358,19 @@ export default function PositionData() {
         <section className={styles.tablePanel}>
           <div className={styles.panelHeader}>
             <div>
-              <span>Shared Master</span>
-              <h3>Position Records</h3>
+              <span>{isThai ? "ข้อมูลหลักส่วนกลาง" : "Shared Master"}</span>
+              <h3>{isThai ? "รายชื่อตำแหน่ง" : "Position Records"}</h3>
             </div>
-            <p>{visibleRows.length} records</p>
+            <p>{visibleRows.length} {isThai ? "รายการ" : visibleRows.length === 1 ? "record" : "records"}</p>
           </div>
           <div className={styles.tableWrap}>
             <table className={styles.positionTable}>
               <thead>
                 <tr>
-                  <th>No.</th>
-                  <th>Position Code</th>
-                  <th>Position Name(TH)</th>
-                  <th>Position Name(EN)</th>
+                  <th>{isThai ? "ลำดับ" : "No."}</th>
+                  <th>{isThai ? "รหัสตำแหน่ง" : "Position Code"}</th>
+                  <th>{isThai ? "ชื่อตำแหน่ง (ไทย)" : "Position Name (TH)"}</th>
+                  <th>{isThai ? "ชื่อตำแหน่ง (อังกฤษ)" : "Position Name (EN)"}</th>
                 </tr>
               </thead>
               <tbody translate="no">
@@ -387,7 +394,9 @@ export default function PositionData() {
                 ))}
                 {!isLoading && visibleRows.length === 0 ? (
                   <tr>
-                    <td colSpan={4}>No position data found.</td>
+                    <td colSpan={4} style={{ textAlign: "center", padding: "24px", color: "var(--ui-30-muted)" }}>
+                      {isThai ? "ไม่พบข้อมูลตำแหน่ง" : "No position data found."}
+                    </td>
                   </tr>
                 ) : null}
               </tbody>

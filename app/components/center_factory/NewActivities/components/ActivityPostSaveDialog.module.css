@@ -344,45 +344,45 @@
 }
 
 .companyBadge_CENTER {
-  background: rgba(16, 185, 129, 0.18);
-  color: #34d399;
-  border: 1px solid rgba(52, 211, 153, 0.35);
+  background: rgba(6, 78, 59, 0.65);
+  color: #a7f3d0;
+  border: 1px solid #059669;
 }
 
 .companyBadge_ATA {
-  background: rgba(59, 130, 246, 0.18);
-  color: #60a5fa;
-  border: 1px solid rgba(96, 165, 250, 0.35);
+  background: rgba(30, 58, 138, 0.65);
+  color: #bfdbfe;
+  border: 1px solid #2563eb;
 }
 
 .companyBadge_TEP {
-  background: rgba(245, 158, 11, 0.18);
-  color: #fbbf24;
-  border: 1px solid rgba(251, 191, 36, 0.35);
+  background: rgba(113, 63, 18, 0.65);
+  color: #fef08a;
+  border: 1px solid #ca8a04;
 }
 
 .companyBadge_ATFB {
-  background: rgba(139, 92, 246, 0.18);
-  color: #a78bfa;
-  border: 1px solid rgba(167, 139, 250, 0.35);
+  background: rgba(124, 45, 18, 0.65);
+  color: #fed7aa;
+  border: 1px solid #ea580c;
 }
 
 .companyBadge_NIC {
-  background: rgba(236, 72, 153, 0.18);
-  color: #f472b6;
-  border: 1px solid rgba(244, 114, 182, 0.35);
+  background: rgba(88, 28, 135, 0.65);
+  color: #e9d5ff;
+  border: 1px solid #9333ea;
 }
 
 .companyBadge_SATI {
-  background: rgba(20, 184, 166, 0.18);
-  color: #2dd4bf;
-  border: 1px solid rgba(45, 212, 191, 0.35);
+  background: rgba(127, 29, 29, 0.65);
+  color: #fecaca;
+  border: 1px solid #dc2626;
 }
 
 .companyBadge_SNF {
-  background: rgba(249, 115, 22, 0.18);
-  color: #fb923c;
-  border: 1px solid rgba(251, 146, 60, 0.35);
+  background: rgba(22, 78, 99, 0.65);
+  color: #a5f3fc;
+  border: 1px solid #0891b2;
 }
 
 .previewTitle {

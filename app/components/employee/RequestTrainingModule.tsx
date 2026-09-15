@@ -117,7 +117,11 @@ export default function RequestTrainingModule({
 
     if (course) {
       const codePrefix = course.courseCode ? `[${course.courseCode}] ` : "";
-      setTrainingNeed(`${codePrefix}${course.courseTitle} (ขออบรมทบทวน / Refresher)`);
+      setTrainingNeed(
+        language === "th"
+          ? `${codePrefix}${course.courseTitle} (ขออบรมทบทวน / Refresher)`
+          : `${codePrefix}${course.courseTitle} (Refresher Training)`,
+      );
       const dateText = course.completedDate ? `เมื่อวันที่ ${course.completedDate}` : "";
       setReason(
         language === "th"
@@ -296,7 +300,10 @@ export default function RequestTrainingModule({
                     options={completedCourses.map((course) => ({
                       value: course.id,
                       label: `[${course.courseCode}] ${course.courseTitle}`,
-                      secondaryLabel: `ผ่านเมื่อ: ${course.completedDate} • ${course.hours} ชม. • ${course.provider}`,
+                      secondaryLabel: t(
+                        `ผ่านเมื่อ: ${course.completedDate} • ${course.hours} ชม. • ${course.provider}`,
+                        `Completed: ${course.completedDate} • ${course.hours} hrs • ${course.provider}`,
+                      ),
                       badge: course.provider === "HRD Center" ? (
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                           <Building2 size={12} /> Center

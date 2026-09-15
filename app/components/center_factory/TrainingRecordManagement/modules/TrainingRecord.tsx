@@ -555,9 +555,9 @@ const mapImportRowToUploadedRecord = (
 
 const expenseItems = EXPENSE_ITEMS;
 
-const STAGE_LABEL: Record<GradedStage, string> = {
-  PRE_TEST: "แบบทดสอบก่อนอบรม (Pre Test)",
-  POST_TEST: "แบบทดสอบหลังอบรม (Post Test)",
+const STAGE_LABEL: Record<GradedStage, { th: string; en: string }> = {
+  PRE_TEST: { th: "แบบทดสอบก่อนอบรม (Pre Test)", en: "Pre-Test" },
+  POST_TEST: { th: "แบบทดสอบหลังอบรม (Post Test)", en: "Post-Test" },
 };
 
 const opensAtLabel = (isoDate: string) =>
@@ -572,6 +572,9 @@ const opensAtLabel = (isoDate: string) =>
 const FormSettingsPanel = ({ planId, pendingCount }: { planId: string; pendingCount: number }) => {
   const confirm = useConfirm();
   const toast = useToast();
+  const { language } = useUiLanguage();
+  const isThai = language === "th";
+  const t = (th: string, en: string) => (isThai ? th : en);
   const [settings, setSettings] = useState<StageSetting[] | null>(null);
   const [busyStage, setBusyStage] = useState<GradedStage | null>(null);
 
@@ -626,7 +629,7 @@ const FormSettingsPanel = ({ planId, pendingCount }: { planId: string; pendingCo
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "8px", margin: "16px 0" }}>
-      <strong style={{ fontSize: "0.85rem" }}>เปิด/ปิดรับแบบทดสอบ</strong>
+      <strong style={{ fontSize: "0.85rem" }}>{isThai ? "เปิด/ปิดรับแบบทดสอบ" : "Open/Close Test Submissions"}</strong>
       {settings.map((setting) => {
         const isClosed = setting.closedAt !== null;
         return (
@@ -644,13 +647,13 @@ const FormSettingsPanel = ({ planId, pendingCount }: { planId: string; pendingCo
             }}
           >
             <span style={{ fontSize: "0.8rem" }}>
-              <strong>{STAGE_LABEL[setting.stage]}</strong>
+              <strong>{isThai ? STAGE_LABEL[setting.stage].th : STAGE_LABEL[setting.stage].en}</strong>
               {setting.mode === "NONE" ? (
-                <span style={{ color: "var(--ui-30-muted)" }}> — ไม่มี</span>
+                <span style={{ color: "var(--ui-30-muted)" }}> — {isThai ? "ไม่มี" : "None"}</span>
               ) : setting.mode === "LINK" ? (
-                <span style={{ color: "var(--ui-30-muted)" }}> — ทำผ่านลิงก์ภายนอก ปิดในระบบไม่ได้</span>
+                <span style={{ color: "var(--ui-30-muted)" }}> — {isThai ? "ทำผ่านลิงก์ภายนอก ปิดในระบบไม่ได้" : "External link, cannot close in system"}</span>
               ) : (
-                <span style={{ color: "var(--ui-30-muted)" }}> — เปิดตั้งแต่ {opensAtLabel(setting.opensAt)}</span>
+                <span style={{ color: "var(--ui-30-muted)" }}> — {isThai ? `เปิดตั้งแต่ ${opensAtLabel(setting.opensAt)}` : `Open since ${opensAtLabel(setting.opensAt)}`}</span>
               )}
             </span>
 
@@ -670,7 +673,7 @@ const FormSettingsPanel = ({ planId, pendingCount }: { planId: string; pendingCo
                   cursor: busyStage === setting.stage ? "wait" : "pointer",
                 }}
               >
-                {isClosed ? "เปิดอีกครั้ง" : "ปิดรับ"}
+                {isClosed ? (isThai ? "เปิดอีกครั้ง" : "Reopen") : (isThai ? "ปิดรับ" : "Close")}
               </button>
             ) : null}
           </div>
@@ -756,6 +759,8 @@ export default function TrainingRecord() {
   const [isLoading, setIsLoading] = useState(true);
   const [attendeeSearchQuery, setAttendeeSearchQuery] = useState("");
   const { language } = useUiLanguage();
+  const isThai = language === "th";
+  const t = (th: string, en: string) => (isThai ? th : en);
   // The SAP UserID identifies a person, so it starts hidden: revealed one row at a time, or all at
   // once when HRD is actually working through the list (naming certificate files, say).
   const [showAllUserIds, setShowAllUserIds] = useState(false);
@@ -1157,9 +1162,9 @@ export default function TrainingRecord() {
                 <p className={styles.heroSubTitle}>{selectedCourse.titleEn}</p>
               ) : null}
               <div className={styles.heroCodeMeta}>
-                <span>รหัสคอร์ส: <strong>{selectedCourse.code}</strong></span>
+                <span>{isThai ? "รหัสคอร์ส:" : "Course Code:"} <strong>{selectedCourse.code}</strong></span>
                 <span>•</span>
-                <span>บริษัท/หน่วยงาน: <strong>{selectedCourse.company || "All Companies"}</strong></span>
+                <span>{isThai ? "บริษัท/หน่วยงาน:" : "Company/Unit:"} <strong>{selectedCourse.company || (isThai ? "ทุกบริษัท" : "All Companies")}</strong></span>
               </div>
             </div>
 
@@ -1178,7 +1183,7 @@ export default function TrainingRecord() {
                 onClick={() => setIsCourseDetailOpen(false)}
               >
                 <X size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                ปิดหน้ารายละเอียด
+                {isThai ? "ปิดหน้ารายละเอียด" : "Close Details"}
               </button>
             </div>
           </section>
@@ -1188,29 +1193,29 @@ export default function TrainingRecord() {
             <div className={styles.metaMiniCard}>
               <div className={styles.metaMiniIcon}><Calendar size={16} /></div>
               <div>
-                <span>วันที่ & เวลาอบรม</span>
+                <span>{isThai ? "วันที่ & เวลาอบรม" : "Date & Time"}</span>
                 <strong>{selectedCourse.date || "-"} ({selectedCourse.time || "09:00 - 16:00"})</strong>
               </div>
             </div>
             <div className={styles.metaMiniCard}>
               <div className={styles.metaMiniIcon}><MapPin size={16} /></div>
               <div>
-                <span>สถานที่ / ห้องอบรม</span>
+                <span>{isThai ? "สถานที่ / ห้องอบรม" : "Venue / Room"}</span>
                 <strong>{selectedCourse.room || "-"}</strong>
               </div>
             </div>
             <div className={styles.metaMiniCard}>
               <div className={styles.metaMiniIcon}><User size={16} /></div>
               <div>
-                <span>วิทยากรผู้สอน</span>
+                <span>{isThai ? "วิทยากรผู้สอน" : "Instructor"}</span>
                 <strong>{selectedCourse.instructor || "-"}</strong>
               </div>
             </div>
             <div className={styles.metaMiniCard}>
               <div className={styles.metaMiniIcon}><Clock size={16} /></div>
               <div>
-                <span>ระยะเวลาอบรม & สะสมผล</span>
-                <strong>{selectedCourse.durationHours ?? 6} ชม. / สะสม {selectedCourse.validityMonths ?? 12} เดือน</strong>
+                <span>{isThai ? "ระยะเวลาอบรม & สะสมผล" : "Duration & Validity"}</span>
+                <strong>{selectedCourse.durationHours ?? 6} {isThai ? "ชม." : "hrs"} / {isThai ? "สะสม" : "valid for"} {selectedCourse.validityMonths ?? 12} {isThai ? "เดือน" : "months"}</strong>
               </div>
             </div>
           </div>
@@ -1220,7 +1225,7 @@ export default function TrainingRecord() {
             <div className={styles.panelHeader}>
               <div>
                 <p className={styles.kicker}>Course Master Specifications</p>
-                <h3>รายละเอียดการอบรมหลักสูตร (Training Course Master Details)</h3>
+                <h3>{isThai ? "รายละเอียดการอบรมหลักสูตร (Training Course Master Details)" : "Training Course Master Details"}</h3>
               </div>
               <span>Master Specs</span>
             </div>
@@ -1229,7 +1234,7 @@ export default function TrainingRecord() {
               <article className={styles.masterSpecCard}>
                 <div className={styles.specIcon}><Lightbulb size={18} /></div>
                 <div className={styles.specContent}>
-                  <span>วัตถุประสงค์ของการอบรม (Objective)</span>
+                  <span>{isThai ? "วัตถุประสงค์ของการอบรม (Objective)" : "Learning Objective"}</span>
                   <p>
                     {selectedCourse.objective ||
                       "พัฒนาทักษะความรู้ มาตรฐานการปฏิบัติงาน และเพิ่มประสิทธิภาพในการปฏิบัติงานจริงตามเกณฑ์มาตรฐานองค์กร"}
@@ -1240,7 +1245,7 @@ export default function TrainingRecord() {
               <article className={styles.masterSpecCard}>
                 <div className={styles.specIcon}><BookOpen size={18} /></div>
                 <div className={styles.specContent}>
-                  <span>เนื้อหาหลักสูตร (Learning Content)</span>
+                  <span>{isThai ? "เนื้อหาหลักสูตร (Learning Content)" : "Learning Content"}</span>
                   <p>
                     {selectedCourse.learningContent ||
                       "ความรู้พื้นฐาน ขั้นตอนการทำงาน มาตรฐานความปลอดภัย และแนวทางการแก้ไขปัญหาหน้างานในสายงาน"}
@@ -1251,7 +1256,7 @@ export default function TrainingRecord() {
               <article className={styles.masterSpecCard}>
                 <div className={styles.specIcon}><Target size={18} /></div>
                 <div className={styles.specContent}>
-                  <span>กลุ่มเป้าหมาย (Target Audience)</span>
+                  <span>{isThai ? "กลุ่มเป้าหมาย (Target Audience)" : "Target Audience"}</span>
                   <p>
                     {selectedCourse.targetGroup ||
                       "พนักงานผู้ปฏิบัติงาน หัวหน้างาน และบุคลากรที่เกี่ยวข้องในแผนก"}
@@ -1262,7 +1267,7 @@ export default function TrainingRecord() {
               <article className={styles.masterSpecCard}>
                 <div className={styles.specIcon}><Settings size={18} /></div>
                 <div className={styles.specContent}>
-                  <span>รูปแบบการอบรม (Methodology)</span>
+                  <span>{isThai ? "รูปแบบการอบรม (Methodology)" : "Methodology"}</span>
                   <p>
                     {selectedCourse.methodology ||
                       "การบรรยายเชิงปฏิบัติการ (Lecture & Workshop) พร้อมการประเมินผลหลังการอบรม"}
@@ -1273,25 +1278,25 @@ export default function TrainingRecord() {
 
             <div className={styles.masterMetaChips}>
               <div className={styles.metaChip}>
-                <span>หมวดหมู่หลักสูตร:</span>
+                <span>{isThai ? "หมวดหมู่หลักสูตร:" : "Course Type:"}</span>
                 <strong>{selectedCourse.courseType || "ยังไม่ระบุ"}</strong>
               </div>
               <div className={styles.metaChip}>
-                <span>กลุ่มหลักสูตร:</span>
+                <span>{isThai ? "กลุ่มหลักสูตร:" : "Course Group:"}</span>
                 <strong>{selectedCourse.courseGroup || "ยังไม่ระบุ"}</strong>
               </div>
               <div className={styles.metaChip}>
-                <span>สถาบัน/ผู้จัด:</span>
+                <span>{isThai ? "สถาบัน/ผู้จัด:" : "Provider:"}</span>
                 <strong>{selectedCourse.instituteProvider || "ยังไม่ระบุ"}</strong>
               </div>
               <div className={styles.metaChip}>
-                <span>ระยะเวลา:</span>
+                <span>{isThai ? "ระยะเวลา:" : "Duration:"}</span>
                 {/* No invented hour count: this panel is what HRD reads back when recording results. */}
-                <strong>{selectedCourse.durationHours != null ? `${selectedCourse.durationHours} ชั่วโมง` : "ยังไม่ระบุ"}</strong>
+                <strong>{selectedCourse.durationHours != null ? `${selectedCourse.durationHours} ${isThai ? "ชั่วโมง" : "hrs"}` : (isThai ? "ยังไม่ระบุ" : "Not specified")}</strong>
               </div>
               <div className={styles.metaChip}>
-                <span>อายุการสะสมผล:</span>
-                <strong>{selectedCourse.validityMonths ?? 12} เดือน</strong>
+                <span>{isThai ? "อายุการสะสมผล:" : "Validity:"}</span>
+                <strong>{selectedCourse.validityMonths ?? 12} {isThai ? "เดือน" : "months"}</strong>
               </div>
             </div>
           </section>
@@ -1301,10 +1306,10 @@ export default function TrainingRecord() {
             <div className={styles.panelHeader}>
               <div>
                 <p className={styles.kicker}>Financial Summary & Allocation</p>
-                <h3>สรุปงบประมาณค่าใช้จ่ายจริง & การปันส่วน (Actual Cost & Allocation)</h3>
+                <h3>{isThai ? "สรุปงบประมาณค่าใช้จ่ายจริง & การปันส่วน" : "Actual Cost & Allocation Summary"}</h3>
               </div>
               <span className={styles.totalBadge}>
-                ยอดรวมสุทธิ: <strong>THB {formatNumber(selectedActualCost)}</strong>
+                {isThai ? "ยอดรวมสุทธิ:" : "Net Total:"} <strong>THB {formatNumber(selectedActualCost)}</strong>
               </span>
             </div>
 
@@ -1316,7 +1321,7 @@ export default function TrainingRecord() {
                   <span>Total Actual Cost</span>
                 </div>
                 <strong className={styles.costValueText}>THB {formatNumber(selectedActualCost)}</strong>
-                <p className={styles.costSubText}>ค่าใช้จ่ายรวมจริงทุกหมวดรายการ</p>
+                <p className={styles.costSubText}>{isThai ? "ค่าใช้จ่ายรวมจริงทุกหมวดรายการ" : "Total actual expenses across all categories"}</p>
               </article>
 
               <article className={styles.costHighlightCard}>
@@ -1325,10 +1330,10 @@ export default function TrainingRecord() {
                   <span>Actual Attendees</span>
                 </div>
                 <strong className={styles.costValueText}>
-                  {selectedCourse.actualAttendees} <small>คน</small>
+                  {selectedCourse.actualAttendees} <small>{isThai ? "คน" : "attendees"}</small>
                 </strong>
                 <p className={styles.costSubText}>
-                  จากผู้ลงทะเบียน {selectedCourse.registeredAttendees} คน (เข้าเรียน{" "}
+                  {isThai ? `จากผู้ลงทะเบียน ${selectedCourse.registeredAttendees} คน (เข้าเรียน ` : `From ${selectedCourse.registeredAttendees} registered (`}
                   {selectedCourse.registeredAttendees > 0
                     ? Math.round(
                         (selectedCourse.actualAttendees / selectedCourse.registeredAttendees) *
@@ -1347,7 +1352,7 @@ export default function TrainingRecord() {
                 <strong className={styles.costValueTextPrimary}>
                   THB {formatNumber(selectedCostPerPerson)}
                 </strong>
-                <p className={styles.costSubTextPrimary}>เฉลี่ยค่าใช้จ่ายจริงต่อผู้เรียน 1 คน</p>
+                <p className={styles.costSubTextPrimary}>{isThai ? "เฉลี่ยค่าใช้จ่ายจริงต่อผู้เรียน 1 คน" : "Average actual cost per trainee"}</p>
               </article>
             </div>
 
@@ -1355,7 +1360,7 @@ export default function TrainingRecord() {
             <div className={styles.panelHeader} style={{ marginTop: "20px" }}>
               <div>
                 <p className={styles.kicker}>Itemized Expenses</p>
-                <h3>แจกแจงหมวดหมู่ค่าใช้จ่ายจริง (Cost Breakdown Items)</h3>
+                <h3>{isThai ? "แจกแจงหมวดหมู่ค่าใช้จ่ายจริง" : "Cost Breakdown Items"}</h3>
               </div>
             </div>
 
@@ -1381,7 +1386,7 @@ export default function TrainingRecord() {
                         style={{ width: `${percentShare}%` }}
                       />
                     </div>
-                    <span className={styles.expenseShareTag}>{percentShare}% ของงบรวม</span>
+                    <span className={styles.expenseShareTag}>{percentShare}% {isThai ? "ของงบรวม" : "of total"}</span>
                   </article>
                 );
               })}
@@ -1393,7 +1398,7 @@ export default function TrainingRecord() {
                 <div className={styles.panelHeader}>
                   <div>
                     <p className={styles.kicker}>Company Cost Allocation</p>
-                    <h3>การปันส่วนค่าใช้จ่ายจริงตามบริษัท (Actual Cost Shared by Company)</h3>
+                    <h3>{isThai ? "การปันส่วนค่าใช้จ่ายจริงตามบริษัท" : "Actual Cost Shared by Company"}</h3>
                   </div>
                 </div>
 
@@ -1401,10 +1406,10 @@ export default function TrainingRecord() {
                   <table className={styles.companyCostTable}>
                     <thead>
                       <tr>
-                        <th>บริษัท (Company)</th>
-                        <th>ผู้เข้าอบรมจริง</th>
-                        <th>สัดส่วน (Share %)</th>
-                        <th>งบปันส่วนค่าใช้จ่ายจริง (Allocated Actual Cost)</th>
+                        <th>{isThai ? "บริษัท (Company)" : "Company"}</th>
+                        <th>{isThai ? "ผู้เข้าอบรมจริง" : "Actual Attendees"}</th>
+                        <th>{isThai ? "สัดส่วน (Share %)" : "Share %"}</th>
+                        <th>{isThai ? "งบปันส่วนค่าใช้จ่ายจริง (Allocated Actual Cost)" : "Allocated Actual Cost"}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1414,7 +1419,7 @@ export default function TrainingRecord() {
                             <strong className={styles.companyBadgePill}>{item.company}</strong>
                           </td>
                           <td>
-                            <strong>{item.count}</strong> คน
+                            <strong>{item.count}</strong> {isThai ? "คน" : "attendees"}
                           </td>
                           <td>
                             <div className={styles.sharePercentCell}>
@@ -1593,12 +1598,12 @@ export default function TrainingRecord() {
                 <p className={styles.kicker}>Confirmed Attendees Workspace</p>
                 <h3>
                   <Users size={18} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
-                  รายชื่อผู้เข้าอบรมจริง & ผลการประเมิน (Confirmed Attendees & Evaluation)
+                  {isThai ? "รายชื่อผู้เข้าอบรมจริง & ผลการประเมิน" : "Confirmed Attendees & Evaluation"}
                 </h3>
               </div>
               <div className={styles.attendeeHeaderActions}>
                 <span className={styles.attendeeCountChip}>
-                  รวม {visibleCourseAttendees.length} คน ({attendeesByCompany.length} บริษัท)
+                  {isThai ? `รวม ${visibleCourseAttendees.length} คน (${attendeesByCompany.length} บริษัท)` : `Total ${visibleCourseAttendees.length} attendees (${attendeesByCompany.length} companies)`}
                 </span>
                 <button
                   type="button"
@@ -1615,7 +1620,7 @@ export default function TrainingRecord() {
                   }
                 >
                   {showAllUserIds ? <EyeClosedIcon /> : <EyeOpenIcon />}
-                  {showAllUserIds ? " ซ่อน UserID" : " เปิดดู UserID"}
+                  {showAllUserIds ? (isThai ? " ซ่อน UserID" : " Hide UserID") : (isThai ? " เปิดดู UserID" : " Reveal UserID")}
                 </button>
                 <button
                   type="button"
@@ -1641,7 +1646,7 @@ export default function TrainingRecord() {
                   }
                   onClick={() => setSelectedAttendeeCompanyFilter("ALL")}
                 >
-                  ทุกบริษัท ({visibleCourseAttendees.length})
+                  {isThai ? "ทุกบริษัท" : "All Companies"} ({visibleCourseAttendees.length})
                 </button>
                 {attendeesByCompany.map(([company, atts]) => (
                   <button
@@ -1663,7 +1668,7 @@ export default function TrainingRecord() {
                 <span className={styles.searchIcon}><Search size={14} /></span>
                 <input
                   type="text"
-                  placeholder="ค้นหาชื่อ, รหัสพนักงาน, แผนก..."
+                  placeholder={isThai ? "ค้นหาชื่อ, รหัสพนักงาน, แผนก..." : "Search name, employee code, department..."}
                   value={attendeeSearchQuery}
                   onChange={(e) => setAttendeeSearchQuery(e.target.value)}
                 />
@@ -1699,7 +1704,7 @@ export default function TrainingRecord() {
                             className={styles.columnResizer}
                             role="separator"
                             aria-orientation="vertical"
-                            title="ลากเพื่อปรับความกว้าง · ดับเบิลคลิกเพื่อคืนค่าเดิม"
+                            title={isThai ? "ลากเพื่อปรับความกว้าง · ดับเบิลคลิกเพื่อคืนค่าเดิม" : "Drag to resize · Double-click to reset"}
                             onPointerDown={(event) => startColumnResize(column.key, event)}
                             // A width is remembered, so there has to be a way back from one that
                             // was dragged too narrow to read. Same gesture a spreadsheet uses.
@@ -1776,15 +1781,15 @@ export default function TrainingRecord() {
                             >
                               {attendee.prePost === "Passed" ? (
                                 <>
-                                  <span className={styles.glowingDotGreen} /> ผ่าน
+                                  <span className={styles.glowingDotGreen} /> {isThai ? "ผ่าน" : "Passed"}
                                 </>
                               ) : attendee.prePost === "Failed" ? (
                                 <>
-                                  <span className={styles.glowingDotRed} /> ไม่ผ่าน
+                                  <span className={styles.glowingDotRed} /> {isThai ? "ไม่ผ่าน" : "Failed"}
                                 </>
                               ) : (
                                 <>
-                                  <span className={styles.glowingDotAmber} /> ยังไม่ระบุ
+                                  <span className={styles.glowingDotAmber} /> {isThai ? "ยังไม่ระบุ" : "Not specified"}
                                 </>
                               )}
                             </span>
@@ -1799,19 +1804,19 @@ export default function TrainingRecord() {
                             >
                               {attendee.evaluation === "Done" ? (
                                 <>
-                                  <span className={styles.glowingDotBlue} /> ทำแล้ว
+                                  <span className={styles.glowingDotBlue} /> {isThai ? "ทำแล้ว" : "Completed"}
                                 </>
                               ) : attendee.evaluation === "None" ? (
                                 <>
-                                  <span className={styles.glowingDotGrey} /> ไม่มีแบบประเมิน
+                                  <span className={styles.glowingDotGrey} /> {isThai ? "ไม่มีแบบประเมิน" : "No form"}
                                 </>
                               ) : attendee.evaluation === "External" ? (
                                 <>
-                                  <span className={styles.glowingDotGrey} /> ทำผ่านลิงก์
+                                  <span className={styles.glowingDotGrey} /> {isThai ? "ทำผ่านลิงก์" : "External link"}
                                 </>
                               ) : (
                                 <>
-                                  <span className={styles.glowingDotAmber} /> รอดำเนินการ
+                                  <span className={styles.glowingDotAmber} /> {isThai ? "รอดำเนินการ" : "Pending"}
                                 </>
                               )}
                             </span>
@@ -1841,7 +1846,7 @@ export default function TrainingRecord() {
                 <div className={styles.emptyAttendeeState}>
                   <span>
                     <Search size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                    ไม่พบข้อมูลผู้เข้าอบรมตามเงื่อนไขค้นหา
+                    {isThai ? "ไม่พบข้อมูลผู้เข้าอบรมตามเงื่อนไขค้นหา" : "No attendees found matching search criteria"}
                   </span>
                 </div>
               )}
@@ -2079,7 +2084,7 @@ export default function TrainingRecord() {
             <p>{trainingRecordModule.description}</p>
           </div>
         </section>
-        <TypewriterLoader label="กำลังโหลดข้อมูลประวัติการอบรม..." />
+        <TypewriterLoader label={isThai ? "กำลังโหลดข้อมูลประวัติการอบรม..." : "Loading training records..."} />
       </section>
     );
   }

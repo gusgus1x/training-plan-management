@@ -213,11 +213,11 @@ const ChoiceChart = ({ question }: { question: EvaluationSummaryQuestion }) => (
   </div>
 );
 
-const RatingChart = ({ question }: { question: EvaluationSummaryQuestion }) => (
+const RatingChart = ({ question, isThai }: { question: EvaluationSummaryQuestion; isThai: boolean }) => (
   <div className={styles.chartSplit}>
     <div className={styles.average}>
       <strong>{(question.averageRating ?? 0).toFixed(2)}</strong>
-      <span>คะแนนเฉลี่ย</span>
+      <span>{isThai ? "คะแนนเฉลี่ย" : "Average Score"}</span>
       <Stars average={question.averageRating ?? 0} />
     </div>
     <div className={styles.bars}>
@@ -226,7 +226,7 @@ const RatingChart = ({ question }: { question: EvaluationSummaryQuestion }) => (
       {[...question.ratingDistribution].reverse().map((bucket) => (
         <Bar
           key={bucket.value}
-          label={question.options[bucket.value - 1]?.optionText ?? `ระดับ ${bucket.value}`}
+          label={question.options[bucket.value - 1]?.optionText ?? (isThai ? `ระดับ ${bucket.value}` : `Rating ${bucket.value}`)}
           count={bucket.count}
           total={question.answeredBy}
           // Same ramp as the grid, and for the same reason: the bar's colour says where on the
@@ -342,21 +342,25 @@ const GridChart = ({ question }: { question: EvaluationSummaryQuestion }) => {
 const TextAnswers = ({
   question,
   onOpen,
+  isThai,
 }: {
   question: EvaluationSummaryQuestion;
   onOpen: () => void;
+  isThai: boolean;
 }) => {
   if (question.textAnswersWithheld) {
     return (
       <p className={styles.withheld}>
-        ซ่อนข้อความไว้จนกว่าจะมีผู้ตอบครบ {FREE_TEXT_MIN_RESPONDENTS} คน — จำนวนผู้ตอบน้อยเกินกว่าจะรักษาการไม่ระบุตัวตนได้
+        {isThai
+          ? `ซ่อนข้อความไว้จนกว่าจะมีผู้ตอบครบ ${FREE_TEXT_MIN_RESPONDENTS} คน — จำนวนผู้ตอบน้อยเกินกว่าจะรักษาการไม่ระบุตัวตนได้`
+          : `Responses withheld until at least ${FREE_TEXT_MIN_RESPONDENTS} respondents have answered to protect anonymity.`}
       </p>
     );
   }
   if (question.textAnswers.length === 0) return null;
   return (
     <div className={styles.textPreview}>
-      <span className={styles.textPreviewLabel}>การตอบกลับล่าสุด</span>
+      <span className={styles.textPreviewLabel}>{isThai ? "การตอบกลับล่าสุด" : "Recent Responses"}</span>
       {question.textAnswers.slice(0, 3).map((text, index) => (
         <p key={index}>&ldquo;{text}&rdquo;</p>
       ))}
@@ -640,12 +644,12 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                               : ""}
                           </p>
 
-                          {question.ratingDistribution.length > 0 ? <RatingChart question={question} /> : null}
+                          {question.ratingDistribution.length > 0 ? <RatingChart question={question} isThai={isThai} /> : null}
                           {question.ratingDistribution.length === 0 && question.options.length > 0 ? (
                             <ChoiceChart question={question} />
                           ) : null}
                           {question.gridRows.length > 0 ? <GridChart question={question} /> : null}
-                          <TextAnswers question={question} onOpen={() => void openDetail(question)} />
+                          <TextAnswers question={question} onOpen={() => void openDetail(question)} isThai={isThai} />
                         </article>
                       </Fragment>
                     );

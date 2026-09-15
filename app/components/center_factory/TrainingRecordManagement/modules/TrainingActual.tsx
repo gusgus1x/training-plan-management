@@ -1085,7 +1085,7 @@ export default function TrainingActual() {
       setIsAddingAttendee(false);
       toast.success(
         t(
-          `เพิ่มผู้เข้าอบรม ${added.length} คน เข้า ${selectedCourse.code} แล้ว`,
+          t(`เพิ่มผู้เข้าอบรม ${added.length} คน เข้า ${selectedCourse.code} แล้ว`, `Added ${added.length} attendees to ${selectedCourse.code}`),
           `Added ${added.length} attendee(s) to ${selectedCourse.code}`,
         ),
       );
@@ -1294,7 +1294,7 @@ export default function TrainingActual() {
               {availableCourseGroups.map((group) => (
                 <option key={group.id} value={group.id}>
                   {t(
-                    `[${group.code}] ${group.title} — งบประมาณ THB ${formatCurrency(parseMoney(group.sessions[0]?.budget))} (${group.sessions.length} รอบอบรม)`,
+                    `[${group.code}] ${group.title} — ${t("งบประมาณ", "Budget")} THB ${formatCurrency(parseMoney(group.sessions[0]?.budget))} (${group.sessions.length} ${t("รอบอบรม", "sessions")})`,
                     `[${group.code}] ${group.title} — budget THB ${formatCurrency(parseMoney(group.sessions[0]?.budget))} (${group.sessions.length} session(s))`,
                   )}
                 </option>
@@ -1320,7 +1320,7 @@ export default function TrainingActual() {
               {availableSessions.map((session) => (
                 <option key={session.id} value={session.id}>
                   {t(
-                    `รุ่นที่ ${session.batch ?? "1"} / วันที่ ${session.date} (${session.time}) / ห้อง ${session.room}`,
+                    `${t("รุ่นที่", "Batch")} ${session.batch ?? "1"} / ${t("วันที่", "Date")} ${session.date} (${session.time}) / ${t("ห้อง", "Room")} ${session.room}`,
                     `Batch ${session.batch ?? "1"} / ${session.date} (${session.time}) / room ${session.room}`,
                   )}
                 </option>
@@ -1424,7 +1424,7 @@ export default function TrainingActual() {
             {isSelectedCourseReadOnlyForFactory ? (
               <div className={styles.actualPermissionNote}>
                 {t(
-                  "แผนจัดอบรมของส่วนกลาง (HRD Center) — โรงงานดูรายงานได้แต่บันทึกการเข้าอบรมหรือค่าใช้จ่ายไม่ได้",
+                  t("แผนจัดอบรมของส่วนกลาง (HRD Center) — โรงงานดูรายงานได้แต่บันทึกการเข้าอบรมหรือค่าใช้จ่ายไม่ได้", "Center plan (HRD Center) — Factory users can view reports but cannot record attendance or expenses"),
                   "An HRD Center plan. Factory users can read the report but cannot record attendance or cost.",
                 )}
               </div>
@@ -1445,7 +1445,7 @@ export default function TrainingActual() {
                   <span className={styles.attendanceProgressBadge}>
                     <span className={styles.glowingDotGreen} />{" "}
                     {t(
-                      `เข้าเรียน ${actualCount} / ${attendees.length} คน`,
+                      `${t("เข้าเรียน", "Attended")} ${actualCount} / ${attendees.length} ${t("คน", "attendees")}`,
                       `${actualCount} of ${attendees.length} attended`,
                     )}{" "}
                     ({attendees.length ? Math.round((actualCount / attendees.length) * 100) : 0}%)
@@ -1741,7 +1741,7 @@ export default function TrainingActual() {
               <div className={styles.actualPaginationBar}>
                 <span className={styles.paginationInfo}>
                   {t(
-                    `แสดง ${startIndex + 1}-${Math.min(startIndex + PAGE_SIZE, attendees.length)} จากทั้งหมด ${attendees.length} คน (หน้า ${activePage} จาก ${totalPages})`,
+                    `${t("แสดง", "Showing")} ${startIndex + 1}-${Math.min(startIndex + PAGE_SIZE, attendees.length)} ${t("จากทั้งหมด", "of")} ${attendees.length} ${t("คน", "attendees")} (${t("หน้า", "page")} ${activePage} ${t("จาก", "of")} ${totalPages})`,
                     `Showing ${startIndex + 1}-${Math.min(startIndex + PAGE_SIZE, attendees.length)} of ${attendees.length} (page ${activePage} of ${totalPages})`,
                   )}
                 </span>
@@ -1812,7 +1812,7 @@ export default function TrainingActual() {
               {assessment.preTest.mode === "NONE" && assessment.postTest.mode === "NONE" ? (
                 <p className={styles.actualResultsNote}>
                   {t(
-                    "หลักสูตรนี้ไม่ได้กำหนดแบบทดสอบ จึงไม่มีคะแนนให้บันทึก",
+                    t("หลักสูตรนี้ไม่ได้กำหนดแบบทดสอบ จึงไม่มีคะแนนให้บันทึก", "No test configured for this course, no score to record"),
                     "This course has no test configured, so there is no score to record",
                   )}
                 </p>
@@ -1820,7 +1820,7 @@ export default function TrainingActual() {
               {assessment.preTest.mode === "LINK" || assessment.postTest.mode === "LINK" ? (
                 <p className={styles.actualResultsNote}>
                   {t(
-                    "แบบทดสอบใช้ลิงก์ภายนอก ระบบมองไม่เห็นคะแนน กรุณากรอกเอง",
+                    t("แบบทดสอบใช้ลิงก์ภายนอก ระบบมองไม่เห็นคะแนน กรุณากรอกเอง", "Test uses external link. Scores cannot be tracked automatically, please enter manually"),
                     "The test is an external link, so this system cannot read the score - enter it manually",
                   )}
                 </p>
@@ -1999,7 +1999,7 @@ export default function TrainingActual() {
 
               <p className={styles.actualResultsNote}>
                 {t(
-                  "กรอกแล้วกดปุ่มบันทึกด้านขวาครั้งเดียว บันทึกทั้งค่าใช้จ่ายและผลการอบรมพร้อมกัน",
+                  t("กรอกแล้วกดปุ่มบันทึกด้านขวาครั้งเดียว บันทึกทั้งค่าใช้จ่ายและผลการอบรมพร้อมกัน", "Enter values and click Save on the right to save both expenses and training results"),
                   "Fill these in and use the single save button on the right - it saves the expenses and the results together",
                 )}
               </p>
@@ -2093,7 +2093,7 @@ export default function TrainingActual() {
                   const present = costBreakdown?.presentCount ?? 0;
                   const total = formatCurrency(savedActualTotal);
                   return language === "th"
-                    ? `คำนวณจาก THB ${total} ÷ ผู้เข้าอบรมจริง ${present} คน`
+                    ? t(`คำนวณจาก THB ${total} ÷ ผู้เข้าอบรมจริง ${present} คน`, `Calculated from THB ${total} ÷ ${present} attendees`)
                     : `Calculated from THB ${total} ÷ ${present} present attendee${present === 1 ? "" : "s"}`;
                 })()}
               </small>
@@ -2106,7 +2106,7 @@ export default function TrainingActual() {
               <p className={styles.actualResultsNote}>
                 {language === "th"
                   ? t(
-                      "ยังไม่มีใครถูกเช็กชื่อว่าเข้าอบรม จึงยังจำแนกค่าใช้จ่ายต่อคนไม่ได้ — เช็กชื่อในตารางด้านซ้ายก่อน",
+                      t("ยังไม่มีใครถูกเช็กชื่อว่าเข้าอบรม จึงยังจำแนกค่าใช้จ่ายต่อคนไม่ได้ — เช็กชื่อในตารางด้านซ้ายก่อน", "No attendees checked in yet; cost per person cannot be allocated — check attendance in the left table first"),
                       "Nobody is marked as present yet, so there is no cost per person to work out - mark attendance on the left first",
                     )
                   : "Nobody is marked as present yet, so the cost cannot be split per person - check attendance in the table on the left first"}
@@ -2225,7 +2225,7 @@ export default function TrainingActual() {
               title={
                 isSelectedCourseReadOnlyForFactory
                   ? t(
-                      "หลักสูตรของส่วนกลาง โรงงานดูได้อย่างเดียว แก้ไขไม่ได้",
+                      t("หลักสูตรของส่วนกลาง โรงงานดูได้อย่างเดียว แก้ไขไม่ได้", "Center course — Factory users have read-only access"),
                       "A Center course - read-only for factory users",
                     )
                   : undefined
@@ -2248,7 +2248,7 @@ export default function TrainingActual() {
       ) : (
         <section className={styles.emptyState} aria-label="No selected actual course">
           {t(
-            "กรุณาเลือกหลักสูตรก่อนเพื่อบันทึกและแสดงข้อมูลการอบรมจริง",
+            t("กรุณาเลือกหลักสูตรก่อนเพื่อบันทึกและแสดงข้อมูลการอบรมจริง", "Please select a course first to record and view actual training data"),
             "Pick a course first to record and show the training actuals",
           )}
         </section>
@@ -2382,7 +2382,7 @@ export default function TrainingActual() {
                       {attempts.length - scored.length === 0
                         ? t("ประกาศผลครบแล้ว", "All results released")
                         : t(
-                            `รอผลอีก ${attempts.length - scored.length} ครั้ง`,
+                            t(`รอผลอีก ${attempts.length - scored.length} ครั้ง`, `Awaiting ${attempts.length - scored.length} more result(s)`),
                             `${attempts.length - scored.length} awaiting a result`,
                           )}
                     </em>
@@ -2396,7 +2396,7 @@ export default function TrainingActual() {
                 {attemptsCard[attemptsStage].mode === "FORM"
                   ? t("ยังไม่มีการทำแบบทดสอบนี้", "No attempt yet")
                   : t(
-                      "แบบทดสอบนี้ไม่ได้อยู่ในระบบ จึงไม่มีกระดาษคำตอบให้ดู",
+                      t("แบบทดสอบนี้ไม่ได้อยู่ในระบบ จึงไม่มีกระดาษคำตอบให้ดู", "This test is hosted externally, answer sheet not available in system"),
                       "This test is not held in the system, so there is no paper to open",
                     )}
               </p>

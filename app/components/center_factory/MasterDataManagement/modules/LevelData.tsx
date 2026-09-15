@@ -34,9 +34,13 @@ export type LevelRecord = {
 
 export const levelDataModule = {
   title: "Level Data",
+  titleTh: "ข้อมูลระดับพนักงาน",
   subtitle: "Level master",
+  subtitleTh: "ระบบจัดการข้อมูลระดับพนักงาน",
   description:
     "Maintain the shared employee level catalog used by every company.",
+  descriptionTh:
+    "จัดการข้อมูลระดับพนักงาน (PL / Level) ที่ใช้ร่วมกันในทุกบริษัท",
 } as const;
 
 type LevelForm = CreateLevelInput;
@@ -245,7 +249,7 @@ export default function LevelData() {
   if (isLoading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "400px", padding: "40px" }}>
-        <TypewriterLoader label="กำลังโหลดข้อมูลระดับพนักงาน (Level Master)..." />
+        <TypewriterLoader label={isThai ? "กำลังโหลดข้อมูลระดับพนักงาน..." : "Loading level master data..."} />
       </div>
     );
   }
@@ -254,9 +258,9 @@ export default function LevelData() {
     <section className={styles.page} aria-label="Level Data module">
       <section className={styles.hero}>
         <div>
-          <p className={styles.kicker}>{levelDataModule.subtitle}</p>
-          <h2>{levelDataModule.title}</h2>
-          <p>{levelDataModule.description}</p>
+          <p className={styles.kicker}>{isThai ? levelDataModule.subtitleTh : levelDataModule.subtitle}</p>
+          <h2>{isThai ? levelDataModule.titleTh : levelDataModule.title}</h2>
+          <p>{isThai ? levelDataModule.descriptionTh : levelDataModule.description}</p>
         </div>
         <div className={styles.levelSummary}>
           <article><strong>M</strong><span>Management</span></article>
@@ -271,7 +275,7 @@ export default function LevelData() {
             aria-label="Search level data"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search level code, name, PL, or key"
+            placeholder={isThai ? "ค้นหารหัสระดับ, ชื่อ, PL หรือ Level Key..." : "Search level code, name, PL, or key"}
           />
           {isCenter ? (
             <>
@@ -289,19 +293,19 @@ export default function LevelData() {
           <section className={styles.editorPanel}>
             <div className={styles.panelHeader}>
               <div>
-                <span>{formMode === "new" ? "New record" : "Edit record"}</span>
-                <h3>{formMode === "new" ? "Create Level" : selected?.levelCode}</h3>
+                <span>{formMode === "new" ? (isThai ? "เพิ่มรายการใหม่" : "New record") : (isThai ? "แก้ไขรายการ" : "Edit record")}</span>
+                <h3>{formMode === "new" ? (isThai ? "เพิ่มข้อมูลระดับพนักงาน" : "Create Level") : selected?.levelCode}</h3>
               </div>
             </div>
             <div className={styles.formGrid}>
-              <label>Level Code(TH)<input maxLength={30} value={form.levelCodeTh} onChange={(event) => change("levelCodeTh", event.target.value)} /></label>
-              <label>Level Code(EN)<input maxLength={30} value={form.levelCodeEn} onChange={(event) => change("levelCodeEn", event.target.value)} /></label>
-              <label>Level Name(TH)<input maxLength={255} value={form.levelNameTh} onChange={(event) => change("levelNameTh", event.target.value)} /></label>
-              <label>Level Name(EN)<input maxLength={255} value={form.levelNameEn ?? ""} onChange={(event) => change("levelNameEn", event.target.value)} /></label>
+              <label>{isThai ? "รหัสระดับ (ไทย)" : "Level Code (TH)"}<input maxLength={30} value={form.levelCodeTh} onChange={(event) => change("levelCodeTh", event.target.value)} /></label>
+              <label>{isThai ? "รหัสระดับ (อังกฤษ)" : "Level Code (EN)"}<input maxLength={30} value={form.levelCodeEn} onChange={(event) => change("levelCodeEn", event.target.value)} /></label>
+              <label>{isThai ? "ชื่อระดับ (ไทย)" : "Level Name (TH)"}<input maxLength={255} value={form.levelNameTh} onChange={(event) => change("levelNameTh", event.target.value)} /></label>
+              <label>{isThai ? "ชื่อระดับ (อังกฤษ)" : "Level Name (EN)"}<input maxLength={255} value={form.levelNameEn ?? ""} onChange={(event) => change("levelNameEn", event.target.value)} /></label>
               <label>PL<input maxLength={30} value={form.pl} onChange={(event) => change("pl", event.target.value)} /></label>
               <label>Level Key<input maxLength={30} value={form.levelKey} onChange={(event) => change("levelKey", event.target.value)} /></label>
 
-              <label className={styles.fullWidth}>Remark.<textarea maxLength={500} value={form.remark ?? ""} onChange={(event) => change("remark", event.target.value)} /></label>
+              <label className={styles.fullWidth}>{isThai ? "หมายเหตุ" : "Remark"}<textarea maxLength={500} value={form.remark ?? ""} onChange={(event) => change("remark", event.target.value)} /></label>
             </div>
             <div className={styles.formActions}>
               <button className={styles.saveButton} type="button" onClick={() => void save()} disabled={isSaving}>{isSaving ? (isThai ? "กำลังบันทึก..." : "Saving...") : (isThai ? "บันทึก" : "Save")}</button>
@@ -312,17 +316,22 @@ export default function LevelData() {
 
         <section className={styles.tablePanel}>
           <div className={styles.panelHeader}>
-            <div><span>Shared Master</span><h3>Level Records</h3></div>
-            <p>{visibleRows.length} records</p>
+            <div><span>{isThai ? "ข้อมูลหลักส่วนกลาง" : "Shared Master"}</span><h3>{isThai ? "รายชื่อระดับพนักงาน" : "Level Records"}</h3></div>
+            <p>{visibleRows.length} {isThai ? "รายการ" : visibleRows.length === 1 ? "record" : "records"}</p>
           </div>
           <div className={styles.tableWrap}>
             <table className={styles.levelTable}>
               <thead>
                 <tr>
-                  <th>No.</th><th>Level Code</th><th>Level Code(TH)</th>
-                  <th>Level Code(EN)</th><th>Level Name(TH)</th>
-                  <th>Level Name(EN)</th><th>PL</th><th>Level Key</th>
-                  <th>Remark.</th>
+                  <th>{isThai ? "ลำดับ" : "No."}</th>
+                  <th>{isThai ? "รหัสระดับ" : "Level Code"}</th>
+                  <th>{isThai ? "รหัสระดับ (ไทย)" : "Level Code (TH)"}</th>
+                  <th>{isThai ? "รหัสระดับ (อังกฤษ)" : "Level Code (EN)"}</th>
+                  <th>{isThai ? "ชื่อระดับ (ไทย)" : "Level Name (TH)"}</th>
+                  <th>{isThai ? "ชื่อระดับ (อังกฤษ)" : "Level Name (EN)"}</th>
+                  <th>PL</th>
+                  <th>Level Key</th>
+                  <th>{isThai ? "หมายเหตุ" : "Remark"}</th>
                 </tr>
               </thead>
               <tbody translate="no">
@@ -342,7 +351,7 @@ export default function LevelData() {
                   </tr>
                 ))}
                 {!isLoading && visibleRows.length === 0 ? (
-                  <tr><td colSpan={9}>No level data found.</td></tr>
+                  <tr><td colSpan={9} style={{ textAlign: "center", padding: "24px", color: "var(--ui-30-muted)" }}>{isThai ? "ไม่พบข้อมูลระดับพนักงาน" : "No level data found."}</td></tr>
                 ) : null}
               </tbody>
             </table>

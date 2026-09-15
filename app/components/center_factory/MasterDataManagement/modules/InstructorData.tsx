@@ -26,9 +26,13 @@ import styles from "./InstructorData.module.css";
 
 export const instructorDataModule = {
   title: "Instructor Data",
-  subtitle: "Instructor master",
+  titleTh: "ข้อมูลวิทยากร",
+  subtitle: "Instructor Master",
+  subtitleTh: "ระบบจัดการข้อมูลวิทยากร",
   description:
     "Maintain the shared instructor catalog used by every company.",
+  descriptionTh:
+    "จัดการข้อมูลวิทยากรทั้งภายในและภายนอกองค์กร สำหรับทุกหลักสูตรและทุกบริษัท",
 } as const;
 
 type InstructorForm = {
@@ -229,9 +233,9 @@ export default function InstructorData() {
       return;
     }
     const missingFields: string[] = [];
-    if (!form.instructorCode.trim()) missingFields.push("รหัสวิทยากร (Instructor Code)");
-    if (!form.firstName.trim()) missingFields.push("ชื่อวิทยากร (First Name)");
-    if (!form.lastName.trim()) missingFields.push("นามสกุลวิทยากร (Last Name)");
+    if (!form.instructorCode.trim()) missingFields.push(isThai ? "รหัสวิทยากร" : "Instructor Code");
+    if (!form.firstName.trim()) missingFields.push(isThai ? "ชื่อวิทยากร" : "First Name");
+    if (!form.lastName.trim()) missingFields.push(isThai ? "นามสกุลวิทยากร" : "Last Name");
     if (missingFields.length > 0) {
       await notice({ missingFields });
       return;
@@ -244,7 +248,9 @@ export default function InstructorData() {
       )
     ) {
       setError(
-        "Instructor code already exists. This form is in New mode; select the existing row and press Edit.",
+        isThai
+          ? "รหัสวิทยากรนี้มีอยู่ในระบบแล้ว หากต้องการแก้ไขกรุณากดเลือกรายการและกดปุ่มแก้ไข"
+          : "Instructor code already exists. Please select the existing row and click Edit.",
       );
       return;
     }
@@ -286,7 +292,9 @@ export default function InstructorData() {
       setFormMode(null);
       setForm(blankForm());
       toast.success(
-        `บันทึก ${result.instructor.instructorCode} - ${result.instructor.firstName} ${result.instructor.lastName} แล้ว / Saved`,
+        isThai
+          ? `บันทึกข้อมูล ${result.instructor.instructorCode} - ${result.instructor.firstName} ${result.instructor.lastName} สำเร็จ`
+          : `Saved ${result.instructor.instructorCode} - ${result.instructor.firstName} ${result.instructor.lastName}`,
       );
     } catch (caught: unknown) {
       setError(errorText(caught));
@@ -315,7 +323,9 @@ export default function InstructorData() {
           ),
         );
         toast.warning(
-          `${result.instructor.instructorCode} ยังถูกใช้งานอยู่ จึงเปลี่ยนเป็นสถานะ INACTIVE แทนการลบ / Still in use, changed to INACTIVE`,
+          isThai
+            ? `${result.instructor.instructorCode} ยังถูกใช้งานอยู่ จึงเปลี่ยนเป็นสถานะ INACTIVE แทนการลบ`
+            : `${result.instructor.instructorCode} is still in use, changed to INACTIVE instead of deleting`,
         );
       } else {
         const nextRows = rows.filter(
@@ -323,7 +333,11 @@ export default function InstructorData() {
         );
         setRows(nextRows);
         setSelectedId(nextRows[0]?.instructorId ?? null);
-        toast.success(`ลบ ${result.instructor.instructorCode} แล้ว / Deleted`);
+        toast.success(
+          isThai
+            ? `ลบ ${result.instructor.instructorCode} เรียบร้อยแล้ว`
+            : `Deleted ${result.instructor.instructorCode}`,
+        );
       }
       setEditingInstructorId(null);
       setFormMode(null);
@@ -493,9 +507,9 @@ export default function InstructorData() {
     >
       <section className={styles.moduleHero}>
         <div>
-          <p className={styles.panelKicker}>{instructorDataModule.subtitle}</p>
-          <h2>{instructorDataModule.title}</h2>
-          <p>{instructorDataModule.description}</p>
+          <p className={styles.panelKicker}>{isThai ? instructorDataModule.subtitleTh : instructorDataModule.subtitle}</p>
+          <h2>{isThai ? instructorDataModule.titleTh : instructorDataModule.title}</h2>
+          <p>{isThai ? instructorDataModule.descriptionTh : instructorDataModule.description}</p>
         </div>
       </section>
 
@@ -505,7 +519,11 @@ export default function InstructorData() {
             aria-label="Search instructor records"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="ค้นหาด้วย รหัส, ชื่อ, นามสกุล, เบอร์โทร, มหาวิทยาลัย, สังกัด..."
+            placeholder={
+              isThai
+                ? "ค้นหาด้วย รหัส, ชื่อ, นามสกุล, เบอร์โทร, มหาวิทยาลัย, สังกัด..."
+                : "Search by code, name, phone, email, university, organization..."
+            }
           />
           {isCenter ? (
             <>
@@ -529,7 +547,7 @@ export default function InstructorData() {
                   <polyline points="17 8 12 3 7 8"/>
                   <line x1="12" y1="3" x2="12" y2="15"/>
                 </svg>
-                {isThai ? "นำเข้า (Import)" : "Import"}
+                {isThai ? "นำเข้า" : "Import"}
               </button>
               <button
                 className={styles.templateButton}
@@ -542,7 +560,7 @@ export default function InstructorData() {
                   <polyline points="7 10 12 15 17 10"/>
                   <line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
-                {isThai ? "เทมเพลต (Template)" : "Template"}
+                {isThai ? "เทมเพลต" : "Template"}
               </button>
               <button
                 className={styles.editButton}
@@ -578,82 +596,82 @@ export default function InstructorData() {
         <section className={styles.formPanel}>
           <h3>
             {formMode === "new"
-              ? "เพิ่มข้อมูลวิทยากร (Add Instructor)"
-              : `แก้ไขข้อมูลวิทยากร (Edit Instructor) - ${form.instructorCode}`}
+              ? (isThai ? "เพิ่มข้อมูลวิทยากร" : "Add Instructor")
+              : (isThai ? `แก้ไขข้อมูลวิทยากร - ${form.instructorCode}` : `Edit Instructor - ${form.instructorCode}`)}
           </h3>
           <div className={styles.formGrid}>
             <label>
-              รหัสวิทยากร (Instructor Code)
+              {isThai ? "รหัสวิทยากร" : "Instructor Code"}
               <input
                 value={form.instructorCode}
                 maxLength={30}
-                placeholder="เช่น INS0001 (สร้างให้อัตโนมัติ)"
+                placeholder={isThai ? "เช่น INS0001 (สร้างให้อัตโนมัติ)" : "e.g. INS0001 (auto generated)"}
                 onChange={(event) =>
                   change("instructorCode", event.target.value)
                 }
               />
             </label>
             <label>
-              ชื่อ (First Name)
+              {isThai ? "ชื่อ" : "First Name"}
               <input
                 value={form.firstName}
                 maxLength={150}
-                placeholder="เช่น สมชาย"
+                placeholder={isThai ? "เช่น สมชาย" : "e.g. Somchai"}
                 onChange={(event) => change("firstName", event.target.value)}
               />
             </label>
             <label>
-              นามสกุล (Last Name)
+              {isThai ? "นามสกุล" : "Last Name"}
               <input
                 value={form.lastName}
                 maxLength={150}
-                placeholder="เช่น ใจดี"
+                placeholder={isThai ? "เช่น ใจดี" : "e.g. Jaidee"}
                 onChange={(event) => change("lastName", event.target.value)}
               />
             </label>
             <label>
-              เบอร์โทรศัพท์ (Telephone)
+              {isThai ? "เบอร์โทรศัพท์" : "Telephone"}
               <input
                 value={form.telephone}
                 maxLength={30}
-                placeholder="เช่น 081-234-5678"
+                placeholder={isThai ? "เช่น 081-234-5678" : "e.g. 081-234-5678"}
                 onChange={(event) => change("telephone", event.target.value)}
               />
             </label>
             <label>
-              อีเมล (Email)
+              {isThai ? "อีเมล" : "Email"}
               <input
                 type="email"
                 value={form.email}
                 maxLength={255}
-                placeholder="เช่น somchai@example.com"
+                placeholder={isThai ? "เช่น somchai@example.com" : "e.g. somchai@example.com"}
                 onChange={(event) => change("email", event.target.value)}
               />
             </label>
             <label>
-              ระดับการศึกษา / วุฒิ (Education)
+              {isThai ? "ระดับการศึกษา / วุฒิ" : "Education"}
               <input
                 value={form.education}
                 maxLength={500}
-                placeholder="เช่น ปริญญาโท วิศวกรรมศาสตร์"
+                placeholder={isThai ? "เช่น ปริญญาโท วิศวกรรมศาสตร์" : "e.g. Master of Engineering"}
                 onChange={(event) => change("education", event.target.value)}
               />
             </label>
             <label>
-              มหาวิทยาลัย (University)
+              {isThai ? "มหาวิทยาลัย" : "University"}
               <input
                 value={form.university}
                 maxLength={255}
-                placeholder="เช่น จุฬาลงกรณ์มหาวิทยาลัย"
+                placeholder={isThai ? "เช่น จุฬาลงกรณ์มหาวิทยาลัย" : "e.g. Chulalongkorn University"}
                 onChange={(event) => change("university", event.target.value)}
               />
             </label>
             <label>
-              หน่วยงาน / สังกัด (Organization)
+              {isThai ? "หน่วยงาน / สังกัด" : "Organization / Company"}
               <input
                 value={form.organizationName}
                 maxLength={255}
-                placeholder="เช่น บริษัท เอบีซี จำกัด หรือ คณะวิศวกรรมศาสตร์"
+                placeholder={isThai ? "เช่น บริษัท เอบีซี จำกัด หรือ คณะวิศวกรรมศาสตร์" : "e.g. ABC Co., Ltd. or Faculty of Engineering"}
                 onChange={(event) =>
                   change("organizationName", event.target.value)
                 }
@@ -691,21 +709,23 @@ export default function InstructorData() {
 
       <section className={styles.panel}>
         <div className={styles.panelHeader}>
-          <h3>รายชื่อวิทยากร (Instructor Records)</h3>
-          <span className={styles.itemCount}>{visibleRows.length} รายการ</span>
+          <h3>{isThai ? "รายชื่อวิทยากร" : "Instructor Records"}</h3>
+          <span className={styles.itemCount}>
+            {visibleRows.length} {isThai ? "รายการ" : visibleRows.length === 1 ? "record" : "records"}
+          </span>
         </div>
         <div className={styles.tableWrap}>
           <table className={styles.dataTable}>
             <thead>
               <tr>
-                <th className={styles.colIndex}>ลำดับ</th>
-                <th className={styles.colCode}>รหัสวิทยากร</th>
-                <th className={styles.colName}>ชื่อ - นามสกุล</th>
-                <th className={styles.colPhone}>เบอร์โทรศัพท์</th>
-                <th className={styles.colEmail}>อีเมล</th>
-                <th className={styles.colEdu}>วุฒิการศึกษา</th>
-                <th className={styles.colUni}>มหาวิทยาลัย</th>
-                <th className={styles.colOrg}>หน่วยงาน / สังกัด</th>
+                <th className={styles.colIndex}>{isThai ? "ลำดับ" : "No."}</th>
+                <th className={styles.colCode}>{isThai ? "รหัสวิทยากร" : "Instructor Code"}</th>
+                <th className={styles.colName}>{isThai ? "ชื่อ - นามสกุล" : "Name - Surname"}</th>
+                <th className={styles.colPhone}>{isThai ? "เบอร์โทรศัพท์" : "Phone"}</th>
+                <th className={styles.colEmail}>{isThai ? "อีเมล" : "Email"}</th>
+                <th className={styles.colEdu}>{isThai ? "วุฒิการศึกษา" : "Education"}</th>
+                <th className={styles.colUni}>{isThai ? "มหาวิทยาลัย" : "University"}</th>
+                <th className={styles.colOrg}>{isThai ? "หน่วยงาน / สังกัด" : "Organization"}</th>
               </tr>
             </thead>
             <tbody translate="no">
@@ -721,7 +741,7 @@ export default function InstructorData() {
                   onDoubleClick={() => {
                     if (isCenter) startEdit();
                   }}
-                  title={isCenter ? "คลิกเลือก หรือดับเบิลคลิกเพื่อแก้ไข" : undefined}
+                  title={isCenter ? (isThai ? "คลิกเลือก หรือดับเบิลคลิกเพื่อแก้ไข" : "Click to select, double-click to edit") : undefined}
                 >
                   <td className={styles.colIndex}>{index + 1}</td>
                   <td className={styles.colCode}>
@@ -740,7 +760,7 @@ export default function InstructorData() {
               {!isLoading && visibleRows.length === 0 ? (
                 <tr>
                   <td colSpan={8} style={{ textAlign: "center", padding: "24px", color: "var(--ui-30-muted)" }}>
-                    ไม่พบข้อมูลวิทยากร (No instructor data found.)
+                    {isThai ? "ไม่พบข้อมูลวิทยากร" : "No instructor data found."}
                   </td>
                 </tr>
               ) : null}
@@ -876,23 +896,23 @@ export default function InstructorData() {
                 <div className={styles.importSummaryGrid}>
                   <div className={styles.importSummaryCard}>
                     <span className={styles.importSummaryVal}>{importSummary.total}</span>
-                    <span className={styles.importSummaryLabel}>{isThai ? "ทั้งหมด (Total Rows)" : "Total Rows"}</span>
+                    <span className={styles.importSummaryLabel}>{isThai ? "ทั้งหมด" : "Total Rows"}</span>
                   </div>
                   <div className={styles.importSummaryCard} style={{ borderColor: "rgba(16, 185, 129, 0.4)" }}>
                     <span className={styles.importSummaryVal} style={{ color: "#059669" }}>{importSummary.valid}</span>
-                    <span className={styles.importSummaryLabel}>{isThai ? "พร้อมนำเข้า (Valid)" : "Valid"}</span>
+                    <span className={styles.importSummaryLabel}>{isThai ? "พร้อมนำเข้า" : "Valid"}</span>
                   </div>
                   <div className={styles.importSummaryCard} style={{ borderColor: "rgba(16, 185, 129, 0.3)" }}>
                     <span className={styles.importSummaryVal} style={{ color: "#10b981" }}>{importSummary.newCount}</span>
-                    <span className={styles.importSummaryLabel}>{isThai ? "ข้อมูลใหม่ (New)" : "New"}</span>
+                    <span className={styles.importSummaryLabel}>{isThai ? "ข้อมูลใหม่" : "New"}</span>
                   </div>
                   <div className={styles.importSummaryCard} style={{ borderColor: "rgba(59, 130, 246, 0.3)" }}>
                     <span className={styles.importSummaryVal} style={{ color: "#2563eb" }}>{importSummary.updateCount}</span>
-                    <span className={styles.importSummaryLabel}>{isThai ? "อัปเดตเดิม (Update)" : "Update"}</span>
+                    <span className={styles.importSummaryLabel}>{isThai ? "อัปเดตเดิม" : "Update"}</span>
                   </div>
                   <div className={styles.importSummaryCard} style={{ borderColor: "rgba(239, 68, 68, 0.3)" }}>
                     <span className={styles.importSummaryVal} style={{ color: "#dc2626" }}>{importSummary.invalid}</span>
-                    <span className={styles.importSummaryLabel}>{isThai ? "ข้อผิดพลาด (Errors)" : "Errors"}</span>
+                    <span className={styles.importSummaryLabel}>{isThai ? "ข้อผิดพลาด" : "Errors"}</span>
                   </div>
                 </div>
               )}
@@ -953,16 +973,16 @@ export default function InstructorData() {
                     <table className={styles.importPreviewTable}>
                       <thead>
                         <tr>
-                          <th>แถว</th>
-                          <th>สถานะ</th>
-                          <th>รหัสวิทยากร</th>
-                          <th>ชื่อ - นามสกุล</th>
-                          <th>เบอร์โทรศัพท์</th>
-                          <th>อีเมล</th>
-                          <th>วุฒิการศึกษา</th>
-                          <th>มหาวิทยาลัย</th>
-                          <th>หน่วยงาน / สังกัด</th>
-                          <th>ผลการตรวจสอบ</th>
+                          <th>{isThai ? "แถว" : "Row"}</th>
+                          <th>{isThai ? "สถานะ" : "Status"}</th>
+                          <th>{isThai ? "รหัสวิทยากร" : "Instructor Code"}</th>
+                          <th>{isThai ? "ชื่อ - นามสกุล" : "Name - Surname"}</th>
+                          <th>{isThai ? "เบอร์โทรศัพท์" : "Phone"}</th>
+                          <th>{isThai ? "อีเมล" : "Email"}</th>
+                          <th>{isThai ? "วุฒิการศึกษา" : "Education"}</th>
+                          <th>{isThai ? "มหาวิทยาลัย" : "University"}</th>
+                          <th>{isThai ? "หน่วยงาน / สังกัด" : "Organization"}</th>
+                          <th>{isThai ? "ผลการตรวจสอบ" : "Validation"}</th>
                         </tr>
                       </thead>
                       <tbody>

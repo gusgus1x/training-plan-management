@@ -40,9 +40,13 @@ import styles from "./EmployeeData.module.css";
 
 export const employeeDataModule = {
   title: "Employee Data",
+  titleTh: "ข้อมูลพนักงาน",
   subtitle: "Employee master",
+  subtitleTh: "ระบบจัดการข้อมูลพนักงาน",
   description:
     "Maintain company-scoped employee profiles with protected Thai National IDs.",
+  descriptionTh:
+    "จัดการข้อมูลพนักงานแยกตามบริษัท พร้อมระบบความปลอดภัยคุ้มครองเลขบัตรประชาชน",
 } as const;
 
 const blank = (companyId = ""): EmployeeInput => ({
@@ -122,28 +126,35 @@ const pageWindow = (current: number, totalPages: number) => {
   return { start, end };
 };
 
-const EMPLOYEE_COLUMNS = [
-  { key: "no", label: "No.", defaultWidth: 56 },
-  { key: "company", label: "Company", defaultWidth: 90 },
-  { key: "empCode", label: "Emp Code", defaultWidth: 110 },
-  { key: "userId", label: "UserID", defaultWidth: 140 },
-  { key: "idCard", label: "ID Card", defaultWidth: 130 },
-  { key: "titleTh", label: "Title(TH)", defaultWidth: 70 },
-  { key: "nameTh", label: "Name(TH)", defaultWidth: 120 },
-  { key: "surnameTh", label: "Surname(TH)", defaultWidth: 120 },
-  { key: "titleEn", label: "Title(EN)", defaultWidth: 70 },
-  { key: "nameEn", label: "Name(EN)", defaultWidth: 120 },
-  { key: "surnameEn", label: "Surname(EN)", defaultWidth: 120 },
-  { key: "birthday", label: "Birthday", defaultWidth: 100 },
-  { key: "workday", label: "Workday", defaultWidth: 100 },
-  { key: "functionCode", label: "Function Code", defaultWidth: 110 },
-  { key: "functionName", label: "Function Name", defaultWidth: 150 },
-  { key: "division", label: "Division", defaultWidth: 120 },
-  { key: "department", label: "Department", defaultWidth: 120 },
-  { key: "section", label: "Section", defaultWidth: 120 },
-  { key: "positionName", label: "Position Name", defaultWidth: 150 },
-  { key: "levelKey", label: "Level Key", defaultWidth: 90 },
-] as const;
+type EmployeeColumn = {
+  readonly key: string;
+  readonly label: string;
+  readonly labelTh: string;
+  readonly defaultWidth: number;
+};
+
+const EMPLOYEE_COLUMNS: readonly EmployeeColumn[] = [
+  { key: "no", label: "No.", labelTh: "ลำดับ", defaultWidth: 56 },
+  { key: "company", label: "Company", labelTh: "บริษัท", defaultWidth: 90 },
+  { key: "empCode", label: "Emp Code", labelTh: "รหัสพนักงาน", defaultWidth: 110 },
+  { key: "userId", label: "UserID", labelTh: "UserID", defaultWidth: 140 },
+  { key: "idCard", label: "ID Card", labelTh: "เลขบัตรประชาชน", defaultWidth: 130 },
+  { key: "titleTh", label: "Title(TH)", labelTh: "คำนำหน้า (ไทย)", defaultWidth: 70 },
+  { key: "nameTh", label: "Name(TH)", labelTh: "ชื่อ (ไทย)", defaultWidth: 120 },
+  { key: "surnameTh", label: "Surname(TH)", labelTh: "นามสกุล (ไทย)", defaultWidth: 120 },
+  { key: "titleEn", label: "Title(EN)", labelTh: "คำนำหน้า (อังกฤษ)", defaultWidth: 70 },
+  { key: "nameEn", label: "Name(EN)", labelTh: "ชื่อ (อังกฤษ)", defaultWidth: 120 },
+  { key: "surnameEn", label: "Surname(EN)", labelTh: "นามสกุล (อังกฤษ)", defaultWidth: 120 },
+  { key: "birthday", label: "Birthday", labelTh: "วันเกิด", defaultWidth: 100 },
+  { key: "workday", label: "Workday", labelTh: "วันเริ่มงาน", defaultWidth: 100 },
+  { key: "functionCode", label: "Function Code", labelTh: "รหัสฟังก์ชัน", defaultWidth: 110 },
+  { key: "functionName", label: "Function Name", labelTh: "ชื่อฟังก์ชัน", defaultWidth: 150 },
+  { key: "division", label: "Division", labelTh: "ฝ่าย", defaultWidth: 120 },
+  { key: "department", label: "Department", labelTh: "ส่วน", defaultWidth: 120 },
+  { key: "section", label: "Section", labelTh: "แผนก", defaultWidth: 120 },
+  { key: "positionName", label: "Position Name", labelTh: "ตำแหน่ง", defaultWidth: 150 },
+  { key: "levelKey", label: "Level Key", labelTh: "Level Key", defaultWidth: 90 },
+];
 const MIN_COLUMN_WIDTH = 48;
 const MIN_ROW_HEIGHT = 28;
 
@@ -650,9 +661,9 @@ export default function EmployeeData() {
     <section className={styles.page} aria-label="Employee Data module">
       <section className={styles.hero}>
         <div>
-          <p className={styles.kicker}>{employeeDataModule.subtitle}</p>
-          <h2>{employeeDataModule.title}</h2>
-          <p>{employeeDataModule.description}</p>
+          <p className={styles.kicker}>{isThai ? employeeDataModule.subtitleTh : employeeDataModule.subtitle}</p>
+          <h2>{isThai ? employeeDataModule.titleTh : employeeDataModule.title}</h2>
+          <p>{isThai ? employeeDataModule.descriptionTh : employeeDataModule.description}</p>
         </div>
       </section>
 
@@ -662,14 +673,14 @@ export default function EmployeeData() {
             aria-label="Search employee data"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search employee"
+            placeholder={isThai ? "ค้นหาข้อมูลพนักงาน..." : "Search employee"}
           />
           <select
             aria-label="Filter employee company"
             value={companyFilter}
             onChange={(event) => setCompanyFilter(event.target.value)}
           >
-            <option value="all">All Companies</option>
+            <option value="all">{isThai ? "ทุกบริษัท" : "All Companies"}</option>
             {companies.map((company) => (
               <option key={company.companyId} value={company.companyId}>
                 {company.companyCode}
@@ -1079,10 +1090,10 @@ export default function EmployeeData() {
         <section className={styles.tablePanel}>
           <div className={styles.panelHeader}>
             <div>
-              <span>Scoped Master</span>
-              <h3>Employee Records</h3>
+              <span>{isThai ? "ข้อมูลหลักตามสิทธิ์" : "Scoped Master"}</span>
+              <h3>{isThai ? "รายชื่อพนักงาน" : "Employee Records"}</h3>
             </div>
-            <p>{visible.length} records</p>
+            <p>{visible.length} {isThai ? "รายการ" : visible.length === 1 ? "record" : "records"}</p>
           </div>
           {visibleCompanyGroups.length > 0 ? (
             <div className={styles.companyDirectory}>
@@ -1122,10 +1133,10 @@ export default function EmployeeData() {
                     >
                       <span className={styles.chevron} aria-hidden="true" />
                       <span>
-                        Company: <strong>{companyGroup.companyCode}</strong>
+                        {isThai ? "บริษัท: " : "Company: "}<strong>{companyGroup.companyCode}</strong>
                       </span>
                       <b>({companyGroup.totalRecords})</b>
-                      <small>{companyGroup.rows.length} records in view</small>
+                      <small>{companyGroup.rows.length} {isThai ? "รายการในมุมมอง" : "records in view"}</small>
                     </button>
 
                     {isOpen ? (
@@ -1149,7 +1160,7 @@ export default function EmployeeData() {
                             <tr>
                               {EMPLOYEE_COLUMNS.map((column) => (
                                 <th key={column.key}>
-                                  {column.label}
+                                  {isThai ? column.labelTh : column.label}
                                   <span
                                     className={styles.columnResizeHandle}
                                     onPointerDown={startColumnResize(

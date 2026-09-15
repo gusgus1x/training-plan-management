@@ -33,8 +33,11 @@ type CompanyForm = {
 
 export const companyDataModule = {
   title: "Company Data",
+  titleTh: "ข้อมูลบริษัท",
   subtitle: "Company master",
+  subtitleTh: "ข้อมูลหลักบริษัท",
   description: "Store and maintain company master data.",
+  descriptionTh: "จัดเก็บและจัดการข้อมูลหลักบริษัท",
 } as const;
 
 const createBlankForm = (): CompanyForm => ({
@@ -61,10 +64,12 @@ const toCreateInput = (form: CompanyForm): CreateCompanyInput => ({
   status: form.status,
 });
 
-const readableError = (error: unknown) =>
+const readableError = (error: unknown, isThai: boolean = false) =>
   error instanceof CompanyClientError
     ? error.message
-    : "Unable to load company data. Please try again.";
+    : isThai
+      ? "ไม่สามารถโหลดข้อมูลบริษัทได้ กรุณาลองใหม่อีกครั้ง"
+      : "Unable to load company data. Please try again.";
 
 export default function CompanyData() {
   const authenticatedUser = useAuthenticatedUser();
@@ -289,7 +294,7 @@ export default function CompanyData() {
   if (isLoading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "400px", padding: "40px" }}>
-        <TypewriterLoader label="กำลังโหลดข้อมูลบริษัท (Company Master)..." />
+        <TypewriterLoader label={isThai ? "กำลังโหลดข้อมูลบริษัท (Company Master)..." : "Loading company data (Company Master)..."} />
       </div>
     );
   }
@@ -301,18 +306,18 @@ export default function CompanyData() {
     >
       <section className={styles.moduleHero}>
         <div>
-          <p className={styles.panelKicker}>{companyDataModule.subtitle}</p>
-          <h2>{companyDataModule.title}</h2>
-          <p>{companyDataModule.description}</p>
+          <p className={styles.panelKicker}>{isThai ? companyDataModule.subtitleTh : companyDataModule.subtitle}</p>
+          <h2>{isThai ? companyDataModule.titleTh : companyDataModule.title}</h2>
+          <p>{isThai ? companyDataModule.descriptionTh : companyDataModule.description}</p>
         </div>
         <div className={styles.heroStats} aria-label="Company data summary">
           <span>
             <strong>{rows.length}</strong>
-            Records
+            {isThai ? "รายการ" : "Records"}
           </span>
           <span>
-            <strong>{selectedCode === "all" ? "ALL" : selectedCode}</strong>
-            Filter
+            <strong>{selectedCode === "all" ? (isThai ? "ทั้งหมด" : "ALL") : selectedCode}</strong>
+            {isThai ? "ตัวกรอง" : "Filter"}
           </span>
         </div>
       </section>
@@ -321,17 +326,17 @@ export default function CompanyData() {
         <div className={styles.toolbar}>
           <div className={styles.filterGroup}>
             <input
-              aria-label="Search company records"
+              aria-label={isThai ? "ค้นหาข้อมูลบริษัท" : "Search company records"}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search company data"
+              placeholder={isThai ? "ค้นหาข้อมูลบริษัท..." : "Search company data..."}
             />
             <select
-              aria-label="Filter company code"
+              aria-label={isThai ? "กรองตามรหัสบริษัท" : "Filter company code"}
               value={selectedCode}
               onChange={(event) => setSelectedCode(event.target.value)}
             >
-              <option value="all">All comp code</option>
+              <option value="all">{isThai ? "รหัสบริษัททั้งหมด" : "All comp code"}</option>
               {companyCodes.map((companyCode) => (
                 <option key={companyCode} value={companyCode}>
                   {companyCode}
@@ -387,24 +392,25 @@ export default function CompanyData() {
       <section className={styles.panel} aria-busy={isLoading}>
         <div className={styles.sectionHeader}>
           <div>
-            <h3>Company Records</h3>
-            <p>{isLoading ? "Loading company data..." : `${visibleRows.length} records`}</p>
+            <p className={styles.panelKicker}>{isThai ? "ข้อมูลหลักส่วนกลาง" : "Shared Master"}</p>
+            <h3>{isThai ? "ข้อมูลบริษัท" : "Company Records"}</h3>
+            <p>{isLoading ? (isThai ? "กำลังโหลดข้อมูลบริษัท..." : "Loading company data...") : (isThai ? `${visibleRows.length} รายการ` : `${visibleRows.length} records`)}</p>
           </div>
           <span className={styles.selectedHint}>
             {selectedRecord
-              ? `Selected: ${selectedRecord.companyCode}`
-              : "Select a row"}
+              ? (isThai ? `รายการที่เลือก: ${selectedRecord.companyCode}` : `Selected: ${selectedRecord.companyCode}`)
+              : (isThai ? "เลือกแถวเพื่อจัดการ" : "Select a row")}
           </span>
         </div>
         <div className={styles.tableWrap}>
           <table className={styles.dataTable}>
             <thead>
               <tr>
-                <th>No.</th>
-                <th>Comp Code</th>
-                <th>Comp Name (TH)</th>
-                <th>Comp Name (EN)</th>
-                <th>Remark</th>
+                <th>{isThai ? "ลำดับ" : "No."}</th>
+                <th>{isThai ? "รหัสบริษัท" : "Comp Code"}</th>
+                <th>{isThai ? "ชื่อบริษัท (ไทย)" : "Comp Name (TH)"}</th>
+                <th>{isThai ? "ชื่อบริษัท (EN)" : "Comp Name (EN)"}</th>
+                <th>{isThai ? "หมายเหตุ" : "Remark"}</th>
               </tr>
             </thead>
             <tbody translate="no">
@@ -434,7 +440,7 @@ export default function CompanyData() {
                 : null}
               {!isLoading && visibleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={5}>No company data found.</td>
+                  <td colSpan={5}>{isThai ? "ไม่พบข้อมูลบริษัท" : "No company data found."}</td>
                 </tr>
               ) : null}
             </tbody>
@@ -444,10 +450,10 @@ export default function CompanyData() {
 
       {formMode ? (
         <section className={styles.formPanel}>
-          <h3>{formMode === "new" ? "New Company" : "Edit Company"}</h3>
+          <h3>{formMode === "new" ? (isThai ? "เพิ่มบริษัทใหม่" : "New Company") : (isThai ? "แก้ไขข้อมูลบริษัท" : "Edit Company")}</h3>
           <div className={styles.formGrid}>
             <label>
-              Comp Code
+              {isThai ? "รหัสบริษัท" : "Comp Code"}
               <input
                 value={formValues.companyCode}
                 maxLength={30}
@@ -460,7 +466,7 @@ export default function CompanyData() {
               />
             </label>
             <label>
-              Comp Name (TH)
+              {isThai ? "ชื่อบริษัท (ไทย)" : "Comp Name (TH)"}
               <input
                 value={formValues.companyNameTh}
                 maxLength={255}
@@ -473,7 +479,7 @@ export default function CompanyData() {
               />
             </label>
             <label>
-              Comp Name (EN)
+              {isThai ? "ชื่อบริษัท (EN)" : "Comp Name (EN)"}
               <input
                 value={formValues.companyNameEn}
                 maxLength={255}
@@ -487,7 +493,7 @@ export default function CompanyData() {
             </label>
 
             <label className={styles.fullWidth}>
-              Remark
+              {isThai ? "หมายเหตุ" : "Remark"}
               <textarea
                 value={formValues.remark}
                 maxLength={500}

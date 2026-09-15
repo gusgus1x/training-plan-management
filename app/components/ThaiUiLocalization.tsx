@@ -27,6 +27,14 @@ const readUiLanguage = (): UiLanguage => {
   }
 
   try {
+    const sessionActive = window.sessionStorage.getItem("attg-ui-session-active");
+    if (!sessionActive) {
+      window.sessionStorage.setItem("attg-ui-session-active", "1");
+      window.localStorage.setItem(UI_LANGUAGE_STORAGE_KEY, "th");
+      inMemoryLanguage = "th";
+      return "th";
+    }
+
     const savedLanguage = window.localStorage.getItem(UI_LANGUAGE_STORAGE_KEY);
 
     if (savedLanguage === "en" || savedLanguage === "th") {
@@ -488,6 +496,7 @@ const thaiUiDictionary: Record<string, string> = {
   Trainer: "วิทยากร",
   "Trainer Name": "ชื่อวิทยากร",
   "Training Date": "วันที่อบรม",
+  "Download Full Official Training Record": "ดาวน์โหลดประวัติและเอกสารการอบรมฉบับเต็ม",
   "Training Expenses": "ค่าใช้จ่ายการอบรม",
   "Training Hour": "ชั่วโมงอบรม",
   "Training Hours": "ชั่วโมงอบรม",

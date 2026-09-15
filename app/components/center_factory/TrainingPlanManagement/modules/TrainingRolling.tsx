@@ -193,6 +193,9 @@ const PlanFormOverrideCard = ({
   onSaved: (plan: RollingPlan) => void;
 }) => {
   const toast = useToast();
+  const { language } = useUiLanguage();
+  const isThai = language === "th";
+  const t = (th: string, en: string) => (isThai ? th : en);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
   // The saved state is a key rather than something an effect copies into local state: when the save
@@ -283,13 +286,13 @@ const PlanFormOverrideCard = ({
                 onChange={(event) => setDraft((current) => setStageChoice(current, stage, event.target.value))}
                 style={{ width: "100%", minHeight: "34px", fontSize: "0.8rem" }}
               >
-                <option value="">— ใช้ตามหลักสูตร ({courseValue}) —</option>
+                <option value="">— {t("ใช้ตามหลักสูตร", "Use Course Default")} ({courseValue}) —</option>
                 {options.map((option) => (
                   <option key={option.id} value={option.id}>
                     {option.label}
                   </option>
                 ))}
-                <option value={LINK_MODE_VALUE}>ใช้ลิงก์ภายนอก (External Link)</option>
+                <option value={LINK_MODE_VALUE}>{t("ใช้ลิงก์ภายนอก (External Link)", "Use External Link")}</option>
               </select>
             ) : usingLink ? (
               // Nothing here for link mode: the link row below already shows it, and printing the
@@ -329,7 +332,7 @@ const PlanFormOverrideCard = ({
                 )}
                 <button
                   type="button"
-                  title="ดาวน์โหลด QR code ของลิงก์นี้"
+                  title={t("ดาวน์โหลด QR code ของลิงก์นี้", "Download QR code for this link")}
                   disabled={!link.trim()}
                   onClick={() =>
                     void downloadQrCode(link, `${plan.course.code || "course"}-${plan.batch || "batch"}-${stage.idKey}`).catch(() =>
@@ -775,6 +778,8 @@ const pageWindow = (current: number, totalPages: number) => {
 
 export default function TrainingRolling() {
   const { language } = useUiLanguage();
+  const isThai = language === "th";
+  const t = (th: string, en: string) => (isThai ? th : en);
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
   const notice = useNotice();
@@ -1552,20 +1557,20 @@ export default function TrainingRolling() {
                 aria-label="Search monthly rolling plan"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search course code, name, batch, location, status..."
+                placeholder={t("ค้นหารหัสหลักสูตร, ชื่อ, รุ่น, สถานที่, สถานะ...", "Search course code, name, batch, location, status...")}
               />
             </div>
             <div className={styles.filterGroup}>
               {user?.roleCode === "HRD_CENTER" ? (
                 <label className={styles.filterLabel}>
-                  <span>Company</span>
+                  <span>{t("บริษัท", "Company")}</span>
                   <select
                     className={styles.selectInput}
                     aria-label="Filter company"
                     value={companyFilter}
                     onChange={(event) => setCompanyFilter(event.target.value)}
                   >
-                    <option value="all">All Companies</option>
+                    <option value="all">{t("ทุกบริษัท", "All Companies")}</option>
                     <option value="CENTER">HRD Center</option>
                     <option value="ATA">ATA</option>
                     <option value="TEP">TEP</option>
@@ -1577,20 +1582,20 @@ export default function TrainingRolling() {
                 </label>
               ) : null}
               <label className={styles.filterLabel}>
-                <span>Year</span>
+                <span>{t("ปี", "Year")}</span>
                 <select className={styles.selectInput} aria-label="Filter year" value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
                   {yearOptions.map((year) => <option key={year} value={year}>{year}</option>)}
                 </select>
               </label>
               <label className={styles.filterLabel}>
-                <span>Month</span>
+                <span>{t("เดือน", "Month")}</span>
                 <select className={styles.selectInput} aria-label="Filter month" value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)}>
-                  <option value="all">All Year</option>
+                  <option value="all">{t("ตลอดทั้งปี", "All Year")}</option>
                   {monthOptions.map((month) => <option key={month.value} value={month.value}>{month.label}</option>)}
                 </select>
               </label>
               <label className={styles.filterLabel}>
-                <span>Status</span>
+                <span>{t("สถานะ", "Status")}</span>
                 <select className={styles.selectInput} aria-label="Filter status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "all" | RollingStatus)}>
                   <option value="all">All status</option>
                   <option value="Planning">Planning</option>
@@ -1659,7 +1664,7 @@ export default function TrainingRolling() {
             </div>
             <div className={styles.formGrid}>
               <div className={styles.fullField}>
-                <span>Course Name <RequiredIndicator isFilled={Boolean(form.oapId)} /></span>
+                <span>{t("หลักสูตร (Course Name)", "Course Name")} <RequiredIndicator isFilled={Boolean(form.oapId)} /></span>
                 <SearchableSelect
                   options={oapSources.map((source) => {
                     const tag = source.course.courseGroup || source.course.courseType;
@@ -1698,7 +1703,7 @@ export default function TrainingRolling() {
                   {form.sessions.map((session, index) => (
                     <article className={styles.sessionCard} key={session.id}>
                       <div className={styles.sessionHeader}>
-                        <strong>Session {index + 1}</strong>
+                        <strong>{t(`รุ่นที่ ${index + 1}`, `Session ${index + 1}`)}</strong>
                         <button
                           className={styles.removeSessionButton}
                           disabled={!selectedOap || form.sessions.length === 1 || session.status !== "Planning"}
@@ -1722,7 +1727,7 @@ export default function TrainingRolling() {
                           />
                         </label>
                         <label>
-                          <span>Location <RequiredIndicator isFilled={Boolean(session.location.trim())} /></span>
+                          <span>{t("สถานที่จัดอบรม (Location)", "Location")} <RequiredIndicator isFilled={Boolean(session.location.trim())} /></span>
                           <input
                             disabled={!selectedOap}
                             value={session.location}
@@ -1733,7 +1738,7 @@ export default function TrainingRolling() {
                         </label>
 
                         <label>
-                          <span>Start Date (วันที่เริ่ม) <RequiredIndicator isFilled={Boolean(session.trainingDate.trim())} /></span>
+                          <span>{t("วันที่เริ่ม (Start Date)", "Start Date")} <RequiredIndicator isFilled={Boolean(session.trainingDate.trim())} /></span>
                           <input
                             disabled={!selectedOap}
                             type="date"
@@ -1753,7 +1758,7 @@ export default function TrainingRolling() {
                           />
                         </label>
                         <label>
-                          <span>End Date (วันที่สิ้นสุด) <RequiredIndicator isFilled={Boolean((session.endDate || session.trainingDate).trim())} /></span>
+                          <span>{t("วันที่สิ้นสุด (End Date)", "End Date")} <RequiredIndicator isFilled={Boolean((session.endDate || session.trainingDate).trim())} /></span>
                           <input
                             disabled={!selectedOap}
                             type="date"
@@ -1770,7 +1775,7 @@ export default function TrainingRolling() {
                           />
                         </label>
                         <label>
-                          <span>Start Time (เวลาเริ่ม) <RequiredIndicator isFilled={Boolean(session.startTime.trim())} /></span>
+                          <span>{t("เวลาเริ่ม (Start Time)", "Start Time")} <RequiredIndicator isFilled={Boolean(session.startTime.trim())} /></span>
                           <input
                             disabled={!selectedOap}
                             type="time"
@@ -1786,7 +1791,7 @@ export default function TrainingRolling() {
                           />
                         </label>
                         <label>
-                          <span>End Time (เวลาสิ้นสุด) <RequiredIndicator isFilled={Boolean(session.endTime.trim())} /></span>
+                          <span>{t("เวลาสิ้นสุด (End Time)", "End Time")} <RequiredIndicator isFilled={Boolean(session.endTime.trim())} /></span>
                           <input
                             disabled={!selectedOap}
                             type="time"
@@ -1810,11 +1815,11 @@ export default function TrainingRolling() {
                         <details className={styles.sessionFormOverrides}>
                           <summary>
                             <ClipboardCheck size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                            {" "}แบบทดสอบ / แบบประเมินของรุ่นนี้
+                            {" "}{t("แบบทดสอบ / แบบประเมินของรุ่นนี้", "Session Test / Evaluation Forms")}
                             {Object.values(session.formOverrides).some(Boolean) ? (
-                              <em> · แก้เฉพาะรุ่นนี้</em>
+                              <em> · {t("แก้เฉพาะรุ่นนี้", "Session override")}</em>
                             ) : (
-                              <em> · ใช้ตามหลักสูตร</em>
+                              <em> · {t("ใช้ตามหลักสูตร", "Use course default")}</em>
                             )}
                           </summary>
                           <div className={styles.sessionFormOverrideGrid}>
@@ -1843,7 +1848,7 @@ export default function TrainingRolling() {
                                       )
                                     }
                                   >
-                                    <option value="">— ใช้ตามหลักสูตร ({courseDefault || "ไม่มี"}) —</option>
+                                    <option value="">— {t("ใช้ตามหลักสูตร", "Use course default")} ({courseDefault || t("ไม่มี", "None")}) —</option>
                                     {options.map((option) => (
                                       <option key={option.id} value={option.id}>
                                         {option.label}
@@ -1928,90 +1933,90 @@ export default function TrainingRolling() {
                     <div className={styles.previewCardHeader}>
                       <span>
                         <Target size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
-                        วัตถุประสงค์และเนื้อหา (Objectives & Content)
+                        {t("วัตถุประสงค์และเนื้อหา (Objectives & Content)", "Objectives & Content")}
                       </span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>ที่มา (Background)</span>
+                      <span className={styles.previewFieldLabel}>{t("ที่มา (Background)", "Background")}</span>
                       <span className={styles.previewFieldValue}>{selectedOap.course.remark || "-"}</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>วัตถุประสงค์</span>
+                      <span className={styles.previewFieldLabel}>{t("วัตถุประสงค์", "Objective")}</span>
                       <span className={styles.previewFieldValue}>{selectedOap.course.objective || "-"}</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>หัวข้อการเรียนรู้</span>
+                      <span className={styles.previewFieldLabel}>{t("หัวข้อการเรียนรู้", "Learning Content")}</span>
                       <span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>
                         {selectedOap.course.learningContent || "-"}
                       </span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>วิธีการอบรม</span>
+                      <span className={styles.previewFieldLabel}>{t("วิธีการอบรม", "Methodology")}</span>
                       <span className={styles.previewFieldValue}>{selectedOap.course.methodology || "-"}</span>
                     </div>
                   </div>
 
                   <div className={styles.previewCard}>
                     <div className={styles.previewCardHeader}>
-                      <span>ประมาณการงบประมาณและการจัด (Budget & Capacity)</span>
+                      <span>{t("ประมาณการงบประมาณและการจัด (Budget & Capacity)", "Budget & Capacity Estimation")}</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>ผู้เข้าอบรมต่อรุ่น</span>
+                      <span className={styles.previewFieldLabel}>{t("ผู้เข้าอบรมต่อรุ่น", "Participants / Batch")}</span>
                       <span className={styles.previewFieldValue}>
-                        {selectedOap.participants ? `${selectedOap.participants} ท่าน` : "-"}
+                        {selectedOap.participants ? (isThai ? `${selectedOap.participants} ท่าน` : `${selectedOap.participants} seats`) : "-"}
                       </span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>ชั่วโมงการอบรม</span>
+                      <span className={styles.previewFieldLabel}>{t("ชั่วโมงการอบรม", "Training Hours")}</span>
                       <span className={styles.previewFieldValue}>
-                        {selectedOap.hours ? `${selectedOap.hours} ชม.` : "-"}
+                        {selectedOap.hours ? (isThai ? `${selectedOap.hours} ชม.` : `${selectedOap.hours} hrs`) : "-"}
                       </span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>ค่าวิทยากร</span>
+                      <span className={styles.previewFieldLabel}>{t("ค่าวิทยากร", "Instructor")}</span>
                       <span className={styles.previewFieldValue}>
                         {selectedOap.budgetInstructor ? `฿${Number(selectedOap.budgetInstructor).toLocaleString("en-US")}` : "฿0"}
                       </span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>ค่าเดินทาง</span>
+                      <span className={styles.previewFieldLabel}>{t("ค่าเดินทาง", "Traveling")}</span>
                       <span className={styles.previewFieldValue}>
                         {selectedOap.budgetTraveling ? `฿${Number(selectedOap.budgetTraveling).toLocaleString("en-US")}` : "฿0"}
                       </span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>ค่าห้องสัมมนา</span>
+                      <span className={styles.previewFieldLabel}>{t("ค่าห้องสัมมนา", "Seminar Room")}</span>
                       <span className={styles.previewFieldValue}>
                         {selectedOap.budgetSeminarRoom ? `฿${Number(selectedOap.budgetSeminarRoom).toLocaleString("en-US")}` : "฿0"}
                       </span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>ค่าที่พัก</span>
+                      <span className={styles.previewFieldLabel}>{t("ค่าที่พัก", "Accommodation")}</span>
                       <span className={styles.previewFieldValue}>
                         {selectedOap.budgetAccommodation ? `฿${Number(selectedOap.budgetAccommodation).toLocaleString("en-US")}` : "฿0"}
                       </span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>ค่าเอกสาร/อุปกรณ์</span>
+                      <span className={styles.previewFieldLabel}>{t("ค่าเอกสาร/อุปกรณ์", "Material")}</span>
                       <span className={styles.previewFieldValue}>
                         {selectedOap.budgetMaterial ? `฿${Number(selectedOap.budgetMaterial).toLocaleString("en-US")}` : "฿0"}
                       </span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>ค่าอาหาร/เครื่องดื่ม</span>
+                      <span className={styles.previewFieldLabel}>{t("ค่าอาหาร/เครื่องดื่ม", "Food & Beverage")}</span>
                       <span className={styles.previewFieldValue}>
                         {selectedOap.budgetFoodBeverage ? `฿${Number(selectedOap.budgetFoodBeverage).toLocaleString("en-US")}` : "฿0"}
                       </span>
                     </div>
                     <div className={`${styles.previewFieldRow} ${styles.previewBudgetTotalRow}`}>
-                      <span className={styles.previewFieldLabel}><strong>งบประมาณรวม (Total Budget)</strong></span>
+                      <span className={styles.previewFieldLabel}><strong>{t("งบประมาณรวม (Total Budget)", "Total Budget")}</strong></span>
                       <span className={styles.previewFieldValue}>
                         <strong className={styles.previewBudgetTotalText}>
                           ฿{selectedOap.budget ? Number(selectedOap.budget).toLocaleString("en-US") : "0"}
                         </strong>
                         {Number(selectedOap.participants) > 0 && Number(selectedOap.budget) > 0 ? (
                           <span className={styles.previewBudgetPerHead}>
-                            (~฿{Math.round(Number(selectedOap.budget) / Number(selectedOap.participants)).toLocaleString("en-US")} / ท่าน)
+                            (~฿{Math.round(Number(selectedOap.budget) / Number(selectedOap.participants)).toLocaleString("en-US")} / " + t("ท่าน", "seat") + ")
                           </span>
                         ) : null}
                       </span>
@@ -2020,46 +2025,46 @@ export default function TrainingRolling() {
 
                   <div className={styles.previewCard}>
                     <div className={styles.previewCardHeader}>
-                      <span>รายละเอียดวิทยากรและสถาบัน (Instructor & Provider)</span>
+                      <span>{t("รายละเอียดวิทยากรและสถาบัน (Instructor & Provider)", "Instructor & Provider Details")}</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>ชื่อวิทยากร</span>
+                      <span className={styles.previewFieldLabel}>{t("ชื่อวิทยากร", "Instructor Name")}</span>
                       <span className={styles.previewFieldValue}>{selectedOap.trainer || "-"}</span>
                     </div>
                     {selectedOapInstructor?.instructorCode ? (
                       <div className={styles.previewFieldRow}>
-                        <span className={styles.previewFieldLabel}>รหัสวิทยากร</span>
+                        <span className={styles.previewFieldLabel}>{t("รหัสวิทยากร", "Instructor Code")}</span>
                         <span className={styles.previewFieldValue}>{selectedOapInstructor.instructorCode}</span>
                       </div>
                     ) : null}
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>สถาบัน / ผู้ให้บริการ</span>
+                      <span className={styles.previewFieldLabel}>{t("สถาบัน / ผู้ให้บริการ", "Provider")}</span>
                       <span className={styles.previewFieldValue}>{selectedOap.providerName || selectedOap.providerId || "-"}</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>มหาวิทยาลัย</span>
+                      <span className={styles.previewFieldLabel}>{t("มหาวิทยาลัย", "University")}</span>
                       <span className={styles.previewFieldValue}>{selectedOapInstructor?.university || "-"}</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>วุฒิการศึกษา</span>
+                      <span className={styles.previewFieldLabel}>{t("วุฒิการศึกษา", "Education")}</span>
                       <span className={styles.previewFieldValue}>{selectedOapInstructor?.education || "-"}</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>หน่วยงาน / สังกัด</span>
+                      <span className={styles.previewFieldLabel}>{t("หน่วยงาน / สังกัด", "Organization")}</span>
                       <span className={styles.previewFieldValue}>{selectedOapInstructor?.organizationName || "-"}</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>เบอร์โทรศัพท์</span>
+                      <span className={styles.previewFieldLabel}>{t("เบอร์โทรศัพท์", "Telephone")}</span>
                       <span className={styles.previewFieldValue}>{selectedOapInstructor?.telephone || "-"}</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>อีเมล</span>
+                      <span className={styles.previewFieldLabel}>{t("อีเมล", "Email")}</span>
                       <span className={styles.previewFieldValue}>{selectedOapInstructor?.email || "-"}</span>
                     </div>
                     <div className={styles.previewFieldRow}>
-                      <span className={styles.previewFieldLabel}>ขอบเขตแผน</span>
+                      <span className={styles.previewFieldLabel}>{t("ขอบเขตแผน", "Plan Scope")}</span>
                       <span className={styles.previewFieldValue}>
-                        {selectedOap.owner === "CENTER" ? "ทุกบริษัท (All Companies)" : selectedOap.ownerCompany}
+                        {selectedOap.owner === "CENTER" ? t("ทุกบริษัท (All Companies)", "All Companies") : selectedOap.ownerCompany}
                       </span>
                     </div>
                   </div>
@@ -2068,7 +2073,7 @@ export default function TrainingRolling() {
                     <div className={styles.previewCardHeader}>
                       <span>
                         <Users size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
-                        กลุ่มเป้าหมายมาตรฐาน (Standard Target)
+                        {t("กลุ่มเป้าหมายมาตรฐาน (Standard Target)", "Standard Target Group")}
                       </span>
                     </div>
                     {(() => {
@@ -2201,15 +2206,15 @@ export default function TrainingRolling() {
                 <div className={styles.companySectionTitle}>
                   <span className={styles.chevron} aria-hidden="true" />
                   <span className={styles.companyIcon}>{section.companyName === "HRD Center" ? <Building2 size={18} /> : <Factory size={18} />}</span>
-                  <h4>แผนอบรม {section.companyName}</h4>
+                  <h4>{t(`แผนอบรม ${section.companyName}`, `Training Plan - ${section.companyName}`)}</h4>
                   {section.isUserCompany ? (
                     <span className={styles.ownCompanySectionTag}>
                       <Star size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                      บริษัทของฉัน ({userCompanyCode || "HRD Center"})
+                      {t(`บริษัทของฉัน (${userCompanyCode || "HRD Center"})`, `My Company (${userCompanyCode || "HRD Center"})`)}
                     </span>
                   ) : null}
                 </div>
-                <span className={styles.companyCountBadge} translate="no">{sessions.length} รอบอบรม</span>
+                <span className={styles.companyCountBadge} translate="no">{sessions.length} {t("รอบอบรม", "sessions")}</span>
               </button>
 
               {!isSectionOpen(section.companyName) ? null : (
@@ -2264,14 +2269,14 @@ export default function TrainingRolling() {
                                 <div>
                                   <span className={styles.creatorBadgeCenter}>
                                     <Building2 size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                                    จัดหลักสูตรโดย HRD Center
+                                    {t("จัดหลักสูตรโดย HRD Center", "Organized by HRD Center")}
                                   </span>
                                 </div>
                               ) : (
                                 <div>
                                   <span className={styles.creatorBadgeFactory}>
                                     <Factory size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                                    จัดหลักสูตรโดย {plan.ownerCompany || plan.company}
+                                    {t(`จัดหลักสูตรโดย ${plan.ownerCompany || plan.company}`, `Organized by ${plan.ownerCompany || plan.company}`)}
                                   </span>
                                 </div>
                               )}
@@ -2377,20 +2382,20 @@ export default function TrainingRolling() {
                                       <div className={styles.previewCardHeader}>
                                         <span>
                                           <BookOpen size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
-                                          หลักสูตร (Course)
+                                          {t("หลักสูตร (Course)", "Course Details")}
                                         </span>
                                       </div>
                                       <div className={styles.previewFieldGrid}>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>กลุ่มหลักสูตร</span><span className={styles.previewFieldValue} translate="no">{plan.course.courseGroup || "-"}</span></div>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>รหัสหลักสูตร</span><span className={styles.previewFieldValue}>{plan.course.code}</span></div>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewFieldFull}`}><span className={styles.previewFieldLabel}>ที่มา (Background)</span><span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>{plan.course.remark || "-"}</span></div>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewFieldFull}`}><span className={styles.previewFieldLabel}>วัตถุประสงค์การเรียนรู้</span><span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>{plan.course.objective}</span></div>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewFieldFull}`}><span className={styles.previewFieldLabel}>หัวข้อการเรียนรู้</span><span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>{plan.course.learningContent}</span></div>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewFieldFull}`}><span className={styles.previewFieldLabel}>วิธีการอบรม</span><span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>{plan.course.methodology}</span></div>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ประเภทหลักสูตร</span><span className={styles.previewFieldValue}>{plan.course.courseType}</span></div>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>อายุหลักสูตร (เดือน)</span><span className={styles.previewFieldValue}>{!plan.course.lifeCycleMonth || plan.course.lifeCycleMonth === "0" || Number(plan.course.lifeCycleMonth) === 0 ? "ไม่มีการหมดอายุ" : plan.course.lifeCycleMonth}</span></div>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ผู้เข้าอบรม / รุ่น</span><span className={styles.previewFieldValue}>{plan.participants} ท่าน</span></div>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ชั่วโมงอบรม</span><span className={styles.previewFieldValue}>{plan.hours} ชม.</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("กลุ่มหลักสูตร", "Course Group")}</span><span className={styles.previewFieldValue} translate="no">{plan.course.courseGroup || "-"}</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("รหัสหลักสูตร", "Course Code")}</span><span className={styles.previewFieldValue}>{plan.course.code}</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewFieldFull}`}><span className={styles.previewFieldLabel}>{t("ที่มา (Background)", "Background")}</span><span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>{plan.course.remark || "-"}</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewFieldFull}`}><span className={styles.previewFieldLabel}>{t("วัตถุประสงค์การเรียนรู้", "Learning Objective")}</span><span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>{plan.course.objective}</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewFieldFull}`}><span className={styles.previewFieldLabel}>{t("หัวข้อการเรียนรู้", "Learning Content")}</span><span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>{plan.course.learningContent}</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewFieldFull}`}><span className={styles.previewFieldLabel}>{t("วิธีการอบรม", "Methodology")}</span><span className={styles.previewFieldValue} style={{ whiteSpace: "pre-line" }}>{plan.course.methodology}</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("ประเภทหลักสูตร", "Course Type")}</span><span className={styles.previewFieldValue}>{plan.course.courseType}</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("อายุหลักสูตร (เดือน)", "Validity (Months)")}</span><span className={styles.previewFieldValue}>{!plan.course.lifeCycleMonth || plan.course.lifeCycleMonth === "0" || Number(plan.course.lifeCycleMonth) === 0 ? "ไม่มีการหมดอายุ" : plan.course.lifeCycleMonth}</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("ผู้เข้าอบรม / รุ่น", "Participants / Batch")}</span><span className={styles.previewFieldValue}>{plan.participants} {t("ท่าน", "seats")}</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("ชั่วโมงอบรม", "Training Hours")}</span><span className={styles.previewFieldValue}>{plan.hours} {t("ชม.", "hrs")}</span></div>
                                       </div>
                                     </div>
 
@@ -2401,10 +2406,10 @@ export default function TrainingRolling() {
                                           <div className={styles.previewCardHeader}>
                                             <span>
                                               <Target size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
-                                              กลุ่มเป้าหมาย (Target Group)
+                                              {t("กลุ่มเป้าหมาย (Target Group)", "Target Group")}
                                             </span>
                                           </div>
-                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>กลุ่มผู้เข้าอบรม</span><span className={styles.previewFieldValue}>{plan.course.targetGroup}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("กลุ่มผู้เข้าอบรม", "Target Audience")}</span><span className={styles.previewFieldValue}>{plan.course.targetGroup}</span></div>
                                           <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
                                             <span className={styles.previewFieldLabel}>Standard Companies</span>
                                             {std?.companies?.length ? (
@@ -2491,19 +2496,19 @@ export default function TrainingRolling() {
                                           <div className={styles.previewCardHeader}>
                                             <span>
                                               <User size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
-                                              ข้อมูลวิทยากร &amp; สถาบัน (Instructor &amp; Provider)
+                                              {t("ข้อมูลวิทยากร & สถาบัน (Instructor & Provider)", "Instructor & Provider Details")}
                                             </span>
                                           </div>
-                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>วิทยากร</span><span className={styles.previewFieldValue}>{plan.trainer || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("วิทยากร", "Instructor Name")}</span><span className={styles.previewFieldValue}>{plan.trainer || "-"}</span></div>
                                           {matchedRollingInstructor?.instructorCode ? (
-                                            <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>รหัสวิทยากร</span><span className={styles.previewFieldValue}>{matchedRollingInstructor.instructorCode}</span></div>
+                                            <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("รหัสวิทยากร", "Instructor Code")}</span><span className={styles.previewFieldValue}>{matchedRollingInstructor.instructorCode}</span></div>
                                           ) : null}
-                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>มหาวิทยาลัย</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.university || "-"}</span></div>
-                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>วุฒิการศึกษา</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.education || "-"}</span></div>
-                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>หน่วยงาน / สังกัด</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.organizationName || "-"}</span></div>
-                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>เบอร์โทรศัพท์</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.telephone || "-"}</span></div>
-                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>อีเมล</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.email || "-"}</span></div>
-                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ผู้ให้บริการ</span><span className={styles.previewFieldValue}>{plan.provider || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("มหาวิทยาลัย", "University")}</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.university || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("วุฒิการศึกษา", "Education")}</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.education || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("หน่วยงาน / สังกัด", "Organization")}</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.organizationName || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("เบอร์โทรศัพท์", "Telephone")}</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.telephone || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("อีเมล", "Email")}</span><span className={styles.previewFieldValue}>{matchedRollingInstructor?.email || "-"}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("ผู้ให้บริการ", "Provider")}</span><span className={styles.previewFieldValue}>{plan.provider || "-"}</span></div>
                                         </div>
                                       );
                                     })()}
@@ -2522,37 +2527,37 @@ export default function TrainingRolling() {
                                           <div className={styles.previewCardHeader}>
                                             <span>
                                               <Wallet size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
-                                              ค่าใช้จ่ายประมาณการ
+                                              {t("ค่าใช้จ่ายประมาณการ", "Estimated Expenses")}
                                             </span>
                                           </div>
                                           <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}>
-                                            <span className={styles.previewFieldLabel}>จำนวนที่แต่ละบริษัทส่งได้</span>
+                                            <span className={styles.previewFieldLabel}>{t("จำนวนที่แต่ละบริษัทส่งได้", "Quota per Company")}</span>
                                             <span className={styles.previewFieldValue}>
-                                              {estimate.seatsPerCompany === null ? "-" : `${estimate.seatsPerCompany} คน`}
+                                              {estimate.seatsPerCompany === null ? "-" : (isThai ? `${estimate.seatsPerCompany} คน` : `${estimate.seatsPerCompany} seats`)}
                                             </span>
                                           </div>
-                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>งบประมาณรวม</span><span className={styles.previewFieldValue}>{formatBaht(estimate.totalBudget)}</span></div>
-                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ค่าใช้จ่ายประมาณการต่อคน (กรณีเต็มจำนวน)</span><span className={styles.previewFieldValue}>{formatBaht(estimate.costPerPerson)}</span></div>
-                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewTotalRow}`}><span className={styles.previewFieldLabel}>ค่าใช้จ่ายประมาณการต่อบริษัท (กรณีเต็มจำนวน)</span><span className={styles.previewFieldValue}>{formatBaht(estimate.costPerCompany)}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("งบประมาณรวม", "Total Budget")}</span><span className={styles.previewFieldValue}>{formatBaht(estimate.totalBudget)}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("ค่าใช้จ่ายประมาณการต่อคน (กรณีเต็มจำนวน)", "Est. Cost per Person (full capacity)")}</span><span className={styles.previewFieldValue}>{formatBaht(estimate.costPerPerson)}</span></div>
+                                          <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewTotalRow}`}><span className={styles.previewFieldLabel}>{t("ค่าใช้จ่ายประมาณการต่อบริษัท (กรณีเต็มจำนวน)", "Est. Cost per Company (full capacity)")}</span><span className={styles.previewFieldValue}>{formatBaht(estimate.costPerCompany)}</span></div>
                                         </div>
                                       );
                                     })()}
 
                                     <div className={`${styles.previewCard} ${styles.previewCardFull}`}>
-                                      <div className={styles.previewCardHeader}><span><CalendarDays size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />กำหนดการ / สถานะ</span></div>
+                                      <div className={styles.previewCardHeader}><span><CalendarDays size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />{t("กำหนดการ / สถานะ", "Schedule & Status")}</span></div>
                                       <div className={styles.previewFieldGrid}>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ลำดับหลักสูตร</span><span className={styles.previewFieldValue} translate="no">{group.sequence}</span></div>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>รุ่น (Sessions)</span><span className={styles.previewFieldValue}>{group.plans.length}</span></div>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>สถานะ</span><span className={styles.previewFieldValue}>{getStatusLabel(plan.status)}</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("ลำดับหลักสูตร", "Sequence")}</span><span className={styles.previewFieldValue} translate="no">{group.sequence}</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("รุ่น (Sessions)", "Sessions")}</span><span className={styles.previewFieldValue}>{group.plans.length}</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("สถานะ", "Status")}</span><span className={styles.previewFieldValue}>{getStatusLabel(plan.status)}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>Job Status</span><span className={styles.previewFieldValue}>{getJobStatus(plan)}</span></div>
-                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>ขอบเขต (Scope)</span><span className={styles.previewFieldValue}>{formatRollingPlanCompanies(plan)}</span></div>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("ขอบเขต (Scope)", "Scope")}</span><span className={styles.previewFieldValue}>{formatRollingPlanCompanies(plan)}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>Last Updated</span><span className={styles.previewFieldValue}>{plan.updatedAt}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn} ${styles.previewFieldFull}`}>
                                           <span className={styles.previewFieldLabel}>Created By</span>
                                           <span className={styles.previewFieldValue}>
                                             {plan.ownerScope === "CENTER" || plan.ownerCompany === "HRD Center" || plan.ownerName === "Center HRD"
-                                              ? (<><Building2 size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />HRD Center (ส่วนกลางจัดอบรมให้บริษัท {formatRollingPlanCompanies(plan)})</>)
-                                              : (<><Factory size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{plan.ownerCompany || plan.company} (โรงงานจัดอบรมเอง)</>)}
+                                              ? (<><Building2 size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />HRD Center ({t("ส่วนกลางจัดอบรมให้บริษัท", "Center organized for")} {formatRollingPlanCompanies(plan)})</>)
+                                              : (<><Factory size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{plan.ownerCompany || plan.company} ({t("โรงงานจัดอบรมเอง", "Factory self-organized")})</>)}
                                           </span>
                                         </div>
                                       </div>

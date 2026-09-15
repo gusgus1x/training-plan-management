@@ -12,6 +12,7 @@ import {
 import {
   buildCalendarYearOptions,
   getCurrentCalendarDate,
+  isCourseDateOrTimeEnded,
 } from "../../../../lib/calendarDate";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
@@ -22,7 +23,7 @@ import styles from "./ScheduleCalendar.module.css";
 
 export const scheduleCalendarModule = {
   title: "Schedule calendar",
-  titleTh: "ปฏิทินการฝึกอบรม (Schedule Calendar)",
+  titleTh: "ปฏิทินการฝึกอบรม",
   subtitle: "Training schedule",
   subtitleTh: "กำหนดการจัดฝึกอบรมประจำเดือน",
   description: "Show monthly training details from Training Rolling data",
@@ -804,11 +805,11 @@ export default function ScheduleCalendar({
               <header>
                 <div>
                   <h3>{month.label}</h3>
-                  <span>{month.plans.length} schedules</span>
+                  <span>{month.plans.length} {uiLang === "th" ? "กำหนดการ" : (month.plans.length === 1 ? "schedule" : "schedules")}</span>
                 </div>
                 <div className={styles.monthCardActions}>
                   <button type="button" onClick={() => setSelectedMonth(month.value)}>
-                    Calendar
+                    {uiLang === "th" ? "ดูปฏิทิน" : "Calendar"}
                   </button>
                   <button
                     disabled={month.plans.length === 0}
@@ -817,7 +818,9 @@ export default function ScheduleCalendar({
                       setExpandedTrainingMonth((current) => (current === month.value ? "" : month.value))
                     }
                   >
-                    {expandedTrainingMonth === month.value ? "Hide" : "Show training"}
+                    {expandedTrainingMonth === month.value
+                      ? (uiLang === "th" ? "ซ่อน" : "Hide")
+                      : (uiLang === "th" ? "แสดงรายวิชา" : "Show training")}
                   </button>
                 </div>
               </header>
@@ -840,7 +843,7 @@ export default function ScheduleCalendar({
 
               {expandedTrainingMonth === month.value && month.plans.length > 0 ? (
                 <div className={styles.monthCoursePreview}>
-                  <span className={styles.previewLabel}>Training list</span>
+                  <span className={styles.previewLabel}>{uiLang === "th" ? "รายการฝึกอบรม" : "Training list"}</span>
                   {month.plans.map((plan) => {
                     const isMulti = Boolean(plan.endDate && plan.endDate !== plan.trainingDate);
                     const startDay = Number(plan.trainingDate.slice(8, 10));
@@ -867,7 +870,9 @@ export default function ScheduleCalendar({
         <section className={styles.calendarPanel} aria-label={`${selectedMonthDetail?.label} ${selectedYear} training calendar`}>
           <div className={styles.calendarHeader}>
             <h3>{selectedMonthDetail?.label} {selectedYear}</h3>
-            <span className={styles.calendarCountBadge}>{selectedMonthDetail?.plans.length ?? 0} Schedules</span>
+            <span className={styles.calendarCountBadge}>
+              {selectedMonthDetail?.plans.length ?? 0} {uiLang === "th" ? "กำหนดการ" : (selectedMonthDetail?.plans.length === 1 ? "Schedule" : "Schedules")}
+            </span>
           </div>
 
           {/* Legend Bar */}
@@ -1205,7 +1210,12 @@ export default function ScheduleCalendar({
                 const startDayNumber = Number(startDateStr.slice(8, 10));
                 const endDayNumber = Number(endDateStr.slice(8, 10));
                 const totalDays = getPlanDaysCount(startDateStr, endDateStr);
-                const isEnded = plan.dbStatus === "COMPLETED" || (Boolean(endDateStr) && endDateStr < todayDate);
+                const isEnded =
+                  plan.dbStatus === "COMPLETED" ||
+                  plan.dbStatus === "CANCELLED" ||
+                  plan.status === "Cancel" ||
+                  (Boolean(endDateStr) && endDateStr < todayDate) ||
+                  isCourseDateOrTimeEnded(startDateStr, endDateStr, plan.endTime);
                 const isFactoryPlanOfOtherCompany =
                   !isCenterUser &&
                   plan.ownerScope === "FACTORY" &&
@@ -1330,6 +1340,21 @@ export default function ScheduleCalendar({
                                     ? (uiLang === "th" ? "⏳ รออนุมัติ" : "⏳ Pending")
                                     : (uiLang === "th" ? "✓ อนุมัติแล้ว (รอเข้าอบรม)" : "✓ Approved")}
                                 </span>
+                              );
+                            }
+                            if (isEnded) {
+                              return (
+                                <button
+                                  type="button"
+                                  className={styles.endedBtn}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    router.push("/training-record");
+                                  }}
+                                  title={uiLang === "th" ? "หลักสูตรนี้จัดเสร็จสิ้นแล้ว ดูข้อมูลที่ Training Record" : "Course has completed. View in Training Record"}
+                                >
+                                  <span>{uiLang === "th" ? "สิ้นสุดการรับสมัคร" : "Closed"}</span>
+                                </button>
                               );
                             }
                             return (
@@ -1606,9 +1631,47 @@ export default function ScheduleCalendar({
                                 type="button"
                                 className={styles.endedBtn}
                                 onClick={() => router.push("/training-record")}
+                                title={uiLang === "th" ? "หลักสูตรนี้จัดเสร็จสิ้นแล้ว ดูข้อมูลที่ Training Record" : "Course has completed. View in Training Record"}
                               >
                                 <span>{uiLang === "th" ? "เสร็จสิ้นแล้ว" : "Completed"}</span>
                               </button>
+                            ) : isEmployeeView ? (
+                              (() => {
+                                const myEnr = getEmployeeEnrollment(plan);
+                                if (myEnr) {
+                                  return (
+                                    <button
+                                      type="button"
+                                      className={styles.recordActionBtn}
+                                      onClick={() => {
+                                        if (onNavigateRecord) {
+                                          onNavigateRecord(myEnr);
+                                        } else {
+                                          router.push("/training-record");
+                                        }
+                                      }}
+                                    >
+                                      <span>{uiLang === "th" ? "ดูประวัติการอบรม" : "My Record"}</span>
+                                    </button>
+                                  );
+                                }
+                                return (
+                                  <button
+                                    type="button"
+                                    className={styles.registerActionBtn}
+                                    onClick={() => {
+                                      if (onNavigateRegister) {
+                                        onNavigateRegister();
+                                      } else {
+                                        router.push("/?module=register");
+                                      }
+                                    }}
+                                    title={uiLang === "th" ? "กดเพื่อสมัครเข้าอบรมหลักสูตรนี้" : "Register for this course"}
+                                  >
+                                    <span>{uiLang === "th" ? "สมัครเข้าอบรม" : "Register"}</span>
+                                  </button>
+                                );
+                              })()
                             ) : isFactoryPlanOfOtherCompany ? (
                               <span className={styles.scopeRestrictedBadge}>
                                 {uiLang === "th" ? `เฉพาะ ${plan.ownerCompany}` : `${plan.ownerCompany} Only`}

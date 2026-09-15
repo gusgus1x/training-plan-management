@@ -13,6 +13,7 @@ import {
   localizeAndSortAttendanceParticipants,
 } from "../../../../lib/attendanceSheetExport";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
+import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useToast } from "../../../ToastHost";
 import {
@@ -52,9 +53,13 @@ import styles from "./TrainingAcceptSurvey.module.css";
 
 export const trainingAcceptSurveyModule = {
   title: "Training Accept Survey",
+  titleTh: "แบบสำรวจและส่งคนเข้าอบรม",
   subtitle: "Target & approval workflow",
+  subtitleTh: "ขั้นตอนการสำรวจกลุ่มเป้าหมายและอนุมัติผู้เข้าอบรม",
   description:
     "Survey target employees from Course Standard, collect factory submissions, and approve training participants.",
+  descriptionTh:
+    "สำรวจพนักงานตามกลุ่มเป้าหมายจาก Course Standard รวบรวมรายชื่อจากโรงงาน และอนุมัติผู้เข้าอบรม",
 } as const;
 
 type RoleMode = "center" | "factory";
@@ -301,7 +306,7 @@ function PaginatedEmployeeGrid({
   employees,
   targetActionLabel,
   onAddEmployee,
-  emptyMessage = "ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้",
+  emptyMessage,
   pageSize = 25,
   enrollments = [],
   draftSubmittedEmployees = [],
@@ -309,6 +314,9 @@ function PaginatedEmployeeGrid({
   courseHistoryMap = new Map(),
 }: PaginatedEmployeeGridProps) {
   const toast = useToast();
+  const { language } = useUiLanguage();
+  const isThai = language === "th";
+  const effectiveEmptyMessage = emptyMessage ?? (isThai ? "ไม่มีรายชื่อพนักงานสำหรับบริษัทนี้" : "No employee records for this company");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -373,7 +381,7 @@ function PaginatedEmployeeGrid({
           <input
             className={styles.dropdownSearchInput}
             type="text"
-            placeholder="ค้นหาพนักงาน (รหัส, ชื่อ-สกุล, แผนก, ตำแหน่ง)..."
+            placeholder={isThai ? "ค้นหาพนักงาน (รหัส, ชื่อ-สกุล, แผนก, ตำแหน่ง)..." : "Search employees (Code, Name, Dept, Position)..."}
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -388,7 +396,7 @@ function PaginatedEmployeeGrid({
                 setSearchQuery("");
                 setCurrentPage(1);
               }}
-              title="ล้างคำค้นหา"
+              title={isThai ? "ล้างคำค้นหา" : "Clear search"}
             ><X size={14} /></button>
           ) : null}
         </div>
@@ -463,7 +471,7 @@ function PaginatedEmployeeGrid({
               if (enrollment.status === "Pending Approval") {
                 statusBadge = (
                   <span className={styles.badgePending}>
-                    <span className={styles.glowingDotBlue}></span> รออนุมัติ
+                    <span className={styles.glowingDotBlue}></span> {isThai ? "รออนุมัติ" : "Pending"}
                   </span>
                 );
                 buttonLabel = "รออนุมัติ";
@@ -471,7 +479,7 @@ function PaginatedEmployeeGrid({
               } else if (enrollment.status === "Factory Approved" || enrollment.status === "Center Approved") {
                 statusBadge = (
                   <span className={styles.badgeApproved}>
-                    <span className={styles.glowingDotGreen}></span> อนุมัติแล้ว
+                    <span className={styles.glowingDotGreen}></span> {isThai ? "อนุมัติแล้ว" : "Approved"}
                   </span>
                 );
                 buttonLabel = "อนุมัติแล้ว";
@@ -480,7 +488,7 @@ function PaginatedEmployeeGrid({
             } else if (enrollment && enrollment.status === "Rejected") {
               statusBadge = (
                 <span className={styles.badgeRejected}>
-                  <span className={styles.glowingDotRed}></span> ถูกปฏิเสธ
+                  <span className={styles.glowingDotRed}></span> {isThai ? "ถูกปฏิเสธ" : "Rejected"}
                 </span>
               );
               buttonLabel = "+ เลือกใหม่";
@@ -509,10 +517,10 @@ function PaginatedEmployeeGrid({
                   className={`${styles.addTargetButton} ${isBtnDisabled ? styles.addedBtn : ""} ${!canNominate ? styles.deniedBtn : ""} ${isRetake ? styles.badgeRetakeBtn : ""}`}
                   type="button"
                   disabled={isBtnDisabled}
-                  title={!canNominate ? "คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม" : buttonLabel}
+                  title={!canNominate ? (isThai ? "คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม" : "Your position is not authorized to nominate employees") : buttonLabel}
                   onClick={() => {
                     if (!canNominate) {
-                      toast.error("ตำแหน่งของคุณไม่ถึงที่จะเข้าลิ้งค์ (คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม)");
+                      toast.error(isThai ? "ตำแหน่งของคุณไม่ถึงที่จะเข้าลิ้งค์ (คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม)" : "Your position is not authorized to nominate employees.");
                       return;
                     }
                     if (isBtnDisabled) return;
@@ -550,7 +558,7 @@ function PaginatedEmployeeGrid({
             );
           })}
           {pageEmployees.length === 0 ? (
-            <div className={styles.emptyCompact}>{emptyMessage}</div>
+            <div className={styles.emptyCompact}>{effectiveEmptyMessage}</div>
           ) : null}
         </div>
       </div>
@@ -558,7 +566,7 @@ function PaginatedEmployeeGrid({
       {totalPages > 1 ? (
         <div className={styles.dropdownPagination}>
           <span className={styles.paginationInfo}>
-            หน้า {activePage} จาก {totalPages} (ทั้งหมด {filteredEmployees.length} คน)
+            {isThai ? `หน้า ${activePage} จาก ${totalPages} (ทั้งหมด ${filteredEmployees.length} คน)` : `Page ${activePage} of ${totalPages} (${filteredEmployees.length} total)`}
           </span>
           <div className={styles.paginationNav}>
             {showLeftArrows ? (
@@ -567,7 +575,7 @@ function PaginatedEmployeeGrid({
                   className={styles.pageBtn}
                   type="button"
                   onClick={() => handlePageChange(1)}
-                  title="ไปหน้าแรก"
+                  title={isThai ? "ไปหน้าแรก" : "First page"}
                 >
                   «
                 </button>
@@ -575,7 +583,7 @@ function PaginatedEmployeeGrid({
                   className={styles.pageBtn}
                   type="button"
                   onClick={() => handlePageChange(activePage - 1)}
-                  title="หน้าก่อนหน้า"
+                  title={isThai ? "หน้าก่อนหน้า" : "Previous page"}
                 >
                   ‹
                 </button>
@@ -599,7 +607,7 @@ function PaginatedEmployeeGrid({
                   className={styles.pageBtn}
                   type="button"
                   onClick={() => handlePageChange(activePage + 1)}
-                  title="หน้าถัดไป"
+                  title={isThai ? "หน้าถัดไป" : "Next page"}
                 >
                   ›
                 </button>
@@ -607,7 +615,7 @@ function PaginatedEmployeeGrid({
                   className={styles.pageBtn}
                   type="button"
                   onClick={() => handlePageChange(totalPages)}
-                  title="ไปหน้าสุดท้าย"
+                  title={isThai ? "ไปหน้าสุดท้าย" : "Last page"}
                 >
                   »
                 </button>
@@ -665,6 +673,8 @@ export default function TrainingAcceptSurvey({
   initialCourseId?: string;
 } = {}) {
   const user = useAuthenticatedUser();
+  const { language } = useUiLanguage();
+  const isThai = language === "th";
   const [urlCourseId, setUrlCourseId] = useState<string | null>(initialCourseId ?? null);
   // Declared here, above the effect that sets it. Separate from isTargetLoading, which is reused
   // when switching course: only the very first load should replace the whole page.
@@ -1604,12 +1614,12 @@ export default function TrainingAcceptSurvey({
       <section className={styles.page} aria-label="Training Accept Survey module">
         <section className={styles.hero}>
           <div>
-            <p className={styles.kicker}>{trainingAcceptSurveyModule.subtitle}</p>
-            <h2>{trainingAcceptSurveyModule.title}</h2>
-            <p>{trainingAcceptSurveyModule.description}</p>
+            <p className={styles.kicker}>{isThai ? trainingAcceptSurveyModule.subtitleTh : trainingAcceptSurveyModule.subtitle}</p>
+            <h2>{isThai ? trainingAcceptSurveyModule.titleTh : trainingAcceptSurveyModule.title}</h2>
+            <p>{isThai ? trainingAcceptSurveyModule.descriptionTh : trainingAcceptSurveyModule.description}</p>
           </div>
         </section>
-        <TypewriterLoader label="กำลังโหลดข้อมูลหลักสูตรและรายชื่อพนักงาน..." />
+        <TypewriterLoader label={isThai ? "กำลังโหลดข้อมูลหลักสูตรและรายชื่อพนักงาน..." : "Loading courses and employees..."} />
       </section>
     );
   }
@@ -1618,9 +1628,9 @@ export default function TrainingAcceptSurvey({
     <section className={styles.page} aria-label="Training Accept Survey module">
       <section className={styles.hero}>
         <div>
-          <p className={styles.kicker}>{trainingAcceptSurveyModule.subtitle}</p>
-          <h2>{trainingAcceptSurveyModule.title}</h2>
-          <p>{trainingAcceptSurveyModule.description}</p>
+          <p className={styles.kicker}>{isThai ? trainingAcceptSurveyModule.subtitleTh : trainingAcceptSurveyModule.subtitle}</p>
+          <h2>{isThai ? trainingAcceptSurveyModule.titleTh : trainingAcceptSurveyModule.title}</h2>
+          <p>{isThai ? trainingAcceptSurveyModule.descriptionTh : trainingAcceptSurveyModule.description}</p>
         </div>
       </section>
 
@@ -1629,24 +1639,24 @@ export default function TrainingAcceptSurvey({
         <div className={styles.controlHeaderBar}>
           <div className={styles.accessBadge}>
             <span className={roleMode === "center" ? styles.glowingDotBlue : styles.glowingDotGreen}></span>
-            <span>สิทธิ์การใช้งานปัจจุบัน:</span>
+            <span>{isThai ? "สิทธิ์การใช้งานปัจจุบัน:" : "Current Role Scope:"}</span>
             <strong>{roleMode === "center" ? "HRD Center Functions" : `HRD Factory Functions (${userCompanyCode})`}</strong>
             <span style={{ opacity: 0.7, fontWeight: 500 }}>— {userCompanyLabel}</span>
           </div>
           <div className={styles.scopeBadge}>
-            <span><Target size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />ขอบเขตการทำงาน:</span>
+            <span><Target size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />{isThai ? "ขอบเขตการทำงาน:" : "Working Scope:"}</span>
             <strong>
               {!selectedCourse
-                ? "กรุณาเลือกหลักสูตรด้านล่างเพื่อเริ่มต้นจัดการรายชื่อ"
+                ? (isThai ? "กรุณาเลือกหลักสูตรด้านล่างเพื่อเริ่มต้นจัดการรายชื่อ" : "Please select a course below to manage participant nominations")
                 : roleMode === "center"
                   ? (selectedCourse.owner === "factory"
-                    ? `หลักสูตรภายในของโรงงาน ${selectedCourse.ownerCompany} (จัดการได้เฉพาะพนักงาน ${selectedCourse.ownerCompany})`
-                    : "ดูภาพรวมพนักงานทุกบริษัท / อนุมัติรายชื่อที่โรงงานส่งมา")
+                    ? (isThai ? `หลักสูตรภายในของโรงงาน ${selectedCourse.ownerCompany} (จัดการได้เฉพาะพนักงาน ${selectedCourse.ownerCompany})` : `Factory course owned by ${selectedCourse.ownerCompany} (participants limited to ${selectedCourse.ownerCompany})`)
+                    : (isThai ? "ดูภาพรวมพนักงานทุกบริษัท / อนุมัติรายชื่อที่โรงงานส่งมา" : "All Companies Overview / Approve factory submissions"))
                   : isFactoryOwnedByUser
-                    ? `จัดการผู้เข้าร่วมอบรมสำหรับหลักสูตรของโรงงาน ${userCompanyCode}`
+                    ? (isThai ? `จัดการผู้เข้าร่วมอบรมสำหรับหลักสูตรของโรงงาน ${userCompanyCode}` : `Manage participants for ${userCompanyCode} factory course`)
                     : selectedCourse.owner === "factory"
-                      ? `หลักสูตรนี้เป็นของโรงงาน ${selectedCourse.ownerCompany} เท่านั้น (พนักงาน ${userCompanyCode} ไม่สามารถเข้าอบรมได้)`
-                      : `ส่งรายชื่อพนักงาน ${userCompanyCode} เข้าอบรมกลางกับ Center`}
+                      ? (isThai ? `หลักสูตรนี้เป็นของโรงงาน ${selectedCourse.ownerCompany} เท่านั้น (พนักงาน ${userCompanyCode} ไม่สามารถเข้าอบรมได้)` : `Course is restricted to ${selectedCourse.ownerCompany} only`)
+                      : (isThai ? `ส่งรายชื่อพนักงาน ${userCompanyCode} เข้าอบรมกลางกับ Center` : `Submit ${userCompanyCode} candidates to HRD Center`)}
             </strong>
           </div>
         </div>
@@ -2072,7 +2082,7 @@ export default function TrainingAcceptSurvey({
                     </div>
                     <div className={styles.participantActions}>
                       <span className={styles.queueBadgeBlue}>
-                        <span className={styles.glowingDotBlue}></span> รออนุมัติ {approvalQueue.length} คน
+                        <span className={styles.glowingDotBlue}></span> {isThai ? `รออนุมัติ ${approvalQueue.length} คน` : `${approvalQueue.length} pending approval`}
                       </span>
                       <button
                         className={styles.batchApproveBtn}
@@ -2092,7 +2102,7 @@ export default function TrainingAcceptSurvey({
                           }
                         }}
                       >
-                        <><Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> อนุมัติทั้งหมด ({approvalQueue.length})</>
+                        <><Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> {isThai ? `อนุมัติทั้งหมด (${approvalQueue.length})` : `Approve All (${approvalQueue.length})`}</>
                       </button>
                     </div>
                   </div>
@@ -2144,13 +2154,13 @@ export default function TrainingAcceptSurvey({
                               type="button"
                               disabled={!canApprove}
                               onClick={() => void handleApprove(candidate.id)}
-                            ><Check size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} /> อนุมัติ</button>
+                            ><Check size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} /> {isThai ? "อนุมัติ" : "Approve"}</button>
                             <button
                               className={styles.rejectCandidateBtn}
                               type="button"
                               disabled={!canReject}
                               onClick={() => void handleReject(candidate.id)}
-                            ><X size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} /> ปฏิเสธ</button>
+                            ><X size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} /> {isThai ? "ปฏิเสธ" : "Reject"}</button>
                           </div>
                           <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
                             <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.employeeCode}>{candidate.employeeCode}</span>
@@ -2198,17 +2208,17 @@ export default function TrainingAcceptSurvey({
                     <div className={styles.workspaceHeader}>
                       <div>
                         <p className={styles.kicker} style={{ color: "#eab308" }}>Draft Submissions (Unsaved)</p>
-                        <h3>รายการเตรียมส่งคนเข้าอบรมกลาง ({draftSubmittedEmployees.length} คน)</h3>
+                        <h3>{isThai ? `รายการเตรียมส่งคนเข้าอบรมกลาง (${draftSubmittedEmployees.length} คน)` : `Draft Submissions for Center (${draftSubmittedEmployees.length})`}</h3>
                       </div>
                       <div className={styles.participantActions}>
                         <span className={styles.queueBadgeYellow}>
-                          <span className={styles.glowingDotYellow}></span> {draftSubmittedEmployees.length} คนรอส่ง
+                          <span className={styles.glowingDotYellow}></span> {isThai ? `${draftSubmittedEmployees.length} คนรอส่ง` : `${draftSubmittedEmployees.length} pending`}
                         </span>
                         <button
                           className={`${styles.saveSubmissionButton} ${!canNominateByPosition ? styles.deniedBtn : ""}`}
                           type="button"
                           disabled={draftSubmittedEmployees.length === 0}
-                          title={!canNominateByPosition ? "คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม" : undefined}
+                          title={!canNominateByPosition ? (isThai ? "คุณมีตำแหน่งไม่ถึงที่จะส่งคนเข้าอบรม" : "Your position is not authorized to nominate employees") : undefined}
                           onClick={async () => {
                             if (!selectedCourse) return;
                             if (!canNominateByPosition) {
@@ -2249,7 +2259,7 @@ export default function TrainingAcceptSurvey({
                             }
                           }}
                         >
-                          <><Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> บันทึกและยืนยันส่งรายชื่อเข้าอบรมกลาง ({draftSubmittedEmployees.length})</>
+                          <><Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> {isThai ? `บันทึกและยืนยันส่งรายชื่อเข้าอบรมกลาง (${draftSubmittedEmployees.length})` : `Submit Candidates to Center (${draftSubmittedEmployees.length})`}</>
                         </button>
                       </div>
                     </div>
@@ -2285,13 +2295,13 @@ export default function TrainingAcceptSurvey({
                                 toast.info(`นำ ${emp.employeeCode} ออกจากรายการเตรียมส่งแล้ว`);
                               }}
                             >
-                              นำออก (Draft)
+                              {isThai ? "นำออก (Draft)" : "Remove (Draft)"}
                             </button>
                             <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
                               <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={emp.employeeCode}>{emp.employeeCode}</span>
                               <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`}>
                                 <span className={styles.badgeDraft}>
-                                  <span className={styles.glowingDotYellow}></span> ดราฟ (ยังไม่บันทึก)
+                                  <span className={styles.glowingDotYellow}></span> {isThai ? "ดราฟ (ยังไม่บันทึก)" : "Draft (Unsaved)"}
                                 </span>
                               </span>
                               <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={nameProfile.prefix}>{nameProfile.prefix}</span>
@@ -2332,11 +2342,11 @@ export default function TrainingAcceptSurvey({
                         <div className={styles.workspaceHeader}>
                           <div>
                             <p className={styles.kicker}>Submitted to Center (Saved)</p>
-                            <h3>รายการส่งคนเข้าอบรมกลางแล้ว ({savedCandidates.length} คน)</h3>
+                            <h3>{isThai ? `รายการส่งคนเข้าอบรมกลางแล้ว (${savedCandidates.length} คน)` : `Submitted to Center (${savedCandidates.length})`}</h3>
                           </div>
                           <div className={styles.participantActions}>
                             <span className={styles.queueBadgeBlue}>
-                              <span className={styles.glowingDotBlue}></span> {savedCandidates.length} คนส่งแล้ว
+                              <span className={styles.glowingDotBlue}></span> {isThai ? `${savedCandidates.length} คนส่งแล้ว` : `${savedCandidates.length} submitted`}
                             </span>
                           </div>
                         </div>
@@ -2383,7 +2393,7 @@ export default function TrainingAcceptSurvey({
                                   type="button"
                                   onClick={() => void handleCancelEnrollment(candidate.id)}
                                 >
-                                  ยกเลิกการส่ง
+                                  {isThai ? "ยกเลิกการส่ง" : "Cancel Submission"}
                                 </button>
                                 <div className={`${styles.targetEmployeeLine} ${styles.participantEmployeeLine}`}>
                                   <span className={`${styles.targetEmployeeCell} ${styles.participantEmployeeCell}`} title={candidate.employeeCode}>{candidate.employeeCode}</span>
@@ -2419,7 +2429,7 @@ export default function TrainingAcceptSurvey({
                           })}
                           {savedCandidates.length === 0 ? (
                             <div className={styles.emptyCompact}>
-                              ยังไม่มีพนักงานที่บันทึกส่งไปยัง Center แล้ว
+                              {isThai ? "ยังไม่มีพนักงานที่บันทึกส่งไปยัง Center แล้ว" : "No candidates submitted to Center yet."}
                             </div>
                           ) : null}
                         </div>
@@ -2432,7 +2442,7 @@ export default function TrainingAcceptSurvey({
                   <div className={styles.workspaceHeader}>
                     <div>
                       <p className={styles.kicker} style={{ color: "#38bdf8" }}>Candidate Approval (Factory Mode)</p>
-                      <h3>รายการพนักงานลงทะเบียน / สมัครเข้าอบรมโรงงานรอการอนุมัติ ({visibleCandidates.length} คน)</h3>
+                      <h3>{isThai ? `รายการพนักงานลงทะเบียน / สมัครเข้าอบรมโรงงานรอการอนุมัติ (${visibleCandidates.length} คน)` : `Factory Training Registrations Pending Approval (${visibleCandidates.length})`}</h3>
                     </div>
                     <div className={styles.participantActions}>
                       <span className={styles.queueBadgeBlue}>
@@ -2562,7 +2572,7 @@ export default function TrainingAcceptSurvey({
           </div>
 
           {isTargetLoading ? (
-            <TypewriterLoader label="กำลังประมวลผลและดึงข้อมูลกลุ่มเป้าหมาย..." />
+            <TypewriterLoader label={isThai ? "กำลังประมวลผลและดึงข้อมูลกลุ่มเป้าหมาย..." : "Loading target audience data..."} />
           ) : canNominateEmployees ? (
             <Fragment>
               <section className={styles.targetPanel}>
@@ -2589,7 +2599,7 @@ export default function TrainingAcceptSurvey({
                         <summary className={styles.companyGroupHeader}>
                           <div className={styles.companySectionTitle}>
                             <span className={styles.companyIcon}>{group.company === "HRD Center" ? <Building2 size={16} /> : <Factory size={16} />}</span>
-                            <h4>บริษัท {group.company}</h4>
+                            <h4>{isThai ? `บริษัท ${group.company}` : `Company ${group.company}`}</h4>
                           </div>
                           <span className={styles.companyCountBadge}>
                             {group.employees.length} available / {group.targetCount} target
@@ -2610,7 +2620,7 @@ export default function TrainingAcceptSurvey({
                   })}
                   {availableTargetEmployees.length === 0 ? (
                     <div className={styles.emptyCompact}>
-                      ไม่มีพนักงานกลุ่มเป้าหมาย Course Standard ที่เหลืออยู่
+                      {isThai ? "ไม่มีพนักงานกลุ่มเป้าหมาย Course Standard ที่เหลืออยู่" : "No remaining Course Standard target employees"}
                     </div>
                   ) : null}
                 </div>
@@ -2642,7 +2652,7 @@ export default function TrainingAcceptSurvey({
                             <summary className={styles.companyGroupHeader}>
                               <div className={styles.companySectionTitle}>
                                 <span className={styles.companyIcon}>{group.company === "HRD Center" ? <Building2 size={16} /> : <Factory size={16} />}</span>
-                                <h4>บริษัท {group.company}</h4>
+                                <h4>{isThai ? `บริษัท ${group.company}` : `Company ${group.company}`}</h4>
                               </div>
                               <span className={styles.companyCountBadge}>
                                 {group.employees.length} available / {group.targetCount} in level
@@ -2663,7 +2673,7 @@ export default function TrainingAcceptSurvey({
                       })}
                       {availableLevelOnlyEmployees.length === 0 ? (
                         <div className={styles.emptyCompact}>
-                          ไม่มีพนักงานที่มี Level ตรงตามกำหนดในตำแหน่งอื่น
+                          {isThai ? "ไม่มีพนักงานที่มี Level ตรงตามกำหนดในตำแหน่งอื่น" : "No other employees matching target level"}
                         </div>
                       ) : null}
                     </div>
@@ -2691,7 +2701,7 @@ export default function TrainingAcceptSurvey({
                         <summary className={styles.companyGroupHeader}>
                           <div className={styles.companySectionTitle}>
                             <span className={styles.companyIcon}>{group.company === "HRD Center" ? <Building2 size={16} /> : <Factory size={16} />}</span>
-                            <h4>บริษัท {group.company}</h4>
+                            <h4>{isThai ? `บริษัท ${group.company}` : `Company ${group.company}`}</h4>
                           </div>
                           <span className={styles.companyCountBadge}>
                             {group.employees.length} available
@@ -2712,7 +2722,7 @@ export default function TrainingAcceptSurvey({
                   })}
                   {additionalEmployees.length === 0 ? (
                     <div className={styles.emptyCompact}>
-                      ไม่มีพนักงานเพิ่มเติมที่สามารถเลือกได้
+                      {isThai ? "ไม่มีพนักงานเพิ่มเติมที่สามารถเลือกได้" : "No additional candidates available"}
                     </div>
                   ) : null}
                 </div>
@@ -2733,7 +2743,7 @@ export default function TrainingAcceptSurvey({
               <div className={styles.modalHeaderTitle}>
                 <Link2 size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
                 <div>
-                  <h3>ส่งต่อลิ้งก์เสนอชื่อเข้าอบรม</h3>
+                  <h3>{isThai ? "ส่งต่อลิ้งก์เสนอชื่อเข้าอบรม" : "Share Nomination Link"}</h3>
                   <small style={{ color: "var(--ui-30-muted)" }}>
                     Section Head / Supervisor Nomination Link
                   </small>
@@ -2743,12 +2753,12 @@ export default function TrainingAcceptSurvey({
                 className={styles.modalCloseBtn}
                 type="button"
                 onClick={() => setShowNominationModal(false)}
-                title="ปิดหน้าต่าง"
+                title={isThai ? "ปิดหน้าต่าง" : "Close"}
               ><X size={16} /></button>
             </div>
 
             <div className={styles.courseSummaryBadge}>
-              <strong>วิชา: {selectedCourse.title}</strong>
+              <strong>{isThai ? "วิชา:" : "Course:"} {selectedCourse.title}</strong>
               <div className={styles.courseSummaryMeta}>
                 <span><CalendarDays size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> วันที่: {selectedCourse.date || "ไม่ระบุ"}</span>
                 <span><Clock size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} /> เวลา: {selectedCourse.startTime && selectedCourse.endTime ? `${selectedCourse.startTime} - ${selectedCourse.endTime}` : "ไม่ระบุ"}</span>
