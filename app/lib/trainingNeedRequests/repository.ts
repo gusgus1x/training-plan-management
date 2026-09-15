@@ -3,14 +3,19 @@ import { Prisma } from "../../generated/prisma/client";
 import { ApiError } from "../api/errors";
 import { withDatabaseErrorMapping } from "../database/errors";
 import { getPrismaClient } from "../database/prisma";
+import { isSectionHeadOrAbove } from "../employeeMasterData";
 import type {
+  ApproverDecision,
+  BulkNeedRequestInput,
   CreateNeedRequestInput,
-  NeedRequestAction,
+  NeedRequestActor,
   NeedRequestListFilters,
+  NeedRequestStage,
   NeedRequestStatus,
+  UpdateNeedRequestInput,
 } from "./types";
 
-type DatabaseClient = Pick<PrismaClient, "training_need_request" | "employee"> &
+type DatabaseClient = Pick<PrismaClient, "training_need_request" | "employee" | "training_plan"> &
   Pick<PrismaClient, "$transaction">;
 
 const notFound = () =>
@@ -19,9 +24,17 @@ const notFound = () =>
 const conflict = (message: string) =>
   new ApiError({ code: "NEED_REQUEST_CONFLICT", message, status: 409 });
 
+const forbidden = (message = "Access denied") => new ApiError({ code: "FORBIDDEN", message, status: 403 });
+
+const personInclude = { position: true } satisfies Prisma.employeeInclude;
+
 const requestInclude = {
   employee: {
     include: { company: true, organization_function: true },
+  },
+  approver: { include: personInclude },
+  training_plan: {
+    select: { plan_id: true, plan_code: true, plan_name: true, start_datetime: true, end_datetime: true },
   },
 } satisfies Prisma.training_need_requestInclude;
 
@@ -29,12 +42,33 @@ type RequestWithRelations = Prisma.training_need_requestGetPayload<{
   include: typeof requestInclude;
 }>;
 
-const employeeName = (employee: RequestWithRelations["employee"]) => {
+const employeeName = (employee: {
+  title_th: string | null;
+  title_en: string | null;
+  first_name_th: string;
+  last_name_th: string;
+  first_name_en: string | null;
+  last_name_en: string | null;
+}) => {
   const prefix = employee.title_th || employee.title_en || "";
   const name =
     `${employee.first_name_th} ${employee.last_name_th}`.trim() ||
     `${employee.first_name_en ?? ""} ${employee.last_name_en ?? ""}`.trim();
   return prefix ? `${prefix} ${name}` : name;
+};
+
+/** Where a request stands. A head's rejection is stored as REJECTED with their decision beside it,
+ *  so it is the decision, not the status, that says whose "no" it was. */
+export const stageOf = (row: {
+  status: string;
+  approver_user_id: string | null;
+  approver_decision: string | null;
+}): NeedRequestStage => {
+  const status = row.status.trim() as NeedRequestStatus;
+  if (status === "PLANNED") return "PLANNED";
+  if (status === "APPROVED") return "APPROVED";
+  if (status === "REJECTED") return row.approver_decision === "REJECTED" ? "REJECTED_BY_HEAD" : "REJECTED";
+  return row.approver_user_id !== null && row.approver_decision === null ? "WAITING_HEAD" : "WAITING_HRD";
 };
 
 const mapRequest = (row: RequestWithRelations) => ({
@@ -55,37 +89,100 @@ const mapRequest = (row: RequestWithRelations) => ({
   preferredStartDate: row.preferred_start_date?.toISOString().slice(0, 10) ?? null,
   preferredEndDate: row.preferred_end_date?.toISOString().slice(0, 10) ?? null,
   status: row.status.trim() as NeedRequestStatus,
+  stage: stageOf(row),
   requestedAt: row.requested_at.toISOString(),
   reviewedBy: row.reviewed_by?.toString() ?? null,
   reviewedAt: row.reviewed_at?.toISOString() ?? null,
   reviewNote: row.review_note ?? "",
   rejectionReason: row.rejection_reason ?? "",
+  approver: row.approver
+    ? {
+        userId: row.approver.user_id,
+        employeeCode: row.approver.employee_code ?? "",
+        name: employeeName(row.approver),
+        position: row.approver.position?.position_name_th || row.approver.position?.position_name_en || "",
+      }
+    : null,
+  approverDecision: (row.approver_decision as ApproverDecision | null) ?? null,
+  approverDecidedAt: row.approver_decided_at?.toISOString() ?? null,
+  approverNote: row.approver_note ?? "",
+  approverOpenedAt: row.approver_opened_at?.toISOString() ?? null,
   trainingPlanId: row.training_plan_id?.toString() ?? null,
+  plan: row.training_plan
+    ? {
+        planId: row.training_plan.plan_id.toString(),
+        planCode: row.training_plan.plan_code,
+        planName: row.training_plan.plan_name,
+        startAt: row.training_plan.start_datetime.toISOString(),
+        endAt: row.training_plan.end_datetime.toISOString(),
+      }
+    : null,
   plannedAt: row.planned_at?.toISOString() ?? null,
 });
 
-const STATUS_FOR_ACTION: Record<NeedRequestAction, NeedRequestStatus> = {
-  approve: "APPROVED",
-  reject: "REJECTED",
-  reset: "PENDING",
+/** HRD sees a request once its head has approved it, or when it predates the head step. */
+const visibleToHrd: Prisma.training_need_requestWhereInput = {
+  OR: [{ approver_user_id: null }, { approver_decision: "APPROVED" }],
 };
 
-// PLANNED is final: the request has already been finalized into a training plan.
-const FINAL_STATUSES: readonly NeedRequestStatus[] = ["PLANNED"];
+const isHrd = (actor: NeedRequestActor) => actor.role === "HRD_CENTER" || actor.role === "HRD_FACTORY";
 
 export type NeedRequestRepository = ReturnType<typeof createNeedRequestRepository>;
 
 export const createNeedRequestRepository = (client?: DatabaseClient) => {
   const db = () => (client ?? getPrismaClient()) as unknown as DatabaseClient & PrismaClient;
 
+  /** HRD's own decision on one request, inside a transaction. Shared by the single and bulk paths
+   *  so both refuse the same things. */
+  const hrdDecide = async (
+    tx: Prisma.TransactionClient,
+    current: { training_need_request_id: bigint; company_id: bigint; status: string; approver_user_id: string | null; approver_decision: string | null; review_note: string | null; rejection_reason: string | null },
+    action: "approve" | "reject" | "reset",
+    note: string | null,
+    actor: NeedRequestActor,
+  ) => {
+    // A factory HRD may only act on requests from their own company.
+    if (actor.role === "HRD_FACTORY" && current.company_id !== BigInt(actor.companyId ?? "-1")) {
+      throw forbidden();
+    }
+    const stage = stageOf(current);
+    if (stage === "WAITING_HEAD" || stage === "REJECTED_BY_HEAD") {
+      throw conflict("This request has not been approved by the requester's section head");
+    }
+    if (stage === "PLANNED") {
+      throw conflict("This request has already been incorporated into a training plan and cannot be changed");
+    }
+    const status: NeedRequestStatus = action === "approve" ? "APPROVED" : action === "reject" ? "REJECTED" : "PENDING";
+    return tx.training_need_request.update({
+      where: { training_need_request_id: current.training_need_request_id },
+      data: {
+        status,
+        reviewed_by: action === "reset" ? null : BigInt(actor.userId),
+        reviewed_at: action === "reset" ? null : new Date(),
+        review_note: action === "reject" ? current.review_note : action === "reset" ? null : note,
+        rejection_reason: action === "reject" ? note : action === "reset" ? null : current.rejection_reason,
+      },
+      include: requestInclude,
+    });
+  };
+
   return {
-    async list(filters: NeedRequestListFilters, companyId: string | null) {
+    async list(filters: NeedRequestListFilters, actor: NeedRequestActor) {
       const where: Prisma.training_need_requestWhereInput = {};
       if (filters.status) where.status = filters.status;
       if (filters.employeeUserId) where.employee_user_id = filters.employeeUserId;
-      if (companyId) where.company_id = BigInt(companyId);
+      if (filters.approverUserId) where.approver_user_id = filters.approverUserId;
+      if (actor.role === "HRD_FACTORY") where.company_id = BigInt(actor.companyId ?? "-1");
+      if (isHrd(actor)) Object.assign(where, visibleToHrd);
 
       return withDatabaseErrorMapping(async () => {
+        // A head opening their list has seen every request waiting in it.
+        if (filters.approverUserId) {
+          await db().training_need_request.updateMany({
+            where: { approver_user_id: filters.approverUserId, approver_decision: null, approver_opened_at: null },
+            data: { approver_opened_at: new Date() },
+          });
+        }
         const rows = await db().training_need_request.findMany({
           where,
           include: requestInclude,
@@ -103,6 +200,32 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
         });
         if (!employee) throw notFound();
 
+        if (input.approverUserId === employeeUserId) {
+          throw new ApiError({ code: "INVALID_APPROVER", message: "You cannot approve your own request", status: 400 });
+        }
+        const approver = await db().employee.findUnique({
+          where: { user_id: input.approverUserId },
+          include: { position: true, employee_level: true },
+        });
+        const isHead =
+          approver !== null &&
+          approver.employment_status === "ACTIVE" &&
+          approver.company_id === employee.company_id &&
+          isSectionHeadOrAbove({
+            positionCode: approver.position?.position_code ?? null,
+            positionName: approver.position?.position_name_en ?? approver.position?.position_name_th ?? null,
+            levelCode: approver.employee_level?.level_code ?? null,
+            levelKey: approver.employee_level?.level_key ?? null,
+            levelName: approver.employee_level?.level_name_en ?? approver.employee_level?.level_name_th ?? null,
+          });
+        if (!isHead) {
+          throw new ApiError({
+            code: "INVALID_APPROVER",
+            message: "The approver must be an active section head in your company",
+            status: 400,
+          });
+        }
+
         // request_no is unique and derived from the row's own id, so two people submitting in the
         // same millisecond cannot collide. A timestamp-derived number could, and the failure would
         // land on whichever request arrived second.
@@ -114,6 +237,7 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
               company_id: employee.company_id,
               function_id: employee.function_id,
               employee_user_id: employeeUserId,
+              approver_user_id: input.approverUserId,
               requested_course_name: input.requestedCourseName,
               request_reason: input.requestReason,
               preferred_start_date: input.preferredStartDate
@@ -145,43 +269,112 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
       });
     },
 
-    async updateStatus(
-      id: string,
-      action: NeedRequestAction,
-      note: string | null,
-      reviewerUserId: string,
-      companyId: string | null,
-    ) {
+    async update(id: string, input: UpdateNeedRequestInput, actor: NeedRequestActor) {
       return withDatabaseErrorMapping(async () => {
         const current = await db().training_need_request.findUnique({
           where: { training_need_request_id: BigInt(id) },
           include: requestInclude,
         });
         if (!current) throw notFound();
+        const stage = stageOf(current);
 
-        // A factory HRD may only act on requests from their own company.
-        if (companyId && current.company_id !== BigInt(companyId)) {
-          throw new ApiError({ code: "FORBIDDEN", message: "Access denied", status: 403 });
+        if (input.action === "head_approve" || input.action === "head_reject") {
+          // Only the head the employee named, and only while the request still waits on them.
+          if (actor.role !== "EMPLOYEE" || !actor.employeeUserId || current.approver_user_id !== actor.employeeUserId) {
+            throw forbidden("Only the section head named on this request can decide it");
+          }
+          if (stage !== "WAITING_HEAD") {
+            throw conflict("This request is no longer waiting for a section head decision");
+          }
+          const approved = input.action === "head_approve";
+          const now = new Date();
+          const updated = await db().training_need_request.update({
+            where: { training_need_request_id: current.training_need_request_id },
+            data: {
+              approver_decision: approved ? "APPROVED" : "REJECTED",
+              approver_decided_at: now,
+              approver_note: input.note,
+              approver_opened_at: current.approver_opened_at ?? now,
+              // A head's "no" ends the request; their reason is what the employee reads.
+              ...(approved ? {} : { status: "REJECTED", rejection_reason: input.note }),
+            },
+            include: requestInclude,
+          });
+          return mapRequest(updated);
         }
 
-        if (FINAL_STATUSES.includes(current.status.trim() as NeedRequestStatus)) {
-          throw conflict("This request has already been incorporated into a training plan and cannot be changed");
+        if (!isHrd(actor)) throw forbidden();
+        if (actor.role === "HRD_FACTORY" && current.company_id !== BigInt(actor.companyId ?? "-1")) {
+          throw forbidden();
         }
 
-        const status = STATUS_FOR_ACTION[action];
-        const updated = await db().training_need_request.update({
-          where: { training_need_request_id: current.training_need_request_id },
-          data: {
-            status,
-            reviewed_by: action === "reset" ? null : BigInt(reviewerUserId),
-            reviewed_at: action === "reset" ? null : new Date(),
-            review_note: action === "reject" ? current.review_note : (action === "reset" ? null : note),
-            rejection_reason: action === "reject" ? note : (action === "reset" ? null : current.rejection_reason),
-          },
-          include: requestInclude,
-        });
+        if (input.action === "link") {
+          if (stage !== "APPROVED") throw conflict("Only an approved request can be linked to a training batch");
+          const plan = await db().training_plan.findUnique({
+            where: { plan_id: BigInt(input.planId!) },
+            include: {
+              training_plan_oap: {
+                select: { company_id: true, course: { select: { course_id: true, course_code: true, course_name: true } } },
+              },
+            },
+          });
+          if (!plan) throw new ApiError({ code: "TRAINING_PLAN_NOT_FOUND", message: "Training batch not found", status: 404 });
+          const planCompanyId = plan.training_plan_oap.company_id;
+          // A company batch only takes that company's people; a factory HRD cannot link into
+          // another factory's batch either.
+          if (planCompanyId !== null && planCompanyId !== current.company_id) {
+            throw forbidden("A company training batch only accepts requests from that company");
+          }
+          const { course } = plan.training_plan_oap;
+          const updated = await db().training_need_request.update({
+            where: { training_need_request_id: current.training_need_request_id },
+            data: {
+              status: "PLANNED",
+              training_plan_id: plan.plan_id,
+              planned_at: new Date(),
+              course_id: course.course_id,
+              course_code_snapshot: course.course_code,
+              course_name_snapshot: course.course_name,
+            },
+            include: requestInclude,
+          });
+          return mapRequest(updated);
+        }
 
+        if (input.action === "unlink") {
+          if (stage !== "PLANNED") throw conflict("This request is not linked to a training batch");
+          const updated = await db().training_need_request.update({
+            where: { training_need_request_id: current.training_need_request_id },
+            data: { status: "APPROVED", training_plan_id: null, planned_at: null },
+            include: requestInclude,
+          });
+          return mapRequest(updated);
+        }
+
+        const updated = await db().$transaction((tx) =>
+          hrdDecide(tx, current, input.action as "approve" | "reject" | "reset", input.note, actor),
+        );
         return mapRequest(updated);
+      });
+    },
+
+    /** Approves or rejects every request named, or none of them: one refusal rolls the rest back,
+     *  so HRD never has to work out which half of a selection went through. */
+    async bulkDecide(input: BulkNeedRequestInput, actor: NeedRequestActor) {
+      if (!isHrd(actor)) throw forbidden();
+      return withDatabaseErrorMapping(async () => {
+        const updated = await db().$transaction(async (tx) => {
+          const rows = await tx.training_need_request.findMany({
+            where: { training_need_request_id: { in: input.ids.map((id) => BigInt(id)) } },
+          });
+          if (rows.length !== input.ids.length) throw notFound();
+          const results = [];
+          for (const row of rows) {
+            results.push(await hrdDecide(tx, row, input.action, input.note, actor));
+          }
+          return results;
+        });
+        return updated.map(mapRequest);
       });
     },
   };

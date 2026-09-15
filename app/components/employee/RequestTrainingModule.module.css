@@ -575,3 +575,59 @@
   color: #3b82f6;
   border: 1px solid rgba(59, 130, 246, 0.35);
 }
+
+/* ---- Section head approvals ---- */
+
+.approvalList {
+  display: grid;
+  gap: 10px;
+  padding: 14px 18px 18px;
+}
+
+.approvalEmpty {
+  margin: 0;
+  padding: 14px 18px 18px;
+  font-size: 0.84rem;
+  color: var(--ui-30-muted);
+}
+
+.approvalQuestion {
+  margin: 0;
+  font-weight: 700;
+  color: var(--ui-30-ink);
+  font-size: 0.9rem;
+}
+
+.approvalActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.approveBtn,
+.rejectBtn {
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.approveBtn {
+  background: var(--ui-30-primary);
+  color: #ffffff;
+}
+
+.rejectBtn {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+}
+
+.approveBtn:disabled,
+.rejectBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

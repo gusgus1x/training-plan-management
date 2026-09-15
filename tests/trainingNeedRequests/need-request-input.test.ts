@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "../../app/lib/api/errors";
 import {
+  parseBulkNeedRequest,
   parseCreateNeedRequest,
   parseNeedRequestListFilters,
   parseUpdateNeedRequest,
@@ -23,6 +24,7 @@ describe("training need request input", () => {
     const input = parseCreateNeedRequest({
       requestedCourseName: "Advanced Quality Control",
       requestReason: "Need deeper inspection skills for the new line.",
+      approverUserId: "HEAD0001",
     });
 
     expect(input.requestedCourseName).toBe("Advanced Quality Control");
@@ -83,6 +85,25 @@ describe("training need request input", () => {
     expect(parseUpdateNeedRequest({ action: "approve" }).note).toBeNull();
   });
 
+  it("requires the section head, since a request now goes to them first", () => {
+    expect(
+      rejectionReason(() => parseCreateNeedRequest({ requestedCourseName: "Course", requestReason: "Reason" })),
+    ).toBeTruthy();
+  });
+
+  it("makes a head give a reason too, and a link name its batch", () => {
+    expect(rejectionReason(() => parseUpdateNeedRequest({ action: "head_reject" }))).toMatch(/reason is required/);
+    expect(rejectionReason(() => parseUpdateNeedRequest({ action: "link" }))).toMatch(/batch is required/);
+    expect(parseUpdateNeedRequest({ action: "link", planId: "12" }).planId).toBe("12");
+  });
+
+  it("takes a bulk selection of plain ids, de-duplicated, with a reason for a rejection", () => {
+    expect(parseBulkNeedRequest({ ids: ["1", "2", "1"], action: "approve" }).ids).toEqual(["1", "2"]);
+    expect(rejectionReason(() => parseBulkNeedRequest({ ids: [], action: "approve" }))).toMatch(/between 1 and/);
+    expect(rejectionReason(() => parseBulkNeedRequest({ ids: ["1; DROP"], action: "approve" }))).toMatch(/between 1 and/);
+    expect(rejectionReason(() => parseBulkNeedRequest({ ids: ["1"], action: "reject" }))).toMatch(/reason is required/);
+  });
+
   it("rejects an unknown action rather than passing it to the database", () => {
     // "review" and "accept" were the old action names; the check constraint refuses the statuses
     // they mapped to, so they must not survive as silent aliases. Matched loosely because the
@@ -125,6 +146,7 @@ describe("training need request input", () => {
       expect(parseNeedRequestListFilters(new URLSearchParams(`status=${status}`))).toEqual({
         status,
         employeeUserId: null,
+        approverUserId: null,
       });
     }
   });

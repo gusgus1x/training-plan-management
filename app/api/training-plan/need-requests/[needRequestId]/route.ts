@@ -3,6 +3,7 @@ import { apiSuccess } from "../../../../lib/api/response";
 import { readJsonObject } from "../../../../lib/api/validation";
 import { createProtectedRoute, type ProtectedRouteOptions } from "../../../../lib/auth/guard";
 import {
+  actorOf,
   needRequestService,
   type NeedRequestService,
 } from "../../../../lib/trainingNeedRequests/service";
@@ -10,10 +11,11 @@ import { parseUpdateNeedRequest } from "../../../../lib/trainingNeedRequests/val
 
 type Dependencies = { auth?: ProtectedRouteOptions; service?: NeedRequestService };
 
-// Deciding on a request is HRD's job. An employee raises one and then waits.
+// HRD decides, links and unlinks; an employee may only answer as the section head named on the
+// request. The repository enforces which action each role may take.
 const options = (auth?: ProtectedRouteOptions) => ({
   ...auth,
-  allowedRoles: ["HRD_CENTER", "HRD_FACTORY"] as const,
+  allowedRoles: ["HRD_CENTER", "HRD_FACTORY", "EMPLOYEE"] as const,
 });
 
 export const createUpdateNeedRequestHandler = (dependencies: Dependencies = {}) =>
@@ -26,14 +28,10 @@ export const createUpdateNeedRequestHandler = (dependencies: Dependencies = {}) 
       const { needRequestId } = await params;
       const input = parseUpdateNeedRequest(await readJsonObject(request));
 
-      const needRequest = await (
-        dependencies.service ?? needRequestService
-      ).updateNeedRequestStatus(
+      const needRequest = await (dependencies.service ?? needRequestService).updateNeedRequest(
         needRequestId,
-        input.action,
-        input.note,
-        principal.userId,
-        principal.role === "HRD_FACTORY" ? principal.companyId : null,
+        input,
+        actorOf(principal),
       );
 
       return apiSuccess({ needRequest });

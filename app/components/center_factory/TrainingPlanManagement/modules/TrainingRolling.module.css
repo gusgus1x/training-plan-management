@@ -2434,3 +2434,59 @@
 
 
 
+
+/* ---- Training need requests attached from Request Training Need ---- */
+
+.needRequestPanel {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px dashed var(--ui-30-primary, #2563eb);
+  border-radius: 12px;
+  background: var(--ui-30-primary-soft, rgba(37, 99, 235, 0.06));
+}
+
+.needRequestTarget {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 260px);
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.needRequestNote {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--ui-30-muted);
+}
+
+.needRequestList {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.needRequestList label {
+  display: grid;
+  grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.needRequestList span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ui-30-muted);
+}
+
+.needRequestList em {
+  color: #ef4444;
+  font-style: normal;
+  font-weight: 700;
+}

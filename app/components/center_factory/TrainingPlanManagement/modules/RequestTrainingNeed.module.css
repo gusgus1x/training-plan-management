@@ -724,3 +724,38 @@
   gap: 10px;
   color: var(--ui-30-muted);
 }
+
+/* ---- Selection ---- */
+
+.bulkBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 12px;
+  background: var(--ui-60-surface-soft);
+}
+
+.bulkSelectAll {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--ui-30-ink);
+  cursor: pointer;
+}
+
+.bulkCount {
+  margin-right: auto;
+  font-size: 0.8rem;
+  color: var(--ui-30-muted);
+}
+
+.cardCheckbox {
+  margin-right: 6px;
+  vertical-align: middle;
+  cursor: pointer;
+}

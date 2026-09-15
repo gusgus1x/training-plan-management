@@ -1,9 +1,12 @@
 "use client";
 
+import type { ReviewerCandidate } from "../trainingRecord/types";
 import type {
+  BulkNeedRequestInput,
   CreateNeedRequestInput,
   NeedRequestListFilters,
   NeedRequestRecord,
+  NeedRequestView,
   UpdateNeedRequestInput,
 } from "./types";
 
@@ -25,10 +28,20 @@ const parseApiResponse = async <T>(response: Response): Promise<T> => {
   return json.data as T;
 };
 
-export const listNeedRequests = async (filters: Partial<NeedRequestListFilters> = {}) => {
+const jsonInit = (method: string, body: unknown): RequestInit => ({
+  method,
+  credentials: "include",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(body),
+});
+
+export const listNeedRequests = async (
+  filters: Partial<Pick<NeedRequestListFilters, "status" | "employeeUserId">> & { view?: NeedRequestView } = {},
+) => {
   const params = new URLSearchParams();
   if (filters.status) params.set("status", filters.status);
   if (filters.employeeUserId) params.set("employeeUserId", filters.employeeUserId);
+  if (filters.view) params.set("view", filters.view);
 
   const response = await fetch(`/api/training-plan/need-requests?${params.toString()}`, {
     credentials: "include",
@@ -38,21 +51,31 @@ export const listNeedRequests = async (filters: Partial<NeedRequestListFilters> 
 };
 
 export const createNeedRequest = async (input: CreateNeedRequestInput) => {
-  const response = await fetch("/api/training-plan/need-requests", {
-    method: "POST",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
+  const response = await fetch("/api/training-plan/need-requests", jsonInit("POST", input));
   return parseApiResponse<{ needRequest: NeedRequestRecord }>(response);
 };
 
-export const updateNeedRequest = async (id: string, input: UpdateNeedRequestInput) => {
-  const response = await fetch(`/api/training-plan/need-requests/${id}`, {
-    method: "PUT",
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
+export const updateNeedRequest = async (
+  id: string,
+  input: Pick<UpdateNeedRequestInput, "action"> & Partial<Omit<UpdateNeedRequestInput, "action">>,
+) => {
+  const response = await fetch(
+    `/api/training-plan/need-requests/${id}`,
+    jsonInit("PUT", { note: null, planId: null, ...input }),
+  );
   return parseApiResponse<{ needRequest: NeedRequestRecord }>(response);
+};
+
+export const bulkDecideNeedRequests = async (input: BulkNeedRequestInput) => {
+  const response = await fetch("/api/training-plan/need-requests", jsonInit("PUT", input));
+  return parseApiResponse<{ needRequests: NeedRequestRecord[] }>(response);
+};
+
+/** Section heads the signed-in employee can name as their approver. */
+export const searchNeedRequestApprovers = async (search: string) => {
+  const response = await fetch(
+    `/api/training-plan/need-requests/approvers?search=${encodeURIComponent(search)}`,
+    { credentials: "include", cache: "no-store" },
+  );
+  return parseApiResponse<{ candidates: ReviewerCandidate[] }>(response);
 };

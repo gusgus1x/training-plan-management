@@ -1,6 +1,16 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { NeedRequestRecord } from "../../../../lib/trainingNeedRequests/types";
+import {
+  courseCodeInRequest,
+  enrollAndLink,
+  loadHandoffRequests,
+  NeedRequestAttachPanel,
+  needRequestQuery,
+  readNeedRequestIds,
+} from "./needRequestHandoff";
 import {
   getCourseDisplayName,
   getCourseSecondaryName,
@@ -777,6 +787,7 @@ const pageWindow = (current: number, totalPages: number) => {
 };
 
 export default function TrainingRolling() {
+  const router = useRouter();
   const { language } = useUiLanguage();
   const isThai = language === "th";
   const t = (th: string, en: string) => (isThai ? th : en);
@@ -844,6 +855,11 @@ export default function TrainingRolling() {
     );
 
   const [isLoading, setIsLoading] = useState(true);
+  // Approved training need requests sent over from Request Training Need, to enrol and link on save.
+  const [handoffIds] = useState<string[]>(readNeedRequestIds);
+  const [handoffRequests, setHandoffRequests] = useState<NeedRequestRecord[]>([]);
+  const [handoffChecked, setHandoffChecked] = useState<Set<string>>(new Set());
+  const [handoffSession, setHandoffSession] = useState(0);
 
   const loadWorkspace = async () => {
     setIsLoading(true);
@@ -871,6 +887,21 @@ export default function TrainingRolling() {
 
   useEffect(() => {
     void loadWorkspace();
+    if (handoffIds.length === 0) return;
+    Promise.all([loadHandoffRequests(handoffIds), listOapPlans({ search: null, status: null })])
+      .then(([requests, { oapPlans: plans }]) => {
+        setHandoffRequests(requests);
+        setHandoffChecked(new Set(requests.map((request) => request.id)));
+        // A request that names its course by code opens with that course's plan already chosen;
+        // otherwise HRD picks it. A plan outside this user's scope simply does not show as chosen.
+        const code = requests.map((request) => courseCodeInRequest(request.requestedCourseName)).find(Boolean);
+        const match = code ? (plans || []).find((plan) => plan.status !== "Cancel" && plan.course.courseCode === code) : undefined;
+        setForm({ ...createEmptyForm(), oapId: match?.id ?? "" });
+        setIsNewOpen(true);
+      })
+      .catch((error: unknown) => toast.error(error instanceof Error ? error.message : String(error)));
+    // Once on mount: the ids come from the address this screen was opened with.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
@@ -901,6 +932,7 @@ export default function TrainingRolling() {
     [oapPlans, user?.roleCode, userCompanyCode, isFactoryUser, isCenterUser],
   );
   const selectedOap = oapSources.find((source) => source.id === form.oapId) ?? null;
+
   const selectedOapInstructor = useMemo(() => {
     if (!selectedOap?.trainer?.trim()) return null;
     const t = selectedOap.trainer.trim().toLowerCase();
@@ -1257,7 +1289,8 @@ export default function TrainingRolling() {
       }
       setDeletedSessionDbIds([]);
 
-      // 2. Save or update remaining sessions
+      // 2. Save or update remaining sessions, remembering each batch id for the request hand-off.
+      const savedPlanIds: string[] = [];
       for (const session of form.sessions) {
         const startDate = session.trainingDate || today;
         const input = {
@@ -1273,9 +1306,30 @@ export default function TrainingRolling() {
 
         if (session.dbId) {
           await updateRollingPlan(session.dbId, input);
+          savedPlanIds.push(session.dbId);
         } else {
-          await createRollingPlan({ ...input, status: "Planning" });
+          const { rollingPlan } = await createRollingPlan({ ...input, status: "Planning" });
+          savedPlanIds.push(rollingPlan.id);
         }
+      }
+
+      // 3. Enrol the attached requesters into the chosen batch and mark their requests planned.
+      const toLink = handoffRequests.filter((request) => handoffChecked.has(request.id));
+      const targetPlanId = savedPlanIds[Math.min(handoffSession, savedPlanIds.length - 1)];
+      if (toLink.length > 0 && targetPlanId) {
+        const outcome = await enrollAndLink(toLink, targetPlanId, isFactoryUser ? "HRD_FACTORY" : "HRD_CENTER", confirm);
+        if (outcome.linked > 0) {
+          toast.success(t(`ลงชื่อและจัดคำขอเข้ารุ่นแล้ว ${outcome.linked} คน`, `Enrolled and planned ${outcome.linked} requester(s)`));
+        }
+        if (outcome.skipped.length > 0 || outcome.failed.length > 0) {
+          const lines = [
+            outcome.skipped.length ? t(`ข้าม: ${outcome.skipped.join(", ")}`, `Skipped: ${outcome.skipped.join(", ")}`) : "",
+            ...outcome.failed.map((item) => t(`ไม่สำเร็จ: ${item.name} - ${item.message}`, `Failed: ${item.name} - ${item.message}`)),
+          ];
+          await notice({ title: t("บางคนยังไม่ได้ลงชื่อเข้ารุ่น", "Some requesters were not added"), message: lines.filter(Boolean).join("\n") });
+        }
+        setHandoffRequests([]);
+        router.replace("/training-plan/training-rolling");
       }
 
       setForm(createEmptyForm());
@@ -1687,6 +1741,27 @@ export default function TrainingRolling() {
                   placeholder="พิมพ์เพื่อค้นหาหลักสูตร/แผน OAP... / Search course or OAP plan..."
                 />
               </div>
+
+              {handoffIds.length > 0 ? (
+                <NeedRequestAttachPanel
+                  requests={handoffRequests}
+                  checkedIds={handoffChecked}
+                  onToggle={(id) =>
+                    setHandoffChecked((current) => {
+                      const next = new Set(current);
+                      if (next.has(id)) next.delete(id);
+                      else next.add(id);
+                      return next;
+                    })
+                  }
+                  sessionLabels={form.sessions.map((session, index) => `${t("รุ่น", "Session")} ${session.batchName || index + 1}${session.trainingDate ? ` · ${session.trainingDate}` : ""}`)}
+                  targetSession={handoffSession}
+                  onTargetSession={setHandoffSession}
+                  planCompanyCode={selectedOap?.owner === "FACTORY" ? selectedOap.ownerCompany : null}
+                  onCreateOap={() => router.push(`/training-plan/training-oap${needRequestQuery(handoffIds)}`)}
+                  isThai={isThai}
+                />
+              ) : null}
 
               <div className={`${styles.fullField} ${styles.sessionSection}`}>
                 <div className={styles.sectionHeader}>

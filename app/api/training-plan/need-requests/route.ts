@@ -4,12 +4,15 @@ import { readJsonObject } from "../../../lib/api/validation";
 import { ApiError } from "../../../lib/api/errors";
 import { createProtectedRoute, type ProtectedRouteOptions } from "../../../lib/auth/guard";
 import {
+  actorOf,
   needRequestService,
   type NeedRequestService,
 } from "../../../lib/trainingNeedRequests/service";
 import {
+  parseBulkNeedRequest,
   parseCreateNeedRequest,
   parseNeedRequestListFilters,
+  parseNeedRequestView,
 } from "../../../lib/trainingNeedRequests/validation";
 
 type Dependencies = { auth?: ProtectedRouteOptions; service?: NeedRequestService };
@@ -27,12 +30,19 @@ export const createListNeedRequestsHandler = (dependencies: Dependencies = {}) =
       if (principal.employeeUserId === null) {
         return apiSuccess({ needRequests: [] });
       }
-      filters.employeeUserId = principal.employeeUserId;
+      // An employee reads either their own requests or the ones waiting on them as a head - both
+      // keyed to the session, never to the query string.
+      if (parseNeedRequestView(request.nextUrl.searchParams) === "approvals") {
+        filters.employeeUserId = null;
+        filters.approverUserId = principal.employeeUserId;
+      } else {
+        filters.employeeUserId = principal.employeeUserId;
+      }
     }
 
     const needRequests = await (dependencies.service ?? needRequestService).listNeedRequests(
       filters,
-      principal.role === "HRD_FACTORY" ? principal.companyId : null,
+      actorOf(principal),
     );
     return apiSuccess({ needRequests });
   }, options(dependencies.auth));
@@ -63,5 +73,14 @@ export const createCreateNeedRequestHandler = (dependencies: Dependencies = {}) 
     return apiSuccess({ needRequest }, 201);
   }, options(dependencies.auth));
 
+/** HRD approving or rejecting a selection in one go. */
+export const createBulkNeedRequestHandler = (dependencies: Dependencies = {}) =>
+  createProtectedRoute(async (request: NextRequest, principal) => {
+    const input = parseBulkNeedRequest(await readJsonObject(request));
+    const needRequests = await (dependencies.service ?? needRequestService).bulkDecide(input, actorOf(principal));
+    return apiSuccess({ needRequests });
+  }, { ...dependencies.auth, allowedRoles: ["HRD_CENTER", "HRD_FACTORY"] as const });
+
 export const GET = createListNeedRequestsHandler();
 export const POST = createCreateNeedRequestHandler();
+export const PUT = createBulkNeedRequestHandler();

@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { APPROVED_TRAINING_NEED_STORAGE_KEY } from "../../../../lib/trainingRequests";
+import { loadHandoffRequests, needRequestQuery, readNeedRequestIds } from "./needRequestHandoff";
 import type { NeedRequestRecord } from "../../../../lib/trainingNeedRequests/types";
 import {
   getCourseDisplayName,
@@ -183,19 +183,6 @@ const BUDGET_PART_FIELDS = [
 const sumBudgetParts = (form: Record<(typeof BUDGET_PART_FIELDS)[number], string>) =>
   BUDGET_PART_FIELDS.reduce((total, field) => total + (Number(form[field]) || 0), 0);
 
-const readApprovedTrainingNeed = () => {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const storedValue = window.localStorage.getItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
-    return storedValue ? (JSON.parse(storedValue) as NeedRequestRecord) : null;
-  } catch {
-    return null;
-  }
-};
-
 const matchCourseForRequest = (requestName: string, courseList: WorkflowCourse[]): WorkflowCourse | null => {
   if (!requestName || !courseList.length) return null;
   const trimmed = requestName.trim();
@@ -271,33 +258,9 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const lastWarnedCourseRef = useRef<string | null>(null);
   const userCompanyCode = profileValue(user?.companyCode);
 
-  useEffect(() => {
-    const handleApprovedTrainingNeed = () => {
-      const request = readApprovedTrainingNeed();
-      if (!request) return;
-
-      // Consume once and immediately clear from localStorage
-      window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
-
-      setApprovedRequest(request);
-      const matched = matchCourseForRequest(request.requestedCourseName, courses);
-      setForm({
-        ...emptyForm,
-        courseCode: matched ? matched.courseCode : "",
-        participants: "1",
-        provider: "HRD Center",
-      });
-      setEditingId("");
-      setOpenDetailId("");
-      setIsNewOpen(true);
-    };
-
-    window.addEventListener("approved-training-need-changed", handleApprovedTrainingNeed);
-
-    return () => {
-      window.removeEventListener("approved-training-need-changed", handleApprovedTrainingNeed);
-    };
-  }, [courses]);
+  // Approved training need requests on their way to Training Rolling, carried in the address. This
+  // screen only visits when the course had no plan yet: it prefills one, then sends them on.
+  const [handoffIds] = useState<string[]>(readNeedRequestIds);
 
   useEffect(() => {
     let current = true;
@@ -341,9 +304,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       setStandards(courseData.standards || []);
       setPlans(oapData.oapPlans || []);
 
-      const pendingRequest = readApprovedTrainingNeed();
-      if (pendingRequest) {
-        window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
+      const [pendingRequest] = await loadHandoffRequests(handoffIds).catch(() => []);
+      if (pendingRequest && !approvedRequest) {
         setApprovedRequest(pendingRequest);
         const matched = matchCourseForRequest(pendingRequest.requestedCourseName, loadedCourses);
         setForm({
@@ -368,6 +330,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
   useEffect(() => {
     void loadWorkspace();
+    // Once on mount, like every workspace here; the request ids it reads never change after load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const standardCourseIds = useMemo(
@@ -747,9 +711,14 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       }
       setEditingId("");
       setForm(emptyForm);
+      const cameFromRequests = !wasEditing && approvedRequest !== null;
       setApprovedRequest(null);
-      window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
       setIsNewOpen(false);
+      if (cameFromRequests) {
+        // The plan exists now; the requests carry on to Training Rolling to get their batch.
+        router.push(`/training-plan/training-rolling${needRequestQuery(handoffIds)}`);
+        return;
+      }
       await loadWorkspace();
       toast.success(
         wasEditing
@@ -844,7 +813,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     await loadWorkspace();
     setForm(emptyForm);
     setApprovedRequest(null);
-    window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
     setIsNewOpen(false);
     setEditingId("");
     setOpenDetailId("");
@@ -996,7 +964,6 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                     type="button"
                     onClick={() => {
                       setApprovedRequest(null);
-                      window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
                     }}
                     style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "0.76rem" }}
                   >

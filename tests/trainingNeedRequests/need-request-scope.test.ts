@@ -70,7 +70,7 @@ describe("a training need request belongs to the employee who raised it", () => 
 
     expect(listNeedRequests).toHaveBeenCalledWith(
       expect.objectContaining({ employeeUserId: "TEST0001" }),
-      null,
+      expect.objectContaining({ role: "EMPLOYEE" }),
     );
   });
 
@@ -104,7 +104,25 @@ describe("a training need request belongs to the employee who raised it", () => 
 
     expect(listNeedRequests).toHaveBeenCalledWith(
       expect.objectContaining({ employeeUserId: null }),
-      "3",
+      expect.objectContaining({ role: "HRD_FACTORY", companyId: "3" }),
+    );
+  });
+
+  it("lists only the requests waiting on the signed-in head, whatever the query says", async () => {
+    const listNeedRequests = vi.fn().mockResolvedValue([]);
+    const route = createListNeedRequestsHandler({
+      auth: auth(principalOf()),
+      service: { listNeedRequests } as never,
+    });
+
+    await route(
+      withSession("http://localhost/api/training-plan/need-requests?view=approvals&employeeUserId=99999999"),
+      undefined,
+    );
+
+    expect(listNeedRequests).toHaveBeenCalledWith(
+      expect.objectContaining({ employeeUserId: null, approverUserId: "TEST0001" }),
+      expect.anything(),
     );
   });
 
@@ -119,6 +137,7 @@ describe("a training need request belongs to the employee who raised it", () => 
       jsonRequest("http://localhost/api/training-plan/need-requests", {
         requestedCourseName: "Course",
         requestReason: "Reason",
+        approverUserId: "HEAD0001",
         employeeUserId: "99999999",
       }),
       undefined,

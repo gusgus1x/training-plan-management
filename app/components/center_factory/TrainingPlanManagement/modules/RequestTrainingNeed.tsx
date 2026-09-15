@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useToast } from "../../../ToastHost";
@@ -8,15 +9,16 @@ import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { listCompanies } from "../../../../lib/companies/client";
 import type { CompanyRecord } from "../../../../lib/companies/types";
 import {
+  bulkDecideNeedRequests,
   listNeedRequests,
   updateNeedRequest,
 } from "../../../../lib/trainingNeedRequests/client";
+import { HRD_REJECT_REASONS } from "../../../../lib/trainingNeedRequests/labels";
 import type {
   NeedRequestAction,
   NeedRequestRecord,
   NeedRequestStatus,
 } from "../../../../lib/trainingNeedRequests/types";
-import { APPROVED_TRAINING_NEED_STORAGE_KEY } from "../../../../lib/trainingRequests";
 import {
   Inbox,
   Factory,
@@ -50,9 +52,6 @@ export const requestTrainingNeedModule = {
 
 const formatDate = (iso: string) => iso.slice(0, 10);
 
-type RequestTrainingNeedProps = {
-  onOpenTrainingOap?: () => void;
-};
 
 type CourseDemandGroup = {
   courseKey: string;
@@ -66,7 +65,8 @@ type CourseDemandGroup = {
   requests: NeedRequestRecord[];
 };
 
-export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTrainingNeedProps) {
+export default function RequestTrainingNeed() {
+  const router = useRouter();
   const user = useAuthenticatedUser();
   const confirm = useConfirm();
   const toast = useToast();
@@ -88,6 +88,10 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
   // Rejection modal dialog state
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectionNote, setRejectionNote] = useState("");
+  // The requests the open rejection dialog will reject: one from the detail pane, or a selection.
+  const [rejectTargetIds, setRejectTargetIds] = useState<string[]>([]);
+  // Ticked requests for approving, rejecting or planning in one go.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const loadRequests = async () => {
     setIsLoading(true);
@@ -209,80 +213,93 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
     }
   };
 
-  const handleApproveToPlan = async (customRequest?: NeedRequestRecord) => {
-    const targetReq = customRequest ?? selectedRequest;
-    if (!targetReq) return;
+  /** Only a request waiting on HRD, or already approved, can be decided or planned from here. */
+  const isActionable = (request: NeedRequestRecord) => request.stage === "WAITING_HRD" || request.stage === "APPROVED";
 
-    let target = targetReq;
-
-    if (target.status !== "APPROVED") {
-      const ok = await confirm({
-        message: {
-          th: `ยืนยันการอนุมัติคำขอ ${target.requestNo} และนำเข้าสู่การจัดทำแผน OAP หรือไม่?`,
-          en: `Confirm approving request ${target.requestNo} and proceed to OAP planning?`,
-        },
-      });
-      if (!ok) return;
-
-      const { needRequest } = await updateNeedRequest(target.id, { action: "approve", note: null });
-      setRequests((current) =>
-        current.map((request) => (request.id === needRequest.id ? needRequest : request)),
-      );
-      target = needRequest;
-    }
-
-    window.localStorage.setItem(APPROVED_TRAINING_NEED_STORAGE_KEY, JSON.stringify(target));
-    window.dispatchEvent(new Event("approved-training-need-changed"));
-    toast.success(
-      t(
-        `เปิดฟอร์มจัดทำแผน OAP สำหรับคำขอ ${target.requestNo} แล้ว`,
-        `Opened OAP plan form for ${target.requestNo}`,
-      ),
-    );
-    onOpenTrainingOap?.();
+  const mergeUpdated = (updated: NeedRequestRecord[]) => {
+    const byId = new Map(updated.map((request) => [request.id, request]));
+    setRequests((current) => current.map((request) => byId.get(request.id) ?? request));
   };
 
-  const handleBatchApproveGroup = async (group: CourseDemandGroup) => {
-    const pendingReqs = group.requests.filter((r) => r.status === "PENDING" || r.status === "APPROVED");
-    if (!pendingReqs.length) {
-      toast.info(t("ไม่มีคำขอที่รออนุมัติในกลุ่มนี้", "No pending requests in this group"));
-      return;
-    }
+  const toggleSelected = (id: string) =>
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
+  const selectedRequests = requests.filter((request) => selectedIds.has(request.id) && isActionable(request));
+  const actionableVisible = visibleRequests.filter(isActionable);
+  const allVisibleSelected = actionableVisible.length > 0 && actionableVisible.every((request) => selectedIds.has(request.id));
+
+  /** Approves whichever of these still wait on HRD, all or none, and returns false when HRD backs out. */
+  const approvePending = async (targets: NeedRequestRecord[]) => {
+    const pending = targets.filter((request) => request.stage === "WAITING_HRD");
+    if (pending.length === 0) return true;
     const ok = await confirm({
       message: {
-        th: `ยืนยันการอนุมัติความต้องการฝึกอบรมหลักสูตร "${group.courseTitle}" ทั้งหมด ${pendingReqs.length} รายการ และเปิดหน้าจัดทำแผน OAP หรือไม่?`,
-        en: `Confirm approving all ${pendingReqs.length} requests for "${group.courseTitle}" and proceed to OAP planning?`,
+        th: `ยืนยันอนุมัติคำขอ ${pending.length} รายการ หรือไม่?`,
+        en: `Approve ${pending.length} request(s)?`,
       },
     });
-    if (!ok) return;
+    if (!ok) return false;
+    const { needRequests } = await bulkDecideNeedRequests({ ids: pending.map((request) => request.id), action: "approve", note: null });
+    mergeUpdated(needRequests);
+    return true;
+  };
 
+  const handleBulkApprove = async (targets: NeedRequestRecord[]) => {
+    if (!targets.some((request) => request.stage === "WAITING_HRD")) {
+      toast.info(t("ไม่มีคำขอที่รอ HRD อนุมัติในรายการที่เลือก", "Nothing selected is waiting for HRD"));
+      return;
+    }
     setPendingAction(true);
     try {
-      for (const req of pendingReqs) {
-        if (req.status === "PENDING") {
-          await updateNeedRequest(req.id, { action: "approve", note: null });
-        }
+      if (await approvePending(targets)) {
+        toast.success(t("อนุมัติคำขอที่เลือกแล้ว", "Selected requests approved"));
+        setSelectedIds(new Set());
       }
-      await loadRequests();
-
-      // Send the first request to open in OAP
-      const firstReq = pendingReqs[0];
-      window.localStorage.setItem(APPROVED_TRAINING_NEED_STORAGE_KEY, JSON.stringify(firstReq));
-      window.dispatchEvent(new Event("approved-training-need-changed"));
-      toast.success(
-        t(
-          `อนุมัติกลุ่มหลักสูตร ${group.courseTitle} (${pendingReqs.length} คน) เรียบร้อยแล้ว`,
-          `Approved course group (${pendingReqs.length} requesters)`,
-        ),
-      );
-      onOpenTrainingOap?.();
-    } catch (error) {
-      console.error("Batch approve failed", error);
-      toast.error(t("อนุมัติรวมชุดไม่สำเร็จ", "Failed to batch approve"));
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : t("อนุมัติไม่สำเร็จ", "Could not approve"));
     } finally {
       setPendingAction(false);
     }
+  };
+
+  /**
+   * Approves what still needs it, then opens Training Rolling with every request attached. The ids
+   * travel in the address, so the hand-off survives a reload or another browser - the old
+   * localStorage hand-off did neither and only ever carried the first request of a group.
+   */
+  const handleApproveAndPlan = async (targets: NeedRequestRecord[]) => {
+    const actionable = targets.filter(isActionable);
+    if (actionable.length === 0) {
+      toast.info(t("ไม่มีคำขอที่จัดรุ่นได้ในรายการที่เลือก", "Nothing selected can be planned"));
+      return;
+    }
+    setPendingAction(true);
+    try {
+      if (!(await approvePending(actionable))) return;
+      router.push(`/training-plan/training-rolling?needRequestIds=${actionable.map((request) => request.id).join(",")}`);
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : t("อนุมัติไม่สำเร็จ", "Could not approve"));
+    } finally {
+      setPendingAction(false);
+    }
+  };
+
+  const handleUnlink = async () => {
+    if (!selectedRequest) return;
+    const ok = await confirm({
+      message: {
+        th: `ยกเลิกการผูกคำขอ ${selectedRequest.requestNo} กับรุ่น ${selectedRequest.plan?.planCode ?? ""} หรือไม่? คำขอจะกลับเป็น "อนุมัติแล้ว" (รายชื่อผู้เข้าอบรมในรุ่นไม่ถูกลบ ต้องยกเลิกที่หน้าคัดคนเอง)`,
+        en: `Unlink ${selectedRequest.requestNo} from batch ${selectedRequest.plan?.planCode ?? ""}? It returns to Approved. The enrollment in that batch stays until cancelled there.`,
+      },
+    });
+    if (!ok) return;
+    const updated = await applyAction("unlink", null);
+    if (updated) toast.success(t(`ยกเลิกการผูก ${updated.requestNo} แล้ว`, `Unlinked ${updated.requestNo}`));
   };
 
   const handleRevertToPending = async () => {
@@ -297,7 +314,6 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
 
     const updated = await applyAction("reset", null);
     if (updated) {
-      window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
       toast.success(
         t(
           `ย้อนกลับสถานะคำขอ ${updated.requestNo} เป็นรอตรวจสอบแล้ว`,
@@ -307,7 +323,8 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
     }
   };
 
-  const handleOpenRejectModal = () => {
+  const handleOpenRejectModal = (ids: string[]) => {
+    setRejectTargetIds(ids);
     setRejectionNote("");
     setIsRejectModalOpen(true);
   };
@@ -319,10 +336,16 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
     }
 
     setIsRejectModalOpen(false);
-    const updated = await applyAction("reject", rejectionNote.trim());
-    if (updated) {
-      window.localStorage.removeItem(APPROVED_TRAINING_NEED_STORAGE_KEY);
-      toast.success(t(`ปฏิเสธคำขอ ${updated.requestNo} แล้ว`, `Rejected ${updated.requestNo}`));
+    setPendingAction(true);
+    try {
+      const { needRequests } = await bulkDecideNeedRequests({ ids: rejectTargetIds, action: "reject", note: rejectionNote.trim() });
+      mergeUpdated(needRequests);
+      setSelectedIds(new Set());
+      toast.success(t(`ไม่อนุมัติคำขอ ${needRequests.length} รายการแล้ว`, `Rejected ${needRequests.length} request(s)`));
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : t("บันทึกไม่สำเร็จ", "Could not save"));
+    } finally {
+      setPendingAction(false);
     }
   };
 
@@ -373,8 +396,8 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
           </h2>
           <p>
             {t(
-              "ตรวจสอบความต้องการฝึกอบรมของพนักงาน เพื่อพิจารณาอนุมัติและบรรจุลงในแผนการฝึกอบรมประจำปี (OAP)",
-              "Review employee training requests and approve to incorporate into Annual Training Plans (OAP).",
+              "คำขอที่หัวหน้า (Section Head) อนุมัติแล้ว ติ๊กเลือกหลายรายการเพื่ออนุมัติ/ไม่อนุมัติ แล้วเปิดฟอร์มจัดทำแผน Rolling เพื่อลงชื่อพนักงานเข้ารุ่น",
+              "Requests their section heads approved. Tick several to approve or reject, then open Training Rolling to put the people into a batch.",
             )}
           </p>
         </div>
@@ -517,6 +540,39 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
       ) : null}
 
       {/* 4. Tab 1: Master-Detail List View */}
+      {activeTab === "list" && actionableVisible.length > 0 ? (
+        <div className={styles.bulkBar}>
+          <label className={styles.bulkSelectAll}>
+            <input
+              type="checkbox"
+              checked={allVisibleSelected}
+              onChange={() =>
+                setSelectedIds(allVisibleSelected ? new Set() : new Set(actionableVisible.map((request) => request.id)))
+              }
+            />
+            {t(`เลือกทั้งหมดที่ดำเนินการได้ (${actionableVisible.length})`, `Select all actionable (${actionableVisible.length})`)}
+          </label>
+          <span className={styles.bulkCount}>{t(`เลือกแล้ว ${selectedRequests.length}`, `${selectedRequests.length} selected`)}</span>
+          <button className={styles.btnSecondary} type="button" disabled={pendingAction || selectedRequests.length === 0} onClick={() => void handleBulkApprove(selectedRequests)}>
+            <Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+            {t("อนุมัติที่เลือก", "Approve selected")}
+          </button>
+          <button
+            className={styles.btnDanger}
+            type="button"
+            disabled={pendingAction || selectedRequests.length === 0}
+            onClick={() => handleOpenRejectModal(selectedRequests.map((request) => request.id))}
+          >
+            <X size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+            {t("ไม่อนุมัติที่เลือก", "Reject selected")}
+          </button>
+          <button className={styles.btnPrimary} type="button" disabled={pendingAction || selectedRequests.length === 0} onClick={() => void handleApproveAndPlan(selectedRequests)}>
+            <Rocket size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+            {t("อนุมัติและเปิดฟอร์มจัดทำแผน Rolling", "Approve & open Training Rolling")}
+          </button>
+        </div>
+      ) : null}
+
       {activeTab === "list" && (
         <div className={styles.mainLayout}>
           {/* Left Pane: Requests List */}
@@ -535,7 +591,19 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                     onClick={() => setSelectedId(req.id)}
                   >
                     <div className={styles.requestCardHeader}>
-                      <span className={styles.requestNo}>{req.requestNo}</span>
+                      <span className={styles.requestNo}>
+                        {isActionable(req) ? (
+                          <input
+                            type="checkbox"
+                            className={styles.cardCheckbox}
+                            checked={selectedIds.has(req.id)}
+                            onClick={(event) => event.stopPropagation()}
+                            onChange={() => toggleSelected(req.id)}
+                            aria-label={t(`เลือก ${req.requestNo}`, `Select ${req.requestNo}`)}
+                          />
+                        ) : null}
+                        {req.requestNo}
+                      </span>
                       {getStatusBadge(req.status)}
                     </div>
                     <h4 className={styles.requestCardTitle}>{req.requestedCourseName}</h4>
@@ -576,6 +644,35 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                   </span>
                 </div>
               </div>
+
+              {selectedRequest.approver ? (
+                <div className={styles.infoSection}>
+                  <span className={styles.sectionLabel}>
+                    <User size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("หัวหน้าผู้อนุมัติ (Section Head)", "Section head")}
+                  </span>
+                  <div className={styles.highlightBox}>
+                    {selectedRequest.approver.name} ({selectedRequest.approver.employeeCode}) · {selectedRequest.approver.position || "-"}
+                    <br />
+                    {selectedRequest.approverDecision === "APPROVED"
+                      ? t(`อนุมัติเมื่อ ${formatDate(selectedRequest.approverDecidedAt ?? "")}`, `Approved ${formatDate(selectedRequest.approverDecidedAt ?? "")}`)
+                      : t("ยังไม่ตัดสิน", "Not decided yet")}
+                    {selectedRequest.approverNote ? ` · ${selectedRequest.approverNote}` : ""}
+                  </div>
+                </div>
+              ) : null}
+
+              {selectedRequest.plan ? (
+                <div className={styles.infoSection}>
+                  <span className={styles.sectionLabel}>
+                    <ClipboardList size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {t("รุ่นที่จัดเข้า", "Linked batch")}
+                  </span>
+                  <div className={styles.highlightBox}>
+                    {selectedRequest.plan.planCode} · {selectedRequest.plan.planName} · {formatDate(selectedRequest.plan.startAt)}
+                  </div>
+                </div>
+              ) : null}
 
               {/* Request Reason */}
               <div className={styles.infoSection}>
@@ -623,17 +720,19 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
               <div className={styles.actionsBar}>
                 {!isFinalPlanned && (
                   <>
-                    <button
-                      className={styles.btnPrimary}
-                      type="button"
-                      disabled={pendingAction}
-                      onClick={() => void handleApproveToPlan()}
-                    >
-                      <Rocket size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                      {selectedRequest.status === "APPROVED"
-                        ? t("เปิดฟอร์มจัดทำแผน OAP อีกครั้ง", "Open OAP Plan Form")
-                        : t("อนุมัติและจัดลงแผน OAP", "Approve & Plan in OAP")}
-                    </button>
+                    {selectedRequest.status !== "REJECTED" ? (
+                      <button
+                        className={styles.btnPrimary}
+                        type="button"
+                        disabled={pendingAction}
+                        onClick={() => void handleApproveAndPlan([selectedRequest])}
+                      >
+                        <Rocket size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {selectedRequest.status === "APPROVED"
+                          ? t("เปิดฟอร์มจัดทำแผน Rolling", "Open Training Rolling")
+                          : t("อนุมัติและเปิดฟอร์มจัดทำแผน Rolling", "Approve & open Training Rolling")}
+                      </button>
+                    ) : null}
 
                     {selectedRequest.status === "APPROVED" && (
                       <button
@@ -651,7 +750,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                         className={styles.btnDanger}
                         type="button"
                         disabled={pendingAction}
-                        onClick={() => handleOpenRejectModal()}
+                        onClick={() => handleOpenRejectModal([selectedRequest.id])}
                       >
                         <X size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{selectedRequest.status === "APPROVED" ? t("เปลี่ยนเป็นไม่อนุมัติ", "Change to Reject") : t("ไม่อนุมัติ", "Reject")}
                       </button>
@@ -671,9 +770,14 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                 )}
 
                 {isFinalPlanned && (
-                  <p style={{ margin: 0, fontSize: "0.86rem", color: "#2563eb", fontWeight: 700 }}>
-                    <Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("คำขอนี้ได้รับการจัดทำแผนการอบรม (OAP / Rolling) เสร็จสมบูรณ์แล้ว", "Incorporated into training plan.")}
-                  </p>
+                  <>
+                    <p style={{ margin: 0, fontSize: "0.86rem", color: "#2563eb", fontWeight: 700 }}>
+                      <Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("คำขอนี้จัดเข้ารุ่นอบรมแล้ว", "Linked to a training batch.")}
+                    </p>
+                    <button className={styles.btnSecondary} type="button" disabled={pendingAction} onClick={() => void handleUnlink()}>
+                      <RotateCcw size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("ยกเลิกการผูกกับรุ่น", "Unlink from batch")}
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -746,9 +850,9 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
                     type="button"
                     style={{ width: "100%", justifyContent: "center" }}
                     disabled={pendingAction}
-                    onClick={() => void handleBatchApproveGroup(group)}
+                    onClick={() => void handleApproveAndPlan(group.requests)}
                   >
-                    <Rocket size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("อนุมัติกลุ่มนี้ & เปิดแผน OAP", "Approve Group & Plan in OAP")}
+                    <Rocket size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("อนุมัติกลุ่มนี้ & เปิดฟอร์มจัดทำแผน Rolling", "Approve group & open Training Rolling")}
                   </button>
                 </div>
               </div>
@@ -758,7 +862,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
       )}
 
       {/* 6. Rejection Modal Dialog */}
-      {isRejectModalOpen && selectedRequest ? (
+      {isRejectModalOpen && rejectTargetIds.length > 0 ? (
         <div
           style={{
             position: "fixed",
@@ -804,7 +908,16 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
             </div>
 
             <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--ui-30-text)" }}>
-              {t("คำขอเลขที่:", "Request No:")} <strong>{selectedRequest.requestNo}</strong> ({selectedRequest.requestedCourseName})
+              {rejectTargetIds.length === 1
+                ? (() => {
+                    const target = requests.find((request) => request.id === rejectTargetIds[0]);
+                    return (
+                      <>
+                        {t("คำขอเลขที่:", "Request No:")} <strong>{target?.requestNo}</strong> ({target?.requestedCourseName})
+                      </>
+                    );
+                  })()
+                : t(`ไม่อนุมัติคำขอที่เลือก ${rejectTargetIds.length} รายการ ด้วยเหตุผลเดียวกัน`, `Reject ${rejectTargetIds.length} selected requests with one reason`)}
             </p>
 
             <textarea
@@ -832,11 +945,7 @@ export default function RequestTrainingNeed({ onOpenTrainingOap }: RequestTraini
               <span style={{ fontSize: "0.76rem", color: "var(--ui-30-muted)", fontWeight: 700, alignSelf: "center" }}>
                 {t("ตัวอย่างเหตุผล:", "Quick reasons:")}
               </span>
-              {[
-                t("หลักสูตรนี้มีในแผนประจำปีอยู่แล้ว", "Course scheduled in annual plan"),
-                t("ข้อมูลคำขอไม่ครบถ้วน", "Incomplete request info"),
-                t("งบประมาณการอบรมเต็ม", "Training budget exhausted"),
-              ].map((reasonText) => (
+              {HRD_REJECT_REASONS.map((reason) => t(reason.th, reason.en)).map((reasonText) => (
                 <button
                   key={reasonText}
                   type="button"

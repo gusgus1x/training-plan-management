@@ -140,9 +140,11 @@ export const cascadeDeleteTrainingPlans = async (
   }));
 
   // 12. Unlink training need requests
+  // The batch is gone, so a request planned into it goes back to waiting for one. Clearing only the
+  // id left it PLANNED against nothing, and PLANNED is final - nobody could ever relink it.
   await tx.training_need_request.updateMany({
     where: { training_plan_id: { in: planIds } },
-    data: { training_plan_id: null },
+    data: { training_plan_id: null, planned_at: null, status: "APPROVED" },
   }).catch(() => undefined);
 
   // 13. Delete the training plans

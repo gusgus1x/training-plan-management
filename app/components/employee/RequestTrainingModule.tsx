@@ -7,9 +7,13 @@ import {
 import {
   createNeedRequest,
   listNeedRequests,
+  searchNeedRequestApprovers,
+  updateNeedRequest,
 } from "../../lib/trainingNeedRequests/client";
-import type { NeedRequestRecord, NeedRequestStatus } from "../../lib/trainingNeedRequests/types";
-import { needRequestStatusLabel } from "../../lib/trainingNeedRequests/labels";
+import type { NeedRequestRecord, NeedRequestStage } from "../../lib/trainingNeedRequests/types";
+import { needRequestStageLabel, pointsToRegisterTrain } from "../../lib/trainingNeedRequests/labels";
+import type { ReviewerCandidate } from "../../lib/trainingRecord/types";
+import { isSectionHeadOrAbove } from "../../lib/employeeMasterData";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
 import { buildRecords, type EmployeeTrainingRecord } from "./RecordModule";
 import { useNotice } from "../NoticeDialog";
@@ -55,6 +59,7 @@ export default function RequestTrainingModule({
   setTrainingNeed,
   trainingNeed,
   initialCourseId,
+  onNavigate,
 }: RequestTrainingModuleProps) {
   const authenticatedUser = useAuthenticatedUser();
   const [completedCourses, setCompletedCourses] = useState<EmployeeTrainingRecord[]>([]);
@@ -65,6 +70,13 @@ export default function RequestTrainingModule({
   const [isLoadingRecords, setIsLoadingRecords] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [myRequests, setMyRequests] = useState<NeedRequestRecord[]>([]);
+  // The section heads this employee can send a request to, and the one they picked.
+  const [approvers, setApprovers] = useState<ReviewerCandidate[]>([]);
+  const [approverUserId, setApproverUserId] = useState("");
+  // Requests other people sent to this employee as their section head.
+  const [approvals, setApprovals] = useState<NeedRequestRecord[]>([]);
+  const [decisionNotes, setDecisionNotes] = useState<Record<string, string>>({});
+  const [decidingId, setDecidingId] = useState("");
 
   const notice = useNotice();
   const toast = useToast();
@@ -106,9 +118,48 @@ export default function RequestTrainingModule({
       .then(({ needRequests }) => setMyRequests(needRequests || []))
       .catch((err) => console.error("Failed to load my need requests", err));
 
+  const loadApprovals = () =>
+    listNeedRequests({ view: "approvals" })
+      .then(({ needRequests }) => setApprovals(needRequests || []))
+      .catch((err) => console.error("Failed to load requests awaiting approval", err));
+
   useEffect(() => {
     void loadMyRequests();
+    void loadApprovals();
+    searchNeedRequestApprovers("")
+      .then(({ candidates }) => setApprovers(candidates))
+      .catch(() => setApprovers([]));
   }, []);
+
+  const waitingForMe = approvals.filter((request) => request.stage === "WAITING_HEAD");
+  const decidedByMe = approvals.length - waitingForMe.length;
+  // A head sees the approval card even when nothing is waiting, so they know where requests land.
+  const showApprovals = approvals.length > 0 || isSectionHeadOrAbove(authenticatedUser);
+
+  const decide = async (request: NeedRequestRecord, approve: boolean) => {
+    const note = (decisionNotes[request.id] ?? "").trim();
+    if (!approve && !note) {
+      toast.warning(t("กรุณาระบุเหตุผลที่ไม่อนุมัติ", "Please give a reason for rejecting"));
+      return;
+    }
+    setDecidingId(request.id);
+    try {
+      const { needRequest } = await updateNeedRequest(request.id, {
+        action: approve ? "head_approve" : "head_reject",
+        note: note || null,
+      });
+      setApprovals((current) => current.map((item) => (item.id === needRequest.id ? needRequest : item)));
+      toast.success(
+        approve
+          ? t(`อนุมัติคำขอของ ${request.employeeName} แล้ว ส่งต่อให้ HRD`, `Approved ${request.employeeName}'s request and sent it to HRD`)
+          : t(`ไม่อนุมัติคำขอของ ${request.employeeName}`, `Rejected ${request.employeeName}'s request`),
+      );
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : t("บันทึกไม่สำเร็จ", "Could not save"));
+    } finally {
+      setDecidingId("");
+    }
+  };
 
   const handleSelectCourse = (courseId: string, customList?: EmployeeTrainingRecord[]) => {
     const list = customList || completedCourses;
@@ -146,6 +197,7 @@ export default function RequestTrainingModule({
     const missingFields: string[] = [];
     if (!courseNeed) missingFields.push(t("หลักสูตรที่ต้องการอบรม (Course Needed)", "Course Needed"));
     if (!requestReason) missingFields.push(t("เหตุผลในการขออบรม (Request Reason)", "Request Reason"));
+    if (!approverUserId) missingFields.push(t("หัวหน้าผู้อนุมัติ (Section Head)", "Approving section head"));
     if (missingFields.length > 0) {
       await notice({ missingFields });
       return;
@@ -158,6 +210,7 @@ export default function RequestTrainingModule({
         requestReason,
         preferredStartDate: preferredStartDate || null,
         preferredEndDate: preferredEndDate || null,
+        approverUserId,
       });
 
       setMyRequests((current) => [needRequest, ...current]);
@@ -168,8 +221,8 @@ export default function RequestTrainingModule({
       setPreferredEndDate("");
       toast.success(
         t(
-          `ส่งคำขอ ${needRequest.requestNo} ไปยัง HRD สำเร็จแล้ว`,
-          `Request ${needRequest.requestNo} submitted to HRD successfully`,
+          `ส่งคำขอ ${needRequest.requestNo} ไปให้หัวหน้าอนุมัติแล้ว`,
+          `Request ${needRequest.requestNo} sent to your section head for approval`,
         ),
       );
     } catch (error: unknown) {
@@ -183,19 +236,21 @@ export default function RequestTrainingModule({
     }
   };
 
-  const getStatusBadgeClass = (status: NeedRequestStatus) => {
-    switch (status) {
+  const stageClasses = (stage: NeedRequestStage) => {
+    switch (stage) {
       case "APPROVED":
-        return styles.statusApproved;
+        return { badge: styles.statusApproved, dot: styles.dotApproved };
       case "REJECTED":
-        return styles.statusRejected;
+      case "REJECTED_BY_HEAD":
+        return { badge: styles.statusRejected, dot: styles.dotRejected };
       case "PLANNED":
-        return styles.statusPlanned;
-      case "PENDING":
+        return { badge: styles.statusPlanned, dot: styles.dotPlanned };
       default:
-        return styles.statusPending;
+        return { badge: styles.statusPending, dot: `${styles.dotPending} ${styles.dotPulse}` };
     }
   };
+
+  const formatDate = (iso: string) => new Date(iso).toLocaleDateString(language === "th" ? "th-TH" : "en-GB");
 
   return (
     <section className={shell.moduleWorkspace}>
@@ -203,8 +258,8 @@ export default function RequestTrainingModule({
         eyebrow={t("ส่งคำขอฝึกอบรม", "Employee Training Request")}
         title={t("ขอจัดอบรมทบทวน / เปิดหลักสูตรฝึกอบรม", "Request Training Need")}
         detail={t(
-          "ส่งคำขอฝึกอบรมถึง HRD เพื่อขอเปิดรอบอบรมทบทวนความรู้เดิม (Refresher) หรือเสนอความต้องการพัฒนาทักษะใหม่ในการทำงาน",
-          "Submit training needs to HRD for refresher training on past courses or requesting new skills.",
+          "ส่งคำขอฝึกอบรมผ่านหัวหน้า (Section Head) ของคุณ เมื่อหัวหน้าอนุมัติ คำขอจะถูกส่งต่อให้ HRD พิจารณาจัดรอบอบรม",
+          "Send a training need through your section head. Once they approve, it goes to HRD to plan a batch.",
         )}
       />
 
@@ -238,6 +293,75 @@ export default function RequestTrainingModule({
             </div>
           </div>
         </div>
+
+        {showApprovals ? (
+          <section className={styles.mainCard}>
+            <div className={styles.cardHeader}>
+              <div className={styles.cardHeaderTitle}>
+                <span className={styles.cardHeaderIcon}>
+                  <CheckCircle2 size={18} />
+                </span>
+                <h3>{t("คำขออบรมที่รอคุณอนุมัติ (หัวหน้า)", "Requests waiting for your approval")}</h3>
+              </div>
+              <span style={{ fontSize: "0.82rem", fontWeight: 800, color: "var(--ui-30-primary)" }}>
+                {waitingForMe.length} {t("รายการรออนุมัติ", "waiting")}
+                {decidedByMe > 0 ? t(` · ตัดสินแล้ว ${decidedByMe}`, ` · ${decidedByMe} decided`) : ""}
+              </span>
+            </div>
+            {waitingForMe.length === 0 ? (
+              <p className={styles.approvalEmpty}>{t("ไม่มีคำขอที่รอคุณอนุมัติ", "Nothing is waiting for you")}</p>
+            ) : (
+              <div className={styles.approvalList}>
+                {waitingForMe.map((request) => (
+                  <div className={styles.historyItem} key={request.id}>
+                    <p className={styles.approvalQuestion}>
+                      {t(
+                        `รหัส ${request.employeeCode} ${request.employeeName} ขออบรมคอร์ส "${request.requestedCourseName}" อนุมัติส่งตัวเข้าอบรมหรือไม่?`,
+                        `${request.employeeCode} ${request.employeeName} asks to attend "${request.requestedCourseName}". Approve sending them?`,
+                      )}
+                    </p>
+                    <p className={styles.historyReason}>
+                      {t("เหตุผล:", "Reason:")} {request.requestReason}
+                    </p>
+                    <span className={styles.historyDate}>
+                      {request.requestNo} · {t("ส่งเมื่อ", "Sent")} {formatDate(request.requestedAt)}
+                      {request.preferredStartDate
+                        ? ` · ${t("ช่วงที่สะดวก", "Preferred")} ${request.preferredStartDate}${request.preferredEndDate ? ` - ${request.preferredEndDate}` : ""}`
+                        : ""}
+                    </span>
+                    <input
+                      className={styles.textInput}
+                      type="text"
+                      value={decisionNotes[request.id] ?? ""}
+                      onChange={(event) => setDecisionNotes((current) => ({ ...current, [request.id]: event.target.value }))}
+                      placeholder={t("หมายเหตุ (จำเป็นเมื่อไม่อนุมัติ)", "Note (required when rejecting)")}
+                    />
+                    <div className={styles.approvalActions}>
+                      <button
+                        type="button"
+                        className={styles.approveBtn}
+                        disabled={decidingId === request.id}
+                        onClick={() => void decide(request, true)}
+                      >
+                        <CheckCircle2 size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {t("อนุมัติ", "Approve")}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.rejectBtn}
+                        disabled={decidingId === request.id}
+                        onClick={() => void decide(request, false)}
+                      >
+                        <Ban size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {t("ไม่อนุมัติ", "Reject")}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        ) : null}
 
         {/* 2. Main 2-Column Layout */}
         <div className={styles.requestLayout}>
@@ -473,6 +597,27 @@ export default function RequestTrainingModule({
                 </div>
               </div>
 
+              <div className={styles.formField}>
+                <label>
+                  {t("หัวหน้าผู้อนุมัติ (Section Head)", "Approving section head")}
+                  <b style={{ color: "var(--ui-10-accent)", marginLeft: "4px" }}>*</b>
+                </label>
+                <SearchableSelect
+                  options={approvers.map((head) => ({
+                    value: head.reviewerUserId,
+                    label: `${head.name} (${head.employeeCode})`,
+                    secondaryLabel: [head.position, head.department, head.section].filter(Boolean).join(" · "),
+                  }))}
+                  value={approverUserId}
+                  onChange={setApproverUserId}
+                  placeholder={
+                    approvers.length === 0
+                      ? t("ไม่พบหัวหน้าแผนกในบริษัทของคุณ", "No section heads found in your company")
+                      : t("ค้นหาชื่อหรือรหัสหัวหน้าของคุณ...", "Search your section head by name or code...")
+                  }
+                />
+              </div>
+
               <button
                 className={styles.submitBtn}
                 type="button"
@@ -484,7 +629,7 @@ export default function RequestTrainingModule({
                 ) : (
                   <>
                     <Rocket size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
-                    {t("ส่งคำขอฝึกอบรมไปยัง HRD", "Submit Training Need Request")}
+                    {t("ส่งคำขอให้หัวหน้าอนุมัติ", "Send to my section head")}
                   </>
                 )}
               </button>
@@ -536,35 +681,46 @@ export default function RequestTrainingModule({
                     <div className={styles.historyItem} key={request.id}>
                       <div className={styles.historyHeader}>
                         <span className={styles.historyReqNo}>{request.requestNo}</span>
-                        <span className={`${styles.statusBadge} ${getStatusBadgeClass(request.status)}`}>
-                          <span
-                            className={`${styles.statusDot} ${
-                              request.status === "APPROVED"
-                                ? styles.dotApproved
-                                : request.status === "PLANNED"
-                                ? styles.dotPlanned
-                                : request.status === "REJECTED"
-                                ? styles.dotRejected
-                                : `${styles.dotPending} ${styles.dotPulse}`
-                            }`}
-                          />
-                          {needRequestStatusLabel(request.status, language)}
+                        <span className={`${styles.statusBadge} ${stageClasses(request.stage).badge}`}>
+                          <span className={`${styles.statusDot} ${stageClasses(request.stage).dot}`} />
+                          {needRequestStageLabel(request.stage, language)}
                         </span>
                       </div>
                       <h5 className={styles.historyCourseName}>{request.requestedCourseName}</h5>
                       <p className={styles.historyReason}>{request.requestReason}</p>
 
-                      {/* Show Rejection note from HRD if rejected */}
-                      {request.rejectionReason && (
+                      {request.approver ? (
+                        <span className={styles.historyDate}>
+                          <User size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                          {t("หัวหน้าผู้อนุมัติ:", "Section head:")} {request.approver.name}
+                        </span>
+                      ) : null}
+
+                      {/* Whose "no" it was matters: the employee talks to their head or to HRD. */}
+                      {request.rejectionReason && (request.stage === "REJECTED" || request.stage === "REJECTED_BY_HEAD") ? (
                         <div className={styles.historyRejectionBox}>
                           <Ban size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                          {t("เหตุผลจาก HRD:", "HRD Note:")} {request.rejectionReason}
+                          {request.stage === "REJECTED_BY_HEAD" ? t("เหตุผลจากหัวหน้า:", "Section head's note:") : t("เหตุผลจาก HRD:", "HRD Note:")}{" "}
+                          {request.rejectionReason}
                         </div>
-                      )}
+                      ) : null}
+                      {request.stage === "REJECTED" && pointsToRegisterTrain(request.rejectionReason) && onNavigate ? (
+                        <button type="button" className={styles.quickTagBtn} onClick={() => onNavigate("register")}>
+                          <Rocket size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                          {t("ไปหน้า Register Train", "Go to Register Train")}
+                        </button>
+                      ) : null}
+
+                      {request.plan ? (
+                        <span className={styles.historyDate}>
+                          <Calendar size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                          {t("จัดเข้ารุ่น", "Batch")} {request.plan.planCode} · {formatDate(request.plan.startAt)}
+                        </span>
+                      ) : null}
 
                       <span className={styles.historyDate}>
                         <Calendar size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                        {new Date(request.requestedAt).toLocaleDateString(language === "th" ? "th-TH" : "en-GB")}
+                        {formatDate(request.requestedAt)}
                       </span>
                     </div>
                   ))}
