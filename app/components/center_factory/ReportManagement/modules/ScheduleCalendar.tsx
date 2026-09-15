@@ -1089,9 +1089,10 @@ export default function ScheduleCalendar({
                                   </small>
                                   <span
                                     className={`${styles.companyPillBadge} ${styles[`companyPill_${companyKey}`] || styles.companyPill_ALL}`}
+                                    title={companyKey === "ALL" ? (uiLang === "th" ? "ทุกบริษัท (All Companies)" : "All Companies") : companyKey}
                                   >
                                     {companyKey === "ALL" ? "🏢 " : "🏭 "}
-                                    {companyLabel}
+                                    {companyKey === "ALL" ? (uiLang === "th" ? "ทุกบริษัท" : "All") : companyLabel}
                                   </span>
                                 </div>
                                 <div className={styles.singleEventBottomRow}>
