@@ -18,6 +18,7 @@ import { createEnrollment, EnrollmentApiError, listEnrollments, setEnrollmentAtt
 import {
   emptyEnrollmentStage,
   scoreLabel,
+  type AssessmentStageInfo,
   type EnrollmentAssessmentInfo,
   type EnrollmentRecord,
   type EnrollmentStageInfo,
@@ -34,10 +35,11 @@ import {
   scorePercentOf,
   type CompletionStatus,
 } from "../../../../lib/trainingRecord/types";
-import { gradeSubmission, listPendingGrading, publishSubmissionResults } from "../../../../lib/trainingForms/client";
+import { gradeSubmission, listPendingGrading, publishSubmissionResults, readEvaluationSummary } from "../../../../lib/trainingForms/client";
 import type { PendingGradingSubmission } from "../../../../lib/trainingForms/types";
 import type { CostBreakdown } from "../../../../lib/trainingRecord/types";
 import styles from "./TrainingRecord.module.css";
+import actualStyles from "./TrainingActual.module.css";
 import {
   Send,
   Building2,
@@ -61,24 +63,26 @@ import {
   BookOpen,
   Home,
   Utensils,
+  Info,
+  Zap,
 } from "../../../icons/LucideIcons";
 
 function getExpenseIcon(key: string, size = 15) {
   switch (key) {
     case "instructor":
-      return <User size={size} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />;
+      return <User size={size} />;
     case "traveling":
-      return <MapPin size={size} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />;
+      return <MapPin size={size} />;
     case "seminarRoom":
-      return <Building2 size={size} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />;
+      return <Building2 size={size} />;
     case "accommodation":
-      return <Home size={size} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />;
+      return <Home size={size} />;
     case "material":
-      return <BookOpen size={size} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />;
+      return <BookOpen size={size} />;
     case "foodBeverage":
-      return <Utensils size={size} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />;
+      return <Utensils size={size} />;
     default:
-      return <Wallet size={size} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />;
+      return <Wallet size={size} />;
   }
 }
 
@@ -609,6 +613,16 @@ const PendingGradingPanel = ({ planId, onGraded }: { planId: string; onGraded: (
   );
 };
 
+const evaluationStateOf = (
+  stage: AssessmentStageInfo | undefined,
+  completed: boolean,
+): "Done" | "Pending" | "None" | "External" => {
+  if (completed) return "Done";
+  if (!stage || stage.mode === "NONE") return "None";
+  if (stage.mode === "LINK") return "External";
+  return "Pending";
+};
+
 export default function TrainingActual() {
   const user = useAuthenticatedUser();
   const toast = useToast();
@@ -618,6 +632,7 @@ export default function TrainingActual() {
   const [draftAttendees, setDraftAttendees] = useState<EmployeeRecord[]>([]);
   const [isSavingDraftAttendees, setIsSavingDraftAttendees] = useState(false);
   const [resultDrafts, setResultDrafts] = useState<Record<string, ResultDraft>>({});
+  const [evaluationSubmissionsCount, setEvaluationSubmissionsCount] = useState<number | null>(null);
   /** The attempts card: one attendee's papers for both stages, opened from their result row. */
   const [attemptsCard, setAttemptsCard] = useState<{
     enrollmentId: string;
@@ -802,14 +817,60 @@ export default function TrainingActual() {
     setSavedMessage("");
   }, [selectedCourse?.id]);
 
+  useEffect(() => {
+    if (!selectedCourse?.id) {
+      setEvaluationSubmissionsCount(null);
+      return;
+    }
+    let cancelled = false;
+    Promise.all([
+      readEvaluationSummary(selectedCourse.id, "EVALUATION", "EMPLOYEE").catch(() => ({ summary: null })),
+      readEvaluationSummary(selectedCourse.id, "EVALUATION_30DAY", "EMPLOYEE").catch(() => ({ summary: null })),
+      readEvaluationSummary(selectedCourse.id, "EVALUATION_30DAY", "SUPERVISOR").catch(() => ({ summary: null })),
+    ]).then((results) => {
+      if (cancelled) return;
+      const anyForm = results.some((result) => result.summary !== null);
+      setEvaluationSubmissionsCount(
+        anyForm ? results.reduce((sum, result) => sum + (result.summary?.submittedCount ?? 0), 0) : null,
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCourse?.id]);
+
   // Returns what it fetched. The save handler needs the fresh numbers in the same tick, and
   // reading them back from state would show whatever was on screen before the save.
   // `isStale` lets the effect below discard a response for a course the user has already moved off,
   // while the save handler — which calls this for the value, not the render — always keeps it.
-  const reloadCostBreakdown = async (planId: string, isStale: () => boolean = () => false) => {
+  const reloadCostBreakdown = async (
+    planId: string,
+    isStale: () => boolean = () => false,
+    syncExpenses: boolean = false,
+  ) => {
     try {
       const result = await getCostBreakdown(planId);
-      if (!isStale()) setCostBreakdown(result.costBreakdown);
+      if (!isStale()) {
+        const cb = result.costBreakdown;
+        setCostBreakdown(cb);
+        if (syncExpenses && cb) {
+          const hasActuals =
+            cb.actualGrandTotal > 0 ||
+            Object.values(cb.actualTotals || {}).some((v) => Number(v) > 0);
+          if (hasActuals && cb.actualTotals) {
+            setExpenses({
+              instructor: cb.actualTotals.instructor != null && cb.actualTotals.instructor !== 0 ? String(cb.actualTotals.instructor) : (cb.actualTotals.instructor === 0 ? "0" : ""),
+              traveling: cb.actualTotals.traveling != null && cb.actualTotals.traveling !== 0 ? String(cb.actualTotals.traveling) : (cb.actualTotals.traveling === 0 ? "0" : ""),
+              seminarRoom: cb.actualTotals.seminarRoom != null && cb.actualTotals.seminarRoom !== 0 ? String(cb.actualTotals.seminarRoom) : (cb.actualTotals.seminarRoom === 0 ? "0" : ""),
+              accommodation: cb.actualTotals.accommodation != null && cb.actualTotals.accommodation !== 0 ? String(cb.actualTotals.accommodation) : (cb.actualTotals.accommodation === 0 ? "0" : ""),
+              material: cb.actualTotals.material != null && cb.actualTotals.material !== 0 ? String(cb.actualTotals.material) : (cb.actualTotals.material === 0 ? "0" : ""),
+              foodBeverage: cb.actualTotals.foodBeverage != null && cb.actualTotals.foodBeverage !== 0 ? String(cb.actualTotals.foodBeverage) : (cb.actualTotals.foodBeverage === 0 ? "0" : ""),
+            });
+          } else {
+            setExpenses(emptyExpenses);
+          }
+        }
+      }
       return result.costBreakdown;
     } catch (error) {
       console.error("Failed to load cost breakdown", error);
@@ -827,7 +888,7 @@ export default function TrainingActual() {
     // and actual expenses next to B's title and attendees — and a save from that screen would write
     // B's plan with A's numbers. The attendee effect above already guards itself the same way.
     let active = true;
-    void reloadCostBreakdown(selectedCourse.id, () => !active);
+    void reloadCostBreakdown(selectedCourse.id, () => !active, true);
     return () => {
       active = false;
     };
@@ -920,18 +981,18 @@ export default function TrainingActual() {
   const registeredCount = attendees.filter((attendee) => attendee.registered).length;
   const absentCount = attendees.length - actualCount;
   const expenseTotal = expenseFields.reduce(
-    (total, field) => total + Number(expenses[field.key] || 0),
+    (total, field) => total + parseMoney(expenses[field.key]),
     0,
   );
-  // Cost-per-person, planned/actual totals, and the company breakdown all come from the server
-  // (app/lib/trainingRecord/repository.ts getCostBreakdown) rather than being derived from the
-  // locally-fetched enrollments list: a HRD_FACTORY user viewing a HRD_CENTER-owned course only
-  // ever gets their own employees back from listEnrollments, so a client-side sum can't produce
-  // a correct course-wide total — the server computes it once with full visibility instead.
-  const actualCostPerPerson = costBreakdown?.costPerPerson ?? 0;
-  const savedActualTotal = costBreakdown?.actualGrandTotal ?? 0;
+  const hasExpenseInputs = Object.values(expenses).some((val) => val.trim() !== "");
+  const effectiveActualTotal = hasExpenseInputs ? expenseTotal : (costBreakdown?.actualGrandTotal ?? 0);
   const plannedBudget = costBreakdown?.plannedGrandTotal ?? (selectedCourse ? parseMoney(selectedCourse.budget) : 0);
-  const remainingBudget = plannedBudget - savedActualTotal;
+  const effectiveRemainingBudget = plannedBudget - effectiveActualTotal;
+  const presentAttendeesCount = costBreakdown?.presentCount ?? actualCount;
+  const effectiveCostPerPerson = presentAttendeesCount > 0 ? Math.round((effectiveActualTotal / presentAttendeesCount) * 100) / 100 : 0;
+  const actualCostPerPerson = effectiveCostPerPerson;
+  const savedActualTotal = effectiveActualTotal;
+  const remainingBudget = effectiveRemainingBudget;
   const budgetStatus =
     plannedBudget > 0 && remainingBudget < 0 ? "Over budget" : "Within budget";
   const allAttended = Boolean(
@@ -1100,6 +1161,27 @@ export default function TrainingActual() {
     setExpenses((current) => ({ ...current, [key]: value }));
   };
 
+  const handleAutoFillFromBudget = () => {
+    if (!costBreakdown?.plannedTotals) {
+      toast.error(t("ไม่พบข้อมูลงบประมาณที่วางแผนไว้", "No planned budget data found"));
+      return;
+    }
+    setExpenses({
+      instructor: costBreakdown.plannedTotals.instructor ? String(costBreakdown.plannedTotals.instructor) : "",
+      traveling: costBreakdown.plannedTotals.traveling ? String(costBreakdown.plannedTotals.traveling) : "",
+      seminarRoom: costBreakdown.plannedTotals.seminarRoom ? String(costBreakdown.plannedTotals.seminarRoom) : "",
+      accommodation: costBreakdown.plannedTotals.accommodation ? String(costBreakdown.plannedTotals.accommodation) : "",
+      material: costBreakdown.plannedTotals.material ? String(costBreakdown.plannedTotals.material) : "",
+      foodBeverage: costBreakdown.plannedTotals.foodBeverage ? String(costBreakdown.plannedTotals.foodBeverage) : "",
+    });
+    toast.success(t("ดึงค่าใช้จ่ายจริงตามงบประมาณเรียบร้อยแล้ว", "Auto-filled actual expenses from planned budget"));
+  };
+
+  const handleClearExpenses = () => {
+    setExpenses(emptyExpenses);
+    toast.info(t("ล้างค่าใช้จ่ายจริงแล้ว", "Cleared actual expenses"));
+  };
+
   // Results are edited per attendee and saved as one payload, because training_result has one row
   // per enrollment and a partial save would leave the roster half-graded with no sign of it.
   const setResultField = (
@@ -1143,12 +1225,12 @@ export default function TrainingActual() {
     setIsSavingResults(true);
     try {
       await saveTrainingRecordExpenses(selectedCourse.id, {
-        accommodation: Number(expenses.accommodation || 0),
-        foodBeverage: Number(expenses.foodBeverage || 0),
-        instructor: Number(expenses.instructor || 0),
-        material: Number(expenses.material || 0),
-        seminarRoom: Number(expenses.seminarRoom || 0),
-        traveling: Number(expenses.traveling || 0),
+        accommodation: parseMoney(expenses.accommodation),
+        foodBeverage: parseMoney(expenses.foodBeverage),
+        instructor: parseMoney(expenses.instructor),
+        material: parseMoney(expenses.material),
+        seminarRoom: parseMoney(expenses.seminarRoom),
+        traveling: parseMoney(expenses.traveling),
       });
 
       // Results ride along with the same button. Two save buttons on one screen left it unclear
@@ -1194,7 +1276,7 @@ export default function TrainingActual() {
 
       // Read the figures from what the server just returned. Reading them from state here showed
       // the values from before the save, so the very first save always reported 0 per person.
-      const fresh = await reloadCostBreakdown(selectedCourse.id);
+      const fresh = await reloadCostBreakdown(selectedCourse.id, () => false, true);
       const freshPerPerson = fresh?.costPerPerson ?? 0;
       const freshPresent = fresh?.presentCount ?? 0;
 
@@ -1250,15 +1332,47 @@ export default function TrainingActual() {
         </div>
       </section>
 
-      {/* Course Picker Panel */}
-      <section
-        className={`${styles.actualCoursePickerPanel} ${styles.actualSelectorFirstPanel}`}
-        aria-label="Select training actual course"
-      >
-        <div className={styles.courseSelectorControls}>
-          <label className={styles.actualCourseSelect}>
-            <span>{t("Step 1 — สิทธิ์หลักสูตร", "Step 1 — Course owner")}</span>
+      {/* Course Picker Stepper Section */}
+      <section className={actualStyles.pickerSection} aria-label="Select training actual course">
+        <div className={actualStyles.pickerHeader}>
+          <div className={actualStyles.pickerHeaderLeft}>
+            <div className={actualStyles.pickerIconBox}>
+              <BookOpen size={17} />
+            </div>
+            <div>
+              <h3 className={actualStyles.pickerTitle}>
+                {t("เลือกรอบการอบรมเพื่อบันทึกผลจริง", "Select Training Session")}
+              </h3>
+              <p className={actualStyles.pickerSubtitle}>
+                {t("เลือกตามขั้นตอน 1 → 2 → 3 เพื่อเช็คชื่อผู้เข้าเรียนและคิดค่าใช้จ่ายจริง", "Follow steps 1 → 2 → 3 to record attendance and actual expenses")}
+              </p>
+            </div>
+          </div>
+          {selectedCourse ? (
+            <span className={`${actualStyles.pickerStatusBadge} ${actualStyles.pickerStatusBadgeReady}`}>
+              <CheckCircle2 size={13} style={{ color: "#10b981" }} />
+              {t("พร้อมบันทึกผล", "Ready")}
+            </span>
+          ) : (
+            <span className={actualStyles.pickerStatusBadge}>
+              {t("รอเลือกหลักสูตร", "Pending selection")}
+            </span>
+          )}
+        </div>
+
+        <div className={actualStyles.stepperGrid}>
+          {/* Step 1: Course Owner */}
+          <div className={`${actualStyles.stepCard} ${selectedCourseOwner ? actualStyles.stepCardDone : actualStyles.stepCardActive}`}>
+            <div className={actualStyles.stepCardHeader}>
+              <div className={actualStyles.stepBadgeRow}>
+                <span className={`${actualStyles.stepNum} ${selectedCourseOwner ? actualStyles.stepNumDone : actualStyles.stepNumActive}`}>
+                  {selectedCourseOwner ? <Check size={12} /> : "1"}
+                </span>
+                <span className={actualStyles.stepLabel}>{t("Step 1 — สิทธิ์ผู้จัด", "Step 1 — Owner")}</span>
+              </div>
+            </div>
             <select
+              className={actualStyles.stepSelect}
               value={selectedCourseOwner}
               onChange={(event) => {
                 setCourseOwnerFilter(event.target.value as CourseOwnerFilter);
@@ -1271,11 +1385,36 @@ export default function TrainingActual() {
               {!isFactoryUser && <option value="CENTER">{t("ส่วนกลาง (Center Standard)", "Center Standard")}</option>}
               <option value="FACTORY">{t(`โรงงาน ${userCompanyCode || ""}`, `Factory ${userCompanyCode || ""}`)}</option>
             </select>
-          </label>
+          </div>
 
-          <label className={styles.actualCourseSelect}>
-            <span>{t("Step 2 — เลือกหลักสูตร", "Step 2 — Course")}</span>
+          {/* Step 2: Course */}
+          <div
+            className={`${actualStyles.stepCard} ${
+              !selectedCourseOwner
+                ? ""
+                : selectedCourseGroupId
+                  ? actualStyles.stepCardDone
+                  : actualStyles.stepCardActive
+            }`}
+          >
+            <div className={actualStyles.stepCardHeader}>
+              <div className={actualStyles.stepBadgeRow}>
+                <span
+                  className={`${actualStyles.stepNum} ${
+                    selectedCourseGroupId
+                      ? actualStyles.stepNumDone
+                      : selectedCourseOwner
+                        ? actualStyles.stepNumActive
+                        : ""
+                  }`}
+                >
+                  {selectedCourseGroupId ? <Check size={12} /> : "2"}
+                </span>
+                <span className={actualStyles.stepLabel}>{t("Step 2 — หลักสูตร", "Step 2 — Course")}</span>
+              </div>
+            </div>
             <select
+              className={actualStyles.stepSelect}
               disabled={!selectedCourseOwner}
               value={selectedCourseGroupId}
               onChange={(event) => {
@@ -1288,23 +1427,48 @@ export default function TrainingActual() {
                 {!selectedCourseOwner
                   ? t("กรุณาเลือกผู้จัดหลักสูตรก่อน", "Pick a course owner first")
                   : availableCourseGroups.length > 0
-                    ? t("เลือกหลักสูตรที่ต้องการเช็คชื่อและคำนวณเงิน", "Pick the course to record attendance and cost for")
+                    ? t("เลือกหลักสูตรที่ต้องการบันทึก", "Pick the course to record")
                     : t(`ไม่พบหลักสูตรในสิทธิ์ ${selectedCourseOwner}`, `No course under ${selectedCourseOwner}`)}
               </option>
               {availableCourseGroups.map((group) => (
                 <option key={group.id} value={group.id}>
                   {t(
-                    `[${group.code}] ${group.title} — ${t("งบประมาณ", "Budget")} THB ${formatCurrency(parseMoney(group.sessions[0]?.budget))} (${group.sessions.length} ${t("รอบอบรม", "sessions")})`,
+                    `[${group.code}] ${group.title} — ${t("งบประมาณ", "Budget")} THB ${formatCurrency(parseMoney(group.sessions[0]?.budget))} (${group.sessions.length} ${t("รอบ", "sessions")})`,
                     `[${group.code}] ${group.title} — budget THB ${formatCurrency(parseMoney(group.sessions[0]?.budget))} (${group.sessions.length} session(s))`,
                   )}
                 </option>
               ))}
             </select>
-          </label>
+          </div>
 
-          <label className={styles.actualCourseSelect}>
-            <span>{t("Step 3 — รอบการอบรม", "Step 3 — Training session")}</span>
+          {/* Step 3: Session */}
+          <div
+            className={`${actualStyles.stepCard} ${
+              !selectedCourseGroupId
+                ? ""
+                : selectedCourseId
+                  ? actualStyles.stepCardDone
+                  : actualStyles.stepCardActive
+            }`}
+          >
+            <div className={actualStyles.stepCardHeader}>
+              <div className={actualStyles.stepBadgeRow}>
+                <span
+                  className={`${actualStyles.stepNum} ${
+                    selectedCourseId
+                      ? actualStyles.stepNumDone
+                      : selectedCourseGroupId
+                        ? actualStyles.stepNumActive
+                        : ""
+                  }`}
+                >
+                  {selectedCourseId ? <Check size={12} /> : "3"}
+                </span>
+                <span className={actualStyles.stepLabel}>{t("Step 3 — รอบอบรม / รุ่น", "Step 3 — Session")}</span>
+              </div>
+            </div>
             <select
+              className={actualStyles.stepSelect}
               disabled={!selectedCourseGroup}
               value={selectedCourseId}
               onChange={(event) => {
@@ -1326,7 +1490,7 @@ export default function TrainingActual() {
                 </option>
               ))}
             </select>
-          </label>
+          </div>
         </div>
       </section>
 
@@ -1334,14 +1498,14 @@ export default function TrainingActual() {
         <section className={styles.actualWorkspace}>
           <div className={styles.actualMainPanel}>
             {/* Executive Course Detail Header Banner */}
-            <div className={styles.actualCompactHeader}>
-              <div>
-                <div className={styles.heroBadgeRow}>
-                  <b className={selectedCourse.owner === "CENTER" ? styles.systemSourceBadge : styles.uploadSourceBadge}>
+            <div className={actualStyles.courseSummaryCard}>
+              <div className={actualStyles.courseIdentity}>
+                <div className={actualStyles.courseBadgeRow}>
+                  <span className={selectedCourse.owner === "CENTER" ? actualStyles.ownerPillCenter : actualStyles.ownerPillFactory}>
                     {selectedCourse.owner === "CENTER" ? (
                       <>
                         <Building2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                        {t("ส่วนกลาง", "Center Standard")}
+                        {t("ส่วนกลาง (Center Standard)", "Center Standard")}
                       </>
                     ) : (
                       <>
@@ -1352,98 +1516,116 @@ export default function TrainingActual() {
                         )}
                       </>
                     )}
-                  </b>
-                  <span className={styles.totalBadge}>
-                    Batch <strong>{selectedCourse.batch ?? "1"}</strong>
+                  </span>
+                  <span className={actualStyles.batchBadge}>
+                    {t("รุ่นที่", "Batch")} <strong>{selectedCourse.batch ?? "1"}</strong>
+                  </span>
+                  <span className={actualStyles.courseCodeTag}>
+                    <Pin size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />
+                    {selectedCourse.code}
                   </span>
                 </div>
-                <h3>{selectedCourse.title}</h3>
-                <span className={styles.courseMetaSubtext}>
-                  <Pin size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                  {t("รหัสหลักสูตร", "Course code")}: <strong>{selectedCourse.code}</strong> |{" "}
-                  <Building2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                  {t("บริษัท", "Company")}: <strong>{selectedCourse.company}</strong> |{" "}
-                  <Calendar size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                  {t("วันที่", "Date")}: <strong>{selectedCourse.date}</strong> ({selectedCourse.time})
-                </span>
+
+                <h3 className={actualStyles.courseTitle}>{selectedCourse.title}</h3>
+
+                <div className={actualStyles.courseMetaChips}>
+                  <span className={actualStyles.courseMetaChip}>
+                    <Building2 size={13} />
+                    <span>{t("บริษัท", "Company")}: <strong>{selectedCourse.company}</strong></span>
+                  </span>
+                  <span className={actualStyles.courseMetaChip}>
+                    <Calendar size={13} />
+                    <span>{t("วันที่", "Date")}: <strong>{selectedCourse.date}</strong> ({selectedCourse.time})</span>
+                  </span>
+                  <span className={actualStyles.courseMetaChip}>
+                    <MapPin size={13} />
+                    <span>{t("สถานที่", "Venue")}: <strong>{selectedCourse.room}</strong></span>
+                  </span>
+                  <span className={actualStyles.courseMetaChip}>
+                    <User size={13} />
+                    <span>{t("วิทยากร", "Instructor")}: <strong>{selectedCourse.instructor}</strong></span>
+                  </span>
+                </div>
               </div>
 
-              <div className={styles.actualMiniStats}>
-                <article>
-                  <span>
-                    <MapPin size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                    {t("สถานที่ / ห้อง", "Venue / room")}
-                  </span>
-                  <strong>{selectedCourse.room}</strong>
+              {/* Executive Key Metrics Grid */}
+              <div className={actualStyles.metricsGrid}>
+                <article className={actualStyles.metricCard}>
+                  <div className={actualStyles.metricCardHeader}>
+                    <Wallet size={13} />
+                    <span>{t("งบประมาณตามแผน", "Planned budget")}</span>
+                  </div>
+                  <strong className={actualStyles.metricValue}>THB {formatCurrency(plannedBudget)}</strong>
                 </article>
-                <article>
-                  <span>
-                    <User size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                    {t("วิทยากร", "Instructor")}
-                  </span>
-                  <strong>{selectedCourse.instructor}</strong>
+
+                <article className={actualStyles.metricCard}>
+                  <div className={actualStyles.metricCardHeader}>
+                    <Users size={13} />
+                    <span>{t("ลงทะเบียน", "Registered")}</span>
+                  </div>
+                  <strong className={actualStyles.metricValue}>{t(`${registeredCount} คน`, `${registeredCount}`)}</strong>
                 </article>
-                <article className={styles.actualBudgetStat}>
-                  <span>
-                    <Wallet size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                    {t("งบประมาณที่วางแผน", "Planned budget")}
-                  </span>
-                  <strong>THB {formatCurrency(plannedBudget)}</strong>
+
+                <article className={`${actualStyles.metricCard} ${actualStyles.metricCardAttended}`}>
+                  <div className={actualStyles.metricCardHeader}>
+                    <CheckCircle2 size={13} />
+                    <span>{t("เข้าเรียนจริง", "Attended")}</span>
+                  </div>
+                  <div className={actualStyles.metricAttendedRow}>
+                    <strong className={actualStyles.metricValue}>{t(`${actualCount} คน`, `${actualCount}`)}</strong>
+                    <span className={actualStyles.metricRateBadge}>
+                      {attendees.length ? Math.round((actualCount / attendees.length) * 100) : 0}%
+                    </span>
+                  </div>
                 </article>
-                <article>
-                  <span>
-                    <Users size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                    {t("ลงทะเบียน", "Registered")}
-                  </span>
-                  <strong>{t(`${registeredCount} คน`, `${registeredCount}`)}</strong>
+
+                <article className={`${actualStyles.metricCard} ${absentCount > 0 ? actualStyles.metricCardAbsent : ""}`}>
+                  <div className={actualStyles.metricCardHeader}>
+                    <XCircle size={13} />
+                    <span>{t("ขาดเรียน", "Absent")}</span>
+                  </div>
+                  <strong className={actualStyles.metricValue}>{t(`${absentCount} คน`, `${absentCount}`)}</strong>
                 </article>
-                <article className={styles.actualBudgetStat}>
-                  <span>
-                    <CheckCircle2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4, color: "#10b981" }} />
-                    {t("เข้าเรียนจริง", "Attended")}
-                  </span>
-                  <strong>{t(`${actualCount} คน`, `${actualCount}`)}</strong>
-                </article>
-                <article>
-                  <span>
-                    <XCircle size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4, color: "#ef4444" }} />
-                    {t("ขาดเรียน", "Absent")}
-                  </span>
-                  <strong>{t(`${absentCount} คน`, `${absentCount}`)}</strong>
-                </article>
-                <article className={styles.actualBudgetStat}>
-                  <span>
-                    <BarChart3 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                    {t("ค่าใช้จ่ายจริง / คน", "Actual cost per person")}
-                  </span>
-                  <strong>THB {formatCurrency(actualCostPerPerson)}</strong>
+
+                <article className={`${actualStyles.metricCard} ${actualStyles.metricCardCost}`}>
+                  <div className={actualStyles.metricCardHeader}>
+                    <BarChart3 size={13} />
+                    <span>{t("ค่าใช้จ่าย / คน", "Cost / person")}</span>
+                  </div>
+                  <strong className={actualStyles.metricValue}>THB {formatCurrency(actualCostPerPerson)}</strong>
                 </article>
               </div>
             </div>
 
             {isSelectedCourseReadOnlyForFactory ? (
-              <div className={styles.actualPermissionNote}>
-                {t(
-                  t("แผนจัดอบรมของส่วนกลาง (HRD Center) — โรงงานดูรายงานได้แต่บันทึกการเข้าอบรมหรือค่าใช้จ่ายไม่ได้", "Center plan (HRD Center) — Factory users can view reports but cannot record attendance or expenses"),
-                  "An HRD Center plan. Factory users can read the report but cannot record attendance or cost.",
-                )}
+              <div className={actualStyles.permissionBanner}>
+                <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                <span>
+                  {t(
+                    "แผนจัดอบรมของส่วนกลาง (HRD Center) — โรงงานดูรายงานได้แต่บันทึกการเข้าอบรมหรือค่าใช้จ่ายไม่ได้",
+                    "An HRD Center plan. Factory users can read the report but cannot record attendance or cost.",
+                  )}
+                </span>
               </div>
             ) : isFactoryUser ? (
-              <div className={styles.actualPermissionNote}>
-                Factory permission: courses owned by {userCompanyCode}, plus HRD Center courses (view-only).
+              <div className={actualStyles.permissionBanner}>
+                <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                <span>
+                  Factory permission: courses owned by {userCompanyCode}, plus HRD Center courses (view-only).
+                </span>
               </div>
             ) : null}
 
             {/* Executive Attendance Checklist Workspace */}
-            <div className={styles.attendanceChecklistWorkspace}>
-              <div className={styles.panelHeader}>
-                <div>
-                  <p className={styles.kicker}>Attendance Checklist</p>
-                  <h3>{t("รายการเช็คชื่อเข้าร่วมอบรม", "Attendance sheet")}</h3>
+            <div className={actualStyles.attendanceSection}>
+              <div className={actualStyles.attendanceHeader}>
+                <div className={actualStyles.attendanceHeaderTitle}>
+                  <p className={actualStyles.attendanceHeaderKicker}>Attendance Checklist</p>
+                  <h3 className={actualStyles.attendanceHeaderH3}>{t("รายการเช็คชื่อเข้าร่วมอบรม", "Attendance sheet")}</h3>
                 </div>
-                <div className={styles.attendanceHeaderActions}>
-                  <span className={styles.attendanceProgressBadge}>
-                    <span className={styles.glowingDotGreen} />{" "}
+                <div className={actualStyles.attendanceHeaderActions}>
+                  <span className={actualStyles.attendanceProgressBadge}>
+                    <span className={actualStyles.glowingDotGreen} />{" "}
                     {t(
                       `${t("เข้าเรียน", "Attended")} ${actualCount} / ${attendees.length} ${t("คน", "attendees")}`,
                       `${actualCount} of ${attendees.length} attended`,
@@ -1452,36 +1634,36 @@ export default function TrainingActual() {
                   </span>
                   <button
                     type="button"
-                    className={allAttended ? styles.activeActionButton : styles.actionButton}
+                    className={`${actualStyles.actionBtn} ${allAttended ? actualStyles.actionBtnActive : ""}`}
                     disabled={attendees.length === 0 || isSelectedCourseReadOnlyForFactory}
                     onClick={() => void setAllAttendance(!allAttended)}
                   >
                     {allAttended ? (
                       <>
-                        <X size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        <X size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 2 }} />
                         {t("ยกเลิกเช็คชื่อทั้งหมด", "Clear all")}
                       </>
                     ) : (
                       <>
-                        <Check size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        <Check size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 2 }} />
                         {t("เลือกเช็คชื่อทั้งหมด", "Mark all present")}
                       </>
                     )}
                   </button>
                   <button
                     type="button"
-                    className={isAddingAttendee ? styles.activeActionButton : styles.actionButton}
+                    className={`${actualStyles.actionBtn} ${isAddingAttendee ? actualStyles.actionBtnActive : ""}`}
                     disabled={isSelectedCourseReadOnlyForFactory}
                     onClick={() => setIsAddingAttendee(!isAddingAttendee)}
                   >
                     {isAddingAttendee ? (
                       <>
-                        <X size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        <X size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 2 }} />
                         {t("ยกเลิก", "Cancel")}
                       </>
                     ) : (
                       <>
-                        <Plus size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        <Plus size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 2 }} />
                         {t("เพิ่มรายชื่อผู้เข้าอบรมเพิ่มเติม", "Add more attendees")}
                       </>
                     )}
@@ -1490,10 +1672,10 @@ export default function TrainingActual() {
               </div>
 
               {isAddingAttendee ? (
-                <div className={styles.addAttendeeWorkspace}>
-                  <div className={styles.addAttendeeControls}>
-                    <label style={{ gridColumn: "1 / -1" }}>
-                      {t("ค้นหารายชื่อพนักงาน", "Search employee")}
+                <div className={actualStyles.addAttendeeWorkspace}>
+                  <div>
+                    <label className={actualStyles.addAttendeeLabel}>
+                      <span>{t("ค้นหารายชื่อพนักงานเพื่อเพิ่มในรอบนี้", "Search employee to add to this session")}</span>
                       <SearchableSelect
                         options={masterEmployees.map(employeeSelectOption)}
                         value=""
@@ -1505,59 +1687,53 @@ export default function TrainingActual() {
                   </div>
 
                   {draftAttendees.length > 0 ? (
-                    <div className={styles.tableWrap} style={{ marginTop: 14 }}>
-                      <table className={styles.recordTable}>
+                    <div className={actualStyles.attendanceTableWrap} style={{ marginTop: 8 }}>
+                      <table className={actualStyles.attendanceTable}>
                         <thead>
                           <tr>
                             <th>{t("พนักงาน", "Employee")}</th>
                             <th>{t("บริษัท / สำนักงาน", "Company / office")}</th>
                             <th>{t("หน่วยงาน", "Org unit")}</th>
                             <th>{t("เลเวล", "Level")}</th>
-                            <th></th>
+                            <th style={{ width: 44 }}></th>
                           </tr>
                         </thead>
                         <tbody>
                           {draftAttendees.map((employee) => (
                             <tr key={employee.employeeId}>
                               <td>
-                                <div>
-                                  <strong className={styles.attendeeFirstName}>
+                                <div className={actualStyles.empNameBox}>
+                                  <strong className={actualStyles.empFullName}>
                                     {`${employee.firstNameTh} ${employee.lastNameTh}`.trim()}
                                   </strong>
-                                  <span className={styles.attendeeCodeTag}>{employee.employeeCode}</span>
+                                  <span className={actualStyles.empCodeTag}>{employee.employeeCode}</span>
                                 </div>
                               </td>
                               <td>
-                                <div className={styles.deptCell}>
-                                  <span className={styles.companyPillBadge}>{employee.companyCode}</span>
-                                  <span className={styles.attendeeDeptText}>{employee.functionName || "-"}</span>
+                                <div className={actualStyles.deptBox}>
+                                  <span className={actualStyles.companyBadge}>{employee.companyCode}</span>
+                                  <span className={actualStyles.deptText}>{employee.functionName || "-"}</span>
                                 </div>
                               </td>
                               <td>
-                                <div className={styles.orgCell}>
-                                  <span className={styles.orgText}>{employee.divisionName || "-"}</span>
-                                  <span className={styles.orgSubText}>
+                                <div className={actualStyles.orgBox}>
+                                  <span className={actualStyles.orgMainText}>{employee.divisionName || "-"}</span>
+                                  <span className={actualStyles.orgSubText}>
                                     {[employee.departmentName, employee.sectionName].filter(Boolean).join(" • ") || "-"}
                                   </span>
                                 </div>
                               </td>
                               <td>
-                                <span className={styles.levelBadge}>{employee.levelCode || employee.levelKey || "-"}</span>
+                                <span className={actualStyles.levelTag}>{employee.levelCode || employee.levelKey || "-"}</span>
                               </td>
                               <td>
                                 <button
                                   type="button"
-                                  className={styles.removeDraftAttendeeButton}
+                                  className={actualStyles.removeDraftBtn}
                                   title={t("เอาออกจากรายชื่อ", "Remove")}
                                   onClick={() => removeDraftAttendee(employee.employeeId)}
                                 >
-                                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M3 6h18" />
-                                    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                                    <path d="M10 11v6" />
-                                    <path d="M14 11v6" />
-                                  </svg>
+                                  <X size={15} />
                                 </button>
                               </td>
                             </tr>
@@ -1567,92 +1743,100 @@ export default function TrainingActual() {
                     </div>
                   ) : null}
 
-                  <div className={styles.addAttendeeActions}>
-                    <button
-                      type="button"
-                      disabled={draftAttendees.length === 0 || isSavingDraftAttendees}
-                      onClick={() => void saveDraftAttendees()}
-                    >
-                      {isSavingDraftAttendees ? t("กำลังบันทึก...", "Saving...") : t(`บันทึก (${draftAttendees.length})`, `Save (${draftAttendees.length})`)}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className={actualStyles.saveDraftBtn}
+                    disabled={draftAttendees.length === 0 || isSavingDraftAttendees}
+                    onClick={() => void saveDraftAttendees()}
+                  >
+                    <Check size={14} />
+                    {isSavingDraftAttendees ? t("กำลังบันทึก...", "Saving...") : t(`บันทึก (${draftAttendees.length})`, `Save (${draftAttendees.length})`)}
+                  </button>
                 </div>
               ) : null}
 
               {/* Attendance Toolbar: Company Filters, Status Filters, & Real-Time Search */}
-              <div className={styles.attendeeFilterToolbar}>
-                <div className={styles.companyFilterChips}>
-                  <button
-                    type="button"
-                    className={attendanceCompanyFilter === "ALL" ? styles.activeFilterChip : styles.filterChip}
-                    onClick={() => setAttendanceCompanyFilter("ALL")}
-                  >
-                    {t(`ทุกบริษัท (${attendees.length})`, `All companies (${attendees.length})`)}
-                  </button>
-                  {attendeeCompanyList.map((comp) => {
-                    const count = attendees.filter((a) => a.company === comp).length;
-                    return (
-                      <button
-                        key={comp}
-                        type="button"
-                        className={attendanceCompanyFilter === comp ? styles.activeFilterChip : styles.filterChip}
-                        onClick={() => setAttendanceCompanyFilter(comp)}
-                      >
-                        {comp} ({count})
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className={styles.companyFilterChips}>
-                  <button
-                    type="button"
-                    className={attendanceStatusFilter === "ALL" ? styles.activeFilterChip : styles.filterChip}
-                    onClick={() => setAttendanceStatusFilter("ALL")}
-                  >
-                    {t("ทั้งหมด", "All")}
-                  </button>
-                  <button
-                    type="button"
-                    className={attendanceStatusFilter === "PRESENT" ? styles.activeFilterChip : styles.filterChip}
-                    onClick={() => setAttendanceStatusFilter("PRESENT")}
-                  >
-                    <CheckCircle2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4, color: "#10b981" }} />
-                    {t(`มาเรียน (${actualCount})`, `Present (${actualCount})`)}
-                  </button>
-                  <button
-                    type="button"
-                    className={attendanceStatusFilter === "ABSENT" ? styles.activeFilterChip : styles.filterChip}
-                    onClick={() => setAttendanceStatusFilter("ABSENT")}
-                  >
-                    <XCircle size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4, color: "#ef4444" }} />
-                    {t(`ขาดเรียน (${absentCount})`, `Absent (${absentCount})`)}
-                  </button>
-                </div>
-
-                <div className={styles.attendeeSearchBox}>
-                  <span className={styles.searchIcon}><Search size={14} /></span>
-                  <input
-                    type="text"
-                    placeholder={t("ค้นหาชื่อ, รหัสพนักงาน, แผนก...", "Search a name, code, or department...")}
-                    value={attendanceSearchQuery}
-                    onChange={(e) => setAttendanceSearchQuery(e.target.value)}
-                  />
-                  {attendanceSearchQuery ? (
+              <div className={actualStyles.filterToolbar}>
+                <div className={actualStyles.filterRowCompanies}>
+                  <span className={actualStyles.filterRowLabel}>
+                    <Building2 size={13} /> {t("สังกัดบริษัท:", "Company:")}
+                  </span>
+                  <div className={actualStyles.filterChipsGroup}>
                     <button
                       type="button"
-                      className={styles.clearSearchBtn}
-                      onClick={() => setAttendanceSearchQuery("")}
+                      className={`${actualStyles.filterChip} ${attendanceCompanyFilter === "ALL" ? actualStyles.filterChipActive : ""}`}
+                      onClick={() => setAttendanceCompanyFilter("ALL")}
                     >
-                      <X size={12} />
+                      {t(`ทุกบริษัท (${attendees.length})`, `All companies (${attendees.length})`)}
                     </button>
-                  ) : null}
+                    {attendeeCompanyList.map((comp) => {
+                      const count = attendees.filter((a) => a.company === comp).length;
+                      return (
+                        <button
+                          key={comp}
+                          type="button"
+                          className={`${actualStyles.filterChip} ${attendanceCompanyFilter === comp ? actualStyles.filterChipActive : ""}`}
+                          onClick={() => setAttendanceCompanyFilter(comp)}
+                        >
+                          {comp} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className={actualStyles.filterRowBottom}>
+                  <div className={actualStyles.filterChipsGroup}>
+                    <button
+                      type="button"
+                      className={`${actualStyles.filterChip} ${attendanceStatusFilter === "ALL" ? actualStyles.filterChipActive : ""}`}
+                      onClick={() => setAttendanceStatusFilter("ALL")}
+                    >
+                      {t("ทั้งหมด", "All")}
+                    </button>
+                    <button
+                      type="button"
+                      className={`${actualStyles.filterChip} ${attendanceStatusFilter === "PRESENT" ? actualStyles.filterChipActivePresent : ""}`}
+                      onClick={() => setAttendanceStatusFilter("PRESENT")}
+                    >
+                      <CheckCircle2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 2 }} />
+                      {t(`มาเรียน (${actualCount})`, `Present (${actualCount})`)}
+                    </button>
+                    <button
+                      type="button"
+                      className={`${actualStyles.filterChip} ${attendanceStatusFilter === "ABSENT" ? actualStyles.filterChipActiveAbsent : ""}`}
+                      onClick={() => setAttendanceStatusFilter("ABSENT")}
+                    >
+                      <XCircle size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 2 }} />
+                      {t(`ขาดเรียน (${absentCount})`, `Absent (${absentCount})`)}
+                    </button>
+                  </div>
+
+                  <div className={actualStyles.searchBox}>
+                    <span className={actualStyles.searchIcon}><Search size={14} /></span>
+                    <input
+                      type="text"
+                      className={actualStyles.searchInput}
+                      placeholder={t("ค้นหาชื่อ, รหัสพนักงาน, แผนก...", "Search a name, code, or department...")}
+                      value={attendanceSearchQuery}
+                      onChange={(e) => setAttendanceSearchQuery(e.target.value)}
+                    />
+                    {attendanceSearchQuery ? (
+                      <button
+                        type="button"
+                        className={actualStyles.searchClearBtn}
+                        onClick={() => setAttendanceSearchQuery("")}
+                      >
+                        <X size={11} />
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               </div>
 
               {/* Attendance Table */}
-              <div className={`${styles.tableWrap} ${styles.attendanceTableWrap}`}>
-                <table className={styles.recordTable}>
+              <div className={actualStyles.attendanceTableWrap}>
+                <table className={actualStyles.attendanceTable}>
                   <thead>
                     <tr>
                       <th style={{ width: "135px" }}>{t("เข้าร่วม", "Attended")}</th>
@@ -1666,10 +1850,10 @@ export default function TrainingActual() {
                     {pagedAttendees.map((attendee) => (
                       <tr
                         key={attendee.id}
-                        className={attendee.attended ? styles.attendedRow : undefined}
+                        className={attendee.attended ? actualStyles.rowAttended : undefined}
                       >
-                        <td className={styles.checkCell}>
-                          <label className={styles.attendanceCheckLabel}>
+                        <td>
+                          <label className={actualStyles.attendanceToggleLabel}>
                             <input
                               type="checkbox"
                               checked={attendee.attended}
@@ -1677,57 +1861,57 @@ export default function TrainingActual() {
                               onChange={() => void toggleAttendance(attendee.id, attendee.attended)}
                             />
                             <span
-                              className={
+                              className={`${actualStyles.togglePill} ${
                                 attendee.attended
-                                  ? styles.passBadge
-                                  : styles.failBadge
-                              }
+                                  ? actualStyles.togglePillPresent
+                                  : actualStyles.togglePillAbsent
+                              }`}
                             >
                               {attendee.attended ? (
                                 <>
-                                  <span className={styles.glowingDotGreen} /> {t("มาเรียน", "Present")}
+                                  <span className={actualStyles.glowingDotGreen} /> {t("มาเรียน", "Present")}
                                 </>
                               ) : (
                                 <>
-                                  <span className={styles.glowingDotRed} /> {t("ขาดเรียน", "Absent")}
+                                  <span className={actualStyles.glowingDotRed} /> {t("ขาดเรียน", "Absent")}
                                 </>
                               )}
                             </span>
                           </label>
                         </td>
                         <td>
-                          <div>
-                            <strong className={styles.attendeeFirstName}>
+                          <div className={actualStyles.empNameBox}>
+                            <strong className={actualStyles.empFullName}>
                               {attendee.prefix !== "-" ? `${attendee.prefix} ` : ""}
                               {attendee.firstName} {attendee.lastName}
                             </strong>
-                            <span className={styles.attendeeCodeTag}>{attendee.employeeCode}</span>
+                            <span className={actualStyles.empCodeTag}>{attendee.employeeCode}</span>
                           </div>
                         </td>
                         <td>
-                          <div className={styles.deptCell}>
-                            <span className={styles.companyPillBadge}>{attendee.company || "-"}</span>
-                            <span className={styles.attendeeDeptText}>{attendee.department || "-"}</span>
+                          <div className={actualStyles.deptBox}>
+                            <span className={actualStyles.companyBadge}>{attendee.company || "-"}</span>
+                            <span className={actualStyles.deptText}>{attendee.department || "-"}</span>
                           </div>
                         </td>
                         <td>
-                          <div className={styles.orgCell}>
-                            <span className={styles.orgText}>{attendee.section || "-"}</span>
-                            <span className={styles.orgSubText}>{attendee.division || "-"}</span>
+                          <div className={actualStyles.orgBox}>
+                            <span className={actualStyles.orgMainText}>{attendee.section || "-"}</span>
+                            <span className={actualStyles.orgSubText}>{attendee.division || "-"}</span>
                           </div>
                         </td>
                         <td>
-                          <div className={styles.posCell}>
-                            <span className={styles.positionText}>{attendee.position || "-"}</span>
-                            <span className={styles.levelBadge}>{attendee.level || "-"}</span>
+                          <div className={actualStyles.posBox}>
+                            <span className={actualStyles.posTitleText}>{attendee.position || "-"}</span>
+                            <span className={actualStyles.levelTag}>{attendee.level || "-"}</span>
                           </div>
                         </td>
                       </tr>
                     ))}
                     {pagedAttendees.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className={styles.emptyTableMessage}>
-                          <Search size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        <td colSpan={5} className={actualStyles.emptySearchRow}>
+                          <Search size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
                           {t("ไม่พบรายชื่อพนักงานตามเงื่อนไขค้นหา", "No attendee matches this search")}
                         </td>
                       </tr>
@@ -1735,73 +1919,95 @@ export default function TrainingActual() {
                   </tbody>
                 </table>
               </div>
-            </div>
 
-            {totalPages > 1 ? (
-              <div className={styles.actualPaginationBar}>
-                <span className={styles.paginationInfo}>
-                  {t(
-                    `${t("แสดง", "Showing")} ${startIndex + 1}-${Math.min(startIndex + PAGE_SIZE, attendees.length)} ${t("จากทั้งหมด", "of")} ${attendees.length} ${t("คน", "attendees")} (${t("หน้า", "page")} ${activePage} ${t("จาก", "of")} ${totalPages})`,
-                    `Showing ${startIndex + 1}-${Math.min(startIndex + PAGE_SIZE, attendees.length)} of ${attendees.length} (page ${activePage} of ${totalPages})`,
-                  )}
-                </span>
-                <div className={styles.paginationNav}>
-                  <button
-                    className={styles.pageBtn}
-                    type="button"
-                    disabled={activePage === 1}
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    title={t("หน้าก่อนหน้า", "Previous page")}
-                  >
-                    ‹
-                  </button>
-
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              {totalPages > 1 ? (
+                <div className={actualStyles.paginationBar}>
+                  <span className={actualStyles.paginationInfo}>
+                    {t(
+                      `${t("แสดง", "Showing")} ${startIndex + 1}-${Math.min(startIndex + PAGE_SIZE, attendees.length)} ${t("จากทั้งหมด", "of")} ${attendees.length} ${t("คน", "attendees")} (${t("หน้า", "page")} ${activePage} ${t("จาก", "of")} ${totalPages})`,
+                      `Showing ${startIndex + 1}-${Math.min(startIndex + PAGE_SIZE, attendees.length)} of ${attendees.length} (page ${activePage} of ${totalPages})`,
+                    )}
+                  </span>
+                  <div className={actualStyles.paginationNav}>
                     <button
-                      key={p}
-                      className={`${styles.pageBtn} ${p === activePage ? styles.pageBtnActive : ""}`}
+                      className={actualStyles.pageButton}
                       type="button"
-                      onClick={() => setCurrentPage(p)}
+                      disabled={activePage === 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      title={t("หน้าก่อนหน้า", "Previous page")}
                     >
-                      {p}
+                      ‹
                     </button>
-                  ))}
 
-                  <button
-                    className={styles.pageBtn}
-                    type="button"
-                    disabled={activePage === totalPages}
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    title={t("หน้าถัดไป", "Next page")}
-                  >
-                    ›
-                  </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                      <button
+                        key={p}
+                        className={`${actualStyles.pageButton} ${p === activePage ? actualStyles.pageButtonActive : ""}`}
+                        type="button"
+                        onClick={() => setCurrentPage(p)}
+                      >
+                        {p}
+                      </button>
+                    ))}
+
+                    <button
+                      className={actualStyles.pageButton}
+                      type="button"
+                      disabled={activePage === totalPages}
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      title={t("หน้าถัดไป", "Next page")}
+                    >
+                      ›
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
             {selectedCourse ? <PendingGradingPanel planId={selectedCourse.id} onGraded={(id) => void handleGraded(id)} /> : null}
-            <section className={styles.actualResultsPanel} aria-label="Training results">
-              <div className={styles.actualResultsHeader}>
-                <div>
-                  <span>{t("ผลการอบรม", "Training result")}</span>
-                  <strong>Training Result</strong>
+            {/* Executive Training Results & Assessment Panel */}
+            <section className={actualStyles.resultsSection} aria-label="Training results">
+              <div className={actualStyles.resultsHeader}>
+                <div className={actualStyles.resultsHeaderTitle}>
+                  <p className={actualStyles.resultsHeaderKicker}>Evaluation & Assessment</p>
+                  <h3 className={actualStyles.resultsHeaderH3}>{t("ผลการอบรมและคะแนนสอบ", "Training Results & Scores")}</h3>
                 </div>
-                <div className={styles.attendanceHeaderActions}>
-                  <small>{attendees.filter((a) => a.attended).length} attended</small>
+                <div className={actualStyles.attendanceHeaderActions}>
+                  {evaluationSubmissionsCount !== null && selectedCourse ? (
+                    <a
+                      className={actualStyles.evaluationResultsButton}
+                      href={`/training-record/evaluations/${selectedCourse.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={t("ดูผลการตอบกลับแบบประเมินทั้งหมด", "View all evaluation responses")}
+                    >
+                      <BarChart3 size={14} />
+                      {t("ดูการตอบกลับแบบประเมิน", "Evaluation responses")}
+                      <span className={actualStyles.evaluationResultsBadge}>
+                        {evaluationSubmissionsCount > 99 ? "99+" : evaluationSubmissionsCount}
+                      </span>
+                    </a>
+                  ) : null}
+                  <span className={actualStyles.attendanceProgressBadge}>
+                    <CheckCircle2 size={13} style={{ color: "#10b981" }} />
+                    {t(
+                      `เข้าเรียน ${attendees.filter((a) => a.attended).length} คน`,
+                      `${attendees.filter((a) => a.attended).length} attended`,
+                    )}
+                  </span>
                   <button
                     type="button"
-                    className={allPassed ? styles.activeActionButton : styles.actionButton}
+                    className={`${actualStyles.actionBtn} ${allPassed ? actualStyles.actionBtnActive : ""}`}
                     disabled={attendees.length === 0 || isSelectedCourseReadOnlyForFactory}
                     onClick={() => setAllCompletion(allPassed ? "NOT_COMPLETED" : "COMPLETED")}
                   >
                     {allPassed ? (
                       <>
-                        <X size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        <X size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 2 }} />
                         {t("ยกเลิกผ่านทั้งหมด", "Clear all passes")}
                       </>
                     ) : (
                       <>
-                        <Check size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        <Check size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 2 }} />
                         {t("เลือกผ่านทั้งหมด", "Pass everyone")}
                       </>
                     )}
@@ -1810,222 +2016,349 @@ export default function TrainingActual() {
               </div>
 
               {assessment.preTest.mode === "NONE" && assessment.postTest.mode === "NONE" ? (
-                <p className={styles.actualResultsNote}>
-                  {t(
-                    t("หลักสูตรนี้ไม่ได้กำหนดแบบทดสอบ จึงไม่มีคะแนนให้บันทึก", "No test configured for this course, no score to record"),
-                    "This course has no test configured, so there is no score to record",
-                  )}
-                </p>
+                <div className={actualStyles.resultsNotice}>
+                  <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                  <span>
+                    {t(
+                      "หลักสูตรนี้ไม่ได้กำหนดแบบทดสอบ จึงไม่มีคะแนนให้บันทึก",
+                      "This course has no test configured, so there is no score to record",
+                    )}
+                  </span>
+                </div>
               ) : null}
               {assessment.preTest.mode === "LINK" || assessment.postTest.mode === "LINK" ? (
-                <p className={styles.actualResultsNote}>
-                  {t(
-                    t("แบบทดสอบใช้ลิงก์ภายนอก ระบบมองไม่เห็นคะแนน กรุณากรอกเอง", "Test uses external link. Scores cannot be tracked automatically, please enter manually"),
-                    "The test is an external link, so this system cannot read the score - enter it manually",
-                  )}
-                </p>
+                <div className={actualStyles.resultsNotice}>
+                  <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                  <span>
+                    {t(
+                      "แบบทดสอบใช้ลิงก์ภายนอก ระบบมองไม่เห็นคะแนน กรุณากรอกคะแนนด้วยตนเอง",
+                      "The test is an external link, so this system cannot read the score - enter it manually",
+                    )}
+                  </span>
+                </div>
               ) : null}
 
               {attendees.length === 0 ? (
-                <p className={styles.actualResultsEmpty}>
+                <div className={actualStyles.resultsEmptyBox}>
                   {t("ยังไม่มีผู้เข้าอบรมที่อนุมัติแล้ว", "No approved attendee yet")}
-                </p>
+                </div>
               ) : (
-                <div className={styles.actualResultsRows}>
-                  {attendees.map((attendee) => {
-                    const saved = enrollments.find((e) => e.id === attendee.id);
-                    const draft = resultDrafts[attendee.id] ?? emptyResultDraft;
-                    const system = saved ? systemScores(saved) : null;
-                    const fromSystem = Boolean(system && (system.preScore !== null || system.postScore !== null));
-                    return (
-                      <article key={attendee.id} className={styles.actualResultRow}>
-                        {/* The pass tick leads the row, the way the attendance sheet's does: it is
-                            the decision HRD is here to make, and every field after it only supports
-                            that decision. Unticked reads as "not passed" in red rather than as an
-                            empty box, so a row nobody has looked at cannot pass for a considered
-                            "no" at a glance. */}
-                        <label className={styles.resultPassLead}>
-                          <input
-                            type="checkbox"
-                            checked={draft.completionStatus === "COMPLETED"}
-                            disabled={isSelectedCourseReadOnlyForFactory}
-                            onChange={() =>
-                              setResultField(
-                                attendee.id,
-                                "completionStatus",
-                                draft.completionStatus === "COMPLETED" ? "NOT_COMPLETED" : "COMPLETED",
-                              )
-                            }
-                          />
-                          <span
-                            className={
-                              draft.completionStatus === "COMPLETED" ? styles.passBadge : styles.failBadge
-                            }
-                          >
-                            {draft.completionStatus === "COMPLETED" ? (
-                              <>
-                                <span className={styles.glowingDotGreen} /> {t("ผ่าน", "Passed")}
-                              </>
-                            ) : (
-                              <>
-                                <span className={styles.glowingDotRed} />{" "}
-                                {draft.completionStatus === "PENDING" ? t("ยังไม่ระบุ", "Not decided") : t("ไม่ผ่าน", "Not passed")}
-                              </>
-                            )}
-                          </span>
-                        </label>
-                        <div className={styles.actualResultWho}>
-                          <strong>{attendee.name}</strong>
-                          <small>
-                            {attendee.employeeCode || "-"} · {attendee.company}
-                            {attendee.attended ? "" : t(" · ไม่ได้เข้าอบรม", " · absent")}
-                            {fromSystem ? t(" · คะแนนจากแบบทดสอบในระบบ", " · scored by the system") : ""}
-                          </small>
-                        </div>
-
-                        {/* A course with no test at this stage has no score to record. Leaving the
-                            box on screen invites a mark for an exam that never happened onto a
-                            document the employee hands to an employer. */}
-                        {/* The mark and the full marks it is out of, with what the two come to
-                            underneath. The box used to hold the percentage alone, so a test out of
-                            10 showed "80" and read as eighty marks. The percentage still has to be
-                            on screen: it is what the pass mark is compared against, and it is what
-                            the database stores. */}
-                        {/* Both stages sit in one block so they wrap together rather than leaving
-                            Post's boxes stranded on a line of their own. */}
-                        <div className={styles.resultScoreGroups}>
-                          {(["pre", "post"] as const).map((stage) => {
-                            const stageInfo = assessment[stage === "pre" ? "preTest" : "postTest"];
-                            if (stageInfo.mode === "NONE") return null;
-                            const scoreKey = `${stage}Score` as const;
-                            const maxKey = `${stage}ScoreMax` as const;
-                            const percent = percentOfMark(draft[scoreKey], draft[maxKey]);
-                            // An in-system form counts its own marks. Letting HRD retype that total
-                            // would let the screen disagree with the paper the mark was scored on.
-                            const totalIsFixed = stageInfo.mode === "FORM";
-                            return (
-                              <div key={stage} className={styles.resultScoreGroup}>
-                                <label className={styles.resultScoreField}>
-                                  {stage === "pre" ? "Pre" : "Post"}
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={draft[scoreKey]}
-                                    onChange={(event) => setResultField(attendee.id, scoreKey, event.target.value)}
-                                  />
-                                </label>
-                                {/* Reads as "mark / full marks" at a glance, which is what the two
-                                    boxes are - two labelled boxes side by side did not say it. */}
-                                <span className={styles.resultScoreSlash} aria-hidden="true">
-                                  /
-                                </span>
-                                <label className={styles.resultScoreField}>
-                                  {t("เต็ม", "of")}
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    readOnly={totalIsFixed}
-                                    value={draft[maxKey]}
-                                    onChange={(event) => setResultField(attendee.id, maxKey, event.target.value)}
-                                  />
-                                </label>
-                                <small className={styles.resultScorePercent}>
-                                  {percent === null
-                                    ? t("ใส่คะแนนเต็มเพื่อคิด %", "Enter the full marks for a %")
-                                    : t(`เทียบเป็น ${percent}%/100%`, `${percent}% of 100%`)}
-                                </small>
-                              </div>
-                            );
-                          })}
-                        </div>
-                        {/* The certificate number is not entered here for now. The draft still
-                            carries whatever is stored, so a save leaves an existing number
-                            untouched rather than clearing it. */}
-                        {/* A course with no validity period has no expiry to record. The box used
-                            to appear for every course, inviting a date that means nothing. */}
-                        {validityMonths === null ? null : (
-                          <label>
-                            {t("หมดอายุ", "Expires")}
-                            <input
-                              type="date"
-                              value={draft.validUntil}
-                              onChange={(event) =>
-                                setResultField(attendee.id, "validUntil", event.target.value)
-                              }
-                            />
-                          </label>
+                <div className={actualStyles.assessmentTableWrap}>
+                  <table className={actualStyles.assessmentTable}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: "115px" }}>{t("ผลการประเมิน", "Result")}</th>
+                        <th>{t("ข้อมูลผู้เข้าอบรม", "Attendee")}</th>
+                        {assessment.preTest.mode !== "NONE" && (
+                          <th style={{ width: "190px" }}>{t("คะแนนก่อนอบรม (Pre)", "Pre-Test Score")}</th>
                         )}
+                        {assessment.postTest.mode !== "NONE" && (
+                          <th style={{ width: "190px" }}>{t("คะแนนหลังอบรม (Post)", "Post-Test Score")}</th>
+                        )}
+                        <th style={{ width: "135px" }}>{t("แบบประเมิน", "Evaluation")}</th>
+                        {validityMonths !== null && (
+                          <th style={{ width: "150px" }}>{t("วันหมดอายุ", "Expires")}</th>
+                        )}
+                        <th style={{ width: "140px", textAlign: "right" }}>{t("การจัดการ", "Actions")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {attendees.map((attendee) => {
+                        const saved = enrollments.find((e) => e.id === attendee.id);
+                        const draft = resultDrafts[attendee.id] ?? emptyResultDraft;
+                        const system = saved ? systemScores(saved) : null;
+                        const fromSystem = Boolean(system && (system.preScore !== null || system.postScore !== null));
+                        const isCompleted = draft.completionStatus === "COMPLETED";
 
-                        {/* One button for both stages. Two separate links each named an attempt
-                            count but opened a single paper, which read as a promise the click did
-                            not keep - the card lists every attempt instead. */}
-                        {(() => {
-                          const attemptCount =
-                            (saved?.plan.assessment.preTest.attempts.length ?? 0) +
-                            (saved?.plan.assessment.postTest.attempts.length ?? 0);
-                          if (attemptCount === 0) return null;
-                          return (
-                            <span className={styles.resultReviewLinks}>
-                              <button
-                                type="button"
-                                className={styles.resultReviewLink}
-                                onClick={() =>
-                                  setAttemptsCard({
-                                    enrollmentId: attendee.id,
-                                    name: attendee.name,
-                                    preTest: saved!.plan.assessment.preTest,
-                                    postTest: saved!.plan.assessment.postTest,
-                                  })
-                                }
-                              >
-                                <FileText size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                                {t(`ดูการทำแบบทดสอบ (${attemptCount})`, `Test attempts (${attemptCount})`)}
-                              </button>
-                            </span>
-                          );
-                        })()}
+                        return (
+                          <tr
+                            key={attendee.id}
+                            className={isCompleted ? actualStyles.assessmentRowPassed : undefined}
+                          >
+                            {/* Col 1: Status Toggle */}
+                            <td>
+                              <label className={actualStyles.resultPassToggleLabel}>
+                                <input
+                                  type="checkbox"
+                                  checked={isCompleted}
+                                  disabled={isSelectedCourseReadOnlyForFactory}
+                                  onChange={() =>
+                                    setResultField(
+                                      attendee.id,
+                                      "completionStatus",
+                                      isCompleted ? "NOT_COMPLETED" : "COMPLETED",
+                                    )
+                                  }
+                                />
+                                <span
+                                  className={`${actualStyles.resultPassPill} ${
+                                    isCompleted
+                                      ? actualStyles.resultPassPillCompleted
+                                      : draft.completionStatus === "PENDING"
+                                        ? actualStyles.resultPassPillPending
+                                        : actualStyles.resultPassPillNotCompleted
+                                  }`}
+                                >
+                                  {isCompleted ? (
+                                    <>
+                                      <span className={actualStyles.glowingDotGreen} /> {t("ผ่าน", "Passed")}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className={actualStyles.glowingDotRed} />{" "}
+                                      {draft.completionStatus === "PENDING" ? t("ยังไม่ระบุ", "Pending") : t("ไม่ผ่าน", "Failed")}
+                                    </>
+                                  )}
+                                </span>
+                              </label>
+                            </td>
 
-                        {saved?.result ? (
-                          <small className={styles.actualResultSaved}>
-                            {t("บันทึกแล้ว: ", "Saved: ")}
-                            {completionStatusLabel(saved.result.completionStatus, language)}
-                          </small>
-                        ) : null}
-                      </article>
-                    );
-                  })}
+                            {/* Col 2: Attendee Info */}
+                            <td>
+                              <div className={actualStyles.assessmentAttendeeBox}>
+                                <strong className={actualStyles.resultAttendeeName}>{attendee.name}</strong>
+                                <div className={actualStyles.resultAttendeeMeta}>
+                                  <span className={actualStyles.empCodeTag}>{attendee.employeeCode || "-"}</span>
+                                  <span className={actualStyles.companyBadge}>{attendee.company}</span>
+                                  {!attendee.attended && (
+                                    <span className={actualStyles.resultAbsentBadge}>
+                                      {t("ขาดเรียน", "Absent")}
+                                    </span>
+                                  )}
+                                  {fromSystem && (
+                                    <span className={actualStyles.resultSystemBadge}>
+                                      {t("คะแนนในระบบ", "System")}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Col 3: Pre-Test (if enabled) */}
+                            {assessment.preTest.mode !== "NONE" && (() => {
+                              const percent = percentOfMark(draft.preScore, draft.preScoreMax);
+                              const totalIsFixed = assessment.preTest.mode === "FORM";
+                              return (
+                                <td>
+                                  <div className={actualStyles.scoreInputBox}>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      className={actualStyles.scoreNumInput}
+                                      value={draft.preScore}
+                                      placeholder="0"
+                                      disabled={isSelectedCourseReadOnlyForFactory}
+                                      onChange={(event) => setResultField(attendee.id, "preScore", event.target.value)}
+                                    />
+                                    <span className={actualStyles.scoreSlash}>/</span>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      readOnly={totalIsFixed}
+                                      disabled={isSelectedCourseReadOnlyForFactory}
+                                      className={actualStyles.scoreNumInput}
+                                      value={draft.preScoreMax}
+                                      placeholder="0"
+                                      onChange={(event) => setResultField(attendee.id, "preScoreMax", event.target.value)}
+                                    />
+                                    {percent !== null ? (
+                                      <span className={actualStyles.scorePctTag}>{percent}%</span>
+                                    ) : (
+                                      <span className={actualStyles.scorePctPending}>-%</span>
+                                    )}
+                                  </div>
+                                </td>
+                              );
+                            })()}
+
+                            {/* Col 4: Post-Test (if enabled) */}
+                            {assessment.postTest.mode !== "NONE" && (() => {
+                              const percent = percentOfMark(draft.postScore, draft.postScoreMax);
+                              const totalIsFixed = assessment.postTest.mode === "FORM";
+                              return (
+                                <td>
+                                  <div className={actualStyles.scoreInputBox}>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      className={actualStyles.scoreNumInput}
+                                      value={draft.postScore}
+                                      placeholder="0"
+                                      disabled={isSelectedCourseReadOnlyForFactory}
+                                      onChange={(event) => setResultField(attendee.id, "postScore", event.target.value)}
+                                    />
+                                    <span className={actualStyles.scoreSlash}>/</span>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      readOnly={totalIsFixed}
+                                      disabled={isSelectedCourseReadOnlyForFactory}
+                                      className={actualStyles.scoreNumInput}
+                                      value={draft.postScoreMax}
+                                      placeholder="0"
+                                      onChange={(event) => setResultField(attendee.id, "postScoreMax", event.target.value)}
+                                    />
+                                    {percent !== null ? (
+                                      <span className={actualStyles.scorePctTag}>{percent}%</span>
+                                    ) : (
+                                      <span className={actualStyles.scorePctPending}>-%</span>
+                                    )}
+                                  </div>
+                                </td>
+                              );
+                            })()}
+
+                            {/* Col: Evaluation */}
+                            <td>
+                              {(() => {
+                                const evalStage = saved?.plan.assessment.evaluation ?? assessment.evaluation;
+                                const isDone = Boolean(saved?.plan.assessment.evaluation.submission?.submittedAt);
+                                const state = evaluationStateOf(evalStage, isDone);
+                                return (
+                                  <span
+                                    className={`${actualStyles.evalStatusPill} ${
+                                      state === "Done"
+                                        ? actualStyles.evalStatusDone
+                                        : state === "Pending"
+                                          ? actualStyles.evalStatusPending
+                                          : actualStyles.evalStatusNeutral
+                                    }`}
+                                  >
+                                    {state === "Done" ? (
+                                      <>
+                                        <span className={actualStyles.glowingDotGreen} /> {t("ทำแล้ว", "Done")}
+                                      </>
+                                    ) : state === "None" ? (
+                                      t("ไม่มีแบบประเมิน", "No form")
+                                    ) : state === "External" ? (
+                                      t("ทำผ่านลิงก์", "External link")
+                                    ) : (
+                                      <>
+                                        <span className={actualStyles.glowingDotAmber} /> {t("รอดำเนินการ", "Pending")}
+                                      </>
+                                    )}
+                                  </span>
+                                );
+                              })()}
+                            </td>
+
+                            {/* Col 5: Expiry Date (if validity period configured) */}
+                            {validityMonths !== null && (
+                              <td>
+                                <input
+                                  type="date"
+                                  disabled={isSelectedCourseReadOnlyForFactory}
+                                  className={actualStyles.resultExpiryInput}
+                                  value={draft.validUntil}
+                                  onChange={(event) =>
+                                    setResultField(attendee.id, "validUntil", event.target.value)
+                                  }
+                                />
+                              </td>
+                            )}
+
+                            {/* Col 6: Actions / Attempts */}
+                            <td style={{ textAlign: "right" }}>
+                              <div className={actualStyles.assessmentActionsCell}>
+                                {(() => {
+                                  const attemptCount =
+                                    (saved?.plan.assessment.preTest.attempts.length ?? 0) +
+                                    (saved?.plan.assessment.postTest.attempts.length ?? 0);
+                                  if (attemptCount === 0) return null;
+                                  return (
+                                    <button
+                                      type="button"
+                                      className={actualStyles.resultReviewBtn}
+                                      onClick={() =>
+                                        setAttemptsCard({
+                                          enrollmentId: attendee.id,
+                                          name: attendee.name,
+                                          preTest: saved!.plan.assessment.preTest,
+                                          postTest: saved!.plan.assessment.postTest,
+                                        })
+                                      }
+                                    >
+                                      <FileText size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />
+                                      {t(`ดูแบบทดสอบ (${attemptCount})`, `Attempts (${attemptCount})`)}
+                                    </button>
+                                  );
+                                })()}
+                                {saved?.result && (
+                                  <span className={actualStyles.resultSavedPill}>
+                                    <Check size={12} />
+                                    {completionStatusLabel(saved.result.completionStatus, language)}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
 
-              <p className={styles.actualResultsNote}>
-                {t(
-                  t("กรอกแล้วกดปุ่มบันทึกด้านขวาครั้งเดียว บันทึกทั้งค่าใช้จ่ายและผลการอบรมพร้อมกัน", "Enter values and click Save on the right to save both expenses and training results"),
-                  "Fill these in and use the single save button on the right - it saves the expenses and the results together",
-                )}
-              </p>
+              <div className={actualStyles.resultsFooterBanner}>
+                <AlertTriangle size={15} style={{ flexShrink: 0, color: "var(--ui-30-primary)" }} />
+                <span>
+                  {t(
+                    "กรอกคะแนนและผลการอบรมแล้ว กดปุ่มบันทึกที่แผงด้านขวา เพื่อบันทึกทั้งค่าใช้จ่ายและผลการอบรมพร้อมกัน",
+                    "Fill these in and click Save on the right sidebar - it saves expenses and training results together.",
+                  )}
+                </span>
+              </div>
             </section>
 
           </div>
 
           {/* Executive Expense Calculation Sidebar */}
-          <aside className={styles.actualCostPanel} aria-label="Actual training expenses">
-            <div className={styles.actualCostHeader}>
-              <div>
-                <p className={styles.kicker}>Expense Calculation</p>
-                <h3>{t("บันทึกค่าใช้จ่ายจริง", "Record the actual cost")}</h3>
-                <span>{t("บันทึกค่าใช้จ่ายจริงที่เกิดขึ้นในการอบรม", "What the training actually cost")}</span>
+          <aside className={actualStyles.sidebarPanel} aria-label="Actual training expenses">
+            <div className={actualStyles.sidebarHeader}>
+              <div className={actualStyles.sidebarHeaderTopRow}>
+                <div>
+                  <p className={actualStyles.sidebarKicker}>Expense Calculation</p>
+                  <h3 className={actualStyles.sidebarTitle}>{t("บันทึกค่าใช้จ่ายจริง", "Record the actual cost")}</h3>
+                </div>
+                <div className={actualStyles.sidebarExpenseActions}>
+                  <button
+                    type="button"
+                    className={actualStyles.autoFillBtn}
+                    onClick={handleAutoFillFromBudget}
+                    disabled={isSelectedCourseReadOnlyForFactory || !costBreakdown?.plannedTotals}
+                    title={t("ดึงค่าใช้จ่ายจริงตามงบประมาณที่วางแผนไว้", "Auto-fill actual expenses from planned budget")}
+                  >
+                    <Zap size={13} />
+                    <span>{t("ดึงตามงบประมาณ", "Auto-fill")}</span>
+                  </button>
+                  {hasExpenseInputs && !isSelectedCourseReadOnlyForFactory ? (
+                    <button
+                      type="button"
+                      className={actualStyles.clearExpensesBtn}
+                      onClick={handleClearExpenses}
+                      title={t("ล้างค่าใช้จ่ายที่กรอกไว้", "Clear entered expenses")}
+                    >
+                      <X size={13} />
+                    </button>
+                  ) : null}
+                </div>
               </div>
+              <span className={actualStyles.sidebarSubtitle}>{t("บันทึกค่าใช้จ่ายจริงที่เกิดขึ้นในการอบรม", "What the training actually cost")}</span>
             </div>
 
-            <div className={styles.actualCostGrid}>
+            <div className={actualStyles.expenseGrid}>
               {expenseFields.map((field) => (
-                <label key={field.key} className={styles.expenseInputCard}>
-                  <div className={styles.expenseLabelHeader}>
-                    <span>{getExpenseIcon(field.key)} {field.label}</span>
+                <label key={field.key} className={actualStyles.expenseCard}>
+                  <div className={actualStyles.expenseCardHeader}>
+                    <div className={actualStyles.expenseIconBadge}>
+                      {getExpenseIcon(field.key, 15)}
+                    </div>
+                    <span className={actualStyles.expenseCardLabel}>{field.label}</span>
                   </div>
-                  <div className={styles.expenseInputWrap}>
-                    <span className={styles.currencyPrefix}>THB</span>
+                  <div className={actualStyles.expenseInputRow}>
+                    <span className={actualStyles.expenseCurrencyTag}>THB</span>
                     <input
+                      className={actualStyles.expenseInputField}
                       inputMode="decimal"
                       disabled={isSelectedCourseReadOnlyForFactory}
                       placeholder="0"
@@ -2037,60 +2370,76 @@ export default function TrainingActual() {
               ))}
             </div>
 
-            <div className={styles.actualTotalBox}>
-              <span>{t("รวมค่าใช้จ่ายจริง (ยังไม่บันทึก)", "Actual cost (unsaved draft)")}</span>
-              <strong>THB {formatCurrency(expenseTotal)}</strong>
+            <div className={actualStyles.totalDraftCard}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div className={actualStyles.expenseIconBadge} style={{ width: 34, height: 34, borderRadius: 9, background: "rgba(0, 122, 61, 0.15)", color: "var(--ui-30-primary)" }}>
+                  <Wallet size={18} />
+                </div>
+                <div className={actualStyles.totalDraftLabel}>
+                  <span>{t("รวมค่าใช้จ่ายจริง", "Actual cost")}</span>
+                  <small>{t("ฉบับร่างที่ยังไม่บันทึก", "Unsaved draft")}</small>
+                </div>
+              </div>
+              <strong className={actualStyles.totalDraftValue}>THB {formatCurrency(expenseTotal)}</strong>
             </div>
 
             {/* Variance Analysis Table */}
-            <div className={`${styles.tableWrap}`}>
-              <table className={styles.recordTable}>
-                <thead>
-                  <tr>
-                    <th>{t("หมวดหมู่", "Category")}</th>
-                    <th>{t("งบประมาณ", "Planned")}</th>
-                    <th>{t("จ่ายจริง", "Actual")}</th>
-                    <th>{t("ส่วนต่าง", "Variance")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {expenseFields.map((field) => {
-                    const planned = costBreakdown?.plannedTotals[field.key] ?? 0;
-                    const actual = costBreakdown?.actualTotals[field.key] ?? 0;
-                    const variance = planned - actual;
-                    return (
-                      <tr key={field.key}>
-                        <td>{getExpenseIcon(field.key)} {field.label}</td>
-                        <td>THB {formatCurrency(planned)}</td>
-                        <td>THB {formatCurrency(actual)}</td>
-                        <td className={variance < 0 ? styles.actualBudgetOverrun : undefined}>
-                          {variance >= 0 ? `+THB ${formatCurrency(variance)}` : `-THB ${formatCurrency(Math.abs(variance))}`}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  <tr>
-                    <td><strong>{t("รวมทั้งหมด", "Total")}</strong></td>
-                    <td><strong>THB {formatCurrency(plannedBudget)}</strong></td>
-                    <td><strong>THB {formatCurrency(savedActualTotal)}</strong></td>
-                    <td className={remainingBudget < 0 ? styles.actualBudgetOverrun : undefined}>
-                      <strong>{remainingBudget >= 0 ? `+THB ${formatCurrency(remainingBudget)}` : `-THB ${formatCurrency(Math.abs(remainingBudget))}`}</strong>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className={actualStyles.varianceCard}>
+              <h4 className={actualStyles.varianceCardTitle}>{t("เปรียบเทียบงบประมาณ & จ่ายจริง", "Planned vs Actual Variance")}</h4>
+              <div className={actualStyles.miniTableWrap}>
+                <table className={actualStyles.miniTable}>
+                  <thead>
+                    <tr>
+                      <th>{t("หมวดหมู่", "Category")}</th>
+                      <th>{t("งบประมาณ", "Planned")}</th>
+                      <th>{t("จ่ายจริง", "Actual")}</th>
+                      <th style={{ textAlign: "right" }}>{t("ส่วนต่าง", "Variance")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expenseFields.map((field) => {
+                      const planned = costBreakdown?.plannedTotals[field.key] ?? 0;
+                      const actual = expenses[field.key].trim() !== ""
+                        ? parseMoney(expenses[field.key])
+                        : (costBreakdown?.actualTotals[field.key] ?? 0);
+                      const variance = planned - actual;
+                      return (
+                        <tr key={field.key}>
+                          <td>
+                            <span className={actualStyles.tableExpenseIcon}>{getExpenseIcon(field.key, 14)}</span>
+                            <span>{field.label}</span>
+                          </td>
+                          <td>THB {formatCurrency(planned)}</td>
+                          <td>THB {formatCurrency(actual)}</td>
+                          <td style={{ textAlign: "right" }} className={variance < 0 ? actualStyles.varianceOverrun : actualStyles.varianceSaving}>
+                            {variance >= 0 ? `+THB ${formatCurrency(variance)}` : `-THB ${formatCurrency(Math.abs(variance))}`}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    <tr className={actualStyles.miniTableTotalRow}>
+                      <td><strong>{t("รวมทั้งหมด", "Total")}</strong></td>
+                      <td><strong>THB {formatCurrency(plannedBudget)}</strong></td>
+                      <td><strong>THB {formatCurrency(savedActualTotal)}</strong></td>
+                      <td style={{ textAlign: "right" }} className={remainingBudget < 0 ? actualStyles.varianceOverrun : actualStyles.varianceSaving}>
+                        <strong>{remainingBudget >= 0 ? `+THB ${formatCurrency(remainingBudget)}` : `-THB ${formatCurrency(Math.abs(remainingBudget))}`}</strong>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
-            <div className={styles.actualCostPerPersonSummary}>
-              <div>
+            <div className={actualStyles.costPerPersonBox}>
+              <div className={actualStyles.costPerPersonHeader}>
                 <span>{t("เฉลี่ยงบ / คน", "Cost per person")}</span>
                 <strong>THB {formatCurrency(actualCostPerPerson)}</strong>
               </div>
-              <small>
+              <small className={actualStyles.costPerPersonFootnote}>
                 {(() => {
                   // Built at call time with the totals in it, so the DOM localizer can never
                   // match it against a dictionary key — pick the language here instead.
-                  const present = costBreakdown?.presentCount ?? 0;
+                  const present = costBreakdown?.presentCount ?? actualCount;
                   const total = formatCurrency(savedActualTotal);
                   return language === "th"
                     ? t(`คำนวณจาก THB ${total} ÷ ผู้เข้าอบรมจริง ${present} คน`, `Calculated from THB ${total} ÷ ${present} attendees`)
@@ -2103,7 +2452,8 @@ export default function TrainingActual() {
                 marked, there is nothing to divide by, and rendering nothing at all made the save
                 look like it had failed. */}
             {(costBreakdown?.presentCount ?? 0) === 0 ? (
-              <p className={styles.actualResultsNote}>
+              <p className={actualStyles.panelCallout}>
+                <Info size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
                 {language === "th"
                   ? t(
                       t("ยังไม่มีใครถูกเช็กชื่อว่าเข้าอบรม จึงยังจำแนกค่าใช้จ่ายต่อคนไม่ได้ — เช็กชื่อในตารางด้านซ้ายก่อน", "No attendees checked in yet; cost per person cannot be allocated — check attendance in the left table first"),
@@ -2114,18 +2464,18 @@ export default function TrainingActual() {
             ) : null}
 
             {companyCostBreakdown.length > 0 ? (
-              <div className={styles.actualCompanyBreakdownBox}>
-                <div className={styles.companyBreakdownHeader}>
-                  <p className={styles.kicker}>Company Cost Share</p>
-                  <h4>
+              <div className={actualStyles.companyShareCard}>
+                <div className={actualStyles.sidebarHeader} style={{ paddingBottom: 6 }}>
+                  <p className={actualStyles.sidebarKicker}>Company Cost Share</p>
+                  <h4 className={actualStyles.sidebarTitle} style={{ fontSize: "0.92rem" }}>
                     {isSelectedCourseReadOnlyForFactory || (isFactoryUser && isSelectedCourseCenter)
                       ? t("งบปันส่วนบริษัทของคุณ", "Your company allocation")
                       : t("การปันส่วนงบประมาณตามบริษัท", "Allocation by company")}
                   </h4>
                 </div>
 
-                <div className={styles.companyCostTableWrap}>
-                  <table className={styles.companyCostTable}>
+                <div className={actualStyles.miniTableWrap}>
+                  <table className={actualStyles.miniTable}>
                     <thead>
                       <tr>
                         <th>{t("บริษัท", "Company")}</th>
@@ -2141,40 +2491,40 @@ export default function TrainingActual() {
                         return (
                           <tr key={item.companyCode}>
                             <td>
-                              <span className={styles.companyBadgePill}>{item.companyCode}</span>
+                              <span className={actualStyles.companyBadgePill}>{item.companyCode}</span>
                             </td>
                             <td>
-                              <span className={styles.companyPresentCount}>
-                                <CheckCircle2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4, color: "#10b981" }} />
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                <CheckCircle2 size={12} style={{ color: "#10b981" }} />
                                 {t(`${item.presentCount} คน`, `${item.presentCount}`)}
                               </span>
                             </td>
                             <td>
-                              <div className={styles.sharePercentCell}>
-                                <div className={styles.sharePercentBarWrap}>
+                              <div className={actualStyles.companySharePctCell}>
+                                <div className={actualStyles.companyShareBarWrap}>
                                   <div
-                                    className={styles.sharePercentBar}
+                                    className={actualStyles.companyShareBarFill}
                                     style={{ width: `${pct}%` }}
                                   />
                                 </div>
-                                <span className={styles.sharePercentText}>{pct}%</span>
+                                <span style={{ fontSize: "0.72rem", fontWeight: 700 }}>{pct}%</span>
                               </div>
                             </td>
                             <td style={{ textAlign: "right" }}>
-                              <strong className={styles.allocatedCostText}>
-                                THB {formatCurrency(item.allocatedCost)}
+                              <strong style={{ color: "var(--ui-30-primary)" }}>
+                                THB {formatCurrency(totalPresent > 0 ? Math.round((item.presentCount / totalPresent) * savedActualTotal * 100) / 100 : item.allocatedCost)}
                               </strong>
                             </td>
                           </tr>
                         );
                       })}
                       {isFactoryUser && isSelectedCourseCenter ? (
-                        <tr className={styles.companyTotalRow}>
+                        <tr className={actualStyles.miniTableTotalRow}>
                           <td colSpan={3}>
                             <strong>{t("รวมทุกบริษัท", "All companies total")}</strong>
                           </td>
                           <td style={{ textAlign: "right" }}>
-                            <strong className={styles.allocatedCostText}>
+                            <strong style={{ color: "var(--ui-30-primary)" }}>
                               THB {formatCurrency(savedActualTotal)}
                             </strong>
                           </td>
@@ -2186,40 +2536,34 @@ export default function TrainingActual() {
               </div>
             ) : null}
 
-            <div className={styles.actualBudgetSummary}>
-              <div>
+            <div className={actualStyles.budgetComparisonCard}>
+              <div className={actualStyles.budgetCompItem}>
                 <span>{t("งบประมาณที่วางแผนไว้", "Planned budget")}</span>
                 <strong>THB {formatCurrency(plannedBudget)}</strong>
               </div>
-              <div
-                className={
-                  remainingBudget < 0 ? styles.actualBudgetOverrun : undefined
-                }
-              >
+              <div className={actualStyles.budgetCompItem}>
                 <span>{t("งบประมาณคงเหลือ", "Budget left")}</span>
-                <strong>THB {formatCurrency(remainingBudget)}</strong>
+                <strong className={remainingBudget < 0 ? actualStyles.varianceOverrun : actualStyles.varianceSaving}>
+                  THB {formatCurrency(remainingBudget)}
+                </strong>
               </div>
-              <p
-                className={
-                  remainingBudget < 0 ? styles.actualBudgetOverrun : undefined
-                }
-              >
+              <div className={`${actualStyles.budgetStatusBanner} ${remainingBudget >= 0 ? actualStyles.budgetStatusWithin : actualStyles.budgetStatusOver}`}>
                 {remainingBudget >= 0 ? (
                   <>
-                    <CheckCircle2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4, color: "#10b981" }} />
-                    {t("อยู่ในงบประมาณ", "Within budget")}
+                    <CheckCircle2 size={13} style={{ color: "#10b981" }} />
+                    <span>{t("อยู่ในงบประมาณ", "Within budget")}</span>
                   </>
                 ) : (
                   <>
-                    <AlertTriangle size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4, color: "#ef4444" }} />
-                    {t("เกินงบประมาณ", "Over budget")}
+                    <AlertTriangle size={13} style={{ color: "#ef4444" }} />
+                    <span>{t("เกินงบประมาณ", "Over budget")}</span>
                   </>
                 )}
-              </p>
+              </div>
             </div>
 
             <button
-              className={styles.actualSaveButton}
+              className={actualStyles.mainSaveButton}
               type="button"
               disabled={isSelectedCourseReadOnlyForFactory || isSavingResults}
               title={
@@ -2236,21 +2580,29 @@ export default function TrainingActual() {
                 t("กำลังบันทึก...", "Saving...")
               ) : (
                 <>
-                  <FileText size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                  <FileText size={16} />
                   {t("บันทึกค่าใช้จ่าย & ผลการอบรม", "Save cost & results")}
                 </>
               )}
             </button>
 
-            {savedMessage ? <p className={styles.actualSavedMessage}>{savedMessage}</p> : null}
+            {savedMessage ? <p className={actualStyles.saveMessageText}>{savedMessage}</p> : null}
           </aside>
         </section>
       ) : (
-        <section className={styles.emptyState} aria-label="No selected actual course">
-          {t(
-            t("กรุณาเลือกหลักสูตรก่อนเพื่อบันทึกและแสดงข้อมูลการอบรมจริง", "Please select a course first to record and view actual training data"),
-            "Pick a course first to record and show the training actuals",
-          )}
+        <section className={actualStyles.emptyStateBox} aria-label="No selected actual course">
+          <div className={actualStyles.emptyStateIcon}>
+            <BookOpen size={28} />
+          </div>
+          <h3 className={actualStyles.emptyStateTitle}>
+            {t("พร้อมสำหรับการบันทึกผลการอบรมจริง", "Ready for Training Actual Recording")}
+          </h3>
+          <p className={actualStyles.emptyStateDesc}>
+            {t(
+              "กรุณาเลือก สิทธิ์ผู้จัด, หลักสูตร, และรอบการอบรม จาก Step 1-3 ด้านบน เพื่อเริ่มต้นเช็คชื่อและคำนวณค่าใช้จ่ายจริง",
+              "Please select Course Owner, Course, and Training Session from Steps 1-3 above to record attendance and actual costs.",
+            )}
+          </p>
         </section>
       )}
 
