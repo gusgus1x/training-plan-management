@@ -2853,3 +2853,26 @@ padding: 10px;
 }
 
 
+
+/* Offered when a requested topic has no course in the catalogue yet. */
+.newCourseHandoff {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.newCourseHandoff button {
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--ui-30-primary, #2563eb);
+  background: var(--ui-30-primary, #2563eb);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.78rem;
+  cursor: pointer;
+}

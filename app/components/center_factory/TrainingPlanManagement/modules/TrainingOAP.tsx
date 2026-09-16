@@ -2,7 +2,14 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { loadHandoffRequests, needRequestQuery, readNeedRequestIds } from "./needRequestHandoff";
+import {
+  loadHandoffRequests,
+  matchCourseForRequest,
+  needRequestQuery,
+  requestedCourseTitle,
+  useNeedRequestIds,
+} from "./needRequestHandoff";
+import { useSearchParams } from "next/navigation";
 import type { NeedRequestRecord } from "../../../../lib/trainingNeedRequests/types";
 import {
   getCourseDisplayName,
@@ -183,33 +190,6 @@ const BUDGET_PART_FIELDS = [
 const sumBudgetParts = (form: Record<(typeof BUDGET_PART_FIELDS)[number], string>) =>
   BUDGET_PART_FIELDS.reduce((total, field) => total + (Number(form[field]) || 0), 0);
 
-const matchCourseForRequest = (requestName: string, courseList: WorkflowCourse[]): WorkflowCourse | null => {
-  if (!requestName || !courseList.length) return null;
-  const trimmed = requestName.trim();
-
-  // 1. Extract course code in brackets e.g. "[SY-000002]"
-  const codeInBrackets = trimmed.match(/\[([A-Za-z0-9_-]+)\]/);
-  if (codeInBrackets) {
-    const code = codeInBrackets[1].toLowerCase();
-    const found = courseList.find((c) => c.courseCode.toLowerCase() === code);
-    if (found) return found;
-  }
-
-  // 2. Exact match on courseCode
-  const exactCode = courseList.find((c) => trimmed.toLowerCase().startsWith(c.courseCode.toLowerCase()));
-  if (exactCode) return exactCode;
-
-  // 3. Exact match on courseNameTh or courseNameEn
-  const exactName = courseList.find(
-    (c) =>
-      trimmed.includes(c.courseNameTh) ||
-      (c.courseNameEn && trimmed.includes(c.courseNameEn)),
-  );
-  if (exactName) return exactName;
-
-  return null;
-};
-
 const RequiredIndicator = ({ isFilled }: { isFilled: boolean }) => (
   <span
     className={isFilled ? styles.indicatorDone : styles.indicatorPending}
@@ -260,7 +240,9 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
 
   // Approved training need requests on their way to Training Rolling, carried in the address. This
   // screen only visits when the course had no plan yet: it prefills one, then sends them on.
-  const [handoffIds] = useState<string[]>(readNeedRequestIds);
+  const handoffIds = useNeedRequestIds();
+  // Set when Course Master has just created the course these requests asked for.
+  const handoffCourseId = useSearchParams().get("courseId")?.trim() ?? "";
 
   useEffect(() => {
     let current = true;
@@ -307,7 +289,9 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       const [pendingRequest] = await loadHandoffRequests(handoffIds).catch(() => []);
       if (pendingRequest && !approvedRequest) {
         setApprovedRequest(pendingRequest);
-        const matched = matchCourseForRequest(pendingRequest.requestedCourseName, loadedCourses);
+        const matched =
+          (handoffCourseId ? loadedCourses.find((course) => course.id === handoffCourseId) : undefined) ??
+          matchCourseForRequest(pendingRequest.requestedCourseName, loadedCourses);
         setForm({
           ...emptyForm,
           courseCode: matched ? matched.courseCode : "",
@@ -975,6 +959,29 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                   <><User size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{approvedRequest.employeeName} ({approvedRequest.companyCode} / {approvedRequest.functionName || "-"}</>
                   {approvedRequest.requestReason ? ` • เหตุผลที่ขอ: "${approvedRequest.requestReason}"` : ""}
                 </p>
+                {/* A topic the employee typed may name no course at all; the plan needs one first. */}
+                {!form.courseCode ? (
+                  <div className={styles.newCourseHandoff}>
+                    <span>
+                      {t(
+                        "ไม่พบหลักสูตรนี้ใน Course Master เลือกหลักสูตรที่มีอยู่จากช่องด้านล่าง หรือสร้างหลักสูตรใหม่",
+                        "This course is not in Course Master yet. Pick an existing course below, or create it.",
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        router.push(
+                          `/training-course/course-master-standard?newCourseName=${encodeURIComponent(
+                            requestedCourseTitle(approvedRequest.requestedCourseName),
+                          )}&needRequestIds=${handoffIds.join(",")}`,
+                        )
+                      }
+                    >
+                      {t("สร้างหลักสูตรใหม่ใน Course Master", "Create the course in Course Master")}
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ) : null}
             <div className={styles.formGrid}>

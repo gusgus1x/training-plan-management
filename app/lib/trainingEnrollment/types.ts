@@ -157,6 +157,8 @@ export type EnrollmentPlanInfo = {
   planCode: string;
   planName: string;
   batchName: string;
+  /** The course itself, not the batch: what a training need request filed from this record points at. */
+  courseId: string;
   courseCode: string;
   courseName: string;
   hours: number;

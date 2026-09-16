@@ -78,6 +78,7 @@ const buildRow = (overrides: {
       instructor_name_text: null,
       provider_name_text: null,
       course: {
+        course_id: BigInt(1),
         course_code: "SC-001",
         pre_assessment_id: overrides.preAssessmentId ?? BigInt(501),
         pre_test_link: null,

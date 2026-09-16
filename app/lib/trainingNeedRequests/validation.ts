@@ -47,7 +47,13 @@ export const parseCreateNeedRequest = (input: InputObject): CreateNeedRequestInp
     throw invalid("preferredEndDate", "The end date cannot fall before the start date");
   }
 
+  const courseId = readOptionalString(input, "courseId", { maxLength: 30 });
+  if (courseId !== null && !/^\d+$/.test(courseId)) {
+    throw invalid("courseId", "A course id must be a number");
+  }
+
   return {
+    courseId,
     requestedCourseName: readRequiredString(input, "requestedCourseName", { maxLength: 255 }),
     requestReason: readRequiredString(input, "requestReason", { maxLength: REASON_MAX_LENGTH }),
     preferredStartDate: start,

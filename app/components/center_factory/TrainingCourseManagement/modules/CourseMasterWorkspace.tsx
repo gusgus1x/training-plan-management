@@ -2,6 +2,7 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toDataURL as generateQrCodeDataUrl } from "qrcode";
 import { parseCsvText, type CourseMasterImportRow } from "../../../../lib/excelHelper";
 import {
@@ -539,6 +540,12 @@ function CourseMaster() {
   const [linkModeFields, setLinkModeFields] = useState<Set<LinkModeField>>(new Set());
   const [isEditing, setIsEditing] = useState(false);
   const [isNewOpen, setIsNewOpen] = useState(false);
+  // Arriving from a training need request whose course does not exist yet: the employee's wording
+  // names the new course, and the request ids ride along so the hand-off can carry on to OAP.
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const newCourseName = searchParams.get("newCourseName")?.trim() ?? "";
+  const handoffQuery = searchParams.get("needRequestIds")?.trim() ?? "";
   const [openDetailCourseId, setOpenDetailCourseId] = useState("");
   const [search, setSearch] = useState("");
   const [listCompanyFilter, setListCompanyFilter] = useState("");
@@ -1866,6 +1873,17 @@ function CourseMaster() {
     setOpenDetailCourseId(course.id);
   };
 
+  const hasHandledNewCourseRef = useRef(false);
+
+  useEffect(() => {
+    if (!newCourseName || hasHandledNewCourseRef.current) return;
+    hasHandledNewCourseRef.current = true;
+    handleNew();
+    // Only the name: a code, type, group and hours are HRD's to decide, and no request carries them.
+    setForm((current) => ({ ...current, courseNameTh: newCourseName }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newCourseName]);
+
   const hasHandledUrlCourseRef = useRef(false);
 
   useEffect(() => {
@@ -2228,10 +2246,18 @@ function CourseMaster() {
     const wasEditing = Boolean(selectedCourseId);
 
     try {
+      let created: { courseId: string } | null = null;
       if (selectedCourseId) {
         await updateCourse(selectedCourseId, input);
       } else {
-        await createCourse(input);
+        created = await createCourse(input);
+      }
+
+      if (!wasEditing && handoffQuery && created) {
+        // Straight back to the plan the requests are waiting for, with the new course selected.
+        toast.success("บันทึกหลักสูตรใหม่แล้ว กำลังไปหน้าแผน OAP / Course created, opening OAP");
+        router.push(`/training-plan/training-oap?needRequestIds=${handoffQuery}&courseId=${created.courseId}`);
+        return;
       }
 
       await handleRefresh();

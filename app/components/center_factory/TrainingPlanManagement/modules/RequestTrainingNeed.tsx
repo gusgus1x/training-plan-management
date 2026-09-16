@@ -8,15 +8,20 @@ import { useToast } from "../../../ToastHost";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { listCompanies } from "../../../../lib/companies/client";
 import type { CompanyRecord } from "../../../../lib/companies/types";
+import { listCourses } from "../../../../lib/courses/client";
+import { listOapPlans } from "../../../../lib/trainingOap/client";
+import type { WorkflowCourse } from "../../../../lib/trainingWorkflow";
+import { courseLabel, demandKey, planningTarget, type PlanningTarget } from "./needRequestHandoff";
 import {
   bulkDecideNeedRequests,
   listNeedRequests,
   updateNeedRequest,
 } from "../../../../lib/trainingNeedRequests/client";
-import { HRD_REJECT_REASONS } from "../../../../lib/trainingNeedRequests/labels";
+import { HRD_REJECT_REASONS, needRequestStageLabel } from "../../../../lib/trainingNeedRequests/labels";
 import type {
   NeedRequestAction,
   NeedRequestRecord,
+  NeedRequestStage,
   NeedRequestStatus,
 } from "../../../../lib/trainingNeedRequests/types";
 import {
@@ -53,9 +58,24 @@ export const requestTrainingNeedModule = {
 const formatDate = (iso: string) => iso.slice(0, 10);
 
 
+/** What is missing before these requests can become a batch, and where confirming takes HRD. */
+const missingPiecePrompt = (target: PlanningTarget) =>
+  target.kind === "oap"
+    ? {
+        th: `หลักสูตร "${target.courseName}" มีใน Course Master แล้ว แต่ยังไม่มีแผน OAP ของหลักสูตรนี้\nกดยืนยันเพื่อไปสร้างแผน OAP ก่อน แล้วระบบจะพากลับมาจัดรุ่นต่อพร้อมคำขอเดิม`,
+        en: `"${target.courseName}" exists in Course Master but has no OAP plan yet.\nConfirm to create the OAP first; the requests travel with you and Rolling continues from there.`,
+      }
+    : {
+        th: `ยังไม่มีหลักสูตร "${target.courseName}" ใน Course Master\nกดยืนยันเพื่อไปสร้างหลักสูตรก่อน แล้วระบบจะพาไปสร้างแผน OAP และจัดรุ่นต่อพร้อมคำขอเดิม`,
+        en: `"${target.courseName}" does not exist in Course Master yet.\nConfirm to create the course first; you are then taken on to the OAP and the batch with these requests.`,
+      };
+
+
 type CourseDemandGroup = {
   courseKey: string;
   courseTitle: string;
+  /** The HRD that answers these requests: "CENTER", or a factory's company code. */
+  handler: string;
   totalRequests: number;
   pendingCount: number;
   approvedCount: number;
@@ -76,6 +96,8 @@ export default function RequestTrainingNeed() {
 
   const [requests, setRequests] = useState<NeedRequestRecord[]>([]);
   const [companies, setCompanies] = useState<CompanyRecord[]>([]);
+  // Course Master courses, to tell whose course a request is asking for.
+  const [courses, setCourses] = useState<WorkflowCourse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState("");
@@ -88,22 +110,22 @@ export default function RequestTrainingNeed() {
   // Rejection modal dialog state
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectionNote, setRejectionNote] = useState("");
-  // The requests the open rejection dialog will reject: one from the detail pane, or a selection.
+  // The requests the open rejection dialog will reject: the one in the detail pane, or a course's.
   const [rejectTargetIds, setRejectTargetIds] = useState<string[]>([]);
-  // Ticked requests for approving, rejecting or planning in one go.
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const loadRequests = async () => {
     setIsLoading(true);
     try {
-      const [requestsRes, companiesRes] = await Promise.all([
+      const [requestsRes, companiesRes, courseRes] = await Promise.all([
         listNeedRequests(),
         !isFactoryUser
           ? listCompanies().catch(() => ({ items: [] as CompanyRecord[] }))
           : Promise.resolve({ items: [] as CompanyRecord[] }),
+        listCourses({ search: "", status: null }).catch(() => ({ courses: [] as WorkflowCourse[] })),
       ]);
       setRequests(requestsRes.needRequests || []);
       setCompanies(companiesRes.items || []);
+      setCourses(courseRes.courses || []);
       setLoadError(null);
     } catch (error: unknown) {
       setLoadError(error instanceof Error ? error.message : "Could not load requests");
@@ -116,10 +138,21 @@ export default function RequestTrainingNeed() {
     void loadRequests();
   }, []);
 
+  /**
+   * Who answers a request: the centre for a central course, the owning factory for its own course,
+   * and the requester's own company HRD for a topic that names no course at all. Read from the
+   * course the request points at - the same field the repository enforces on, so the buttons on
+   * screen and the server's answer can never disagree.
+   */
+  const handlerKey = (request: NeedRequestRecord) => {
+    if (request.courseOwner === "CENTER") return "CENTER";
+    return request.courseOwnerCompanyCode ?? request.companyCode;
+  };
+
   const stats = useMemo(() => {
     return {
       total: requests.length,
-      pending: requests.filter((r) => r.status === "PENDING").length,
+      pending: requests.filter((r) => r.stage === "WAITING_HRD").length,
       approved: requests.filter((r) => r.status === "APPROVED").length,
       rejected: requests.filter((r) => r.status === "REJECTED").length,
       planned: requests.filter((r) => r.status === "PLANNED").length,
@@ -130,7 +163,9 @@ export default function RequestTrainingNeed() {
     const query = search.trim().toLowerCase();
 
     return requests.filter((request) => {
-      const matchesStatus = statusFilter === "all" || request.status === statusFilter;
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "PENDING" ? request.stage === "WAITING_HRD" : request.status === statusFilter);
       const matchesCompany = companyFilter === "all" || request.companyCode === companyFilter;
       const matchesSearch =
         !query ||
@@ -156,13 +191,16 @@ export default function RequestTrainingNeed() {
     const groupMap = new Map<string, CourseDemandGroup>();
 
     for (const req of visibleRequests) {
-      const title = req.requestedCourseName.trim();
-      const key = title.toLowerCase();
+      const title = courseLabel(req);
+      // One row per course per HANDLER: the centre's own courses count together across companies,
+      // a factory's course counts within that factory.
+      const key = `${handlerKey(req)}::${demandKey(req)}`;
 
       if (!groupMap.has(key)) {
         groupMap.set(key, {
           courseKey: key,
           courseTitle: title,
+          handler: handlerKey(req),
           totalRequests: 0,
           pendingCount: 0,
           approvedCount: 0,
@@ -187,6 +225,37 @@ export default function RequestTrainingNeed() {
 
     return Array.from(groupMap.values()).sort((a, b) => b.totalRequests - a.totalRequests);
   }, [visibleRequests]);
+
+  /**
+   * Demand split by who answers it: the requests this HRD decides come first, the ones they can
+   * only read follow. A centre user leads with the central courses; a factory with its own.
+   */
+  const demandHandlers = useMemo(() => {
+    const byHandler = new Map<string, CourseDemandGroup[]>();
+    for (const group of demandGroups) {
+      const list = byHandler.get(group.handler) ?? [];
+      list.push(group);
+      byHandler.set(group.handler, list);
+    }
+    const own = isFactoryUser ? user?.companyCode ?? "" : "CENTER";
+    return [...byHandler.entries()]
+      .map(([handler, groups]) => ({
+        handler,
+        groups,
+        isOwn: handler === own,
+        requesters: groups.reduce((total, group) => total + group.totalRequests, 0),
+        companyName:
+          handler === "CENTER"
+            ? ""
+            : companies.find((company) => company.companyCode === handler)?.[
+                language === "th" ? "companyNameTh" : "companyNameEn"
+              ] ?? "",
+      }))
+      .sort((left, right) => {
+        if (left.isOwn !== right.isOwn) return left.isOwn ? -1 : 1;
+        return left.handler.localeCompare(right.handler);
+      });
+  }, [demandGroups, companies, language, isFactoryUser, user?.companyCode]);
 
   const selectedRequest =
     visibleRequests.find((request) => request.id === selectedId) ?? visibleRequests[0] ?? null;
@@ -213,35 +282,64 @@ export default function RequestTrainingNeed() {
     }
   };
 
+  /**
+   * A request belongs to whoever owns the course it names: a central course is the centre's alone,
+   * a factory's course is that factory's alone, and everyone else only reads it. The repository
+   * refuses the same. A topic naming no course has no owner, so it stays with the requester's
+   * company HRD and the centre can stand in on it.
+   */
+  const mayDecide = (request: NeedRequestRecord) => {
+    if (request.courseOwner === null) return true;
+    return request.courseOwner === "CENTER" ? !isFactoryUser : isFactoryUser;
+  };
+
   /** Only a request waiting on HRD, or already approved, can be decided or planned from here. */
-  const isActionable = (request: NeedRequestRecord) => request.stage === "WAITING_HRD" || request.stage === "APPROVED";
+  const isActionable = (request: NeedRequestRecord) =>
+    (request.stage === "WAITING_HRD" || request.stage === "APPROVED") && mayDecide(request);
 
   const mergeUpdated = (updated: NeedRequestRecord[]) => {
     const byId = new Map(updated.map((request) => [request.id, request]));
     setRequests((current) => current.map((request) => byId.get(request.id) ?? request));
   };
 
-  const toggleSelected = (id: string) =>
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  /** True when the request names a course the centre owns; a typed topic names nobody's course. */
+  const centreOwnsCourse = (request: NeedRequestRecord) => request.courseOwner === "CENTER";
 
-  const selectedRequests = requests.filter((request) => selectedIds.has(request.id) && isActionable(request));
-  const actionableVisible = visibleRequests.filter(isActionable);
-  const allVisibleSelected = actionableVisible.length > 0 && actionableVisible.every((request) => selectedIds.has(request.id));
+  /**
+   * A centre user deciding a company's request is standing in for that company's HRD, so the prompt
+   * names whose request it is and who normally answers it. A factory user only ever sees their own
+   * company's requests, so for them this is the plain confirmation.
+   */
+  const onBehalfPrompt = (targets: NeedRequestRecord[], verb: { th: string; en: string }) => {
+    const companies = [...new Set(targets.map((request) => request.companyCode).filter(Boolean))];
+    // A centre-owned course is the centre's own to decide, whichever company asked for it, so
+    // standing in for the factory HRD does not arise and the plain confirmation is the honest one.
+    if (isFactoryUser || companies.length === 0 || targets.every(centreOwnsCourse)) {
+      return {
+        th: `ยืนยัน${verb.th}คำขอ ${targets.length} รายการ หรือไม่?`,
+        en: `${verb.en} ${targets.length} request(s)?`,
+      };
+    }
+    const single = targets.length === 1 ? targets[0] : null;
+    const who = single ? `${single.employeeName} (${single.employeeCode}) ` : "";
+    return {
+      th:
+        `คำร้องขอนี้เป็นของบริษัท ${companies.join(", ")} ${who}` +
+        `ผู้รับผิดชอบการกด${verb.th}คือ HRD Factory ของบริษัท ${companies.join(", ")}\n` +
+        `คุณยืนยันที่จะกด${verb.th}คำขอ${targets.length > 1 ? ` ${targets.length} รายการ` : ""}นี้แทนไหม?`,
+      en:
+        `This request belongs to ${companies.join(", ")}. ${who}` +
+        `Its own factory HRD normally answers it.\n` +
+        `Confirm ${verb.en.toLowerCase()} ${targets.length > 1 ? `${targets.length} requests ` : "it "}on their behalf?`,
+    };
+  };
 
   /** Approves whichever of these still wait on HRD, all or none, and returns false when HRD backs out. */
   const approvePending = async (targets: NeedRequestRecord[]) => {
     const pending = targets.filter((request) => request.stage === "WAITING_HRD");
     if (pending.length === 0) return true;
     const ok = await confirm({
-      message: {
-        th: `ยืนยันอนุมัติคำขอ ${pending.length} รายการ หรือไม่?`,
-        en: `Approve ${pending.length} request(s)?`,
-      },
+      message: onBehalfPrompt(pending, { th: "อนุมัติ", en: "Approve" }),
     });
     if (!ok) return false;
     const { needRequests } = await bulkDecideNeedRequests({ ids: pending.map((request) => request.id), action: "approve", note: null });
@@ -249,28 +347,12 @@ export default function RequestTrainingNeed() {
     return true;
   };
 
-  const handleBulkApprove = async (targets: NeedRequestRecord[]) => {
-    if (!targets.some((request) => request.stage === "WAITING_HRD")) {
-      toast.info(t("ไม่มีคำขอที่รอ HRD อนุมัติในรายการที่เลือก", "Nothing selected is waiting for HRD"));
-      return;
-    }
-    setPendingAction(true);
-    try {
-      if (await approvePending(targets)) {
-        toast.success(t("อนุมัติคำขอที่เลือกแล้ว", "Selected requests approved"));
-        setSelectedIds(new Set());
-      }
-    } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t("อนุมัติไม่สำเร็จ", "Could not approve"));
-    } finally {
-      setPendingAction(false);
-    }
-  };
-
   /**
-   * Approves what still needs it, then opens Training Rolling with every request attached. The ids
-   * travel in the address, so the hand-off survives a reload or another browser - the old
-   * localStorage hand-off did neither and only ever carried the first request of a group.
+   * Approves what still needs it, then opens whichever screen the batch actually has to start from:
+   * Rolling when the course has an OAP plan, OAP when it has none, Course Master when the course
+   * itself does not exist. The missing piece is named in one card here instead of being discovered
+   * one screen at a time. The ids travel in the address, so the hand-off survives a reload or
+   * another browser - the old localStorage hand-off did neither and only carried one request.
    */
   const handleApproveAndPlan = async (targets: NeedRequestRecord[]) => {
     const actionable = targets.filter(isActionable);
@@ -281,7 +363,11 @@ export default function RequestTrainingNeed() {
     setPendingAction(true);
     try {
       if (!(await approvePending(actionable))) return;
-      router.push(`/training-plan/training-rolling?needRequestIds=${actionable.map((request) => request.id).join(",")}`);
+
+      const oapData = await listOapPlans({ search: null, status: null }).catch(() => ({ oapPlans: [] }));
+      const target = planningTarget(actionable, oapData.oapPlans || [], courses);
+      if (target.kind !== "rolling" && !(await confirm({ message: missingPiecePrompt(target) }))) return;
+      router.push(target.url);
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : t("อนุมัติไม่สำเร็จ", "Could not approve"));
     } finally {
@@ -335,12 +421,15 @@ export default function RequestTrainingNeed() {
       return;
     }
 
+    const targets = requests.filter((request) => rejectTargetIds.includes(request.id));
+    // Turning down another company's request is as much "on their behalf" as approving it.
+    if (!(await confirm({ message: onBehalfPrompt(targets, { th: "ไม่อนุมัติ", en: "Reject" }) }))) return;
+
     setIsRejectModalOpen(false);
     setPendingAction(true);
     try {
       const { needRequests } = await bulkDecideNeedRequests({ ids: rejectTargetIds, action: "reject", note: rejectionNote.trim() });
       mergeUpdated(needRequests);
-      setSelectedIds(new Set());
       toast.success(t(`ไม่อนุมัติคำขอ ${needRequests.length} รายการแล้ว`, `Rejected ${needRequests.length} request(s)`));
     } catch (error: unknown) {
       toast.error(error instanceof Error ? error.message : t("บันทึกไม่สำเร็จ", "Could not save"));
@@ -349,39 +438,23 @@ export default function RequestTrainingNeed() {
     }
   };
 
-  const getStatusBadge = (status: NeedRequestStatus) => {
-    switch (status) {
-      case "PENDING":
-        return (
-          <span className={`${styles.statusBadge} ${styles.statusBadgePending}`}>
-            <span className={`${styles.statusDot} ${styles.dotPending} ${styles.dotPulse}`} />
-            {t("รอตรวจสอบ", "Pending")}
-          </span>
-        );
-      case "APPROVED":
-        return (
-          <span className={`${styles.statusBadge} ${styles.statusBadgeApproved}`}>
-            <span className={`${styles.statusDot} ${styles.dotApproved} ${styles.dotPulse}`} />
-            {t("อนุมัติแล้ว", "Approved")}
-          </span>
-        );
-      case "PLANNED":
-        return (
-          <span className={`${styles.statusBadge} ${styles.statusBadgePlanned}`}>
-            <span className={`${styles.statusDot} ${styles.dotPlanned} ${styles.dotPulse}`} />
-            {t("จัดลงแผนแล้ว", "Planned")}
-          </span>
-        );
-      case "REJECTED":
-        return (
-          <span className={`${styles.statusBadge} ${styles.statusBadgeRejected}`}>
-            <span className={`${styles.statusDot} ${styles.dotRejected}`} />
-            {t("ไม่อนุมัติ", "Rejected")}
-          </span>
-        );
-      default:
-        return <span className={styles.statusBadge}>{status}</span>;
-    }
+  const getStatusBadge = (request: NeedRequestRecord) => {
+    const label = needRequestStageLabel(request.stage, language);
+    const style: Record<NeedRequestStage, { badge: string; dot: string; pulse: boolean }> = {
+      WAITING_HEAD: { badge: styles.statusBadgePending, dot: styles.dotPending, pulse: true },
+      WAITING_HRD: { badge: styles.statusBadgePending, dot: styles.dotPending, pulse: true },
+      APPROVED: { badge: styles.statusBadgeApproved, dot: styles.dotApproved, pulse: true },
+      PLANNED: { badge: styles.statusBadgePlanned, dot: styles.dotPlanned, pulse: true },
+      REJECTED: { badge: styles.statusBadgeRejected, dot: styles.dotRejected, pulse: false },
+      REJECTED_BY_HEAD: { badge: styles.statusBadgeRejected, dot: styles.dotRejected, pulse: false },
+    };
+    const chosen = style[request.stage];
+    return (
+      <span className={`${styles.statusBadge} ${chosen.badge}`}>
+        <span className={`${styles.statusDot} ${chosen.dot} ${chosen.pulse ? styles.dotPulse : ""}`} />
+        {label}
+      </span>
+    );
   };
 
   const isFinalPlanned = selectedRequest?.status === "PLANNED";
@@ -540,39 +613,6 @@ export default function RequestTrainingNeed() {
       ) : null}
 
       {/* 4. Tab 1: Master-Detail List View */}
-      {activeTab === "list" && actionableVisible.length > 0 ? (
-        <div className={styles.bulkBar}>
-          <label className={styles.bulkSelectAll}>
-            <input
-              type="checkbox"
-              checked={allVisibleSelected}
-              onChange={() =>
-                setSelectedIds(allVisibleSelected ? new Set() : new Set(actionableVisible.map((request) => request.id)))
-              }
-            />
-            {t(`เลือกทั้งหมดที่ดำเนินการได้ (${actionableVisible.length})`, `Select all actionable (${actionableVisible.length})`)}
-          </label>
-          <span className={styles.bulkCount}>{t(`เลือกแล้ว ${selectedRequests.length}`, `${selectedRequests.length} selected`)}</span>
-          <button className={styles.btnSecondary} type="button" disabled={pendingAction || selectedRequests.length === 0} onClick={() => void handleBulkApprove(selectedRequests)}>
-            <Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-            {t("อนุมัติที่เลือก", "Approve selected")}
-          </button>
-          <button
-            className={styles.btnDanger}
-            type="button"
-            disabled={pendingAction || selectedRequests.length === 0}
-            onClick={() => handleOpenRejectModal(selectedRequests.map((request) => request.id))}
-          >
-            <X size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-            {t("ไม่อนุมัติที่เลือก", "Reject selected")}
-          </button>
-          <button className={styles.btnPrimary} type="button" disabled={pendingAction || selectedRequests.length === 0} onClick={() => void handleApproveAndPlan(selectedRequests)}>
-            <Rocket size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-            {t("อนุมัติและเปิดฟอร์มจัดทำแผน Rolling", "Approve & open Training Rolling")}
-          </button>
-        </div>
-      ) : null}
-
       {activeTab === "list" && (
         <div className={styles.mainLayout}>
           {/* Left Pane: Requests List */}
@@ -591,27 +631,28 @@ export default function RequestTrainingNeed() {
                     onClick={() => setSelectedId(req.id)}
                   >
                     <div className={styles.requestCardHeader}>
-                      <span className={styles.requestNo}>
-                        {isActionable(req) ? (
-                          <input
-                            type="checkbox"
-                            className={styles.cardCheckbox}
-                            checked={selectedIds.has(req.id)}
-                            onClick={(event) => event.stopPropagation()}
-                            onChange={() => toggleSelected(req.id)}
-                            aria-label={t(`เลือก ${req.requestNo}`, `Select ${req.requestNo}`)}
-                          />
-                        ) : null}
-                        {req.requestNo}
-                      </span>
-                      {getStatusBadge(req.status)}
+                      <span className={styles.requestNo}>{req.requestNo}</span>
+                      {/* A centre user works across companies, so whose request this is comes first. */}
+                      {!isFactoryUser && req.companyCode ? (
+                        <span className={styles.scopeBadge} style={{ fontSize: "0.72rem", padding: "2px 8px" }}>
+                          <Building2 size={11} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />
+                          {req.companyCode}
+                        </span>
+                      ) : null}
+                      {getStatusBadge(req)}
                     </div>
-                    <h4 className={styles.requestCardTitle}>{req.requestedCourseName}</h4>
+                    <h4 className={styles.requestCardTitle}>{courseLabel(req)}</h4>
                     <div className={styles.requestCardMeta}>
                       <span className={styles.requesterBadge}>
                         <><User size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{req.employeeName} ({req.companyCode})</>
                       </span>
                       <span><CalendarDays size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{formatDate(req.requestedAt)}</span>
+                      {req.approver && req.approverDecision === "APPROVED" ? (
+                        <span>
+                          <Check size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                          {t(`หัวหน้าอนุมัติ: ${req.approver.name}`, `Head approved: ${req.approver.name}`)}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 );
@@ -627,9 +668,12 @@ export default function RequestTrainingNeed() {
                   <p className={styles.detailSubtitle}>
                     {t("คำขอเลขที่", "Request No")} <span className={styles.requestNo}>{selectedRequest.requestNo}</span>
                   </p>
-                  <h3>{selectedRequest.requestedCourseName}</h3>
+                  <h3>{courseLabel(selectedRequest)}</h3>
+                  {selectedRequest.courseCodeSnapshot ? (
+                    <p className={styles.detailSubtitle}>{selectedRequest.courseCodeSnapshot}</p>
+                  ) : null}
                 </div>
-                {getStatusBadge(selectedRequest.status)}
+                {getStatusBadge(selectedRequest)}
               </div>
 
               {/* Requester Profile */}
@@ -718,7 +762,22 @@ export default function RequestTrainingNeed() {
 
               {/* Decision Action Deck */}
               <div className={styles.actionsBar}>
-                {!isFinalPlanned && (
+                {!mayDecide(selectedRequest) ? (
+                  <p style={{ margin: 0, fontSize: "0.86rem", color: "var(--ui-30-muted)", fontWeight: 700 }}>
+                    <Ban size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                    {centreOwnsCourse(selectedRequest)
+                      ? t(
+                          "หลักสูตรนี้เป็นหลักสูตรส่วนกลาง · HRD ส่วนกลางเป็นผู้พิจารณา โรงงานดูได้อย่างเดียว",
+                          "This is a central course. HRD Center decides it; the factory can only read it.",
+                        )
+                      : t(
+                          `หลักสูตรนี้เป็นของบริษัท ${handlerKey(selectedRequest)} · HRD ของบริษัทนั้นเป็นผู้พิจารณา ส่วนกลางดูได้อย่างเดียว`,
+                          `This course belongs to ${handlerKey(selectedRequest)}. Its own HRD decides; the centre can only read it.`,
+                        )}
+                  </p>
+                ) : null}
+
+                {mayDecide(selectedRequest) && !isFinalPlanned && (
                   <>
                     {selectedRequest.status !== "REJECTED" ? (
                       <button
@@ -769,7 +828,7 @@ export default function RequestTrainingNeed() {
                   </>
                 )}
 
-                {isFinalPlanned && (
+                {mayDecide(selectedRequest) && isFinalPlanned && (
                   <>
                     <p style={{ margin: 0, fontSize: "0.86rem", color: "#2563eb", fontWeight: 700 }}>
                       <Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("คำขอนี้จัดเข้ารุ่นอบรมแล้ว", "Linked to a training batch.")}
@@ -790,14 +849,33 @@ export default function RequestTrainingNeed() {
       )}
 
       {/* 5. Tab 2: Group by Course Demand View */}
-      {activeTab === "demand" && (
-        <div className={styles.demandGrid}>
-          {demandGroups.length === 0 ? (
-            <div className={styles.emptyStateContainer} style={{ gridColumn: "1 / -1" }}>
-              <p><Inbox size={24} style={{ display: "block", margin: "0 auto 8px" }} />{t("ไม่มีข้อมูลความต้องการฝึกอบรม", "No course demand records")}</p>
-            </div>
-          ) : (
-            demandGroups.map((group) => (
+      {activeTab === "demand" && demandHandlers.length === 0 ? (
+        <div className={styles.emptyStateContainer}>
+          <p><Inbox size={24} style={{ display: "block", margin: "0 auto 8px" }} />{t("ไม่มีข้อมูลความต้องการฝึกอบรม", "No course demand records")}</p>
+        </div>
+      ) : null}
+
+      {/* One box per responsible HRD, open to start with; the viewer's own requests come first. */}
+      {activeTab === "demand" &&
+        demandHandlers.map((handler) => (
+          <details key={handler.handler} className={styles.companySection} open>
+            <summary className={styles.companySummary}>
+              <span>
+                <Building2 size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+                {handler.handler === "CENTER"
+                  ? t("คำร้องหลักสูตรส่วนกลาง (HRD ส่วนกลางพิจารณา)", "Central-course requests (HRD Center decides)")
+                  : t(
+                      `คำร้องของ ${handler.handler}${handler.companyName ? ` - ${handler.companyName}` : ""}`,
+                      `${handler.handler}${handler.companyName ? ` - ${handler.companyName}` : ""} requests`,
+                    )}
+                {handler.isOwn ? t(" · คุณพิจารณา", " · yours to decide") : t(" · ดูอย่างเดียว", " · read only")}
+              </span>
+              <span className={styles.demandCountBadge}>
+                {handler.groups.length} {t("หลักสูตร", "courses")} · {handler.requesters} {t("คน", "requesters")}
+              </span>
+            </summary>
+            <div className={styles.demandGrid}>
+              {handler.groups.map((group) => (
               <div key={group.courseKey} className={styles.demandCard}>
                 <div className={styles.demandCardHeader}>
                   <h4 className={styles.demandCourseTitle}>{group.courseTitle}</h4>
@@ -807,11 +885,15 @@ export default function RequestTrainingNeed() {
                 </div>
 
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  {group.companies.map((comp) => (
-                    <span key={comp} className={styles.scopeBadge} style={{ fontSize: "0.74rem", padding: "2px 8px" }}>
-                      <><Building2 size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />{comp}</>
-                    </span>
-                  ))}
+                  {/* A central course draws people from several companies; a factory's never does. */}
+                  {group.companies.length > 1
+                    ? group.companies.map((comp) => (
+                        <span key={comp} className={styles.scopeBadge} style={{ fontSize: "0.74rem", padding: "2px 8px" }}>
+                          <Building2 size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />
+                          {comp}
+                        </span>
+                      ))
+                    : null}
                   {group.pendingCount > 0 && (
                     <span className={`${styles.statusBadge} ${styles.statusBadgePending}`}>
                       <><Clock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />{group.pendingCount} {t("รอตรวจ", "Pending")}</>
@@ -834,12 +916,12 @@ export default function RequestTrainingNeed() {
                   {group.requests.map((r) => (
                     <div key={r.id} className={styles.demandRequesterItem}>
                       <div>
-                        <strong>{r.employeeName}</strong> ({r.companyCode})
+                        <strong>{r.employeeName}</strong> ({r.employeeCode} · {r.companyCode})
                         <div style={{ fontSize: "0.76rem", color: "var(--ui-30-muted)", marginTop: "2px" }}>
                           {r.requestReason}
                         </div>
                       </div>
-                      {getStatusBadge(r.status)}
+                      {getStatusBadge(r)}
                     </div>
                   ))}
                 </div>
@@ -849,17 +931,18 @@ export default function RequestTrainingNeed() {
                     className={styles.btnPrimary}
                     type="button"
                     style={{ width: "100%", justifyContent: "center" }}
-                    disabled={pendingAction}
+                    // Nothing here to decide - a course somebody else owns, or one already planned.
+                    disabled={pendingAction || !group.requests.some(isActionable)}
                     onClick={() => void handleApproveAndPlan(group.requests)}
                   >
                     <Rocket size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("อนุมัติกลุ่มนี้ & เปิดฟอร์มจัดทำแผน Rolling", "Approve group & open Training Rolling")}
                   </button>
                 </div>
               </div>
-            ))
-          )}
-        </div>
-      )}
+              ))}
+            </div>
+          </details>
+        ))}
 
       {/* 6. Rejection Modal Dialog */}
       {isRejectModalOpen && rejectTargetIds.length > 0 ? (
@@ -913,7 +996,8 @@ export default function RequestTrainingNeed() {
                     const target = requests.find((request) => request.id === rejectTargetIds[0]);
                     return (
                       <>
-                        {t("คำขอเลขที่:", "Request No:")} <strong>{target?.requestNo}</strong> ({target?.requestedCourseName})
+                        {t("คำขอเลขที่:", "Request No:")} <strong>{target?.requestNo}</strong>
+                        {target ? ` (${courseLabel(target)})` : ""}
                       </>
                     );
                   })()

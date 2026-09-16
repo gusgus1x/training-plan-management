@@ -759,3 +759,34 @@
   vertical-align: middle;
   cursor: pointer;
 }
+
+/* Demand by course, split per company: one collapsible box each, open on arrival. */
+.companySection {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 12px;
+  background: var(--ui-60-surface);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.companySummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: var(--ui-30-text);
+  background: var(--ui-60-surface-soft);
+  list-style: revert;
+}
+
+.companySection[open] .companySummary {
+  border-bottom: 1px solid var(--ui-30-border);
+}
+
+.companySection .demandGrid {
+  padding: 12px;
+}

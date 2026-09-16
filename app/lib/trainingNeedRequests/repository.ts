@@ -15,7 +15,7 @@ import type {
   UpdateNeedRequestInput,
 } from "./types";
 
-type DatabaseClient = Pick<PrismaClient, "training_need_request" | "employee" | "training_plan"> &
+type DatabaseClient = Pick<PrismaClient, "training_need_request" | "employee" | "training_plan" | "course"> &
   Pick<PrismaClient, "$transaction">;
 
 const notFound = () =>
@@ -33,6 +33,8 @@ const requestInclude = {
     include: { company: true, organization_function: true },
   },
   approver: { include: personInclude },
+  // Whose course this is: company_id null means the centre owns it.
+  course: { select: { course_id: true, company_id: true, company: { select: { company_code: true } } } },
   training_plan: {
     select: { plan_id: true, plan_code: true, plan_name: true, start_datetime: true, end_datetime: true },
   },
@@ -103,6 +105,11 @@ const mapRequest = (row: RequestWithRelations) => ({
         position: row.approver.position?.position_name_th || row.approver.position?.position_name_en || "",
       }
     : null,
+  courseId: row.course_id?.toString() ?? null,
+  courseOwner: row.course ? (row.course.company ? "FACTORY" : "CENTER") : null,
+  courseOwnerCompanyCode: row.course?.company?.company_code ?? null,
+  courseCodeSnapshot: row.course_code_snapshot ?? null,
+  courseNameSnapshot: row.course_name_snapshot ?? null,
   approverDecision: (row.approver_decision as ApproverDecision | null) ?? null,
   approverDecidedAt: row.approver_decided_at?.toISOString() ?? null,
   approverNote: row.approver_note ?? "",
@@ -127,6 +134,28 @@ const visibleToHrd: Prisma.training_need_requestWhereInput = {
 
 const isHrd = (actor: NeedRequestActor) => actor.role === "HRD_CENTER" || actor.role === "HRD_FACTORY";
 
+/**
+ * A request belongs to whoever owns the course it names: a centre course is the centre's alone, a
+ * factory's course is that factory's alone. Everyone else reads it. A request that names no course
+ * yet has no owner, so it stays with the requester's company HRD, with the centre able to stand in.
+ */
+const courseOwnerMayAct = (
+  course: { company_id: bigint | null } | null,
+  actor: NeedRequestActor,
+  verb: "decide" | "plan",
+) => {
+  if (course === null) return;
+  if (course.company_id === null) {
+    if (actor.role !== "HRD_CENTER") {
+      throw forbidden(`This is a central course, so only HRD Center can ${verb} the request`);
+    }
+    return;
+  }
+  if (actor.role !== "HRD_FACTORY" || course.company_id !== BigInt(actor.companyId ?? "-1")) {
+    throw forbidden(`This course belongs to a factory, so only that factory's HRD can ${verb} the request`);
+  }
+};
+
 export type NeedRequestRepository = ReturnType<typeof createNeedRequestRepository>;
 
 export const createNeedRequestRepository = (client?: DatabaseClient) => {
@@ -136,7 +165,16 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
    *  so both refuse the same things. */
   const hrdDecide = async (
     tx: Prisma.TransactionClient,
-    current: { training_need_request_id: bigint; company_id: bigint; status: string; approver_user_id: string | null; approver_decision: string | null; review_note: string | null; rejection_reason: string | null },
+    current: {
+      training_need_request_id: bigint;
+      company_id: bigint;
+      status: string;
+      approver_user_id: string | null;
+      approver_decision: string | null;
+      review_note: string | null;
+      rejection_reason: string | null;
+      course: { company_id: bigint | null } | null;
+    },
     action: "approve" | "reject" | "reset",
     note: string | null,
     actor: NeedRequestActor,
@@ -145,6 +183,7 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
     if (actor.role === "HRD_FACTORY" && current.company_id !== BigInt(actor.companyId ?? "-1")) {
       throw forbidden();
     }
+    courseOwnerMayAct(current.course, actor, "decide");
     const stage = stageOf(current);
     if (stage === "WAITING_HEAD" || stage === "REJECTED_BY_HEAD") {
       throw conflict("This request has not been approved by the requester's section head");
@@ -226,6 +265,19 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
           });
         }
 
+        // The course the employee picked, kept by id: the id is what every later screen reads the
+        // owner from, and unlike the code nothing renames or reuses it. The code and name are
+        // snapshotted beside it so the request still reads as sent if the course is renamed.
+        const course = input.courseId
+          ? await db().course.findUnique({
+              where: { course_id: BigInt(input.courseId) },
+              select: { course_id: true, course_code: true, course_name: true },
+            })
+          : null;
+        if (input.courseId && !course) {
+          throw new ApiError({ code: "COURSE_NOT_FOUND", message: "Course not found", status: 404 });
+        }
+
         // request_no is unique and derived from the row's own id, so two people submitting in the
         // same millisecond cannot collide. A timestamp-derived number could, and the failure would
         // land on whichever request arrived second.
@@ -238,6 +290,9 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
               function_id: employee.function_id,
               employee_user_id: employeeUserId,
               approver_user_id: input.approverUserId,
+              course_id: course?.course_id ?? null,
+              course_code_snapshot: course?.course_code ?? null,
+              course_name_snapshot: course?.course_name ?? null,
               requested_course_name: input.requestedCourseName,
               request_reason: input.requestReason,
               preferred_start_date: input.preferredStartDate
@@ -307,6 +362,8 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
         if (actor.role === "HRD_FACTORY" && current.company_id !== BigInt(actor.companyId ?? "-1")) {
           throw forbidden();
         }
+        // Planning a request into a batch is the course owner's call as much as approving it is.
+        courseOwnerMayAct(current.course, actor, "plan");
 
         if (input.action === "link") {
           if (stage !== "APPROVED") throw conflict("Only an approved request can be linked to a training batch");
@@ -366,6 +423,8 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
         const updated = await db().$transaction(async (tx) => {
           const rows = await tx.training_need_request.findMany({
             where: { training_need_request_id: { in: input.ids.map((id) => BigInt(id)) } },
+            // The course comes with the row so the owner check below costs no extra query per request.
+            include: { course: { select: { company_id: true } } },
           });
           if (rows.length !== input.ids.length) throw notFound();
           const results = [];

@@ -60,6 +60,16 @@ export type NeedRequestRecord = {
   reviewedAt: string | null;
   reviewNote: string;
   rejectionReason: string;
+  /** The course this request names, once one was picked. Null for a typed topic and for requests
+   *  raised before the course was recorded. */
+  courseId: string | null;
+  /** Who owns that course: the centre, or the factory whose company code is beside it. Null when
+   *  the request names no course, so nobody owns it and the requester's HRD answers it. */
+  courseOwner: "CENTER" | "FACTORY" | null;
+  courseOwnerCompanyCode: string | null;
+  /** The course's code and name as they were when the request was filed, for display. */
+  courseCodeSnapshot: string | null;
+  courseNameSnapshot: string | null;
   /** Null for a request raised before the section-head step existed. */
   approver: NeedRequestPerson | null;
   approverDecision: ApproverDecision | null;
@@ -73,6 +83,13 @@ export type NeedRequestRecord = {
 };
 
 export type CreateNeedRequestInput = {
+  /**
+   * The course the employee picked from their own record, when they picked one. Null for a topic
+   * they typed themselves - that course does not exist yet, so there is nothing to point at.
+   * Stored as the id, not the code: the id is the key nothing renames or reuses, and it is what
+   * lets every later screen read the course's owner instead of guessing from the typed text.
+   */
+  courseId: string | null;
   requestedCourseName: string;
   requestReason: string;
   preferredStartDate: string | null;

@@ -89,6 +89,7 @@ const enrollmentInclude = {
               // The course's own papers, for the stages the batch did not override.
               assessment_course_pre_assessment_idToassessment: { select: questionMarksSelect },
               assessment_course_post_assessment_idToassessment: { select: questionMarksSelect },
+              course_id: true,
               course_code: true,
               pre_assessment_id: true,
               pre_test_link: true,
@@ -349,6 +350,7 @@ const mapEnrollment = (row: EnrollmentWithRelations) => {
       planCode: plan.plan_code,
       planName: plan.plan_name,
       batchName: plan.batch_name || `Batch ${plan.batch_no}`,
+      courseId: oap.course.course_id.toString(),
       courseCode: oap.course.course_code,
       courseName: oap.course_name_snapshot,
       hours: oap.planned_duration_hours,

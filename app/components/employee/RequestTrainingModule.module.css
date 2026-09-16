@@ -631,3 +631,22 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.approvalHistory {
+  margin: 0 18px 18px;
+  padding: 8px 12px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-60-surface-soft);
+}
+
+.approvalHistory summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.84rem;
+  color: var(--ui-30-primary-strong);
+}
+
+.approvalHistory .approvalList {
+  padding: 10px 0 0;
+}

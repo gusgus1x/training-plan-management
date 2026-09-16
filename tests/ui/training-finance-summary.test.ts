@@ -148,6 +148,7 @@ describe("training finance summary", () => {
           planCode: "PLAN-001",
           planName: "Center course",
           batchName: "Batch 1",
+          courseId: "1",
           courseCode: "C-001",
           courseName: "Center course",
           hours: 6,

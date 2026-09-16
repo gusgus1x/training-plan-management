@@ -4,12 +4,12 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { NeedRequestRecord } from "../../../../lib/trainingNeedRequests/types";
 import {
-  courseCodeInRequest,
   enrollAndLink,
   loadHandoffRequests,
+  matchOapForRequests,
   NeedRequestAttachPanel,
   needRequestQuery,
-  readNeedRequestIds,
+  useNeedRequestIds,
 } from "./needRequestHandoff";
 import {
   getCourseDisplayName,
@@ -856,7 +856,7 @@ export default function TrainingRolling() {
 
   const [isLoading, setIsLoading] = useState(true);
   // Approved training need requests sent over from Request Training Need, to enrol and link on save.
-  const [handoffIds] = useState<string[]>(readNeedRequestIds);
+  const handoffIds = useNeedRequestIds();
   const [handoffRequests, setHandoffRequests] = useState<NeedRequestRecord[]>([]);
   const [handoffChecked, setHandoffChecked] = useState<Set<string>>(new Set());
   const [handoffSession, setHandoffSession] = useState(0);
@@ -887,22 +887,32 @@ export default function TrainingRolling() {
 
   useEffect(() => {
     void loadWorkspace();
+  }, []);
+
+  useEffect(() => {
     if (handoffIds.length === 0) return;
     Promise.all([loadHandoffRequests(handoffIds), listOapPlans({ search: null, status: null })])
       .then(([requests, { oapPlans: plans }]) => {
         setHandoffRequests(requests);
         setHandoffChecked(new Set(requests.map((request) => request.id)));
-        // A request that names its course by code opens with that course's plan already chosen;
-        // otherwise HRD picks it. A plan outside this user's scope simply does not show as chosen.
-        const code = requests.map((request) => courseCodeInRequest(request.requestedCourseName)).find(Boolean);
-        const match = code ? (plans || []).find((plan) => plan.status !== "Cancel" && plan.course.courseCode === code) : undefined;
-        setForm({ ...createEmptyForm(), oapId: match?.id ?? "" });
+        // Open on the course these requests are asking for, with the first session filled in from
+        // the plan and the dates the requesters asked for, so HRD can save a draft straight away.
+        // A plan outside this user's scope simply does not show as chosen.
+        const match = matchOapForRequests(requests, plans || []);
+        const preferredStart = requests.map((request) => request.preferredStartDate).find(Boolean) ?? "";
+        const preferredEnd = requests.map((request) => request.preferredEndDate).find(Boolean) ?? "";
+        const session = createEmptySession();
+        setForm({
+          ...createEmptyForm(),
+          oapId: match?.id ?? "",
+          sessions: [{ ...session, trainingDate: preferredStart, endDate: preferredEnd || preferredStart }],
+        });
         setIsNewOpen(true);
       })
       .catch((error: unknown) => toast.error(error instanceof Error ? error.message : String(error)));
-    // Once on mount: the ids come from the address this screen was opened with.
+    // Re-runs when the address changes, which is how the hand-off arrives on a client navigation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handoffIds]);
 
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
   const isCenterUser = user?.roleCode === "HRD_CENTER";
@@ -1758,6 +1768,7 @@ export default function TrainingRolling() {
                   targetSession={handoffSession}
                   onTargetSession={setHandoffSession}
                   planCompanyCode={selectedOap?.owner === "FACTORY" ? selectedOap.ownerCompany : null}
+                  hasPlan={selectedOap !== null}
                   onCreateOap={() => router.push(`/training-plan/training-oap${needRequestQuery(handoffIds)}`)}
                   isThai={isThai}
                 />

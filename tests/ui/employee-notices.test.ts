@@ -31,6 +31,7 @@ const enrollment = (overrides: Partial<EnrollmentRecord> = {}, postTest = emptyE
     planCode: "PLAN-001",
     planName: "QC batch 1",
     batchName: "1",
+    courseId: "1",
     courseCode: "QC-001",
     courseName: "Quality Control Basics",
     hours: 6,

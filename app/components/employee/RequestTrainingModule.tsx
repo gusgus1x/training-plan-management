@@ -132,7 +132,10 @@ export default function RequestTrainingModule({
   }, []);
 
   const waitingForMe = approvals.filter((request) => request.stage === "WAITING_HEAD");
-  const decidedByMe = approvals.length - waitingForMe.length;
+  // Newest decision first: the head reads this to remember who they have already sent.
+  const decidedByMe = approvals
+    .filter((request) => request.approverDecision !== null)
+    .sort((left, right) => (right.approverDecidedAt ?? "").localeCompare(left.approverDecidedAt ?? ""));
   // A head sees the approval card even when nothing is waiting, so they know where requests land.
   const showApprovals = approvals.length > 0 || isSectionHeadOrAbove(authenticatedUser);
 
@@ -206,6 +209,9 @@ export default function RequestTrainingModule({
     setIsSubmitting(true);
     try {
       const { needRequest } = await createNeedRequest({
+        // Only when the course was picked from the record: a typed topic names no course yet, and
+        // the id travels instead of the code so HRD reads the real owner rather than the text.
+        courseId: requestMode === "record" ? selectedCourse?.courseId ?? null : null,
         requestedCourseName: courseNeed,
         requestReason,
         preferredStartDate: preferredStartDate || null,
@@ -305,7 +311,7 @@ export default function RequestTrainingModule({
               </div>
               <span style={{ fontSize: "0.82rem", fontWeight: 800, color: "var(--ui-30-primary)" }}>
                 {waitingForMe.length} {t("รายการรออนุมัติ", "waiting")}
-                {decidedByMe > 0 ? t(` · ตัดสินแล้ว ${decidedByMe}`, ` · ${decidedByMe} decided`) : ""}
+                {decidedByMe.length > 0 ? t(` · ตัดสินแล้ว ${decidedByMe.length}`, ` · ${decidedByMe.length} decided`) : ""}
               </span>
             </div>
             {waitingForMe.length === 0 ? (
@@ -360,6 +366,52 @@ export default function RequestTrainingModule({
                 ))}
               </div>
             )}
+
+            {/* What this head has already decided: who they sent, who they turned down, and why. */}
+            {decidedByMe.length > 0 ? (
+              <details className={styles.approvalHistory}>
+                <summary>
+                  {t(`ประวัติการอนุมัติของฉัน (${decidedByMe.length} รายการ)`, `My approval history (${decidedByMe.length})`)}
+                </summary>
+                <div className={styles.approvalList}>
+                  {decidedByMe.map((request) => (
+                    <div className={styles.historyItem} key={request.id}>
+                      <div className={styles.historyHeader}>
+                        <span className={styles.historyReqNo}>{request.requestNo}</span>
+                        <span
+                          className={`${styles.statusBadge} ${
+                            request.approverDecision === "APPROVED" ? styles.statusApproved : styles.statusRejected
+                          }`}
+                        >
+                          <span
+                            className={`${styles.statusDot} ${
+                              request.approverDecision === "APPROVED" ? styles.dotApproved : styles.dotRejected
+                            }`}
+                          />
+                          {request.approverDecision === "APPROVED" ? t("คุณอนุมัติ", "You approved") : t("คุณไม่อนุมัติ", "You rejected")}
+                        </span>
+                      </div>
+                      <h5 className={styles.historyCourseName}>{request.requestedCourseName}</h5>
+                      <span className={styles.historyDate}>
+                        <User size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                        {request.employeeCode} {request.employeeName}
+                        {request.approverDecidedAt ? ` · ${formatDate(request.approverDecidedAt)}` : ""}
+                      </span>
+                      {request.approverNote ? (
+                        <p className={styles.historyReason}>
+                          {t("หมายเหตุของคุณ:", "Your note:")} {request.approverNote}
+                        </p>
+                      ) : null}
+                      {/* Where it went after the head: HRD may still have it, or it is already in a batch. */}
+                      <span className={styles.historyDate}>
+                        {t("สถานะตอนนี้:", "Now:")} {needRequestStageLabel(request.stage, language)}
+                        {request.plan ? ` · ${request.plan.planCode} · ${formatDate(request.plan.startAt)}` : ""}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ) : null}
           </section>
         ) : null}
 

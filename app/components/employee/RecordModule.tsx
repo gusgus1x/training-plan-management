@@ -50,6 +50,8 @@ import {
 
 export type EmployeeTrainingRecord = {
   id: string;
+  /** The course this batch taught, so a training need raised from it names a real course row. */
+  courseId: string;
   courseCode: string;
   courseTitle: string;
   completedDate: string;
@@ -100,6 +102,7 @@ const downloadPurposes: Record<DownloadPurpose, { label: string; description: st
 
 export const toRecord = (enrollment: EnrollmentRecord): EmployeeTrainingRecord => ({
   id: enrollment.id,
+  courseId: enrollment.plan.courseId,
   courseCode: enrollment.plan.courseCode,
   courseTitle: enrollment.plan.courseName,
   completedDate: enrollment.plan.startAt.slice(0, 10),

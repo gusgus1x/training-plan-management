@@ -89,6 +89,7 @@ const enrollmentWithFollowUp = (overrides: Partial<EnrollmentRecord["plan"]["ass
     planCode: "PLAN-001",
     planName: "Quality Control Basics batch 1",
     batchName: "Batch 1",
+    courseId: "1",
     courseCode: "QC-001",
     courseName: "Quality Control Basics",
     hours: 6,

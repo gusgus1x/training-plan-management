@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { createEnrollment, EnrollmentApiError } from "../../../../lib/trainingEnrollment/client";
 import { listNeedRequests, updateNeedRequest } from "../../../../lib/trainingNeedRequests/client";
 import type { NeedRequestRecord } from "../../../../lib/trainingNeedRequests/types";
@@ -12,10 +14,20 @@ import styles from "./TrainingRolling.module.css";
  * `?needRequestIds=1,2,3` - so the hand-off survives a reload and works in any browser.
  */
 
-export const readNeedRequestIds = () => {
-  if (typeof window === "undefined") return [];
-  const raw = new URLSearchParams(window.location.search).get("needRequestIds") ?? "";
-  return raw.split(",").map((id) => id.trim()).filter((id) => /^\d+$/.test(id));
+const parseIds = (raw: string | null) =>
+  (raw ?? "").split(",").map((id) => id.trim()).filter((id) => /^\d+$/.test(id));
+
+/**
+ * The ids this screen was opened with.
+ *
+ * `useSearchParams` rather than `window.location.search`: on a client-side navigation React renders
+ * the new screen before the address bar is updated, so a mount-time read of window.location saw the
+ * PREVIOUS page's query and the hand-off arrived empty. The hook re-renders with the new query.
+ */
+export const useNeedRequestIds = () => {
+  const params = useSearchParams();
+  const raw = params.get("needRequestIds");
+  return useMemo(() => parseIds(raw), [raw]);
 };
 
 export const needRequestQuery = (ids: string[]) => (ids.length ? `?needRequestIds=${ids.join(",")}` : "");
@@ -29,6 +41,110 @@ export const loadHandoffRequests = async (ids: string[]) => {
 
 /** "[SY-000002] Excel (Refresher)" names its course by code; a typed topic usually does not. */
 export const courseCodeInRequest = (name: string) => name.match(/\[([A-Za-z0-9_-]+)\]/)?.[1] ?? null;
+
+/** The course name without the code and the "(ขออบรมทบทวน / Refresher)" tail the employee screen adds. */
+export const requestedCourseTitle = (name: string) =>
+  name
+    .replace(/\[[^\]]*\]/g, " ")
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const bareCourseName = (name: string) => requestedCourseTitle(name).toLowerCase();
+
+/**
+ * What to call the course on screen. The employee's own wording carries the code in brackets and a
+ * "(ขออบรมทบทวน / Refresher)" tail, which is noise once the same line repeats down a list, so the
+ * course's own name wins when the request names a real course.
+ */
+export const courseLabel = (request: Pick<NeedRequestRecord, "courseNameSnapshot" | "requestedCourseName">) =>
+  request.courseNameSnapshot?.trim() ||
+  requestedCourseTitle(request.requestedCourseName) ||
+  request.requestedCourseName;
+
+/** Two requests are for the same course when they name the same course, not the same text. */
+export const demandKey = (request: Pick<NeedRequestRecord, "courseId" | "courseNameSnapshot" | "requestedCourseName">) =>
+  request.courseId ? `id:${request.courseId}` : `name:${courseLabel(request).toLowerCase()}`;
+
+type PlanLike = { id: string; status: string; course: { courseCode: string; courseNameTh: string; courseNameEn: string } };
+
+/**
+ * The OAP plan these requests are asking for: by course code when the request carries one, else by
+ * the course name the employee typed. Returns null when nothing matches - HRD then picks the plan,
+ * which is also what happens when the course has no plan for this year yet.
+ */
+export const matchOapForRequests = <T extends PlanLike>(requests: NeedRequestRecord[], plans: T[]): T | null => {
+  const open = plans.filter((plan) => plan.status !== "Cancel");
+  const code = requests.map((request) => courseCodeInRequest(request.requestedCourseName)).find(Boolean);
+  const byCode = code ? open.find((plan) => plan.course.courseCode.toLowerCase() === code.toLowerCase()) : undefined;
+  if (byCode) return byCode;
+
+  for (const request of requests) {
+    const typed = bareCourseName(request.requestedCourseName);
+    if (typed.length < 3) continue;
+    const byName = open.find((plan) => {
+      const names = [plan.course.courseNameTh, plan.course.courseNameEn].map((name) => (name || "").trim().toLowerCase()).filter(Boolean);
+      return names.some((name) => name === typed || name.includes(typed) || typed.includes(name));
+    });
+    if (byName) return byName;
+  }
+  return null;
+};
+
+type CourseLike = { id: string; courseCode: string; courseNameTh: string; courseNameEn: string };
+
+/** The Course Master course a request names: by the code it carries, else by the name typed. */
+export const matchCourseForRequest = <T extends CourseLike>(requestName: string, courseList: T[]): T | null => {
+  if (!requestName || !courseList.length) return null;
+  const trimmed = requestName.trim();
+
+  const code = courseCodeInRequest(trimmed)?.toLowerCase();
+  const byCode = code ? courseList.find((course) => course.courseCode.toLowerCase() === code) : undefined;
+  if (byCode) return byCode;
+
+  const startsWithCode = courseList.find((course) => trimmed.toLowerCase().startsWith(course.courseCode.toLowerCase()));
+  if (startsWithCode) return startsWithCode;
+
+  return (
+    courseList.find(
+      (course) => trimmed.includes(course.courseNameTh) || (course.courseNameEn && trimmed.includes(course.courseNameEn)),
+    ) ?? null
+  );
+};
+
+export type PlanningTarget =
+  | { kind: "rolling"; url: string; courseName: string }
+  | { kind: "oap"; url: string; courseName: string }
+  | { kind: "course"; url: string; courseName: string };
+
+/**
+ * Where HRD has to go to turn these requests into a batch: straight to Training Rolling when the
+ * course already has an OAP plan, to Training OAP when the course exists but has no plan, and to
+ * Course Master when the course itself does not exist yet. Worked out before HRD leaves the inbox
+ * so they confirm one card instead of discovering the next missing piece one screen at a time.
+ */
+export const planningTarget = <P extends PlanLike, C extends CourseLike>(
+  requests: NeedRequestRecord[],
+  plans: P[],
+  courses: C[],
+): PlanningTarget => {
+  const ids = requests.map((request) => request.id);
+  const query = needRequestQuery(ids);
+  const courseName = requests.map((request) => requestedCourseTitle(request.requestedCourseName)).find(Boolean) ?? "";
+
+  if (matchOapForRequests(requests, plans)) {
+    return { kind: "rolling", url: `/training-plan/training-rolling${query}`, courseName };
+  }
+  const course = requests.map((request) => matchCourseForRequest(request.requestedCourseName, courses)).find(Boolean);
+  if (course) {
+    return { kind: "oap", url: `/training-plan/training-oap${query}${query ? "&" : "?"}courseId=${course.id}`, courseName };
+  }
+  return {
+    kind: "course",
+    url: `/training-course/course-master-standard?newCourseName=${encodeURIComponent(courseName)}&needRequestIds=${ids.join(",")}`,
+    courseName,
+  };
+};
 
 type Confirm = ReturnType<typeof useConfirm>;
 
@@ -102,6 +218,8 @@ type PanelProps = {
   onTargetSession: (index: number) => void;
   /** The chosen OAP's owning company code, or null for a central plan. */
   planCompanyCode: string | null;
+  /** True once a plan is chosen: the "create an OAP" way out is only for a course that has none. */
+  hasPlan: boolean;
   onCreateOap: () => void;
   isThai: boolean;
 };
@@ -115,6 +233,7 @@ export function NeedRequestAttachPanel({
   targetSession,
   onTargetSession,
   planCompanyCode,
+  hasPlan,
   onCreateOap,
   isThai,
 }: PanelProps) {
@@ -131,9 +250,11 @@ export function NeedRequestAttachPanel({
             )}
           </span>
         </div>
-        <button className={styles.addSessionButton} type="button" onClick={onCreateOap}>
-          {t("ยังไม่มีแผน OAP ของหลักสูตรนี้? สร้างแผน OAP", "No OAP for this course? Create one")}
-        </button>
+        {hasPlan ? null : (
+          <button className={styles.addSessionButton} type="button" onClick={onCreateOap}>
+            {t("ยังไม่มีแผน OAP ของหลักสูตรนี้? สร้างแผน OAP", "No OAP for this course? Create one")}
+          </button>
+        )}
       </div>
       {sessionLabels.length > 1 ? (
         <label className={styles.needRequestTarget}>
