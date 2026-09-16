@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+body,
+body * {
+  font-weight: 700;
+}
+
 :root {
   /*
    * ATTG Unified 60–30–10 Design System (Optimized for Laptop & Desktop Displays)

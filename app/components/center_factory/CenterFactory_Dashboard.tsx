@@ -190,7 +190,12 @@ export default function Dashboard({
         value:
           isCenter
             ? isThai ? "ทุกบริษัท (All Companies)" : "All Companies"
-            : profileValue(authenticatedUser?.companyName ?? authenticatedUser?.companyCode),
+            : profileValue(
+                (isThai
+                  ? authenticatedUser?.companyName
+                  : authenticatedUser?.companyNameEn ?? authenticatedUser?.companyName) ??
+                  authenticatedUser?.companyCode,
+              ),
       },
     ];
   }, [authenticatedUser, username, isThai]);

@@ -409,8 +409,6 @@
 }
 
 .employeePanel {
-  position: relative;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -420,16 +418,6 @@
   background: var(--ui-60-glass, rgba(255, 255, 255, 0.95));
   border: 1px solid var(--ui-30-border, rgba(226, 232, 240, 0.8));
   box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.08);
-}
-
-.employeePanel::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
-  pointer-events: none;
 }
 
 .profileHeaderBanner {
@@ -575,14 +563,17 @@
 
 .employeeDetailsGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
+  align-items: stretch;
 }
 
 .detailCard {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 4px;
+  min-height: 62px;
   padding: 12px 14px;
   border: 1px solid var(--ui-30-border, rgba(226, 232, 240, 0.8));
   border-radius: var(--ui-radius-lg, 12px);
@@ -593,6 +584,10 @@
 .detailCard:first-child {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, var(--ui-60-surface-soft, rgba(248, 250, 252, 0.85)) 100%);
   border-color: rgba(16, 185, 129, 0.25);
+}
+
+.detailCard:last-child {
+  grid-column: span 2;
 }
 
 :global([data-theme="dark"]) .detailCard:first-child,
@@ -617,12 +612,11 @@
 }
 
 .detailValue {
-  overflow: hidden;
   color: var(--ui-30-ink, #0f172a);
   font-size: 0.85rem;
   font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  overflow-wrap: normal;
 }
 
 .kpiSummaryBar {
@@ -1578,11 +1572,51 @@
     padding: 20px 20px 22px 24px;
   }
 
-  .employeeDetails,
-  .employeeSummary,
+  .employeeDetailsGrid,
   .calendarFilters,
   .menuRow {
     grid-template-columns: 1fr;
+  }
+
+  .detailCard:last-child {
+    grid-column: auto;
+  }
+
+  .kpiSummaryBar {
+    margin-left: 0;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .kpiCol {
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-right: none;
+    border-bottom: 1px solid var(--ui-30-border);
+  }
+
+  .kpiCol:last-child {
+    border-bottom: none;
+  }
+
+  .calendarGrid {
+    gap: 4px;
+    padding: 6px;
+    min-height: 0;
+  }
+
+  .calendarDay {
+    min-height: 36px;
+    padding: 2px;
+  }
+
+  .dayNumberBadge {
+    min-width: 22px;
+    height: 22px;
+    font-size: 0.72rem;
   }
 
   .menuHeader {
@@ -1682,13 +1716,6 @@
   background: linear-gradient(145deg, #131b2e 0%, #0d1424 100%);
   border-color: rgba(46, 61, 88, 0.85);
   box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
-:global([data-theme="dark"]) .employeePanel::before,
-:global(.dark) .employeePanel::before {
-  width: 3px;
-  background: linear-gradient(180deg, #10b981 0%, rgba(16, 185, 129, 0.2) 100%);
-  box-shadow: 0 0 16px rgba(16, 185, 129, 0.5);
 }
 
 :global([data-theme="dark"]) .photoBox,

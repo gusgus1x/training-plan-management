@@ -509,6 +509,28 @@
   grid-column: span 6 !important;
 }
 
+@media (max-width: 768px) {
+  .formGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .formGrid label,
+  .formGrid .fullField {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 480px) {
+  .formGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .formGrid label,
+  .formGrid .fullField {
+    grid-column: 1;
+  }
+}
+
 .coursePreview {
   display: grid;
   gap: 12px;
