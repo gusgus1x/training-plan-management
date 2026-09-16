@@ -1565,23 +1565,27 @@
 
 .courseDirectCard {
   border: 1px solid var(--ui-30-border);
+  border-left: 3px solid var(--ui-30-primary);
   border-radius: var(--ui-radius-lg);
   background: var(--ui-60-surface);
-  box-shadow: var(--ui-shadow-sm);
+  background-image: linear-gradient(105deg, rgba(37,99,235,0.035) 0%, transparent 55%);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
   overflow: hidden;
-  transition: all 0.2s ease;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
 }
 
 .courseDirectCard:hover {
   border-color: var(--ui-30-primary-border);
+  box-shadow: 0 6px 20px rgba(37,99,235,0.13), 0 2px 6px rgba(0,0,0,0.07);
+  transform: translateY(-1px);
 }
 
 .courseCardMain {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 14px;
   padding: 14px 18px;
 }
 
@@ -1590,37 +1594,107 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  height: 46px;
-  border-radius: var(--ui-radius-md);
-  border: 1px solid var(--ui-30-border);
-  background: var(--ui-60-surface-soft);
+  min-width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  border: 1px solid rgba(37,99,235,0.30);
+  background: linear-gradient(145deg, rgba(37,99,235,0.12) 0%, rgba(37,99,235,0.05) 100%);
   color: var(--ui-30-ink);
   flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(37,99,235,0.12);
 }
 
 .courseDateBadge strong {
-  color: var(--ui-30-primary);
-  font-size: 1.1rem;
+  color: #1d4ed8;
+  font-size: 1.2rem;
   font-weight: 900;
   line-height: 1;
+  letter-spacing: -0.02em;
 }
 
 .courseDateBadge span {
-  color: var(--ui-30-muted);
-  font-size: 0.62rem;
+  color: #3b82f6;
+  font-size: 0.63rem;
   font-weight: 800;
-  margin-top: 2px;
+  margin-top: 3px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
+}
+
+/* Multi-day variant — wider pill instead of the cramped square */
+.courseDateBadgeMultiDay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(37,99,235,0.30);
+  background: linear-gradient(145deg, rgba(37,99,235,0.12) 0%, rgba(37,99,235,0.05) 100%);
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(37,99,235,0.12);
+  min-width: 72px;
+}
+
+.courseDateBadgeRange {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.courseDateBadgeRange strong {
+  color: #1d4ed8;
+  font-size: 1.2rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.courseDateBadgeDash {
+  color: #60a5fa;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.courseDateBadgeMonth {
+  color: #3b82f6;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  margin-left: 2px;
+}
+
+:global([data-theme="dark"]) .courseDateBadgeMultiDay,
+:global(.dark) .courseDateBadgeMultiDay {
+  background: linear-gradient(145deg, rgba(59,130,246,0.18) 0%, rgba(59,130,246,0.08) 100%);
+  border-color: rgba(59,130,246,0.35);
+  box-shadow: 0 1px 4px rgba(59,130,246,0.18);
+}
+:global([data-theme="dark"]) .courseDateBadgeRange strong,
+:global(.dark) .courseDateBadgeRange strong {
+  color: #93c5fd;
+}
+:global([data-theme="dark"]) .courseDateBadgeDash,
+:global(.dark) .courseDateBadgeDash {
+  color: #60a5fa;
+}
+:global([data-theme="dark"]) .courseDateBadgeMonth,
+:global(.dark) .courseDateBadgeMonth {
+  color: #60a5fa;
 }
 
 .courseMetaInfo {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  flex-grow: 1;
+  flex: 1 1 0;
   min-width: 0;
+  overflow: hidden;
 }
 
 .courseTitleRow {
@@ -1640,14 +1714,15 @@
 }
 
 .courseCodeTag {
-  border: 1px solid var(--ui-30-border);
-  border-radius: 4px;
-  background: var(--ui-60-surface-soft);
-  color: var(--ui-30-muted);
-  font-size: 0.66rem;
+  border: 1px solid rgba(37,99,235,0.30);
+  border-radius: 5px;
+  background: rgba(37,99,235,0.08);
+  color: #2563eb;
+  font-size: 0.65rem;
   font-weight: 800;
-  padding: 1px 6px;
+  padding: 2px 7px;
   white-space: nowrap;
+  letter-spacing: 0.04em;
 }
 
 .courseSubMeta {
@@ -1662,18 +1737,23 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 9px;
-  border-radius: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
   border: 1px solid var(--ui-30-border);
   background: var(--ui-60-surface-soft);
   font-size: 0.74rem;
   line-height: 1.35;
   white-space: nowrap;
-  transition: all 0.15s ease;
+  transition: opacity 0.15s ease, box-shadow 0.15s ease;
+}
+
+.metaChip:hover {
+  opacity: 0.85;
 }
 
 .metaChip svg {
   flex-shrink: 0;
+  opacity: 0.9;
 }
 
 .metaLabel {
@@ -1684,7 +1764,8 @@
 
 .metaValue {
   color: var(--ui-30-ink);
-  font-weight: 800;
+  font-weight: 900;
+  font-size: 0.75rem;
 }
 
 /* Specific Tints for Clarity */
@@ -1724,6 +1805,38 @@
 .metaChipBatch {
   background: var(--ui-60-surface-soft);
   border-color: var(--ui-30-border);
+}
+
+:global([data-theme="dark"]) .courseDateBadge,
+:global(.dark) .courseDateBadge {
+  background: linear-gradient(145deg, rgba(59,130,246,0.18) 0%, rgba(59,130,246,0.08) 100%);
+  border-color: rgba(59,130,246,0.35);
+  box-shadow: 0 1px 4px rgba(59,130,246,0.18);
+}
+:global([data-theme="dark"]) .courseDateBadge strong,
+:global(.dark) .courseDateBadge strong {
+  color: #93c5fd;
+}
+:global([data-theme="dark"]) .courseDateBadge span,
+:global(.dark) .courseDateBadge span {
+  color: #60a5fa;
+}
+
+:global([data-theme="dark"]) .courseCodeTag,
+:global(.dark) .courseCodeTag {
+  background: rgba(59,130,246,0.14);
+  border-color: rgba(59,130,246,0.35);
+  color: #93c5fd;
+}
+
+:global([data-theme="dark"]) .courseDirectCard,
+:global(.dark) .courseDirectCard {
+  background-image: linear-gradient(105deg, rgba(59,130,246,0.06) 0%, transparent 55%);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.25), 0 1px 3px rgba(0,0,0,0.15);
+}
+:global([data-theme="dark"]) .courseDirectCard:hover,
+:global(.dark) .courseDirectCard:hover {
+  box-shadow: 0 6px 24px rgba(59,130,246,0.18), 0 2px 6px rgba(0,0,0,0.2);
 }
 
 :global([data-theme="dark"]) .metaChipTime,
@@ -1862,7 +1975,7 @@
 
 .courseCardActions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
@@ -2086,6 +2199,76 @@
   line-height: 1.35;
   word-break: break-word;
 }
+
+/* Budget breakdown section */
+.detailBudgetSection {
+  padding: 14px 16px;
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
+  border-left: 3px solid rgba(37,99,235,0.45);
+  border-radius: var(--ui-radius-md);
+}
+
+.detailBudgetTitle {
+  margin: 0 0 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  color: var(--ui-30-ink);
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.detailBudgetTotal {
+  color: #1d4ed8;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.detailBudgetGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.detailBudgetChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: rgba(37,99,235,0.06);
+  border: 1px solid rgba(37,99,235,0.22);
+  border-radius: 8px;
+}
+
+.detailBudgetLabel {
+  color: var(--ui-30-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.detailBudgetValue {
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+:global([data-theme="dark"]) .detailBudgetSection,
+:global(.dark) .detailBudgetSection {
+  border-left-color: rgba(59,130,246,0.5);
+}
+:global([data-theme="dark"]) .detailBudgetChip,
+:global(.dark) .detailBudgetChip {
+  background: rgba(59,130,246,0.1);
+  border-color: rgba(59,130,246,0.3);
+}
+:global([data-theme="dark"]) .detailBudgetTotal,
+:global([data-theme="dark"]) .detailBudgetValue,
+:global(.dark) .detailBudgetTotal,
+:global(.dark) .detailBudgetValue {
+  color: #93c5fd;
+}
+
 
 .detailSectionBlock {
   display: flex;
