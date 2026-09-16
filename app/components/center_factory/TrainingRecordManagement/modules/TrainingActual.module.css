@@ -947,29 +947,45 @@
 .togglePill {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
+  gap: 6px;
+  padding: 5px 12px;
   border-radius: 999px;
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 800;
   transition: all 0.15s ease;
   white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-family: inherit;
+  outline: none;
+  user-select: none;
 }
 
 .togglePillPresent {
   background: #ecfdf5;
-  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-color: rgba(16, 185, 129, 0.4);
   color: #047857;
 }
 
 .togglePillAbsent {
   background: var(--ui-60-surface-soft);
-  border: 1px solid var(--ui-30-border);
+  border-color: var(--ui-30-border);
   color: var(--ui-30-muted);
 }
 
-.togglePill:hover {
-  transform: scale(1.02);
+.togglePill:hover:not(:disabled) {
+  transform: scale(1.03);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.togglePill:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.togglePill:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* Employee & Organization Cell Typography */
@@ -1306,17 +1322,35 @@
   font-weight: 800;
   transition: all 0.15s ease;
   white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-family: inherit;
+  outline: none;
+  user-select: none;
+}
+
+.resultPassPill:hover:not(:disabled) {
+  transform: scale(1.03);
+}
+
+.resultPassPill:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.resultPassPill:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .resultPassPillCompleted {
   background: #ecfdf5;
-  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-color: rgba(16, 185, 129, 0.4);
   color: #047857;
 }
 
 .resultPassPillNotCompleted {
   background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.3);
   color: #dc2626;
 }
 

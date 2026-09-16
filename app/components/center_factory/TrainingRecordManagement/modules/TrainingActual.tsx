@@ -1036,18 +1036,62 @@ export default function TrainingActual() {
 
   const toggleAttendance = async (enrollmentId: string, attended: boolean) => {
     if (isSelectedCourseReadOnlyForFactory) return;
+    const nextAttended = !attended;
+
+    // Optimistic UI update so the attendance toggle flips IMMEDIATELY with 0ms lag
+    setEnrollments((current) =>
+      current.map((en) =>
+        en.id === enrollmentId
+          ? {
+              ...en,
+              attendance: nextAttended
+                ? {
+                    attendanceId: en.attendance?.attendanceId || "temp",
+                    status: "PRESENT",
+                    checkInAt: new Date().toISOString(),
+                    checkOutAt: null,
+                    method: "MANUAL",
+                    recordedBy: null,
+                    remark: "",
+                  }
+                : null,
+            }
+          : en,
+      ),
+    );
+
     try {
-      await setEnrollmentAttendance(enrollmentId, { attended: !attended });
+      await setEnrollmentAttendance(enrollmentId, { attended: nextAttended });
       await reloadEnrollments();
       if (selectedCourse) await reloadCostBreakdown(selectedCourse.id);
     } catch (error) {
       console.error("Failed to update attendance", error);
+      await reloadEnrollments();
       toast.error(t("บันทึกการเช็คชื่อไม่สำเร็จ", "Failed to update attendance"));
     }
   };
 
   const setAllAttendance = async (attended: boolean) => {
     if (isSelectedCourseReadOnlyForFactory) return;
+
+    // Optimistic UI update for all attendees
+    setEnrollments((current) =>
+      current.map((en) => ({
+        ...en,
+        attendance: attended
+          ? {
+              attendanceId: en.attendance?.attendanceId || "temp",
+              status: "PRESENT",
+              checkInAt: new Date().toISOString(),
+              checkOutAt: null,
+              method: "MANUAL",
+              recordedBy: null,
+              remark: "",
+            }
+          : null,
+      })),
+    );
+
     try {
       await Promise.all(
         attendees
@@ -1058,6 +1102,7 @@ export default function TrainingActual() {
       if (selectedCourse) await reloadCostBreakdown(selectedCourse.id);
     } catch (error) {
       console.error("Failed to update attendance", error);
+      await reloadEnrollments();
       toast.error(t("บันทึกการเช็คชื่อไม่สำเร็จ", "Failed to update attendance"));
     }
   };
@@ -1853,31 +1898,33 @@ export default function TrainingActual() {
                         className={attendee.attended ? actualStyles.rowAttended : undefined}
                       >
                         <td>
-                          <label className={actualStyles.attendanceToggleLabel}>
-                            <input
-                              type="checkbox"
-                              checked={attendee.attended}
-                              disabled={isSelectedCourseReadOnlyForFactory}
-                              onChange={() => void toggleAttendance(attendee.id, attendee.attended)}
-                            />
-                            <span
-                              className={`${actualStyles.togglePill} ${
-                                attendee.attended
-                                  ? actualStyles.togglePillPresent
-                                  : actualStyles.togglePillAbsent
-                              }`}
-                            >
-                              {attendee.attended ? (
-                                <>
-                                  <span className={actualStyles.glowingDotGreen} /> {t("มาเรียน", "Present")}
-                                </>
-                              ) : (
-                                <>
-                                  <span className={actualStyles.glowingDotRed} /> {t("ขาดเรียน", "Absent")}
-                                </>
-                              )}
-                            </span>
-                          </label>
+                          <button
+                            type="button"
+                            className={`${actualStyles.togglePill} ${
+                              attendee.attended
+                                ? actualStyles.togglePillPresent
+                                : actualStyles.togglePillAbsent
+                            }`}
+                            disabled={isSelectedCourseReadOnlyForFactory}
+                            onClick={() => void toggleAttendance(attendee.id, attendee.attended)}
+                            title={
+                              isSelectedCourseReadOnlyForFactory
+                                ? t("ไม่สามารถเช็คชื่อได้เนื่องจากเป็นหลักสูตรของส่วนกลาง", "Read-only Center course")
+                                : attendee.attended
+                                  ? t("คลิกเพื่อเปลี่ยนเป็นขาดเรียน", "Click to mark absent")
+                                  : t("คลิกเพื่อเช็คชื่อเข้าเรียน", "Click to mark present")
+                            }
+                          >
+                            {attendee.attended ? (
+                              <>
+                                <span className={actualStyles.glowingDotGreen} /> {t("มาเรียน", "Present")}
+                              </>
+                            ) : (
+                              <>
+                                <span className={actualStyles.glowingDotRed} /> {t("ขาดเรียน", "Absent")}
+                              </>
+                            )}
+                          </button>
                         </td>
                         <td>
                           <div className={actualStyles.empNameBox}>
@@ -2077,40 +2124,40 @@ export default function TrainingActual() {
                           >
                             {/* Col 1: Status Toggle */}
                             <td>
-                              <label className={actualStyles.resultPassToggleLabel}>
-                                <input
-                                  type="checkbox"
-                                  checked={isCompleted}
-                                  disabled={isSelectedCourseReadOnlyForFactory}
-                                  onChange={() =>
-                                    setResultField(
-                                      attendee.id,
-                                      "completionStatus",
-                                      isCompleted ? "NOT_COMPLETED" : "COMPLETED",
-                                    )
-                                  }
-                                />
-                                <span
-                                  className={`${actualStyles.resultPassPill} ${
-                                    isCompleted
-                                      ? actualStyles.resultPassPillCompleted
-                                      : draft.completionStatus === "PENDING"
-                                        ? actualStyles.resultPassPillPending
-                                        : actualStyles.resultPassPillNotCompleted
-                                  }`}
-                                >
-                                  {isCompleted ? (
-                                    <>
-                                      <span className={actualStyles.glowingDotGreen} /> {t("ผ่าน", "Passed")}
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span className={actualStyles.glowingDotRed} />{" "}
-                                      {draft.completionStatus === "PENDING" ? t("ยังไม่ระบุ", "Pending") : t("ไม่ผ่าน", "Failed")}
-                                    </>
-                                  )}
-                                </span>
-                              </label>
+                              <button
+                                type="button"
+                                className={`${actualStyles.resultPassPill} ${
+                                  isCompleted
+                                    ? actualStyles.resultPassPillCompleted
+                                    : draft.completionStatus === "PENDING"
+                                      ? actualStyles.resultPassPillPending
+                                      : actualStyles.resultPassPillNotCompleted
+                                }`}
+                                disabled={isSelectedCourseReadOnlyForFactory}
+                                onClick={() =>
+                                  setResultField(
+                                    attendee.id,
+                                    "completionStatus",
+                                    isCompleted ? "NOT_COMPLETED" : "COMPLETED",
+                                  )
+                                }
+                                title={
+                                  isCompleted
+                                    ? t("คลิกเพื่อเปลี่ยนเป็นไม่ผ่าน", "Click to mark not passed")
+                                    : t("คลิกเพื่อเปลี่ยนเป็นผ่าน", "Click to mark passed")
+                                }
+                              >
+                                {isCompleted ? (
+                                  <>
+                                    <span className={actualStyles.glowingDotGreen} /> {t("ผ่าน", "Passed")}
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className={actualStyles.glowingDotRed} />{" "}
+                                    {draft.completionStatus === "PENDING" ? t("ยังไม่ระบุ", "Pending") : t("ไม่ผ่าน", "Failed")}
+                                  </>
+                                )}
+                              </button>
                             </td>
 
                             {/* Col 2: Attendee Info */}
