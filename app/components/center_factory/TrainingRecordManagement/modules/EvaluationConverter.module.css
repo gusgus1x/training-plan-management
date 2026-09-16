@@ -157,6 +157,12 @@
   margin-top: 14px;
 }
 
+@media (max-width: 420px) {
+  .modeSwitch {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .modeSwitch button {
   display: grid;
   gap: 2px;

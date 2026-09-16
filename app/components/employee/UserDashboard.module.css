@@ -736,12 +736,11 @@
 }
 
 .detailValue {
-  overflow: hidden;
   color: var(--ui-30-ink, #0f172a);
   font-size: 0.85rem;
   font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  overflow-wrap: normal;
 }
 
 .kpiSummaryBar {
@@ -1514,11 +1513,38 @@
     padding: 20px 20px 22px 24px;
   }
 
-  .employeeDetails,
-  .employeeSummary,
+  .employeeDetailsGrid,
   .calendarFilters,
   .menuRow {
     grid-template-columns: 1fr;
+  }
+
+  .detailCard:first-child {
+    grid-column: 1;
+  }
+
+  .kpiSummaryBar {
+    margin-left: 0;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  .kpiCol,
+  .kpiColBtn {
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+    padding: 6px 4px;
+    border-right: none;
+    border-bottom: 1px solid var(--ui-30-border);
+    white-space: normal;
+  }
+
+  .kpiCol:last-child,
+  .kpiColBtn:last-child {
+    border-bottom: none;
   }
 
   .menuHeader {

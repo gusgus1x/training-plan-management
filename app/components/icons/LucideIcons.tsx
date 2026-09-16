@@ -774,3 +774,7 @@ export const Megaphone = createIcon(
     <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
   </>
 );
+
+export const Zap = createIcon(
+  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+);
