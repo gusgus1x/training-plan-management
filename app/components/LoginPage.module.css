@@ -1,9 +1,19 @@
 .page {
   position: relative;
-  overflow: hidden;
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: var(--ui-60-canvas);
   color: var(--ui-30-ink);
+}
+
+@media (min-height: 600px) and (min-width: 768px) {
+  .page {
+    overflow: hidden;
+  }
 }
 
 /* ═══════════════════════════════════════
@@ -14,25 +24,25 @@
   position: relative;
   z-index: 10;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(380px, 460px);
-  column-gap: clamp(24px, 5vw, 72px);
-  row-gap: 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(400px, 480px);
+  column-gap: clamp(24px, 4vw, 64px);
+  row-gap: 16px;
   align-items: center;
   align-content: center;
-  width: min(1280px, calc(100% - 48px));
-  min-height: calc(100vh - 76px);
+  width: min(1320px, calc(100% - 48px));
+  flex: 1;
+  min-height: 0;
   margin: 0 auto;
-  padding: 40px 0;
+  padding: clamp(10px, 2.5vh, 26px) 0;
+  box-sizing: border-box;
 }
 
-/* The second column's 380px floor is wider than most phones. .loginCard is the only in-flow
-   grid item (.visualPanel is position:fixed, out of flow) so collapsing to one column and
-   re-homing the card into it is enough - nothing else in this grid needs to reflow. */
 @media (max-width: 640px) {
   .loginSection {
     grid-template-columns: minmax(0, 1fr);
     width: min(480px, calc(100% - 32px));
-    padding: 24px 0;
+    padding: 16px 0;
+    flex: none;
   }
 }
 
@@ -107,11 +117,10 @@
   position: relative;
   z-index: 5;
   grid-column: 1;
-  grid-row: 1 / span 2;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 24px;
+  gap: 16px;
   width: 100%;
   max-width: 580px;
 }
@@ -120,7 +129,7 @@
   .heroColumn {
     grid-column: 1;
     grid-row: 3;
-    gap: 16px;
+    gap: 12px;
     margin-top: 8px;
     max-width: 100%;
   }
@@ -130,7 +139,7 @@
   position: relative;
   width: 100%;
   max-width: 580px;
-  min-height: 260px;
+  min-height: 160px;
 }
 
 @media (max-width: 640px) {
@@ -166,18 +175,18 @@
 .companyEyebrow {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: 0 0 16px;
+  gap: 10px;
+  margin: 0 0 8px;
   color: var(--ui-30-primary);
   font-size: 11px;
   font-weight: 900;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
 .companyEyebrow::before {
   flex-shrink: 0;
-  width: 32px;
+  width: 28px;
   height: 2px;
   border-radius: 999px;
   background: var(--ui-30-primary);
@@ -187,19 +196,19 @@
 .companySlide h1 {
   margin: 0;
   color: var(--ui-30-ink);
-  font-size: clamp(28px, 3.4vw, 44px);
+  font-size: clamp(22px, 2.5vw, 34px);
   font-weight: 900;
   letter-spacing: -0.02em;
-  line-height: 1.12;
+  line-height: 1.15;
 }
 
 .companySlide span {
   display: block;
-  margin-top: 16px;
+  margin-top: 8px;
   color: var(--ui-30-text);
-  font-size: clamp(13px, 1.2vw, 15px);
+  font-size: clamp(12.5px, 1.1vw, 14px);
   font-weight: 500;
-  line-height: 1.6;
+  line-height: 1.5;
   max-width: 480px;
 }
 
@@ -219,7 +228,7 @@
   border-radius: 24px;
   background: var(--ui-60-surface);
   color: var(--ui-30-ink);
-  padding: 38px 36px;
+  padding: 30px 32px 26px;
   box-shadow:
     0 24px 60px -12px rgba(0, 0, 0, 0.4),
     0 0 0 1px rgba(255, 255, 255, 0.06) inset;
@@ -232,14 +241,14 @@
   .loginCard {
     grid-column: 1;
     justify-self: stretch;
-    padding: 28px 22px;
+    padding: 24px 20px;
   }
 }
 
 @keyframes cardEntrance {
   from {
     opacity: 0;
-    transform: translateY(20px) scale(0.98);
+    transform: translateY(16px) scale(0.98);
   }
   to {
     opacity: 1;
@@ -252,17 +261,17 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 24px;
-  padding-bottom: 18px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--ui-30-border);
 }
 
 .cardHeaderLogo {
-  height: 48px;
+  height: 46px;
   width: auto;
   object-fit: contain;
   flex-shrink: 0;
-  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.25));
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.22));
 }
 
 .cardHeaderTitleBox {
@@ -272,7 +281,7 @@
 }
 
 .groupEyebrow {
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 900;
   color: var(--ui-30-primary);
   letter-spacing: 0.08em;
@@ -282,7 +291,7 @@
 .cardHeaderTitle {
   margin: 0;
   color: var(--ui-30-ink);
-  font-size: 1.35rem;
+  font-size: 1.28rem;
   font-weight: 900;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -295,19 +304,19 @@
 .fieldGroup {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  margin-bottom: 24px;
+  gap: 14px;
+  margin-bottom: 18px;
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .fieldLabel {
   color: var(--ui-30-muted);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -325,7 +334,7 @@
   left: 16px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   color: var(--ui-30-muted);
   pointer-events: none;
   z-index: 5;
@@ -341,14 +350,14 @@
 
 .fieldInput {
   width: 100%;
-  height: 50px;
+  height: 48px;
   border: 1px solid var(--ui-30-border);
   border-radius: 12px;
   background: var(--ui-60-surface-soft);
   color: var(--ui-30-ink);
   font-size: 0.92rem;
   font-weight: 600;
-  padding: 0 16px 0 52px !important; /* 52px padding guarantees NO text overlap! */
+  padding: 0 16px 0 50px !important;
   outline: none;
   transition: all 0.18s ease;
 }
@@ -357,6 +366,7 @@
   color: var(--ui-30-muted);
   opacity: 0.55;
   font-weight: 500;
+  font-size: 0.86rem;
 }
 
 .fieldInput:focus {
@@ -406,14 +416,14 @@
 
 /* Error Message */
 .errorMessage {
-  margin: 0 0 18px;
+  margin: 0 0 14px;
   border: 1px solid rgba(239, 68, 68, 0.35);
   border-radius: 12px;
   background: rgba(239, 68, 68, 0.12);
   color: #ef4444;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 800;
-  padding: 12px 16px;
+  padding: 10px 14px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -429,13 +439,13 @@
   justify-content: center;
   gap: 10px;
   width: 100%;
-  height: 52px;
+  height: 48px;
   border: 0;
   border-radius: 12px;
   background: linear-gradient(135deg, var(--ui-30-primary) 0%, var(--ui-30-primary-strong) 100%);
   color: #ffffff;
   cursor: pointer;
-  font-size: 0.95rem;
+  font-size: 0.94rem;
   font-weight: 900;
   letter-spacing: 0.04em;
   box-shadow: 0 4px 16px rgba(0, 122, 61, 0.32);
@@ -444,7 +454,7 @@
 
 .loginButton:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 122, 61, 0.44);
+  box-shadow: 0 8px 22px rgba(0, 122, 61, 0.42);
 }
 
 .loginButton:active:not(:disabled) {
@@ -465,9 +475,9 @@
 .dividerRow {
   display: flex;
   align-items: center;
-  margin: 20px 0 16px;
+  margin: 14px 0 12px;
   color: var(--ui-30-muted);
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -492,14 +502,14 @@
   justify-content: center;
   gap: 10px;
   width: 100%;
-  height: 48px;
-  padding: 0 18px;
+  height: 44px;
+  padding: 0 16px;
   border: 1.5px solid rgba(6, 199, 85, 0.4);
   border-radius: 12px;
   background: linear-gradient(135deg, rgba(6, 199, 85, 0.14) 0%, rgba(6, 199, 85, 0.06) 100%);
   color: #06c755;
   cursor: pointer;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   font-weight: 800;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -508,7 +518,7 @@
   background: #06c755;
   color: #ffffff;
   border-color: #06c755;
-  box-shadow: 0 6px 20px rgba(6, 199, 85, 0.35);
+  box-shadow: 0 6px 18px rgba(6, 199, 85, 0.32);
   transform: translateY(-1px);
 }
 
@@ -531,8 +541,161 @@
 }
 
 /* ═══════════════════════════════════════
-   MOCK PREVIEW ACCESS SECTION
+   AFFILIATED COMPANIES (6 LOGOS)
+   ATA ➔ ATFB ➔ SATI ➔ NIC ➔ SNF ➔ TEP
    ═══════════════════════════════════════ */
+
+.affiliatesSection {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--ui-30-border);
+}
+
+.affiliatesDivider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.affiliatesLine {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--ui-30-border) 50%,
+    transparent 100%
+  );
+}
+
+.affiliatesTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ui-30-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.affiliatesDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ui-30-primary);
+  box-shadow: 0 0 6px var(--ui-30-primary);
+}
+
+.affiliatesGrid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  align-items: center;
+  justify-items: center;
+  padding: 4px 0;
+}
+
+.affiliateLogoCard {
+  appearance: none;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 2px;
+  border-radius: 0;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s ease, opacity 0.2s ease;
+  user-select: none;
+  min-height: unset;
+  width: 100%;
+  opacity: 0.88;
+}
+
+.affiliateLogoCard:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.affiliateLogoCard:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.08);
+  border: none !important;
+  box-shadow: none !important;
+  opacity: 1;
+}
+
+:global([data-theme="dark"]) .affiliateLogoCard,
+:global(.dark) .affiliateLogoCard {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+:global([data-theme="dark"]) .affiliateLogoCard:hover:not(:disabled),
+:global(.dark) .affiliateLogoCard:hover:not(:disabled) {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.affiliateLogoCard:active:not(:disabled) {
+  transform: translateY(0) scale(1.02);
+}
+
+.affiliateLogoWrapper {
+  position: relative;
+  width: 100%;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
+}
+
+.affiliateLogoImg {
+  object-fit: contain !important;
+  max-height: 28px;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+:global([data-theme="dark"]) .affiliateLogoImg,
+:global(.dark) .affiliateLogoImg {
+  filter: brightness(1.2) contrast(1.05);
+}
+
+.affiliateLogoCard:hover:not(:disabled) .affiliateLogoImg {
+  filter: brightness(1.3) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.3));
+}
+
+.affiliatesFooterNote {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--ui-30-muted);
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+@media (max-width: 520px) {
+  .affiliatesGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .affiliateLogoCard {
+    min-height: unset;
+    padding: 4px 2px;
+  }
+  .affiliateLogoWrapper {
+    height: 24px;
+  }
+}
 
 .previewAccess {
   position: relative;

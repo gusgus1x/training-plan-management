@@ -2,8 +2,14 @@
 
 import Image from "next/image";
 import { useState, type FormEvent } from "react";
-import atfbImage from "../photo/ATFB.jpg";
+import ataLogo from "../photo/LOGO ATTG/ATA.png";
+import atfbLogo from "../photo/LOGO ATTG/ATFB.png";
 import logoImage from "../photo/logo.png";
+import nicLogo from "../photo/LOGO ATTG/NIC.png";
+import satiLogo from "../photo/LOGO ATTG/SATI.png";
+import snfLogo from "../photo/LOGO ATTG/SNF.png";
+import tepLogo from "../photo/LOGO ATTG/TEP.png";
+import atfbImage from "../photo/ATFB.jpg";
 import nicImage from "../photo/NIC.png";
 import satiImage from "../photo/SATI.jpg";
 import snfImage from "../photo/SNF.jpg";
@@ -24,15 +30,60 @@ type LoginPageProps = {
   ) => void;
 };
 
-export type PreviewCompanyCode = "ATA" | "TEP" | "ATFB" | "NIC" | "SATI" | "SNF";
+export type PreviewCompanyCode = "ATA" | "ATFB" | "SATI" | "NIC" | "SNF" | "TEP";
 
 const previewCompanyCodes: readonly PreviewCompanyCode[] = [
   "ATA",
-  "TEP",
   "ATFB",
-  "NIC",
   "SATI",
+  "NIC",
   "SNF",
+  "TEP",
+];
+
+const affiliatedCompanyLogos = [
+  {
+    code: "ATA" as const,
+    name: "ATA",
+    fullName: "Aisin Takaoka Asia Co., Ltd.",
+    thaiName: "บริษัท ไอชิน ทากาโอกะ เอเชีย จำกัด",
+    src: ataLogo,
+  },
+  {
+    code: "ATFB" as const,
+    name: "ATFB",
+    fullName: "Aisin Takaoka Foundry Bangpakong Co., Ltd.",
+    thaiName: "บริษัท ไอชิน ทากาโอกะ ฟาวน์ดริ บางปะกง จำกัด",
+    src: atfbLogo,
+  },
+  {
+    code: "SATI" as const,
+    name: "SATI",
+    fullName: "Siam AT Industry Co., Ltd.",
+    thaiName: "บริษัท สยาม เอที อินดัสตรี้ จำกัด",
+    src: satiLogo,
+  },
+  {
+    code: "NIC" as const,
+    name: "NIC",
+    fullName: "The Nawaloha Industry Co., Ltd.",
+    thaiName: "บริษัท นวโลหะอุตสาหกรรม จำกัด",
+    src: nicLogo,
+  },
+  {
+    code: "SNF" as const,
+    name: "SNF",
+    fullName: "The Siam Nawaloha Foundry Co., Ltd.",
+    thaiName: "บริษัท สยามนวโลหะฟาวน์ดรี จำกัด",
+    src: snfLogo,
+  },
+  {
+    code: "TEP" as const,
+    name: "TEP",
+    fullName: "Thai Engineering Products Co., Ltd.",
+    thaiName: "บริษัท ผลิตภัณฑ์วิศวกรรมไทย จำกัด",
+    src: tepLogo,
+  },
 ];
 
 const GENERIC_LOGIN_ERROR = "ไม่สามารถเข้าสู่ระบบได้ โปรดตรวจสอบชื่อผู้ใช้และรหัสผ่าน";
@@ -314,6 +365,57 @@ export default function LoginPage({
             <span>{t("เข้าสู่ระบบผ่าน LINE Official Account", "Sign in with LINE OA")}</span>
             <span className={styles.lineTagBadge}>LINE OA</span>
           </button>
+
+          {/* ═══════════════════════════════════════
+              AFFILIATED COMPANIES (6 LOGOS)
+              ATA ➔ ATFB ➔ SATI ➔ NIC ➔ SNF ➔ TEP
+             ═══════════════════════════════════════ */}
+          <div className={styles.affiliatesSection}>
+            <div className={styles.affiliatesDivider}>
+              <span className={styles.affiliatesLine} />
+              <div className={styles.affiliatesTitle}>
+                <span className={styles.affiliatesDot} />
+                <span>{t("กลุ่มบริษัทในเครือ ATTG", "ATTG Group Companies")}</span>
+              </div>
+              <span className={styles.affiliatesLine} />
+            </div>
+
+            <div
+              className={styles.affiliatesGrid}
+              role="region"
+              aria-label={t("กลุ่มบริษัทในเครือ 6 บริษัท", "6 Affiliated Companies")}
+            >
+              {affiliatedCompanyLogos.map((company) => (
+                <button
+                  key={company.code}
+                  type="button"
+                  className={styles.affiliateLogoCard}
+                  title={`${company.code} · ${isThai ? company.thaiName : company.fullName}${
+                    onPreviewLogin ? t(" (คลิกเพื่อทดสอบเข้าสู่ระบบ)", " (Click to preview login)") : ""
+                  }`}
+                  onClick={
+                    onPreviewLogin
+                      ? () => onPreviewLogin("HRD_FACTORY", company.code)
+                      : undefined
+                  }
+                  aria-label={`${company.code} - ${isThai ? company.thaiName : company.fullName}`}
+                >
+                  <div className={styles.affiliateLogoWrapper}>
+                    <Image
+                      src={company.src}
+                      alt={company.name}
+                      fill
+                      sizes="(max-width: 640px) 30vw, 120px"
+                      className={styles.affiliateLogoImg}
+                    />
+                  </div>
+                </button>
+              ))}
+            </div>
+            <p className={styles.affiliatesFooterNote}>
+              AISIN TAKAOKA THAILAND GROUP
+            </p>
+          </div>
         </form>
 
         {onPreviewLogin ? (
