@@ -257,7 +257,7 @@
 /* Master-Detail Content Layout */
 .mainLayout {
   display: grid;
-  grid-template-columns: 440px 1fr;
+  grid-template-columns: 480px 1fr;
   gap: 20px;
   align-items: start;
 }
@@ -269,46 +269,11 @@
 }
 
 /* Left Pane: Requests List */
+/* No scroll of its own: each box scrolls inside (see .requestRows). */
 .listPane {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: 750px;
-  overflow-y: auto;
-  padding-right: 4px;
-}
-
-.requestCard {
-  background: var(--ui-60-surface);
-  border: 1.5px solid var(--ui-30-border);
-  border-radius: var(--ui-radius-sm, 12px);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  cursor: pointer;
-  text-align: left;
-  transition: all 140ms ease;
-  position: relative;
-}
-
-.requestCard:hover {
-  border-color: var(--ui-30-primary-border);
-  transform: translateY(-1px);
-  box-shadow: var(--ui-shadow-sm);
-}
-
-.requestCardActive {
-  background: var(--ui-30-primary-soft);
-  border-color: var(--ui-30-primary);
-  box-shadow: inset 4px 0 0 var(--ui-30-primary);
-}
-
-.requestCardHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
 }
 
 .requestNo {
@@ -316,32 +281,6 @@
   font-weight: 800;
   color: var(--ui-30-primary);
   font-family: monospace;
-}
-
-.requestCardTitle {
-  margin: 0;
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--ui-30-ink);
-  line-height: 1.35;
-}
-
-.requestCardMeta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.78rem;
-  color: var(--ui-30-muted);
-  border-top: 1px dashed var(--ui-30-border);
-  padding-top: 8px;
-}
-
-.requesterBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  color: var(--ui-30-text);
 }
 
 /* Glowing Pulsing Status Light Dots */
@@ -727,39 +666,6 @@
 
 /* ---- Selection ---- */
 
-.bulkBar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border: 1px solid var(--ui-30-border);
-  border-radius: 12px;
-  background: var(--ui-60-surface-soft);
-}
-
-.bulkSelectAll {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.84rem;
-  font-weight: 700;
-  color: var(--ui-30-ink);
-  cursor: pointer;
-}
-
-.bulkCount {
-  margin-right: auto;
-  font-size: 0.8rem;
-  color: var(--ui-30-muted);
-}
-
-.cardCheckbox {
-  margin-right: 6px;
-  vertical-align: middle;
-  cursor: pointer;
-}
-
 /* Demand by course, split per company: one collapsible box each, open on arrival. */
 .companySection {
   border: 1px solid var(--ui-30-border);
@@ -789,4 +695,113 @@
 
 .companySection .demandGrid {
   padding: 12px;
+}
+
+/* Per-request list: compact two-line rows inside the handler boxes. */
+/* Each box scrolls on its own, so a long box never pushes the next one out of sight. */
+.requestRows {
+  display: flex;
+  flex-direction: column;
+  max-height: 380px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.requestRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--ui-30-border);
+  border-left: 3px solid transparent;
+  background: var(--ui-60-surface);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.requestRow:last-child {
+  border-bottom: 0;
+}
+
+.requestRow:hover {
+  background: var(--ui-60-surface-soft);
+}
+
+.requestRow:focus-visible {
+  outline: 2px solid var(--ui-30-primary);
+  outline-offset: -2px;
+}
+
+.requestRowActive,
+.requestRowActive:hover {
+  background: var(--ui-30-primary-soft);
+  border-left-color: var(--ui-30-primary);
+}
+
+/* Someone else's to decide: still clickable to read, but visibly quieter. */
+.requestRowReadOnly .requestRowTitle {
+  color: var(--ui-30-muted);
+}
+
+.requestRowTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.requestRowTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ui-30-ink);
+}
+
+.requestRowTop .statusBadge {
+  flex-shrink: 0;
+}
+
+.requestRowMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 0.76rem;
+  color: var(--ui-30-muted);
+}
+
+/* Whose course a row is for: an outline tag with a coloured dot, deliberately quiet. */
+.ownerTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 999px;
+  font-weight: 700;
+  color: var(--ui-30-text);
+}
+
+.ownerTag::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ownerTag[data-owner="center"]::before {
+  background: #2563eb;
+}
+
+.ownerTag[data-owner="factory"]::before {
+  background: #0d9488;
+}
+
+.ownerTag[data-owner="new"]::before {
+  background: #d97706;
 }

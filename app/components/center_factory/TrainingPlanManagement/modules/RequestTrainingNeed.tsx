@@ -57,6 +57,15 @@ export const requestTrainingNeedModule = {
 
 const formatDate = (iso: string) => iso.slice(0, 10);
 
+/**
+ * The two parts of the per-request list layout, kept switchable because the user is still choosing:
+ *   A - rows grouped into one box per HRD that answers them (same boxes as the demand tab)
+ *   B - a small tag on every row naming whose course it is
+ * Both true is the current choice. "A only" / "B only" is a one-word change here.
+ */
+const LIST_GROUP_BY_OWNER = true; // A
+const LIST_OWNER_TAG = true; // B
+
 
 /** What is missing before these requests can become a batch, and where confirming takes HRD. */
 const missingPiecePrompt = (target: PlanningTarget) =>
@@ -232,31 +241,75 @@ export default function RequestTrainingNeed() {
    * Demand split by who answers it: the requests this HRD decides come first, the ones they can
    * only read follow. A centre user leads with the central courses; a factory with its own.
    */
-  const demandHandlers = useMemo(() => {
-    const byHandler = new Map<string, CourseDemandGroup[]>();
-    for (const group of demandGroups) {
-      const list = byHandler.get(group.handler) ?? [];
-      list.push(group);
-      byHandler.set(group.handler, list);
+  const ownHandler = isFactoryUser ? user?.companyCode ?? "" : "CENTER";
+
+  /** Groups anything by the HRD that answers it: own box first, new topics second, the rest by code. */
+  const groupByHandler = <T,>(items: T[], handlerOf: (item: T) => string) => {
+    const byHandler = new Map<string, T[]>();
+    for (const item of items) {
+      const handler = handlerOf(item);
+      byHandler.set(handler, [...(byHandler.get(handler) ?? []), item]);
     }
-    const own = isFactoryUser ? user?.companyCode ?? "" : "CENTER";
-    // Own box first, new topics second (both sides may act on them), everything else after.
-    const rank = (handler: string) => (handler === own ? 0 : handler === "NEW" ? 1 : 2);
+    const rank = (handler: string) => (handler === ownHandler ? 0 : handler === "NEW" ? 1 : 2);
     return [...byHandler.entries()]
-      .map(([handler, groups]) => ({
-        handler,
-        groups,
-        isOwn: handler === own,
-        requesters: groups.reduce((total, group) => total + group.totalRequests, 0),
-        companyName:
-          handler === "CENTER" || handler === "NEW"
-            ? ""
-            : companies.find((company) => company.companyCode === handler)?.[
-                language === "th" ? "companyNameTh" : "companyNameEn"
-              ] ?? "",
-      }))
+      .map(([handler, items]) => ({ handler, items }))
       .sort((left, right) => rank(left.handler) - rank(right.handler) || left.handler.localeCompare(right.handler));
-  }, [demandGroups, companies, language, isFactoryUser, user?.companyCode]);
+  };
+
+  /** The heading of a handler box: whose requests these are, and what the viewer may do with them. */
+  const handlerHeading = (handler: string) => {
+    const companyName =
+      companies.find((company) => company.companyCode === handler)?.[
+        language === "th" ? "companyNameTh" : "companyNameEn"
+      ] ?? "";
+    const title =
+      handler === "CENTER"
+        ? t("คำขอหลักสูตรส่วนกลาง", "Central-course requests")
+        : handler === "NEW"
+          ? t("หัวข้อคำขอใหม่ (ยังไม่มีหลักสูตร)", "New topic requests (no course yet)")
+          : t(
+              `คำขอของ ${handler}${companyName ? ` - ${companyName}` : ""}`,
+              `${handler}${companyName ? ` - ${companyName}` : ""} requests`,
+            );
+    const tag =
+      handler === ownHandler || (handler === "NEW" && isFactoryUser)
+        ? t(" · คุณพิจารณา", " · yours to decide")
+        : handler === "NEW"
+          ? t(" · พิจารณาแทนบริษัทได้", " · you may decide on the company's behalf")
+          : t(" · ดูอย่างเดียว", " · read only");
+    return (
+      <span>
+        <Building2 size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+        {title}
+        {tag}
+      </span>
+    );
+  };
+
+  /** Demand split by who answers it, in the same boxes and order as the per-request list. */
+  const demandHandlers = useMemo(
+    () =>
+      groupByHandler(demandGroups, (group) => group.handler).map(({ handler, items }) => ({
+        handler,
+        groups: items,
+        requesters: items.reduce((total, group) => total + group.totalRequests, 0),
+      })),
+    // groupByHandler only reads ownHandler.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [demandGroups, ownHandler],
+  );
+
+  /** The per-request list, boxed the same way (layout A), or one flat box when A is off. */
+  const listHandlers = useMemo(
+    () =>
+      LIST_GROUP_BY_OWNER
+        ? groupByHandler(visibleRequests, handlerKey)
+        : visibleRequests.length > 0
+          ? [{ handler: "", items: visibleRequests }]
+          : [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [visibleRequests, ownHandler],
+  );
 
   const selectedRequest =
     visibleRequests.find((request) => request.id === selectedId) ?? visibleRequests[0] ?? null;
@@ -622,44 +675,68 @@ The person stays in the batch until removed on Training Rolling.`,
         <div className={styles.mainLayout}>
           {/* Left Pane: Requests List */}
           <div className={styles.listPane}>
-            {visibleRequests.length === 0 ? (
+            {listHandlers.length === 0 ? (
               <div className={styles.emptyStateContainer}>
                 <p><Inbox size={24} style={{ display: "block", margin: "0 auto 8px" }} />{t("ไม่พบคำขอฝึกอบรมตามเงื่อนไขที่เลือก", "No training requests match your filters")}</p>
               </div>
             ) : (
-              visibleRequests.map((req) => {
-                const isSelected = selectedRequest?.id === req.id;
-                return (
-                  <div
-                    key={req.id}
-                    className={`${styles.requestCard} ${isSelected ? styles.requestCardActive : ""}`}
-                    onClick={() => setSelectedId(req.id)}
-                  >
-                    <div className={styles.requestCardHeader}>
-                      <span className={styles.requestNo}>{req.requestNo}</span>
-                      {/* A centre user works across companies, so whose request this is comes first. */}
-                      {!isFactoryUser && req.companyCode ? (
-                        <span className={styles.scopeBadge} style={{ fontSize: "0.72rem", padding: "2px 8px" }}>
-                          <Building2 size={11} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />
-                          {req.companyCode}
-                        </span>
-                      ) : null}
-                      {getStatusBadge(req)}
-                    </div>
-                    <h4 className={styles.requestCardTitle}>{courseLabel(req)}</h4>
-                    <div className={styles.requestCardMeta}>
-                      <span className={styles.requesterBadge}>
-                        <><User size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{req.employeeName} ({req.companyCode})</>
-                      </span>
-                      <span><CalendarDays size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{formatDate(req.requestedAt)}</span>
-                      {req.approver && req.approverDecision === "APPROVED" ? (
-                        <span>
-                          <Check size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                          {t(`หัวหน้าอนุมัติ: ${req.approver.name}`, `Head approved: ${req.approver.name}`)}
-                        </span>
-                      ) : null}
-                    </div>
+              listHandlers.map(({ handler, items }) => {
+                const rows = (
+                  <div className={styles.requestRows}>
+                    {items.map((req) => {
+                      const owner = handlerKey(req);
+                      return (
+                        <button
+                          key={req.id}
+                          type="button"
+                          className={[
+                            styles.requestRow,
+                            selectedRequest?.id === req.id ? styles.requestRowActive : "",
+                            mayDecide(req) ? "" : styles.requestRowReadOnly,
+                          ].join(" ")}
+                          onClick={() => setSelectedId(req.id)}
+                        >
+                          <span className={styles.requestRowTop}>
+                            <span className={styles.requestRowTitle}>{courseLabel(req)}</span>
+                            {getStatusBadge(req)}
+                          </span>
+                          <span className={styles.requestRowMeta}>
+                            {LIST_OWNER_TAG ? (
+                              <span
+                                className={styles.ownerTag}
+                                data-owner={owner === "CENTER" ? "center" : owner === "NEW" ? "new" : "factory"}
+                              >
+                                {owner === "CENTER"
+                                  ? t("หลักสูตรส่วนกลาง", "Central course")
+                                  : owner === "NEW"
+                                    ? t("หัวข้อใหม่", "New topic")
+                                    : t(`หลักสูตร ${owner}`, `${owner} course`)}
+                              </span>
+                            ) : null}
+                            <span>
+                              <User size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />
+                              {req.employeeName} · {req.companyCode}
+                            </span>
+                            <span>{req.requestNo}</span>
+                            <span>{formatDate(req.requestedAt)}</span>
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
+                );
+                // Layout A off: one plain list with no box around it.
+                if (!handler) return <div key="all">{rows}</div>;
+                return (
+                  <details key={handler} className={styles.companySection} open>
+                    <summary className={styles.companySummary}>
+                      {handlerHeading(handler)}
+                      <span className={styles.demandCountBadge}>
+                        {items.length} {t("คำขอ", "requests")}
+                      </span>
+                    </summary>
+                    {rows}
+                  </details>
                 );
               })
             )}
@@ -865,24 +942,7 @@ The person stays in the batch until removed on Training Rolling.`,
         demandHandlers.map((handler) => (
           <details key={handler.handler} className={styles.companySection} open>
             <summary className={styles.companySummary}>
-              <span>
-                <Building2 size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
-                {handler.handler === "CENTER"
-                  ? t("คำขอหลักสูตรส่วนกลาง", "Central-course requests")
-                  : handler.handler === "NEW"
-                    ? t("หัวข้อคำขอใหม่ (ยังไม่มีหลักสูตร)", "New topic requests (no course yet)")
-                    : t(
-                        `คำขอของ ${handler.handler}${handler.companyName ? ` - ${handler.companyName}` : ""}`,
-                        `${handler.handler}${handler.companyName ? ` - ${handler.companyName}` : ""} requests`,
-                      )}
-                {handler.isOwn
-                  ? t(" · คุณพิจารณา", " · yours to decide")
-                  : handler.handler !== "NEW"
-                    ? t(" · ดูอย่างเดียว", " · read only")
-                    : isFactoryUser
-                      ? t(" · คุณพิจารณา", " · yours to decide")
-                      : t(" · พิจารณาแทนบริษัทได้", " · you may decide on the company's behalf")}
-              </span>
+              {handlerHeading(handler.handler)}
               <span className={styles.demandCountBadge}>
                 {handler.groups.length} {t("หลักสูตร", "courses")} · {handler.requesters} {t("คน", "requesters")}
               </span>
