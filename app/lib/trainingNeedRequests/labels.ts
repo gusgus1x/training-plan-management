@@ -6,10 +6,10 @@ import type { NeedRequestStage, NeedRequestStatus } from "./types";
  * them never see the same request described differently.
  */
 const LABELS: Record<NeedRequestStatus, { th: string; en: string }> = {
-  PENDING: { th: "รอตรวจสอบ", en: "Pending" },
+  PENDING: { th: "รอพิจารณา", en: "Pending" },
   APPROVED: { th: "อนุมัติแล้ว", en: "Approved" },
   REJECTED: { th: "ไม่อนุมัติ", en: "Rejected" },
-  PLANNED: { th: "บรรจุในแผนแล้ว", en: "Planned" },
+  PLANNED: { th: "จัดเข้ารุ่นแล้ว", en: "Planned" },
 };
 
 const STAGE_LABELS: Record<NeedRequestStage, { th: string; en: string }> = {
@@ -18,7 +18,7 @@ const STAGE_LABELS: Record<NeedRequestStage, { th: string; en: string }> = {
   REJECTED_BY_HEAD: { th: "หัวหน้าไม่อนุมัติ", en: "Rejected by section head" },
   REJECTED: { th: "HRD ไม่อนุมัติ", en: "Rejected by HRD" },
   APPROVED: { th: "อนุมัติแล้ว รอจัดรุ่น", en: "Approved, awaiting a batch" },
-  PLANNED: { th: "บรรจุในแผนแล้ว", en: "Planned" },
+  PLANNED: { th: "จัดเข้ารุ่นแล้ว", en: "Planned" },
 };
 
 const pick = (entry: { th: string; en: string } | undefined, language: UiLanguage, fallback: string) =>

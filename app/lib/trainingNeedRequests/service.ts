@@ -29,8 +29,8 @@ export const createNeedRequestService = (
   updateNeedRequest: (id: string, input: UpdateNeedRequestInput, actor: NeedRequestActor) =>
     repository.update(id, input, actor),
   bulkDecide: (input: BulkNeedRequestInput, actor: NeedRequestActor) => repository.bulkDecide(input, actor),
-  /** The same section-head picker HRD uses for 30-day reviewers, held to the employee's company. */
-  listApprovers: (search: string, companyId: string) =>
+  /** The same section-head picker HRD uses for 30-day reviewers. Null company lists every company. */
+  listApprovers: (search: string, companyId: string | null) =>
     trainingRecordService.listReviewerCandidates(search, companyId),
 });
 

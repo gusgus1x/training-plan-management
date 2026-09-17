@@ -246,10 +246,12 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
           where: { user_id: input.approverUserId },
           include: { position: true, employee_level: true },
         });
+        // TEMPORARY (asked for on 2026-09-17): a section head of any company may be named. Add
+        // `approver.company_id === employee.company_id &&` back here, and pass the company again in
+        // the approvers route, to restore the own-company rule.
         const isHead =
           approver !== null &&
           approver.employment_status === "ACTIVE" &&
-          approver.company_id === employee.company_id &&
           isSectionHeadOrAbove({
             positionCode: approver.position?.position_code ?? null,
             positionName: approver.position?.position_name_en ?? approver.position?.position_name_th ?? null,
@@ -260,7 +262,7 @@ export const createNeedRequestRepository = (client?: DatabaseClient) => {
         if (!isHead) {
           throw new ApiError({
             code: "INVALID_APPROVER",
-            message: "The approver must be an active section head in your company",
+            message: "The approver must be an active section head",
             status: 400,
           });
         }

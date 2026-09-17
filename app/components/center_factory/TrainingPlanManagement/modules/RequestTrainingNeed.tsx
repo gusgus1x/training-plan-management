@@ -74,7 +74,7 @@ const missingPiecePrompt = (target: PlanningTarget) =>
 type CourseDemandGroup = {
   courseKey: string;
   courseTitle: string;
-  /** The HRD that answers these requests: "CENTER", or a factory's company code. */
+  /** The HRD that answers these requests: "CENTER", a factory's company code, or "NEW" for a typed topic. */
   handler: string;
   totalRequests: number;
   pendingCount: number;
@@ -146,6 +146,8 @@ export default function RequestTrainingNeed() {
    */
   const handlerKey = (request: NeedRequestRecord) => {
     if (request.courseOwner === "CENTER") return "CENTER";
+    // A typed topic names no course yet, so it has its own box rather than posing as a factory's.
+    if (request.courseOwner === null) return "NEW";
     return request.courseOwnerCompanyCode ?? request.companyCode;
   };
 
@@ -238,6 +240,8 @@ export default function RequestTrainingNeed() {
       byHandler.set(group.handler, list);
     }
     const own = isFactoryUser ? user?.companyCode ?? "" : "CENTER";
+    // Own box first, new topics second (both sides may act on them), everything else after.
+    const rank = (handler: string) => (handler === own ? 0 : handler === "NEW" ? 1 : 2);
     return [...byHandler.entries()]
       .map(([handler, groups]) => ({
         handler,
@@ -245,16 +249,13 @@ export default function RequestTrainingNeed() {
         isOwn: handler === own,
         requesters: groups.reduce((total, group) => total + group.totalRequests, 0),
         companyName:
-          handler === "CENTER"
+          handler === "CENTER" || handler === "NEW"
             ? ""
             : companies.find((company) => company.companyCode === handler)?.[
                 language === "th" ? "companyNameTh" : "companyNameEn"
               ] ?? "",
       }))
-      .sort((left, right) => {
-        if (left.isOwn !== right.isOwn) return left.isOwn ? -1 : 1;
-        return left.handler.localeCompare(right.handler);
-      });
+      .sort((left, right) => rank(left.handler) - rank(right.handler) || left.handler.localeCompare(right.handler));
   }, [demandGroups, companies, language, isFactoryUser, user?.companyCode]);
 
   const selectedRequest =
@@ -322,11 +323,12 @@ export default function RequestTrainingNeed() {
     }
     const single = targets.length === 1 ? targets[0] : null;
     const who = single ? `${single.employeeName} (${single.employeeCode}) ` : "";
+    const companyList = companies.join(", ");
     return {
       th:
-        `คำร้องขอนี้เป็นของบริษัท ${companies.join(", ")} ${who}` +
-        `ผู้รับผิดชอบการกด${verb.th}คือ HRD Factory ของบริษัท ${companies.join(", ")}\n` +
-        `คุณยืนยันที่จะกด${verb.th}คำขอ${targets.length > 1 ? ` ${targets.length} รายการ` : ""}นี้แทนไหม?`,
+        `${single ? `คำขอของ ${single.employeeName} (${single.employeeCode})` : `คำขอ ${targets.length} รายการ`} บริษัท ${companyList}\n` +
+        `ปกติ HRD ของบริษัท ${companyList} เป็นผู้พิจารณา\n` +
+        `ยืนยัน${verb.th}แทนหรือไม่?`,
       en:
         `This request belongs to ${companies.join(", ")}. ${who}` +
         `Its own factory HRD normally answers it.\n` +
@@ -379,21 +381,23 @@ export default function RequestTrainingNeed() {
     if (!selectedRequest) return;
     const ok = await confirm({
       message: {
-        th: `ยกเลิกการผูกคำขอ ${selectedRequest.requestNo} กับรุ่น ${selectedRequest.plan?.planCode ?? ""} หรือไม่? คำขอจะกลับเป็น "อนุมัติแล้ว" (รายชื่อผู้เข้าอบรมในรุ่นไม่ถูกลบ ต้องยกเลิกที่หน้าคัดคนเอง)`,
-        en: `Unlink ${selectedRequest.requestNo} from batch ${selectedRequest.plan?.planCode ?? ""}? It returns to Approved. The enrollment in that batch stays until cancelled there.`,
+        th: `นำคำขอ ${selectedRequest.requestNo} ออกจากรุ่น ${selectedRequest.plan?.planCode ?? ""} หรือไม่? คำขอจะกลับเป็น "อนุมัติแล้ว รอจัดรุ่น"
+รายชื่อพนักงานในรุ่นยังอยู่ ถ้าต้องการเอาออก ให้ยกเลิกที่หน้า Training Rolling`,
+        en: `Remove ${selectedRequest.requestNo} from batch ${selectedRequest.plan?.planCode ?? ""}? It goes back to Approved.
+The person stays in the batch until removed on Training Rolling.`,
       },
     });
     if (!ok) return;
     const updated = await applyAction("unlink", null);
-    if (updated) toast.success(t(`ยกเลิกการผูก ${updated.requestNo} แล้ว`, `Unlinked ${updated.requestNo}`));
+    if (updated) toast.success(t(`นำ ${updated.requestNo} ออกจากรุ่นแล้ว`, `Removed ${updated.requestNo} from the batch`));
   };
 
   const handleRevertToPending = async () => {
     if (!selectedRequest) return;
     const ok = await confirm({
       message: {
-        th: `ต้องการย้อนกลับสถานะคำขอ ${selectedRequest.requestNo} เป็น "รอตรวจสอบ" เพื่อให้สามารถตัดสินใจวางแผนหรือยกเลิกใหม่ได้หรือไม่?`,
-        en: `Revert request ${selectedRequest.requestNo} to "Pending" to reconsider planning or rejecting?`,
+        th: `ย้อนคำขอ ${selectedRequest.requestNo} กลับไปรอพิจารณา เพื่อพิจารณาใหม่หรือไม่?`,
+        en: `Send ${selectedRequest.requestNo} back to pending to decide it again?`,
       },
     });
     if (!ok) return;
@@ -402,7 +406,7 @@ export default function RequestTrainingNeed() {
     if (updated) {
       toast.success(
         t(
-          `ย้อนกลับสถานะคำขอ ${updated.requestNo} เป็นรอตรวจสอบแล้ว`,
+          `ย้อนคำขอ ${updated.requestNo} กลับไปรอพิจารณาแล้ว`,
           `Reverted ${updated.requestNo} to Pending`,
         ),
       );
@@ -439,7 +443,8 @@ export default function RequestTrainingNeed() {
   };
 
   const getStatusBadge = (request: NeedRequestRecord) => {
-    const label = needRequestStageLabel(request.stage, language);
+    const label =
+      request.stage === "WAITING_HRD" ? t("รอพิจารณา", "Pending") : needRequestStageLabel(request.stage, language);
     const style: Record<NeedRequestStage, { badge: string; dot: string; pulse: boolean }> = {
       WAITING_HEAD: { badge: styles.statusBadgePending, dot: styles.dotPending, pulse: true },
       WAITING_HRD: { badge: styles.statusBadgePending, dot: styles.dotPending, pulse: true },
@@ -469,8 +474,8 @@ export default function RequestTrainingNeed() {
           </h2>
           <p>
             {t(
-              "คำขอที่หัวหน้า (Section Head) อนุมัติแล้ว ติ๊กเลือกหลายรายการเพื่ออนุมัติ/ไม่อนุมัติ แล้วเปิดฟอร์มจัดทำแผน Rolling เพื่อลงชื่อพนักงานเข้ารุ่น",
-              "Requests their section heads approved. Tick several to approve or reject, then open Training Rolling to put the people into a batch.",
+              "คำขอที่หัวหน้าอนุมัติแล้ว เลือกคำขอเพื่อพิจารณาทีละรายการ หรือพิจารณาทั้งหลักสูตรที่แท็บรวมยอดตามหลักสูตร",
+              "Requests their section heads approved. Open one to decide it, or decide a whole course on the Demand by Course tab.",
             )}
           </p>
         </div>
@@ -498,7 +503,7 @@ export default function RequestTrainingNeed() {
           <div className={styles.statCardHeader}>
             <span className={styles.statLabel}>
               <span className={`${styles.statusDot} ${styles.dotPending} ${styles.dotPulse}`} />
-              {t("รอตรวจสอบ", "Pending")}
+              {t("รอพิจารณา", "Pending")}
             </span>
           </div>
           <strong className={`${styles.statCount} ${styles.statCountPending}`}>{stats.pending}</strong>
@@ -512,7 +517,7 @@ export default function RequestTrainingNeed() {
           <div className={styles.statCardHeader}>
             <span className={styles.statLabel}>
               <span className={`${styles.statusDot} ${styles.dotApproved} ${styles.dotPulse}`} />
-              {t("อนุมัติแล้ว", "Approved")}
+              {t("อนุมัติแล้ว รอจัดรุ่น", "Approved")}
             </span>
           </div>
           <strong className={`${styles.statCount} ${styles.statCountApproved}`}>{stats.approved}</strong>
@@ -526,7 +531,7 @@ export default function RequestTrainingNeed() {
           <div className={styles.statCardHeader}>
             <span className={styles.statLabel}>
               <span className={`${styles.statusDot} ${styles.dotPlanned} ${styles.dotPulse}`} />
-              {t("จัดลงแผนแล้ว", "Planned")}
+              {t("จัดเข้ารุ่นแล้ว", "Planned")}
             </span>
           </div>
           <strong className={`${styles.statCount} ${styles.statCountPlanned}`}>{stats.planned}</strong>
@@ -595,7 +600,7 @@ export default function RequestTrainingNeed() {
               value={companyFilter}
               onChange={(e) => setCompanyFilter(e.target.value)}
             >
-              <option value="all">{t("ทุกบริษัท (All Companies)", "All Companies")}</option>
+              <option value="all">{t("ทุกบริษัท", "All Companies")}</option>
               {companies.map((c) => (
                 <option key={c.companyId} value={c.companyCode}>
                   {c.companyCode} - {language === "th" ? c.companyNameTh : (c.companyNameEn || c.companyNameTh)}
@@ -788,8 +793,8 @@ export default function RequestTrainingNeed() {
                       >
                         <Rocket size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
                         {selectedRequest.status === "APPROVED"
-                          ? t("เปิดฟอร์มจัดทำแผน Rolling", "Open Training Rolling")
-                          : t("อนุมัติและเปิดฟอร์มจัดทำแผน Rolling", "Approve & open Training Rolling")}
+                          ? t("จัดรุ่นอบรม", "Plan a batch")
+                          : t("อนุมัติและจัดรุ่นอบรม", "Approve & plan a batch")}
                       </button>
                     ) : null}
 
@@ -800,7 +805,7 @@ export default function RequestTrainingNeed() {
                         disabled={pendingAction}
                         onClick={() => void handleRevertToPending()}
                       >
-                        <RotateCcw size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("ย้อนกลับเป็นรอตรวจสอบ", "Revert to Pending")}
+                        <RotateCcw size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("ย้อนกลับไปรอพิจารณา", "Back to pending")}
                       </button>
                     )}
 
@@ -822,7 +827,7 @@ export default function RequestTrainingNeed() {
                         disabled={pendingAction}
                         onClick={() => void handleRevertToPending()}
                       >
-                        <RotateCcw size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("เปิดพิจารณาใหม่ (รอตรวจสอบ)", "Reopen to Pending")}
+                        <RotateCcw size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("ย้อนกลับไปรอพิจารณา", "Back to pending")}
                       </button>
                     )}
                   </>
@@ -831,10 +836,10 @@ export default function RequestTrainingNeed() {
                 {mayDecide(selectedRequest) && isFinalPlanned && (
                   <>
                     <p style={{ margin: 0, fontSize: "0.86rem", color: "#2563eb", fontWeight: 700 }}>
-                      <Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("คำขอนี้จัดเข้ารุ่นอบรมแล้ว", "Linked to a training batch.")}
+                      <Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("คำขอนี้จัดเข้ารุ่นอบรมแล้ว", "In a training batch.")}
                     </p>
                     <button className={styles.btnSecondary} type="button" disabled={pendingAction} onClick={() => void handleUnlink()}>
-                      <RotateCcw size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("ยกเลิกการผูกกับรุ่น", "Unlink from batch")}
+                      <RotateCcw size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("นำออกจากรุ่นอบรม", "Remove from batch")}
                     </button>
                   </>
                 )}
@@ -863,12 +868,20 @@ export default function RequestTrainingNeed() {
               <span>
                 <Building2 size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
                 {handler.handler === "CENTER"
-                  ? t("คำร้องหลักสูตรส่วนกลาง (HRD ส่วนกลางพิจารณา)", "Central-course requests (HRD Center decides)")
-                  : t(
-                      `คำร้องของ ${handler.handler}${handler.companyName ? ` - ${handler.companyName}` : ""}`,
-                      `${handler.handler}${handler.companyName ? ` - ${handler.companyName}` : ""} requests`,
-                    )}
-                {handler.isOwn ? t(" · คุณพิจารณา", " · yours to decide") : t(" · ดูอย่างเดียว", " · read only")}
+                  ? t("คำขอหลักสูตรส่วนกลาง", "Central-course requests")
+                  : handler.handler === "NEW"
+                    ? t("หัวข้อคำขอใหม่ (ยังไม่มีหลักสูตร)", "New topic requests (no course yet)")
+                    : t(
+                        `คำขอของ ${handler.handler}${handler.companyName ? ` - ${handler.companyName}` : ""}`,
+                        `${handler.handler}${handler.companyName ? ` - ${handler.companyName}` : ""} requests`,
+                      )}
+                {handler.isOwn
+                  ? t(" · คุณพิจารณา", " · yours to decide")
+                  : handler.handler !== "NEW"
+                    ? t(" · ดูอย่างเดียว", " · read only")
+                    : isFactoryUser
+                      ? t(" · คุณพิจารณา", " · yours to decide")
+                      : t(" · พิจารณาแทนบริษัทได้", " · you may decide on the company's behalf")}
               </span>
               <span className={styles.demandCountBadge}>
                 {handler.groups.length} {t("หลักสูตร", "courses")} · {handler.requesters} {t("คน", "requesters")}
@@ -896,17 +909,17 @@ export default function RequestTrainingNeed() {
                     : null}
                   {group.pendingCount > 0 && (
                     <span className={`${styles.statusBadge} ${styles.statusBadgePending}`}>
-                      <><Clock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />{group.pendingCount} {t("รอตรวจ", "Pending")}</>
+                      <><Clock size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />{group.pendingCount} {t("รอพิจารณา", "Pending")}</>
                     </span>
                   )}
                   {group.approvedCount > 0 && (
                     <span className={`${styles.statusBadge} ${styles.statusBadgeApproved}`}>
-                      <><Check size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />{group.approvedCount} {t("อนุมัติแล้ว", "Approved")}</>
+                      <><Check size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />{group.approvedCount} {t("อนุมัติแล้ว รอจัดรุ่น", "Approved")}</>
                     </span>
                   )}
                   {group.plannedCount > 0 && (
                     <span className={`${styles.statusBadge} ${styles.statusBadgePlanned}`}>
-                      <><ClipboardList size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />{group.plannedCount} {t("ลงแผนแล้ว", "Planned")}</>
+                      <><ClipboardList size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 3 }} />{group.plannedCount} {t("จัดเข้ารุ่นแล้ว", "Planned")}</>
                     </span>
                   )}
                 </div>
@@ -935,7 +948,7 @@ export default function RequestTrainingNeed() {
                     disabled={pendingAction || !group.requests.some(isActionable)}
                     onClick={() => void handleApproveAndPlan(group.requests)}
                   >
-                    <Rocket size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("อนุมัติกลุ่มนี้ & เปิดฟอร์มจัดทำแผน Rolling", "Approve group & open Training Rolling")}
+                    <Rocket size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />{t("อนุมัติทั้งหลักสูตรและจัดรุ่น", "Approve the course & plan a batch")}
                   </button>
                 </div>
               </div>

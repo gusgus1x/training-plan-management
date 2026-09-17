@@ -10,14 +10,17 @@ import { parseReviewerSearch } from "../../../../lib/trainingRecord/validation";
 type Dependencies = { auth?: ProtectedRouteOptions; service?: NeedRequestService };
 
 /**
- * Section heads an employee can name as the approver of their request: their own company only,
- * from the session, and never themselves. An empty search is the section-head list.
+ * Section heads an employee can name as the approver of their request, never themselves. An empty
+ * search is the section-head list.
+ *
+ * TEMPORARY (asked for on 2026-09-17): every company's section heads are listed, not just the
+ * employee's own. Pass `principal.companyId` here again, and restore the company check in
+ * `repository.create`, to put the own-company rule back.
  */
 export const createListApproversHandler = (dependencies: Dependencies = {}) =>
   createProtectedRoute(async (request: NextRequest, principal) => {
-    if (principal.companyId === null) return apiSuccess({ candidates: [] });
     const search = parseReviewerSearch(request.nextUrl.searchParams);
-    const candidates = await (dependencies.service ?? needRequestService).listApprovers(search, principal.companyId);
+    const candidates = await (dependencies.service ?? needRequestService).listApprovers(search, null);
     return apiSuccess({
       candidates: candidates.filter((candidate) => candidate.reviewerUserId !== principal.employeeUserId),
     });

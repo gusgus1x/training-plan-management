@@ -245,7 +245,7 @@ export function NeedRequestAttachPanel({
           <strong>{t(`คำขออบรมที่แนบมา (${requests.length})`, `Attached training requests (${requests.length})`)}</strong>
           <span>
             {t(
-              "บันทึกแล้ว คนที่ติ๊กจะถูกลงชื่อเข้ารุ่นที่เลือก และคำขอเปลี่ยนเป็น \"บรรจุในแผนแล้ว\"",
+              "บันทึกแล้ว คนที่ติ๊กจะถูกลงชื่อเข้ารุ่นที่เลือก และคำขอเปลี่ยนเป็น \"จัดเข้ารุ่นแล้ว\"",
               "On save, ticked people are enrolled in the chosen session and their requests become Planned.",
             )}
           </span>

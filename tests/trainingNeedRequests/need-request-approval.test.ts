@@ -105,15 +105,33 @@ describe("the section head step", () => {
     });
   });
 
-  it("refuses an approver who is not a section head in the requester's company", async () => {
+  it("refuses an approver who is not a section head", async () => {
     const { client } = fakeClient(requestRow());
     client.employee.findUnique
       .mockResolvedValueOnce({ company_id: BigInt(1), function_id: null })
-      .mockResolvedValueOnce({ employment_status: "ACTIVE", company_id: BigInt(2), position: { position_code: "SH" }, employee_level: null });
+      .mockResolvedValueOnce({ employment_status: "ACTIVE", company_id: BigInt(1), position: { position_code: "OP" }, employee_level: null });
     const repository = createNeedRequestRepository(client as never);
     await expect(
       repository.create({ courseId: null, requestedCourseName: "Excel", requestReason: "r", preferredStartDate: null, preferredEndDate: null, approverUserId: "HEAD0001" }, "EMP0001"),
     ).rejects.toMatchObject({ code: "INVALID_APPROVER" });
+  });
+
+  // TEMPORARY (2026-09-17): heads of other companies are allowed for now. When the own-company rule
+  // comes back, this expectation flips to a rejection.
+  it("accepts a section head from another company", async () => {
+    const { client } = fakeClient(requestRow());
+    client.employee.findUnique
+      .mockResolvedValueOnce({ company_id: BigInt(1), function_id: null })
+      .mockResolvedValueOnce({ employment_status: "ACTIVE", company_id: BigInt(2), position: { position_code: "SH", position_name_en: "Section Head" }, employee_level: null });
+    client.course.findUnique.mockResolvedValue(null);
+    const repository = createNeedRequestRepository(client as never);
+
+    await repository.create(
+      { courseId: null, requestedCourseName: "Excel", requestReason: "r", preferredStartDate: null, preferredEndDate: null, approverUserId: "HEAD0002" },
+      "EMP0001",
+    );
+
+    expect(client.training_need_request.create.mock.calls[0][0].data).toMatchObject({ approver_user_id: "HEAD0002" });
   });
 
   it("records the course the employee picked by id, with its code and name snapshotted beside it", async () => {

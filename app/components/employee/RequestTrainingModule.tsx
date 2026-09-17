@@ -658,14 +658,18 @@ export default function RequestTrainingModule({
                   options={approvers.map((head) => ({
                     value: head.reviewerUserId,
                     label: `${head.name} (${head.employeeCode})`,
-                    secondaryLabel: [head.position, head.department, head.section].filter(Boolean).join(" · "),
+                    // The list spans every company for now, so the company code comes first: it is
+                    // what tells two heads of the same name apart.
+                    secondaryLabel: [head.company, head.position, head.department, head.section]
+                      .filter(Boolean)
+                      .join(" · "),
                   }))}
                   value={approverUserId}
                   onChange={setApproverUserId}
                   placeholder={
                     approvers.length === 0
-                      ? t("ไม่พบหัวหน้าแผนกในบริษัทของคุณ", "No section heads found in your company")
-                      : t("ค้นหาชื่อหรือรหัสหัวหน้าของคุณ...", "Search your section head by name or code...")
+                      ? t("ไม่พบหัวหน้าแผนก", "No section heads found")
+                      : t("ค้นหาชื่อหรือรหัสหัวหน้า...", "Search a section head by name or code...")
                   }
                 />
               </div>
