@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { profileValue, useAuthenticatedUser } from "../../../AuthenticatedUserContext";
 import { useConfirm } from "../../../ConfirmDialog";
 import { useToast } from "../../../ToastHost";
@@ -25,6 +25,7 @@ import {
 } from "../../../../lib/trainingEnrollment/types";
 import {
   getCostBreakdown,
+  listTrainingRecords,
   saveTrainingRecordExpenses,
   saveTrainingResults,
 } from "../../../../lib/trainingRecord/client";
@@ -34,6 +35,7 @@ import {
   expiryFrom,
   scorePercentOf,
   type CompletionStatus,
+  type TrainingRecordSummary,
 } from "../../../../lib/trainingRecord/types";
 import { gradeSubmission, listPendingGrading, publishSubmissionResults, readEvaluationSummary } from "../../../../lib/trainingForms/client";
 import type { PendingGradingSubmission } from "../../../../lib/trainingForms/types";
@@ -671,19 +673,36 @@ export default function TrainingActual() {
   const isFactoryUser = user?.roleCode === "HRD_FACTORY";
   const userCompanyCode = profileValue(user?.companyCode);
   const [rollingPlans, setRollingPlans] = useState<RollingPlan[]>([]);
+  const [recordedPlanIds, setRecordedPlanIds] = useState<Set<string>>(new Set());
   const [enrollments, setEnrollments] = useState<EnrollmentRecord[]>([]);
   const [expenses, setExpenses] = useState<Record<ExpenseKey, string>>(emptyExpenses);
   const [costBreakdown, setCostBreakdown] = useState<CostBreakdown | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    void loadWorkflowRollingPlans().then((plans) => {
-      if (active) setRollingPlans(plans);
-    });
-    return () => {
-      active = false;
-    };
+  const reloadPlansAndRecords = useCallback(async () => {
+    try {
+      const [plans, recordResult] = await Promise.all([
+        loadWorkflowRollingPlans().catch(() => []),
+        listTrainingRecords().catch(() => ({ trainingRecords: [] as TrainingRecordSummary[] })),
+      ]);
+      const recordedSet = new Set<string>();
+      (recordResult.trainingRecords || []).forEach((r) => {
+        if (r.planId) recordedSet.add(String(r.planId));
+      });
+      plans.forEach((p) => {
+        if (p.dbStatus === "COMPLETED" || (p as any).status === "COMPLETED") {
+          recordedSet.add(String(p.rollingId));
+        }
+      });
+      setRecordedPlanIds(recordedSet);
+      setRollingPlans(plans);
+    } catch (error) {
+      console.error("Failed to load plans or records", error);
+    }
   }, []);
+
+  useEffect(() => {
+    void reloadPlansAndRecords();
+  }, [reloadPlansAndRecords]);
 
   useEffect(() => {
     let active = true;
@@ -701,7 +720,12 @@ export default function TrainingActual() {
 
   useEffect(() => {
     const nextCourses = rollingPlans
-      .filter((plan) => plan.status === "Planned")
+      .filter(
+        (plan) =>
+          plan.status === "Planned" &&
+          plan.dbStatus !== "COMPLETED" &&
+          !recordedPlanIds.has(String(plan.rollingId)),
+      )
       .map<ActualCourse>((plan) => ({
         id: plan.rollingId,
         groupId: plan.scheduleGroupId,
@@ -726,7 +750,7 @@ export default function TrainingActual() {
       }));
 
     setCourses(nextCourses);
-  }, [rollingPlans]);
+  }, [rollingPlans, recordedPlanIds]);
   const availableCourses = useMemo(
     () =>
       isFactoryUser
@@ -788,6 +812,17 @@ export default function TrainingActual() {
     availableSessions.find((course) => course.id === selectedCourseId) ?? null;
   const isSelectedCourseCenter = selectedCourse ? isCenterCourse(selectedCourse) : false;
   const isSelectedCourseReadOnlyForFactory = isFactoryUser && isSelectedCourseCenter;
+
+  useEffect(() => {
+    if (selectedCourseGroupId && availableCourseGroups.length > 0 && !availableCourseGroups.some((group) => group.id === selectedCourseGroupId)) {
+      setSelectedCourseGroupId("");
+      setSelectedCourseId("");
+      return;
+    }
+    if (selectedCourseId && availableSessions.length > 0 && !availableSessions.some((session) => session.id === selectedCourseId)) {
+      setSelectedCourseId(availableSessions[0]?.id ?? "");
+    }
+  }, [availableCourseGroups, availableSessions, selectedCourseGroupId, selectedCourseId]);
 
   useEffect(() => {
     if (!selectedCourse) {
@@ -1337,10 +1372,18 @@ export default function TrainingActual() {
       });
       setShowSaveSuccessModal(true);
 
+      const savedCourseId = String(selectedCourse.id);
+      setRecordedPlanIds((prev) => {
+        const next = new Set(prev);
+        next.add(savedCourseId);
+        return next;
+      });
+      void reloadPlansAndRecords();
+
       setSavedMessage(
         `Saved ${selectedCourse.code} with ${freshPresent} present attendees, total THB ${formatCurrency(expenseTotal)} (THB ${formatCurrency(freshPerPerson)}/person) at ${now}.`,
       );
-      toast.success(t("บันทึกข้อมูลการอบรมจริงแล้ว", "Training actual saved"));
+      toast.success(t("บันทึกข้อมูลการอบรมจริงและย้ายไปยัง Training Record แล้ว", "Training actual saved and moved to Training Record"));
     } catch (error) {
       console.error("Failed to save training actual", error);
       // Surface what the server said. A certificate clash or a completion without attendance is
@@ -2668,7 +2711,12 @@ export default function TrainingActual() {
 
             <div className={styles.successModalHeader}>
               <h3>{t("บันทึกข้อมูลการอบรมจริงสำเร็จ!", "Training actual saved")}</h3>
-              <p>{t("ระบบบันทึกยอดผู้เข้าอบรมจริงและค่าใช้จ่ายเรียบร้อยแล้ว", "The attendance count and the cost are both recorded.")}</p>
+              <p>
+                {t(
+                  "ระบบบันทึกข้อมูลเรียบร้อยแล้ว โดยหลักสูตรนี้ถูกย้ายไปยังเมนู Training Record (ประวัติผลการอบรม) แล้ว และจะไม่แสดงในหน้านี้อีก",
+                  "Attendance, cost, and results are recorded. This course has been moved to Training Record and will not be displayed here anymore.",
+                )}
+              </p>
             </div>
 
             <div className={styles.successCourseCard}>
@@ -2718,6 +2766,14 @@ export default function TrainingActual() {
                 <Check size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
                 {t("ตกลง", "Done")}
               </button>
+              <a
+                href="/training-record/training-record"
+                className={styles.secondaryButton}
+                style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6 }}
+              >
+                <BookOpen size={14} />
+                {t("ดูใน Training Record", "View in Training Record")}
+              </a>
             </div>
           </div>
         </div>

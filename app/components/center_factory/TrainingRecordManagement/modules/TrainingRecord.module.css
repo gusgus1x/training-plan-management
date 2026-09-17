@@ -2008,22 +2008,35 @@
 .courseTitleCell {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
+  min-width: 240px;
 }
 
-.courseTitleCell strong {
-  font-size: 0.95rem;
-  font-weight: 800;
+.courseTitleCell strong,
+.courseMainTitle {
+  font-family: var(--ui-font-th), var(--ui-font-en), sans-serif;
+  font-size: 0.94rem;
+  font-weight: 700;
   color: var(--ui-30-ink);
+  word-break: normal;
+  overflow-wrap: break-word;
+  white-space: normal;
+  line-height: 1.55;
+  text-wrap: pretty;
 }
 
 /* The Thai name under the English one, as Course Master shows it. */
 .courseTitleSecondary {
-  font-size: 0.85rem;
+  font-family: var(--ui-font-th), var(--ui-font-en), sans-serif;
+  font-size: 0.82rem;
   color: var(--ui-30-muted);
-  font-weight: 600;
+  font-weight: 500;
   display: block;
-  margin-top: -1px;
+  margin-top: 1px;
+  word-break: normal;
+  overflow-wrap: break-word;
+  white-space: normal;
+  line-height: 1.5;
 }
 
 .courseSubMeta {
@@ -2229,14 +2242,16 @@
 
 .actionHeader {
   text-align: center;
+  min-width: 200px;
 }
 
 .recordTableActions {
   display: inline-flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
   justify-content: center;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .actionButton,
@@ -2366,16 +2381,20 @@
 }
 
 .recordListTableWrap {
-  overflow-x: auto;
   border: 1px solid var(--ui-30-border);
   border-radius: var(--ui-radius-lg, 10px);
   background: var(--ui-60-surface);
+  width: 100%;
+  box-shadow: var(--ui-shadow-sm);
+  overflow-x: auto;
 }
 
 .recordListTable {
   width: 100%;
-  min-width: 1040px;
-  border-collapse: collapse;
+  min-width: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto;
 }
 
 .recordListTable th,
@@ -2408,6 +2427,13 @@
   font-weight: 700;
 }
 
+/* Table row standard styling without sticky overlap */
+.recordListTable th:first-child,
+.recordListTable td:first-child {
+  position: static;
+  box-shadow: none;
+}
+
 .recordListTable tbody tr {
   cursor: default;
   transition: background 0.14s ease;
@@ -2432,13 +2458,101 @@
   background: rgba(5, 150, 105, 0.12);
 }
 
-.inlineDetailRow td {
-  background: var(--ui-60-surface-soft);
-  padding: 14px;
+/* ==========================================================================
+   Course Detail Pop-Up Modal
+   ========================================================================== */
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.68);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: modalOverlayFade 0.18s ease-out;
 }
 
-.inlineDetailRow .completedRecordWorkspace {
-  margin: 0;
+@keyframes modalOverlayFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modalCard {
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-lg, 16px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
+  width: 100%;
+  max-width: 1260px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  animation: modalScaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modalCloseFloatingBtn {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--ui-60-surface-soft);
+  border: 1px solid var(--ui-30-border);
+  color: var(--ui-30-ink);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modalCloseFloatingBtn:hover {
+  background: var(--ui-10-accent-soft, #fee2e2);
+  border-color: var(--ui-10-accent-border, #fca5a5);
+  color: var(--ui-10-accent, #ef4444);
+  transform: scale(1.06);
+}
+
+.modalCardScroll {
+  overflow-y: auto;
+  padding: 20px 24px 32px;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  .modalBackdrop {
+    padding: 10px;
+  }
+  .modalCard {
+    max-height: 95vh;
+    border-radius: 12px;
+  }
+  .modalCardScroll {
+    padding: 14px 14px 24px;
+  }
 }
 
 .importPanel {
@@ -2885,14 +2999,26 @@
 
 .heroMetaCardGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin: 12px 0 14px;
+}
+
+@media (min-width: 1400px) {
+  .heroMetaCardGrid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 980px) {
   .heroMetaCardGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .heroMetaCardGrid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -6098,3 +6224,453 @@
     justify-content: flex-end;
   }
 }
+
+.scoreBadge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--ui-60-surface-soft, rgba(148, 163, 184, 0.12));
+  color: var(--ui-30-ink, #0f172a);
+  font-size: 0.85rem;
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+}
+
+.scoreBadge strong {
+  font-weight: 700;
+  color: var(--ui-30-ink, #0f172a);
+}
+
+.scoreBadge small {
+  font-size: 0.72rem;
+  color: var(--ui-30-muted, #64748b);
+  font-weight: 500;
+}
+
+.scoreEmpty {
+  display: inline-block;
+  color: var(--ui-30-muted, #94a3b8);
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   Corporate Training Record Enhancement: Typography, ATTG Theme & Metrics
+   ========================================================================== */
+
+.recordToolbarRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+/* Quick Search Input in Toolbar */
+.courseSearchWrap {
+  display: inline-flex;
+  align-items: center;
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-sm, 8px);
+  padding: 0 12px;
+  min-width: 280px;
+  max-width: 360px;
+  height: 38px;
+  box-shadow: var(--ui-shadow-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.courseSearchWrap:focus-within {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px var(--ui-focus-ring);
+}
+
+.courseSearchIcon {
+  color: var(--ui-30-muted);
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+.courseSearchInput {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--ui-font-th), var(--ui-font-en), sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--ui-30-ink);
+  width: 100%;
+}
+
+.courseSearchInput::placeholder {
+  color: var(--ui-30-muted);
+  opacity: 0.8;
+}
+
+.courseSearchClear {
+  border: none;
+  background: transparent;
+  color: var(--ui-30-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  margin-left: 4px;
+}
+
+.courseSearchClear:hover {
+  color: var(--ui-30-ink);
+}
+
+/* Header styling for Owner Section */
+.recordOwnerHeaderTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.recordOwnerHeaderTitle h3 {
+  font-family: var(--ui-font-th), var(--ui-font-en), sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ui-30-ink);
+  margin: 0;
+  line-height: 1.35;
+}
+
+/* Date & Batch Cell */
+.dateBatchCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dateRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ui-30-ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.dateRow svg {
+  color: var(--ui-30-muted);
+  flex-shrink: 0;
+}
+
+.batchPillRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.batchBadge {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  font-family: var(--ui-font-th), var(--ui-font-en), sans-serif;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--ui-30-primary-soft);
+  color: var(--ui-30-primary);
+  border: 1px solid var(--ui-30-primary-border);
+  line-height: 1.2;
+}
+
+.companyScopeBadge {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--ui-60-surface-soft);
+  border: 1px solid var(--ui-30-border);
+  color: var(--ui-30-ink);
+  line-height: 1.3;
+}
+
+/* Attendees column styles */
+.attendeeListCell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.attendeeCountBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  transition: opacity 0.12s ease;
+  width: fit-content;
+}
+
+.attendeeCountBtn:hover {
+  opacity: 0.8;
+}
+
+.attendeeCountIcon {
+  color: var(--ui-30-primary);
+  flex-shrink: 0;
+}
+
+.attendeeTotalCount {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ui-30-muted);
+}
+
+.attendeeNameList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.attendeeNameTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--ui-60-surface-soft);
+  border: 1px solid var(--ui-30-border);
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ui-30-ink);
+  white-space: nowrap;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.35;
+}
+
+:global([data-theme="dark"]) .attendeeNameTag,
+:global(.dark) .attendeeNameTag {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+}
+
+.attendeeMoreBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--ui-30-primary-soft, rgba(0, 122, 61, 0.08));
+  border: 1px solid var(--ui-30-primary-border, rgba(0, 122, 61, 0.2));
+  color: var(--ui-30-primary);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  line-height: 1.35;
+}
+
+.attendeeMoreBtn:hover {
+  background: var(--ui-30-primary);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.attendeeEmpty {
+  color: var(--ui-30-muted);
+  font-size: 0.82rem;
+}
+
+.attendeeCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.attendeeCell .attendeeRatioText {
+  color: var(--ui-30-ink);
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.attendeeCell .attendeeRatioText small {
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--ui-30-muted);
+}
+
+/* Cost cell */
+.costCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.costCell .costAmountText {
+  color: var(--ui-30-ink);
+  font-size: 0.92rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.costCell .perPersonCostText {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--ui-30-muted);
+}
+
+/* Assessment Pass Cell */
+.assessmentCell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.assessmentPassPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  font-family: var(--ui-font-th), var(--ui-font-en), sans-serif;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  line-height: 1.25;
+  width: fit-content;
+}
+
+.assessmentPassGood {
+  background: var(--ui-status-approved-bg, #ecfdf5);
+  color: var(--ui-status-approved-text, #047857);
+  border: 1px solid var(--ui-status-approved-border, #a7f3d0);
+}
+
+.assessmentPassModerate {
+  background: var(--ui-status-pending-bg, #fffbeb);
+  color: var(--ui-status-pending-text, #b45309);
+  border: 1px solid var(--ui-status-pending-border, #fde68a);
+}
+
+.assessmentPassNone {
+  background: var(--ui-status-draft-bg, #f1f5f9);
+  color: var(--ui-status-draft-text, #64748b);
+  border: 1px solid var(--ui-status-draft-border, #cbd5e1);
+}
+
+.assessmentSubRatio {
+  font-size: 0.72rem;
+  color: var(--ui-30-muted);
+  font-weight: 500;
+}
+
+/* Evaluation Cell */
+.evalCell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 90px;
+}
+
+.evalScoreRow {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.evalPercentText {
+  color: var(--ui-30-ink);
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.evalCountSub {
+  font-size: 0.7rem;
+  color: var(--ui-30-muted);
+  font-weight: 500;
+}
+
+.evalProgressTrack {
+  width: 100%;
+  height: 5px;
+  background: var(--ui-60-surface-soft);
+  border: 1px solid var(--ui-30-border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.evalProgressFill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.evalCompleteFill {
+  background: var(--ui-30-primary);
+}
+
+.evalPendingFill {
+  background: #f59e0b;
+}
+
+.evalZeroFill {
+  background: transparent;
+}
+
+/* Inline detail expansion */
+.inlineDetailRow td.inlineDetailCell {
+  background: var(--ui-60-surface-soft);
+  padding: 16px 20px;
+  border-bottom: 2px solid var(--ui-30-primary);
+}
+
+/* Clean score badges in Attendee Roster */
+.scoreBadge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--ui-60-surface-soft);
+  border: 1px solid var(--ui-30-border);
+  color: var(--ui-30-ink);
+  font-size: 0.84rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.scoreBadge strong {
+  font-weight: 700;
+  color: var(--ui-30-ink);
+}
+
+.scoreBadge small {
+  font-size: 0.7rem;
+  color: var(--ui-30-muted);
+  font-weight: 500;
+}
+
+.scoreEmpty {
+  display: inline-block;
+  color: var(--ui-30-muted);
+  font-weight: 500;
+}
+

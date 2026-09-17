@@ -113,6 +113,10 @@ type OapSummary = Prisma.training_plan_oapGetPayload<{ include: typeof oapSummar
 const rollingInclude = {
   training_plan_oap: { include: oapSummaryInclude },
   training_expense: { select: { expense_id: true } },
+  training_enrollment: {
+    where: { training_result: { isNot: null } },
+    select: { enrollment_id: true },
+  },
 } satisfies Prisma.training_planInclude;
 
 type RollingPlanWithRelations = Prisma.training_planGetPayload<{ include: typeof rollingInclude }>;
@@ -152,8 +156,10 @@ const mapRollingPlan = (row: RollingPlanWithRelations) => {
   const end = splitDateTime(row.end_datetime);
   const hasExpenses =
     Array.isArray(row.training_expense) && row.training_expense.length > 0;
+  const hasResults =
+    Array.isArray(row.training_enrollment) && row.training_enrollment.length > 0;
   const effectiveDbStatus =
-    row.status === "COMPLETED" || hasExpenses ? "COMPLETED" : row.status;
+    row.status === "COMPLETED" || hasExpenses || hasResults ? "COMPLETED" : row.status;
 
   return {
     id: row.plan_id.toString(),

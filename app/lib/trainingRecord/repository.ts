@@ -217,6 +217,26 @@ const mapTrainingRecord = (row: TrainingRecordPlan): TrainingRecordSummary => {
       postTestSubmitted: submittedAssessments.some((s) => s.assessment_stage === "POST_TEST"),
       preTestPassed: preTest ? preTest.pass_status?.toUpperCase() === "PASS" : null,
       postTestPassed: postTest ? postTest.pass_status?.toUpperCase() === "PASS" : null,
+      preScore:
+        enrollment.training_result?.pre_score !== null && enrollment.training_result?.pre_score !== undefined
+          ? Number(enrollment.training_result.pre_score)
+          : preTest?.score !== null && preTest?.score !== undefined
+            ? Number(preTest.score)
+            : null,
+      postScore:
+        enrollment.training_result?.post_score !== null && enrollment.training_result?.post_score !== undefined
+          ? Number(enrollment.training_result.post_score)
+          : postTest?.score !== null && postTest?.score !== undefined
+            ? Number(postTest.score)
+            : null,
+      preScoreMax:
+        enrollment.training_result?.pre_link_score_max !== null && enrollment.training_result?.pre_link_score_max !== undefined
+          ? Number(enrollment.training_result.pre_link_score_max)
+          : null,
+      postScoreMax:
+        enrollment.training_result?.post_link_score_max !== null && enrollment.training_result?.post_link_score_max !== undefined
+          ? Number(enrollment.training_result.post_link_score_max)
+          : null,
       // The attendee's own answer to the AFTER-TRAINING form, and nothing else. Two things get
       // wrongly counted without both halves of that: their supervisor's answer (a different
       // respondent) and their own 30-day follow-up (a different form).
@@ -522,6 +542,11 @@ export const createTrainingRecordRepository = (client?: DatabaseClient) => {
               update: data,
             });
           }
+
+          await tx.training_plan.update({
+            where: { plan_id: id },
+            data: { status: "COMPLETED", updated_at: now },
+          });
         });
 
         const updated = await db().training_plan.findUniqueOrThrow({

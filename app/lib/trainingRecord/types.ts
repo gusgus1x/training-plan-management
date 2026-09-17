@@ -118,6 +118,10 @@ export type TrainingRecordAttendee = {
   attended: boolean;
   preTestPassed: boolean | null;
   postTestPassed: boolean | null;
+  preScore?: number | null;
+  postScore?: number | null;
+  preScoreMax?: number | null;
+  postScoreMax?: number | null;
   /**
    * Whether the test was handed in at all, published or not.
    *

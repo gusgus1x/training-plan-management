@@ -45,6 +45,12 @@ import {
   Lock,
   Home,
   Utensils,
+  GraduationCap,
+  Award,
+  CheckCircle2,
+  ClipboardList,
+  ChevronRight,
+  Eye,
 } from "../../../icons/LucideIcons";
 import styles from "./TrainingRecord.module.css";
 
@@ -144,6 +150,10 @@ type CompletedCourse = {
     /** "Pending" is a real third state: nobody has decided yet. Folding it into "Failed"
      *  marked every ungraded attendee as having failed. */
     prePost: "Passed" | "Failed" | "Pending";
+    preScore?: number | null;
+    postScore?: number | null;
+    preScoreMax?: number | null;
+    postScoreMax?: number | null;
     /** "None" - the course has no evaluation. "External" - it is somebody else's form and this
      *  system cannot see whether it was filled in. Neither is the same as "Pending". */
     evaluation: "Done" | "Pending" | "None" | "External";
@@ -226,10 +236,12 @@ const ATTENDEE_COLUMNS = [
   { key: "department", th: "แผนก", en: "Department", width: 150 },
   { key: "section", th: "ส่วน", en: "Section", width: 150 },
   { key: "position", th: "ตำแหน่ง", en: "Position", width: 140 },
+  { key: "preScore", th: "คะแนน Pre-Test", en: "Pre-Test Score", width: 120 },
+  { key: "postScore", th: "คะแนน Post-Test", en: "Post-Test Score", width: 120 },
   // Named for what the column actually reports. prePostOf() reads the recorded result first and
   // the post-test only as a fallback; the pre-test never enters it, so "Pre / Post" was naming a
   // comparison the column does not make.
-  { key: "prePost", th: "แบบทดสอบหลังอบรม", en: "Post test", width: 140 },
+  { key: "prePost", th: "ผลแบบทดสอบ", en: "Assessment Result", width: 130 },
   { key: "evaluation", th: "สถานะแบบประเมิน", en: "Evaluation", width: 150 },
   { key: "budget", th: "งบปันส่วนต่อคน", en: "Cost per person", width: 130 },
 ] as const;
@@ -310,6 +322,51 @@ export const prePostOf = (attendee: TrainingRecordAttendee): "Passed" | "Failed"
   return "Pending";
 };
 
+export const parseBatchNumber = (batch?: string | null): number => {
+  if (!batch) return 0;
+  const match = String(batch).match(/\d+/);
+  return match ? parseInt(match[0], 10) : 0;
+};
+
+export const sortCoursesByCourseAndBatch = <T extends { code?: string; title?: string; batch?: string; date?: string }>(
+  list: T[],
+): T[] => {
+  return [...list].sort((a, b) => {
+    // 1. Course Code
+    const codeA = (a.code || "").trim();
+    const codeB = (b.code || "").trim();
+    if (codeA !== codeB) {
+      if (!codeA) return 1;
+      if (!codeB) return -1;
+      const codeComp = codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: "base" });
+      if (codeComp !== 0) return codeComp;
+    }
+
+    // 2. Course Title
+    const titleA = (a.title || "").trim();
+    const titleB = (b.title || "").trim();
+    if (titleA !== titleB) {
+      const titleComp = titleA.localeCompare(titleB, undefined, { numeric: true, sensitivity: "base" });
+      if (titleComp !== 0) return titleComp;
+    }
+
+    // 3. Batch (รุ่น) - numeric natural sort
+    const batchNumA = parseBatchNumber(a.batch);
+    const batchNumB = parseBatchNumber(b.batch);
+    if (batchNumA !== batchNumB) {
+      return batchNumA - batchNumB;
+    }
+    const batchStrA = (a.batch || "").trim();
+    const batchStrB = (b.batch || "").trim();
+    if (batchStrA !== batchStrB) {
+      return batchStrA.localeCompare(batchStrB, undefined, { numeric: true, sensitivity: "base" });
+    }
+
+    // 4. Date
+    return (a.date || "").localeCompare(b.date || "");
+  });
+};
+
 const normalizeHeader = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 
 const getCellValue = (row: Record<string, string>, headers: string[]) => {
@@ -347,6 +404,7 @@ const exportCourseSummaryExcel = (course: CompletedCourse, actualCostTotal: numb
   const summaryRows = [
     ["Course Code", course.code],
     ["Course Title", course.title],
+    ["Batch", course.batch ?? "-"],
     ["Source", course.source === "UPLOAD" ? "Upload" : "System"],
     ["Date", course.date],
     ["Company", course.company],
@@ -374,7 +432,9 @@ const exportCourseSummaryExcel = (course: CompletedCourse, actualCostTotal: numb
       "Employee Code",
       "Name",
       "Department",
-      "Pre/Post",
+      "Pre-Test Score",
+      "Post-Test Score",
+      "Pre/Post Result",
       "Evaluation",
       "Expense / Person (THB)",
     ],
@@ -383,6 +443,12 @@ const exportCourseSummaryExcel = (course: CompletedCourse, actualCostTotal: numb
       attendee.employeeCode,
       attendee.name,
       attendee.department,
+      attendee.preScore !== null && attendee.preScore !== undefined
+        ? (attendee.preScoreMax ? `${attendee.preScore}/${attendee.preScoreMax}` : attendee.preScore)
+        : "-",
+      attendee.postScore !== null && attendee.postScore !== undefined
+        ? (attendee.postScoreMax ? `${attendee.postScore}/${attendee.postScoreMax}` : attendee.postScore)
+        : "-",
       attendee.prePost,
       attendee.evaluation,
       `THB ${formatNumber(costPerPerson)}`,
@@ -765,10 +831,31 @@ export default function TrainingRecord() {
   const [revealedUserIds, setRevealedUserIds] = useState<Set<string>>(new Set());
   const [selectedAttendeeCompanyFilter, setSelectedAttendeeCompanyFilter] = useState("ALL");
   const [selectedScopeTab, setSelectedScopeTab] = useState<"ALL" | "CENTER" | "FACTORY">("ALL");
-  const [selectedDetailTab, setSelectedDetailTab] = useState<"overview" | "financial" | "roster" | "operations" | "all">("overview");
-  // Column widths for the roster, dragged from the header the way a spreadsheet's are, and
-  // remembered per browser so a layout somebody set up survives a refresh.
+  const [courseSearchTerm, setCourseSearchTerm] = useState("");
+  const [selectedDetailTab, setSelectedDetailTab] = useState<"overview" | "assessment" | "financial" | "roster" | "operations" | "all">("overview");
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(loadColumnWidths);
+
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isCourseDetailOpen) {
+        setIsCourseDetailOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isCourseDetailOpen]);
+
+  // Lock background body scroll when modal is open
+  useEffect(() => {
+    if (isCourseDetailOpen) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isCourseDetailOpen]);
 
   /**
    * Drags one column's right edge. The listeners go on the window rather than the handle so the
@@ -806,6 +893,32 @@ export default function TrainingRecord() {
       const nextCourses = (recordResult.trainingRecords || []).map<CompletedCourse>((record: TrainingRecordSummary) => {
         const rollingPlan = plans.find((plan) => plan.rollingId === record.planId);
         const postTestPassPercent = percent(record.postTestPassCount, record.attendedCount);
+
+        const attendedAttendees = record.attendees.filter((attendee) => attendee.attended);
+        const mappedAttendees = attendedAttendees.map((attendee) => ({
+          id: attendee.enrollmentId,
+          company: attendee.company,
+          name: attendee.name,
+          employeeCode: attendee.employeeCode,
+          userId: attendee.employeeUserId,
+          department: attendee.department,
+          orgUnit: attendee.orgUnit,
+          position: attendee.position,
+          prePost: prePostOf(attendee),
+          preScore: attendee.result?.preScore ?? attendee.preScore ?? null,
+          postScore: attendee.result?.postScore ?? attendee.postScore ?? null,
+          preScoreMax: attendee.result?.preLinkScoreMax ?? attendee.preScoreMax ?? null,
+          postScoreMax: attendee.result?.postLinkScoreMax ?? attendee.postScoreMax ?? null,
+          evaluation: evaluationStateOf(record.evaluation, attendee.evaluationCompleted),
+          reviewer: attendee.reviewer,
+        }));
+
+        const postScores = mappedAttendees
+          .map((a) => a.postScore)
+          .filter((s): s is number => typeof s === "number" && !isNaN(s));
+        const averageScore = postScores.length > 0
+          ? Math.round((postScores.reduce((sum, val) => sum + val, 0) / postScores.length) * 10) / 10
+          : 0;
 
         return {
           id: record.planId,
@@ -847,22 +960,8 @@ export default function TrainingRecord() {
           evaluationCompleted: record.evaluationCompletedCount,
           evaluationTotal: record.attendedCount,
           evaluationAfter30Day: record.evaluationAfter30Day,
-          averageScore: 0,
-          attendees: record.attendees
-            .filter((attendee) => attendee.attended)
-            .map((attendee) => ({
-              id: attendee.enrollmentId,
-              company: attendee.company,
-              name: attendee.name,
-              employeeCode: attendee.employeeCode,
-              userId: attendee.employeeUserId,
-              department: attendee.department,
-              orgUnit: attendee.orgUnit,
-              position: attendee.position,
-              prePost: prePostOf(attendee),
-              evaluation: evaluationStateOf(record.evaluation, attendee.evaluationCompleted),
-              reviewer: attendee.reviewer,
-            })),
+          averageScore,
+          attendees: mappedAttendees,
         };
       });
 
@@ -880,31 +979,30 @@ export default function TrainingRecord() {
   const importScopeNote = isFactoryUser
     ? `Factory import saves only completed courses for ${userCompanyCode}. Center records and other companies are ignored.`
     : "Center import can save completed courses for center and factory scopes.";
-  const availableCourses = useMemo(
-    () =>
-      isFactoryUser
-        ? courses.filter((course) => {
-            const isOwnFactoryCourse =
-              course.owner === "FACTORY" &&
-              (course.ownerCompany ?? course.company) === userCompanyCode;
+  const availableCourses = useMemo(() => {
+    const filtered = isFactoryUser
+      ? courses.filter((course) => {
+          const isOwnFactoryCourse =
+            course.owner === "FACTORY" &&
+            (course.ownerCompany ?? course.company) === userCompanyCode;
 
-            if (isOwnFactoryCourse) {
-              return true;
-            }
+          if (isOwnFactoryCourse) {
+            return true;
+          }
 
-            const isCenterCourse = course.owner === "CENTER";
-            if (isCenterCourse) {
-              const companyAttendedCount = (course.attendees || []).filter(
-                (attendee) => attendee.company === userCompanyCode,
-              ).length;
-              return companyAttendedCount > 0;
-            }
+          const isCenterCourse = course.owner === "CENTER";
+          if (isCenterCourse) {
+            const companyAttendedCount = (course.attendees || []).filter(
+              (attendee) => attendee.company === userCompanyCode,
+            ).length;
+            return companyAttendedCount > 0;
+          }
 
-            return false;
-          })
-        : courses,
-    [courses, isFactoryUser, userCompanyCode],
-  );
+          return false;
+        })
+      : courses;
+    return sortCoursesByCourseAndBatch(filtered);
+  }, [courses, isFactoryUser, userCompanyCode]);
 
   const availableCourseGroups = useMemo(() => {
     const groups = new Map<string, CompletedCourse[]>();
@@ -914,13 +1012,24 @@ export default function TrainingRecord() {
         `group-${course.code}-${course.owner}-${course.ownerCompany ?? course.company}`;
       groups.set(groupId, [...(groups.get(groupId) ?? []), course]);
     });
-    return [...groups.entries()].map(([id, sessions]) => ({
-      id,
-      code: sessions[0]?.code ?? "",
-      title: sessions[0]?.title ?? "",
-      owner: sessions[0]?.owner ?? "CENTER",
-      sessions,
-    }));
+    return [...groups.entries()]
+      .map(([id, sessions]) => ({
+        id,
+        code: sessions[0]?.code ?? "",
+        title: sessions[0]?.title ?? "",
+        owner: sessions[0]?.owner ?? "CENTER",
+        sessions: sortCoursesByCourseAndBatch(sessions),
+      }))
+      .sort((a, b) => {
+        const codeA = (a.code || "").trim();
+        const codeB = (b.code || "").trim();
+        if (codeA !== codeB) {
+          if (!codeA) return 1;
+          if (!codeB) return -1;
+          return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: "base" });
+        }
+        return (a.title || "").localeCompare(b.title || "", undefined, { numeric: true, sensitivity: "base" });
+      });
   }, [availableCourses]);
 
   const availableSessions = useMemo(() => {
@@ -930,8 +1039,31 @@ export default function TrainingRecord() {
 
   const centerCourses = availableCourses.filter((course) => course.owner === "CENTER");
   const factoryCourses = availableCourses.filter((course) => course.owner === "FACTORY");
+
+  const displayedCourses = useMemo(() => {
+    let list = availableCourses;
+    if (selectedScopeTab === "CENTER") {
+      list = centerCourses;
+    } else if (selectedScopeTab === "FACTORY") {
+      list = factoryCourses;
+    }
+    if (!courseSearchTerm.trim()) return list;
+    const q = courseSearchTerm.toLowerCase().trim();
+    return list.filter(
+      (c) =>
+        c.code.toLowerCase().includes(q) ||
+        c.title.toLowerCase().includes(q) ||
+        (c.titleTh && c.titleTh.toLowerCase().includes(q)) ||
+        (c.instructor && c.instructor.toLowerCase().includes(q)) ||
+        (c.batch && String(c.batch).toLowerCase().includes(q)) ||
+        (c.company && c.company.toLowerCase().includes(q)),
+    );
+  }, [availableCourses, centerCourses, factoryCourses, selectedScopeTab, courseSearchTerm]);
+
   const selectedCourse =
+    displayedCourses.find((course) => course.id === selectedCourseId) ??
     availableCourses.find((course) => course.id === selectedCourseId) ??
+    displayedCourses[0] ??
     availableCourses[0] ??
     null;
 
@@ -1179,11 +1311,12 @@ export default function TrainingRecord() {
               </button>
               <button
                 type="button"
-                className={styles.closeButton}
+                className={styles.secondaryButton}
                 onClick={() => setIsCourseDetailOpen(false)}
+                title={isThai ? "ปิด / ซ่อนรายละเอียด" : "Close Details"}
               >
                 <X size={14} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                {isThai ? "ปิดหน้ารายละเอียด" : "Close Details"}
+                {isThai ? "ซ่อนรายละเอียด" : "Close Details"}
               </button>
             </div>
           </section>
@@ -1199,6 +1332,17 @@ export default function TrainingRecord() {
             >
               <Lightbulb size={16} />
               <span>{isThai ? "ข้อมูล & สเปกหลักสูตร" : "Course & Specs"}</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selectedDetailTab === "assessment"}
+              className={selectedDetailTab === "assessment" ? styles.detailNavTabActive : styles.detailNavTab}
+              onClick={() => setSelectedDetailTab("assessment")}
+            >
+              <GraduationCap size={16} />
+              <span>{isThai ? "ผลแบบทดสอบ (Assessment)" : "Assessment Results"}</span>
+              <span className={styles.detailTabBadge}>{selectedCourse.postTestPassPercent}%</span>
             </button>
             <button
               type="button"
@@ -1275,6 +1419,33 @@ export default function TrainingRecord() {
                   <div>
                     <span>{isThai ? "ระยะเวลาอบรม & สะสมผล" : "Duration & Validity"}</span>
                     <strong>{selectedCourse.durationHours ?? 6} {isThai ? "ชม." : "hrs"} / {isThai ? "สะสม" : "valid for"} {selectedCourse.validityMonths ?? 12} {isThai ? "เดือน" : "months"}</strong>
+                  </div>
+                </div>
+                <div
+                  className={styles.metaMiniCard}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => setSelectedDetailTab("assessment")}
+                  title={isThai ? "คลิกเพื่อดูผลการทดสอบแบบละเอียด" : "Click to view detailed assessment results"}
+                >
+                  <div className={styles.metaMiniIcon} style={{ background: "rgba(16, 185, 129, 0.15)", borderColor: "rgba(16, 185, 129, 0.3)" }}>
+                    <GraduationCap size={18} color="#10b981" />
+                  </div>
+                  <div>
+                    <span>{isThai ? "ผลการทดสอบ (Assessment)" : "Assessment Result"}</span>
+                    <strong style={{ color: selectedCourse.postTestPassPercent >= 80 ? "#10b981" : "#f59e0b" }}>
+                      {selectedCourse.postTestPassPercent}% {isThai ? "ผ่านเกณฑ์" : "Passed"}
+                    </strong>
+                  </div>
+                </div>
+                <div className={styles.metaMiniCard}>
+                  <div className={styles.metaMiniIcon} style={{ background: "rgba(59, 130, 246, 0.15)", borderColor: "rgba(59, 130, 246, 0.3)" }}>
+                    <Target size={18} color="#3b82f6" />
+                  </div>
+                  <div>
+                    <span>{isThai ? "แบบประเมิน (Evaluation)" : "Evaluation"}</span>
+                    <strong>
+                      {selectedCourse.evaluationCompleted} / {selectedCourse.evaluationTotal} {isThai ? "ส่งแล้ว" : "completed"}
+                    </strong>
                   </div>
                 </div>
               </div>
@@ -1357,6 +1528,230 @@ export default function TrainingRecord() {
                 <span>{isThai ? "อายุการสะสมผล:" : "Validity:"}</span>
                 <strong>{selectedCourse.validityMonths ?? 12} {isThai ? "เดือน" : "months"}</strong>
               </div>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {(selectedDetailTab === "assessment" || selectedDetailTab === "all") && (
+        <div className={styles.courseDetailSectionGroup}>
+          <section className={styles.costBreakdownPanel} aria-label="Assessment results">
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.kicker}>Assessment & Learning Performance</p>
+                <h3>{isThai ? "รายงานผลการทดสอบ & การประเมินผลการเรียนรู้" : "Assessment & Learning Results"}</h3>
+              </div>
+              <span className={styles.totalBadge}>
+                {isThai ? "อัตราการผ่านเกณฑ์:" : "Pass Rate:"} <strong>{selectedCourse.postTestPassPercent}%</strong>
+              </span>
+            </div>
+
+            {/* Assessment KPI Summary Cards */}
+            <div className={styles.costHighlightGrid}>
+              <article className={`${styles.costHighlightCard} ${styles.costHighlightPrimary}`}>
+                <div className={styles.costCardHeader}>
+                  <div className={styles.costIconBox}><GraduationCap size={18} /></div>
+                  <span>Post-Test Pass Rate</span>
+                </div>
+                <strong className={styles.costValueTextPrimary}>
+                  {selectedCourse.postTestPassPercent}%
+                </strong>
+                <p className={styles.costSubTextPrimary}>
+                  {isThai
+                    ? `ผ่านเกณฑ์ ${selectedCourse.attendees.filter((a) => a.prePost === "Passed").length} จาก ${selectedCourse.actualAttendees || selectedCourse.attendees.length} คน`
+                    : `${selectedCourse.attendees.filter((a) => a.prePost === "Passed").length} of ${selectedCourse.actualAttendees || selectedCourse.attendees.length} passed`}
+                </p>
+              </article>
+
+              <article className={styles.costHighlightCard}>
+                <div className={styles.costCardHeader}>
+                  <div className={styles.costIconBox}><BookOpen size={18} /></div>
+                  <span>Pre-Test Baseline</span>
+                </div>
+                <strong className={styles.costValueText}>
+                  {selectedCourse.preTestPassPercent}%
+                </strong>
+                <p className={styles.costSubText}>
+                  {isThai
+                    ? `ส่งแบบทดสอบก่อนอบรม ${selectedCourse.preTestAnsweredCount} คน`
+                    : `${selectedCourse.preTestAnsweredCount} trainees submitted pre-test`}
+                </p>
+              </article>
+
+              <article className={styles.costHighlightCard}>
+                <div className={styles.costCardHeader}>
+                  <div className={styles.costIconBox}><Award size={18} /></div>
+                  <span>Average Score</span>
+                </div>
+                <strong className={styles.costValueText}>
+                  {selectedCourse.averageScore > 0 ? `${selectedCourse.averageScore}` : "-"}
+                </strong>
+                <p className={styles.costSubText}>
+                  {isThai ? "คะแนนเฉลี่ย Post-Test ของผู้เข้าอบรม" : "Average attendee post-test score"}
+                </p>
+              </article>
+
+              <article className={styles.costHighlightCard}>
+                <div className={styles.costCardHeader}>
+                  <div className={styles.costIconBox}><Target size={18} /></div>
+                  <span>Evaluation Rate</span>
+                </div>
+                <strong className={styles.costValueText}>
+                  {selectedCourse.evaluationCompleted} / {selectedCourse.evaluationTotal}
+                </strong>
+                <p className={styles.costSubText}>
+                  {isThai
+                    ? `ตอบแบบประเมินแล้ว ${selectedCourse.evaluationTotal > 0 ? Math.round((selectedCourse.evaluationCompleted / selectedCourse.evaluationTotal) * 100) : 0}%`
+                    : `${selectedCourse.evaluationTotal > 0 ? Math.round((selectedCourse.evaluationCompleted / selectedCourse.evaluationTotal) * 100) : 0}% completed`}
+                </p>
+              </article>
+            </div>
+
+            {/* Individual Assessment Scores Table */}
+            <div className={styles.panelHeader} style={{ marginTop: "24px" }}>
+              <div>
+                <p className={styles.kicker}>Individual Results</p>
+                <h3>{isThai ? "คะแนนแบบทดสอบรายบุคคล (Pre-Test & Post-Test Scores)" : "Attendee Scores & Results"}</h3>
+              </div>
+            </div>
+
+            <div className={styles.companyCostTableWrap}>
+              <table className={styles.companyCostTable}>
+                <thead>
+                  <tr>
+                    <th>UserID</th>
+                    <th>{isThai ? "พนักงาน" : "Employee"}</th>
+                    <th>{isThai ? "บริษัท" : "Company"}</th>
+                    <th>{isThai ? "แผนก" : "Department"}</th>
+                    <th style={{ textAlign: "center" }}>{isThai ? "คะแนน Pre-Test" : "Pre-Test Score"}</th>
+                    <th style={{ textAlign: "center" }}>{isThai ? "คะแนน Post-Test" : "Post-Test Score"}</th>
+                    <th style={{ textAlign: "center" }}>{isThai ? "การเปลี่ยนแปลง" : "Diff"}</th>
+                    <th style={{ textAlign: "center" }}>{isThai ? "ผลการทดสอบ" : "Assessment Result"}</th>
+                    <th style={{ textAlign: "center" }}>{isThai ? "แบบประเมิน" : "Evaluation"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCourseAttendees.length > 0 ? (
+                    filteredCourseAttendees.map((attendee) => {
+                      const hasPre = attendee.preScore !== null && attendee.preScore !== undefined;
+                      const hasPost = attendee.postScore !== null && attendee.postScore !== undefined;
+                      const diff = hasPre && hasPost ? Number(attendee.postScore) - Number(attendee.preScore) : null;
+
+                      return (
+                        <tr key={attendee.id}>
+                          <td>
+                            <MaskedUserId
+                              value={attendee.userId}
+                              revealed={showAllUserIds || revealedUserIds.has(attendee.id)}
+                              isThai={language === "th"}
+                              onToggle={() =>
+                                setRevealedUserIds((prev) => {
+                                  const next = new Set(prev);
+                                  if (next.has(attendee.id)) next.delete(attendee.id);
+                                  else next.add(attendee.id);
+                                  return next;
+                                })
+                              }
+                            />
+                          </td>
+                          <td>
+                            <strong>{attendee.name}</strong>
+                            <small style={{ display: "block", color: "var(--ui-30-muted)" }}>
+                              {attendee.employeeCode}
+                            </small>
+                          </td>
+                          <td>{attendee.company}</td>
+                          <td>{attendee.department || "-"}</td>
+                          <td style={{ textAlign: "center" }}>
+                            {hasPre ? (
+                              <span className={styles.scoreBadge}>
+                                <strong>{attendee.preScore}</strong>
+                                {attendee.preScoreMax ? <small>/{attendee.preScoreMax}</small> : null}
+                              </span>
+                            ) : (
+                              <span className={styles.scoreEmpty}>-</span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: "center" }}>
+                            {hasPost ? (
+                              <span className={styles.scoreBadge}>
+                                <strong>{attendee.postScore}</strong>
+                                {attendee.postScoreMax ? <small>/{attendee.postScoreMax}</small> : null}
+                              </span>
+                            ) : (
+                              <span className={styles.scoreEmpty}>-</span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: "center" }}>
+                            {diff !== null ? (
+                              <span
+                                style={{
+                                  color: diff > 0 ? "#10b981" : diff < 0 ? "#ef4444" : "var(--ui-30-muted)",
+                                  fontWeight: 800,
+                                }}
+                              >
+                                {diff > 0 ? `+${diff}` : diff}
+                              </span>
+                            ) : (
+                              <span className={styles.scoreEmpty}>-</span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: "center" }}>
+                            <span
+                              className={
+                                attendee.prePost === "Passed"
+                                  ? styles.passBadge
+                                  : attendee.prePost === "Failed"
+                                  ? styles.failBadge
+                                  : styles.evalPendingBadge
+                              }
+                            >
+                              {attendee.prePost === "Passed" ? (
+                                <>
+                                  <span className={styles.glowingDotGreen} /> {isThai ? "ผ่าน" : "Passed"}
+                                </>
+                              ) : attendee.prePost === "Failed" ? (
+                                <>
+                                  <span className={styles.glowingDotRed} /> {isThai ? "ไม่ผ่าน" : "Failed"}
+                                </>
+                              ) : (
+                                <>
+                                  <span className={styles.glowingDotAmber} /> {isThai ? "ยังไม่ระบุ" : "Not specified"}
+                                </>
+                              )}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: "center" }}>
+                            <span
+                              className={
+                                attendee.evaluation === "Done"
+                                  ? styles.evalDoneBadge
+                                  : styles.evalPendingBadge
+                              }
+                            >
+                              {attendee.evaluation === "Done" ? (
+                                <>
+                                  <span className={styles.glowingDotBlue} /> {isThai ? "ทำแล้ว" : "Done"}
+                                </>
+                              ) : (
+                                <>
+                                  <span className={styles.glowingDotAmber} /> {isThai ? "รอทำ" : "Pending"}
+                                </>
+                              )}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={9} style={{ textAlign: "center", padding: "24px", color: "var(--ui-30-muted)" }}>
+                        {isThai ? "ไม่มีข้อมูลผู้เข้าอบรม" : "No attendees found"}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </section>
         </div>
@@ -1828,6 +2223,26 @@ export default function TrainingRecord() {
                             <span className={styles.positionText}>{attendee.position || "-"}</span>
                           </td>
                           <td>
+                            {attendee.preScore !== null && attendee.preScore !== undefined ? (
+                              <span className={styles.scoreBadge}>
+                                <strong>{attendee.preScore}</strong>
+                                {attendee.preScoreMax ? <small>/{attendee.preScoreMax}</small> : null}
+                              </span>
+                            ) : (
+                              <span className={styles.scoreEmpty}>-</span>
+                            )}
+                          </td>
+                          <td>
+                            {attendee.postScore !== null && attendee.postScore !== undefined ? (
+                              <span className={styles.scoreBadge}>
+                                <strong>{attendee.postScore}</strong>
+                                {attendee.postScoreMax ? <small>/{attendee.postScoreMax}</small> : null}
+                              </span>
+                            ) : (
+                              <span className={styles.scoreEmpty}>-</span>
+                            )}
+                          </td>
+                          <td>
                             <span
                               className={
                                 attendee.prePost === "Passed"
@@ -1933,6 +2348,30 @@ export default function TrainingRecord() {
     );
   };
 
+  const searchedCenterCourses = useMemo(() => {
+    if (!courseSearchTerm.trim()) return centerCourses;
+    const q = courseSearchTerm.toLowerCase();
+    return centerCourses.filter(
+      (c) =>
+        c.title.toLowerCase().includes(q) ||
+        (c.titleTh && c.titleTh.toLowerCase().includes(q)) ||
+        c.code.toLowerCase().includes(q) ||
+        (c.batch && c.batch.toLowerCase().includes(q)),
+    );
+  }, [centerCourses, courseSearchTerm]);
+
+  const searchedFactoryCourses = useMemo(() => {
+    if (!courseSearchTerm.trim()) return factoryCourses;
+    const q = courseSearchTerm.toLowerCase();
+    return factoryCourses.filter(
+      (c) =>
+        c.title.toLowerCase().includes(q) ||
+        (c.titleTh && c.titleTh.toLowerCase().includes(q)) ||
+        c.code.toLowerCase().includes(q) ||
+        (c.batch && c.batch.toLowerCase().includes(q)),
+    );
+  }, [factoryCourses, courseSearchTerm]);
+
   const renderRecordTable = (
     ownerType: "Center" | "Factory",
     records: CompletedCourse[],
@@ -1940,10 +2379,10 @@ export default function TrainingRecord() {
   ) => {
     const isCenter = ownerType === "Center";
     const displayTitle = isCenter
-      ? "Center Training Records (ส่วนกลาง)"
+      ? (isThai ? "ประวัติการฝึกอบรมส่วนกลาง (Center)" : "Center Training Records")
       : isFactoryUser
-        ? `${userCompanyCode} Factory Training Records (${userCompanyCode})`
-        : "Factory Training Records (โรงงาน)";
+        ? (isThai ? `ประวัติการฝึกอบรม (${userCompanyCode})` : `${userCompanyCode} Factory Training Records`)
+        : (isThai ? "ประวัติการฝึกอบรมโรงงาน (Factory)" : "Factory Training Records");
 
     const totalCategoryCost = records.reduce(
       (total, course) => total + getActualCostTotal(course),
@@ -1953,15 +2392,19 @@ export default function TrainingRecord() {
     return (
       <section className={styles.recordOwnerPanel} aria-label={`${ownerType} training records`}>
         <div className={styles.recordOwnerHeader}>
-          <div>
+          <div className={styles.recordOwnerHeaderTitle}>
             <div className={styles.ownerTitleRow}>
-              <span className={styles.ownerIconBadge}>{isCenter ? <Building2 size={15} /> : <Factory size={15} />}</span>
+              <span className={styles.ownerIconBadge}>
+                {isCenter ? <Building2 size={16} /> : <Factory size={16} />}
+              </span>
               <h3>{displayTitle}</h3>
             </div>
-            <span className={styles.ownerSubCount}>{records.length} completed records</span>
+            <span className={styles.ownerSubCount}>
+              {records.length} {isThai ? "หลักสูตรที่เสร็จสิ้น" : "completed courses"}
+            </span>
           </div>
           <div className={styles.ownerTotalCostBadge}>
-            <small>Total Spent</small>
+            <small>{isThai ? "ค่าใช้จ่ายรวม" : "Total Spent"}</small>
             <strong>THB {formatNumber(totalCategoryCost)}</strong>
           </div>
         </div>
@@ -1970,172 +2413,166 @@ export default function TrainingRecord() {
           <table className={styles.recordListTable}>
             <thead>
               <tr>
-                <th>Course</th>
-                <th>Date / Batch</th>
-                <th>Company / Scope</th>
-                <th>Actual Attendees</th>
-                <th>Actual Cost</th>
-                <th className={styles.evalHeader}>Evaluation</th>
-                <th>Source</th>
-                <th className={styles.actionHeader}>Action</th>
+                <th style={{ width: "32%" }}>{isThai ? "หลักสูตร (Course)" : "Course"}</th>
+                <th style={{ width: "16%" }}>{isThai ? "วันที่ / รุ่น (Date & Batch)" : "Date & Batch"}</th>
+                <th style={{ width: "12%" }}>{isThai ? "สังกัด (Company)" : "Company"}</th>
+                <th style={{ width: "26%" }}>{isThai ? "รายชื่อผู้เข้าร่วม (Attendees)" : "Attendees"}</th>
+                <th style={{ width: "14%", textAlign: "right" }}>{isThai ? "จัดการ (Action)" : "Action"}</th>
               </tr>
             </thead>
             <tbody>
               {records.length > 0 ? (
                 records.map((course) => {
-                  const actualCostTotal = getActualCostTotal(course);
-                  const courseCostPerPerson = getCostPerPerson(course);
-                  const evaluationRate =
-                    course.evaluationTotal > 0
-                      ? Math.round(
-                          (course.evaluationCompleted / course.evaluationTotal) * 100,
-                        )
-                      : 0;
-
-                  const isExpanded =
+                  const isSelected =
                     selectedCourse?.id === course.id && isCourseDetailOpen;
 
                   const ownerTag =
                     course.owner === "CENTER"
-                      ? "HRD Center"
-                      : `HRD ${course.ownerCompany || course.company}`;
+                      ? "Center"
+                      : (course.ownerCompany || course.company || "Factory");
+
+                  const totalAttendees =
+                    course.actualAttendees > 0 ? course.actualAttendees : course.attendees.length;
 
                   return (
-                    <Fragment key={course.id}>
-                      <tr className={isExpanded ? styles.activeRecordRow : undefined}>
-                        <td>
-                          <div className={styles.courseTitleCell}>
-                            <strong>{course.title}</strong>
-                            {/* The Thai name below the English one, as Course Master shows it. A
-                                course with only one name has nothing to repeat here. */}
-                            {course.titleTh && course.titleTh !== course.title ? (
-                              <span className={styles.courseTitleSecondary}>{course.titleTh}</span>
-                            ) : null}
-                            <div className={styles.courseSubMeta}>
-                              <span className={styles.codeBadge}>{course.code}</span>
-                              <span className={styles.ownerPillTag}>{ownerTag}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <strong>{course.date}</strong>
-                          <span className={styles.batchTimeText}>
-                            Batch {course.batch ?? "-"} / {course.time ?? "-"}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={styles.companyScopeText}>{course.company}</span>
-                        </td>
-                        <td>
-                          <strong className={styles.attendeeRatioText}>
-                            {course.actualAttendees} / {course.registeredAttendees}
-                          </strong>
-                          <span className={styles.ratioLabel}>attended</span>
-                        </td>
-                        <td>
-                          <strong className={styles.costAmountText}>
-                            THB {formatNumber(actualCostTotal)}
-                          </strong>
-                          <span className={styles.perPersonCostText}>
-                            THB {formatNumber(courseCostPerPerson)} / person
-                          </span>
-                        </td>
-                        <td>
-                          <div className={styles.evaluationProgressCell}>
-                            <div className={styles.evalMetaRow}>
-                              <strong className={styles.evalCountText}>
-                                {course.evaluationCompleted} / {course.evaluationTotal}
-                              </strong>
-                              <span
-                                className={`${styles.evalRateBadge} ${
-                                  course.evaluationTotal === 0
-                                    ? styles.evalZero
-                                    : evaluationRate === 100
-                                    ? styles.evalComplete
-                                    : styles.evalPending
-                                }`}
-                              >
-                                {course.evaluationTotal === 0 ? "N/A" : `${evaluationRate}%`}
-                              </span>
-                            </div>
-                            <div className={styles.evalProgressTrack} aria-hidden="true">
-                              <div
-                                className={`${styles.evalProgressFill} ${
-                                  evaluationRate === 100
-                                    ? styles.evalCompleteFill
-                                    : evaluationRate > 0
-                                    ? styles.evalPendingFill
-                                    : styles.evalZeroFill
-                                }`}
-                                style={{
-                                  width: `${
-                                    course.evaluationTotal === 0
-                                      ? 0
-                                      : Math.min(100, Math.max(0, evaluationRate))
-                                  }%`,
-                                }}
-                              />
-                            </div>
-                            <span className={styles.ratioLabel}>
-                              {course.evaluationTotal === 0
-                                ? "No evals"
-                                : evaluationRate === 100
-                                ? "Completed"
-                                : "Responses"}
+                    <tr key={course.id} className={isSelected ? styles.activeRecordRow : undefined}>
+                      {/* 1. Course Code & Title */}
+                      <td>
+                        <div className={styles.courseTitleCell}>
+                          <div className={styles.courseSubMeta}>
+                            <span className={styles.codeBadge}>{course.code}</span>
+                            <span className={styles.ownerPillTag}>{ownerTag}</span>
+                            <span
+                              className={
+                                course.source === "UPLOAD"
+                                  ? styles.uploadSourceBadge
+                                  : styles.systemSourceBadge
+                              }
+                            >
+                              {course.source === "UPLOAD" ? "Upload" : "System"}
                             </span>
                           </div>
-                        </td>
-                        <td>
-                          <span
-                            className={
-                              course.source === "UPLOAD"
-                                ? styles.uploadSourceBadge
-                                : styles.systemSourceBadge
-                            }
-                          >
-                            {course.source === "UPLOAD" ? "Upload" : "System"}
-                          </span>
-                        </td>
-                        <td>
-                          <div className={styles.recordTableActions}>
-                            <button
-                              className={isExpanded ? styles.activeActionButton : styles.actionButton}
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setSelectedCourseId(course.id);
-                                setIsCourseDetailOpen((current) =>
-                                  selectedCourse?.id === course.id ? !current : true,
-                                );
-                                setDownloadMessage("");
-                              }}
-                            >
-                              {isExpanded ? "Hide Details" : "Details"}
-                            </button>
-                            <button
-                              className={styles.exportButton}
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleExportCourseSummary(course);
-                              }}
-                            >
-                              Export
-                            </button>
+                          <strong className={styles.courseMainTitle}>{course.title}</strong>
+                          {course.titleTh && course.titleTh !== course.title ? (
+                            <span className={styles.courseTitleSecondary}>{course.titleTh}</span>
+                          ) : null}
+                        </div>
+                      </td>
+
+                      {/* 2. Date & Batch */}
+                      <td>
+                        <div className={styles.dateBatchCell}>
+                          <div className={styles.dateRow}>
+                            <Calendar size={13} />
+                            <span>{course.date || "-"}</span>
                           </div>
-                        </td>
-                      </tr>
-                      {isExpanded ? (
-                        <tr className={styles.inlineDetailRow}>
-                          <td colSpan={8}>{renderSelectedCourseDetail()}</td>
-                        </tr>
-                      ) : null}
-                    </Fragment>
+                          <div className={styles.batchPillRow}>
+                            <span className={styles.batchBadge}>
+                              {isThai ? `รุ่น ${course.batch || "-"}` : `Batch ${course.batch || "-"}`}
+                            </span>
+                            {course.time ? (
+                              <span className={styles.batchTimeText}>{course.time}</span>
+                            ) : null}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* 3. Company / Scope */}
+                      <td>
+                        <span className={styles.companyScopeBadge}>
+                          {course.company || (isThai ? "ทุกบริษัท" : "All")}
+                        </span>
+                      </td>
+
+                      {/* 4. Attendees / Participant List */}
+                      <td>
+                        <div className={styles.attendeeListCell}>
+                          <button
+                            type="button"
+                            className={styles.attendeeCountBtn}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedCourseId(course.id);
+                              setSelectedDetailTab("roster");
+                              setIsCourseDetailOpen(true);
+                            }}
+                            title={isThai ? "คลิกเพื่อดูรายชื่อผู้เข้าอบรมทั้งหมด" : "Click to view full attendee roster"}
+                          >
+                            <Users size={12} className={styles.attendeeCountIcon} />
+                            <span className={styles.attendeeTotalCount}>
+                              {totalAttendees} {isThai ? "คน" : "attendees"}
+                            </span>
+                          </button>
+                          {course.attendees.length > 0 ? (
+                            <div className={styles.attendeeNameList}>
+                              {course.attendees.slice(0, 3).map((att, idx) => (
+                                <span
+                                  key={att.id || att.employeeCode || idx}
+                                  className={styles.attendeeNameTag}
+                                  title={`${att.employeeCode ? `[${att.employeeCode}] ` : ""}${att.name}${att.department ? ` (${att.department})` : ""}`}
+                                >
+                                  {att.name || att.employeeCode || "-"}
+                                </span>
+                              ))}
+                              {course.attendees.length > 3 ? (
+                                <button
+                                  type="button"
+                                  className={styles.attendeeMoreBtn}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    setSelectedCourseId(course.id);
+                                    setSelectedDetailTab("roster");
+                                    setIsCourseDetailOpen(true);
+                                  }}
+                                  title={isThai ? "คลิกเพื่อดูรายชื่อทั้งหมด" : "Click to view full roster"}
+                                >
+                                  +{course.attendees.length - 3} {isThai ? "คน..." : "more..."}
+                                </button>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className={styles.attendeeEmpty}>-</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 5. Actions */}
+                      <td>
+                        <div className={styles.recordTableActions}>
+                          <button
+                            className={isSelected ? styles.activeActionButton : styles.actionButton}
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setSelectedCourseId(course.id);
+                              setIsCourseDetailOpen(true);
+                              setDownloadMessage("");
+                            }}
+                            title={isThai ? "ดูรายละเอียดหลักสูตร" : "View Course Details"}
+                          >
+                            <Eye size={13} style={{ display: "inline", verticalAlign: "middle", marginRight: 4 }} />
+                            <span>{isThai ? "ดูรายละเอียด" : "Details"}</span>
+                          </button>
+                          <button
+                            className={styles.exportButton}
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleExportCourseSummary(course);
+                            }}
+                            title={isThai ? "ส่งออกข้อมูลสรุป (Excel)" : "Export Course Summary"}
+                          >
+                            <Download size={13} />
+                            <span>{isThai ? "ส่งออก" : "Export"}</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan={8} className={styles.emptyTableMessage}>
+                  <td colSpan={5} className={styles.emptyTableMessage}>
                     {emptyMessage}
                   </td>
                 </tr>
@@ -2226,69 +2663,100 @@ export default function TrainingRecord() {
       </a>
 
       {/* Primary Section: Completed Course Records by Owner */}
-      <section className={styles.recordOwnerOverview} aria-label="Completed course records by owner">
+      <section className={styles.recordOwnerOverview} aria-label="Completed training records">
         <div className={styles.panelHeader}>
           <div>
             <p className={styles.kicker}>Training Record Details</p>
-            <h3>{isThai ? "ประวัติการฝึกอบรมที่เสร็จสิ้น" : "Completed records by owner"}</h3>
+            <h3>{isThai ? "ประวัติการฝึกอบรมที่เสร็จสิ้น" : "Completed Course Records"}</h3>
           </div>
           <span className={styles.scopeBadge}>
-            {isFactoryUser ? `${userCompanyCode} Factory Scope` : (isThai ? "ทุกสังกัด (Center & Factory)" : "All Scopes (Center & Factory)")}
+            {isFactoryUser
+              ? `${userCompanyCode} Factory Scope`
+              : (isThai ? "ทุกสังกัด (Center & Factory)" : "All Scopes (Center & Factory)")}
           </span>
         </div>
 
-        {!isFactoryUser ? (
-          <div className={styles.scopeSegmentedControl} role="tablist" aria-label="Filter scope">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={selectedScopeTab === "ALL"}
-              className={selectedScopeTab === "ALL" ? styles.scopeSegmentActive : styles.scopeSegmentBtn}
-              onClick={() => setSelectedScopeTab("ALL")}
-            >
-              <Building2 size={16} />
-              <span>{isThai ? "ทั้งหมด (All Scopes)" : "All Scopes"}</span>
-              <span className={styles.segmentCountBadge}>{availableCourses.length}</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={selectedScopeTab === "CENTER"}
-              className={selectedScopeTab === "CENTER" ? styles.scopeSegmentActive : styles.scopeSegmentBtn}
-              onClick={() => setSelectedScopeTab("CENTER")}
-            >
-              <Building2 size={16} />
-              <span>{isThai ? "ส่วนกลาง (Center)" : "Center"}</span>
-              <span className={styles.segmentCountBadge}>{centerCourses.length}</span>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={selectedScopeTab === "FACTORY"}
-              className={selectedScopeTab === "FACTORY" ? styles.scopeSegmentActive : styles.scopeSegmentBtn}
-              onClick={() => setSelectedScopeTab("FACTORY")}
-            >
-              <Factory size={16} />
-              <span>{isThai ? "โรงงาน (Factory)" : "Factory"}</span>
-              <span className={styles.segmentCountBadge}>{factoryCourses.length}</span>
-            </button>
+        {/* Search Bar & Scope Controls */}
+        <div className={styles.recordToolbarRow}>
+          {!isFactoryUser ? (
+            <div className={styles.scopeSegmentedControl} role="tablist" aria-label="Filter scope">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={selectedScopeTab === "ALL"}
+                className={selectedScopeTab === "ALL" ? styles.scopeSegmentActive : styles.scopeSegmentBtn}
+                onClick={() => setSelectedScopeTab("ALL")}
+              >
+                <Building2 size={16} />
+                <span>{isThai ? "ทั้งหมด (All Scopes)" : "All Scopes"}</span>
+                <span className={styles.segmentCountBadge}>{availableCourses.length}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={selectedScopeTab === "CENTER"}
+                className={selectedScopeTab === "CENTER" ? styles.scopeSegmentActive : styles.scopeSegmentBtn}
+                onClick={() => setSelectedScopeTab("CENTER")}
+              >
+                <Building2 size={16} />
+                <span>{isThai ? "ส่วนกลาง (Center)" : "Center"}</span>
+                <span className={styles.segmentCountBadge}>{centerCourses.length}</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={selectedScopeTab === "FACTORY"}
+                className={selectedScopeTab === "FACTORY" ? styles.scopeSegmentActive : styles.scopeSegmentBtn}
+                onClick={() => setSelectedScopeTab("FACTORY")}
+              >
+                <Factory size={16} />
+                <span>{isThai ? "โรงงาน (Factory)" : "Factory"}</span>
+                <span className={styles.segmentCountBadge}>{factoryCourses.length}</span>
+              </button>
+            </div>
+          ) : null}
+
+          {/* Quick Search Input */}
+          <div className={styles.courseSearchWrap}>
+            <Search size={15} className={styles.courseSearchIcon} />
+            <input
+              type="text"
+              placeholder={isThai ? "ค้นหารหัส, ชื่อหลักสูตร, รุ่น..." : "Search course code, title, batch..."}
+              value={courseSearchTerm}
+              onChange={(e) => setCourseSearchTerm(e.target.value)}
+              className={styles.courseSearchInput}
+            />
+            {courseSearchTerm ? (
+              <button
+                type="button"
+                className={styles.courseSearchClear}
+                onClick={() => setCourseSearchTerm("")}
+                title={isThai ? "ล้างคำค้นหา" : "Clear search"}
+              >
+                <X size={13} />
+              </button>
+            ) : null}
           </div>
-        ) : null}
+        </div>
 
         <div className={styles.recordOwnerGrid}>
           {!isFactoryUser && (selectedScopeTab === "ALL" || selectedScopeTab === "CENTER") ? (
             renderRecordTable(
               "Center",
-              centerCourses,
-              isThai ? "ไม่พบข้อมูลประวัติการฝึกอบรมของส่วนกลาง" : "No center completed records found.",
+              searchedCenterCourses,
+              courseSearchTerm
+                ? (isThai ? `ไม่พบหลักสูตรส่วนกลางที่ตรงกับ "${courseSearchTerm}"` : `No center records matched "${courseSearchTerm}".`)
+                : (isThai ? "ไม่พบข้อมูลประวัติการฝึกอบรมของส่วนกลาง" : "No center completed records found."),
             )
           ) : null}
           {(isFactoryUser || selectedScopeTab === "ALL" || selectedScopeTab === "FACTORY") ? (
             renderRecordTable(
               "Factory",
-              factoryCourses,
+              searchedFactoryCourses,
               isFactoryUser
                 ? (isThai ? `ยังไม่มีประวัติการฝึกอบรมของ ${userCompanyCode || "โรงงานของคุณ"}` : `No completed records owned by ${userCompanyCode || "your company"} yet.`)
+                : courseSearchTerm
+                ? (isThai ? `ไม่พบหลักสูตรโรงงานที่ตรงกับ "${courseSearchTerm}"` : `No factory records matched "${courseSearchTerm}".`)
                 : (isThai ? "ไม่พบข้อมูลประวัติการฝึกอบรมของโรงงาน" : "No factory completed records found."),
             )
           ) : null}
@@ -2349,6 +2817,35 @@ export default function TrainingRecord() {
 
         {importMessage ? <p className={styles.downloadMessage}>{importMessage}</p> : null}
       </section>
+
+      {/* Course Detail Pop-Up Modal */}
+      {isCourseDetailOpen && selectedCourse ? (
+        <div
+          className={styles.modalBackdrop}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="course-modal-heading"
+          onClick={() => setIsCourseDetailOpen(false)}
+        >
+          <div
+            className={styles.modalCard}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className={styles.modalCloseFloatingBtn}
+              onClick={() => setIsCourseDetailOpen(false)}
+              aria-label={isThai ? "ปิดหน้าต่าง" : "Close modal"}
+              title={isThai ? "ปิดหน้าต่าง (Esc)" : "Close (Esc)"}
+            >
+              <X size={18} />
+            </button>
+            <div className={styles.modalCardScroll}>
+              {renderSelectedCourseDetail()}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
