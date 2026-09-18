@@ -48,6 +48,7 @@ export const createSetLoginOtpHandler = (dependencies: Dependencies = {}) =>
       actor: { userId: principal.userId, username: principal.username, role: principal.role },
       entityType: "company",
       entityId: companyId,
+      entityLabel: (await store.companyCode(companyId)) ?? undefined,
       detail: suspendedUntil ? { until: suspendedUntil.toISOString() } : undefined,
       ...auditRequestContext(request),
     });

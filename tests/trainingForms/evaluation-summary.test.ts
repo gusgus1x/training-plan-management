@@ -51,6 +51,8 @@ const buildFakeDb = (opts: {
   companyId?: bigint | null;
   /** Overrides the default two-question form; used by the grid tests. */
   questions?: unknown[];
+  /** Defaults to an anonymous form. */
+  isAnonymous?: boolean;
 }) => {
   const db = {
     training_plan: {
@@ -80,7 +82,7 @@ const buildFakeDb = (opts: {
         evaluation_form_id: FORM_ID,
         form_name: "Standard Course Evaluation",
         description: "โปรดตอบตามความจริง",
-        is_anonymous: true,
+        is_anonymous: opts.isAnonymous ?? true,
         evaluation_question: opts.questions ?? [
           {
             evaluation_question_id: BigInt(1),
@@ -228,6 +230,22 @@ describe("readEvaluationSummary", () => {
     expect(comments.textAnswers).toEqual([]);
     // The count is still reported - how many answered is not itself identifying.
     expect(comments.answeredBy).toBe(FREE_TEXT_MIN_RESPONDENTS - 1);
+  });
+
+  it("shows a named form's free text at once, however few answered", async () => {
+    const summary = await buildFakeDb({
+      isAnonymous: false,
+      submissions: [
+        {
+          evaluation_submission_id: BigInt(1),
+          evaluation_answer: [answer({ evaluation_question_id: BigInt(2), answer_text: "only comment" })],
+        },
+      ],
+    }).readEvaluationSummary(PLAN_ID, "EVALUATION", null);
+    const comments = summary!.questions[1];
+
+    expect(comments.textAnswersWithheld).toBe(false);
+    expect(comments.textAnswers).toEqual(["only comment"]);
   });
 
   it("releases free text once the batch is large enough", async () => {

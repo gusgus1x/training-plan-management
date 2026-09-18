@@ -979,3 +979,69 @@ a.insightAction[aria-disabled="true"] {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* Advanced view: one chart per section, one average bar per rating question (as the converter's
+   Advanced mode). */
+.sectionAverageTitle {
+  color: var(--ui-30-primary-strong);
+}
+
+.averageBars {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.averageRow {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) 64px;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.84rem;
+}
+
+.averageLabel {
+  color: var(--ui-30-text);
+}
+
+.averageTrack {
+  height: 18px;
+  border-radius: 4px;
+  background: var(--ui-60-surface-soft);
+  overflow: hidden;
+}
+
+.averageFill {
+  display: block;
+  height: 100%;
+}
+
+.sectionComment {
+  margin-top: 14px;
+}
+
+@media (max-width: 640px) {
+  .averageRow {
+    grid-template-columns: minmax(0, 1fr) 64px;
+  }
+
+  .averageRow .averageTrack {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+.sectionPart {
+  margin: 14px 0 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ui-30-ink-muted, #64748b);
+}
+
+.averageCount {
+  margin-left: 6px;
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--ui-30-ink-muted, #64748b);
+}

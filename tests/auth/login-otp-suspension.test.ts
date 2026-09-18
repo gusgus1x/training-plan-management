@@ -63,6 +63,7 @@ const memoryStore = () => {
     resume: async (companyId) => {
       suspended.delete(companyId);
     },
+    companyCode: async (companyId) => `C${companyId}`,
   };
   return { store, suspended };
 };
@@ -101,6 +102,15 @@ describe("Master Data > System: switching the employee email code off", () => {
     expect(suspended.get("1")).toEqual(new Date("2026-09-19T08:00:00Z"));
     expect(await store.isSuspended("1", new Date("2026-09-19T07:59:59Z"))).toBe(true);
     expect(await store.isSuspended("1", new Date("2026-09-19T08:00:00Z"))).toBe(false);
+  });
+
+  it("names the company by its code in the audit row Admin reads", async () => {
+    const { recordAuditQuietly } = await import("../../app/lib/audit");
+    const { store } = memoryStore();
+    await handlers(principal("HRD_CENTER", null), store).set(request({ companyId: "2", enabled: false }));
+    expect(recordAuditQuietly).toHaveBeenLastCalledWith(
+      expect.objectContaining({ action: "LOGIN_OTP_SUSPENDED", entityType: "company", entityId: "2", entityLabel: "C2" }),
+    );
   });
 
   it("switches back on early", async () => {

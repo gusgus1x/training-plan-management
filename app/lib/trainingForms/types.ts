@@ -140,8 +140,9 @@ export type EvaluationForEmployee = {
   submittedAt: string | null;
 };
 
-/** Free-text answers are hidden until this many people have answered the form. Even on an anonymous
- *  form a written comment can identify its author when the batch is small enough. */
+/** Free-text answers on an ANONYMOUS form are hidden until this many people have answered it: even
+ *  there a written comment can identify its author when the batch is small enough. A named form
+ *  shows them at once, since its replies already say who wrote them. */
 export const FREE_TEXT_MIN_RESPONDENTS = 3;
 
 /**
@@ -201,7 +202,7 @@ export type EvaluationSummaryQuestion = {
    * column somewhere in the grid" - which is never the question anyone is asking.
    */
   gridRows: EvaluationSummaryGridRow[];
-  /** Free-text only, and only once the form clears FREE_TEXT_MIN_RESPONDENTS. */
+  /** Free-text only. On an anonymous form, only once it clears FREE_TEXT_MIN_RESPONDENTS. */
   textAnswers: string[];
   textAnswersWithheld: boolean;
 };

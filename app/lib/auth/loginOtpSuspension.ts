@@ -31,6 +31,8 @@ export type OtpSuspensionStore = {
   list(companyIds: string[] | null, now: Date): Promise<CompanyOtpStatus[]>;
   suspend(companyId: string, userId: string, now: Date): Promise<Date>;
   resume(companyId: string): Promise<void>;
+  /** Company code for the audit row, so Admin reads "ATA" rather than an id. */
+  companyCode(companyId: string): Promise<string | null>;
 };
 
 export const prismaOtpSuspensionStore: OtpSuspensionStore = {
@@ -91,6 +93,14 @@ export const prismaOtpSuspensionStore: OtpSuspensionStore = {
 
   async resume(companyId) {
     await getPrismaClient().login_otp_suspension.deleteMany({ where: { company_id: BigInt(companyId) } });
+  },
+
+  async companyCode(companyId) {
+    const row = await getPrismaClient().company.findUnique({
+      where: { company_id: BigInt(companyId) },
+      select: { company_code: true },
+    });
+    return row?.company_code ?? null;
   },
 };
 

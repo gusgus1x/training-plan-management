@@ -141,8 +141,8 @@ export default function SystemSettings() {
         <h2>{t("การยืนยันรหัส OTP ทางอีเมลของพนักงาน", "Employee email code (OTP)")}</h2>
         <p>
           {t(
-            "ปกติพนักงานต้องกรอกรหัส 6 หลักที่ส่งไปทางอีเมลเมื่อเข้าระบบครั้งแรก และทุก 2 วัน กดปุ่มสีแดงเพื่อปิดชั่วคราว เช่น ตอนระบบอีเมลมีปัญหา ระหว่างปิด พนักงานเข้าระบบได้ด้วยรหัสพนักงานและวันเกิดอย่างเดียว ระบบจะเปิดกลับเองอัตโนมัติเมื่อครบ 24 ชั่วโมง กดอีกครั้งเพื่อเปิดกลับก่อนเวลา",
-            "Employees normally confirm a 6-digit code sent to their email on first sign-in and every 2 days. Press the red button to switch it off temporarily, for example while email is down. While off, employees sign in with ID and birth date only. It switches back on by itself after 24 hours; press again to switch it back on early.",
+            "กดปิด เพื่อทำให้พนักงานเข้าใช้ระบบได้โดยไม่ต้องกรอก OTP ผ่าน Email และระบบจะกลับมาเปิดอีกครั้งหลัง 24 ชั่วโมง หากคุณไม่ได้กลับมากดเปิด",
+            "Switch off to let employees sign in without the email OTP. It switches back on by itself after 24 hours if you do not switch it back on first.",
           )}
         </p>
         <p className={styles.note}>

@@ -107,8 +107,10 @@ beforeEach(() => {
   sent = [];
 });
 
+// Real time, not `clock`: the handlers check the pending cookie against the wall clock, so a token
+// minted at the fixed test time expired 10 minutes after it and failed every run from then on.
 const pendingCookie = (userId = "7") =>
-  `${OTP_PENDING_COOKIE_NAME}=${createPendingToken(userId, { secret: SECRET, now: clock.now.getTime() })}`;
+  `${OTP_PENDING_COOKIE_NAME}=${createPendingToken(userId, { secret: SECRET })}`;
 
 const post = (url: string, body: unknown, cookie?: string) =>
   new NextRequest(`http://localhost${url}`, {

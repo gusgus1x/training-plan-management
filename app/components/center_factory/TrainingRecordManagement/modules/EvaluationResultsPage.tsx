@@ -13,6 +13,7 @@ import {
   type EvaluationTimingStage,
 } from "../../../../lib/trainingForms/types";
 import { isFormBlockType } from "../../../../lib/formBlocks";
+import { groupBySectionAverages } from "../../../../lib/trainingForms/sectionAverages";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import { Clock, FileSpreadsheet, FileText, Lock, Printer, Star, Target, Users, X } from "../../../icons/LucideIcons";
 import styles from "./EvaluationResultsPage.module.css";
@@ -380,6 +381,8 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
   const router = useRouter();
 
   const [respondents, setRespondents] = useState<EvaluationRespondentGroup>("EMPLOYEE");
+  /** Standard: a chart per question. Advanced: a chart per section, one average bar per question. */
+  const [view, setView] = useState<"standard" | "advanced">("standard");
   const [timing, setTiming] = useState<EvaluationTimingStage>("EVALUATION");
   const [loaded, setLoaded] = useState<Record<
     EvaluationRespondentGroup,
@@ -439,6 +442,8 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
     () => (summary?.questions ?? []).filter((question) => question.questionType !== "TEXT_BLOCK"),
     [summary],
   );
+
+  const sectionGroups = useMemo(() => groupBySectionAverages(questions), [questions]);
 
   /** A form that branches. Only then is "nobody answered" ambiguous enough to need explaining. */
   const hasSections = useMemo(
@@ -550,6 +555,22 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                 </button>
               );
             })}
+            <span className={styles.filterDivider} />
+            {(
+              [
+                { mode: "standard", label: t("มุมมองปกติ", "Standard") },
+                { mode: "advanced", label: t("มุมมอง Advanced", "Advanced") },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.mode}
+                type="button"
+                className={view === option.mode ? styles.pillOn : styles.pill}
+                onClick={() => setView(option.mode)}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
 
           {!loaded ? (
@@ -599,6 +620,100 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                       )
                     : ""}
                 </p>
+              ) : view === "advanced" ? (
+                <div className={styles.questions}>
+                  <p className={styles.note}>
+                    {t(
+                      "1 การ์ดต่อ 1 Section · แท่งค่าเฉลี่ย: คำถามแบบคะแนน (เต็ม 5) และแต่ละแถวของตารางแบบเลือกข้อเดียว (เต็มตามจำนวนคอลัมน์)",
+                      "One card per section. Average bars: rating questions (out of 5) and each row of a single-answer grid (out of its column count).",
+                    )}
+                  </p>
+                  {sectionGroups.map((group, groupIndex) => (
+                    <article key={`${group.name ?? ""}-${groupIndex}`} className={styles.questionCard}>
+                      <div className={styles.questionHead}>
+                        {/* Questions before the first section break sit under the form itself. */}
+                        <strong className={styles.sectionAverageTitle}>{group.name ?? summary.formName}</strong>
+                      </div>
+
+                      {group.averages.length > 0 ? (
+                        <>
+                          <p className={styles.sectionPart}>{t("คะแนนเฉลี่ย", "Average scores")}</p>
+                          <div className={styles.averageBars}>
+                            {group.averages.map((item, index) => (
+                              <div key={item.key} className={styles.averageRow}>
+                                <span className={styles.averageLabel}>
+                                  {item.question.questionOrder}. {item.question.questionText}
+                                  {item.rowText ? ` - ${item.rowText}` : ""}
+                                  <small className={styles.averageCount}>{t(`ตอบ ${item.answeredBy} คน`, `${item.answeredBy} answered`)}</small>
+                                </span>
+                                <span className={styles.averageTrack}>
+                                  <span
+                                    className={styles.averageFill}
+                                    style={{
+                                      width: `${item.outOf > 0 ? ((item.average ?? 0) / item.outOf) * 100 : 0}%`,
+                                      background: colourAt(index),
+                                    }}
+                                  />
+                                </span>
+                                <strong>
+                                  {item.average?.toFixed(2) ?? "-"}
+                                  <small className={styles.averageCount}>/{item.outOf}</small>
+                                </strong>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      ) : null}
+
+                      {group.choices.length > 0 ? (
+                        <>
+                          <p className={styles.sectionPart}>{t("สัดส่วนคำตอบ", "Answer split")}</p>
+                          {group.choices.map((question) => (
+                            <div key={question.questionId} className={styles.sectionComment}>
+                              <p className={styles.answeredBy}>
+                                {question.questionOrder}. {question.questionText} · {t(`ตอบ ${question.answeredBy} คน`, `${question.answeredBy} answered`)}
+                              </p>
+                              <div className={styles.bars}>
+                                {question.options.map((option, index) => (
+                                  <Bar
+                                    key={option.optionId}
+                                    label={option.optionText}
+                                    count={option.count}
+                                    total={question.answeredBy}
+                                    colour={colourAt(index)}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </>
+                      ) : null}
+
+                      {group.checkboxGrids.map((question) => (
+                        <div key={question.questionId} className={styles.sectionComment}>
+                          <p className={styles.answeredBy}>
+                            {question.questionOrder}. {question.questionText}
+                          </p>
+                          <GridChart question={question} />
+                        </div>
+                      ))}
+
+                      {group.texts.length > 0 ? (
+                        <>
+                          <p className={styles.sectionPart}>{t("ความคิดเห็น", "Comments")}</p>
+                          {group.texts.map((question) => (
+                            <div key={question.questionId} className={styles.sectionComment}>
+                              <p className={styles.answeredBy}>
+                                {question.questionOrder}. {question.questionText}
+                              </p>
+                              <TextAnswers question={question} onOpen={() => void openDetail(question)} isThai={isThai} />
+                            </div>
+                          ))}
+                        </>
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
               ) : (
                 <div className={styles.questions}>
                   {questions.map((question, index) => {

@@ -33,7 +33,7 @@
 
 .hero h2 {
   margin: 0;
-  font-size: 1.15rem;
+  font-size: 0.95rem;
 }
 
 .hero p {
@@ -41,12 +41,10 @@
   line-height: 1.6;
 }
 
-.kicker {
-  font-size: 0.72rem;
+.hero .kicker {
+  font-size: 1.35rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ui-30-ink-muted, #64748b);
+  color: #000;
 }
 
 .note {

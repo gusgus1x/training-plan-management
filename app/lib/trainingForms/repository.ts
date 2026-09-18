@@ -1187,7 +1187,9 @@ export const createTrainingFormsRepository = (client?: DatabaseClient) => {
         });
 
         const submittedCount = submissions.length;
-        const enoughForFreeText = submittedCount >= FREE_TEXT_MIN_RESPONDENTS;
+        // The minimum only protects an anonymous form: a named form's replies already carry their
+        // author, so holding its comments back hides nothing and only delays HRD.
+        const enoughForFreeText = !form.is_anonymous || submittedCount >= FREE_TEXT_MIN_RESPONDENTS;
 
         /**
          * How long the replies took, on average.
