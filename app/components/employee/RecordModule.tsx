@@ -61,7 +61,16 @@ import {
   Send,
   AlertTriangle,
   XCircle,
+  Eye,
+  Printer,
+  FlaskConical,
 } from "../icons/LucideIcons";
+import {
+  generateRecordHtml,
+  type EmployeeDocumentProfile,
+  type ApprovalDocumentInfo,
+} from "../../lib/trainingRecord/recordDocumentGenerator";
+import type { CompanyLetterheadCode } from "../../lib/trainingRecord/companyLetterheadConfig";
 
 export type EmployeeTrainingRecord = {
   id: string;
@@ -668,6 +677,9 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
   const [decidingId, setDecidingId] = useState<string | null>(null);
   const [rejectionModalTarget, setRejectionModalTarget] = useState<TrainingRecordRequestRecord | null>(null);
   const [rejectionReasonText, setRejectionReasonText] = useState<string>("");
+  const [testCompanyCode, setTestCompanyCode] = useState<CompanyLetterheadCode>("ATA");
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState<string>("");
 
   const reloadRecordRequests = () => {
     setIsRequestsLoading(true);
@@ -779,21 +791,99 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
     }
   };
 
+  const employeeDocProfile: EmployeeDocumentProfile = useMemo(() => ({
+    employeeCode: authenticatedUser?.employeeCode || employeeCode || "-",
+    nameTh: authenticatedUser?.displayName || authenticatedUser?.username || employeeName || "-",
+    nameEn: authenticatedUser?.displayNameEn || undefined,
+    positionName: authenticatedUser?.positionName || "-",
+    sectionName: authenticatedUser?.sectionName || undefined,
+    departmentName: authenticatedUser?.departmentName || undefined,
+    divisionName: authenticatedUser?.divisionName || undefined,
+    workday: authenticatedUser?.startDate || authenticatedUser?.hireDate || null,
+    birthday: authenticatedUser?.birthDate || null,
+    companyCode: authenticatedUser?.companyCode || "ATA",
+  }), [authenticatedUser, employeeCode, employeeName]);
+
+  const handleOpenPreview = (targetCompanyCode?: string, approvalInfo?: ApprovalDocumentInfo) => {
+    const co = targetCompanyCode || testCompanyCode;
+    const html = generateRecordHtml(
+      employeeDocProfile,
+      records.map((r) => ({
+        courseCode: r.courseCode,
+        courseTitle: r.courseTitle,
+        startDate: r.completedDate,
+        completedDate: r.completedDate,
+        provider: r.provider,
+        instructor: r.instructor,
+        hours: r.hours,
+        score: r.score,
+        scoreMax: r.scoreMax,
+        result: r.result,
+      })),
+      co,
+      approvalInfo,
+    );
+    setPreviewHtml(html);
+    setPreviewTitle(t(
+      `ตัวอย่างเอกสารประวัติการอบรม (${co})`,
+      `Training Record Preview (${co})`
+    ));
+  };
+
+  const handlePrintDocument = (targetCompanyCode?: string, approvalInfo?: ApprovalDocumentInfo) => {
+    const co = targetCompanyCode || testCompanyCode;
+    const html = generateRecordHtml(
+      employeeDocProfile,
+      records.map((r) => ({
+        courseCode: r.courseCode,
+        courseTitle: r.courseTitle,
+        startDate: r.completedDate,
+        completedDate: r.completedDate,
+        provider: r.provider,
+        instructor: r.instructor,
+        hours: r.hours,
+        score: r.score,
+        scoreMax: r.scoreMax,
+        result: r.result,
+      })),
+      co,
+      approvalInfo,
+    );
+    const win = window.open("", "_blank");
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+    } else {
+      toast.error(t("เบราว์เซอร์บล็อกป๊อปอัป กรุณาอนุญาตเปิดหน้าต่างใหม่", "Pop-up was blocked by browser"));
+    }
+  };
+
+  const handleDownloadWordDocx = (targetCompanyCode?: string, isTest: boolean = true) => {
+    const co = targetCompanyCode || testCompanyCode;
+    const url = `/api/training-record/export-docx?company=${encodeURIComponent(co)}&isTest=${isTest ? "true" : "false"}`;
+    window.location.href = url;
+    toast.success(
+      t(
+        `กำลังดาวน์โหลดไฟล์ Word (.docx) กระดาษหัว ${co} จัดตามตัวอย่าง PDF...`,
+        `Downloading ${co} Training Record Word (.docx)...`,
+      ),
+    );
+  };
+
   const handleDownloadApproved = (req: TrainingRecordRequestRecord) => {
     if (req.status !== "APPROVED") {
       toast.error(t("คำขอนี้ยังไม่ได้รับการอนุมัติ ไม่สามารถดาวน์โหลดได้", "This request is not approved yet"));
       return;
     }
-    const purposeObj: DocumentPurpose = {
-      label: t("เอกสารประวัติการอบรม", "Official Training Record"),
-      description: req.requestReason || t("ประวัติการอบรมฉบับสมบูรณ์", "Complete official training record"),
-    };
-    exportPersonalRecord(records, employeeName, purposeObj, {
-      requestNo: req.requestNo,
-      approvedBy: req.approverName ?? undefined,
-      approvedAt: req.reviewedAt,
-    });
-    toast.success(t(`ดาวน์โหลดประวัติการอบรมฉบับสมบูรณ์ (เลขที่ ${req.requestNo}) แล้ว`, `Downloaded official training record (Req: ${req.requestNo})`));
+    const co = req.companyCode || employeeDocProfile.companyCode || "ATA";
+    const url = `/api/training-record/export-docx?company=${encodeURIComponent(co)}&requestId=${encodeURIComponent(req.id)}`;
+    window.location.href = url;
+    toast.success(
+      t(
+        `กำลังดาวน์โหลดเอกสารประวัติการอบรม Word (.docx) เลขที่ ${req.requestNo}...`,
+        `Downloading official Word (.docx) record for ${req.requestNo}...`,
+      ),
+    );
   };
 
   const pendingEnrollments = useMemo(
@@ -1550,6 +1640,74 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
             </div>
           ) : null}
 
+          {/* TEST MODE ACTION BAR */}
+          <div className={styles.testActionBar}>
+            <div className={styles.testActionHeader}>
+              <h4 className={styles.testActionTitle}>
+                <FlaskConical size={18} />
+                <span>{t("โหมดทดสอบการออกเอกสาร (TEST Mode - Company Letterheads)", "TEST Mode: Company Letterhead Generator")}</span>
+                <span className={styles.testBadge}>TEST</span>
+              </h4>
+              <span style={{ fontSize: "0.78rem", color: "var(--ui-30-muted)" }}>
+                {t("ทดสอบดูตัวอย่างและพิมพ์เอกสารตามกระดาษหัว 6 บริษัทได้ทันที", "Test preview & download matching 6 company letterheads")}
+              </span>
+            </div>
+
+            <div className={styles.testActionBody}>
+              <select
+                className={styles.testCompanySelect}
+                value={testCompanyCode}
+                onChange={(e) => setTestCompanyCode(e.target.value as CompanyLetterheadCode)}
+                aria-label="Select test company"
+              >
+                <option value="ATA">ATA - บริษัท ไอชิน ทากาโอกะ เอเชีย จำกัด</option>
+                <option value="ATFB">ATFB - บริษัท ไอซิน ทาคาโอก้า ฟาวน์ดริ บางปะกง จำกัด</option>
+                <option value="NIC">NIC - บริษัท นวโลหะอุตสาหกรรม จำกัด</option>
+                <option value="SATI">SATI - บริษัท สยามเอทีอุตสาหกรรม จำกัด</option>
+                <option value="SNF">SNF - บริษัท นวโลหะไทย จำกัด</option>
+                <option value="TEP">TEP - บริษัท ผลิตภัณฑ์วิศวไทย จำกัด</option>
+              </select>
+
+              <button
+                type="button"
+                className={styles.testBtnWordSample}
+                onClick={() => handleDownloadWordDocx(testCompanyCode, true)}
+                title={t("ดาวน์โหลดไฟล์ Word (.docx) ตามตัวอย่าง PDF (ข้อมูลตัวอย่าง)", "Download Word (.docx) matching sample PDF")}
+              >
+                <Download size={14} />
+                <span>{t("ดาวน์โหลด Word (.docx) ตามตัวอย่าง PDF", "Download Word (.docx) [Sample PDF]")}</span>
+              </button>
+
+              <button
+                type="button"
+                className={styles.testBtnWord}
+                onClick={() => handleDownloadWordDocx(testCompanyCode, false)}
+                title={t("ดาวน์โหลดไฟล์ Word (.docx) โดยใช้ข้อมูลพนักงานและการอบรมของฉัน", "Download Word (.docx) with my data")}
+              >
+                <Download size={14} />
+                <span>{t("ดาวน์โหลด Word (.docx) ข้อมูลฉัน", "Download Word (.docx) [My Data]")}</span>
+              </button>
+
+              <button
+                type="button"
+                className={styles.testBtnPreview}
+                onClick={() => handleOpenPreview(testCompanyCode)}
+              >
+                <Eye size={15} />
+                <span>{t("ดูตัวอย่างเอกสาร (Preview)", "Preview Document")}</span>
+              </button>
+
+              <button
+                type="button"
+                className={styles.testBtnPrint}
+                onClick={() => handlePrintDocument(testCompanyCode)}
+              >
+                <Printer size={15} />
+                <span>{t("พิมพ์ / บันทึก PDF", "Print / PDF")}</span>
+              </button>
+            </div>
+          </div>
+
           {/* Form: Select Approver */}
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>
@@ -2002,6 +2160,53 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                 )}
               </>
             )}
+          </div>
+        </div>
+      ) : null}
+      {/* DOCUMENT PREVIEW MODAL */}
+      {previewHtml ? (
+        <div className={styles.docPreviewModalOverlay} role="dialog" aria-modal="true">
+          <div className={styles.docPreviewModalContainer}>
+            <div className={styles.docPreviewModalHeader}>
+              <div className={styles.docPreviewModalTitle}>
+                <Eye size={18} style={{ color: "#6366f1" }} />
+                <span>{previewTitle}</span>
+              </div>
+              <div className={styles.docPreviewModalActions}>
+                <button
+                  type="button"
+                  className={styles.testBtnPrint}
+                  style={{ background: "#4f46e5", color: "#ffffff", border: "none" }}
+                  onClick={() => handlePrintDocument(testCompanyCode)}
+                >
+                  <Printer size={15} />
+                  <span>{t("พิมพ์ / บันทึก PDF", "Print / Save PDF")}</span>
+                </button>
+                <button
+                  type="button"
+                  className={styles.testBtnWord}
+                  onClick={() => handleDownloadWordDocx(testCompanyCode)}
+                >
+                  <Download size={14} />
+                  <span>Word (.docx)</span>
+                </button>
+                <button
+                  type="button"
+                  className={styles.modalCloseBtn}
+                  onClick={() => setPreviewHtml(null)}
+                  aria-label="Close preview"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            <div className={styles.docPreviewBody}>
+              <iframe
+                srcDoc={previewHtml}
+                className={styles.docPreviewIframe}
+                title="Document Preview"
+              />
+            </div>
           </div>
         </div>
       ) : null}

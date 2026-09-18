@@ -366,4 +366,18 @@ export const trainingRecordRequestRepository = {
       return mapRecord(updated);
     });
   },
+
+  /**
+   * Find request by ID
+   */
+  async findById(requestId: string): Promise<TrainingRecordRequestRecord | null> {
+    return withDatabaseErrorMapping(async () => {
+      const db = getPrismaClient();
+      const row = await db.training_record_request.findUnique({
+        where: { record_request_id: BigInt(requestId) },
+        include: recordRequestInclude,
+      });
+      return row ? mapRecord(row) : null;
+    });
+  },
 };
