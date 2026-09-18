@@ -86,6 +86,15 @@ const affiliatedCompanyLogos = [
   },
 ];
 
+export const COMPANY_PREFIX_MAP: Record<PreviewCompanyCode, string> = {
+  ATA: "1290",
+  TEP: "0450",
+  ATFB: "1510",
+  NIC: "0420",
+  SATI: "1120",
+  SNF: "0430",
+};
+
 const GENERIC_LOGIN_ERROR = "ไม่สามารถเข้าสู่ระบบได้ โปรดตรวจสอบชื่อผู้ใช้และรหัสผ่าน";
 
 export default function LoginPage({
@@ -96,11 +105,33 @@ export default function LoginPage({
   const isThai = language === "th";
   const t = (th: string, en: string) => (isThai ? th : en);
 
+  const [selectedCompany, setSelectedCompany] = useState<PreviewCompanyCode | null>(null);
+  const [employeeDigits, setEmployeeDigits] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleLogoClick = (companyCode: PreviewCompanyCode) => {
+    if (selectedCompany === companyCode) {
+      setSelectedCompany(null);
+      setEmployeeDigits("");
+    } else {
+      setSelectedCompany(companyCode);
+      setErrorMessage(null);
+      if (!employeeDigits && username) {
+        const cleaned = username.replace(/\D/g, "").slice(0, 6);
+        if (cleaned) setEmployeeDigits(cleaned);
+      }
+    }
+  };
+
+  const handleResetCompany = () => {
+    setSelectedCompany(null);
+    setEmployeeDigits("");
+    setErrorMessage(null);
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -110,15 +141,44 @@ export default function LoginPage({
     }
 
     setErrorMessage(null);
+
+    let finalUsername = username.trim();
+    if (selectedCompany) {
+      const digits = employeeDigits.trim().replace(/\D/g, "");
+      if (!digits) {
+        setErrorMessage(
+          isThai
+            ? "กรุณาระบุรหัสพนักงาน 6 หลัก"
+            : "Please enter your 6-digit employee ID.",
+        );
+        return;
+      }
+      const paddedDigits = digits.padStart(6, "0");
+      finalUsername = `${COMPANY_PREFIX_MAP[selectedCompany]}-${paddedDigits}`;
+    }
+
+    if (!finalUsername) {
+      setErrorMessage(
+        isThai
+          ? "กรุณาระบุชื่อผู้ใช้หรือรหัสพนักงาน"
+          : "Please enter username or employee code.",
+      );
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      await onLogin(username, password);
+      await onLogin(finalUsername, password);
     } catch {
       setErrorMessage(
-        isThai
-          ? GENERIC_LOGIN_ERROR
-          : "Unable to sign in. Check your username and password.",
+        selectedCompany
+          ? (isThai
+              ? "ไม่สามารถเข้าสู่ระบบได้ โปรดตรวจสอบรหัสพนักงานและวันเดือนปีเกิด (DDMMYYYY เช่น 11051972)"
+              : "Unable to sign in. Please verify your Staff ID and Birth date (DDMMYYYY).")
+          : (isThai
+              ? GENERIC_LOGIN_ERROR
+              : "Unable to sign in. Check your username and password.")
       );
     } finally {
       setPassword("");
@@ -212,8 +272,7 @@ export default function LoginPage({
               className={styles.cardHeaderLogo}
               src={logoImage}
               alt="AISIN TAKAOKA THAILAND GROUP"
-              height={48}
-              style={{ width: "auto", height: "48px" }}
+              height={46}
               priority
             />
 
@@ -228,9 +287,31 @@ export default function LoginPage({
           </div>
 
           <div className={styles.fieldGroup}>
+            {selectedCompany && (
+              <div className={styles.selectedCompanyBanner}>
+                <div className={styles.selectedCompanyBadgeGroup}>
+                  <span className={styles.selectedCompanyDot} aria-hidden="true" />
+                  <span className={styles.selectedCompanyText}>
+                    {t("พนักงานสังกัด:", "Employee of:")}{" "}
+                    <strong>{selectedCompany}</strong> ({COMPANY_PREFIX_MAP[selectedCompany]}-)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className={styles.clearSelectedCompanyBtn}
+                  onClick={handleResetCompany}
+                  title={t("สลับเป็นเข้าสู่ระบบทั่วไป", "Switch to General Login")}
+                >
+                  {t("✕ ล็อกอินทั่วไป (Admin/HQ)", "✕ General Login (Admin/HQ)")}
+                </button>
+              </div>
+            )}
+
             <div className={styles.field}>
               <label className={styles.fieldLabel} htmlFor="login-username">
-                {t("ชื่อผู้ใช้", "Username")}
+                {selectedCompany
+                  ? t("รหัสพนักงาน (6 หลัก)", "Employee ID (6 Digits)")
+                  : t("ชื่อผู้ใช้", "Username")}
               </label>
               <div className={styles.inputWrapper}>
                 <span className={styles.fieldIcon} aria-hidden="true">
@@ -239,25 +320,49 @@ export default function LoginPage({
                     <circle cx="12" cy="7" r="4" />
                   </svg>
                 </span>
+                {selectedCompany && (
+                  <span className={styles.inputPrefixBadge} aria-hidden="true">
+                    {COMPANY_PREFIX_MAP[selectedCompany]}-
+                  </span>
+                )}
                 <input
                   id="login-username"
-                  className={styles.fieldInput}
+                  className={`${styles.fieldInput} ${selectedCompany ? styles.fieldInputWithPrefix : ""}`}
                   name="username"
                   type="text"
+                  inputMode={selectedCompany ? "numeric" : "text"}
                   autoComplete="username"
-                  placeholder={t("ชื่อผู้ใช้ / รหัสพนักงาน", "Username / Employee Code")}
-                  value={username}
-                  maxLength={100}
+                  placeholder={
+                    selectedCompany
+                      ? t("เลขรหัส 6 หลัก เช่น 000162", "6-digit Staff ID e.g. 000162")
+                      : t("ชื่อผู้ใช้ / รหัสพนักงาน", "Username / Employee Code")
+                  }
+                  value={selectedCompany ? employeeDigits : username}
+                  maxLength={selectedCompany ? 6 : 100}
                   required
                   disabled={isSubmitting}
-                  onChange={(event) => setUsername(event.target.value)}
+                  onChange={(event) => {
+                    if (selectedCompany) {
+                      const digitsOnly = event.target.value.replace(/\D/g, "").slice(0, 6);
+                      setEmployeeDigits(digitsOnly);
+                    } else {
+                      setUsername(event.target.value);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (selectedCompany && employeeDigits.length > 0 && employeeDigits.length < 6) {
+                      setEmployeeDigits(employeeDigits.padStart(6, "0"));
+                    }
+                  }}
                 />
               </div>
             </div>
 
             <div className={styles.field}>
               <label className={styles.fieldLabel} htmlFor="login-password">
-                {t("รหัสผ่าน", "Password")}
+                {selectedCompany
+                  ? t("รหัสผ่าน (วันเกิด ddmmyyyy)", "Password (Birthdate ddmmyyyy)")
+                  : t("รหัสผ่าน", "Password")}
               </label>
               <div className={styles.inputWrapper}>
                 <span className={styles.fieldIcon} aria-hidden="true">
@@ -272,7 +377,11 @@ export default function LoginPage({
                   name="password"
                   type={isPasswordVisible ? "text" : "password"}
                   autoComplete="current-password"
-                  placeholder={t("ระบุรหัสผ่าน", "Enter Password")}
+                  placeholder={
+                    selectedCompany
+                      ? t("วันเดือนปีเกิด ค.ศ. เช่น 11051972", "Birth date e.g. 11051972")
+                      : t("ระบุรหัสผ่าน", "Enter Password")
+                  }
                   value={password}
                   maxLength={1024}
                   required
@@ -375,7 +484,12 @@ export default function LoginPage({
               <span className={styles.affiliatesLine} />
               <div className={styles.affiliatesTitle}>
                 <span className={styles.affiliatesDot} />
-                <span>{t("กลุ่มบริษัทในเครือ ATTG", "ATTG Group Companies")}</span>
+                <span>
+                  {t(
+                    "กลุ่มบริษัทในเครือ ATTG (คลิกเลือกสังกัดเพื่อล็อกอินด้วยรหัสพนักงาน)",
+                    "ATTG Companies (Click to select company)",
+                  )}
+                </span>
               </div>
               <span className={styles.affiliatesLine} />
             </div>
@@ -385,32 +499,35 @@ export default function LoginPage({
               role="region"
               aria-label={t("กลุ่มบริษัทในเครือ 6 บริษัท", "6 Affiliated Companies")}
             >
-              {affiliatedCompanyLogos.map((company) => (
-                <button
-                  key={company.code}
-                  type="button"
-                  className={styles.affiliateLogoCard}
-                  title={`${company.code} · ${isThai ? company.thaiName : company.fullName}${
-                    onPreviewLogin ? t(" (คลิกเพื่อทดสอบเข้าสู่ระบบ)", " (Click to preview login)") : ""
-                  }`}
-                  onClick={
-                    onPreviewLogin
-                      ? () => onPreviewLogin("HRD_FACTORY", company.code)
-                      : undefined
-                  }
-                  aria-label={`${company.code} - ${isThai ? company.thaiName : company.fullName}`}
-                >
-                  <div className={styles.affiliateLogoWrapper}>
-                    <Image
-                      src={company.src}
-                      alt={company.name}
-                      fill
-                      sizes="(max-width: 640px) 30vw, 120px"
-                      className={styles.affiliateLogoImg}
-                    />
-                  </div>
-                </button>
-              ))}
+              {affiliatedCompanyLogos.map((company) => {
+                const isSelected = selectedCompany === company.code;
+                return (
+                  <button
+                    key={company.code}
+                    type="button"
+                    className={`${styles.affiliateLogoCard} ${isSelected ? styles.affiliateLogoCardActive : ""}`}
+                    title={`${company.code} · ${isThai ? company.thaiName : company.fullName} [Prefix: ${COMPANY_PREFIX_MAP[company.code]}-]`}
+                    onClick={() => handleLogoClick(company.code)}
+                    aria-pressed={isSelected}
+                    aria-label={`${company.code} - ${isThai ? company.thaiName : company.fullName}`}
+                  >
+                    <div className={styles.affiliateLogoWrapper}>
+                      <Image
+                        src={company.src}
+                        alt={company.name}
+                        fill
+                        sizes="(max-width: 640px) 30vw, 120px"
+                        className={styles.affiliateLogoImg}
+                      />
+                    </div>
+                    {isSelected && (
+                      <span className={styles.selectedCompanyIndicator} aria-hidden="true">
+                        ✓ {COMPANY_PREFIX_MAP[company.code]}-
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
             <p className={styles.affiliatesFooterNote}>
               AISIN TAKAOKA THAILAND GROUP

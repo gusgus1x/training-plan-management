@@ -88,6 +88,27 @@ describe("authentication service", () => {
     expect(principal).not.toHaveProperty("passwordHash");
   });
 
+  it("authenticates an employee when password matches birth date DDMMYYYY even if hash does not match", async () => {
+    const principal = await authenticateCredentials(
+      "employee.test",
+      "12061973",
+      {
+        repository: repositoryWith(
+          activeEmployeeAccount({
+            employeeBirthDate: new Date("1973-06-12T00:00:00.000Z"),
+          }),
+        ),
+        verify: vi.fn().mockResolvedValue(false),
+      },
+    );
+
+    expect(principal).toMatchObject({
+      username: "employee.test",
+      role: "EMPLOYEE",
+      employeeId: "101",
+    });
+  });
+
   it("uses the same generic failure for wrong password and unknown username", async () => {
     await expectInvalidCredentials(
       authenticateCredentials("employee.test", "wrong", {

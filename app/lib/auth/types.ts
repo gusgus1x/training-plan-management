@@ -36,6 +36,7 @@ export type AuthenticationAccount = {
   levelNameTh: string | null;
   levelNameEn: string | null;
   pl: string | null;
+  employeeBirthDate?: Date | string | null;
 };
 
 export type AuthenticatedPrincipal = {

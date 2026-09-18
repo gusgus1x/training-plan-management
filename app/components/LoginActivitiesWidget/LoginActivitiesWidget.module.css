@@ -635,6 +635,12 @@
    RESPONSIVE BEHAVIOR
    ══════════════════════════════════════════════════════════ */
 
+@media (max-width: 1024px) {
+  .container {
+    max-width: 100%;
+  }
+}
+
 @media (max-width: 640px) {
   .container {
     max-width: 100%;

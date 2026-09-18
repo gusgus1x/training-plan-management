@@ -1,7 +1,7 @@
 .page {
   position: relative;
-  height: 100vh;
-  max-height: 100vh;
+  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
@@ -10,8 +10,10 @@
   color: var(--ui-30-ink);
 }
 
-@media (min-height: 600px) and (min-width: 768px) {
+@media (min-height: 780px) and (min-width: 1025px) {
   .page {
+    height: 100vh;
+    max-height: 100vh;
     overflow: hidden;
   }
 }
@@ -24,8 +26,8 @@
   position: relative;
   z-index: 10;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(400px, 480px);
-  column-gap: clamp(24px, 4vw, 64px);
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 480px);
+  column-gap: clamp(20px, 3.5vw, 56px);
   row-gap: 16px;
   align-items: center;
   align-content: center;
@@ -33,16 +35,26 @@
   flex: 1;
   min-height: 0;
   margin: 0 auto;
-  padding: clamp(10px, 2.5vh, 26px) 0;
+  padding: clamp(12px, 2.5vh, 28px) 0;
   box-sizing: border-box;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
   .loginSection {
     grid-template-columns: minmax(0, 1fr);
-    width: min(480px, calc(100% - 32px));
-    padding: 16px 0;
+    width: min(520px, calc(100% - 32px));
+    padding: clamp(16px, 3vh, 32px) 0 44px;
     flex: none;
+    align-content: start;
+    row-gap: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .loginSection {
+    width: calc(100% - 20px);
+    padding: 12px 0 32px;
+    row-gap: 14px;
   }
 }
 
@@ -125,13 +137,14 @@
   max-width: 580px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
   .heroColumn {
     grid-column: 1;
     grid-row: 3;
-    gap: 12px;
-    margin-top: 8px;
+    gap: 14px;
+    margin-top: 6px;
     max-width: 100%;
+    align-items: center;
   }
 }
 
@@ -142,7 +155,7 @@
   min-height: 160px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
   .heroCopy {
     display: none;
   }
@@ -228,20 +241,35 @@
   border-radius: 24px;
   background: var(--ui-60-surface);
   color: var(--ui-30-ink);
-  padding: 30px 32px 26px;
+  padding: 28px 32px 24px;
   box-shadow:
     0 24px 60px -12px rgba(0, 0, 0, 0.4),
     0 0 0 1px rgba(255, 255, 255, 0.06) inset;
   backdrop-filter: blur(24px) saturate(1.4);
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
   animation: cardEntrance 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1024px) {
+  .loginCard {
+    grid-column: 1;
+    justify-self: stretch;
+    max-width: 100%;
+  }
 }
 
 @media (max-width: 640px) {
   .loginCard {
-    grid-column: 1;
-    justify-self: stretch;
-    padding: 24px 20px;
+    padding: 22px 18px 18px;
+    border-radius: 20px;
+  }
+}
+
+@media (max-width: 380px) {
+  .loginCard {
+    padding: 18px 14px 14px;
+    border-radius: 16px;
   }
 }
 
@@ -266,6 +294,14 @@
   border-bottom: 1px solid var(--ui-30-border);
 }
 
+@media (max-width: 480px) {
+  .formHeaderRow {
+    gap: 12px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+  }
+}
+
 .cardHeaderLogo {
   height: 46px;
   width: auto;
@@ -274,10 +310,23 @@
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.22));
 }
 
+@media (max-width: 480px) {
+  .cardHeaderLogo {
+    height: 38px;
+  }
+}
+
+@media (max-width: 360px) {
+  .cardHeaderLogo {
+    height: 32px;
+  }
+}
+
 .cardHeaderTitleBox {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
 .groupEyebrow {
@@ -286,6 +335,16 @@
   color: var(--ui-30-primary);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 480px) {
+  .groupEyebrow {
+    font-size: 0.58rem;
+    letter-spacing: 0.05em;
+  }
 }
 
 .cardHeaderTitle {
@@ -295,6 +354,18 @@
   font-weight: 900;
   letter-spacing: -0.02em;
   line-height: 1.2;
+}
+
+@media (max-width: 480px) {
+  .cardHeaderTitle {
+    font-size: 1.12rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .cardHeaderTitle {
+    font-size: 0.98rem;
+  }
 }
 
 /* ═══════════════════════════════════════
@@ -540,6 +611,52 @@
   text-transform: uppercase;
 }
 
+@media (max-width: 480px) {
+  .fieldGroup {
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .fieldLabel {
+    font-size: 0.72rem;
+  }
+
+  .fieldInput {
+    height: 44px;
+    font-size: 0.88rem;
+    padding: 0 14px 0 44px !important;
+    border-radius: 10px;
+  }
+
+  .fieldIcon {
+    left: 14px;
+    font-size: 0.95rem;
+  }
+
+  .loginButton {
+    height: 44px;
+    font-size: 0.88rem;
+    border-radius: 10px;
+  }
+
+  .dividerRow {
+    margin: 11px 0 9px;
+  }
+
+  .lineLoginButton {
+    height: 42px;
+    font-size: 0.82rem;
+    padding: 0 12px;
+    border-radius: 10px;
+    gap: 8px;
+  }
+
+  .lineTagBadge {
+    font-size: 0.62rem;
+    padding: 2px 6px;
+  }
+}
+
 /* ═══════════════════════════════════════
    AFFILIATED COMPANIES (6 LOGOS)
    ATA ➔ ATFB ➔ SATI ➔ NIC ➔ SNF ➔ TEP
@@ -683,18 +800,188 @@
   opacity: 0.7;
 }
 
-@media (max-width: 520px) {
-  .affiliatesGrid {
-    grid-template-columns: repeat(3, 1fr);
+@media (max-width: 480px) {
+  .affiliatesSection {
+    margin-top: 12px;
+    padding-top: 10px;
+  }
+
+  .affiliatesDivider {
+    margin-bottom: 8px;
     gap: 8px;
   }
-  .affiliateLogoCard {
-    min-height: unset;
-    padding: 4px 2px;
+
+  .affiliatesFooterNote {
+    margin: 8px 0 0;
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+  }
+}
+
+@media (max-width: 640px) {
+  .affiliatesGrid {
+    gap: 6px;
+    padding: 2px 0;
   }
   .affiliateLogoWrapper {
     height: 24px;
   }
+  .affiliateLogoImg {
+    max-height: 24px;
+  }
+}
+
+@media (max-width: 360px) {
+  .affiliatesGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px 10px;
+  }
+  .affiliateLogoWrapper {
+    height: 22px;
+  }
+  .affiliateLogoImg {
+    max-height: 22px;
+  }
+}
+
+/* ═══════════════════════════════════════
+   COMPANY SELECTION & PREFIX STYLES
+   ═══════════════════════════════════════ */
+
+.selectedCompanyBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(0, 122, 61, 0.09);
+  border: 1px solid rgba(0, 122, 61, 0.28);
+  font-size: 0.78rem;
+  color: var(--ui-30-ink);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.selectedCompanyBadgeGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selectedCompanyDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ui-30-primary, #007a3d);
+  box-shadow: 0 0 6px var(--ui-30-primary, #007a3d);
+  flex-shrink: 0;
+}
+
+.selectedCompanyText strong {
+  color: var(--ui-30-primary, #007a3d);
+}
+
+.clearSelectedCompanyBtn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: var(--ui-30-muted, #64748b);
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 3px 8px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.clearSelectedCompanyBtn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.inputPrefixBadge {
+  position: absolute;
+  left: 42px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--ui-30-primary, #007a3d);
+  letter-spacing: 0.05em;
+  pointer-events: none;
+  z-index: 3;
+  user-select: none;
+}
+
+.fieldInputWithPrefix {
+  padding-left: 98px !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+
+.affiliateLogoCardActive {
+  opacity: 1 !important;
+  transform: translateY(-2px) scale(1.12) !important;
+}
+
+.affiliateLogoCardActive .affiliateLogoWrapper {
+  filter: drop-shadow(0 0 10px rgba(0, 122, 61, 0.75)) !important;
+}
+
+.selectedCompanyIndicator {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.58rem;
+  font-weight: 900;
+  color: #ffffff;
+  background: var(--ui-30-primary, #007a3d);
+  padding: 1px 5px;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  z-index: 3;
+  letter-spacing: 0.02em;
+}
+
+:global([data-theme="dark"]) .selectedCompanyBanner,
+:global(.dark) .selectedCompanyBanner {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+:global([data-theme="dark"]) .inputPrefixBadge,
+:global(.dark) .inputPrefixBadge {
+  color: #34d399;
+}
+
+:global([data-theme="dark"]) .selectedCompanyText strong,
+:global(.dark) .selectedCompanyText strong {
+  color: #34d399;
+}
+
+:global([data-theme="dark"]) .clearSelectedCompanyBtn,
+:global(.dark) .clearSelectedCompanyBtn {
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+}
+
+:global([data-theme="dark"]) .clearSelectedCompanyBtn:hover,
+:global(.dark) .clearSelectedCompanyBtn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+:global([data-theme="dark"]) .affiliateLogoCardActive .affiliateLogoWrapper,
+:global(.dark) .affiliateLogoCardActive .affiliateLogoWrapper {
+  filter: drop-shadow(0 0 12px rgba(52, 211, 153, 0.85)) !important;
 }
 
 .previewAccess {
@@ -716,16 +1003,24 @@
   backdrop-filter: blur(24px) saturate(1.3);
   -webkit-backdrop-filter: blur(24px) saturate(1.3);
   animation: cardEntrance 0.7s 0.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  box-sizing: border-box;
 }
 
-/* Left at grid-column 2 below 640px, this forces the grid to grow an implicit second column,
-   which steals nearly all the width from the single 1fr column - that's what squeezed the login
-   card to a sliver. Must come after the base rule above (see the .heroCopy comment for why). */
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
   .previewAccess {
     grid-column: 1;
     grid-row: 2;
     justify-self: stretch;
+    max-width: 100%;
+    padding: 16px 18px;
+    border-radius: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .previewAccess {
+    padding: 14px 14px;
+    border-radius: 14px;
   }
 }
 
@@ -756,6 +1051,14 @@
   margin-bottom: 14px;
 }
 
+@media (max-width: 480px) {
+  .previewHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
 .previewHeader h3 {
   margin: 0;
   font-size: 0.95rem;
@@ -773,6 +1076,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .previewRoleButtons {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
 }
 
 .previewButton {
@@ -831,6 +1142,13 @@
 @media (max-width: 480px) {
   .previewCompanyButtons {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+}
+
+@media (max-width: 340px) {
+  .previewCompanyButtons {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -846,6 +1164,13 @@
   color: var(--ui-30-ink);
   cursor: pointer;
   transition: all 0.15s ease;
+}
+
+@media (max-width: 480px) {
+  .previewCompanyButton {
+    padding: 7px 8px;
+    gap: 6px;
+  }
 }
 
 .previewCompanyButton:hover:not(:disabled) {
@@ -870,9 +1195,21 @@
   line-height: 1.1;
 }
 
+@media (max-width: 480px) {
+  .previewCompanyCopy strong {
+    font-size: 0.76rem;
+  }
+}
+
 .previewCompanyCopy small {
   font-size: 0.68rem;
   color: var(--ui-30-muted);
+}
+
+@media (max-width: 480px) {
+  .previewCompanyCopy small {
+    font-size: 0.62rem;
+  }
 }
 
 .previewCompanyArrow {

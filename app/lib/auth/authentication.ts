@@ -12,15 +12,25 @@ import {
   type RoleCode,
 } from "./types";
 
+import { autoProvisionEmployeeAccount, formatBirthDateToDDMMYYYY } from "./autoProvision";
+import { getPrismaClient } from "../database/prisma";
+
 type PasswordVerifier = (
   passwordHash: string,
   plaintext: string,
 ) => Promise<boolean>;
 
+type EmployeeAutoProvisioner = (
+  username: string,
+  password: string,
+  repository?: AuthenticationRepository,
+) => Promise<AuthenticationAccount | null>;
+
 type AuthenticationDependencies = {
   repository?: AuthenticationRepository;
   verify?: PasswordVerifier;
   getDummyHash?: () => Promise<string>;
+  autoProvision?: EmployeeAutoProvisioner;
 };
 
 const invalidCredentials = () =>
@@ -165,17 +175,65 @@ export const authenticateCredentials = async (
   const repository = dependencies.repository ?? authenticationRepository;
   const verify = dependencies.verify ?? verifyPassword;
   const getDummyHash = dependencies.getDummyHash ?? getDefaultDummyHash;
-  const account = await repository.findByUsername(username);
+  let account = await repository.findByUsername(username);
+
+  if (!account && dependencies.autoProvision !== null) {
+    const autoProvision = dependencies.autoProvision ?? autoProvisionEmployeeAccount;
+    account = await autoProvision(username, password, repository);
+  }
 
   if (!account) {
     await verify(await getDummyHash(), password);
     throw invalidCredentials();
   }
 
-  const passwordMatches = await verify(account.passwordHash, password);
+  let passwordMatches = await verify(account.passwordHash, password);
+
+  // Fallback: If hash check fails and user is an employee, verify against birth date (DDMMYYYY)
+  if (
+    !passwordMatches &&
+    account.roleCode === "EMPLOYEE" &&
+    account.employeeBirthDate &&
+    /^\d{8}$/.test(password)
+  ) {
+    const expectedBirthDate = formatBirthDateToDDMMYYYY(account.employeeBirthDate);
+    if (expectedBirthDate && password === expectedBirthDate) {
+      passwordMatches = true;
+      // Auto-update to employee's own birth date hash in database
+      const accountId = account.userId;
+      hashPassword(password)
+        .then(async (newHash) => {
+          const prisma = getPrismaClient();
+          await prisma.user_account.update({
+            where: { user_id: BigInt(accountId) },
+            data: { password_hash: newHash },
+          });
+        })
+        .catch((err) => {
+          console.warn("[Auth] Birthdate password sync notice:", err);
+        });
+    }
+  }
+
   const principal = resolveActivePrincipal(account);
 
   if (!passwordMatches || !principal) {
+    console.warn("[Login Auth Check Failed]", {
+      username,
+      passwordLength: password.length,
+      passwordMatches,
+      principalResolved: Boolean(principal),
+      accountStatus: account.accountStatus,
+      roleCode: account.roleCode,
+      roleStatus: account.roleStatus,
+      employeeId: account.employeeId,
+      employeeUserId: account.employeeUserId,
+      employeeStatus: account.employeeStatus,
+      employeeCompanyId: account.employeeCompanyId,
+      employeeCompanyStatus: account.employeeCompanyStatus,
+      accountCompanyId: account.accountCompanyId,
+      accountCompanyStatus: account.accountCompanyStatus,
+    });
     throw invalidCredentials();
   }
 

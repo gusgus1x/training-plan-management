@@ -36,6 +36,7 @@ type AuthenticationRow = {
   level_name_th: string | null;
   level_name_en: string | null;
   pl: string | null;
+  employee_birth_date?: Date | string | null;
 };
 
 type AuthenticationPool = Pick<ConnectionPool, "request">;
@@ -103,7 +104,8 @@ const AUTHENTICATION_COLUMNS = `
     el.level_code,
     el.level_name_th,
     el.level_name_en,
-    el.pl`;
+    el.pl,
+    e.birth_date AS employee_birth_date`;
 
 const AUTHENTICATION_JOINS = `
   FROM dbo.user_account AS ua
@@ -165,6 +167,7 @@ const mapAuthenticationRow = (
         levelNameTh: row.level_name_th,
         levelNameEn: row.level_name_en,
         pl: row.pl,
+        employeeBirthDate: row.employee_birth_date ?? null,
       }
     : null;
 
