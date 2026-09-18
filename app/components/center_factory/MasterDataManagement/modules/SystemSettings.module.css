@@ -1,0 +1,189 @@
+.page {
+  display: grid;
+  width: min(1240px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 8px 0 48px;
+  gap: 14px;
+  color: var(--ui-30-ink);
+  font-size: 0.88rem;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 320px;
+  padding: 40px;
+}
+
+.hero,
+.card {
+  border: 1px solid var(--ui-30-border);
+  border-radius: 8px;
+  background: var(--ui-60-surface);
+  box-shadow: 0 14px 32px rgba(24, 36, 56, 0.08);
+}
+
+.hero {
+  display: grid;
+  gap: 6px;
+  padding: 18px 20px 18px 24px;
+  border-left: 4px solid #dc2626;
+}
+
+.hero h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.hero p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-30-ink-muted, #64748b);
+}
+
+.note {
+  font-size: 0.8rem;
+  color: var(--ui-30-ink-muted, #64748b);
+}
+
+.error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.card {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 16px 14px 18px;
+  text-align: center;
+}
+
+.cardOff {
+  border-color: #fca5a5;
+  background: #fff7f7;
+}
+
+.cardHead {
+  display: grid;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.cardHead strong {
+  font-size: 1rem;
+}
+
+.cardHead span {
+  font-size: 0.78rem;
+  color: var(--ui-30-ink-muted, #64748b);
+}
+
+/* The switch: a red disc, big enough to find at a glance, with a yellow warning sign inside. */
+.alarm {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  padding: 0;
+  border: 3px solid #991b1b;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #f87171 0%, #dc2626 55%, #b91c1c 100%);
+  box-shadow:
+    0 6px 14px rgba(185, 28, 28, 0.35),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.18);
+  color: #facc15;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.alarm svg {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35));
+}
+
+.alarm:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    0 9px 18px rgba(185, 28, 28, 0.4),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.18);
+}
+
+.alarm:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow:
+    0 3px 8px rgba(185, 28, 28, 0.35),
+    inset 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+.alarm:focus-visible {
+  outline: 3px solid #facc15;
+  outline-offset: 3px;
+}
+
+.alarm:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.cardOff .alarm {
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    box-shadow:
+      0 0 0 8px rgba(220, 38, 38, 0.15),
+      inset 0 -4px 0 rgba(0, 0, 0, 0.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cardOff .alarm {
+    animation: none;
+  }
+}
+
+.state {
+  margin: 8px 0 0;
+  font-weight: 700;
+}
+
+.cardOff .state {
+  color: #b91c1c;
+}
+
+.countdown {
+  margin: 0;
+}
+
+.countdown strong {
+  font-family: ui-monospace, monospace;
+  font-size: 1.05rem;
+  color: #b91c1c;
+}
+
+.meta,
+.hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ui-30-ink-muted, #64748b);
+}

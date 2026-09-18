@@ -206,6 +206,7 @@ model company {
   company_name_en                String?                          @db.NVarChar(255)
   remark                         String?                          @db.NVarChar(500)
   status                         String                           @default("N'ACTIVE'", map: "DF_company_status") @db.NVarChar(20)
+  login_otp_suspension           login_otp_suspension?
   announcement                   announcement[]
   assessment_series              assessment_series[]
   company_department_mapping     company_department_mapping[]
@@ -983,7 +984,8 @@ model user_account {
   employee_user_id                                                                           String?                            @db.NVarChar(50)
   otp_verified_until                                                                         DateTime?
   auth_login_otp                                                                             auth_login_otp[]
-  announcement                                                                               announcement[]
+  login_otp_suspension                                                                       login_otp_suspension[]
+  announcement                                                                              announcement[]
   assessment_assessment_created_byTouser_account                                             assessment[]                       @relation("assessment_created_byTouser_account")
   assessment_assessment_updated_byTouser_account                                             assessment[]                       @relation("assessment_updated_byTouser_account")
   assessment_answer                                                                          assessment_answer[]
@@ -1038,6 +1040,15 @@ model auth_login_otp {
   user_account  user_account @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_auth_login_otp_user_id")
 
   @@index([user_id, created_at(sort: Desc)], map: "IX_auth_login_otp_user_id_created_at")
+}
+
+model login_otp_suspension {
+  company_id      BigInt       @id(map: "PK_login_otp_suspension")
+  suspended_until DateTime
+  suspended_by    BigInt
+  suspended_at    DateTime     @default(dbgenerated("sysdatetime()"), map: "DF_login_otp_suspension_suspended_at")
+  company         company      @relation(fields: [company_id], references: [company_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_login_otp_suspension_company_id")
+  user_account    user_account @relation(fields: [suspended_by], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_login_otp_suspension_suspended_by")
 }
 
 model institute_provider {

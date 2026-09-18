@@ -176,13 +176,19 @@ describe("login OTP helpers", () => {
 });
 
 describe("login gives an EMPLOYEE no session until the email code is confirmed", () => {
-  const login = (principal: AuthenticatedPrincipal, account: Account | null) =>
+  const login = (principal: AuthenticatedPrincipal, account: Account | null, suspended = false) =>
     createLoginHandler({
       authenticate: async () => principal,
       createToken: () => "session-token",
       production: false,
       otpStore: { getAccountState: async () => account },
+      isOtpSuspended: async () => suspended,
     })(post("/api/auth/login", { username: "1290-000017", password: "11051972" }));
+
+  it("skips the code while HRD has switched it off for the employee's company", async () => {
+    const response = await login(employee, { email: null, otpVerifiedUntil: null }, true);
+    expect(response.headers.get("set-cookie")).toContain(`${SESSION_COOKIE_NAME}=`);
+  });
 
   it("asks for the code on the first login", async () => {
     const response = await login(employee, { email: null, otpVerifiedUntil: null });

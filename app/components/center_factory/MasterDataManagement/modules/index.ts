@@ -10,7 +10,9 @@ import {
   TrendingUp,
   Tag,
   Folder,
+  ShieldAlert,
 } from "../../../icons/LucideIcons";
+import SystemSettings, { systemSettingsModule } from "./SystemSettings";
 import { withSlug } from "../../../../lib/slug";
 import CompanyData, { companyDataModule } from "./CompanyData";
 import EmployeeData, { employeeDataModule } from "./EmployeeData";
@@ -50,5 +52,6 @@ export const masterDataItems: readonly MasterDataModuleTopic[] = [
   { ...withSlug(levelDataModule), icon: React.createElement(TrendingUp, { size: 24 }), Component: LevelData },
   { ...withSlug(courseTypeModule), icon: React.createElement(Tag, { size: 24 }), Component: CourseType },
   { ...withSlug(courseGroupModule), icon: React.createElement(Folder, { size: 24 }), Component: CourseGroup },
+  { ...withSlug(systemSettingsModule), icon: React.createElement(ShieldAlert, { size: 24 }), Component: SystemSettings },
 ];
 

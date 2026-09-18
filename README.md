@@ -31,6 +31,12 @@ AUTH_SESSION_SECRET=
 NATIONAL_ID_HMAC_KEY=
 NATIONAL_ID_ACTIVE_KEY_VERSION=
 NATIONAL_ID_ENCRYPTION_KEY_V1=
+
+SMTP_HOST=
+SMTP_PORT=
+SMTP_USER=yourproduct.email@ac.co.com
+SMTP_PASS= App passwords
+MAIL_FROM=yourproduct.email@ac.co.com
 ```
 
 

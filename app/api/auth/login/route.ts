@@ -11,6 +11,7 @@ import {
   setPendingCookie,
   type LoginOtpStore,
 } from "../../../lib/auth/loginOtp";
+import { prismaOtpSuspensionStore } from "../../../lib/auth/loginOtpSuspension";
 import { isSecureRequest } from "../../../lib/auth/session";
 import { startSession, type SessionTokenFactory } from "../../../lib/auth/startSession";
 import type { AuthenticatedPrincipal } from "../../../lib/auth/types";
@@ -23,6 +24,7 @@ type LoginHandlerDependencies = {
   createToken?: SessionTokenFactory;
   production?: boolean;
   otpStore?: Pick<LoginOtpStore, "getAccountState">;
+  isOtpSuspended?: (companyId: string) => Promise<boolean>;
 };
 
 const invalidRequest = () =>
@@ -80,7 +82,13 @@ export const createLoginHandler = (
 
       // An EMPLOYEE whose email check is missing or older than 2 days gets no session yet: only a
       // short pending cookie that lets them request and confirm the emailed code.
-      if (principal.role === "EMPLOYEE" && isLoginOtpEnabled()) {
+      // HRD can switch the code off for one company for up to 24 hours (Master Data > System).
+      const suspended =
+        principal.role === "EMPLOYEE" && principal.companyId
+          ? await (dependencies.isOtpSuspended ?? ((companyId: string) =>
+              prismaOtpSuspensionStore.isSuspended(companyId, new Date())))(principal.companyId)
+          : false;
+      if (principal.role === "EMPLOYEE" && isLoginOtpEnabled() && !suspended) {
         const state = await (dependencies.otpStore ?? prismaLoginOtpStore).getAccountState(principal.userId);
         if (!isOtpVerificationCurrent(state?.otpVerifiedUntil ?? null)) {
           const response = apiSuccess({ otpRequired: true, maskedEmail: maskEmail(state?.email ?? null) });
