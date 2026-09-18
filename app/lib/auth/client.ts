@@ -194,11 +194,14 @@ const readSessionUser = async (response: Response): Promise<ClientSessionUser> =
   return result;
 };
 
+/** Password accepted but the emailed code is still owed (EMPLOYEE only). */
+export type LoginOtpChallenge = { otpRequired: true; maskedEmail: string | null };
+
 export const loginWithCredentials = async (
   username: string,
   password: string,
   fetcher: Fetcher = fetch,
-) => {
+): Promise<ClientSessionUser | LoginOtpChallenge> => {
   const response = await fetcher("/api/auth/login", {
     method: "POST",
     credentials: "include",
@@ -210,8 +213,52 @@ export const loginWithCredentials = async (
     throw new AuthenticationClientError();
   }
 
+  const data = (await response.clone().json().catch(() => null))?.data as
+    | Partial<LoginOtpChallenge>
+    | undefined;
+  if (data?.otpRequired === true) {
+    return { otpRequired: true, maskedEmail: typeof data.maskedEmail === "string" ? data.maskedEmail : null };
+  }
+
   return readSessionUser(response);
 };
+
+/** A failed OTP call, carrying the server's error code so the screen can say what went wrong. */
+export class LoginOtpClientError extends Error {
+  constructor(
+    readonly code: string,
+    readonly details: Record<string, unknown> = {},
+  ) {
+    super(code);
+    this.name = "LoginOtpClientError";
+  }
+}
+
+const postOtp = async (path: string, body: unknown, fetcher: Fetcher) => {
+  const response = await fetcher(path, {
+    method: "POST",
+    credentials: "include",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const error = (await response.clone().json().catch(() => null))?.error;
+    throw new LoginOtpClientError(
+      typeof error?.code === "string" ? error.code : "UNKNOWN",
+      error?.details && typeof error.details === "object" ? error.details : {},
+    );
+  }
+  return response;
+};
+
+export const requestLoginOtp = async (email: string | null, fetcher: Fetcher = fetch) => {
+  const response = await postOtp("/api/auth/otp/request", email ? { email } : {}, fetcher);
+  const data = (await response.json()).data as { maskedEmail: string | null; resendAfterSeconds: number };
+  return data;
+};
+
+export const verifyLoginOtp = async (code: string, fetcher: Fetcher = fetch) =>
+  readSessionUser(await postOtp("/api/auth/otp/verify", { code }, fetcher));
 
 export const getCurrentSession = async (
   fetcher: Fetcher = fetch,

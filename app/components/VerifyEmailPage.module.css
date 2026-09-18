@@ -1,0 +1,145 @@
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: var(--ui-60-surface-soft, #f5f7fa);
+}
+
+.card {
+  width: min(440px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 32px 28px;
+  border: 1px solid var(--ui-30-border, #e2e8f0);
+  border-radius: 16px;
+  background: var(--ui-60-surface, #fff);
+  box-shadow: var(--ui-shadow-md, 0 8px 24px rgba(15, 23, 42, 0.08));
+}
+
+.kicker {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--ui-30-primary, #16a34a);
+}
+
+.title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--ui-30-ink, #0f172a);
+}
+
+.lead {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--ui-30-muted, #64748b);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ui-30-text, #334155);
+}
+
+.input {
+  padding: 11px 14px;
+  border: 1.5px solid var(--ui-30-border, #e2e8f0);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.95rem;
+  color: var(--ui-30-ink, #0f172a);
+  background: var(--ui-60-surface, #fff);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--ui-30-primary, #16a34a);
+}
+
+.codeInput {
+  font-family: monospace;
+  font-size: 1.4rem;
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ui-30-muted, #64748b);
+}
+
+.sentTo {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--ui-30-text, #334155);
+}
+
+.error {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+.primary,
+.secondary,
+.logout,
+.link {
+  font: inherit;
+  cursor: pointer;
+}
+
+.primary {
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--ui-30-primary, #16a34a);
+  color: #fff;
+  font-weight: 800;
+}
+
+.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.secondary {
+  padding: 10px 14px;
+  border: 1px solid var(--ui-30-border, #e2e8f0);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ui-30-text, #334155);
+  font-weight: 700;
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-30-primary, #16a34a);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.logout {
+  align-self: center;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border: 0;
+  background: none;
+  color: var(--ui-30-muted, #64748b);
+  font-size: 0.82rem;
+}

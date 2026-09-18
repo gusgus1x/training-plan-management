@@ -7,10 +7,12 @@ import {
   logoutCurrentSession,
   type ClientRoleCode,
   type ClientSessionUser,
+  type LoginOtpChallenge,
 } from "../lib/auth/client";
 import { getSanitizedDestination, isEmployeeAllowedPath } from "../lib/auth/route-guard";
 import { initializeTrainingWorkflow } from "../lib/trainingWorkflow";
 import LoginPage, { type PreviewCompanyCode } from "./LoginPage";
+import VerifyEmailPage from "./VerifyEmailPage";
 import { AuthenticatedUserProvider } from "./AuthenticatedUserContext";
 import { AuthActionsProvider } from "./AuthActionsContext";
 import { useToast } from "./ToastHost";
@@ -122,6 +124,7 @@ export default function AuthGate({
   // router.push and the refreshed server layout where the session is real but this component still
   // sees null — and the effect below reads that as "signed out" and bounces back to /login.
   const [sessionUser, setSessionUser] = useState<ClientSessionUser | null>(null);
+  const [otpChallenge, setOtpChallenge] = useState<LoginOtpChallenge | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutMessage, setLogoutMessage] = useState<string | null>(null);
   /**
@@ -143,8 +146,15 @@ export default function AuthGate({
   }, []);
 
   const handleLogin = async (username: string, password: string) => {
-    const loggedUser = await loginWithCredentials(username, password);
-    setSessionUser(loggedUser);
+    // An EMPLOYEE may get an OTP challenge instead of a user: no session until the emailed code.
+    const result = await loginWithCredentials(username, password);
+    if ("otpRequired" in result) return setOtpChallenge(result);
+    setSessionUser(result);
+    announceLogin(result);
+  };
+
+  const announceLogin = (loggedUser: ClientSessionUser) => {
+    setOtpChallenge(null);
     setLogoutMessage(null);
     const displayName = loggedUser.displayName || loggedUser.username;
     toast.success(`ยินดีต้อนรับคุณ ${displayName} เข้าสู่ระบบ / Welcome ${displayName}!`);
@@ -240,6 +250,19 @@ export default function AuthGate({
       router.replace("/");
     }
   }, [effectiveUser, pathname, router]);
+
+  if (!effectiveUser && otpChallenge) {
+    return (
+      <VerifyEmailPage
+        maskedEmail={otpChallenge.maskedEmail}
+        onVerified={(verifiedUser) => {
+          setSessionUser(verifiedUser);
+          announceLogin(verifiedUser);
+        }}
+        onCancel={() => setOtpChallenge(null)}
+      />
+    );
+  }
 
   if (!effectiveUser) {
     return (

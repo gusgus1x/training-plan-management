@@ -981,6 +981,8 @@ model user_account {
   last_login_at                                                                              DateTime?
   created_at                                                                                 DateTime                           @default(dbgenerated("sysdatetime()"), map: "DF_user_account_created_at")
   employee_user_id                                                                           String?                            @db.NVarChar(50)
+  otp_verified_until                                                                         DateTime?
+  auth_login_otp                                                                             auth_login_otp[]
   announcement                                                                               announcement[]
   assessment_assessment_created_byTouser_account                                             assessment[]                       @relation("assessment_created_byTouser_account")
   assessment_assessment_updated_byTouser_account                                             assessment[]                       @relation("assessment_updated_byTouser_account")
@@ -1022,6 +1024,20 @@ model user_account {
   @@index([company_id], map: "IX_user_account_company_id")
   @@index([role_id], map: "IX_user_account_role_id")
   @@index([employee_user_id], map: "IX_user_account_employee_user_id")
+}
+
+model auth_login_otp {
+  otp_id        BigInt       @id(map: "PK_auth_login_otp") @default(autoincrement())
+  user_id       BigInt
+  email         String       @db.NVarChar(255)
+  code_hash     String       @db.NVarChar(128)
+  expires_at    DateTime
+  attempt_count Int          @default(0, map: "DF_auth_login_otp_attempt_count")
+  consumed_at   DateTime?
+  created_at    DateTime     @default(dbgenerated("sysdatetime()"), map: "DF_auth_login_otp_created_at")
+  user_account  user_account @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "FK_auth_login_otp_user_id")
+
+  @@index([user_id, created_at(sort: Desc)], map: "IX_auth_login_otp_user_id_created_at")
 }
 
 model institute_provider {

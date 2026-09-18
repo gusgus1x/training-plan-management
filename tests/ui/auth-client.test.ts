@@ -3,6 +3,7 @@ import {
   getCurrentSession,
   loginWithCredentials,
   logoutCurrentSession,
+  verifyLoginOtp,
 } from "../../app/lib/auth/client";
 
 const sessionBody = {
@@ -38,6 +39,28 @@ const jsonResponse = (body: unknown, status = 200) =>
   });
 
 describe("authentication UI client", () => {
+  it("returns the OTP challenge instead of a user when the server asks for the email code", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue(jsonResponse({ ok: true, data: { otpRequired: true, maskedEmail: "so***@gmail.com" } })) as unknown as typeof fetch;
+
+    await expect(loginWithCredentials("1290-000017", "11051972", fetcher)).resolves.toEqual({
+      otpRequired: true,
+      maskedEmail: "so***@gmail.com",
+    });
+  });
+
+  it("surfaces the server error code from a failed OTP call", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      jsonResponse({ ok: false, error: { code: "OTP_INVALID", message: "x", requestId: "r", details: { attemptsLeft: 2 } } }, 400),
+    ) as unknown as typeof fetch;
+
+    await expect(verifyLoginOtp("123456", fetcher)).rejects.toMatchObject({
+      code: "OTP_INVALID",
+      details: { attemptsLeft: 2 },
+    });
+  });
+
   it("posts form credentials to the real login API with cookies enabled", async () => {
     const fetcher = vi
       .fn()

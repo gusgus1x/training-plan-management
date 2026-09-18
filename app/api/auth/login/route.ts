@@ -1,14 +1,18 @@
-import { NextResponse } from "next/server";
 import { ApiError } from "../../../lib/api/errors";
 import { apiFailure, apiSuccess } from "../../../lib/api/response";
 import { auditRequestContext, recordAuditQuietly } from "../../../lib/audit";
-import { trackUserSession } from "../../../lib/auth/activeSessions";
 import { authenticateCredentials } from "../../../lib/auth/authentication";
 import {
-  createSessionToken,
-  isSecureRequest,
-  setSessionCookie,
-} from "../../../lib/auth/session";
+  createPendingToken,
+  isLoginOtpEnabled,
+  isOtpVerificationCurrent,
+  maskEmail,
+  prismaLoginOtpStore,
+  setPendingCookie,
+  type LoginOtpStore,
+} from "../../../lib/auth/loginOtp";
+import { isSecureRequest } from "../../../lib/auth/session";
+import { startSession, type SessionTokenFactory } from "../../../lib/auth/startSession";
 import type { AuthenticatedPrincipal } from "../../../lib/auth/types";
 
 type LoginHandlerDependencies = {
@@ -16,11 +20,9 @@ type LoginHandlerDependencies = {
     username: string,
     password: string,
   ) => Promise<AuthenticatedPrincipal>;
-  createToken?: (
-    userId: string,
-    principal: AuthenticatedPrincipal,
-  ) => string;
+  createToken?: SessionTokenFactory;
   production?: boolean;
+  otpStore?: Pick<LoginOtpStore, "getAccountState">;
 };
 
 const invalidRequest = () =>
@@ -74,36 +76,30 @@ export const createLoginHandler = (
       const principal = await (
         dependencies.authenticate ?? authenticateCredentials
       )(credentials.username, credentials.password);
-      const token = dependencies.createToken
-        ? dependencies.createToken(principal.userId, principal)
-        : createSessionToken(principal.userId, { principal });
-      const response = apiSuccess({ user: principal });
+      const production = dependencies.production ?? isSecureRequest(request);
 
-      response.headers.set("Cache-Control", "no-store");
-      setSessionCookie(response, token, dependencies.production ?? isSecureRequest(request));
+      // An EMPLOYEE whose email check is missing or older than 2 days gets no session yet: only a
+      // short pending cookie that lets them request and confirm the emailed code.
+      if (principal.role === "EMPLOYEE" && isLoginOtpEnabled()) {
+        const state = await (dependencies.otpStore ?? prismaLoginOtpStore).getAccountState(principal.userId);
+        if (!isOtpVerificationCurrent(state?.otpVerifiedUntil ?? null)) {
+          const response = apiSuccess({ otpRequired: true, maskedEmail: maskEmail(state?.email ?? null) });
+          response.headers.set("Cache-Control", "no-store");
+          setPendingCookie(response, createPendingToken(principal.userId), production);
+          await recordAuditQuietly({
+            category: "AUTH",
+            action: "LOGIN_OTP_REQUIRED",
+            actor: { userId: principal.userId, username: principal.username, role: principal.role },
+            ...context,
+          });
+          return response;
+        }
+      }
 
-      trackUserSession({
-        userId: principal.userId,
-        username: principal.username,
-        role: principal.role,
-        companyCode: principal.companyCode ?? null,
-        ipAddress: context.ipAddress,
-        userAgent: context.userAgent,
-        currentPage: "เข้าสู่ระบบ (Login)",
+      return await startSession(request, principal, {
+        createToken: dependencies.createToken,
+        production,
       });
-
-      await recordAuditQuietly({
-        category: "AUTH",
-        action: "LOGIN_SUCCEEDED",
-        actor: {
-          userId: principal.userId,
-          username: principal.username,
-          role: principal.role,
-        },
-        ...context,
-      });
-
-      return response;
     } catch (error: unknown) {
       console.error("[Login Handler Error]", error);
 

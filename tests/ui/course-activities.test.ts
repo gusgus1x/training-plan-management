@@ -5,6 +5,11 @@ import { NextRequest } from "next/server";
 import { describe, expect, it } from "vitest";
 import { GET, POST, PUT, DELETE } from "../../app/api/course-activities/route";
 
+// These write real rows to the shared database, so they follow the same gate as the other
+// database-mutation tests: skipped unless RUN_DATABASE_MUTATION_TESTS=1 is set.
+const databaseMutationTest =
+  process.env.RUN_DATABASE_MUTATION_TESTS === "1" ? it : it.skip;
+
 describe("Course Activities API", () => {
   it("fetches course activities list", async () => {
     const res = await GET();
@@ -15,7 +20,7 @@ describe("Course Activities API", () => {
     expect(data.companies.some((c: { id: string }) => c.id === "center")).toBe(true);
   });
 
-  it("creates, updates, and deletes a course activity with company support", async () => {
+  databaseMutationTest("creates, updates, and deletes a course activity with company support", async () => {
     // 1. Create with Center
     const createReq = new NextRequest("http://localhost/api/course-activities", {
       method: "POST",
@@ -280,7 +285,7 @@ describe("Course Activities API", () => {
     expect(isPlanMatchingCompany(atfbPlan, "CENTER")).toBe(false);
   });
 
-  it("handles date formats (such as DD/MM/YYYY) and company codes robustly when saving", async () => {
+  databaseMutationTest("handles date formats (such as DD/MM/YYYY) and company codes robustly when saving", async () => {
     // Test creating with DD/MM/YYYY date format and SATI company id
     const createReq = new NextRequest("http://localhost/api/course-activities", {
       method: "POST",
