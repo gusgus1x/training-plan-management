@@ -10,6 +10,7 @@ import {
   resolvePosition,
 } from "../../app/components/employee/UserDashboard";
 import { emptyEnrollmentStage, type EnrollmentRecord } from "../../app/lib/trainingEnrollment/types";
+import { getAvatarInitials } from "../../app/components/Navbar";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -70,6 +71,16 @@ describe("avatar initials", () => {
   it("survives an empty or blank name", () => {
     expect(initialsOf("")).toBe("EU");
     expect(initialsOf("   ")).toBe("EU");
+  });
+
+  it("extracts English first and last name initials using getAvatarInitials", () => {
+    expect(getAvatarInitials("Somchai Jaidee", "สมชาย ใจดี", "EMPLOYEE")).toBe("SJ");
+    expect(getAvatarInitials("Dr. Somchai Jaidee", "ดร. สมชาย ใจดี", "EMPLOYEE")).toBe("DJ");
+    expect(getAvatarInitials("Somchai", null, "EMPLOYEE")).toBe("SO");
+    expect(getAvatarInitials(null, "Somchai Jaidee", "EMPLOYEE")).toBe("SJ");
+    expect(getAvatarInitials(null, "สมชาย ใจดี", "EMPLOYEE")).toBe("EU");
+    expect(getAvatarInitials(null, null, "HRD_FACTORY")).toBe("HF");
+    expect(getAvatarInitials(null, null, "HRD_CENTER")).toBe("HC");
   });
 });
 

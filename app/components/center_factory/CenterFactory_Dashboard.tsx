@@ -22,6 +22,8 @@ import { listEnrollments } from "../../lib/trainingEnrollment/client";
 import { ACTIVE_ENROLLMENT_STATUSES, type EnrollmentRecord } from "../../lib/trainingEnrollment/types";
 import NewActivities from "./NewActivities/NewActivities";
 import ScheduleCalendar from "./ReportManagement/modules/ScheduleCalendar";
+import { formatDisplayDate } from "../employee/UserDashboard";
+import { getAvatarInitials } from "../Navbar";
 import styles from "./CenterFactory_Dashboard.module.css";
 import {
   BookOpen,
@@ -149,16 +151,41 @@ export default function Dashboard({
   const authenticatedUser = useAuthenticatedUser();
   const { language } = useUiLanguage();
   const isThai = language === "th";
+  const isFactory = authenticatedUser?.roleCode === "HRD_FACTORY";
+  const isCenter = authenticatedUser?.roleCode === "HRD_CENTER";
+  const defaultHrdName = isFactory
+    ? `HRD ${authenticatedUser?.companyCode ?? "Factory"}`
+    : isCenter
+      ? "HRD Center"
+      : username;
+  const displayFullName =
+    (isThai
+      ? (authenticatedUser?.displayName || authenticatedUser?.displayNameEn)
+      : (authenticatedUser?.displayNameEn || authenticatedUser?.displayName)) ||
+    defaultHrdName;
 
   const fullEmployeeProfileItems = useMemo(() => {
     const userAny = authenticatedUser as any;
-    const isFactory = authenticatedUser?.roleCode === "HRD_FACTORY";
-    const isCenter = authenticatedUser?.roleCode === "HRD_CENTER";
-    const defaultHrdName = isFactory
-      ? `HRD ${authenticatedUser?.companyCode ?? "Factory"}`
-      : isCenter
-        ? "HRD Center"
-        : username;
+
+    const displayFunction = isThai
+      ? (authenticatedUser?.functionName || authenticatedUser?.functionNameEn)
+      : (authenticatedUser?.functionNameEn || authenticatedUser?.functionName);
+    const displayDivision = isThai
+      ? (authenticatedUser?.divisionName || authenticatedUser?.divisionNameEn)
+      : (authenticatedUser?.divisionNameEn || authenticatedUser?.divisionName);
+    const displayDepartment = isThai
+      ? (authenticatedUser?.departmentName || authenticatedUser?.departmentNameEn)
+      : (authenticatedUser?.departmentNameEn || authenticatedUser?.departmentName);
+    const displaySection = isThai
+      ? (authenticatedUser?.sectionName || authenticatedUser?.sectionNameEn)
+      : (authenticatedUser?.sectionNameEn || authenticatedUser?.sectionName);
+    const rawLevelName = isThai
+      ? (authenticatedUser?.levelName || authenticatedUser?.levelNameEn)
+      : (authenticatedUser?.levelNameEn || authenticatedUser?.levelName);
+    const displayLevel =
+      rawLevelName && authenticatedUser?.levelCode && !rawLevelName.includes(authenticatedUser.levelCode)
+        ? `${rawLevelName} (${authenticatedUser.levelCode})`
+        : rawLevelName || authenticatedUser?.levelCode;
 
     return [
       {
@@ -168,22 +195,6 @@ export default function Dashboard({
       {
         label: isThai ? "รหัสพนักงาน" : "Employee Code",
         value: authenticatedUser?.employeeCode ? authenticatedUser.employeeCode : "HRD Account",
-      },
-      {
-        label: isThai ? "ตำแหน่ง" : "Position",
-        value: profileValue(authenticatedUser?.positionName),
-      },
-      {
-        label: isThai ? "หน่วยงาน / แผนก" : "Department",
-        value: profileValue(authenticatedUser?.functionName),
-      },
-      {
-        label: isThai ? "วันเริ่มงาน" : "Start Date",
-        value: userAny?.startDate ? userAny.startDate : (isThai ? "ไม่ระบุ" : "Not specified"),
-      },
-      {
-        label: isThai ? "วันเกิด" : "Date of Birth",
-        value: userAny?.birthDate ? userAny.birthDate : (isThai ? "ไม่ระบุ" : "Not specified"),
       },
       {
         label: isThai ? "บริษัท" : "Company",
@@ -197,8 +208,36 @@ export default function Dashboard({
                   authenticatedUser?.companyCode,
               ),
       },
+      {
+        label: isThai ? "สายงาน (Function)" : "Function",
+        value: profileValue(displayFunction),
+      },
+      {
+        label: isThai ? "ฝ่าย (Division)" : "Division",
+        value: profileValue(displayDivision),
+      },
+      {
+        label: isThai ? "ส่วนงาน (Department)" : "Department",
+        value: profileValue(displayDepartment),
+      },
+      {
+        label: isThai ? "แผนก (Section)" : "Section",
+        value: profileValue(displaySection),
+      },
+      {
+        label: isThai ? "ตำแหน่ง" : "Position",
+        value: profileValue(authenticatedUser?.positionName),
+      },
+      {
+        label: isThai ? "ระดับ" : "Level",
+        value: profileValue(displayLevel),
+      },
+      {
+        label: isThai ? "วันเริ่มงาน" : "Start Date",
+        value: formatDisplayDate(userAny?.startDate || userAny?.hireDate, isThai),
+      },
     ];
-  }, [authenticatedUser, username, isThai]);
+  }, [authenticatedUser, username, isThai, isCenter, defaultHrdName]);
   const isCenterDashboard = authenticatedUser?.roleCode === "HRD_CENTER";
   const userCompanyCode = profileValue(authenticatedUser?.companyCode);
   const dashboardScope = isCenterDashboard ? "Center" : "Factory";
@@ -519,7 +558,11 @@ export default function Dashboard({
         <div className={styles.profileHeaderBanner}>
           <div className={styles.profileUserGroup}>
             <div className={styles.photoBox} aria-hidden="true">
-              {username ? username.slice(0, 2).toUpperCase() : "HC"}
+              {getAvatarInitials(
+                authenticatedUser?.displayNameEn,
+                displayFullName,
+                isCenter ? "HRD_CENTER" : "HRD_FACTORY"
+              )}
             </div>
             <div className={styles.profileMetaBox}>
               <div className={styles.profileTagRow}>
@@ -535,7 +578,7 @@ export default function Dashboard({
                   {isThai ? "ออนไลน์" : "Online"}
                 </span>
               </div>
-              <strong className={styles.profileName}>{username}</strong>
+              <strong className={styles.profileName} title={username}>{displayFullName}</strong>
               <p className={styles.profileSubText}>
                 {authenticatedUser?.roleCode === "HRD_CENTER"
                   ? (isThai ? "ผู้ดูแลระบบฝึกอบรมกลาง (HRD Center)" : "HRD Center Administrator")

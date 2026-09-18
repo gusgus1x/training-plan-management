@@ -29,6 +29,15 @@ export type AuthenticationAccount = {
   functionCode: string | null;
   functionNameTh: string | null;
   functionNameEn: string | null;
+  divisionCode?: string | null;
+  divisionNameTh?: string | null;
+  divisionNameEn?: string | null;
+  departmentCode?: string | null;
+  departmentNameTh?: string | null;
+  departmentNameEn?: string | null;
+  sectionCode?: string | null;
+  sectionNameTh?: string | null;
+  sectionNameEn?: string | null;
   positionCode: string | null;
   positionNameTh: string | null;
   positionNameEn: string | null;
@@ -37,6 +46,7 @@ export type AuthenticationAccount = {
   levelNameEn: string | null;
   pl: string | null;
   employeeBirthDate?: Date | string | null;
+  employeeHireDate?: Date | string | null;
 };
 
 export type AuthenticatedPrincipal = {
@@ -56,6 +66,15 @@ export type AuthenticatedPrincipal = {
   functionCode: string | null;
   functionName: string | null;
   functionNameEn?: string | null;
+  divisionCode?: string | null;
+  divisionName?: string | null;
+  divisionNameEn?: string | null;
+  departmentCode?: string | null;
+  departmentName?: string | null;
+  departmentNameEn?: string | null;
+  sectionCode?: string | null;
+  sectionName?: string | null;
+  sectionNameEn?: string | null;
   positionCode: string | null;
   positionName: string | null;
   positionNameEn?: string | null;
@@ -63,4 +82,7 @@ export type AuthenticatedPrincipal = {
   levelName: string | null;
   levelNameEn?: string | null;
   pl: string | null;
+  birthDate?: string | null;
+  startDate?: string | null;
+  hireDate?: string | null;
 };

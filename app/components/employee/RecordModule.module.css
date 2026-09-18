@@ -1120,3 +1120,586 @@
   color: var(--ui-30-muted);
   font-size: 0.85rem;
 }
+
+/* ─── Training Record Requests & Approvals Workflow ─────────────── */
+
+.tabBadgeApproved {
+  position: absolute;
+  top: -7px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #10b981;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+}
+
+.tabBadgePending {
+  position: absolute;
+  top: -7px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+}
+
+/* Approval Queue Section (For Section Head) */
+.approvalQueueSection {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.08) 100%);
+  border: 1.5px solid rgba(16, 185, 129, 0.35);
+  border-radius: var(--ui-radius-xl, 18px);
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.approvalQueueHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.approvalQueueTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: var(--ui-30-ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.approvalCountBadge {
+  background: #10b981;
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.approvalList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.approvalCard {
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.18s ease;
+}
+
+.approvalCard:hover {
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.approvalCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.approvalCardRequester {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.approvalRequesterName {
+  font-size: 0.98rem;
+  font-weight: 900;
+  color: var(--ui-30-ink);
+}
+
+.approvalRequesterMeta {
+  font-size: 0.78rem;
+  color: var(--ui-30-muted);
+}
+
+.approvalCardReqNo {
+  font-family: monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  background: var(--ui-60-surface-soft);
+  border: 1px solid var(--ui-30-border);
+  border-radius: 6px;
+  color: var(--ui-30-ink);
+}
+
+.approvalCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--ui-60-surface-soft);
+  border-radius: 10px;
+  font-size: 0.84rem;
+}
+
+.approvalPurposeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ui-30-ink);
+}
+
+.approvalReasonRow {
+  font-size: 0.8rem;
+  color: var(--ui-30-text);
+}
+
+.approvalCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.approvalTimestamp {
+  font-size: 0.75rem;
+  color: var(--ui-30-muted);
+}
+
+.approvalActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.approveBtn {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  background: #10b981;
+  color: #ffffff;
+  padding: 7px 16px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+.approveBtn:hover:not(:disabled) {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+.approveBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.rejectBtn {
+  appearance: none;
+  border: 1px solid #ef4444;
+  border-radius: 999px;
+  background: transparent;
+  color: #ef4444;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.rejectBtn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.rejectBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Info Banner */
+.infoBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: rgba(59, 130, 246, 0.07);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: var(--ui-30-ink);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+.infoBannerIcon {
+  color: #3b82f6;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Request Form Inputs */
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.formLabel {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--ui-30-ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.formLabelRequired {
+  color: #ef4444;
+}
+
+.formHelp {
+  font-size: 0.76rem;
+  color: var(--ui-30-muted);
+  margin-top: -4px;
+}
+
+.formTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--ui-30-border);
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  resize: vertical;
+  min-height: 72px;
+  outline: none;
+  transition: border-color 0.18s ease;
+}
+
+.formTextarea:focus {
+  border-color: var(--ui-30-primary);
+  box-shadow: 0 0 0 3px rgba(0, 122, 61, 0.1);
+}
+
+.submitRequestBtn {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--ui-30-primary) 0%, var(--ui-30-primary-strong) 100%);
+  color: #ffffff;
+  padding: 11px 26px;
+  font-size: 0.88rem;
+  font-weight: 900;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(0, 122, 61, 0.28);
+  transition: all 0.18s ease;
+}
+
+.submitRequestBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 122, 61, 0.38);
+}
+
+.submitRequestBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* My Requests History Section */
+.myRequestsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+  padding-top: 20px;
+  border-top: 1px solid var(--ui-30-border);
+}
+
+.myRequestsTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: var(--ui-30-ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.myRequestList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.myRequestCard {
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.myRequestCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.myRequestNoGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.myRequestNo {
+  font-family: monospace;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--ui-30-ink);
+}
+
+.statusBadgePending {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.statusBadgeApproved {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.statusBadgeRejected {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.myRequestCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--ui-30-text);
+  background: var(--ui-60-surface-soft);
+  padding: 12px 14px;
+  border-radius: 10px;
+}
+
+.myRequestCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.downloadApprovedBtn {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  padding: 8px 18px;
+  font-size: 0.82rem;
+  font-weight: 900;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+  transition: all 0.15s ease;
+}
+
+.downloadApprovedBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+}
+
+.lockedNotice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #d97706;
+  background: rgba(245, 158, 11, 0.08);
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+.rejectedNotice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #dc2626;
+  background: rgba(239, 68, 68, 0.08);
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+/* Rejection Modal */
+.rejectionModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.rejectionModal {
+  background: var(--ui-60-surface);
+  border: 1px solid var(--ui-30-border);
+  border-radius: var(--ui-radius-xl, 18px);
+  width: min(500px, 100%);
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modalHeader h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modalCloseBtn {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--ui-30-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+}
+
+.modalCloseBtn:hover {
+  background: var(--ui-60-surface-soft);
+  color: var(--ui-30-ink);
+}
+
+.modalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.cancelBtn {
+  appearance: none;
+  border: 1px solid var(--ui-30-border);
+  border-radius: 999px;
+  background: var(--ui-60-surface);
+  color: var(--ui-30-muted);
+  padding: 8px 18px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.confirmRejectBtn {
+  appearance: none;
+  border: none;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #ffffff;
+  padding: 8px 20px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(239, 68, 68, 0.3);
+}
+
+.confirmRejectBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

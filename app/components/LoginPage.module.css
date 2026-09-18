@@ -663,9 +663,9 @@
    ═══════════════════════════════════════ */
 
 .affiliatesSection {
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--ui-30-border);
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px dashed var(--ui-30-border);
 }
 
 .affiliatesDivider {
@@ -802,8 +802,8 @@
 
 @media (max-width: 480px) {
   .affiliatesSection {
-    margin-top: 12px;
-    padding-top: 10px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
   }
 
   .affiliatesDivider {

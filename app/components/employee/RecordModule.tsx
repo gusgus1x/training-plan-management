@@ -18,6 +18,17 @@ import {
 } from "../AuthenticatedUserContext";
 import { useToast } from "../ToastHost";
 import { useUiLanguage } from "../ThaiUiLocalization";
+import {
+  createRecordRequest,
+  decideRecordRequest,
+  listRecordRequests,
+  searchRecordRequestApprovers,
+} from "../../lib/trainingRecordRequests/client";
+import type {
+  RecordRequestApproverCandidate,
+  TrainingRecordRequestRecord,
+} from "../../lib/trainingRecordRequests/types";
+import SearchableSelect, { type SearchableSelectOption } from "../SearchableSelect";
 import AssignedEvaluations from "./AssignedEvaluations";
 import ModuleHeader from "./ModuleHeader";
 import styles from "./RecordModule.module.css";
@@ -46,6 +57,10 @@ import {
   Star,
   Sparkles,
   MessageSquare,
+  Lock,
+  Send,
+  AlertTriangle,
+  XCircle,
 } from "../icons/LucideIcons";
 
 export type EmployeeTrainingRecord = {
@@ -87,17 +102,14 @@ const stageExportStatus = (stage: EnrollmentStageInfo): "Pending" | "Completed" 
   return stage.submission ? "Completed" : "Pending";
 };
 
-type DownloadPurpose = "job_change" | "resignation";
+type DocumentPurpose = {
+  label: string;
+  description: string;
+};
 
-const downloadPurposes: Record<DownloadPurpose, { label: string; description: string }> = {
-  job_change: {
-    label: "Job application / transfer",
-    description: "Use this file as supporting evidence when applying for or changing jobs.",
-  },
-  resignation: {
-    label: "Resignation document",
-    description: "Use this file as a complete training record for resignation documents.",
-  },
+const defaultDocumentPurpose: DocumentPurpose = {
+  label: "Official Training Record",
+  description: "Official training record and completed course history",
 };
 
 export const toRecord = (enrollment: EnrollmentRecord): EmployeeTrainingRecord => ({
@@ -425,7 +437,12 @@ const escapeCell = (value: string | number | null) =>
 const exportPersonalRecord = (
   records: EmployeeTrainingRecord[],
   employeeName: string,
-  purpose: (typeof downloadPurposes)[DownloadPurpose],
+  purpose: DocumentPurpose = defaultDocumentPurpose,
+  approvalInfo?: {
+    requestNo?: string;
+    approvedBy?: string;
+    approvedAt?: string | null;
+  },
 ) => {
   const headers = [
     "Employee",
@@ -465,7 +482,10 @@ const exportPersonalRecord = (
     .map((row) => `<tr>${row.map((cell) => `<td>${escapeCell(cell)}</td>`).join("")}</tr>`)
     .join("");
   const summaryRows = [
-    ["Document", "Completed Training Record"],
+    ["Document", "Official Completed Training Record"],
+    ...(approvalInfo?.requestNo ? [["Request No (Approved)", approvalInfo.requestNo]] : []),
+    ...(approvalInfo?.approvedBy ? [["Approved By (Section Head)", approvalInfo.approvedBy]] : []),
+    ...(approvalInfo?.approvedAt ? [["Approved Date", formatDate(approvalInfo.approvedAt.slice(0, 10))]] : []),
     ["Employee", employeeName],
     ["Purpose", purpose.label],
     ["Purpose Detail", purpose.description],
@@ -545,7 +565,6 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
 
   const [query, setQuery] = useState("");
   const [selectedProvider, setSelectedProvider] = useState<(typeof providers)[number]>("all");
-  const [downloadPurpose, setDownloadPurpose] = useState<DownloadPurpose>("job_change");
   // Cards start closed by default as requested. expandedCardIds holds the IDs the employee explicitly opened.
   const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(new Set());
   const toggleCard = (id: string) =>
@@ -639,10 +658,143 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
       });
   };
 
+  const [approvers, setApprovers] = useState<RecordRequestApproverCandidate[]>([]);
+  const [selectedApproverUserId, setSelectedApproverUserId] = useState<string>("");
+  const [requestReasonNote, setRequestReasonNote] = useState<string>("");
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState<boolean>(false);
+  const [myRecordRequests, setMyRecordRequests] = useState<TrainingRecordRequestRecord[]>([]);
+  const [pendingApprovals, setPendingApprovals] = useState<TrainingRecordRequestRecord[]>([]);
+  const [isRequestsLoading, setIsRequestsLoading] = useState<boolean>(false);
+  const [decidingId, setDecidingId] = useState<string | null>(null);
+  const [rejectionModalTarget, setRejectionModalTarget] = useState<TrainingRecordRequestRecord | null>(null);
+  const [rejectionReasonText, setRejectionReasonText] = useState<string>("");
+
+  const reloadRecordRequests = () => {
+    setIsRequestsLoading(true);
+    return listRecordRequests()
+      .then((data) => {
+        setMyRecordRequests(data.myRequests || []);
+        setPendingApprovals(data.pendingApprovals || []);
+      })
+      .catch((err) => {
+        console.error("Failed to load record requests:", err);
+      })
+      .finally(() => {
+        setIsRequestsLoading(false);
+      });
+  };
+
+  const reloadApprovers = () => {
+    searchRecordRequestApprovers()
+      .then((data) => {
+        setApprovers(data.candidates || []);
+      })
+      .catch((err) => {
+        console.error("Failed to load approvers:", err);
+      });
+  };
+
   useEffect(() => {
     void reloadEnrollments();
+    void reloadRecordRequests();
+    void reloadApprovers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const approverOptions = useMemo<SearchableSelectOption[]>(() => {
+    return approvers.map((appr) => {
+      const positionText = appr.position || t("Section Head / ผู้จัดการ / ผู้บริหาร", "Section Head / Manager / Executive");
+      const deptText = [appr.department, appr.section].filter(Boolean).join(" - ");
+      return {
+        value: appr.reviewerUserId,
+        label: `${appr.name} (${appr.employeeCode || "-"})`,
+        secondaryLabel: `${positionText}${deptText ? ` • ${deptText}` : ""}`,
+        keywords: `${appr.name} ${appr.employeeCode || ""} ${appr.position || ""} ${appr.department || ""} ${appr.section || ""}`,
+      };
+    });
+  }, [approvers, t]);
+
+  const handleSubmitRequest = async () => {
+    if (!selectedApproverUserId) {
+      toast.error(t("กรุณาเลือกผู้อนุมัติ (Section Head ขึ้นไป)", "Please select an approver (Section Head or above)"));
+      return;
+    }
+    if (records.length === 0) {
+      toast.error(t("ไม่มีประวัติการอบรมที่เสร็จสมบูรณ์ ไม่สามารถส่งคำขอได้", "No completed training records to request"));
+      return;
+    }
+
+    try {
+      setIsSubmittingRequest(true);
+      await createRecordRequest({
+        approverUserId: selectedApproverUserId,
+        requestType: "TRAINING_RECORD",
+        requestReason: requestReasonNote.trim() || t("ขอเอกสารประวัติการอบรม", "Request training record document"),
+      });
+      toast.success(t("ส่งคำขอประวัติการอบรมเรียบร้อยแล้ว รอหัวหน้าพิจารณาอนุมัติ", "Training record request submitted. Awaiting approval."));
+      setSelectedApproverUserId("");
+      setRequestReasonNote("");
+      await reloadRecordRequests();
+    } catch (err: any) {
+      toast.error(err?.message || t("ส่งคำขอไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", "Failed to submit request"));
+    } finally {
+      setIsSubmittingRequest(false);
+    }
+  };
+
+  const handleApprove = async (request: TrainingRecordRequestRecord) => {
+    try {
+      setDecidingId(request.id);
+      await decideRecordRequest(request.id, { action: "approve" });
+      toast.success(t(`อนุมัติคำขอ ${request.requestNo} เรียบร้อยแล้ว`, `Approved request ${request.requestNo}`));
+      await reloadRecordRequests();
+    } catch (err: any) {
+      toast.error(err?.message || t("อนุมัติไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", "Failed to approve request"));
+    } finally {
+      setDecidingId(null);
+    }
+  };
+
+  const handleOpenRejectModal = (request: TrainingRecordRequestRecord) => {
+    setRejectionModalTarget(request);
+    setRejectionReasonText("");
+  };
+
+  const handleConfirmReject = async () => {
+    if (!rejectionModalTarget) return;
+    try {
+      setDecidingId(rejectionModalTarget.id);
+      await decideRecordRequest(rejectionModalTarget.id, {
+        action: "reject",
+        note: rejectionReasonText.trim() || undefined,
+      });
+      toast.success(t(`ปฏิเสธคำขอ ${rejectionModalTarget.requestNo} แล้ว`, `Rejected request ${rejectionModalTarget.requestNo}`));
+      setRejectionModalTarget(null);
+      setRejectionReasonText("");
+      await reloadRecordRequests();
+    } catch (err: any) {
+      toast.error(err?.message || t("ดำเนินการไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", "Failed to reject request"));
+    } finally {
+      setDecidingId(null);
+    }
+  };
+
+  const handleDownloadApproved = (req: TrainingRecordRequestRecord) => {
+    if (req.status !== "APPROVED") {
+      toast.error(t("คำขอนี้ยังไม่ได้รับการอนุมัติ ไม่สามารถดาวน์โหลดได้", "This request is not approved yet"));
+      return;
+    }
+    const purposeObj: DocumentPurpose = {
+      label: t("เอกสารประวัติการอบรม", "Official Training Record"),
+      description: req.requestReason || t("ประวัติการอบรมฉบับสมบูรณ์", "Complete official training record"),
+    };
+    exportPersonalRecord(records, employeeName, purposeObj, {
+      requestNo: req.requestNo,
+      approvedBy: req.approverName ?? undefined,
+      approvedAt: req.reviewedAt,
+    });
+    toast.success(t(`ดาวน์โหลดประวัติการอบรมฉบับสมบูรณ์ (เลขที่ ${req.requestNo}) แล้ว`, `Downloaded official training record (Req: ${req.requestNo})`));
+  };
 
   const pendingEnrollments = useMemo(
     () => enrollments.filter((enrollment) => enrollment.attendance?.status !== "PRESENT"),
@@ -709,8 +861,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
       toast.error(t("ไม่มีประวัติการอบรมที่สำเร็จสำหรับดาวน์โหลด", "No completed records to download"));
       return;
     }
-    const purpose = downloadPurposes[downloadPurpose];
-    exportPersonalRecord(records, employeeName, purpose);
+    exportPersonalRecord(records, employeeName, defaultDocumentPurpose);
     toast.success(
       t(`ดาวน์โหลดประวัติการอบรม ${records.length} รายการแล้ว`, `Downloaded ${records.length} training record(s)`),
     );
@@ -840,8 +991,14 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
           aria-selected={activeTab === "download"}
           onClick={() => setActiveTab("download")}
         >
-          <Download size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
-          {t("ดาวน์โหลดประวัติ & เอกสาร", "Download Official Record")}
+          <FileText size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
+          {t("ขอประวัติการอบรม & ดาวน์โหลด", "Request Record & Download")}
+          {myRecordRequests.some((r) => r.status === "APPROVED") ? (
+            <span className={styles.tabBadgeApproved} title={t("มีรายการที่อนุมัติแล้ว", "Approved requests available")}>✓</span>
+          ) : null}
+          {pendingApprovals.length > 0 ? (
+            <span className={styles.tabBadgePending} title={t("มีคำขอรอคุณพิจารณาอนุมัติ", "Requests awaiting your approval")}>{pendingApprovals.length}</span>
+          ) : null}
         </button>
       </div>
 
@@ -1295,37 +1452,146 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
         </section>
       ) : null}
 
-      {/* TAB 3: Download Official Document Passport Panel (With Completed Courses List Preview!) */}
+      {/* TAB 3: Request Training Record & Official Document Download Panel */}
       {activeTab === "download" ? (
-        <section className={styles.exportPanel} aria-label="Download completed training files">
+        <section className={styles.exportPanel} aria-label="Request and download training record">
           <div className={styles.exportHeader}>
             <h3>
               <FileText size={18} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
-              {t("ดาวน์โหลดประวัติและเอกสารการอบรมฉบับเต็ม", "Download Full Official Training Record")}
+              {t("ขอประวัติการอบรม & ดาวน์โหลดเอกสารฉบับเต็ม", "Request Official Record & Download")}
             </h3>
             <p>
               {t(
-                "ส่งออกไฟล์ประวัติการอบรมฉบับสมบูรณ์ ประกอบด้วยหลักสูตรที่ผ่าน ชั่วโมงเรียน เลขที่ใบรับรอง คะแนนสอบ และผู้จัด สำหรับยื่นเรื่องปรับตำแหน่ง ย้ายแผนก หรือลาออก",
-                "Download official training passport containing course history, certificate numbers, learning hours, scores, and document evidence purpose.",
+                "การขอเอกสารประวัติการอบรมฉบับสมบูรณ์ (สำหรับปรับตำแหน่ง ย้ายแผนก หรือลาออก) จะต้องส่งคำขอไปยัง Section Head (หัวหน้าแผนก / ผู้จัดการแผนก) ในสังกัดของท่าน เมื่อหัวหน้าอนุมัติแล้ว จึงจะสามารถดาวน์โหลดเอกสารได้",
+                "Official training passport requests must be approved by your company Section Head or Manager before download is unlocked.",
               )}
             </p>
           </div>
 
-          <div className={styles.purposeRadioGroup} aria-label="Document purpose selection">
-            {(Object.keys(downloadPurposes) as DownloadPurpose[]).map((purposeKey) => (
-              <label className={styles.purposeOption} key={purposeKey}>
-                <input
-                  checked={downloadPurpose === purposeKey}
-                  name="download-purpose"
-                  onChange={() => setDownloadPurpose(purposeKey)}
-                  type="radio"
-                />
-                <span className={styles.purposeText}>
-                  <strong>{downloadPurposes[purposeKey].label}</strong>
-                  <small>{downloadPurposes[purposeKey].description}</small>
+          {/* Section Head Approvals Queue (Shown if current user has requests to approve) */}
+          {pendingApprovals.length > 0 ? (
+            <div className={styles.approvalQueueSection}>
+              <div className={styles.approvalQueueHeader}>
+                <h4 className={styles.approvalQueueTitle}>
+                  <CheckCircle2 size={18} style={{ color: "#10b981" }} />
+                  {t("คำขอประวัติการอบรมที่รอการอนุมัติของคุณ", "Requests Awaiting Your Approval")}
+                </h4>
+                <span className={styles.approvalCountBadge}>
+                  {pendingApprovals.length} {t("รายการ", "pending")}
                 </span>
-              </label>
-            ))}
+              </div>
+
+              <div className={styles.approvalList}>
+                {pendingApprovals.map((req) => {
+                  const isDecidingThis = decidingId === req.id;
+
+                  return (
+                    <div className={styles.approvalCard} key={req.id}>
+                      <div className={styles.approvalCardHeader}>
+                        <div className={styles.approvalCardRequester}>
+                          <span className={styles.approvalRequesterName}>
+                            {req.employeeName || req.employeeUserId}
+                            {req.employeeCode ? ` (${req.employeeCode})` : ""}
+                          </span>
+                          <span className={styles.approvalRequesterMeta}>
+                            {[req.positionName, req.departmentName, req.companyCode]
+                              .filter(Boolean)
+                              .join(" • ")}
+                          </span>
+                        </div>
+                        <span className={styles.approvalCardReqNo}>{req.requestNo}</span>
+                      </div>
+
+                      <div className={styles.approvalCardBody}>
+                        {req.requestReason ? (
+                          <div className={styles.approvalReasonRow}>
+                            <MessageSquare size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 5 }} />
+                            <strong>{t("เหตุผล / หมายเหตุ", "Reason / Note")}:</strong> <em>"{req.requestReason}"</em>
+                          </div>
+                        ) : (
+                          <div className={styles.approvalReasonRow}>
+                            <FileText size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 5 }} />
+                            <span>{t("ขอเอกสารประวัติการอบรมฉบับเต็ม", "Full training record request")}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className={styles.approvalCardFooter}>
+                        <span className={styles.approvalTimestamp}>
+                          <Calendar size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                          {t("ส่งคำขอเมื่อ", "Requested on")}: {formatDate(req.requestedAt.slice(0, 10))}
+                        </span>
+
+                        <div className={styles.approvalActions}>
+                          <button
+                            type="button"
+                            className={styles.rejectBtn}
+                            disabled={isDecidingThis}
+                            onClick={() => handleOpenRejectModal(req)}
+                          >
+                            <XCircle size={14} />
+                            {t("ไม่อนุมัติ", "Reject")}
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.approveBtn}
+                            disabled={isDecidingThis}
+                            onClick={() => handleApprove(req)}
+                          >
+                            <CheckCircle2 size={14} />
+                            {isDecidingThis ? t("กำลังประมวลผล...", "Processing...") : t("อนุมัติคำขอ", "Approve")}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          {/* Form: Select Approver */}
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>
+              <User size={15} style={{ color: "var(--ui-30-primary)" }} />
+              <span>{t("เลือกผู้อนุมัติ (Section Head ขึ้นไป)", "Select Approver (Section Head & Above)")}</span>
+              <span className={styles.formLabelRequired}>*</span>
+            </label>
+            <span className={styles.formHelp}>
+              {t(
+                "แสดงเฉพาะผู้ที่มีตำแหน่งตั้งแต่ Section Head (ผู้จัดการแผนก) ขึ้นไปจนถึงระดับผู้บริหารในบริษัทเดียวกับท่าน",
+                "Showing positions from Section Head up to Executives in your company",
+              )}
+            </span>
+            <SearchableSelect
+              options={approverOptions}
+              value={selectedApproverUserId}
+              onChange={setSelectedApproverUserId}
+              placeholder={t("พิมพ์ชื่อ หรือรหัสพนักงาน เพื่อค้นหาผู้อนุมัติ...", "Search by name or employee code to find approver...")}
+              emptyText={t("ไม่พบรายชื่อผู้อนุมัติ (Section Head ขึ้นไป) ในบริษัทของท่าน", "No Section Heads or Executives found in your company")}
+              disabled={isSubmittingRequest || approvers.length === 0}
+            />
+            {approvers.length === 0 ? (
+              <span style={{ fontSize: "0.76rem", color: "#d97706" }}>
+                {t("ไม่พบรายชื่อผู้อนุมัติ (Section Head ขึ้นไป) ในบริษัทของท่าน กรุณาติดต่อ HRD", "No Section Heads or Executives found. Please contact HRD.")}
+              </span>
+            ) : null}
+          </div>
+
+          {/* Optional reason / note */}
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel}>
+              <MessageSquare size={15} style={{ color: "var(--ui-30-primary)" }} />
+              <span>{t("เหตุผลหรือหมายเหตุเพิ่มเติม (ถ้ามี)", "Additional Reason / Notes (Optional)")}</span>
+            </label>
+            <textarea
+              className={styles.formTextarea}
+              value={requestReasonNote}
+              onChange={(e) => setRequestReasonNote(e.target.value)}
+              placeholder={t("ระบุรายละเอียดเพิ่มเติม หรือเหตุผลความจำเป็น...", "Specify additional details...")}
+              rows={2}
+              disabled={isSubmittingRequest}
+            />
           </div>
 
           {/* TAB 3 Completed Courses List Preview */}
@@ -1366,6 +1632,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
             </div>
           </div>
 
+          {/* Action Row: Stats + Submit Request button */}
           <div className={styles.exportFooter}>
             <div className={styles.exportStats}>
               <span className={styles.statBadge}>
@@ -1374,16 +1641,192 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
               </span>
               <span className={styles.statBadge}>
                 <Clock size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
-                {records.reduce((t, r) => t + r.hours, 0)} {t("ชั่วโมง", "Hours")}
+                {records.reduce((total, r) => total + r.hours, 0)} {t("ชั่วโมง", "Hours")}
               </span>
             </div>
 
-            <button className={styles.exportBtn} type="button" onClick={handleExportAll}>
-              <Download size={15} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />
-              {t("ดาวน์โหลดเอกสาร (Download HTML)", "Download Passport Document")}
+            <button
+              className={styles.submitRequestBtn}
+              type="button"
+              disabled={isSubmittingRequest || !selectedApproverUserId || records.length === 0}
+              onClick={handleSubmitRequest}
+            >
+              <Send size={15} />
+              {isSubmittingRequest
+                ? t("กำลังส่งคำขอ...", "Submitting...")
+                : t("ส่งคำขอประวัติการอบรมไปยังหัวหน้าแผนก", "Submit Request to Section Head")}
             </button>
           </div>
+
+          {/* MY REQUESTS HISTORY */}
+          <div className={styles.myRequestsSection}>
+            <h4 className={styles.myRequestsTitle}>
+              <Hourglass size={18} style={{ color: "var(--ui-30-primary)" }} />
+              {t("ประวัติการส่งคำขอประวัติการอบรมของฉัน", "My Training Record Requests")}
+              <span className={styles.approvalCountBadge} style={{ background: "var(--ui-30-primary)" }}>
+                {myRecordRequests.length}
+              </span>
+            </h4>
+
+            {myRecordRequests.length === 0 ? (
+              <div className={styles.emptyStateBox} style={{ padding: "24px" }}>
+                {t(
+                  "ยังไม่มีประวัติการส่งคำขอ ท่านสามารถเลือกหัวหน้าแผนกและส่งคำขอใหม่ได้จากแบบฟอร์มด้านบน",
+                  "No requests sent yet. You can choose a Section Head and submit a request above.",
+                )}
+              </div>
+            ) : (
+              <div className={styles.myRequestList}>
+                {myRecordRequests.map((req) => {
+                  const isApproved = req.status === "APPROVED";
+                  const isPending = req.status === "PENDING";
+                  const isRejected = req.status === "REJECTED";
+
+                  return (
+                    <div className={styles.myRequestCard} key={req.id}>
+                      <div className={styles.myRequestCardHeader}>
+                        <div className={styles.myRequestNoGroup}>
+                          <span className={styles.myRequestNo}>{req.requestNo}</span>
+                          {isPending ? (
+                            <span className={styles.statusBadgePending}>
+                              <Hourglass size={12} />
+                              {t("รออนุมัติ", "Pending Approval")}
+                            </span>
+                          ) : isApproved ? (
+                            <span className={styles.statusBadgeApproved}>
+                              <CheckCircle2 size={12} />
+                              {t("อนุมัติแล้ว", "Approved")}
+                            </span>
+                          ) : (
+                            <span className={styles.statusBadgeRejected}>
+                              <XCircle size={12} />
+                              {t("ไม่อนุมัติ", "Rejected")}
+                            </span>
+                          )}
+                        </div>
+
+                        <span style={{ fontSize: "0.78rem", color: "var(--ui-30-muted)" }}>
+                          <Calendar size={12} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                          {t("วันที่ขอ", "Requested")}: {formatDate(req.requestedAt.slice(0, 10))}
+                        </span>
+                      </div>
+
+                      <div className={styles.myRequestCardBody}>
+                        <div>
+                          <strong>{t("หัวหน้าผู้อนุมัติ", "Approver")}:</strong>{" "}
+                          {req.approverName || req.approverUserId || "-"}
+                          {req.approverPosition ? ` (${req.approverPosition})` : ""}
+                        </div>
+                        {req.requestReason ? (
+                          <div>
+                            <strong>{t("หมายเหตุของผู้ขอ", "Note")}:</strong> {req.requestReason}
+                          </div>
+                        ) : null}
+                        {isApproved && req.reviewedAt ? (
+                          <div style={{ color: "#059669", fontWeight: 700 }}>
+                            <CheckCircle2 size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                            {t("อนุมัติเมื่อ", "Approved on")}: {formatDate(req.reviewedAt.slice(0, 10))}
+                          </div>
+                        ) : null}
+                        {isRejected ? (
+                          <div style={{ color: "#dc2626", fontWeight: 700 }}>
+                            <XCircle size={13} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 4 }} />
+                            {t("เหตุผลที่ไม่อนุมัติ", "Rejection reason")}: {req.rejectionReason || t("ไม่มีการระบุเหตุผล", "No reason provided")}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      <div className={styles.myRequestCardFooter}>
+                        {isApproved ? (
+                          <button
+                            type="button"
+                            className={styles.downloadApprovedBtn}
+                            onClick={() => handleDownloadApproved(req)}
+                          >
+                            <Download size={14} />
+                            {t("ดาวน์โหลดประวัติและเอกสารฉบับเต็ม", "Download Full Official Record")}
+                          </button>
+                        ) : isPending ? (
+                          <div className={styles.lockedNotice}>
+                            <Lock size={14} />
+                            <span>
+                              {t(
+                                "รอ Section Head (หัวหน้าแผนก / ผู้จัดการ) อนุมัติ จึงจะสามารถดาวน์โหลดเอกสารได้",
+                                "Awaiting Section Head approval before document can be downloaded",
+                              )}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className={styles.rejectedNotice}>
+                            <XCircle size={14} />
+                            <span>
+                              {t("คำขอนี้ไม่ได้รับการอนุมัติ ไม่สามารถดาวน์โหลดเอกสารได้", "Request was rejected. Download is disabled.")}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </section>
+      ) : null}
+
+      {/* Modal Dialog for Rejection Reason */}
+      {rejectionModalTarget ? (
+        <div className={styles.rejectionModalOverlay} role="dialog" aria-modal="true">
+          <div className={styles.rejectionModal}>
+            <div className={styles.modalHeader}>
+              <h4>
+                <XCircle size={18} />
+                {t("ระบุเหตุผลที่ไม่อนุมัติ", "Specify Rejection Reason")}
+              </h4>
+              <button
+                type="button"
+                className={styles.modalCloseBtn}
+                onClick={() => setRejectionModalTarget(null)}
+                aria-label="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--ui-30-text)" }}>
+              {t("คำขอเลขที่", "Request No")}: <strong>{rejectionModalTarget.requestNo}</strong> (
+              {rejectionModalTarget.employeeName || rejectionModalTarget.employeeUserId})
+            </p>
+
+            <textarea
+              className={styles.formTextarea}
+              value={rejectionReasonText}
+              onChange={(e) => setRejectionReasonText(e.target.value)}
+              placeholder={t("กรุณาระบุเหตุผลการไม่อนุมัติเพื่อแจ้งให้ผู้ขอทราบ...", "Please specify the rejection reason...")}
+              rows={3}
+              autoFocus
+            />
+
+            <div className={styles.modalFooter}>
+              <button
+                type="button"
+                className={styles.cancelBtn}
+                onClick={() => setRejectionModalTarget(null)}
+                disabled={Boolean(decidingId)}
+              >
+                {t("ยกเลิก", "Cancel")}
+              </button>
+              <button
+                type="button"
+                className={styles.confirmRejectBtn}
+                onClick={handleConfirmReject}
+                disabled={Boolean(decidingId)}
+              >
+                {decidingId ? t("กำลังบันทึก...", "Saving...") : t("ยืนยันไม่อนุมัติ", "Confirm Reject")}
+              </button>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {reviewPanel ? (

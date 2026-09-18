@@ -111,6 +111,97 @@ export const getLevelRank = (levelKey: string): number => {
   return 0;
 };
 
+export const SECTION_HEAD_OR_ABOVE_POSITIONS = [
+  { rank: 1, code: "PRES", nameTh: "ประธานบริษัท", nameEn: "President" },
+  { rank: 2, code: "EVP", nameTh: "รองประธานบริหาร", nameEn: "Executive Vice President" },
+  { rank: 3, code: "VP", nameTh: "รองประธาน", nameEn: "Vice President" },
+  { rank: 4, code: "SADV", nameTh: "ที่ปรึกษาอาวุโส", nameEn: "Senior Advisor" },
+  { rank: 5, code: "ADV", nameTh: "ที่ปรึกษา", nameEn: "Advisor" },
+  { rank: 6, code: "SEC", nameTh: "ผู้ประสานงานบริหารอาวุโส", nameEn: "Senior Executive Coordinator" },
+  { rank: 7, code: "PM", nameTh: "ผู้จัดการโรงงาน", nameEn: "Plant Manager" },
+  { rank: 8, code: "EGM", nameTh: "ผู้จัดการทั่วไปฝ่ายบริหาร", nameEn: "Executive General Manager" },
+  { rank: 9, code: "SGM", nameTh: "ผู้จัดการทั่วไปอาวุโส", nameEn: "Senior General Manager" },
+  { rank: 10, code: "GM", nameTh: "ผู้จัดการทั่วไป", nameEn: "General Manager" },
+  { rank: 11, code: "MGR", nameTh: "ผู้จัดการ", nameEn: "Manager" },
+  { rank: 12, code: "SH", nameTh: "ผู้จัดการแผนก", nameEn: "Section Head" },
+] as const;
+
+export const SECTION_HEAD_OR_ABOVE_CODES = [
+  "PRES",
+  "EVP",
+  "VP",
+  "SADV",
+  "ADV",
+  "SEC",
+  "PM",
+  "EGM",
+  "SGM",
+  "GM",
+  "MGR",
+  "SH",
+] as const;
+
+export const SECTION_HEAD_OR_ABOVE_TITLES_TH = [
+  "ประธานบริษัท",
+  "รองประธานบริหาร",
+  "รองประธาน",
+  "ที่ปรึกษาอาวุโส",
+  "ที่ปรึกษา",
+  "ผู้ประสานงานบริหารอาวุโส",
+  "ผู้จัดการโรงงาน",
+  "ผู้จัดการทั่วไปฝ่ายบริหาร",
+  "ผู้จัดการทั่วไปอาวุโส",
+  "ผู้จัดการทั่วไป",
+  "ผู้จัดการแผนก",
+  "ผู้จัดการ",
+  "หัวหน้าแผนก",
+  "ผู้อำนวยการ",
+  "กรรมการผู้จัดการ",
+  "ประธาน",
+] as const;
+
+export const SECTION_HEAD_OR_ABOVE_TITLES_EN = [
+  "president",
+  "executive vice president",
+  "vice president",
+  "senior advisor",
+  "advisor",
+  "senior executive coordinator",
+  "plant manager",
+  "executive general manager",
+  "senior general manager",
+  "general manager",
+  "manager",
+  "section head",
+  "sectionhead",
+  "director",
+] as const;
+
+export const getSectionHeadOrAboveRank = (item: {
+  positionCode?: string | null;
+  positionName?: string | null;
+  levelCode?: string | null;
+  levelKey?: string | null;
+}): number => {
+  const code = (item.positionCode || "").trim().toUpperCase();
+  const name = (item.positionName || "").trim().toLowerCase();
+
+  if (code === "PRES" || name.includes("ประธานบริษัท") || name === "president") return 1;
+  if (code === "EVP" || name.includes("รองประธานบริหาร") || name.includes("executive vice president")) return 2;
+  if (code === "VP" || name.includes("รองประธาน") || name.includes("vice president")) return 3;
+  if (code === "SADV" || name.includes("ที่ปรึกษาอาวุโส") || name.includes("senior advisor")) return 4;
+  if (code === "ADV" || name.includes("ที่ปรึกษา") || name.includes("advisor")) return 5;
+  if (code === "SEC" || name.includes("ผู้ประสานงานบริหารอาวุโส") || name.includes("senior executive coordinator")) return 6;
+  if (code === "PM" || name.includes("ผู้จัดการโรงงาน") || name.includes("plant manager")) return 7;
+  if (code === "EGM" || name.includes("ผู้จัดการทั่วไปฝ่ายบริหาร") || name.includes("executive general manager")) return 8;
+  if (code === "SGM" || name.includes("ผู้จัดการทั่วไปอาวุโส") || name.includes("senior general manager")) return 9;
+  if (code === "GM" || name.includes("ผู้จัดการทั่วไป") || name.includes("general manager")) return 10;
+  if (code === "MGR" || name.includes("ผู้จัดการ") || name.includes("manager")) return 11;
+  if (code === "SH" || name.includes("ผู้จัดการแผนก") || name.includes("หัวหน้าแผนก") || name.includes("section head") || name.includes("sectionhead")) return 12;
+
+  return 99;
+};
+
 export const isSectionHeadOrAbove = (user: {
   role?: string | null;
   roleCode?: string | null;
@@ -129,31 +220,18 @@ export const isSectionHeadOrAbove = (user: {
     return true;
   }
 
-  // 1. Check position code
+  // 1. Check position code against all 12 positions
   const posCode = (user.positionCode || "").trim().toUpperCase();
-  if (posCode === "SH" || posCode === "MGR") {
+  if (SECTION_HEAD_OR_ABOVE_CODES.some((c) => c === posCode)) {
     return true;
   }
 
-  // 2. Check position name
+  // 2. Check position name (Thai & English)
   const posName = (user.positionName || user.position || "").trim().toLowerCase();
   if (posName) {
     if (
-      posName.includes("section head") ||
-      posName.includes("sectionhead") ||
-      posName.includes("general manager") ||
-      posName.includes("plant manager") ||
-      posName.includes("vice president") ||
-      posName.includes("president") ||
-      posName.includes("director") ||
-      posName === "sh" ||
-      posName === "mgr" ||
-      posName.includes("manager") ||
-      posName.includes("ผู้จัดการแผนก") ||
-      posName.includes("ผู้จัดการ") ||
-      posName.includes("ผู้อำนวยการ") ||
-      posName.includes("กรรมการผู้จัดการ") ||
-      posName.includes("ประธาน")
+      SECTION_HEAD_OR_ABOVE_TITLES_EN.some((term) => posName.includes(term)) ||
+      SECTION_HEAD_OR_ABOVE_TITLES_TH.some((term) => posName.includes(term.toLowerCase()))
     ) {
       return true;
     }

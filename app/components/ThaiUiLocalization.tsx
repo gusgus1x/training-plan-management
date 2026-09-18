@@ -505,6 +505,11 @@ const thaiUiDictionary: Record<string, string> = {
   "Training Place": "สถานที่อบรม",
   "Training Records": "ประวัติการอบรม",
   "Training Requests": "คำขอฝึกอบรม",
+  "Request Record & Download": "ขอประวัติการอบรม & ดาวน์โหลด",
+  "Requests Awaiting Your Approval": "คำขอประวัติการอบรมที่รอการอนุมัติของคุณ",
+  "My Training Record Requests": "ประวัติการส่งคำขอประวัติการอบรมของฉัน",
+  "Select Approving Section Head": "เลือกหัวหน้าแผนกผู้อนุมัติ (Section Head ขึ้นไป)",
+  "Submit Request to Section Head": "ส่งคำขอประวัติการอบรมไปยังหัวหน้าแผนก",
   "Try a different keyword or add a new course type.":
     "ลองใช้คำค้นอื่นหรือเพิ่มประเภทหลักสูตรใหม่",
   "Try changing the search text or status filter.":
@@ -1250,7 +1255,13 @@ const thaiUiDictionary: Record<string, string> = {
   "Submit a new training need to HRD Center for review and approval.":
     "ส่งความต้องการฝึกอบรมใหม่ให้ HRD ส่วนกลางตรวจสอบและอนุมัติ",
   "Check training history, accumulated hours, course results, and evidence status.":
-    "ตรวจสอบประวัติการอบรม ชั่วโมงสะสม ผลหลักสูตร และสถานะหลักฐาน",
+    "ตรวจสอบประวัติการอบรมรายบุคคล ชั่วโมงเรียนรู้สะสม ผลการเรียน และขอเอกสารรับรอง",
+  "Calendar Training": "ปฏิทินการฝึกอบรม (Calendar Training)",
+  "Monthly and annual training schedule calendar for employee operations.":
+    "ปฏิทินตารางการฝึกอบรมรายเดือนและรายปีสำหรับการปฏิบัติงานของพนักงาน",
+  "New Activities": "ข่าวสารและภาพกิจกรรม (New Activities)",
+  "Browse company training news, event photos, and announcements across all companies.":
+    "ติดตามข่าวสารการฝึกอบรม ภาพกิจกรรม และประกาศสำคัญของทุกบริษัทในเครือ",
   "Prepare and review employee training reports for HRD follow-up.":
     "จัดทำและตรวจสอบรายงานการอบรมพนักงานสำหรับการติดตามผลของ HRD",
   Completed: "เสร็จสิ้น",

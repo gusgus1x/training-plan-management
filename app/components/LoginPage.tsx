@@ -286,6 +286,65 @@ export default function LoginPage({
             </div>
           </div>
 
+          {/* ═══════════════════════════════════════
+              AFFILIATED COMPANIES (6 LOGOS)
+              ATA -> ATFB -> SATI -> NIC -> SNF -> TEP
+             ═══════════════════════════════════════ */}
+          <div className={styles.affiliatesSection}>
+            <div className={styles.affiliatesDivider}>
+              <span className={styles.affiliatesLine} />
+              <div className={styles.affiliatesTitle}>
+                <span className={styles.affiliatesDot} />
+                <span>
+                  {t(
+                    "กลุ่มบริษัทในเครือ ATTG (คลิกล็อกอินด้วยรหัสพนักงาน)",
+                    "ATTG Companies (Click to log in with Employee ID)",
+                  )}
+                </span>
+              </div>
+              <span className={styles.affiliatesLine} />
+            </div>
+
+            <div
+              className={styles.affiliatesGrid}
+              role="region"
+              aria-label={t("กลุ่มบริษัทในเครือ 6 บริษัท", "6 Affiliated Companies")}
+            >
+              {affiliatedCompanyLogos.map((company) => {
+                const isSelected = selectedCompany === company.code;
+                return (
+                  <button
+                    key={company.code}
+                    type="button"
+                    className={`${styles.affiliateLogoCard} ${isSelected ? styles.affiliateLogoCardActive : ""}`}
+                    title={`${company.code} · ${isThai ? company.thaiName : company.fullName} [Prefix: ${COMPANY_PREFIX_MAP[company.code]}-]`}
+                    onClick={() => handleLogoClick(company.code)}
+                    aria-pressed={isSelected}
+                    aria-label={`${company.code} - ${isThai ? company.thaiName : company.fullName}`}
+                  >
+                    <div className={styles.affiliateLogoWrapper}>
+                      <Image
+                        src={company.src}
+                        alt={company.name}
+                        fill
+                        sizes="(max-width: 640px) 30vw, 120px"
+                        className={styles.affiliateLogoImg}
+                      />
+                    </div>
+                    {isSelected && (
+                      <span className={styles.selectedCompanyIndicator} aria-hidden="true">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        <span>{COMPANY_PREFIX_MAP[company.code]}-</span>
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className={styles.fieldGroup}>
             {selectedCompany && (
               <div className={styles.selectedCompanyBanner}>
@@ -302,7 +361,11 @@ export default function LoginPage({
                   onClick={handleResetCompany}
                   title={t("สลับเป็นเข้าสู่ระบบทั่วไป", "Switch to General Login")}
                 >
-                  {t("✕ ล็อกอินทั่วไป (Admin/HQ)", "✕ General Login (Admin/HQ)")}
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                  <span>{t("ล็อกอินทั่วไป (Admin/HQ)", "General Login (Admin/HQ)")}</span>
                 </button>
               </div>
             )}
@@ -474,65 +537,6 @@ export default function LoginPage({
             <span>{t("เข้าสู่ระบบผ่าน LINE Official Account", "Sign in with LINE OA")}</span>
             <span className={styles.lineTagBadge}>LINE OA</span>
           </button>
-
-          {/* ═══════════════════════════════════════
-              AFFILIATED COMPANIES (6 LOGOS)
-              ATA ➔ ATFB ➔ SATI ➔ NIC ➔ SNF ➔ TEP
-             ═══════════════════════════════════════ */}
-          <div className={styles.affiliatesSection}>
-            <div className={styles.affiliatesDivider}>
-              <span className={styles.affiliatesLine} />
-              <div className={styles.affiliatesTitle}>
-                <span className={styles.affiliatesDot} />
-                <span>
-                  {t(
-                    "กลุ่มบริษัทในเครือ ATTG (คลิกเลือกสังกัดเพื่อล็อกอินด้วยรหัสพนักงาน)",
-                    "ATTG Companies (Click to select company)",
-                  )}
-                </span>
-              </div>
-              <span className={styles.affiliatesLine} />
-            </div>
-
-            <div
-              className={styles.affiliatesGrid}
-              role="region"
-              aria-label={t("กลุ่มบริษัทในเครือ 6 บริษัท", "6 Affiliated Companies")}
-            >
-              {affiliatedCompanyLogos.map((company) => {
-                const isSelected = selectedCompany === company.code;
-                return (
-                  <button
-                    key={company.code}
-                    type="button"
-                    className={`${styles.affiliateLogoCard} ${isSelected ? styles.affiliateLogoCardActive : ""}`}
-                    title={`${company.code} · ${isThai ? company.thaiName : company.fullName} [Prefix: ${COMPANY_PREFIX_MAP[company.code]}-]`}
-                    onClick={() => handleLogoClick(company.code)}
-                    aria-pressed={isSelected}
-                    aria-label={`${company.code} - ${isThai ? company.thaiName : company.fullName}`}
-                  >
-                    <div className={styles.affiliateLogoWrapper}>
-                      <Image
-                        src={company.src}
-                        alt={company.name}
-                        fill
-                        sizes="(max-width: 640px) 30vw, 120px"
-                        className={styles.affiliateLogoImg}
-                      />
-                    </div>
-                    {isSelected && (
-                      <span className={styles.selectedCompanyIndicator} aria-hidden="true">
-                        ✓ {COMPANY_PREFIX_MAP[company.code]}-
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            <p className={styles.affiliatesFooterNote}>
-              AISIN TAKAOKA THAILAND GROUP
-            </p>
-          </div>
         </form>
 
         {onPreviewLogin ? (

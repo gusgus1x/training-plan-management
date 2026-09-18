@@ -50,8 +50,18 @@ const hasActiveOptionalAssociation = (
   status: string | null,
 ) => id === null || isActive(status);
 
-const firstAvailable = (...values: Array<string | null>) =>
+const firstAvailable = (...values: Array<string | null | undefined>) =>
   values.find((value) => value?.trim()) ?? null;
+
+const formatDateOnly = (date: Date | string | null | undefined): string | null => {
+  if (!date) return null;
+  if (date instanceof Date) {
+    return date.toISOString().slice(0, 10);
+  }
+  const str = String(date).trim();
+  if (!str) return null;
+  return str.slice(0, 10);
+};
 
 const buildProfile = (account: AuthenticationAccount) => {
   const displayNameTh =
@@ -74,6 +84,15 @@ const buildProfile = (account: AuthenticationAccount) => {
     functionCode: account.functionCode,
     functionName: firstAvailable(account.functionNameTh, account.functionNameEn),
     functionNameEn: account.functionNameEn,
+    divisionCode: account.divisionCode,
+    divisionName: firstAvailable(account.divisionNameTh, account.divisionNameEn),
+    divisionNameEn: account.divisionNameEn,
+    departmentCode: account.departmentCode,
+    departmentName: firstAvailable(account.departmentNameTh, account.departmentNameEn),
+    departmentNameEn: account.departmentNameEn,
+    sectionCode: account.sectionCode,
+    sectionName: firstAvailable(account.sectionNameTh, account.sectionNameEn),
+    sectionNameEn: account.sectionNameEn,
     positionCode: account.positionCode,
     positionName: firstAvailable(account.positionNameTh, account.positionNameEn),
     positionNameEn: account.positionNameEn,
@@ -81,6 +100,9 @@ const buildProfile = (account: AuthenticationAccount) => {
     levelName: firstAvailable(account.levelNameTh, account.levelNameEn),
     levelNameEn: account.levelNameEn,
     pl: account.pl,
+    birthDate: formatDateOnly(account.employeeBirthDate),
+    startDate: formatDateOnly(account.employeeHireDate),
+    hireDate: formatDateOnly(account.employeeHireDate),
   };
 };
 

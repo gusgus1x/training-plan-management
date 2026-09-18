@@ -25,6 +25,15 @@ export type ClientSessionUser = {
   functionCode: string | null;
   functionName: string | null;
   functionNameEn?: string | null;
+  divisionCode?: string | null;
+  divisionName?: string | null;
+  divisionNameEn?: string | null;
+  departmentCode?: string | null;
+  departmentName?: string | null;
+  departmentNameEn?: string | null;
+  sectionCode?: string | null;
+  sectionName?: string | null;
+  sectionNameEn?: string | null;
   positionCode: string | null;
   positionName: string | null;
   positionNameEn?: string | null;
@@ -32,6 +41,9 @@ export type ClientSessionUser = {
   levelName: string | null;
   levelNameEn?: string | null;
   pl: string | null;
+  birthDate?: string | null;
+  startDate?: string | null;
+  hireDate?: string | null;
 };
 
 type Fetcher = typeof fetch;
@@ -136,11 +148,47 @@ const readSessionUser = async (response: Response): Promise<ClientSessionUser> =
   if (candidate.functionNameEn !== undefined && candidate.functionNameEn !== null) {
     result.functionNameEn = nullableString(candidate.functionNameEn);
   }
+  if (candidate.divisionCode !== undefined && candidate.divisionCode !== null) {
+    result.divisionCode = nullableString(candidate.divisionCode);
+  }
+  if (candidate.divisionName !== undefined && candidate.divisionName !== null) {
+    result.divisionName = nullableString(candidate.divisionName);
+  }
+  if (candidate.divisionNameEn !== undefined && candidate.divisionNameEn !== null) {
+    result.divisionNameEn = nullableString(candidate.divisionNameEn);
+  }
+  if (candidate.departmentCode !== undefined && candidate.departmentCode !== null) {
+    result.departmentCode = nullableString(candidate.departmentCode);
+  }
+  if (candidate.departmentName !== undefined && candidate.departmentName !== null) {
+    result.departmentName = nullableString(candidate.departmentName);
+  }
+  if (candidate.departmentNameEn !== undefined && candidate.departmentNameEn !== null) {
+    result.departmentNameEn = nullableString(candidate.departmentNameEn);
+  }
+  if (candidate.sectionCode !== undefined && candidate.sectionCode !== null) {
+    result.sectionCode = nullableString(candidate.sectionCode);
+  }
+  if (candidate.sectionName !== undefined && candidate.sectionName !== null) {
+    result.sectionName = nullableString(candidate.sectionName);
+  }
+  if (candidate.sectionNameEn !== undefined && candidate.sectionNameEn !== null) {
+    result.sectionNameEn = nullableString(candidate.sectionNameEn);
+  }
   if (candidate.positionNameEn !== undefined && candidate.positionNameEn !== null) {
     result.positionNameEn = nullableString(candidate.positionNameEn);
   }
   if (candidate.levelNameEn !== undefined && candidate.levelNameEn !== null) {
     result.levelNameEn = nullableString(candidate.levelNameEn);
+  }
+  if (candidate.birthDate !== undefined && candidate.birthDate !== null) {
+    result.birthDate = nullableString(candidate.birthDate);
+  }
+  if (candidate.startDate !== undefined && candidate.startDate !== null) {
+    result.startDate = nullableString(candidate.startDate);
+  }
+  if (candidate.hireDate !== undefined && candidate.hireDate !== null) {
+    result.hireDate = nullableString(candidate.hireDate);
   }
 
   return result;

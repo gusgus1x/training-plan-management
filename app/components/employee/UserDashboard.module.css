@@ -720,6 +720,10 @@
   border-color: rgba(16, 185, 129, 0.25);
 }
 
+.detailCardFull {
+  grid-column: span 2;
+}
+
 .detailCard:hover {
   border-color: var(--ui-30-primary, #059669);
   background: var(--ui-60-surface, #ffffff);

@@ -274,6 +274,26 @@ export const resolveDisplayName = (
   return current;
 };
 
+export const formatDisplayDate = (dateStr: string | null | undefined, isThai: boolean) => {
+  if (!dateStr) return isThai ? "ไม่ระบุ" : "Not specified";
+  const clean = String(dateStr).trim().slice(0, 10);
+  const parts = clean.split("-");
+  if (parts.length === 3) {
+    const [year, month, day] = parts;
+    if (year && month && day) {
+      const d = new Date(Number(year), Number(month) - 1, Number(day));
+      if (!Number.isNaN(d.getTime())) {
+        return d.toLocaleDateString(isThai ? "th-TH-u-ca-gregory" : "en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
+      }
+    }
+  }
+  return clean;
+};
+
 export const resolvePosition = (
   positionName: string | null | undefined,
   isThai: boolean,
@@ -284,6 +304,18 @@ export const resolvePosition = (
   if (isThai) return raw;
   if (positionNameEn?.trim()) return positionNameEn.trim();
   return THAI_POSITION_TO_EN[raw] ?? raw;
+};
+
+export const resolveOrgUnit = (
+  thai?: string | null,
+  isThai = true,
+  en?: string | null,
+  fallback = "-",
+) => {
+  const cleanThai = thai?.trim();
+  const cleanEn = en?.trim();
+  if (isThai) return cleanThai || cleanEn || fallback;
+  return cleanEn || cleanThai || fallback;
 };
 
 export const resolveDepartment = (
@@ -348,11 +380,38 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
     isThai,
     authenticatedUser?.positionNameEn,
   );
-  const displayDepartment = resolveDepartment(
+  const displayFunction = resolveOrgUnit(
     authenticatedUser?.functionName,
     isThai,
     authenticatedUser?.functionNameEn,
   );
+  const displayDivision = resolveOrgUnit(
+    authenticatedUser?.divisionName,
+    isThai,
+    authenticatedUser?.divisionNameEn,
+  );
+  const displayDepartment = resolveOrgUnit(
+    authenticatedUser?.departmentName,
+    isThai,
+    authenticatedUser?.departmentNameEn,
+  );
+  const displaySection = resolveOrgUnit(
+    authenticatedUser?.sectionName,
+    isThai,
+    authenticatedUser?.sectionNameEn,
+  );
+  const rawLevelName = resolveOrgUnit(
+    authenticatedUser?.levelName,
+    isThai,
+    authenticatedUser?.levelNameEn,
+  );
+  const displayLevel =
+    rawLevelName !== "-" && authenticatedUser?.levelCode && !rawLevelName.includes(authenticatedUser.levelCode)
+      ? `${rawLevelName} (${authenticatedUser.levelCode})`
+      : rawLevelName !== "-"
+        ? rawLevelName
+        : authenticatedUser?.levelCode || "-";
+
   const displayCompany = resolveCompany(
     authenticatedUser?.companyName,
     authenticatedUser?.companyCode,
@@ -366,6 +425,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
       {
         label: isThai ? "ชื่อ-นามสกุล" : "Full Name",
         value: profileValue(displayFullName),
+        fullWidth: true,
       },
       {
         label: isThai ? "รหัสพนักงาน" : "Employee Code",
@@ -376,32 +436,49 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
             : "Not specified",
       },
       {
+        label: isThai ? "บริษัท" : "Company",
+        value: profileValue(displayCompany),
+      },
+      {
+        label: isThai ? "สายงาน (Function)" : "Function",
+        value: profileValue(displayFunction),
+      },
+      {
+        label: isThai ? "ฝ่าย (Division)" : "Division",
+        value: profileValue(displayDivision),
+      },
+      {
+        label: isThai ? "ส่วนงาน (Department)" : "Department",
+        value: profileValue(displayDepartment),
+      },
+      {
+        label: isThai ? "แผนก (Section)" : "Section",
+        value: profileValue(displaySection),
+      },
+      {
         label: isThai ? "ตำแหน่ง" : "Position",
         value: profileValue(displayPosition),
       },
       {
-        label: isThai ? "หน่วยงาน / แผนก" : "Department",
-        value: profileValue(displayDepartment),
+        label: isThai ? "ระดับ" : "Level",
+        value: profileValue(displayLevel),
       },
       {
         label: isThai ? "วันเริ่มงาน" : "Start Date",
-        value: userAny?.startDate ? userAny.startDate : (isThai ? "ไม่ระบุ" : "Not specified"),
-      },
-      {
-        label: isThai ? "วันเกิด" : "Date of Birth",
-        value: userAny?.birthDate ? userAny.birthDate : (isThai ? "ไม่ระบุ" : "Not specified"),
-      },
-      {
-        label: isThai ? "บริษัท" : "Company",
-        value: profileValue(displayCompany),
+        value: formatDisplayDate(userAny?.startDate || userAny?.hireDate, isThai),
+        fullWidth: true,
       },
     ];
   }, [
     authenticatedUser,
     displayFullName,
-    displayPosition,
-    displayDepartment,
     displayCompany,
+    displayFunction,
+    displayDivision,
+    displayDepartment,
+    displaySection,
+    displayPosition,
+    displayLevel,
     isThai,
   ]);
   const searchParams = useSearchParams();
@@ -626,12 +703,14 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
     onHome();
   };
 
-  const activeModuleTitle =
-    moduleCards.find((module) => module.key === activeModule)?.title ?? "Dashboard";
+  const activeModuleItem = moduleCards.find((module) => module.key === activeModule);
+  const activeModuleTitle = activeModuleItem
+    ? (isThai && activeModuleItem.titleTh ? activeModuleItem.titleTh : activeModuleItem.title)
+    : t("แดชบอร์ด", "Dashboard");
 
   const contextItems = [
     ...moduleCards.map((module) => ({
-      title: module.title,
+      title: isThai && module.titleTh ? module.titleTh : module.title,
       active: activeModule === module.key,
       locked: module.locked,
       onClick: () => {
@@ -794,7 +873,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
             <div className={styles.profileHeaderBanner}>
               <div className={styles.profileUserGroup}>
                 <div className={styles.photoBox} aria-hidden="true">
-                  {initialsOf(username)}
+                  {initialsOf(authenticatedUser?.displayNameEn || displayFullName)}
                 </div>
                 <div className={styles.profileMetaBox}>
                   <div className={styles.profileTagRow}>
@@ -804,7 +883,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                       {t("ออนไลน์", "Online")}
                     </span>
                   </div>
-                  <strong className={styles.profileName}>{username}</strong>
+                  <strong className={styles.profileName} title={username}>{displayFullName}</strong>
                   <p className={styles.profileSubText}>
                     {profileValue(displayPosition)} / {profileValue(displayDepartment)}
                   </p>
@@ -868,7 +947,10 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
 
             <div className={styles.employeeDetailsGrid}>
               {fullEmployeeProfileItems.map((item) => (
-                <div className={styles.detailCard} key={item.label}>
+                <div
+                  className={`${styles.detailCard} ${item.fullWidth ? styles.detailCardFull : ""}`}
+                  key={item.label}
+                >
                   <span className={styles.detailLabel}>{item.label}</span>
                   <strong className={styles.detailValue} title={item.value}>
                     {item.value}
@@ -904,7 +986,7 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                 <span>{t("เมนูผู้ใช้งาน", "User Operations")}</span>
                 <h2>{t("เลือกโมดูลที่ต้องการใช้งาน", "Select a Workspace Module")}</h2>
               </div>
-              <p className={styles.coreModulesBadge}>{moduleCards.length} Core Modules</p>
+              <p className={styles.coreModulesBadge}>{t(`${moduleCards.length} โมดูลหลัก`, `${moduleCards.length} Core Modules`)}</p>
             </div>
 
             <div className={styles.menuRow}>
@@ -993,11 +1075,15 @@ export default function UserDashboard({ username, onHome, onLogout }: UserDashbo
                             {isThai ? "ล็อกอยู่" : "Locked"}
                           </>
                         ) : (
-                          theme.badgeText || module.eyebrow
+                          theme.badgeText || (isThai && module.eyebrowTh ? module.eyebrowTh : module.eyebrow)
                         )}
                       </span>
-                      <strong className={styles.cardMainTitle} translate="no">{module.title}</strong>
-                      <p className={styles.cardDescText}>{module.detail}</p>
+                      <strong className={styles.cardMainTitle}>
+                        {isThai && module.titleTh ? module.titleTh : module.title}
+                      </strong>
+                      <p className={styles.cardDescText}>
+                        {isThai && module.detailTh ? module.detailTh : module.detail}
+                      </p>
                     </div>
 
                     <div className={styles.cardFooterAction}>

@@ -26,6 +26,47 @@ type NavbarProps = {
   onLogout?: () => void;
 };
 
+export const getAvatarInitials = (
+  displayNameEn?: string | null,
+  displayName?: string | null,
+  fallbackRole?: string
+): string => {
+  const englishCandidate = displayNameEn?.trim() || "";
+  if (englishCandidate) {
+    const parts = englishCandidate.split(/\s+/).filter(Boolean);
+    const latinParts = parts.map((p) => p.replace(/[^a-zA-Z]/g, "")).filter(Boolean);
+    if (latinParts.length >= 2) {
+      return `${latinParts[0][0]}${latinParts[latinParts.length - 1][0]}`.toUpperCase();
+    }
+    if (latinParts.length === 1 && latinParts[0].length >= 2) {
+      return latinParts[0].slice(0, 2).toUpperCase();
+    }
+    if (latinParts.length === 1 && latinParts[0].length === 1) {
+      return latinParts[0].toUpperCase();
+    }
+  }
+
+  const nameCandidate = displayName?.trim() || "";
+  if (nameCandidate) {
+    const parts = nameCandidate.split(/\s+/).filter(Boolean);
+    const latinParts = parts.map((p) => p.replace(/[^a-zA-Z]/g, "")).filter(Boolean);
+    if (latinParts.length >= 2) {
+      return `${latinParts[0][0]}${latinParts[latinParts.length - 1][0]}`.toUpperCase();
+    }
+    if (latinParts.length === 1 && latinParts[0].length >= 2) {
+      return latinParts[0].slice(0, 2).toUpperCase();
+    }
+    if (latinParts.length === 1 && latinParts[0].length === 1) {
+      return latinParts[0].toUpperCase();
+    }
+  }
+
+  if (fallbackRole === "EMPLOYEE") return "EU";
+  if (fallbackRole === "HRD_FACTORY") return "HF";
+  if (fallbackRole === "HRD_CENTER") return "HC";
+  return "AD";
+};
+
 export default function Navbar({
   username,
   userLevel = "Admin",
@@ -45,7 +86,11 @@ export default function Navbar({
   const contextItemsRef = useRef<HTMLDivElement>(null);
   const { language, setLanguage } = useUiLanguage();
   const user = useAuthenticatedUser();
-  const displayUsername = user?.username ?? username;
+  const resolvedDisplayName =
+    language === "th"
+      ? (user?.displayName || user?.displayNameEn)
+      : (user?.displayNameEn || user?.displayName);
+  const displayUsername = resolvedDisplayName?.trim() || user?.username || username;
   const displayLevelRaw = user?.roleCode ?? userLevel;
   const displayLevel =
     language === "th"
@@ -77,7 +122,6 @@ export default function Navbar({
       : displayLevelRaw === "HRD_FACTORY"
         ? styles.factoryAvatar
         : styles.employeeAvatar;
-
   const displayCompany =
     user?.roleCode === "HRD_CENTER"
       ? language === "th"
@@ -85,12 +129,11 @@ export default function Navbar({
         : "All Companies"
       : profileValue(user?.companyName ?? user?.companyCode ?? company);
 
-  const avatar =
-    user?.roleCode === "EMPLOYEE"
-      ? "EU"
-      : user?.roleCode === "HRD_FACTORY"
-        ? "HF"
-        : "HC";
+  const avatar = getAvatarInitials(
+    user?.displayNameEn,
+    user?.displayName,
+    user?.roleCode ?? displayLevelRaw
+  );
 
   const contextKey = contextTitle?.split("/")[0]?.trim() || "default";
 
@@ -257,7 +300,9 @@ export default function Navbar({
                   </div>
                   <div className={styles.userDetails}>
                     <div className={styles.userRow}>
-                      <span className={styles.userValue}>{displayUsername}</span>
+                      <span className={styles.userValue} title={user?.username ?? username}>
+                        {displayUsername}
+                      </span>
                       <span className={`${styles.roleBadge} ${roleClass}`}>{displayLevel}</span>
                     </div>
                     <div className={styles.userSubRow}>

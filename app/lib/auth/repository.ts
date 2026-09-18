@@ -29,6 +29,15 @@ type AuthenticationRow = {
   function_code: string | null;
   function_name_th: string | null;
   function_name_en: string | null;
+  division_code: string | null;
+  division_name_th: string | null;
+  division_name_en: string | null;
+  department_code: string | null;
+  department_name_th: string | null;
+  department_name_en: string | null;
+  section_code: string | null;
+  section_name_th: string | null;
+  section_name_en: string | null;
   position_code: string | null;
   position_name_th: string | null;
   position_name_en: string | null;
@@ -37,6 +46,7 @@ type AuthenticationRow = {
   level_name_en: string | null;
   pl: string | null;
   employee_birth_date?: Date | string | null;
+  employee_hire_date?: Date | string | null;
 };
 
 type AuthenticationPool = Pick<ConnectionPool, "request">;
@@ -98,6 +108,15 @@ const AUTHENTICATION_COLUMNS = `
     f.function_code,
     f.function_name_th,
     f.function_name_en,
+    div.division_code,
+    div.division_name_th,
+    div.division_name_en,
+    dept.department_code,
+    dept.department_name_th,
+    dept.department_name_en,
+    sec.section_code,
+    sec.section_name_th,
+    sec.section_name_en,
     p.position_code,
     p.position_name_th,
     p.position_name_en,
@@ -105,7 +124,8 @@ const AUTHENTICATION_COLUMNS = `
     el.level_name_th,
     el.level_name_en,
     el.pl,
-    e.birth_date AS employee_birth_date`;
+    e.birth_date AS employee_birth_date,
+    e.hire_date AS employee_hire_date`;
 
 const AUTHENTICATION_JOINS = `
   FROM dbo.user_account AS ua
@@ -115,6 +135,9 @@ const AUTHENTICATION_JOINS = `
   LEFT JOIN dbo.company AS ec ON ec.company_id = e.company_id
   LEFT JOIN dbo.company AS ac ON ac.company_id = ua.company_id
   LEFT JOIN dbo.organization_function AS f ON f.function_id = e.function_id
+  LEFT JOIN dbo.division AS div ON div.division_id = e.division_id
+  LEFT JOIN dbo.department AS dept ON dept.department_id = e.department_id
+  LEFT JOIN dbo.section AS sec ON sec.section_id = e.section_id
   LEFT JOIN dbo.position AS p ON p.position_id = e.position_id
   LEFT JOIN dbo.employee_level AS el ON el.level_id = e.level_id`;
 
@@ -160,6 +183,15 @@ const mapAuthenticationRow = (
         functionCode: row.function_code,
         functionNameTh: row.function_name_th,
         functionNameEn: row.function_name_en,
+        divisionCode: row.division_code,
+        divisionNameTh: row.division_name_th,
+        divisionNameEn: row.division_name_en,
+        departmentCode: row.department_code,
+        departmentNameTh: row.department_name_th,
+        departmentNameEn: row.department_name_en,
+        sectionCode: row.section_code,
+        sectionNameTh: row.section_name_th,
+        sectionNameEn: row.section_name_en,
         positionCode: row.position_code,
         positionNameTh: row.position_name_th,
         positionNameEn: row.position_name_en,
@@ -168,6 +200,7 @@ const mapAuthenticationRow = (
         levelNameEn: row.level_name_en,
         pl: row.pl,
         employeeBirthDate: row.employee_birth_date ?? null,
+        employeeHireDate: row.employee_hire_date ?? null,
       }
     : null;
 
