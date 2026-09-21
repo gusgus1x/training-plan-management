@@ -76,7 +76,9 @@ export const generateRecordHtml = (
     .map((rec, index) => {
       const start = formatThaiDateShort(rec.startDate || rec.completedDate);
       const end = formatThaiDateShort(rec.completedDate || rec.startDate);
-      const instructorOrProvider = rec.instructor || rec.provider || "-";
+      const rawInst = (rec.instructor || rec.provider || "").trim();
+      const instText = rawInst || "-";
+      const instClass = instText === "-" ? "col-inst text-center" : "col-inst";
 
       return `
         <tr>
@@ -84,7 +86,7 @@ export const generateRecordHtml = (
           <td class="col-date">${escapeHtml(start)}</td>
           <td class="col-date">${escapeHtml(end)}</td>
           <td class="col-title">${escapeHtml(rec.courseTitle)}</td>
-          <td class="col-inst">${escapeHtml(instructorOrProvider)}</td>
+          <td class="${instClass}">${escapeHtml(instText)}</td>
         </tr>
       `;
     })
@@ -106,7 +108,7 @@ export const generateRecordHtml = (
     }
 
     body {
-      font-family: "Sarabun", "TH Sarabun New", "Angsana New", Tahoma, sans-serif;
+      font-family: "Angsana New", "Sarabun", "TH Sarabun New", Tahoma, sans-serif;
       color: #111827;
       margin: 0;
       padding: 16px;
@@ -222,7 +224,7 @@ export const generateRecordHtml = (
     table.course-table td {
       border: 1px solid #475569;
       padding: 5px 6px;
-      vertical-align: top;
+      vertical-align: middle;
     }
 
     table.course-table th {
@@ -233,24 +235,29 @@ export const generateRecordHtml = (
     }
 
     .col-num {
-      width: 7%;
+      width: 5%;
       text-align: center;
+      white-space: nowrap;
     }
 
     .col-date {
-      width: 13%;
+      width: 14%;
       text-align: center;
       white-space: nowrap;
     }
 
     .col-title {
-      width: 44%;
+      width: 34%;
       text-align: left;
     }
 
     .col-inst {
-      width: 23%;
+      width: 33%;
       text-align: left;
+    }
+
+    .col-inst.text-center {
+      text-align: center;
     }
 
     /* FOOTER */

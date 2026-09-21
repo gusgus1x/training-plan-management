@@ -252,3 +252,81 @@ export const isSectionHeadOrAbove = (user: {
 
   return false;
 };
+
+export const THAI_TO_EN_POSITIONS: Record<string, string> = {
+  "ผู้จัดการโรงงาน": "Plant Manager",
+  "ประธานบริษัท": "President",
+  "ประธาน": "President",
+  "รองประธานบริหาร": "Executive Vice President",
+  "รองประธาน": "Vice President",
+  "ที่ปรึกษาอาวุโส": "Senior Advisor",
+  "ที่ปรึกษา": "Advisor",
+  "ผู้ประสานงานบริหารอาวุโส": "Senior Executive Coordinator",
+  "ผู้จัดการทั่วไปฝ่ายบริหาร": "Executive General Manager",
+  "ผู้จัดการทั่วไปอาวุโส": "Senior General Manager",
+  "ผู้จัดการทั่วไป": "General Manager",
+  "ผู้จัดการ": "Manager",
+  "ผู้จัดการ++": "Manager++",
+  "ผู้จัดการฝ่าย": "General Manager",
+  "ผู้จัดการแผนก": "Section Head",
+  "หัวหน้าแผนก": "Section Head",
+  "หัวหน้างาน": "Section Head",
+  "ผู้อำนวยการ": "Director",
+  "กรรมการผู้จัดการ": "Managing Director",
+  "เจ้าหน้าที่": "Officer",
+  "เจ้าหน้าที่อาวุโส": "Senior Officer",
+  "พนักงาน": "Staff",
+  "พนักงานปฏิบัติการ": "Operator",
+  "พนักงานขับรถ": "Driver",
+  "วิศวกร": "Engineer",
+  "วิศวกรอาวุโส": "Senior Engineer",
+  "ช่างเทคนิค": "Technician",
+  "ช่างเทคนิคอาวุโส": "Senior Technician",
+  "โฟร์แมน": "Foreman",
+  "หัวหน้าชุด": "Foreman",
+  "หัวหน้าชุดอาวุโส": "Senior Foreman",
+  "ลีดเดอร์": "Leader",
+  "ผู้ช่วยผู้จัดการ": "Assistant Manager",
+  "ผู้ช่วยผู้จัดการแผนก": "Assistant Section Head",
+  "ผู้จัดการบริหารทั่วไป": "General Administration Manager",
+};
+
+export const toEnglishPositionName = (
+  position?:
+    | {
+        position_code?: string | null;
+        position_name_en?: string | null;
+        position_name_th?: string | null;
+      }
+    | string
+    | null,
+): string => {
+  if (!position) return "-";
+  if (typeof position === "object") {
+    if (position.position_name_en?.trim()) return position.position_name_en.trim();
+    const th = position.position_name_th?.trim() || "";
+    if (th && THAI_TO_EN_POSITIONS[th]) return THAI_TO_EN_POSITIONS[th];
+    if (position.position_code?.trim()) {
+      const code = position.position_code.trim().toUpperCase();
+      const matched = SECTION_HEAD_OR_ABOVE_POSITIONS.find((p) => p.code === code);
+      if (matched) return matched.nameEn;
+      return code;
+    }
+    if (th) {
+      for (const [thKey, enVal] of Object.entries(THAI_TO_EN_POSITIONS)) {
+        if (th.includes(thKey)) return enVal;
+      }
+      return th;
+    }
+    return "-";
+  }
+
+  const str = String(position).trim();
+  if (!str) return "-";
+  if (THAI_TO_EN_POSITIONS[str]) return THAI_TO_EN_POSITIONS[str];
+  for (const [thKey, enVal] of Object.entries(THAI_TO_EN_POSITIONS)) {
+    if (str.includes(thKey)) return enVal;
+  }
+  return str;
+};
+

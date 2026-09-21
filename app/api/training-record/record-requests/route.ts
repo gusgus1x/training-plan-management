@@ -4,6 +4,7 @@ import { apiSuccess } from "../../../lib/api/response";
 import { readJsonObject } from "../../../lib/api/validation";
 import { createProtectedRoute, type ProtectedRouteOptions } from "../../../lib/auth/guard";
 import { trainingRecordRequestRepository } from "../../../lib/trainingRecordRequests/repository";
+import { RECORD_REQUEST_TYPES } from "../../../lib/trainingRecordRequests/types";
 
 type Dependencies = {
   auth?: ProtectedRouteOptions;
@@ -43,7 +44,8 @@ export const createSubmitRecordRequestHandler = (dependencies: Dependencies = {}
       const body = await readJsonObject(request);
       const approverUserId = String(body.approverUserId || "").trim();
       const requestReason = String(body.requestReason || "").trim();
-      const requestType = body.requestType ? String(body.requestType).trim() : "FULL_RECORD";
+      const rawType = body.requestType ? String(body.requestType).trim().toUpperCase() : "DOCUMENT";
+      const requestType = (RECORD_REQUEST_TYPES as readonly string[]).includes(rawType) ? rawType : "DOCUMENT";
 
       if (!approverUserId) {
         throw new ApiError({

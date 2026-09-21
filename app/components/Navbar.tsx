@@ -315,7 +315,7 @@ export default function Navbar({
               </div>
             ) : null}
 
-            {user?.roleCode === "EMPLOYEE" ? <NotificationBell /> : null}
+            {user ? <NotificationBell /> : null}
 
             <button
               className={styles.collapseButton}

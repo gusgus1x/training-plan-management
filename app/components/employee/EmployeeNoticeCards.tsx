@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { certificateFileUrl } from "../../lib/certificates/client";
 import type { EnrollmentRecord } from "../../lib/trainingEnrollment/types";
 import { useUiLanguage } from "../ThaiUiLocalization";
-import { Award, Bell, ChevronRight, ClipboardList, X } from "../icons/LucideIcons";
+import { Award, Bell, CheckCircle2, ChevronRight, ClipboardList, FileText, X, XCircle } from "../icons/LucideIcons";
 import {
   isShownOnDashboard,
   markDismissed,
@@ -16,6 +16,38 @@ import {
 } from "./employeeNotices";
 import { useEmployeeNotices } from "./useEmployeeNotices";
 import styles from "./EmployeeNoticeCards.module.css";
+
+const renderCardIcon = (kind: EmployeeNotice["kind"]) => {
+  switch (kind) {
+    case "record_request_approval":
+      return <FileText size={22} style={{ color: "#3b82f6" }} />;
+    case "record_request_approved":
+      return <CheckCircle2 size={22} style={{ color: "#10b981" }} />;
+    case "record_request_rejected":
+      return <XCircle size={22} style={{ color: "#ef4444" }} />;
+    case "certificate":
+      return <Award size={22} />;
+    case "forms":
+    default:
+      return <ClipboardList size={22} />;
+  }
+};
+
+const renderEyebrowIcon = (kind: EmployeeNotice["kind"]) => {
+  switch (kind) {
+    case "record_request_approval":
+      return <FileText size={14} />;
+    case "record_request_approved":
+      return <CheckCircle2 size={14} />;
+    case "record_request_rejected":
+      return <XCircle size={14} />;
+    case "certificate":
+      return <Award size={14} />;
+    case "forms":
+    default:
+      return <ClipboardList size={14} />;
+  }
+};
 
 /** Once per browser session per employee: coming back to the dashboard home should not throw the
  *  popup up again, but the next person to log in on the same tab must still get theirs. */
@@ -86,12 +118,12 @@ export default function EmployeeNoticeCards({ enrollments }: { enrollments: Enro
             </span>
           ) : (
             <span className={styles.icon} aria-hidden="true">
-              <ClipboardList size={22} />
+              {renderCardIcon(notice.kind)}
             </span>
           )}
           <span className={styles.body}>
             <span className={styles.eyebrow}>
-              {notice.kind === "certificate" ? <Award size={14} /> : <ClipboardList size={14} />}
+              {renderEyebrowIcon(notice.kind)}
               {text.eyebrow}
             </span>
             <strong className={styles.title}>{text.title}</strong>

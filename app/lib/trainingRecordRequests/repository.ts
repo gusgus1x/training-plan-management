@@ -7,6 +7,7 @@ import {
   SECTION_HEAD_OR_ABOVE_CODES,
   SECTION_HEAD_OR_ABOVE_TITLES_EN,
   SECTION_HEAD_OR_ABOVE_TITLES_TH,
+  toEnglishPositionName,
 } from "../employeeMasterData";
 import type {
   CreateRecordRequestInput,
@@ -79,16 +80,16 @@ const mapRecord = (row: any): TrainingRecordRequestRecord => {
     employeeName: formatName(emp),
     employeeCode: emp?.employee_code || "",
     departmentName: emp?.department?.department_name_th || emp?.department?.department_name_en || "-",
-    positionName: emp?.position?.position_name_th || emp?.position?.position_name_en || "-",
+    positionName: toEnglishPositionName(emp?.position) || "-",
     requestReason: row.request_reason || "",
-    requestType: row.request_type || "FULL_RECORD",
+    requestType: row.request_type || "DOCUMENT",
     dateFrom: row.date_from ? new Date(row.date_from).toISOString().slice(0, 10) : null,
     dateTo: row.date_to ? new Date(row.date_to).toISOString().slice(0, 10) : null,
     status: (row.status?.toUpperCase() as any) || "PENDING",
     requestedAt: row.requested_at ? new Date(row.requested_at).toISOString() : new Date().toISOString(),
     approverUserId: reviewer?.user_id || null,
     approverName: formatName(reviewer) || null,
-    approverPosition: reviewer?.position?.position_name_th || reviewer?.position?.position_name_en || null,
+    approverPosition: reviewer?.position ? toEnglishPositionName(reviewer.position) : null,
     reviewedAt: row.reviewed_at ? new Date(row.reviewed_at).toISOString() : null,
     rejectionReason: row.rejection_reason || null,
   };
@@ -182,7 +183,7 @@ export const trainingRecordRequestRepository = {
         name:
           `${emp.first_name_th} ${emp.last_name_th}`.trim() ||
           `${emp.first_name_en || ""} ${emp.last_name_en || ""}`.trim(),
-        position: emp.position?.position_name_th || emp.position?.position_name_en || emp.position?.position_code || "",
+        position: toEnglishPositionName(emp.position),
         company: emp.company.company_code,
         division: emp.division?.division_name_th || emp.division?.division_name_en || "",
         department: emp.department?.department_name_th || emp.department?.department_name_en || "",
@@ -269,7 +270,11 @@ export const trainingRecordRequestRepository = {
             employee_user_id: employeeUserId,
             reviewed_by: approverUserAccount?.user_id ?? null,
             status: "PENDING",
-            request_type: input.requestType || "FULL_RECORD",
+            request_type:
+              input.requestType &&
+              ["DOCUMENT", "TRANSFER", "RESIGNATION", "OTHER"].includes(input.requestType.toUpperCase())
+                ? input.requestType.toUpperCase()
+                : "DOCUMENT",
             request_reason: input.requestReason.trim(),
             date_from: input.dateFrom ? new Date(input.dateFrom) : null,
             date_to: input.dateTo ? new Date(input.dateTo) : null,
@@ -279,11 +284,30 @@ export const trainingRecordRequestRepository = {
         const yearMonth = `${row.requested_at.getFullYear()}${String(row.requested_at.getMonth() + 1).padStart(2, "0")}`;
         const requestNo = `TRR-${yearMonth}-${row.record_request_id.toString().padStart(6, "0")}`;
 
-        return tx.training_record_request.update({
+        const updatedRow = await tx.training_record_request.update({
           where: { record_request_id: row.record_request_id },
           data: { request_no: requestNo },
           include: recordRequestInclude,
         });
+
+        if (approverUserAccount?.user_id) {
+          try {
+            const requesterName = formatName(updatedRow.employee) || employeeUserId;
+            await tx.notification.create({
+              data: {
+                user_id: approverUserAccount.user_id,
+                title: "คำขออนุมัติประวัติการอบรม",
+                message: `คุณ ${requesterName} ได้ส่งคำขอประวัติการอบรมเลขที่ ${requestNo} รอให้ท่านพิจารณาอนุมัติเพื่อดาวน์โหลดเอกสารฉบับเต็ม`,
+                related_type: "TRAINING_RECORD_REQUEST",
+                related_id: updatedRow.record_request_id,
+              },
+            });
+          } catch (notifErr) {
+            console.warn("Could not create approver notification record:", notifErr);
+          }
+        }
+
+        return updatedRow;
       });
 
       return mapRecord(created);
@@ -312,6 +336,7 @@ export const trainingRecordRequestRepository = {
           ? db.training_record_request.findMany({
               where: {
                 reviewed_by: BigInt(userAccountId),
+                status: "PENDING",
               },
               include: recordRequestInclude,
               orderBy: { requested_at: "desc" },
@@ -362,6 +387,43 @@ export const trainingRecordRequestRepository = {
         },
         include: recordRequestInclude,
       });
+
+      // Notify requester of decision
+      try {
+        let requesterUserAccount = await db.user_account.findFirst({
+          where: { employee_user_id: current.employee_user_id },
+          select: { user_id: true },
+        });
+        if (!requesterUserAccount) {
+          try {
+            requesterUserAccount = await db.user_account.findUnique({
+              where: { user_id: BigInt(current.employee_user_id) },
+              select: { user_id: true },
+            });
+          } catch {}
+        }
+
+        if (requesterUserAccount?.user_id) {
+          const isApproved = input.action === "approve";
+          await db.notification.create({
+            data: {
+              user_id: requesterUserAccount.user_id,
+              title: isApproved
+                ? "คำขอประวัติการอบรมได้รับการอนุมัติแล้ว"
+                : "คำขอประวัติการอบรมไม่ได้รับการอนุมัติ",
+              message: isApproved
+                ? `คำขอประวัติการอบรมเลขที่ ${updated.request_no} ได้รับการอนุมัติแล้ว คุณสามารถดาวน์โหลดเอกสาร Word (.docx) ฉบับเต็มได้ทันที`
+                : `คำขอประวัติการอบรมเลขที่ ${updated.request_no} ไม่ได้รับการอนุมัติ เหตุผล: ${input.note?.trim() || "ไม่ระบุเหตุผล"}`,
+              related_type: isApproved
+                ? "TRAINING_RECORD_REQUEST_APPROVED"
+                : "TRAINING_RECORD_REQUEST_REJECTED",
+              related_id: updated.record_request_id,
+            },
+          });
+        }
+      } catch (notifErr) {
+        console.warn("Could not create requester notification record:", notifErr);
+      }
 
       return mapRecord(updated);
     });

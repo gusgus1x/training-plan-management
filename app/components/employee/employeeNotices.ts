@@ -18,29 +18,73 @@ export const pendingFollowUpEvaluationsOf = (enrollments: EnrollmentRecord[], no
 export const certificatesOf = (enrollments: EnrollmentRecord[]) =>
   enrollments.filter((enrollment) => enrollment.certificate !== null);
 
+import type { TrainingRecordRequestRecord } from "../../lib/trainingRecordRequests/types";
+
 export type NoticeStageKey = "pre" | "post" | "evaluation" | "evaluation30";
 const STAGE_ORDER: NoticeStageKey[] = ["pre", "post", "evaluation", "evaluation30"];
 
 type NoticeBase = {
-  /** Stable per piece of news. A forms notice folds its stages into the id, so a 30-day evaluation
-   *  opening later is new news rather than one the employee already put away. */
+  /** Stable per piece of news. */
   id: string;
-  enrollmentId: string;
-  courseName: string;
-  courseCode: string;
-  /** Which My Record tab holds the course's card. */
-  tab: "completed" | "pending";
+  tab: "completed" | "pending" | "download";
 };
 
 export type EmployeeNotice =
-  | (NoticeBase & { kind: "certificate"; certificateFileId: string })
-  | (NoticeBase & { kind: "forms"; stages: NoticeStageKey[] });
+  | (NoticeBase & { kind: "certificate"; certificateFileId: string; enrollmentId: string; courseName: string; courseCode: string; tab: "completed" | "pending" })
+  | (NoticeBase & { kind: "forms"; stages: NoticeStageKey[]; enrollmentId: string; courseName: string; courseCode: string; tab: "completed" | "pending" })
+  | (NoticeBase & { kind: "record_request_approval"; request: TrainingRecordRequestRecord; tab: "download" })
+  | (NoticeBase & { kind: "record_request_approved"; request: TrainingRecordRequestRecord; tab: "download" })
+  | (NoticeBase & { kind: "record_request_rejected"; request: TrainingRecordRequestRecord; tab: "download" });
 
 const APPROVED_STATUSES = ["Factory Approved", "Center Approved"];
 
-export const buildEmployeeNotices = (enrollments: EnrollmentRecord[], now: Date = new Date()): EmployeeNotice[] => {
+export const buildEmployeeNotices = (
+  enrollments: EnrollmentRecord[],
+  recordRequests?: {
+    myRequests?: TrainingRecordRequestRecord[];
+    pendingApprovals?: TrainingRecordRequestRecord[];
+  },
+  now: Date = new Date(),
+): EmployeeNotice[] => {
   const followUpDue = new Set(pendingFollowUpEvaluationsOf(enrollments, now).map((enrollment) => enrollment.id));
   const notices: EmployeeNotice[] = [];
+
+  // 1. Pending training record requests for approver (Section Head / Manager)
+  if (recordRequests?.pendingApprovals?.length) {
+    for (const req of recordRequests.pendingApprovals) {
+      if (req.status === "PENDING") {
+        notices.push({
+          id: `record_request_approval:${req.id}`,
+          kind: "record_request_approval",
+          request: req,
+          tab: "download",
+        });
+      }
+    }
+  }
+
+  // 2. Training record requests submitted by current employee
+  if (recordRequests?.myRequests?.length) {
+    for (const req of recordRequests.myRequests) {
+      if (req.status === "APPROVED") {
+        notices.push({
+          id: `record_request_approved:${req.id}`,
+          kind: "record_request_approved",
+          request: req,
+          tab: "download",
+        });
+      } else if (req.status === "REJECTED") {
+        notices.push({
+          id: `record_request_rejected:${req.id}`,
+          kind: "record_request_rejected",
+          request: req,
+          tab: "download",
+        });
+      }
+    }
+  }
+
+  // 3. Course enrollments notices (certificates and forms)
   for (const enrollment of enrollments) {
     const attended = enrollment.attendance?.status === "PRESENT";
     const base = {
@@ -70,6 +114,54 @@ export const buildEmployeeNotices = (enrollments: EnrollmentRecord[], now: Date 
 
 /** The wording, shared by the dashboard card and the bell so the two never say different things. */
 export const noticeText = (notice: EmployeeNotice, isThai: boolean) => {
+  if (notice.kind === "record_request_approval") {
+    const req = notice.request;
+    const requester = req.employeeName
+      ? `${req.employeeName}${req.employeeCode ? ` (${req.employeeCode})` : ""}`
+      : req.employeeCode || "พนักงาน";
+    return isThai
+      ? {
+          eyebrow: "คำขออนุมัติประวัติการอบรม",
+          title: `คุณ ${requester} ได้ส่งคำขอประวัติการอบรม รอให้ท่านพิจารณาอนุมัติ`,
+          detail: `เลขที่คำขอ ${req.requestNo} • เพื่อดาวน์โหลดเอกสาร Word (.docx) ฉบับเต็ม`,
+        }
+      : {
+          eyebrow: "Record approval needed",
+          title: `Training record request from ${requester} awaits your approval`,
+          detail: `Request #${req.requestNo} • To download full official Word (.docx) document`,
+        };
+  }
+
+  if (notice.kind === "record_request_approved") {
+    const req = notice.request;
+    return isThai
+      ? {
+          eyebrow: "คำขอได้รับการอนุมัติแล้ว",
+          title: `คำขอประวัติการอบรมเลขที่ ${req.requestNo} ได้รับการอนุมัติแล้ว`,
+          detail: "คลิกเพื่อดาวน์โหลดเอกสาร Word (.docx) ข้อมูลฉบับจริงของท่านได้ทันที",
+        }
+      : {
+          eyebrow: "Request approved",
+          title: `Training record request #${req.requestNo} has been approved`,
+          detail: "Tap to download your official Word (.docx) training record document",
+        };
+  }
+
+  if (notice.kind === "record_request_rejected") {
+    const req = notice.request;
+    return isThai
+      ? {
+          eyebrow: "คำขอไม่ได้รับการอนุมัติ",
+          title: `คำขอประวัติการอบรมเลขที่ ${req.requestNo} ไม่ได้รับการอนุมัติ`,
+          detail: req.rejectionReason ? `เหตุผล: ${req.rejectionReason}` : "คลิกเพื่อดูรายละเอียดคำขอ",
+        }
+      : {
+          eyebrow: "Request rejected",
+          title: `Training record request #${req.requestNo} was rejected`,
+          detail: req.rejectionReason ? `Reason: ${req.rejectionReason}` : "Tap to view details",
+        };
+  }
+
   if (notice.kind === "certificate") {
     return isThai
       ? { eyebrow: "ใบเกียรติบัตรใหม่", title: `คุณได้รับใบเกียรติบัตรจากคอร์ส ${notice.courseName}`, detail: "กดที่นี่เพื่อดูข้อมูล" }
@@ -148,10 +240,20 @@ export const markSeenInBell = (state: NoticeState, notices: EmployeeNotice[], no
 export const unreadCount = (notices: EmployeeNotice[], state: NoticeState) =>
   notices.filter((notice) => !state[notice.id]?.seenInBell).length;
 
-/** Lands on the course's own card in My Record. `at` makes a repeat click on the same notice still
+/** Lands on the course or request in My Record. `at` makes a repeat click on the same notice still
  *  count as a new navigation. */
-export const noticeHref = (notice: EmployeeNotice, now = Date.now()) =>
-  `/?module=record&tab=${notice.tab}&focus=${encodeURIComponent(notice.enrollmentId)}&at=${now}`;
+export const noticeHref = (notice: EmployeeNotice, now = Date.now()) => {
+  if (notice.kind === "record_request_approval") {
+    return `/?module=record&tab=download&focusRequest=${encodeURIComponent(notice.request.id)}&at=${now}`;
+  }
+  if (notice.kind === "record_request_approved") {
+    return `/?module=record&tab=download&downloadReq=${encodeURIComponent(notice.request.id)}&at=${now}`;
+  }
+  if (notice.kind === "record_request_rejected") {
+    return `/?module=record&tab=download&focusRequest=${encodeURIComponent(notice.request.id)}&at=${now}`;
+  }
+  return `/?module=record&tab=${notice.tab}&focus=${encodeURIComponent(notice.enrollmentId)}&at=${now}`;
+};
 
 // ---- Persistence ----------------------------------------------------------------------------
 // ponytail: per-browser localStorage, so a notice put away on the office PC shows again on a phone.

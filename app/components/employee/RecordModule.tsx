@@ -18,6 +18,7 @@ import {
 } from "../AuthenticatedUserContext";
 import { useToast } from "../ToastHost";
 import { useUiLanguage } from "../ThaiUiLocalization";
+import { toEnglishPositionName } from "../../lib/employeeMasterData";
 import {
   createRecordRequest,
   decideRecordRequest,
@@ -584,26 +585,49 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
       return next;
     });
 
-  // A dashboard notice or the navbar bell lands here with ?tab=&focus=<enrollmentId>&at=<click time>.
-  // Handled once per click, after the list has loaded: open the tab, clear filters that could hide
-  // the card, open the card, then scroll to it once it is on screen.
+  // A dashboard notice or the navbar bell lands here with ?tab=&focus=<enrollmentId>&at=<click time>
+  // or ?tab=download&focusRequest=<reqId>&at=<click time> or downloadReq=<reqId>.
   const searchParams = useSearchParams();
   const focusId = searchParams.get("focus");
   const focusTab = searchParams.get("tab");
   const focusAt = searchParams.get("at");
+  const focusRequest = searchParams.get("focusRequest");
+  const downloadReq = searchParams.get("downloadReq");
   const [handledFocusAt, setHandledFocusAt] = useState<string | null>(null);
-  if (focusId && focusAt && focusAt !== handledFocusAt && !isLoading) {
+
+  if ((focusId || focusRequest || downloadReq || focusTab) && focusAt && focusAt !== handledFocusAt) {
     setHandledFocusAt(focusAt);
-    if (focusTab === "completed" || focusTab === "pending") setActiveTab(focusTab);
+    if (focusTab === "download" || focusRequest || downloadReq) {
+      setActiveTab("download");
+    } else if (focusTab === "completed" || focusTab === "pending") {
+      setActiveTab(focusTab);
+    }
     setQuery("");
     setSelectedProvider("all");
-    setExpandedCardIds((current) => new Set(current).add(focusId));
-  }
-  useEffect(() => {
-    if (handledFocusAt && focusId) {
-      document.getElementById(`record-card-${focusId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (focusId) {
+      setExpandedCardIds((current) => new Set(current).add(focusId));
     }
-  }, [handledFocusAt, focusId]);
+  }
+
+  useEffect(() => {
+    if (handledFocusAt) {
+      if (focusId) {
+        document.getElementById(`record-card-${focusId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else if (focusRequest || downloadReq) {
+        const reqTargetId = focusRequest || downloadReq;
+        const elem = document.getElementById(`request-card-${reqTargetId}`);
+        if (elem) {
+          elem.scrollIntoView({ behavior: "smooth", block: "center" });
+          elem.style.transition = "all 0.4s ease";
+          elem.style.boxShadow = "0 0 0 3px #3b82f6, 0 10px 25px -5px rgba(59, 130, 246, 0.4)";
+          const timer = setTimeout(() => {
+            elem.style.boxShadow = "";
+          }, 4000);
+          return () => clearTimeout(timer);
+        }
+      }
+    }
+  }, [handledFocusAt, focusId, focusRequest, downloadReq, activeTab]);
 
   const openTrainingForm = (target: FormRunnerTarget) =>
     router.push(`/training-form/${target.enrollmentId}/${target.stage}`);
@@ -677,8 +701,16 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
   const [decidingId, setDecidingId] = useState<string | null>(null);
   const [rejectionModalTarget, setRejectionModalTarget] = useState<TrainingRecordRequestRecord | null>(null);
   const [rejectionReasonText, setRejectionReasonText] = useState<string>("");
-  const [testCompanyCode, setTestCompanyCode] = useState<CompanyLetterheadCode>("ATA");
+  const [testCompanyCode, setTestCompanyCode] = useState<CompanyLetterheadCode>(
+    (authenticatedUser?.companyCode as CompanyLetterheadCode) || "ATA",
+  );
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (authenticatedUser?.companyCode) {
+      setTestCompanyCode(authenticatedUser.companyCode as CompanyLetterheadCode);
+    }
+  }, [authenticatedUser?.companyCode]);
   const [previewTitle, setPreviewTitle] = useState<string>("");
 
   const reloadRecordRequests = () => {
@@ -715,13 +747,14 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
 
   const approverOptions = useMemo<SearchableSelectOption[]>(() => {
     return approvers.map((appr) => {
-      const positionText = appr.position || t("Section Head / ผู้จัดการ / ผู้บริหาร", "Section Head / Manager / Executive");
+      const posEn = toEnglishPositionName(appr.position);
+      const positionText = posEn !== "-" ? posEn : t("Section Head / Manager / Executive", "Section Head / Manager / Executive");
       const deptText = [appr.department, appr.section].filter(Boolean).join(" - ");
       return {
         value: appr.reviewerUserId,
         label: `${appr.name} (${appr.employeeCode || "-"})`,
         secondaryLabel: `${positionText}${deptText ? ` • ${deptText}` : ""}`,
-        keywords: `${appr.name} ${appr.employeeCode || ""} ${appr.position || ""} ${appr.department || ""} ${appr.section || ""}`,
+        keywords: `${appr.name} ${appr.employeeCode || ""} ${appr.position || ""} ${posEn} ${appr.department || ""} ${appr.section || ""}`,
       };
     });
   }, [approvers, t]);
@@ -740,7 +773,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
       setIsSubmittingRequest(true);
       await createRecordRequest({
         approverUserId: selectedApproverUserId,
-        requestType: "TRAINING_RECORD",
+        requestType: "DOCUMENT",
         requestReason: requestReasonNote.trim() || t("ขอเอกสารประวัติการอบรม", "Request training record document"),
       });
       toast.success(t("ส่งคำขอประวัติการอบรมเรียบร้อยแล้ว รอหัวหน้าพิจารณาอนุมัติ", "Training record request submitted. Awaiting approval."));
@@ -758,10 +791,13 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
     try {
       setDecidingId(request.id);
       await decideRecordRequest(request.id, { action: "approve" });
+      // Remove immediately from the pending list so it disappears right away
+      setPendingApprovals((prev) => prev.filter((p) => p.id !== request.id));
       toast.success(t(`อนุมัติคำขอ ${request.requestNo} เรียบร้อยแล้ว`, `Approved request ${request.requestNo}`));
       await reloadRecordRequests();
     } catch (err: any) {
       toast.error(err?.message || t("อนุมัติไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", "Failed to approve request"));
+      await reloadRecordRequests();
     } finally {
       setDecidingId(null);
     }
@@ -780,12 +816,15 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
         action: "reject",
         note: rejectionReasonText.trim() || undefined,
       });
+      // Remove immediately from the pending list so it disappears right away
+      setPendingApprovals((prev) => prev.filter((p) => p.id !== rejectionModalTarget.id));
       toast.success(t(`ปฏิเสธคำขอ ${rejectionModalTarget.requestNo} แล้ว`, `Rejected request ${rejectionModalTarget.requestNo}`));
       setRejectionModalTarget(null);
       setRejectionReasonText("");
       await reloadRecordRequests();
     } catch (err: any) {
       toast.error(err?.message || t("ดำเนินการไม่สำเร็จ กรุณาลองใหม่อีกครั้ง", "Failed to reject request"));
+      await reloadRecordRequests();
     } finally {
       setDecidingId(null);
     }
@@ -795,7 +834,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
     employeeCode: authenticatedUser?.employeeCode || employeeCode || "-",
     nameTh: authenticatedUser?.displayName || authenticatedUser?.username || employeeName || "-",
     nameEn: authenticatedUser?.displayNameEn || undefined,
-    positionName: authenticatedUser?.positionName || "-",
+    positionName: toEnglishPositionName(authenticatedUser?.positionName) || "-",
     sectionName: authenticatedUser?.sectionName || undefined,
     departmentName: authenticatedUser?.departmentName || undefined,
     divisionName: authenticatedUser?.divisionName || undefined,
@@ -858,13 +897,17 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
     }
   };
 
-  const handleDownloadWordDocx = (targetCompanyCode?: string, isTest: boolean = true) => {
+  const handleDownloadWordDocx = (
+    targetCompanyCode?: string,
+    isTest: boolean = false,
+    isMultiPage: boolean = false,
+  ) => {
     const co = targetCompanyCode || testCompanyCode;
-    const url = `/api/training-record/export-docx?company=${encodeURIComponent(co)}&isTest=${isTest ? "true" : "false"}`;
+    const url = `/api/training-record/export-docx?company=${encodeURIComponent(co)}&isTest=${isTest ? "true" : "false"}${isMultiPage ? "&multipage=true" : ""}`;
     window.location.href = url;
     toast.success(
       t(
-        `กำลังดาวน์โหลดไฟล์ Word (.docx) กระดาษหัว ${co} จัดตามตัวอย่าง PDF...`,
+        `กำลังดาวน์โหลดไฟล์ Word (.docx) ข้อมูลประวัติการอบรม กระดาษหัว ${co}...`,
         `Downloading ${co} Training Record Word (.docx)...`,
       ),
     );
@@ -1576,7 +1619,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                   const isDecidingThis = decidingId === req.id;
 
                   return (
-                    <div className={styles.approvalCard} key={req.id}>
+                    <div className={styles.approvalCard} key={req.id} id={`request-card-${req.id}`}>
                       <div className={styles.approvalCardHeader}>
                         <div className={styles.approvalCardRequester}>
                           <span className={styles.approvalRequesterName}>
@@ -1584,7 +1627,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                             {req.employeeCode ? ` (${req.employeeCode})` : ""}
                           </span>
                           <span className={styles.approvalRequesterMeta}>
-                            {[req.positionName, req.departmentName, req.companyCode]
+                            {[toEnglishPositionName(req.positionName), req.departmentName, req.companyCode]
                               .filter(Boolean)
                               .join(" • ")}
                           </span>
@@ -1613,24 +1656,38 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                         </span>
 
                         <div className={styles.approvalActions}>
-                          <button
-                            type="button"
-                            className={styles.rejectBtn}
-                            disabled={isDecidingThis}
-                            onClick={() => handleOpenRejectModal(req)}
-                          >
-                            <XCircle size={14} />
-                            {t("ไม่อนุมัติ", "Reject")}
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.approveBtn}
-                            disabled={isDecidingThis}
-                            onClick={() => handleApprove(req)}
-                          >
-                            <CheckCircle2 size={14} />
-                            {isDecidingThis ? t("กำลังประมวลผล...", "Processing...") : t("อนุมัติคำขอ", "Approve")}
-                          </button>
+                          {req.status === "APPROVED" ? (
+                            <div className={styles.approvalConfirmedBadge}>
+                              <CheckCircle2 size={16} />
+                              <span>{t("อนุมัติแล้ว (ยืนยันเรียบร้อย)", "Approved & Confirmed")}</span>
+                            </div>
+                          ) : req.status === "REJECTED" ? (
+                            <div className={styles.approvalRejectedBadge}>
+                              <XCircle size={16} />
+                              <span>{t("ไม่อนุมัติแล้ว", "Rejected")}</span>
+                            </div>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                className={styles.rejectBtn}
+                                disabled={isDecidingThis}
+                                onClick={() => handleOpenRejectModal(req)}
+                              >
+                                <XCircle size={14} />
+                                {t("ไม่อนุมัติ", "Reject")}
+                              </button>
+                              <button
+                                type="button"
+                                className={styles.approveBtn}
+                                disabled={isDecidingThis}
+                                onClick={() => handleApprove(req)}
+                              >
+                                <CheckCircle2 size={14} />
+                                {isDecidingThis ? t("กำลังประมวลผล...", "Processing...") : t("อนุมัติคำขอ", "Approve")}
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1640,16 +1697,15 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
             </div>
           ) : null}
 
-          {/* TEST MODE ACTION BAR */}
+          {/* WORD DOCX DOWNLOAD ACTION BAR */}
           <div className={styles.testActionBar}>
             <div className={styles.testActionHeader}>
               <h4 className={styles.testActionTitle}>
-                <FlaskConical size={18} />
-                <span>{t("โหมดทดสอบการออกเอกสาร (TEST Mode - Company Letterheads)", "TEST Mode: Company Letterhead Generator")}</span>
-                <span className={styles.testBadge}>TEST</span>
+                <FileText size={18} style={{ color: "var(--ui-30-primary)" }} />
+                <span>{t("ดาวน์โหลดเอกสารประวัติการอบรม Word (.docx)", "Download Training Record Word (.docx)")}</span>
               </h4>
               <span style={{ fontSize: "0.78rem", color: "var(--ui-30-muted)" }}>
-                {t("ทดสอบดูตัวอย่างและพิมพ์เอกสารตามกระดาษหัว 6 บริษัทได้ทันที", "Test preview & download matching 6 company letterheads")}
+                {t("เลือกกระดาษหัวบริษัทที่ต้องการเพื่อออกเอกสารประวัติการอบรมของท่าน (ข้อมูลพนักงานจริงและหลักสูตรที่ผ่านแล้ว)", "Select company letterhead to download your official training record")}
               </span>
             </div>
 
@@ -1658,7 +1714,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                 className={styles.testCompanySelect}
                 value={testCompanyCode}
                 onChange={(e) => setTestCompanyCode(e.target.value as CompanyLetterheadCode)}
-                aria-label="Select test company"
+                aria-label="Select company letterhead"
               >
                 <option value="ATA">ATA - บริษัท ไอชิน ทากาโอกะ เอเชีย จำกัด</option>
                 <option value="ATFB">ATFB - บริษัท ไอซิน ทาคาโอก้า ฟาวน์ดริ บางปะกง จำกัด</option>
@@ -1670,40 +1726,12 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
 
               <button
                 type="button"
-                className={styles.testBtnWordSample}
-                onClick={() => handleDownloadWordDocx(testCompanyCode, true)}
-                title={t("ดาวน์โหลดไฟล์ Word (.docx) ตามตัวอย่าง PDF (ข้อมูลตัวอย่าง)", "Download Word (.docx) matching sample PDF")}
-              >
-                <Download size={14} />
-                <span>{t("ดาวน์โหลด Word (.docx) ตามตัวอย่าง PDF", "Download Word (.docx) [Sample PDF]")}</span>
-              </button>
-
-              <button
-                type="button"
                 className={styles.testBtnWord}
-                onClick={() => handleDownloadWordDocx(testCompanyCode, false)}
+                onClick={() => handleDownloadWordDocx(testCompanyCode, false, false)}
                 title={t("ดาวน์โหลดไฟล์ Word (.docx) โดยใช้ข้อมูลพนักงานและการอบรมของฉัน", "Download Word (.docx) with my data")}
               >
                 <Download size={14} />
-                <span>{t("ดาวน์โหลด Word (.docx) ข้อมูลฉัน", "Download Word (.docx) [My Data]")}</span>
-              </button>
-
-              <button
-                type="button"
-                className={styles.testBtnPreview}
-                onClick={() => handleOpenPreview(testCompanyCode)}
-              >
-                <Eye size={15} />
-                <span>{t("ดูตัวอย่างเอกสาร (Preview)", "Preview Document")}</span>
-              </button>
-
-              <button
-                type="button"
-                className={styles.testBtnPrint}
-                onClick={() => handlePrintDocument(testCompanyCode)}
-              >
-                <Printer size={15} />
-                <span>{t("พิมพ์ / บันทึก PDF", "Print / PDF")}</span>
+                <span>{t("ดาวน์โหลด Word (.docx) ข้อมูลฉัน", "Download Word (.docx)")}</span>
               </button>
             </div>
           </div>
@@ -1841,7 +1869,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                   const isRejected = req.status === "REJECTED";
 
                   return (
-                    <div className={styles.myRequestCard} key={req.id}>
+                    <div className={styles.myRequestCard} key={req.id} id={`request-card-${req.id}`}>
                       <div className={styles.myRequestCardHeader}>
                         <div className={styles.myRequestNoGroup}>
                           <span className={styles.myRequestNo}>{req.requestNo}</span>
@@ -1873,7 +1901,7 @@ export default function RecordModule({ onRequestRefresher }: RecordModuleProps =
                         <div>
                           <strong>{t("หัวหน้าผู้อนุมัติ", "Approver")}:</strong>{" "}
                           {req.approverName || req.approverUserId || "-"}
-                          {req.approverPosition ? ` (${req.approverPosition})` : ""}
+                          {req.approverPosition ? ` (${toEnglishPositionName(req.approverPosition)})` : ""}
                         </div>
                         {req.requestReason ? (
                           <div>

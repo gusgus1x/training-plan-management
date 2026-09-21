@@ -15,8 +15,11 @@ import {
   buildDocxBodyXml,
   buildFullDocumentXml,
   generateTrainingRecordDocx,
+  extractPageUsableWidth,
+  DEFAULT_COMPANY_USABLE_WIDTHS,
   SAMPLE_EMPLOYEE_DATA,
   SAMPLE_COURSES_DATA,
+  SAMPLE_MULTIPAGE_COURSES_DATA,
 } from "../../app/lib/trainingRecord/recordDocxGenerator";
 
 describe("Training Record Word (.docx) Document Generation", () => {
@@ -70,6 +73,34 @@ describe("Training Record Word (.docx) Document Generation", () => {
     expect(bodyXml).toContain("ระบบคุณภาพ ISO 9000");
     expect(bodyXml).toContain("18 ก.ค. 35");
     expect(bodyXml).toContain("<w:tblHeader/>");
+    // Verify both tables have center alignment (<w:jc w:val="center"/>)
+    expect(bodyXml).toContain('<w:jc w:val="center"/>');
+    expect(bodyXml).toContain('<w:gridCol');
+  });
+
+  it("calculates page usable width accurately from sectPr XML", () => {
+    // SATI: 11907 - 1440 - 1440 = 9027
+    const satiSectPr = '<w:sectPr><w:pgSz w:w="11907" w:h="16840"/><w:pgMar w:left="1440" w:right="1440"/></w:sectPr>';
+    expect(extractPageUsableWidth(satiSectPr)).toBe(9027);
+
+    // AT-A: 11907 - 284 - 708 = 10915
+    const ataSectPr = '<w:sectPr><w:pgSz w:w="11907" w:h="16840"/><w:pgMar w:left="284" w:right="708"/></w:sectPr>';
+    expect(extractPageUsableWidth(ataSectPr)).toBe(10915);
+
+    // Fallback when sectPr is empty
+    expect(extractPageUsableWidth("", 9027)).toBe(9027);
+    expect(DEFAULT_COMPANY_USABLE_WIDTHS.SATI).toBe(9027);
+    expect(DEFAULT_COMPANY_USABLE_WIDTHS.ATFB).toBe(9497);
+  });
+
+  it("scales table widths and column grids dynamically based on targetWidth", () => {
+    const satiXml = buildDocxBodyXml(SAMPLE_EMPLOYEE_DATA, SAMPLE_COURSES_DATA, 9027);
+    expect(satiXml).toContain('<w:tblW w:w="9027" w:type="dxa"/>');
+    expect(satiXml).toContain('<w:gridCol w:w="4875"/>');
+    expect(satiXml).toContain('<w:gridCol w:w="4152"/>');
+
+    const ataXml = buildDocxBodyXml(SAMPLE_EMPLOYEE_DATA, SAMPLE_COURSES_DATA, 10915);
+    expect(ataXml).toContain('<w:tblW w:w="10915" w:type="dxa"/>');
   });
 
   it("generates real docx buffers for all 6 companies without error", async () => {
@@ -82,7 +113,8 @@ describe("Training Record Word (.docx) Document Generation", () => {
       });
 
       expect(res.companyCode).toBe(code);
-      expect(res.fileName).toContain(`ประวัติการฝึกอบรม_${code}`);
+      expect(res.fileName).toContain(`ประวัติการฝึกอบรม_`);
+      expect(res.fileName).toContain(`นริศสา ศิลปะพิบูรย์`);
       expect(res.fileName.endsWith(".docx")).toBe(true);
       expect(res.buffer.length).toBeGreaterThan(10000);
 
@@ -93,4 +125,52 @@ describe("Training Record Word (.docx) Document Generation", () => {
       expect(res.buffer[3]).toBe(0x04);
     }
   }, 60000);
+
+  it("generates multi-page docx with 43 courses matching ตัวอย่าง.pdf and cantSplit tags", async () => {
+    expect(SAMPLE_MULTIPAGE_COURSES_DATA.length).toBe(43);
+
+    const res = await generateTrainingRecordDocx({
+      companyCode: "ATA",
+      isMultiPage: true,
+    });
+
+    expect(res.fileName).toContain("ตัวอย่างหลายหน้า_43หลักสูตร");
+    expect(res.buffer.length).toBeGreaterThan(15000);
+
+    const bodyXml = buildDocxBodyXml(SAMPLE_EMPLOYEE_DATA, SAMPLE_MULTIPAGE_COURSES_DATA, 10915);
+    expect(bodyXml).toContain("<w:cantSplit/>");
+    expect(bodyXml).toContain("<w:tblHeader/>");
+    expect(bodyXml).toContain("43");
+    expect(bodyXml).toContain("SDC (Safety Driving for Car)");
+    // 43 items with 20 per page should result in exactly 2 page breaks (3 pages: 20 + 20 + 3)
+    const pageBreaks = bodyXml.match(/<w:br w:type="page"\/>/g);
+    expect(pageBreaks?.length).toBe(2);
+    // Verify font size 15pt content (30 half-points) and 17pt title (34 half-points)
+    expect(bodyXml).toContain('<w:sz w:val="30"/>');
+    expect(bodyXml).toContain('<w:sz w:val="34"/>');
+  });
+
+  it("applies the exact same 20 items/page and 15pt font layout standard across all 6 companies", () => {
+    const companies: CompanyLetterheadCode[] = ["ATA", "ATFB", "NIC", "SATI", "SNF", "TEP"];
+
+    for (const code of companies) {
+      const usableWidth = DEFAULT_COMPANY_USABLE_WIDTHS[code];
+      const xml = buildDocxBodyXml(SAMPLE_EMPLOYEE_DATA, SAMPLE_MULTIPAGE_COURSES_DATA, usableWidth);
+
+      // Centered tables
+      expect(xml).toContain('<w:jc w:val="center"/>');
+      // 15pt font (sz=30)
+      expect(xml).toContain('<w:sz w:val="30"/>');
+      // 17pt bold title (sz=34)
+      expect(xml).toContain('<w:sz w:val="34"/>');
+      // 20 items per page means 43 items gives 2 page breaks (3 pages)
+      const breaks = xml.match(/<w:br w:type="page"\/>/g);
+      expect(breaks?.length).toBe(2);
+      // Table header repeated on page splits
+      expect(xml).toContain("<w:tblHeader/>");
+      expect(xml).toContain("<w:cantSplit/>");
+      // Date and sequence columns have noWrap to prevent 2-line break across all companies
+      expect(xml).toContain("<w:noWrap/>");
+    }
+  });
 });

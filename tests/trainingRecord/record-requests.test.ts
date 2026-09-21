@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { isSectionHeadOrAbove } from "../../app/lib/employeeMasterData";
+import { isSectionHeadOrAbove, toEnglishPositionName } from "../../app/lib/employeeMasterData";
 import { RECORD_REQUEST_STATUSES } from "../../app/lib/trainingRecordRequests/types";
 import type { TrainingRecordRequestRecord } from "../../app/lib/trainingRecordRequests/types";
+import {
+  buildEmployeeNotices,
+  noticeHref,
+  noticeText,
+} from "../../app/components/employee/employeeNotices";
 
 describe("Training Record Requests Approver Eligibility", () => {
   it("recognizes Section Head and Manager positions as eligible approvers", () => {
@@ -36,6 +41,16 @@ describe("Training Record Requests Approver Eligibility", () => {
       // By English title
       expect(isSectionHeadOrAbove({ positionName: p.titleEn })).toBe(true);
     }
+  });
+
+  it("translates Thai positions into standard English positions", () => {
+    expect(toEnglishPositionName("ผู้จัดการโรงงาน")).toBe("Plant Manager");
+    expect(toEnglishPositionName("ประธานบริษัท")).toBe("President");
+    expect(toEnglishPositionName("ผู้จัดการทั่วไป")).toBe("General Manager");
+    expect(toEnglishPositionName("ผู้จัดการแผนก")).toBe("Section Head");
+    expect(toEnglishPositionName("เจ้าหน้าที่")).toBe("Officer");
+    expect(toEnglishPositionName({ position_name_th: "ผู้จัดการโรงงาน", position_name_en: null })).toBe("Plant Manager");
+    expect(toEnglishPositionName({ position_code: "PM" })).toBe("Plant Manager");
   });
 
   it("recognizes Management level employees (M1-M4, จ1-จ4) as eligible approvers", () => {
@@ -125,5 +140,107 @@ describe("Training Record Requests Workflow & Download Gating", () => {
     expect(eligibleApprovers).toHaveLength(1);
     expect(eligibleApprovers[0].userId).toBe("SH01");
     expect(eligibleApprovers[0].name).toBe("Head Company A");
+  });
+});
+
+describe("Training Record Requests Notification Integration", () => {
+  const pendingReq: TrainingRecordRequestRecord = {
+    id: "req-101",
+    requestNo: "TRR-202609-000101",
+    companyId: "1",
+    companyCode: "ATA",
+    employeeUserId: "usr-emp-1",
+    employeeName: "สมชาย ทดสอบ",
+    employeeCode: "10001",
+    departmentName: "ฝ่ายผลิต",
+    positionName: "วิศวกร",
+    requestReason: "ขอเอกสารยื่นปรับตำแหน่ง",
+    requestType: "DOCUMENT",
+    dateFrom: null,
+    dateTo: null,
+    status: "PENDING",
+    requestedAt: "2026-09-21T02:00:00.000Z",
+    approverUserId: "usr-head-1",
+    approverName: "สมบูรณ์ ผู้จัดการ",
+    approverPosition: "Section Head",
+    reviewedAt: null,
+    rejectionReason: null,
+  };
+
+  const approvedReq: TrainingRecordRequestRecord = {
+    ...pendingReq,
+    id: "req-102",
+    requestNo: "TRR-202609-000102",
+    status: "APPROVED",
+    reviewedAt: "2026-09-21T03:00:00.000Z",
+  };
+
+  const rejectedReq: TrainingRecordRequestRecord = {
+    ...pendingReq,
+    id: "req-103",
+    requestNo: "TRR-202609-000103",
+    status: "REJECTED",
+    reviewedAt: "2026-09-21T03:30:00.000Z",
+    rejectionReason: "ข้อมูลไม่ครบถ้วน",
+  };
+
+  it("builds pending approval notification for the approver (Section Head)", () => {
+    const notices = buildEmployeeNotices([], {
+      pendingApprovals: [pendingReq],
+      myRequests: [],
+    });
+
+    expect(notices).toHaveLength(1);
+    const notice = notices[0];
+    expect(notice.kind).toBe("record_request_approval");
+    expect(notice.tab).toBe("download");
+    expect(notice.id).toBe("record_request_approval:req-101");
+
+    const textTh = noticeText(notice, true);
+    expect(textTh.eyebrow).toBe("คำขออนุมัติประวัติการอบรม");
+    expect(textTh.title).toContain("สมชาย ทดสอบ");
+    expect(textTh.title).toContain("10001");
+    expect(textTh.detail).toContain("TRR-202609-000101");
+
+    const href = noticeHref(notice, 123456);
+    expect(href).toBe("/?module=record&tab=download&focusRequest=req-101&at=123456");
+  });
+
+  it("builds approved notification for the employee with full docx download prompt", () => {
+    const notices = buildEmployeeNotices([], {
+      pendingApprovals: [],
+      myRequests: [approvedReq],
+    });
+
+    expect(notices).toHaveLength(1);
+    const notice = notices[0];
+    expect(notice.kind).toBe("record_request_approved");
+    expect(notice.tab).toBe("download");
+
+    const textTh = noticeText(notice, true);
+    expect(textTh.eyebrow).toBe("คำขอได้รับการอนุมัติแล้ว");
+    expect(textTh.title).toContain("TRR-202609-000102");
+    expect(textTh.detail).toContain("ดาวน์โหลดเอกสาร Word (.docx)");
+
+    const href = noticeHref(notice, 999999);
+    expect(href).toBe("/?module=record&tab=download&downloadReq=req-102&at=999999");
+  });
+
+  it("builds rejection notification with rejection reason for the employee", () => {
+    const notices = buildEmployeeNotices([], {
+      pendingApprovals: [],
+      myRequests: [rejectedReq],
+    });
+
+    expect(notices).toHaveLength(1);
+    const notice = notices[0];
+    expect(notice.kind).toBe("record_request_rejected");
+
+    const textTh = noticeText(notice, true);
+    expect(textTh.eyebrow).toBe("คำขอไม่ได้รับการอนุมัติ");
+    expect(textTh.detail).toContain("ข้อมูลไม่ครบถ้วน");
+
+    const href = noticeHref(notice, 888888);
+    expect(href).toBe("/?module=record&tab=download&focusRequest=req-103&at=888888");
   });
 });

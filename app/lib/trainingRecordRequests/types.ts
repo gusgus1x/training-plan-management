@@ -2,6 +2,9 @@ export const RECORD_REQUEST_STATUSES = ["PENDING", "APPROVED", "REJECTED"] as co
 
 export type RecordRequestStatus = (typeof RECORD_REQUEST_STATUSES)[number];
 
+export const RECORD_REQUEST_TYPES = ["DOCUMENT", "TRANSFER", "RESIGNATION", "OTHER"] as const;
+export type RecordRequestType = (typeof RECORD_REQUEST_TYPES)[number];
+
 export type RecordRequestApproverCandidate = {
   reviewerUserId: string;
   employeeCode: string;

@@ -5,10 +5,26 @@ import { useRouter } from "next/navigation";
 import { listEnrollments } from "../../lib/trainingEnrollment/client";
 import type { EnrollmentRecord } from "../../lib/trainingEnrollment/types";
 import { useUiLanguage } from "../ThaiUiLocalization";
-import { Award, Bell, ClipboardList } from "../icons/LucideIcons";
+import { Award, Bell, CheckCircle2, ClipboardList, Download, FileText, XCircle } from "../icons/LucideIcons";
 import { markDismissed, markSeenInBell, noticeHref, noticeText, unreadCount, type EmployeeNotice } from "./employeeNotices";
 import { useEmployeeNotices } from "./useEmployeeNotices";
 import styles from "./NotificationBell.module.css";
+
+const renderNoticeIcon = (kind: EmployeeNotice["kind"]) => {
+  switch (kind) {
+    case "certificate":
+      return <Award size={18} />;
+    case "record_request_approval":
+      return <FileText size={18} style={{ color: "#3b82f6" }} />;
+    case "record_request_approved":
+      return <CheckCircle2 size={18} style={{ color: "#10b981" }} />;
+    case "record_request_rejected":
+      return <XCircle size={18} style={{ color: "#ef4444" }} />;
+    case "forms":
+    default:
+      return <ClipboardList size={18} />;
+  }
+};
 
 /**
  * Every notice, always - unlike the dashboard cards, nothing here retires. The red count is only
@@ -82,7 +98,7 @@ export default function NotificationBell() {
                   <li key={notice.id}>
                     <button type="button" className={styles.item} data-kind={notice.kind} onClick={() => open(notice)}>
                       <span className={styles.itemIcon} aria-hidden="true">
-                        {notice.kind === "certificate" ? <Award size={18} /> : <ClipboardList size={18} />}
+                        {renderNoticeIcon(notice.kind)}
                       </span>
                       <span className={styles.itemBody}>
                         <span className={styles.itemEyebrow}>{text.eyebrow}</span>

@@ -12,12 +12,48 @@ import {
   type NoticeState,
 } from "./employeeNotices";
 
-/** The notices for this employee's enrollments, and what they have done with each one. */
-export function useEmployeeNotices(enrollments: EnrollmentRecord[]) {
+import type { TrainingRecordRequestRecord } from "../../lib/trainingRecordRequests/types";
+import { listRecordRequests } from "../../lib/trainingRecordRequests/client";
+
+export type RecordRequestsState = {
+  myRequests: TrainingRecordRequestRecord[];
+  pendingApprovals: TrainingRecordRequestRecord[];
+};
+
+/** The notices for this employee's enrollments and training record requests, and what they have done with each one. */
+export function useEmployeeNotices(
+  enrollments: EnrollmentRecord[],
+  initialRecordRequests?: RecordRequestsState,
+) {
   const user = useAuthenticatedUser();
   // The login account's own id: always present, and unique per account.
   const userKey = user?.userId ?? null;
-  const notices = useMemo(() => buildEmployeeNotices(enrollments), [enrollments]);
+  const [recordRequests, setRecordRequests] = useState<RecordRequestsState>(
+    initialRecordRequests ?? { myRequests: [], pendingApprovals: [] },
+  );
+
+  useEffect(() => {
+    if (!userKey) return;
+    let isMounted = true;
+    listRecordRequests()
+      .then((data) => {
+        if (isMounted && data) {
+          setRecordRequests({
+            myRequests: data.myRequests || [],
+            pendingApprovals: data.pendingApprovals || [],
+          });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [userKey]);
+
+  const notices = useMemo(
+    () => buildEmployeeNotices(enrollments, recordRequests),
+    [enrollments, recordRequests],
+  );
   const [state, setState] = useState<NoticeState>({});
 
   useEffect(() => {
