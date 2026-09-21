@@ -60,6 +60,7 @@ import {
   Wallet,
   Eye,
   Trash2,
+  Calendar,
 } from "../../../icons/LucideIcons";
 import styles from "./TrainingOAP.module.css";
 
@@ -159,6 +160,7 @@ const getMissingCourseFields = (
 
 const emptyForm = {
   courseCode: "",
+  planYear: new Date().getFullYear().toString(),
   participants: "",
   hours: "",
   budget: "",
@@ -232,11 +234,26 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | OapStatus>("all");
   const [companyFilter, setCompanyFilter] = useState<string>("all");
+  const [yearFilter, setYearFilter] = useState<string>("all");
   const [instructors, setInstructors] = useState<InstructorRecord[]>([]);
   const [providers, setProviders] = useState<InstituteProviderRecord[]>([]);
   const [showTargetWarningModal, setShowTargetWarningModal] = useState(false);
   const lastWarnedCourseRef = useRef<string | null>(null);
   const userCompanyCode = profileValue(user?.companyCode);
+
+  const currentCalendarYear = new Date().getFullYear();
+  const availableYears = useMemo(() => {
+    const yearSet = new Set<number>();
+    // ครอบคลุมย้อนหลัง 5 ปี และวางแผนล่วงหน้าได้ถึง 6 ปีจากปีปัจจุบันแบบ Dynamic
+    for (let y = currentCalendarYear - 5; y <= currentCalendarYear + 6; y++) {
+      yearSet.add(y);
+    }
+    // และรวบรวมทุกปีที่มีบันทึกอยู่ในฐานข้อมูลจริงเข้ามาเสมอ (ไม่ว่าจะเป็นปีไหน)
+    plans.forEach((p) => {
+      if (p.planYear) yearSet.add(p.planYear);
+    });
+    return Array.from(yearSet).sort((a, b) => b - a);
+  }, [plans, currentCalendarYear]);
 
   // Approved training need requests on their way to Training Rolling, carried in the address. This
   // screen only visits when the course had no plan yet: it prefills one, then sends them on.
@@ -475,6 +492,9 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     () =>
       scopedPlans
         .filter((plan) => {
+          if (yearFilter !== "all") {
+            if (String(plan.planYear) !== yearFilter) return false;
+          }
           if (companyFilter !== "all") {
             const matchesCompany =
               companyFilter === "CENTER"
@@ -487,6 +507,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
         .filter((plan) => {
           const primaryName = getCourseDisplayName(plan.course);
           const secondaryName = getCourseSecondaryName(plan.course);
+          const planYearStr = plan.planYear ? String(plan.planYear) : "";
+          const beYearStr = plan.planYear ? String(plan.planYear + 543) : "";
           return [
             plan.course.courseCode,
             plan.course.courseNameTh,
@@ -500,6 +522,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
             plan.trainer,
             plan.providerName,
             plan.owner === "CENTER" ? "HRD Center" : plan.ownerCompany,
+            planYearStr,
+            beYearStr,
           ]
             .filter(Boolean)
             .join(" ")
@@ -508,6 +532,9 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
         })
         .filter((plan) => statusFilter === "all" || plan.status === statusFilter)
         .sort((a, b) => {
+          if ((b.planYear || 0) !== (a.planYear || 0)) {
+            return (b.planYear || 0) - (a.planYear || 0);
+          }
           const weightA = getCompanySortWeight(a);
           const weightB = getCompanySortWeight(b);
           if (weightA !== weightB) return weightA - weightB;
@@ -519,7 +546,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
           return a.sequence - b.sequence;
         })
         .map((plan, index) => ({ ...plan, sequence: index + 1 })),
-    [companyFilter, scopedPlans, search, statusFilter, userCompanyCode, language],
+    [companyFilter, scopedPlans, search, statusFilter, yearFilter, userCompanyCode, language],
   );
 
   const companySections = useMemo(() => {
@@ -668,8 +695,10 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       return;
     }
 
+    const selectedPlanYear = parseInt(form.planYear, 10) || new Date().getFullYear();
     const input = {
       courseId: selectedCourse.id,
+      planYear: selectedPlanYear,
       participants: Number(form.participants) || 0,
       hours: Number(form.hours) || 0,
       budget: form.budget.trim() || "0",
@@ -691,7 +720,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
       if (editingId) {
         await updateOapPlan(editingId, input);
       } else {
-        await createOapPlan({ ...input, planYear: new Date().getFullYear(), status: "Planned" });
+        await createOapPlan({ ...input, planYear: selectedPlanYear, status: "Planned" });
       }
       setEditingId("");
       setForm(emptyForm);
@@ -728,6 +757,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     );
     setForm({
       courseCode: plan.course.courseCode,
+      planYear: (plan.planYear ?? new Date().getFullYear()).toString(),
       participants: plan.participants,
       hours: plan.hours,
       budget: plan.budget,
@@ -803,11 +833,15 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
     setSelectedPlanId("");
     setSearch("");
     setStatusFilter("all");
+    setYearFilter("all");
   };
 
   const handleNew = () => {
     setEditingId("");
-    setForm(emptyForm);
+    setForm({
+      ...emptyForm,
+      planYear: yearFilter !== "all" ? yearFilter : new Date().getFullYear().toString(),
+    });
     setApprovedRequest(null);
     setOpenDetailId("");
     setSelectedPlanId("");
@@ -880,6 +914,28 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                 </select>
               </label>
             ) : null}
+            <label className={styles.filterLabel}>
+              <span>{t("ปีของแผน", "Plan Year")}</span>
+              <select
+                className={styles.statusSelect}
+                aria-label="Filter plan year"
+                value={yearFilter}
+                onChange={(event) => setYearFilter(event.target.value)}
+              >
+                <option value="all">{t("ทุกปี (All Years)", "All Years")}</option>
+                {availableYears.map((yr) => {
+                  const beYear = yr + 543;
+                  const isCurrent = yr === currentCalendarYear;
+                  return (
+                    <option key={yr} value={String(yr)}>
+                      {language === "th"
+                        ? `ปี พ.ศ. ${beYear} (${yr})${isCurrent ? " • ปัจจุบัน" : ""}`
+                        : `FY ${yr} (BE ${beYear})${isCurrent ? " • Current" : ""}`}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
             <label className={styles.filterLabel}>
               <span>{t("สถานะ", "Status")}</span>
               <select
@@ -985,7 +1041,30 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
               </div>
             ) : null}
             <div className={styles.formGrid}>
-              <div className={styles.fullField}>
+              <label style={{ gridColumn: "span 2" }}>
+                <span>
+                  {t("ปีของแผนการอบรม (Plan Year)", "Annual Plan Year")}{" "}
+                  <RequiredIndicator isFilled={Boolean(form.planYear.trim())} />
+                </span>
+                <select
+                  aria-label="Annual Plan Year"
+                  value={form.planYear}
+                  onChange={(e) => updateForm("planYear", e.target.value)}
+                >
+                  {availableYears.map((yr) => {
+                    const beYear = yr + 543;
+                    const isCurrent = yr === currentCalendarYear;
+                    return (
+                      <option key={yr} value={String(yr)}>
+                        {language === "th"
+                          ? `ประจำปี พ.ศ. ${beYear} (${yr})${isCurrent ? " • ปีปัจจุบัน" : ""}`
+                          : `Annual Plan FY ${yr} (BE ${beYear})${isCurrent ? " • Current" : ""}`}
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+              <div className={styles.fullField} style={{ gridColumn: "span 4" }}>
                 <span>{t("หลักสูตร (Course Name)", "Course Name")} <RequiredIndicator isFilled={Boolean(form.courseCode.trim())} /></span>
                 <SearchableSelect
                   options={courseOptions.map((course) => {
@@ -1654,6 +1733,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                   <thead>
                     <tr>
                       <th>Seq.</th>
+                      <th>{t("ปีของแผน", "Plan Year")}</th>
                       <th>Course Name</th>
                       <th>Actions</th>
                       <th>Course Group</th>
@@ -1687,6 +1767,23 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                 />
                                 <span>{index + 1}</span>
                               </label>
+                            </td>
+                            <td>
+                              <span
+                                className={styles.yearBadge}
+                                title={t(
+                                  `แผนการอบรมประจำปี พ.ศ. ${plan.planYear ? plan.planYear + 543 : "-"} (${plan.planYear || "-"})`,
+                                  `Annual Training Plan FY ${plan.planYear || "-"} (BE ${plan.planYear ? plan.planYear + 543 : "-"})`,
+                                )}
+                              >
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
+                                  <Calendar size={13} />
+                                  <strong>{plan.planYear ? (language === "th" ? `${plan.planYear + 543}` : `${plan.planYear}`) : "-"}</strong>
+                                </span>
+                                <small>
+                                  {plan.planYear ? (language === "th" ? `(${plan.planYear})` : `(BE ${plan.planYear + 543})`) : ""}
+                                </small>
+                              </span>
                             </td>
                             <td>
                               <strong>{getCourseDisplayName(plan.course)}</strong>
@@ -1768,7 +1865,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                           </tr>
                           {isOpen ? (
                             <tr className={styles.detailRow}>
-                              <td colSpan={10}>
+                              <td colSpan={11}>
                                 <section className={styles.detailPanel}>
                                   <div className={styles.panelHeader}>
                                     <div>
@@ -1781,6 +1878,7 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
                                     <div className={`${styles.previewCard} ${styles.previewCardFull}`}>
                                       <div className={styles.previewCardHeader}><span><BookOpen size={16} style={{ display: "inline", verticalAlign: "text-bottom", marginRight: 6 }} />{t("หลักสูตร (Course)", "Course Details")}</span></div>
                                       <div className={styles.previewFieldGrid}>
+                                        <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("ปีของแผนการอบรม (Plan Year)", "Annual Plan Year")}</span><span className={styles.previewFieldValue} style={{ fontWeight: 800, color: "var(--ui-30-primary, #2563eb)" }}>{plan.planYear ? (language === "th" ? `ปี พ.ศ. ${plan.planYear + 543} (ค.ศ. ${plan.planYear})` : `FY ${plan.planYear} (BE ${plan.planYear + 543})`) : "-"}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("กลุ่มหลักสูตร", "Course Group")}</span><span className={styles.previewFieldValue} translate="no">{plan.course.courseGroup || "-"}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("รหัสหลักสูตร", "Course Code")}</span><span className={styles.previewFieldValue}>{plan.course.courseCode}</span></div>
                                         <div className={`${styles.previewFieldRow} ${styles.previewFieldColumn}`}><span className={styles.previewFieldLabel}>{t("ชื่อหลักสูตร (ไทย)", "Course Name (TH)")}</span><span className={styles.previewFieldValue}>{plan.course.courseNameTh}</span></div>
@@ -1937,8 +2035,8 @@ export default function TrainingOAP({ username = "Current user" }: TrainingOAPPr
           ))}
           {visiblePlans.length === 0 ? (
             <div className={styles.emptyState}>
-              <strong>No training plans found</strong>
-              <span>Try changing the search text or status filter.</span>
+              <strong>{t("ไม่พบแผนการอบรม", "No training plans found")}</strong>
+              <span>{t("ลองเปลี่ยนคำค้นหา ปีของแผน หรือตัวกรองสถานะ", "Try changing the search text, plan year, or status filter.")}</span>
             </div>
           ) : null}
         </div>

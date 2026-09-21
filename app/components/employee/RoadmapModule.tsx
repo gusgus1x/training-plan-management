@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { listCourses } from "../../lib/courses/client";
 import {
   getCourseDisplayName,
@@ -23,6 +24,7 @@ import { profileValue, useAuthenticatedUser } from "../AuthenticatedUserContext"
 import { loadWorkflowRollingPlans, type RollingPlan } from "../center_factory/TrainingPlanManagement/modules/TrainingRolling";
 import { useUiLanguage } from "../ThaiUiLocalization";
 import ModuleHeader from "./ModuleHeader";
+import SearchableApproverSelect from "./SearchableApproverSelect";
 import styles from "./RoadmapModule.module.css";
 import {
   User,
@@ -40,6 +42,8 @@ import {
   GraduationCap,
   Settings,
   Link2,
+  CheckCircle2,
+  XCircle,
 } from "../icons/LucideIcons";
 
 type TargetScopeTab = "ALL" | "CENTER" | "COMPANY";
@@ -124,29 +128,60 @@ const normalizeLevel = (val: string): string => {
 const normalizePosition = (val: string): string => {
   if (!val) return "";
   const t = val.trim();
+  // Check specific management & supervisory positions first before general "manager"
+  if (/general\s*manager|ผู้จัดการทั่วไป|ผู้จัดการฝ่าย|gm\b/i.test(t)) return "GENERAL MANAGER";
+  if (/assistant\s*manager|asst\.?\s*manager|ผู้ช่วยผู้จัดการ/i.test(t)) return "ASSISTANT MANAGER";
+  if (/plant\s*manager|ผู้จัดการโรงงาน/i.test(t)) return "PLANT MANAGER";
+  if (/section\s*head|หัวหน้างาน|หัวหน้าแผนก|ผู้จัดการแผนก|supervisor/i.test(t)) return "SECTION HEAD";
+  if (/senior\s*foreman|หัวหน้าชุดอาวุโส/i.test(t)) return "SENIOR FOREMAN";
+  if (/foreman|หัวหน้าชุด/i.test(t)) return "FOREMAN";
+  if (/leader|หัวหน้ากลุ่ม|หัวหน้ากะ/i.test(t)) return "LEADER";
+  if (/manager|ผู้จัดการ/i.test(t)) return "MANAGER";
   if (/officer|เจ้าหน้าที่/i.test(t)) return "OFFICER";
   if (/engineer|วิศวกร/i.test(t)) return "ENGINEER";
-  if (/section\s*head|หัวหน้างาน|หัวหน้าแผนก/i.test(t)) return "SECTION HEAD";
-  if (/technician|ช่างเทคนิค/i.test(t)) return "TECHNICIAN";
+  if (/technician|ช่างเทคนิค|ช่าง/i.test(t)) return "TECHNICIAN";
   if (/staff|พนักงาน/i.test(t)) return "STAFF";
-  if (/manager|ผู้จัดการ/i.test(t)) return "MANAGER";
+  if (/president|ประธาน/i.test(t)) return "PRESIDENT";
+  if (/vice\s*president|รองประธาน/i.test(t)) return "VICE PRESIDENT";
+  if (/advisor|ที่ปรึกษา/i.test(t)) return "ADVISOR";
   return t.toUpperCase();
 };
 
-// Helper function to check if a value matches target checklist (strictly matching user's position or level)
-const isTargetMatch = (targets: readonly string[] | undefined, userValue: string, isLevel = false, isPosition = false) => {
-  if (!targets || targets.length === 0) return false;
-  const rawUser = (userValue || "").trim();
-  if (!rawUser || rawUser === "-") return false;
+// Helper function to check if a value matches target checklist (strictly matching user's position, level, or function)
+const isTargetMatch = (
+  targets: readonly string[] | undefined,
+  userValues: string | string[],
+  isLevel = false,
+  isPosition = false,
+  targetGroupText?: string,
+) => {
+  const userVals = (Array.isArray(userValues) ? userValues : [userValues])
+    .map((v) => (v || "").trim())
+    .filter((v) => v && v !== "-");
 
-  const normalizedUser = isLevel
-    ? normalizeLevel(rawUser)
-    : isPosition
-    ? normalizePosition(rawUser)
-    : rawUser.toLowerCase();
+  if (userVals.length === 0) return false;
+
+  // 1. Check if rolling plan / course targetGroup description mentions this position or user value
+  if (targetGroupText && targetGroupText.trim() && targetGroupText !== "-") {
+    const normGroupText = targetGroupText.trim().toLowerCase();
+    for (const uv of userVals) {
+      const normUv = isPosition ? normalizePosition(uv).toLowerCase() : uv.toLowerCase();
+      if (
+        normGroupText.includes(uv.toLowerCase()) ||
+        (normUv && normGroupText.includes(normUv))
+      ) {
+        return true;
+      }
+    }
+  }
+
+  if (!targets || targets.length === 0) return false;
 
   return targets.some((target) => {
     const t = target.trim().toLowerCase();
+    if (!t || t === "-") return false;
+
+    // If target specifies all positions / levels / everyone, it matches all users
     if (
       t === "all" ||
       t === "all function" ||
@@ -156,9 +191,10 @@ const isTargetMatch = (targets: readonly string[] | undefined, userValue: string
       t === "ทุกตำแหน่ง" ||
       t === "ทุกระดับ" ||
       t === "ทุกกลุ่ม" ||
-      t === "พนักงานทุกกลุ่ม"
+      t === "พนักงานทุกกลุ่ม" ||
+      t === "พนักงานทุกคน"
     ) {
-      return false; // General/All does not count as a specific target match for Roadmap
+      return true;
     }
 
     const targetNorm = isLevel
@@ -167,11 +203,22 @@ const isTargetMatch = (targets: readonly string[] | undefined, userValue: string
       ? normalizePosition(target)
       : target.trim().toLowerCase();
 
-    return (
-      targetNorm === normalizedUser ||
-      targetNorm.includes(normalizedUser) ||
-      normalizedUser.includes(targetNorm)
-    );
+    return userVals.some((rawUser) => {
+      const normalizedUser = isLevel
+        ? normalizeLevel(rawUser)
+        : isPosition
+        ? normalizePosition(rawUser)
+        : rawUser.trim().toLowerCase();
+
+      return (
+        targetNorm === normalizedUser ||
+        targetNorm.includes(normalizedUser) ||
+        normalizedUser.includes(targetNorm) ||
+        target.trim().toLowerCase() === rawUser.trim().toLowerCase() ||
+        target.trim().toLowerCase().includes(rawUser.trim().toLowerCase()) ||
+        rawUser.trim().toLowerCase().includes(target.trim().toLowerCase())
+      );
+    });
   });
 };
 
@@ -219,9 +266,12 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
   // server identifies the employee from the session now.
   const employeeName = profileValue(authenticatedUser?.username);
   const employeeCompany = profileValue(authenticatedUser?.companyCode);
+  const employeeCompanyName = profileValue(authenticatedUser?.companyName);
   const employeeFunction = profileValue(authenticatedUser?.functionName);
   const employeePosition = profileValue(authenticatedUser?.positionName);
+  const employeePositionEn = profileValue(authenticatedUser?.positionNameEn);
   const employeeLevel = profileValue(authenticatedUser?.levelName);
+  const employeePl = profileValue(authenticatedUser?.pl);
 
   const [courses, setCourses] = useState<WorkflowCourse[]>([]);
   const [apiStandards, setApiStandards] = useState<WorkflowStandard[]>([]);
@@ -238,6 +288,58 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
   const [selectedGroup, setSelectedGroup] = useState<string>("ALL");
   const [expandedCode, setExpandedCode] = useState<string | null>(null);
 
+  // Approvals queue for managers / section heads / executives
+  const [pendingTeamEnrollments, setPendingTeamEnrollments] = useState<EnrollmentRecord[]>([]);
+  const [isDecidingEnrollmentId, setIsDecidingEnrollmentId] = useState<string | null>(null);
+
+  // Client-side mounted flag for React Portal
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Modal state for registration confirmation and approver selection
+  const [registeringPlan, setRegisteringPlan] = useState<{
+    id: string;
+    title: string;
+    code: string;
+    trainingDate: string;
+    trainer: string;
+    venue?: string;
+  } | null>(null);
+  const [approverCandidates, setApproverCandidates] = useState<Array<{
+    reviewerUserId: string;
+    employeeUserId: string;
+    employeeCode: string;
+    name: string;
+    position: string;
+    rank: number;
+    rankTitleEn: string;
+    rankTitleTh: string;
+    company: string;
+    department: string;
+    section: string;
+  }>>([]);
+  const [selectedApproverId, setSelectedApproverId] = useState<string>("");
+  const [approverMeta, setApproverMeta] = useState<{
+    isPresident: boolean;
+    requesterRank: number;
+    targetRank: number;
+    targetRankInfo: { rank: number; nameTh: string; nameEn: string } | null;
+  } | null>(null);
+  const [isLoadingApprovers, setIsLoadingApprovers] = useState(false);
+
+  const reloadPendingApprovals = () => {
+    fetch("/api/training-plan/enrollments?pendingForApprover=true", { credentials: "include", cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ok && data.data?.enrollments) {
+          setPendingTeamEnrollments(data.data.enrollments);
+        }
+      })
+      .catch(() => {});
+  };
+
   // One request feeds both the completed history and the "already registered" check, so the
   // registration state can no longer disagree with the record shown beside it.
   const applyEnrollments = (loaded: EnrollmentRecord[]) => {
@@ -252,6 +354,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
 
   useEffect(() => {
     let cancelled = false;
+    reloadPendingApprovals();
     listEnrollments({ planId: null, employeeId: null, employeeUserId: null })
       .then(({ enrollments: loaded }) => {
         if (!cancelled) applyEnrollments(loaded || []);
@@ -406,7 +509,17 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
     for (const rp of rollingPlans) {
       if (!rp.course || !rp.course.code) continue;
       const code = rp.course.code;
-      if (itemMap.has(code)) continue;
+
+      // If we already have an entry for this course, only replace it if the existing
+      // entry has ended (past date) AND this rolling plan has NOT yet ended. This
+      // prevents an older OAP batch (already ended) from shadowing a later OAP batch
+      // (still upcoming) for the same course code.
+      const existingEntry = itemMap.get(code);
+      const candidateEnded = isCourseEnded(rp.trainingDate || "", rp.endDate || rp.trainingDate);
+      if (existingEntry) {
+        // Keep the existing entry unless it's ended and the new candidate is still open
+        if (!(existingEntry.isEnded && !candidateEnded)) continue;
+      }
 
       const std = standards.find(
         (s) =>
@@ -419,25 +532,44 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
 
       const ownerComp = rp.ownerCompany || rp.company || employeeCompany;
 
-      const rawPositions = (rp.course as unknown as Record<string, unknown>)?.targetPositions as string[] | undefined
-        || (masterCourse as unknown as Record<string, unknown>)?.targetPositions as string[] | undefined
-        || std?.positions
+      const courseObj = rp.course as unknown as Record<string, unknown> | undefined;
+      const masterObj = masterCourse as unknown as Record<string, unknown> | undefined;
+
+      const rawPositions =
+        (Array.isArray(courseObj?.targetPositions) && courseObj.targetPositions.length > 0 ? courseObj.targetPositions : undefined)
+        || (Array.isArray(courseObj?.target_positions) && courseObj.target_positions.length > 0 ? courseObj.target_positions : undefined)
+        || (Array.isArray(masterObj?.targetPositions) && masterObj.targetPositions.length > 0 ? masterObj.targetPositions : undefined)
+        || (Array.isArray(masterObj?.target_positions) && masterObj.target_positions.length > 0 ? masterObj.target_positions : undefined)
+        || (Array.isArray(std?.positions) && std.positions.length > 0 ? std.positions : undefined)
         || [];
 
-      const rawLevels = (rp.course as unknown as Record<string, unknown>)?.targetLevels as string[] | undefined
-        || (masterCourse as unknown as Record<string, unknown>)?.targetLevels as string[] | undefined
-        || std?.levels
+      const rawLevels =
+        (Array.isArray(courseObj?.targetLevels) && courseObj.targetLevels.length > 0 ? courseObj.targetLevels : undefined)
+        || (Array.isArray(courseObj?.target_levels) && courseObj.target_levels.length > 0 ? courseObj.target_levels : undefined)
+        || (Array.isArray(masterObj?.targetLevels) && masterObj.targetLevels.length > 0 ? masterObj.targetLevels : undefined)
+        || (Array.isArray(masterObj?.target_levels) && masterObj.target_levels.length > 0 ? masterObj.target_levels : undefined)
+        || (Array.isArray(std?.levels) && std.levels.length > 0 ? std.levels : undefined)
         || [];
 
-      const rawCompanies = (rp.course as unknown as Record<string, unknown>)?.targetCompanies as string[] | undefined
-        || (masterCourse as unknown as Record<string, unknown>)?.targetCompanies as string[] | undefined
-        || std?.companies
-        || rp.relatedCompanies
+      const rawCompanies =
+        (Array.isArray(courseObj?.targetCompanies) && courseObj.targetCompanies.length > 0 ? courseObj.targetCompanies : undefined)
+        || (Array.isArray(courseObj?.target_companies) && courseObj.target_companies.length > 0 ? courseObj.target_companies : undefined)
+        || (Array.isArray(masterObj?.targetCompanies) && masterObj.targetCompanies.length > 0 ? masterObj.targetCompanies : undefined)
+        || (Array.isArray(masterObj?.target_companies) && masterObj.target_companies.length > 0 ? masterObj.target_companies : undefined)
+        || (Array.isArray(std?.companies) && std.companies.length > 0 ? std.companies : undefined)
+        || (Array.isArray(rp.relatedCompanies) && rp.relatedCompanies.length > 0 ? rp.relatedCompanies : undefined)
         || [];
 
-      const isCenter = rp.owner === "CENTER";
+      const isCenter =
+        rp.owner === "CENTER" ||
+        rp.ownerScope === "CENTER" ||
+        (rp.ownerCompany || "").trim().toUpperCase() === "CENTER" ||
+        (rp.company || "").trim().toUpperCase() === "ALL COMPANIES" ||
+        (rp.course as unknown as Record<string, unknown>)?.owner === "CENTER" ||
+        (masterCourse as unknown as Record<string, unknown>)?.owner === "CENTER" ||
+        (std as unknown as Record<string, unknown>)?.owner === "CENTER";
 
-      const isEnded = isCourseEnded(rp.trainingDate || "", rp.endDate || rp.trainingDate);
+      const isEnded = candidateEnded;
       const isRollingOpen = !isEnded;
       const trainingStatus = isEnded
         ? t("เสร็จสิ้นการอบรมแล้ว", "Training ended")
@@ -453,7 +585,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         learningContent: rp.course.learningContent || masterCourse?.learningContent || notSpecified,
         methodology: rp.course.methodology || masterCourse?.methodology || notSpecified,
         courseType: rp.course.courseType || masterCourse?.courseType || notSpecified,
-        ownerCompany: ownerComp,
+        ownerCompany: isCenter ? "CENTER" : ownerComp,
         courseOwner: isCenter ? "CENTER" : "FACTORY",
         targetGroupDesc: rp.course.targetGroup || masterCourse?.targetGroup || t("พนักงานระดับบังคับบัญชาและระดับปฏิบัติการที่เกี่ยวข้อง", "Targeted Employees & Related Groups"),
         targetCompanies: (rawCompanies.length > 0) ? rawCompanies : (isCenter ? ["All Companies"] : [ownerComp]),
@@ -482,16 +614,60 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
 
     // 4. Compute matching & visibility for each item (Only specifically targeted courses)
     return Array.from(itemMap.values()).map((item) => {
-      const isCompanyTargeted = item.courseOwner === "CENTER"
-        ? (item.targetCompanies.length === 0 || item.targetCompanies.some((c) => c.toLowerCase() === "all" || c.toLowerCase() === "all companies" || !employeeCompany || employeeCompany === "-" || c.toUpperCase() === employeeCompany.toUpperCase()))
-        : (!employeeCompany || employeeCompany === "-" || item.ownerCompany.toUpperCase() === employeeCompany.toUpperCase() || item.targetCompanies.some((c) => c.toUpperCase() === employeeCompany.toUpperCase()));
+      const isCenter = item.courseOwner === "CENTER";
+      const isCompanyTargeted = isCenter
+        ? (item.targetCompanies.length === 0 || item.targetCompanies.some((c) => {
+            const normC = c.trim().toUpperCase();
+            return (
+              normC === "ALL" ||
+              normC === "ALL COMPANIES" ||
+              !employeeCompany ||
+              employeeCompany === "-" ||
+              normC === employeeCompany.toUpperCase() ||
+              (employeeCompanyName && normC === employeeCompanyName.toUpperCase()) ||
+              normC.includes(employeeCompany.toUpperCase())
+            );
+          }))
+        : (!employeeCompany || employeeCompany === "-" ||
+            item.ownerCompany.toUpperCase() === employeeCompany.toUpperCase() ||
+            (employeeCompanyName && item.ownerCompany.toUpperCase() === employeeCompanyName.toUpperCase()) ||
+            item.targetCompanies.some((c) => {
+              const normC = c.trim().toUpperCase();
+              return (
+                normC === "ALL" ||
+                normC === "ALL COMPANIES" ||
+                normC === employeeCompany.toUpperCase() ||
+                (employeeCompanyName && normC === employeeCompanyName.toUpperCase()) ||
+                normC.includes(employeeCompany.toUpperCase())
+              );
+            }));
 
-      const matchPosition = isTargetMatch(item.targetPositions, employeePosition, false, true);
-      const matchLevel = isTargetMatch(item.targetLevels, employeeLevel, true, false);
-      const matchFunction = isTargetMatch(item.targetFunctions, employeeFunction);
+      const matchPosition = isTargetMatch(
+        item.targetPositions,
+        [employeePosition, employeePositionEn],
+        false,
+        true,
+        item.targetGroupDesc
+      );
+      const matchLevel = isTargetMatch(
+        item.targetLevels,
+        [employeeLevel, employeePl],
+        true,
+        false
+      );
+      const matchFunction = isTargetMatch(
+        item.targetFunctions,
+        employeeFunction
+      );
 
-      // Course is relevant if Company matches AND (Position matches OR Level matches)
-      const isRelevantForRoadmap = isCompanyTargeted && (matchPosition || matchLevel || matchFunction);
+      // For Center courses: if it's open to all positions/levels or not restricted, it is a general Center mandatory course for everyone!
+      const isGeneralCenterCourse = isCenter && (
+        item.targetPositions.length === 0 ||
+        item.targetPositions.some((p) => /all|ทุกตำแหน่ง|พนักงานทุกกลุ่ม|พนักงานทุกคน/i.test(p))
+      );
+
+      // Course is relevant if Company matches AND (Position matches OR Level matches OR Function matches OR isGeneralCenterCourse)
+      const isRelevantForRoadmap = isCompanyTargeted && (matchPosition || matchLevel || matchFunction || isGeneralCenterCourse);
       const isBothPositionAndLevelMatch = matchPosition && matchLevel && isCompanyTargeted;
 
       return {
@@ -504,7 +680,7 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
         isRelevantForRoadmap,
       };
     });
-  }, [courses, employeeCompany, employeeFunction, employeeLevel, employeePosition, enrollments, rollingPlans, standards, t]);
+  }, [courses, employeeCompany, employeeCompanyName, employeeFunction, employeeLevel, employeePl, employeePosition, employeePositionEn, enrollments, rollingPlans, standards, t]);
 
   // Filter items based on selected scope tab, category group, search query, and availability
   const filteredRoadmapItems = useMemo(() => {
@@ -667,36 +843,72 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
       return;
     }
 
-    // The button is disabled for this case already; this only guards a stale click. The real gate
-    // is the server, which rejects the request regardless of what the client believes.
-    if (item.missingPrerequisites.length > 0) return;
+    // Open Modal and fetch approver candidates based on 19-rank hierarchy
+    setRegisteringPlan({
+      id: item.id,
+      title: item.title,
+      code: item.code,
+      trainingDate: item.trainingDate,
+      trainer: item.trainer,
+      venue: item.place,
+    });
+    setIsLoadingApprovers(true);
+    setSelectedApproverId("");
+    try {
+      const res = await fetch("/api/training-plan/enrollments/approvers", { credentials: "include" });
+      const json = await res.json();
+      if (json.ok && json.data) {
+        const cands = json.data.candidates || [];
+        setApproverCandidates(cands);
+        setApproverMeta({
+          isPresident: json.data.isPresident,
+          requesterRank: json.data.requesterRank,
+          targetRank: json.data.targetRank,
+          targetRankInfo: json.data.targetRankInfo,
+        });
+        if (cands.length > 0) {
+          setSelectedApproverId(cands[0].reviewerUserId);
+        }
+      }
+    } catch {
+      setApproverCandidates([]);
+    } finally {
+      setIsLoadingApprovers(false);
+    }
+  };
 
-    const confirmed = window.confirm(
-      t(
-        `ยืนยันการสมัครอบรมหลักสูตร:\n• ${item.title} (${item.code})\n• กำหนดการ: ${item.trainingDate}\n• วิทยากร: ${item.trainer}`,
-        `Confirm registration for course:\n• ${item.title} (${item.code})\n• Date: ${item.trainingDate}\n• Trainer: ${item.trainer}`
-      )
-    );
-
-    if (!confirmed) return;
+  const confirmRegistration = async () => {
+    if (!registeringPlan) return;
+    if (!approverMeta?.isPresident && approverCandidates.length > 0 && !selectedApproverId) {
+      toast.error(t("กรุณาเลือกผู้อนุมัติ", "Please select an approver"));
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      // The route pins both employee keys to the session for an EMPLOYEE caller, so nothing sent
-      // from here decides who is enrolled. See the same call in RegisterTrainingModule.
       await createEnrollment({
-        planId: item.id,
+        planId: registeringPlan.id,
         employeeId: authenticatedUser?.employeeId ?? "0",
         employeeUserId: null,
         source: "EMPLOYEE",
+        approverUserId: approverMeta?.isPresident ? null : selectedApproverId || null,
       });
+      const chosenApprover = approverCandidates.find((c) => c.reviewerUserId === selectedApproverId);
       await reloadEnrollments();
-      toast.success(t("ส่งใบสมัครอบรมแล้ว รอ HRD อนุมัติ", "Registered. Awaiting HRD approval"));
+      toast.success(
+        approverMeta?.isPresident
+          ? t("ลงทะเบียนสำเร็จและได้รับการอนุมัติเรียบร้อย", "Registered and auto-approved")
+          : t(
+              `ส่งใบสมัครอบรมและส่งการแจ้งเตือนไปยังคุณ ${chosenApprover?.name || "ผู้อนุมัติ"} เรียบร้อยแล้ว`,
+              `Registration submitted and notification sent to ${chosenApprover?.name || "approver"}`,
+            ),
+      );
+      setRegisteringPlan(null);
     } catch (error: unknown) {
       toast.error(
         error instanceof Error
           ? error.message
-          : t("สมัครอบรมไม่สำเร็จ", "Could not submit the registration")
+          : t("สมัครอบรมไม่สำเร็จ", "Could not submit the registration"),
       );
     } finally {
       setIsSubmitting(false);
@@ -713,6 +925,85 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
           "Targeted training courses designed specifically for your company, position, and job level with direct enrollment.",
         )}
       />
+
+      {/* Pending Approvals Queue for Section Heads & Executives */}
+      {pendingTeamEnrollments.length > 0 ? (
+        <section className={styles.pendingApprovalsQueueCard} aria-label="Pending Team Approvals">
+          <div className={styles.pendingQueueHeader}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <CheckCircle2 size={20} style={{ color: "var(--ui-30-primary)" }} />
+              <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "var(--ui-30-primary)" }}>
+                {t("คำขอลงทะเบียนฝึกอบรมที่รอการอนุมัติของคุณ", "Course Registrations Awaiting Your Approval")}
+              </h3>
+            </div>
+            <span className={styles.approvalCountBadge}>
+              {pendingTeamEnrollments.length} {t("รายการรอพิจารณา", "pending")}
+            </span>
+          </div>
+          <div className={styles.pendingGrid}>
+            {pendingTeamEnrollments.map((item) => (
+              <div key={item.id} className={styles.pendingItemCard}>
+                <div className={styles.pendingItemInfo}>
+                  <div style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--ui-30-ink)" }}>
+                    {item.employeeName} {item.employeeCode ? `(${item.employeeCode})` : ""}
+                  </div>
+                  <div style={{ fontSize: "0.8rem", color: "var(--ui-30-muted)", marginTop: 2 }}>
+                    {[item.position, item.department, item.company].filter(Boolean).join(" • ")}
+                  </div>
+                  <div style={{ marginTop: 8, fontSize: "0.88rem", fontWeight: 700, color: "var(--ui-30-ink)" }}>
+                    📚 {item.plan.courseName} ({item.plan.courseCode})
+                  </div>
+                  <div style={{ fontSize: "0.78rem", color: "var(--ui-30-muted)", marginTop: 2 }}>
+                    📅 {item.plan.startAt ? item.plan.startAt.slice(0, 10) : "-"}
+                  </div>
+                </div>
+                <div className={styles.pendingItemActions}>
+                  <button
+                    type="button"
+                    className={styles.approveBtn}
+                    disabled={isDecidingEnrollmentId === item.id}
+                    onClick={async () => {
+                      setIsDecidingEnrollmentId(item.id);
+                      try {
+                        await updateEnrollmentStatus(item.id, { action: "approve" });
+                        setPendingTeamEnrollments((prev) => prev.filter((p) => p.id !== item.id));
+                        toast.success(t("อนุมัติการลงทะเบียนเรียบร้อยแล้ว", "Registration approved successfully"));
+                      } catch (err: unknown) {
+                        toast.error(err instanceof Error ? err.message : t("อนุมัติไม่สำเร็จ", "Could not approve"));
+                      } finally {
+                        setIsDecidingEnrollmentId(null);
+                      }
+                    }}
+                  >
+                    {isDecidingEnrollmentId === item.id ? "..." : t("อนุมัติ", "Approve")}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.rejectBtn}
+                    disabled={isDecidingEnrollmentId === item.id}
+                    onClick={async () => {
+                      const reason = window.prompt(t("กรุณาระบุเหตุผลที่ไม่อนุมัติ (ถ้ามี):", "Please provide a rejection reason:"));
+                      if (reason === null) return;
+                      setIsDecidingEnrollmentId(item.id);
+                      try {
+                        await updateEnrollmentStatus(item.id, { action: "reject", reason });
+                        setPendingTeamEnrollments((prev) => prev.filter((p) => p.id !== item.id));
+                        toast.success(t("ปฏิเสธคำขอลงทะเบียนแล้ว", "Registration rejected"));
+                      } catch (err: unknown) {
+                        toast.error(err instanceof Error ? err.message : t("ปฏิเสธไม่สำเร็จ", "Could not reject"));
+                      } finally {
+                        setIsDecidingEnrollmentId(null);
+                      }
+                    }}
+                  >
+                    {t("ไม่อนุมัติ", "Reject")}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* Control Panel Card Inspired by RegisterTrainingModule */}
       <section className={styles.controlPanelCard} aria-label="Roadmap Filters & Search">
@@ -1161,6 +1452,98 @@ export default function RoadmapModule({ onRequestRefresher, onNavigate }: Roadma
           </div>
         ) : null}
       </div>
+      {/* Registration Confirmation & Approver Selection Modal */}
+      {isMounted && registeringPlan && typeof document !== "undefined"
+        ? createPortal(
+            <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="roadmap-modal-title">
+              <div className={styles.modalDialog}>
+                <div className={styles.modalHeader}>
+                  <h3 className={styles.modalTitle} id="roadmap-modal-title">
+                    {t("ยืนยันการสมัครอบรมหลักสูตรตาม Roadmap", "Confirm Roadmap Course Registration")}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setRegisteringPlan(null)}
+                    style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--ui-30-muted)" }}
+                    aria-label="Close"
+                  >
+                    <XCircle size={20} />
+                  </button>
+                </div>
+
+                <div className={styles.modalBody}>
+                  <div className={styles.modalCourseSummary}>
+                    <div style={{ fontWeight: 800, fontSize: "1rem", color: "var(--ui-30-ink)" }}>
+                      {registeringPlan.title}
+                    </div>
+                    <div style={{ fontSize: "0.82rem", color: "var(--ui-30-muted)" }}>
+                      <strong>{t("รหัสวิชา", "Course Code")}:</strong> {registeringPlan.code} • <strong>{t("วิทยากร", "Trainer")}:</strong> {registeringPlan.trainer || "-"}
+                    </div>
+                    <div style={{ fontSize: "0.82rem", color: "var(--ui-30-muted)" }}>
+                      <strong>{t("กำหนดการอบรม", "Date")}:</strong> {registeringPlan.trainingDate} • <strong>{t("สถานที่", "Venue")}:</strong> {registeringPlan.venue || "-"}
+                    </div>
+                  </div>
+
+                  {isLoadingApprovers ? (
+                    <div style={{ textAlign: "center", padding: "16px 0", color: "var(--ui-30-muted)", fontSize: "0.88rem" }}>
+                      ⏳ {t("กำลังโหลดรายชื่อผู้อนุมัติตามลำดับขั้น...", "Loading eligible approvers by rank...")}
+                    </div>
+                  ) : approverMeta?.isPresident ? (
+                    <div style={{ background: "var(--ui-30-primary-soft)", border: "1px solid var(--ui-30-primary-border)", borderRadius: 8, padding: 12, color: "var(--ui-30-primary)", fontSize: "0.88rem" }}>
+                      ⭐ {t("ท่านดำรงตำแหน่งประธานบริษัท (President) ระบบจะทำการอนุมัติการลงทะเบียนอัตโนมัติ", "You hold the President position. Registration will be auto-approved.")}
+                    </div>
+                  ) : (
+                    <div className={styles.approverSelectSection}>
+                      <label className={styles.approverLabel}>
+                        {approverMeta?.targetRank === 12
+                          ? t("เลือก Section Head (ผู้จัดการแผนก) ในบริษัทของคุณเป็นผู้อนุมัติ:", "Select Section Head in your company as approver:")
+                          : approverMeta?.targetRank === 11
+                          ? t("เนื่องจากท่านเป็น Section Head กรุณาเลือก Manager (ผู้จัดการ) เป็นผู้อนุมัติ:", "As Section Head, select Manager in your company as approver:")
+                          : approverMeta?.targetRank === 10
+                          ? t("เนื่องจากท่านเป็น Manager กรุณาเลือก General Manager (ผู้จัดการทั่วไป) เป็นผู้อนุมัติ:", "As Manager, select General Manager as approver:")
+                          : t(
+                              `กรุณาเลือกผู้บังคับบัญชา (${approverMeta?.targetRankInfo?.nameEn || "Superior"}) ในบริษัทของคุณเป็นผู้อนุมัติ:`,
+                              `Please select your superior (${approverMeta?.targetRankInfo?.nameEn || "Superior"}) in your company as approver:`
+                            )}
+                      </label>
+                      {approverCandidates.length > 0 ? (
+                        <SearchableApproverSelect
+                          candidates={approverCandidates}
+                          selectedApproverId={selectedApproverId}
+                          onSelect={(id) => setSelectedApproverId(id)}
+                        />
+                      ) : (
+                        <div style={{ background: "var(--ui-10-accent-soft)", border: "1px solid var(--ui-10-accent-border)", borderRadius: 8, padding: 12, color: "var(--ui-10-accent)", fontSize: "0.85rem" }}>
+                          ⚠️ {t("ไม่พบรายชื่อผู้อนุมัติตามลำดับขั้นในบริษัทของคุณ (ระบบจะส่งต่อให้ผู้ดูแลระบบ/HRD พิจารณา)", "No direct approvers found at this rank in your company (Request will be routed to HRD/Admin)")}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className={styles.modalFooter}>
+                  <button
+                    type="button"
+                    className={styles.cancelRegisterBtn}
+                    onClick={() => setRegisteringPlan(null)}
+                    disabled={isSubmitting}
+                  >
+                    {t("ยกเลิก", "Cancel")}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.confirmRegisterBtn}
+                    onClick={confirmRegistration}
+                    disabled={isSubmitting || isLoadingApprovers}
+                  >
+                    {isSubmitting ? t("กำลังส่งคำขอ...", "Submitting...") : t("ยืนยันการสมัครอบรม", "Confirm Registration")}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </main>
   );
 }

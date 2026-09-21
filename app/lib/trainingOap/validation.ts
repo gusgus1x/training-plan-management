@@ -82,5 +82,11 @@ export const parseOapPlanListFilters = (params: URLSearchParams): OapPlanListFil
   const search = params.get("search")?.trim() || null;
   if (search && search.length > 100) throw invalid("search", "Search must contain no more than 100 characters");
   const rawStatus = params.get("status");
-  return { search, status: rawStatus ? status(rawStatus) : null };
+  const rawYear = params.get("planYear") ?? params.get("year");
+  const parsedYear = rawYear ? parseInt(rawYear, 10) : null;
+  return {
+    search,
+    status: rawStatus ? status(rawStatus) : null,
+    planYear: parsedYear && !isNaN(parsedYear) ? parsedYear : null,
+  };
 };

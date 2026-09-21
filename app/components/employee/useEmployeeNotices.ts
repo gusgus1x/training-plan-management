@@ -14,6 +14,8 @@ import {
 
 import type { TrainingRecordRequestRecord } from "../../lib/trainingRecordRequests/types";
 import { listRecordRequests } from "../../lib/trainingRecordRequests/client";
+import type { NotificationRecord } from "../../lib/notifications/types";
+import { listNotifications } from "../../lib/notifications/client";
 
 export type RecordRequestsState = {
   myRequests: TrainingRecordRequestRecord[];
@@ -31,10 +33,14 @@ export function useEmployeeNotices(
   const [recordRequests, setRecordRequests] = useState<RecordRequestsState>(
     initialRecordRequests ?? { myRequests: [], pendingApprovals: [] },
   );
+  const [pendingApproverEnrollments, setPendingApproverEnrollments] = useState<EnrollmentRecord[]>([]);
+  const [systemNotifications, setSystemNotifications] = useState<NotificationRecord[]>([]);
 
   useEffect(() => {
     if (!userKey) return;
     let isMounted = true;
+
+    // 1. Record requests
     listRecordRequests()
       .then((data) => {
         if (isMounted && data) {
@@ -45,14 +51,34 @@ export function useEmployeeNotices(
         }
       })
       .catch(() => {});
+
+    // 2. Pending team enrollments for approver
+    fetch("/api/training-plan/enrollments?pendingForApprover=true", { credentials: "include", cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.ok && data.data?.enrollments) {
+          setPendingApproverEnrollments(data.data.enrollments);
+        }
+      })
+      .catch(() => {});
+
+    // 3. System notifications
+    listNotifications()
+      .then((data) => {
+        if (isMounted && data?.notifications) {
+          setSystemNotifications(data.notifications);
+        }
+      })
+      .catch(() => {});
+
     return () => {
       isMounted = false;
     };
   }, [userKey]);
 
   const notices = useMemo(
-    () => buildEmployeeNotices(enrollments, recordRequests),
-    [enrollments, recordRequests],
+    () => buildEmployeeNotices(enrollments, recordRequests, pendingApproverEnrollments, systemNotifications),
+    [enrollments, recordRequests, pendingApproverEnrollments, systemNotifications],
   );
   const [state, setState] = useState<NoticeState>({});
 

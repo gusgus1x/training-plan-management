@@ -250,6 +250,8 @@ export type CreateEnrollmentInput = {
    * client sends - an employee cannot wave their own condition through.
    */
   acknowledgePrerequisite?: boolean;
+  /** Chosen approver's user_account user_id for hierarchy approval */
+  approverUserId?: string | null;
 };
 
 export type EnrollmentAction = "approve" | "reject" | "cancel";
@@ -267,6 +269,9 @@ export type EnrollmentListFilters = {
   planId: string | null;
   employeeId: string | null;
   employeeUserId: string | null;
+  approverUserId?: string | null;
+  pendingForApprover?: boolean;
+  approvalStatus?: string | null;
 };
 
 export type CoursePriorHistoryRecord = {

@@ -33,6 +33,7 @@ export const listOapPlans = async (filters: OapPlanListFilters) => {
   const params = new URLSearchParams();
   if (filters.search) params.set("search", filters.search);
   if (filters.status) params.set("status", filters.status);
+  if (filters.planYear !== undefined && filters.planYear !== null) params.set("planYear", String(filters.planYear));
   const response = await fetch(`/api/training-plan/oap-plans?${params.toString()}`, {
     credentials: "include",
     cache: "no-store",

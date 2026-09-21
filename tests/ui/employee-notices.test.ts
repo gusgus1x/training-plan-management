@@ -77,6 +77,32 @@ describe("which notices an employee gets", () => {
     const pending = enrollment({ status: "Pending Approval", attendance: null }, openPostTest);
     expect(buildEmployeeNotices([pending], new Date(T0))).toEqual([]);
   });
+
+  it("raises enrollment_approval notice for pending team enrollments awaiting approver", () => {
+    const pendingEnr = enrollment({ id: "enr-999", status: "Pending Approval" });
+    const notices = buildEmployeeNotices([], undefined, [pendingEnr], undefined, new Date(T0));
+    expect(notices).toHaveLength(1);
+    expect(notices[0].id).toBe("enrollment_approval:enr-999");
+    expect(notices[0].kind).toBe("enrollment_approval");
+    expect(noticeHref(notices[0], 100)).toBe("/?module=register&focusApproval=enr-999&at=100");
+  });
+
+  it("raises system_notification notice for direct notifications", () => {
+    const notif = {
+      notificationId: "notif-1",
+      userId: "10",
+      title: "Test Alert",
+      message: "Test message",
+      relatedType: "TRAINING_ENROLLMENT",
+      relatedId: "123",
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    };
+    const notices = buildEmployeeNotices([], undefined, undefined, [notif], new Date(T0));
+    expect(notices).toHaveLength(1);
+    expect(notices[0].id).toBe("system_notification:notif-1");
+    expect(noticeHref(notices[0], 200)).toBe("/?module=register&at=200");
+  });
 });
 
 describe("dashboard card lifetime", () => {

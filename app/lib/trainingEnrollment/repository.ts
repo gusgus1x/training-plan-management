@@ -575,6 +575,9 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
         ];
       }
 
+      if (filters.approverUserId) where.approved_by = BigInt(filters.approverUserId);
+      if (filters.approvalStatus) where.approval_status = filters.approvalStatus;
+
       return withDatabaseErrorMapping(async () => {
         const rows = await db().training_enrollment.findMany({
           where,
@@ -627,6 +630,12 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
         const isOwnFactoryPlan = planCompanyId !== null && companyId !== null && planCompanyId.toString() === companyId;
         const autoApprove = role === "HRD_CENTER" || (role === "HRD_FACTORY" && isOwnFactoryPlan);
 
+        const assignedApproverId = autoApprove
+          ? BigInt(userId)
+          : input.approverUserId
+            ? BigInt(input.approverUserId)
+            : null;
+
         const data: Prisma.training_enrollmentUncheckedCreateInput = {
           plan_id: planId,
           // employee_id is gone from this table (Phase 20 Stage 8); the durable key is the link.
@@ -644,7 +653,7 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
           level_match_status: levelMatchStatus,
           target_checked_at: new Date(),
           enrolled_at: new Date(),
-          approved_by: autoApprove ? BigInt(userId) : null,
+          approved_by: assignedApproverId,
           approved_at: autoApprove ? new Date() : null,
         };
 
@@ -655,6 +664,24 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
         const saved = existing
           ? await db().training_enrollment.update({ where: { enrollment_id: existing.enrollment_id }, data, include: enrollmentInclude })
           : await db().training_enrollment.create({ data, include: enrollmentInclude });
+
+        if (!autoApprove && input.approverUserId) {
+          try {
+            const requesterName = employeeDisplayName(employee);
+            const courseName = saved.training_plan.training_plan_oap.course_name_snapshot || "หลักสูตรฝึกอบรม";
+            await db().notification.create({
+              data: {
+                user_id: BigInt(input.approverUserId),
+                title: "คำขออนุมัติการลงทะเบียนฝึกอบรม",
+                message: `คุณ ${requesterName} ได้ส่งคำขอลงทะเบียนหลักสูตร ${courseName} รอให้ท่านพิจารณาอนุมัติ`,
+                related_type: "TRAINING_ENROLLMENT",
+                related_id: saved.enrollment_id,
+              },
+            });
+          } catch (err) {
+            console.warn("Could not create approver notification for enrollment:", err);
+          }
+        }
 
         return mapEnrollment(saved);
       });
@@ -693,8 +720,18 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
             requesterEmployeeId !== null &&
             current.employee.employee_id.toString() === requesterEmployeeId;
 
-          if (action !== "cancel" || (!ownsByDurableKey && !ownsBySurrogateKey)) {
-            throw forbidden("You can only withdraw your own registration");
+          const isAssignedApprover =
+            current.approved_by !== null &&
+            current.approved_by.toString() === userId;
+
+          if (action === "cancel") {
+            if (!ownsByDurableKey && !ownsBySurrogateKey) {
+              throw forbidden("You can only withdraw your own registration");
+            }
+          } else {
+            if (!isAssignedApprover) {
+              throw forbidden("You do not have permission to approve or reject this registration");
+            }
           }
         }
 
@@ -730,6 +767,37 @@ export const createEnrollmentRepository = (client?: DatabaseClient) => {
         }
 
         const updated = await db().training_enrollment.update({ where: { enrollment_id: enrollmentId }, data, include: enrollmentInclude });
+
+        if (action === "approve" || action === "reject") {
+          try {
+            const employeeUser = await db().user_account.findFirst({
+              where: {
+                OR: [
+                  current.employee.user_id ? { employee_user_id: current.employee.user_id } : undefined,
+                  current.employee.employee_code ? { username: current.employee.employee_code } : undefined,
+                ].filter(Boolean) as any,
+              },
+              select: { user_id: true },
+            });
+            if (employeeUser) {
+              const courseName = current.training_plan.training_plan_oap.course_name_snapshot || "หลักสูตรฝึกอบรม";
+              await db().notification.create({
+                data: {
+                  user_id: employeeUser.user_id,
+                  title: action === "approve" ? "การลงทะเบียนฝึกอบรมได้รับการอนุมัติ" : "การลงทะเบียนฝึกอบรมไม่ได้รับการอนุมัติ",
+                  message: action === "approve"
+                    ? `คำขอลงทะเบียนหลักสูตร ${courseName} ได้รับการอนุมัติแล้ว`
+                    : `คำขอลงทะเบียนหลักสูตร ${courseName} ไม่ได้รับการอนุมัติ${reason ? `: ${reason}` : ""}`,
+                  related_type: "TRAINING_ENROLLMENT",
+                  related_id: enrollmentId,
+                },
+              });
+            }
+          } catch (err) {
+            console.warn("Could not create employee notification for enrollment status:", err);
+          }
+        }
+
         return mapEnrollment(updated);
       });
     },

@@ -14,6 +14,10 @@ const renderNoticeIcon = (kind: EmployeeNotice["kind"]) => {
   switch (kind) {
     case "certificate":
       return <Award size={18} />;
+    case "enrollment_approval":
+      return <FileText size={18} style={{ color: "var(--ui-30-primary, #007a3d)" }} />;
+    case "system_notification":
+      return <Bell size={18} style={{ color: "#3b82f6" }} />;
     case "record_request_approval":
       return <FileText size={18} style={{ color: "#3b82f6" }} />;
     case "record_request_approved":

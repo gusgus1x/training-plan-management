@@ -177,11 +177,34 @@ export const SECTION_HEAD_OR_ABOVE_TITLES_EN = [
   "director",
 ] as const;
 
+export const HIERARCHY_19_RANKS = [
+  { rank: 1, code: "PRES", nameTh: "ประธานบริษัท", nameEn: "President" },
+  { rank: 2, code: "EVP", nameTh: "รองประธานบริหาร", nameEn: "Executive Vice President" },
+  { rank: 3, code: "VP", nameTh: "รองประธาน", nameEn: "Vice President" },
+  { rank: 4, code: "SADV", nameTh: "ที่ปรึกษาอาวุโส", nameEn: "Senior Advisor" },
+  { rank: 5, code: "ADV", nameTh: "ที่ปรึกษา", nameEn: "Advisor" },
+  { rank: 6, code: "SEC", nameTh: "ผู้ประสานงานบริหารอาวุโส", nameEn: "Senior Executive Coordinator" },
+  { rank: 7, code: "PM", nameTh: "ผู้จัดการโรงงาน", nameEn: "Plant Manager" },
+  { rank: 8, code: "EGM", nameTh: "ผู้จัดการทั่วไปฝ่ายบริหาร", nameEn: "Executive General Manager" },
+  { rank: 9, code: "SGM", nameTh: "ผู้จัดการทั่วไปอาวุโส", nameEn: "Senior General Manager" },
+  { rank: 10, code: "GM", nameTh: "ผู้จัดการทั่วไป", nameEn: "General Manager" },
+  { rank: 11, code: "MGR", nameTh: "ผู้จัดการ", nameEn: "Manager" },
+  { rank: 12, code: "SH", nameTh: "ผู้จัดการแผนก", nameEn: "Section Head" },
+  { rank: 13, code: "ENG", nameTh: "วิศวกร", nameEn: "Engineer" },
+  { rank: 14, code: "OFF", nameTh: "เจ้าหน้าที่", nameEn: "Officer" },
+  { rank: 15, code: "SFM", nameTh: "ซีเนียร์โฟร์แมน", nameEn: "Senior Foreman" },
+  { rank: 16, code: "FM", nameTh: "โฟร์แมน", nameEn: "Foreman" },
+  { rank: 17, code: "LD", nameTh: "ลีดเดอร์", nameEn: "Leader" },
+  { rank: 18, code: "STAFF", nameTh: "พนักงาน", nameEn: "Staff" },
+  { rank: 19, code: "OP", nameTh: "พนักงานปฏิบัติการ", nameEn: "Operator" },
+] as const;
+
 export const getSectionHeadOrAboveRank = (item: {
   positionCode?: string | null;
   positionName?: string | null;
   levelCode?: string | null;
   levelKey?: string | null;
+  levelName?: string | null;
 }): number => {
   const code = (item.positionCode || "").trim().toUpperCase();
   const name = (item.positionName || "").trim().toLowerCase();
@@ -201,6 +224,83 @@ export const getSectionHeadOrAboveRank = (item: {
 
   return 99;
 };
+
+export const getEmployee19Rank = (item: {
+  positionCode?: string | null;
+  positionName?: string | null;
+  levelCode?: string | null;
+  levelKey?: string | null;
+  levelName?: string | null;
+}): number => {
+  // First check Section Head and higher (ranks 1-12)
+  const shRank = getSectionHeadOrAboveRank(item);
+  if (shRank >= 1 && shRank <= 12) {
+    return shRank;
+  }
+
+  const code = (item.positionCode || "").trim().toUpperCase();
+  const name = (item.positionName || "").trim().toLowerCase();
+
+  // Check ranks 13-19 by code
+  if (code === "ENG") return 13;
+  if (code === "OFF") return 14;
+  if (code === "SFM") return 15;
+  if (code === "FM") return 16;
+  if (code === "LD") return 17;
+  if (code === "STAFF") return 18;
+  if (code === "OP") return 19;
+
+  // Check ranks 13-19 by name (Thai & English)
+  if (name.includes("วิศวกร") || name.includes("engineer")) return 13;
+  if (name.includes("เจ้าหน้าที่") || name.includes("officer")) return 14;
+  if (name.includes("ซีเนียร์โฟร์แมน") || name.includes("senior foreman") || name.includes("หัวหน้าชุดอาวุโส")) return 15;
+  if (name.includes("โฟร์แมน") || name.includes("foreman") || name.includes("หัวหน้าชุด")) return 16;
+  if (name.includes("ลีดเดอร์") || name.includes("leader")) return 17;
+  if (name.includes("พนักงานปฏิบัติการ") || name.includes("operator")) return 19;
+  if (name.includes("พนักงาน") || name.includes("staff") || name.includes("ช่างเทคนิค") || name.includes("technician")) return 18;
+
+  // Level fallbacks if available
+  const lvlRaw = (item.levelKey || item.levelCode || item.levelName || "").trim();
+  if (lvlRaw) {
+    const lvlNorm = normalizeEmployeeLevel(lvlRaw).toUpperCase();
+    if (lvlNorm.startsWith("M") || lvlRaw.startsWith("จ") || lvlRaw.includes("จัดการ")) return 12;
+    if (lvlNorm.startsWith("S") || lvlRaw.startsWith("บ") || lvlRaw.includes("บังคับบัญชา")) {
+      const rank = getLevelRank(lvlRaw);
+      return rank >= 8 ? 15 : 16;
+    }
+    if (lvlNorm.startsWith("O") || lvlNorm.startsWith("L") || lvlRaw.startsWith("ป") || lvlRaw.includes("ปฏิบัติการ")) {
+      const rank = getLevelRank(lvlRaw);
+      if (rank >= 4) return 17;
+      if (rank >= 2) return 18;
+      return 19;
+    }
+  }
+
+  return 18; // Default to Staff
+};
+
+/**
+ * Returns the exact direct superior rank according to Option 1:
+ * - Rank 13-19 (lower than Section Head) -> Rank 12 (Section Head)
+ * - Rank 12 (Section Head) -> Rank 11 (Manager)
+ * - Rank 11 (Manager) -> Rank 10 (General Manager)
+ * - Rank 10 (General Manager) -> Rank 9 (Senior General Manager)
+ * - Rank R <= 9 down to 2 -> Direct superior rank R - 1
+ * - Rank 1 (President) -> 1 (Auto-approve)
+ */
+export const getTargetApproverRank = (requesterRank: number): number => {
+  if (requesterRank <= 1) return 1;
+  if (requesterRank > 12) return 12;
+  if (requesterRank === 12) return 11;
+  if (requesterRank === 11) return 10;
+  if (requesterRank === 10) return 9;
+  return requesterRank - 1;
+};
+
+export const getHierarchyRankInfo = (rank: number) => {
+  return HIERARCHY_19_RANKS.find((r) => r.rank === rank) || null;
+};
+
 
 export const isSectionHeadOrAbove = (user: {
   role?: string | null;

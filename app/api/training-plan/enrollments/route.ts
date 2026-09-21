@@ -17,14 +17,19 @@ export const createListEnrollmentsHandler = (dependencies: Dependencies = {}) =>
   createProtectedRoute(async (request: NextRequest, principal) => {
     const filters = parseEnrollmentListFilters(request.nextUrl.searchParams);
     if (principal.role === "EMPLOYEE") {
-      // Fail closed. An unlinked account carries neither key, and a null filter means "no filter"
-      // downstream, so assigning it straight through handed every employee the whole table.
-      // Every user_account.employee_user_id is NULL today, so that was all six EMPLOYEE logins.
-      if (principal.employeeUserId === null && principal.employeeId === null) {
-        return apiSuccess({ enrollments: [] });
+      if (filters.pendingForApprover) {
+        filters.approverUserId = principal.userId;
+        filters.approvalStatus = "PENDING";
+      } else {
+        // Fail closed. An unlinked account carries neither key, and a null filter means "no filter"
+        // downstream, so assigning it straight through handed every employee the whole table.
+        // Every user_account.employee_user_id is NULL today, so that was all six EMPLOYEE logins.
+        if (principal.employeeUserId === null && principal.employeeId === null) {
+          return apiSuccess({ enrollments: [] });
+        }
+        filters.employeeUserId = principal.employeeUserId;
+        filters.employeeId = principal.employeeId;
       }
-      filters.employeeUserId = principal.employeeUserId;
-      filters.employeeId = principal.employeeId;
     }
     const result = await (dependencies.service ?? enrollmentService).listEnrollments(
       filters,

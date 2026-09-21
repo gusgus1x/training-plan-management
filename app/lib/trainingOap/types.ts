@@ -5,6 +5,7 @@ export type OapPlanStatus = "Planning" | "Planned" | "Cancel";
 export type OapPlanRecord = {
   id: string;
   sequence: number;
+  planYear: number;
   course: WorkflowCourse;
   participants: string;
   hours: string;
@@ -48,4 +49,5 @@ export type UpdateOapPlanInput = Partial<CreateOapPlanInput>;
 export type OapPlanListFilters = {
   search: string | null;
   status: OapPlanStatus | null;
+  planYear?: number | null;
 };

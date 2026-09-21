@@ -19,6 +19,10 @@ import styles from "./EmployeeNoticeCards.module.css";
 
 const renderCardIcon = (kind: EmployeeNotice["kind"]) => {
   switch (kind) {
+    case "enrollment_approval":
+      return <FileText size={22} style={{ color: "var(--ui-30-primary, #007a3d)" }} />;
+    case "system_notification":
+      return <Bell size={22} style={{ color: "#3b82f6" }} />;
     case "record_request_approval":
       return <FileText size={22} style={{ color: "#3b82f6" }} />;
     case "record_request_approved":
@@ -35,6 +39,10 @@ const renderCardIcon = (kind: EmployeeNotice["kind"]) => {
 
 const renderEyebrowIcon = (kind: EmployeeNotice["kind"]) => {
   switch (kind) {
+    case "enrollment_approval":
+      return <FileText size={14} />;
+    case "system_notification":
+      return <Bell size={14} />;
     case "record_request_approval":
       return <FileText size={14} />;
     case "record_request_approved":

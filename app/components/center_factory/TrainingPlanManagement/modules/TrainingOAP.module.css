@@ -269,6 +269,11 @@
   transition: all 0.15s ease;
 }
 
+.statusSelect option {
+  background: var(--ui-60-surface);
+  color: var(--ui-30-ink);
+}
+
 .statusSelect:focus {
   border-color: var(--ui-30-primary);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
@@ -2899,4 +2904,39 @@ padding: 10px;
   font-weight: 800;
   font-size: 0.78rem;
   cursor: pointer;
+}
+
+.yearBadge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--ui-status-info-bg, #eff6ff);
+  color: var(--ui-status-info-text, #1e40af);
+  font-size: 0.82rem;
+  font-weight: 700;
+  border: 1px solid var(--ui-status-info-border, #bfdbfe);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.yearBadge small {
+  font-size: 0.7rem;
+  color: var(--ui-status-info-text, #3b82f6);
+  opacity: 0.85;
+  font-weight: 600;
+}
+
+:global([data-theme="dark"]) .yearBadge,
+:global(.dark) .yearBadge {
+  background: rgba(59, 130, 246, 0.16);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+:global([data-theme="dark"]) .yearBadge small,
+:global(.dark) .yearBadge small {
+  color: #60a5fa;
 }

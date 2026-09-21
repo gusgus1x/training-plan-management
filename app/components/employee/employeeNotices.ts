@@ -19,6 +19,7 @@ export const certificatesOf = (enrollments: EnrollmentRecord[]) =>
   enrollments.filter((enrollment) => enrollment.certificate !== null);
 
 import type { TrainingRecordRequestRecord } from "../../lib/trainingRecordRequests/types";
+import type { NotificationRecord } from "../../lib/notifications/types";
 
 export type NoticeStageKey = "pre" | "post" | "evaluation" | "evaluation30";
 const STAGE_ORDER: NoticeStageKey[] = ["pre", "post", "evaluation", "evaluation30"];
@@ -34,7 +35,9 @@ export type EmployeeNotice =
   | (NoticeBase & { kind: "forms"; stages: NoticeStageKey[]; enrollmentId: string; courseName: string; courseCode: string; tab: "completed" | "pending" })
   | (NoticeBase & { kind: "record_request_approval"; request: TrainingRecordRequestRecord; tab: "download" })
   | (NoticeBase & { kind: "record_request_approved"; request: TrainingRecordRequestRecord; tab: "download" })
-  | (NoticeBase & { kind: "record_request_rejected"; request: TrainingRecordRequestRecord; tab: "download" });
+  | (NoticeBase & { kind: "record_request_rejected"; request: TrainingRecordRequestRecord; tab: "download" })
+  | (NoticeBase & { kind: "enrollment_approval"; enrollment: EnrollmentRecord; tab: "pending" })
+  | (NoticeBase & { kind: "system_notification"; notification: NotificationRecord; tab: "pending" });
 
 const APPROVED_STATUSES = ["Factory Approved", "Center Approved"];
 
@@ -44,12 +47,28 @@ export const buildEmployeeNotices = (
     myRequests?: TrainingRecordRequestRecord[];
     pendingApprovals?: TrainingRecordRequestRecord[];
   },
+  pendingEnrollments?: EnrollmentRecord[],
+  systemNotifications?: NotificationRecord[],
   now: Date = new Date(),
 ): EmployeeNotice[] => {
   const followUpDue = new Set(pendingFollowUpEvaluationsOf(enrollments, now).map((enrollment) => enrollment.id));
   const notices: EmployeeNotice[] = [];
 
-  // 1. Pending training record requests for approver (Section Head / Manager)
+  // 1. Pending training enrollment approval for approver (Section Head / Manager / Superior)
+  if (pendingEnrollments?.length) {
+    for (const enr of pendingEnrollments) {
+      if (enr.status === "Pending Approval") {
+        notices.push({
+          id: `enrollment_approval:${enr.id}`,
+          kind: "enrollment_approval",
+          enrollment: enr,
+          tab: "pending",
+        });
+      }
+    }
+  }
+
+  // 2. Pending training record requests for approver (Section Head / Manager)
   if (recordRequests?.pendingApprovals?.length) {
     for (const req of recordRequests.pendingApprovals) {
       if (req.status === "PENDING") {
@@ -63,7 +82,7 @@ export const buildEmployeeNotices = (
     }
   }
 
-  // 2. Training record requests submitted by current employee
+  // 3. Training record requests submitted by current employee
   if (recordRequests?.myRequests?.length) {
     for (const req of recordRequests.myRequests) {
       if (req.status === "APPROVED") {
@@ -84,7 +103,27 @@ export const buildEmployeeNotices = (
     }
   }
 
-  // 3. Course enrollments notices (certificates and forms)
+  // 4. System notifications from database table
+  if (systemNotifications?.length) {
+    for (const notif of systemNotifications) {
+      // Avoid duplicate if an enrollment_approval notice is already generated
+      if (
+        notif.relatedType === "TRAINING_ENROLLMENT" &&
+        notif.relatedId &&
+        notices.some((n) => n.id === `enrollment_approval:${notif.relatedId}`)
+      ) {
+        continue;
+      }
+      notices.push({
+        id: `system_notification:${notif.notificationId}`,
+        kind: "system_notification",
+        notification: notif,
+        tab: "pending",
+      });
+    }
+  }
+
+  // 5. Course enrollments notices (certificates and forms)
   for (const enrollment of enrollments) {
     const attended = enrollment.attendance?.status === "PRESENT";
     const base = {
@@ -114,6 +153,34 @@ export const buildEmployeeNotices = (
 
 /** The wording, shared by the dashboard card and the bell so the two never say different things. */
 export const noticeText = (notice: EmployeeNotice, isThai: boolean) => {
+  if (notice.kind === "enrollment_approval") {
+    const enr = notice.enrollment;
+    const requester = enr.employeeName
+      ? `${enr.employeeName}${enr.employeeCode ? ` (${enr.employeeCode})` : ""}`
+      : enr.employeeCode || "พนักงาน";
+    const courseTitle = enr.plan.courseName || enr.plan.courseCode;
+    const scheduleDate = enr.plan.startAt ? enr.plan.startAt.slice(0, 10) : "-";
+    return isThai
+      ? {
+          eyebrow: "คำขออนุมัติการลงทะเบียนอบรม",
+          title: `คุณ ${requester} ได้ส่งคำขอลงทะเบียนหลักสูตร ${courseTitle} รอให้ท่านพิจารณาอนุมัติ`,
+          detail: `รหัสวิชา: ${enr.plan.courseCode} • วันที่: ${scheduleDate}`,
+        }
+      : {
+          eyebrow: "Course registration approval needed",
+          title: `Registration for ${courseTitle} from ${requester} awaits your approval`,
+          detail: `Course: ${enr.plan.courseCode} • Date: ${scheduleDate}`,
+        };
+  }
+
+  if (notice.kind === "system_notification") {
+    const notif = notice.notification;
+    return {
+      eyebrow: isThai ? "การแจ้งเตือนจากระบบ" : "System Notification",
+      title: notif.title,
+      detail: notif.message,
+    };
+  }
   if (notice.kind === "record_request_approval") {
     const req = notice.request;
     const requester = req.employeeName
@@ -251,6 +318,15 @@ export const noticeHref = (notice: EmployeeNotice, now = Date.now()) => {
   }
   if (notice.kind === "record_request_rejected") {
     return `/?module=record&tab=download&focusRequest=${encodeURIComponent(notice.request.id)}&at=${now}`;
+  }
+  if (notice.kind === "enrollment_approval") {
+    return `/?module=register&focusApproval=${encodeURIComponent(notice.enrollment.id)}&at=${now}`;
+  }
+  if (notice.kind === "system_notification") {
+    if (notice.notification.relatedType === "TRAINING_ENROLLMENT") {
+      return `/?module=register&at=${now}`;
+    }
+    return `/?at=${now}`;
   }
   return `/?module=record&tab=${notice.tab}&focus=${encodeURIComponent(notice.enrollmentId)}&at=${now}`;
 };

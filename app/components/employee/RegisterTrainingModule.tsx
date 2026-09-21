@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { listCourses } from "../../lib/courses/client";
 import {
   type WorkflowCourse,
@@ -24,6 +25,7 @@ import {
 import { useUiLanguage } from "../ThaiUiLocalization";
 import type { UserModule } from "./data";
 import ModuleHeader from "./ModuleHeader";
+import SearchableApproverSelect from "./SearchableApproverSelect";
 import { getLocalDateString } from "../../lib/calendarDate";
 import styles from "./RegisterTrainingModule.module.css";
 import {
@@ -42,6 +44,8 @@ import {
   Settings,
   Link2,
   FolderOpen,
+  CheckCircle2,
+  XCircle,
 } from "../icons/LucideIcons";
 
 export type AvailableCourseItem = {
@@ -250,6 +254,51 @@ export default function RegisterTrainingModule({
   const [searchTerm, setSearchTerm] = useState<string>(initialCourseCode || "");
   const [expandedCourseId, setExpandedCourseId] = useState<string | null>(null);
 
+  // Approvals queue for managers / section heads / executives
+  const [pendingTeamEnrollments, setPendingTeamEnrollments] = useState<EnrollmentRecord[]>([]);
+  const [isDecidingEnrollmentId, setIsDecidingEnrollmentId] = useState<string | null>(null);
+
+  // Client-side mounted flag for React Portal
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Modal state for registration confirmation and approver selection
+  const [registeringCourse, setRegisteringCourse] = useState<AvailableCourseItem | null>(null);
+  const [approverCandidates, setApproverCandidates] = useState<Array<{
+    reviewerUserId: string;
+    employeeUserId: string;
+    employeeCode: string;
+    name: string;
+    position: string;
+    rank: number;
+    rankTitleEn: string;
+    rankTitleTh: string;
+    company: string;
+    department: string;
+    section: string;
+  }>>([]);
+  const [selectedApproverId, setSelectedApproverId] = useState<string>("");
+  const [approverMeta, setApproverMeta] = useState<{
+    isPresident: boolean;
+    requesterRank: number;
+    targetRank: number;
+    targetRankInfo: { rank: number; nameTh: string; nameEn: string } | null;
+  } | null>(null);
+  const [isLoadingApprovers, setIsLoadingApprovers] = useState(false);
+
+  const reloadPendingApprovals = () => {
+    fetch("/api/training-plan/enrollments?pendingForApprover=true", { credentials: "include", cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ok && data.data?.enrollments) {
+          setPendingTeamEnrollments(data.data.enrollments);
+        }
+      })
+      .catch(() => {});
+  };
+
   // No employee filter is sent: the server scopes an EMPLOYEE caller to themselves. Same call the
   // dashboard and record screens already make.
   const reloadEnrollments = () =>
@@ -261,6 +310,7 @@ export default function RegisterTrainingModule({
   useEffect(() => {
     void loadWorkflowRollingPlans().then(setRollingPlans);
     void reloadEnrollments();
+    reloadPendingApprovals();
 
     // Fetch live API standards and courses (courses carry the prerequisites list)
     void listCourses({ search: null, status: null })
@@ -612,29 +662,60 @@ export default function RegisterTrainingModule({
       return;
     }
 
-    const confirmed = window.confirm(
-      t(
-        `ยืนยันการสมัครอบรมหลักสูตร:\n• ${course.title} (${course.id})\n• วันที่: ${course.date}\n• วิทยากร: ${course.trainer}`,
-        `Confirm registration for course:\n• ${course.title} (${course.id})\n• Date: ${course.date}\n• Trainer: ${course.trainer}`,
-      ),
-    );
+    // Open Modal and fetch approver candidates based on 19-rank hierarchy
+    setRegisteringCourse(course);
+    setIsLoadingApprovers(true);
+    setSelectedApproverId("");
+    try {
+      const res = await fetch("/api/training-plan/enrollments/approvers", { credentials: "include" });
+      const json = await res.json();
+      if (json.ok && json.data) {
+        const cands = json.data.candidates || [];
+        setApproverCandidates(cands);
+        setApproverMeta({
+          isPresident: json.data.isPresident,
+          requesterRank: json.data.requesterRank,
+          targetRank: json.data.targetRank,
+          targetRankInfo: json.data.targetRankInfo,
+        });
+        if (cands.length > 0) {
+          setSelectedApproverId(cands[0].reviewerUserId);
+        }
+      }
+    } catch {
+      setApproverCandidates([]);
+    } finally {
+      setIsLoadingApprovers(false);
+    }
+  };
 
-    if (!confirmed) return;
+  const confirmRegistration = async () => {
+    if (!registeringCourse) return;
+    if (!approverMeta?.isPresident && approverCandidates.length > 0 && !selectedApproverId) {
+      toast.error(t("กรุณาเลือกผู้อนุมัติ", "Please select an approver"));
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      // The route pins both employee keys to the session for an EMPLOYEE caller, so what is sent
-      // here cannot change who is enrolled. employeeId is still required by the validator, and the
-      // session does not carry the durable key, hence the placeholder for an account linked only
-      // by that key — the server replaces it before the repository ever reads it.
       await createEnrollment({
-        planId: course.rollingId,
+        planId: registeringCourse.rollingId,
         employeeId: authenticatedUser?.employeeId ?? "0",
         employeeUserId: null,
         source: "EMPLOYEE",
+        approverUserId: approverMeta?.isPresident ? null : selectedApproverId || null,
       });
+      const chosenApprover = approverCandidates.find((c) => c.reviewerUserId === selectedApproverId);
       await reloadEnrollments();
-      toast.success(t("ส่งใบสมัครอบรมแล้ว รอ HRD อนุมัติ", "Registered. Awaiting HRD approval"));
+      toast.success(
+        approverMeta?.isPresident
+          ? t("ลงทะเบียนสำเร็จและได้รับการอนุมัติเรียบร้อย", "Registered and auto-approved")
+          : t(
+              `ส่งใบสมัครอบรมและส่งการแจ้งเตือนไปยังคุณ ${chosenApprover?.name || "ผู้อนุมัติ"} เรียบร้อยแล้ว`,
+              `Registration submitted and notification sent to ${chosenApprover?.name || "approver"}`,
+            ),
+      );
+      setRegisteringCourse(null);
     } catch (error: unknown) {
       toast.error(
         error instanceof Error
@@ -672,6 +753,85 @@ export default function RegisterTrainingModule({
           "Register for open monthly training courses planned for your company and role.",
         )}
       />
+
+      {/* Pending Approvals Queue for Section Heads & Executives */}
+      {pendingTeamEnrollments.length > 0 ? (
+        <section className={styles.pendingApprovalsQueueCard} aria-label="Pending Team Approvals">
+          <div className={styles.pendingQueueHeader}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <CheckCircle2 size={20} style={{ color: "var(--ui-30-primary)" }} />
+              <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "var(--ui-30-primary)" }}>
+                {t("คำขอลงทะเบียนฝึกอบรมที่รอการอนุมัติของคุณ", "Course Registrations Awaiting Your Approval")}
+              </h3>
+            </div>
+            <span className={styles.approvalCountBadge}>
+              {pendingTeamEnrollments.length} {t("รายการรอพิจารณา", "pending")}
+            </span>
+          </div>
+          <div className={styles.pendingGrid}>
+            {pendingTeamEnrollments.map((item) => (
+              <div key={item.id} className={styles.pendingItemCard}>
+                <div className={styles.pendingItemInfo}>
+                  <div style={{ fontWeight: 800, fontSize: "0.95rem", color: "var(--ui-30-ink)" }}>
+                    {item.employeeName} {item.employeeCode ? `(${item.employeeCode})` : ""}
+                  </div>
+                  <div style={{ fontSize: "0.8rem", color: "var(--ui-30-muted)", marginTop: 2 }}>
+                    {[item.position, item.department, item.company].filter(Boolean).join(" • ")}
+                  </div>
+                  <div style={{ marginTop: 8, fontSize: "0.88rem", fontWeight: 700, color: "var(--ui-30-ink)" }}>
+                    📚 {item.plan.courseName} ({item.plan.courseCode})
+                  </div>
+                  <div style={{ fontSize: "0.78rem", color: "var(--ui-30-muted)", marginTop: 2 }}>
+                    📅 {item.plan.startAt ? item.plan.startAt.slice(0, 10) : "-"}
+                  </div>
+                </div>
+                <div className={styles.pendingItemActions}>
+                  <button
+                    type="button"
+                    className={styles.approveBtn}
+                    disabled={isDecidingEnrollmentId === item.id}
+                    onClick={async () => {
+                      setIsDecidingEnrollmentId(item.id);
+                      try {
+                        await updateEnrollmentStatus(item.id, { action: "approve" });
+                        setPendingTeamEnrollments((prev) => prev.filter((p) => p.id !== item.id));
+                        toast.success(t("อนุมัติการลงทะเบียนเรียบร้อยแล้ว", "Registration approved successfully"));
+                      } catch (err: unknown) {
+                        toast.error(err instanceof Error ? err.message : t("อนุมัติไม่สำเร็จ", "Could not approve"));
+                      } finally {
+                        setIsDecidingEnrollmentId(null);
+                      }
+                    }}
+                  >
+                    {isDecidingEnrollmentId === item.id ? "..." : t("อนุมัติ", "Approve")}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.rejectBtn}
+                    disabled={isDecidingEnrollmentId === item.id}
+                    onClick={async () => {
+                      const reason = window.prompt(t("กรุณาระบุเหตุผลที่ไม่อนุมัติ (ถ้ามี):", "Please provide a rejection reason:"));
+                      if (reason === null) return;
+                      setIsDecidingEnrollmentId(item.id);
+                      try {
+                        await updateEnrollmentStatus(item.id, { action: "reject", reason });
+                        setPendingTeamEnrollments((prev) => prev.filter((p) => p.id !== item.id));
+                        toast.success(t("ปฏิเสธคำขอลงทะเบียนแล้ว", "Registration rejected"));
+                      } catch (err: unknown) {
+                        toast.error(err instanceof Error ? err.message : t("ปฏิเสธไม่สำเร็จ", "Could not reject"));
+                      } finally {
+                        setIsDecidingEnrollmentId(null);
+                      }
+                    }}
+                  >
+                    {t("ไม่อนุมัติ", "Reject")}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* Control Panel Card */}
       <section className={styles.controlPanelCard} aria-label="Course Filters & Search">
@@ -1044,6 +1204,98 @@ export default function RegisterTrainingModule({
           </div>
         ) : null}
       </div>
+      {/* Registration Confirmation & Approver Selection Modal */}
+      {isMounted && registeringCourse && typeof document !== "undefined"
+        ? createPortal(
+            <div className={styles.modalOverlay} role="dialog" aria-modal="true" aria-labelledby="reg-modal-title">
+              <div className={styles.modalDialog}>
+                <div className={styles.modalHeader}>
+                  <h3 className={styles.modalTitle} id="reg-modal-title">
+                    {t("ยืนยันการสมัครอบรมหลักสูตร", "Confirm Course Registration")}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setRegisteringCourse(null)}
+                    style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--ui-30-muted)" }}
+                    aria-label="Close"
+                  >
+                    <XCircle size={20} />
+                  </button>
+                </div>
+
+                <div className={styles.modalBody}>
+                  <div className={styles.modalCourseSummary}>
+                    <div style={{ fontWeight: 800, fontSize: "1rem", color: "var(--ui-30-ink)" }}>
+                      {registeringCourse.title}
+                    </div>
+                    <div style={{ fontSize: "0.82rem", color: "var(--ui-30-muted)" }}>
+                      <strong>{t("รหัสวิชา", "Course Code")}:</strong> {registeringCourse.id} • <strong>{t("วิทยากร", "Trainer")}:</strong> {registeringCourse.trainer || "-"}
+                    </div>
+                    <div style={{ fontSize: "0.82rem", color: "var(--ui-30-muted)" }}>
+                      <strong>{t("วันที่อบรม", "Date")}:</strong> {registeringCourse.date} • <strong>{t("สถานที่", "Venue")}:</strong> {registeringCourse.place || "-"}
+                    </div>
+                  </div>
+
+                  {isLoadingApprovers ? (
+                    <div style={{ textAlign: "center", padding: "16px 0", color: "var(--ui-30-muted)", fontSize: "0.88rem" }}>
+                      ⏳ {t("กำลังโหลดรายชื่อผู้อนุมัติตามลำดับขั้น...", "Loading eligible approvers by rank...")}
+                    </div>
+                  ) : approverMeta?.isPresident ? (
+                    <div style={{ background: "var(--ui-30-primary-soft)", border: "1px solid var(--ui-30-primary-border)", borderRadius: 8, padding: 12, color: "var(--ui-30-primary)", fontSize: "0.88rem" }}>
+                      ⭐ {t("ท่านดำรงตำแหน่งประธานบริษัท (President) ระบบจะทำการอนุมัติการลงทะเบียนอัตโนมัติ", "You hold the President position. Registration will be auto-approved.")}
+                    </div>
+                  ) : (
+                    <div className={styles.approverSelectSection}>
+                      <label className={styles.approverLabel}>
+                        {approverMeta?.targetRank === 12
+                          ? t("เลือก Section Head (ผู้จัดการแผนก) ในบริษัทของคุณเป็นผู้อนุมัติ:", "Select Section Head in your company as approver:")
+                          : approverMeta?.targetRank === 11
+                          ? t("เนื่องจากท่านเป็น Section Head กรุณาเลือก Manager (ผู้จัดการ) เป็นผู้อนุมัติ:", "As Section Head, select Manager in your company as approver:")
+                          : approverMeta?.targetRank === 10
+                          ? t("เนื่องจากท่านเป็น Manager กรุณาเลือก General Manager (ผู้จัดการทั่วไป) เป็นผู้อนุมัติ:", "As Manager, select General Manager as approver:")
+                          : t(
+                              `กรุณาเลือกผู้บังคับบัญชา (${approverMeta?.targetRankInfo?.nameEn || "Superior"}) ในบริษัทของคุณเป็นผู้อนุมัติ:`,
+                              `Please select your superior (${approverMeta?.targetRankInfo?.nameEn || "Superior"}) in your company as approver:`
+                            )}
+                      </label>
+                      {approverCandidates.length > 0 ? (
+                        <SearchableApproverSelect
+                          candidates={approverCandidates}
+                          selectedApproverId={selectedApproverId}
+                          onSelect={(id) => setSelectedApproverId(id)}
+                        />
+                      ) : (
+                        <div style={{ background: "var(--ui-10-accent-soft)", border: "1px solid var(--ui-10-accent-border)", borderRadius: 8, padding: 12, color: "var(--ui-10-accent)", fontSize: "0.85rem" }}>
+                          ⚠️ {t("ไม่พบรายชื่อผู้อนุมัติตามลำดับขั้นในบริษัทของคุณ (ระบบจะส่งต่อให้ผู้ดูแลระบบ/HRD พิจารณา)", "No direct approvers found at this rank in your company (Request will be routed to HRD/Admin)")}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className={styles.modalFooter}>
+                  <button
+                    type="button"
+                    className={styles.cancelRegisterBtn}
+                    onClick={() => setRegisteringCourse(null)}
+                    disabled={isSubmitting}
+                  >
+                    {t("ยกเลิก", "Cancel")}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.confirmRegisterBtn}
+                    onClick={confirmRegistration}
+                    disabled={isSubmitting || isLoadingApprovers}
+                  >
+                    {isSubmitting ? t("กำลังส่งคำขอ...", "Submitting...") : t("ยืนยันการสมัครอบรม", "Confirm Registration")}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </main>
   );
 }

@@ -105,6 +105,7 @@ const mapOapPlan = (row: OapPlanWithRelations, sequence: number) => {
   return {
     id: row.oap_plan_id.toString(),
     sequence,
+    planYear: row.plan_year,
     course: mapCourseSnapshot(row.course),
     participants: row.default_participant_count.toString(),
     hours: row.planned_duration_hours.toString(),
@@ -167,6 +168,9 @@ export const createOapPlanRepository = (client?: DatabaseClient) => {
         });
       }
       if (filters.status) andConditions.push({ status: UI_STATUS_TO_DB[filters.status] });
+      if (filters.planYear !== undefined && filters.planYear !== null) {
+        andConditions.push({ plan_year: filters.planYear });
+      }
       if (filters.search) {
         andConditions.push({
           OR: [

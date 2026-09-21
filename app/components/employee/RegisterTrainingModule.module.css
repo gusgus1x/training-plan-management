@@ -720,3 +720,259 @@
   font-size: 0.84rem;
   color: var(--ui-30-muted);
 }
+
+/* ─── Pending Approvals Queue Card ─── */
+.pendingApprovalsQueueCard {
+  padding: 18px 22px;
+  border-radius: var(--ui-radius-xl);
+  border: 1px solid var(--ui-30-primary-border, #a7f3d0);
+  background: linear-gradient(135deg, var(--ui-30-primary-soft, #f0fdf4) 0%, var(--ui-60-surface, #ffffff) 100%);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pendingQueueHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--ui-30-primary-border, #d1fae5);
+  padding-bottom: 10px;
+}
+
+.approvalCountBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--ui-30-primary, #10b981);
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.pendingGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.pendingItemCard {
+  border: 1px solid var(--ui-30-border, #e2e8f0);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-60-surface, #ffffff);
+  color: var(--ui-30-ink);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+}
+
+.pendingItemCard:hover {
+  border-color: var(--ui-30-primary-border, #cbd5e1);
+  box-shadow: var(--ui-card-shadow-hover, 0 4px 12px rgba(0, 0, 0, 0.06));
+}
+
+.pendingItemActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--ui-30-border, #f1f5f9);
+  padding-top: 10px;
+}
+
+.approveBtn {
+  flex: 1;
+  padding: 6px 12px;
+  border: none;
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-30-primary, #10b981);
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.approveBtn:hover:not(:disabled) {
+  background: var(--ui-30-primary-strong, #059669);
+}
+
+.approveBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.rejectBtn {
+  flex: 1;
+  padding: 6px 12px;
+  border: 1px solid var(--ui-10-accent-border, #fca5a5);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-10-accent-soft, #fff1f2);
+  color: var(--ui-10-accent, #b91c1c);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rejectBtn:hover:not(:disabled) {
+  background: var(--ui-10-accent-border, #fee2e2);
+  border-color: var(--ui-10-accent-strong, #f87171);
+}
+
+.rejectBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ─── Registration Approver Modal ─── */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 999999 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+
+.modalDialog {
+  background: var(--ui-60-surface, #ffffff);
+  border: 1px solid var(--ui-30-border, #e2e8f0);
+  border-radius: var(--ui-radius-xl, 18px);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  width: min(560px, 100%);
+  max-height: calc(100vh - 48px);
+  margin: auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+}
+
+.modalHeader {
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--ui-30-border, #e2e8f0);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modalTitle {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--ui-30-ink, #0f172a);
+  margin: 0;
+}
+
+.modalBody {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modalCourseSummary {
+  background: var(--ui-60-surface-soft, #f8fafc);
+  border: 1px solid var(--ui-30-border, #e2e8f0);
+  border-radius: var(--ui-radius-lg);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--ui-30-ink);
+}
+
+.approverSelectSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.approverLabel {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--ui-30-ink, #1e293b);
+}
+
+.approverSelect {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid var(--ui-30-border, #cbd5e1);
+  border-radius: var(--ui-radius-md);
+  font-size: 0.88rem;
+  background: var(--ui-60-surface, #ffffff);
+  color: var(--ui-30-ink, #0f172a);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.approverSelect option {
+  background: var(--ui-60-surface, #ffffff);
+  color: var(--ui-30-ink, #0f172a);
+}
+
+.approverSelect:focus {
+  border-color: var(--ui-30-primary, #3b82f6);
+  box-shadow: 0 0 0 3px var(--ui-focus-ring, rgba(59, 130, 246, 0.15));
+}
+
+.modalFooter {
+  padding: 16px 24px;
+  border-top: 1px solid var(--ui-30-border, #e2e8f0);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  background: var(--ui-60-surface-soft, #f8fafc);
+  border-bottom-left-radius: var(--ui-radius-xl);
+  border-bottom-right-radius: var(--ui-radius-xl);
+}
+
+.cancelRegisterBtn {
+  padding: 8px 16px;
+  border: 1px solid var(--ui-30-border, #cbd5e1);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-60-surface, #ffffff);
+  color: var(--ui-30-muted, #475569);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cancelRegisterBtn:hover {
+  background: var(--ui-60-surface-soft, #f1f5f9);
+  color: var(--ui-30-ink);
+}
+
+.confirmRegisterBtn {
+  padding: 8px 18px;
+  border: none;
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-30-primary, #2563eb);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.confirmRegisterBtn:hover:not(:disabled) {
+  background: var(--ui-30-primary-strong, #1d4ed8);
+}
+
+.confirmRegisterBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

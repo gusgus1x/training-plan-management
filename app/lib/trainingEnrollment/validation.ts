@@ -25,6 +25,7 @@ const action = (value: unknown): EnrollmentAction => {
 // a silent assumption on an authorization-relevant identifier.
 export const parseCreateEnrollment = (input: InputObject): CreateEnrollmentInput => {
   const employeeUserId = readOptionalString(input, "employeeUserId");
+  const approverUserId = readOptionalString(input, "approverUserId");
 
   return {
     planId: readRequiredString(input, "planId"),
@@ -34,6 +35,7 @@ export const parseCreateEnrollment = (input: InputObject): CreateEnrollmentInput
     source: source(input.source),
     // Read as sent; the route pins this to false for EMPLOYEE callers regardless of this value.
     acknowledgePrerequisite: input.acknowledgePrerequisite === true,
+    approverUserId: approverUserId || null,
   };
 };
 
@@ -57,4 +59,7 @@ export const parseEnrollmentListFilters = (params: URLSearchParams): EnrollmentL
   planId: params.get("planId")?.trim() || null,
   employeeId: params.get("employeeId")?.trim() || null,
   employeeUserId: params.get("employeeUserId")?.trim() || null,
+  approverUserId: params.get("approverUserId")?.trim() || null,
+  pendingForApprover: params.get("pendingForApprover") === "true",
+  approvalStatus: params.get("approvalStatus")?.trim() || null,
 });
