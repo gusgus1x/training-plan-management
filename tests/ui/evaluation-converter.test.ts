@@ -1,8 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { analyseSheet, convertSheet } from "../../app/lib/externalEvaluation/convert";
+import { analyseSheet } from "../../app/lib/externalEvaluation/convert";
 import { parseCsv, readResponseSheet } from "../../app/lib/externalEvaluation/readSheet";
-import { buildEvaluationSummaryWorkbook } from "../../app/lib/evaluationSummaryWorkbook";
 import { readXlsxEntries, setCell } from "../../app/lib/xlsxTemplate";
 import { buildSectionReport } from "../../app/lib/externalEvaluation/sections";
 import { buildSectionWorkbook } from "../../app/lib/externalEvaluation/sectionWorkbook";
@@ -70,66 +69,27 @@ describe("Microsoft Forms export", () => {
     expect(roleOf("ข้อเสนอแนะ")).toBe("TEXT");
   });
 
-  it("summarises like an in-system evaluation", () => {
-    const { summary, responses } = convertSheet(analysis, course, "Test");
-    expect(summary.isAnonymous).toBe(false);
-    expect(summary.submittedCount).toBe(3);
-    expect(summary.respondentsByCompany).toEqual([
-      { companyCode: "ATA", companyName: "ATA", count: 2, percent: 66.7 },
-      { companyCode: "TEP", companyName: "TEP", count: 1, percent: 33.3 },
+  it("reads a rating column's scale from its own answers", () => {
+    const scaled = analyseSheet([
+      ["Timestamp", "คะแนนเต็มสิบ", "คะแนนเต็มห้า"],
+      ["9/14/2026 10:00:00", "9", "4"],
+      ["9/14/2026 10:05:00", "7", "5"],
     ]);
-    const [rating, topics, comments] = summary.questions;
-    expect(rating.averageRating).toBe(4.33);
-    expect(rating.ratingDistribution.find((bucket) => bucket.value === 4)?.count).toBe(2);
-    expect(topics.options.map((option) => [option.optionText, option.count])).toEqual([["Excel", 2], ["Power BI", 2]]);
-    expect(comments.textAnswers).toHaveLength(3);
-    // Excel serials, read as Bangkok local time: 46241.5 is noon on 2026-08-07.
-    expect(responses.responses[0].startedAt).toBe("2026-08-07T05:00:00.000Z");
-    expect(summary.averageAnswerSeconds).toBe(216);
-    expect(responses.responses[0].respondentName).toBe("สมชาย ทดสอบ");
-    expect(responses.responses[0].employeeCode).toBe("0001");
-  });
-
-  it("follows a column HRD switches to another type", () => {
-    const edited = {
-      ...analysis,
-      columns: analysis.columns.map((column) => (column.header === "ข้อเสนอแนะ" ? { ...column, role: "SKIP" as const } : column)),
-    };
-    expect(convertSheet(edited, course, "Test").summary.questions).toHaveLength(2);
+    const column = (header: string) => scaled.columns.find((item) => item.header === header);
+    expect(column("คะแนนเต็มสิบ")).toMatchObject({ role: "RATING", scale: 10 });
+    expect(column("คะแนนเต็มห้า")).toMatchObject({ role: "RATING", scale: 5 });
   });
 });
 
 describe("Google Forms export", () => {
   const analysis = analyseSheet(parseCsv(googleCsv));
 
-  it("recognises the service, and treats a sheet with no name or code as anonymous", () => {
+  it("recognises the service and the question columns", () => {
     expect(analysis.source).toBe("GOOGLE");
-    const { summary, responses } = convertSheet(analysis, course, "Test");
-    expect(summary.isAnonymous).toBe(true);
-    expect(responses.responses.every((response) => response.respondentName === null)).toBe(true);
-    expect(summary.questions.map((question) => question.questionType)).toEqual(["RATING", "SINGLE_CHOICE", "LONG_TEXT"]);
-  });
-});
-
-describe("the chart workbook", () => {
-  it("builds from a converted file with no course dates, and reads back through the same reader", () => {
-    const { summary, responses } = convertSheet(analyseSheet(microsoftSheet), course, "Test");
-    const workbook = buildEvaluationSummaryWorkbook(readFileSync("app/Excel/Evaluation_Form_Tem.xlsx"), summary, responses);
-    const [header] = readResponseSheet("report.xlsx", workbook);
-    expect(header.slice(-3)).toEqual(["ความพึงพอใจโดยรวม", "หัวข้อที่สนใจ", "ข้อเสนอแนะ"]);
-  });
-
-  it("scales every bar chart to 0-100, since the bars are percentages", () => {
-    const { summary, responses } = convertSheet(analyseSheet(microsoftSheet), course, "Test");
-    const workbook = buildEvaluationSummaryWorkbook(readFileSync("app/Excel/Evaluation_Form_Tem.xlsx"), summary, responses);
-    const bars = readXlsxEntries(workbook)
-      .map((entry) => entry.data.toString("utf8"))
-      .filter((xml) => xml.includes("<c:barChart>"));
-    expect(bars.length).toBeGreaterThan(0);
-    for (const xml of bars) {
-      expect(xml).not.toContain('<c:max val="5"/>');
-      expect(xml).toContain('<c:max val="100"/>');
-    }
+    const roles = analysis.columns.map((column) => column.role);
+    expect(roles).toContain("RATING");
+    expect(roles).toContain("CHOICE");
+    expect(roles).toContain("TEXT");
   });
 });
 
@@ -146,6 +106,31 @@ describe("Advanced mode: sections", () => {
     expect(report.sections[1].questions[0].answers).toHaveLength(3);
     expect(report.respondents[0]).toMatchObject({ firstName: "สมชาย", lastName: "ทดสอบ", employeeCode: "0001", companyCode: "ATA" });
     expect(report.companies).toEqual([{ companyCode: "ATA", count: 2 }, { companyCode: "TEP", count: 1 }]);
+  });
+
+  it("charts a choice column and puts a grid's columns back together", () => {
+    const sheet = [
+      ["Timestamp", "หัวข้อที่สนใจ", "ความพึงพอใจ [วิทยากร]", "ความพึงพอใจ [สถานที่]"],
+      ["9/14/2026 10:00:00", "Excel;Power BI;", "ดี", "พอใช้"],
+      ["9/14/2026 10:05:00", "Excel;", "ดี", "ดี"],
+    ];
+    const analysis = analyseSheet(sheet);
+    const report = buildSectionReport(analysis, [{ id: "a", name: "Part 1" }], { 1: "a", 2: "a", 3: "a" }, course);
+    const [choice, grid] = report.sections[0].questions;
+
+    expect(choice).toMatchObject({ header: "หัวข้อที่สนใจ", kind: "CHOICE" });
+    // Two people, both ticked Excel, one also Power BI: shares of the people, not of the ticks.
+    expect(choice.split).toEqual([
+      { label: "Excel", percent: 100 },
+      { label: "Power BI", percent: 50 },
+    ]);
+
+    expect(grid).toMatchObject({ header: "ความพึงพอใจ", kind: "GRID" });
+    expect(grid.gridSplit?.rows).toEqual(["วิทยากร", "สถานที่"]);
+    expect(grid.gridSplit?.columns).toEqual(["ดี", "พอใช้"]);
+    expect(grid.gridSplit?.percent).toEqual([[100, 0], [50, 50]]);
+    // The raw sheet still reads per person, row by row.
+    expect(grid.answers[0]).toBe("วิทยากร: ดี; สถานที่: พอใช้");
   });
 
   it("draws every section, growing each chart with its questions and breaking the page between them", () => {

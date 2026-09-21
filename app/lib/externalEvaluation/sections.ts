@@ -1,5 +1,5 @@
 import type { EvaluationCourseHeader } from "../trainingForms/types";
-import { QUESTION_ROLES, type SheetAnalysis } from "./convert";
+import { QUESTION_ROLES, splitChoices, type ResponseSource, type SheetAnalysis, type SheetColumn } from "./convert";
 
 /**
  * Advanced mode: questions grouped into sections HRD names, reported the way the company's own
@@ -73,6 +73,28 @@ const timestampText = (value: string) => {
   }).format(new Date(ms)).replace(",", "");
 };
 
+/**
+ * Forms exports a grid as one column per row, headed "question [row]". Columns sharing a question
+ * become one grid question again, which is the only way the report can chart them together.
+ */
+const GRID_HEADER = /^(.*\S)\s*\[(.+)\]$/;
+export const gridHeaderParts = (header: string) => {
+  const match = GRID_HEADER.exec(header);
+  return match ? { question: match[1], row: match[2] } : null;
+};
+
+/** The percentage split of a choice column: one entry per distinct answer, share of the people. */
+const choiceSplit = (answers: Array<string | number | null>, source: ResponseSource) => {
+  const picked = answers
+    .map((answer) => (typeof answer === "string" ? splitChoices(answer, source) : []))
+    .filter((ticks) => ticks.length > 0);
+  const labels = [...new Set(picked.flat())];
+  return labels.map((label) => ({
+    label,
+    percent: picked.length === 0 ? 0 : Math.round((picked.filter((ticks) => ticks.includes(label)).length / picked.length) * 1000) / 10,
+  }));
+};
+
 export const buildSectionReport = (
   analysis: SheetAnalysis,
   sections: ReportSection[],
@@ -99,29 +121,98 @@ export const buildSectionReport = (
     };
   });
 
+  const answersOf = (column: SheetColumn) =>
+    rows.map((row) => {
+      const value = clean(row[column.index]);
+      if (!value) return null;
+      return column.role === "RATING" && /^\d+(\.\d+)?$/.test(value) ? Number(value) : value;
+    });
+
+  const ratingQuestion = (column: SheetColumn): SectionQuestion => {
+    const answers = answersOf(column);
+    const numbers = answers.filter((answer): answer is number => typeof answer === "number");
+    return {
+      header: column.header,
+      kind: "RATING",
+      answers,
+      average: numbers.length ? Math.round((numbers.reduce((sum, value) => sum + value, 0) / numbers.length) * 100) / 100 : null,
+      outOf: column.scale ?? 5,
+    };
+  };
+
+  /** Several "question [row]" columns, back together as the grid they were exported from. */
+  const gridQuestion = (question: string, parts: Array<{ column: SheetColumn; row: string }>): SectionQuestion => {
+    const splits = parts.map((part) => choiceSplit(answersOf(part.column), analysis.source));
+    const labels = [...new Set(splits.flatMap((split) => split.map((entry) => entry.label)))];
+    return {
+      header: question,
+      kind: "GRID",
+      // One cell per row, so the raw sheet still reads as "row: answer" per person.
+      answers: rows.map((_, rowIndex) =>
+        parts
+          .map((part) => {
+            const value = clean(rows[rowIndex][part.column.index]);
+            return value ? `${part.row}: ${value}` : null;
+          })
+          .filter((entry): entry is string => entry !== null)
+          .join("; ") || null,
+      ),
+      average: null,
+      gridSplit: {
+        rows: parts.map((part) => part.row),
+        columns: labels,
+        percent: splits.map((split) => labels.map((label) => split.find((entry) => entry.label === label)?.percent ?? 0)),
+      },
+    };
+  };
+
   const reportSections = sections
-    .map((section) => ({
-      name: section.name.trim() || "-",
-      questions: columns
-        .filter((column) => QUESTION_ROLES.includes(column.role) && assignment[column.index] === section.id)
-        .map((column): SectionQuestion => {
-          const kind: SectionQuestionKind = column.role === "RATING" ? "RATING" : column.role === "TEXT" ? "TEXT" : "OTHER";
-          const answers = rows.map((row) => {
-            const value = clean(row[column.index]);
-            if (!value) return null;
-            return kind === "RATING" && /^\d+(\.\d+)?$/.test(value) ? Number(value) : value;
-          });
-          const numbers = answers.filter((answer): answer is number => typeof answer === "number");
-          return {
-            header: column.header,
-            kind,
-            answers,
-            average: kind === "RATING" && numbers.length
-              ? Math.round((numbers.reduce((sum, value) => sum + value, 0) / numbers.length) * 100) / 100
-              : null,
-          };
-        }),
-    }))
+    .map((section) => {
+      const own = columns.filter(
+        (column) => QUESTION_ROLES.includes(column.role) && assignment[column.index] === section.id,
+      );
+      const questions: SectionQuestion[] = [];
+      const grids = new Map<string, Array<{ column: SheetColumn; row: string }>>();
+
+      // A grid is two or more columns under one question, so one bracketed heading on its own is
+      // just a question with brackets in it - not a grid, and not regrouped.
+      const bracketed = new Map<string, number>();
+      for (const column of own) {
+        const parts = gridHeaderParts(column.header);
+        if (parts) bracketed.set(parts.question, (bracketed.get(parts.question) ?? 0) + 1);
+      }
+
+      for (const column of own) {
+        const gridParts = gridHeaderParts(column.header);
+        if (gridParts && (bracketed.get(gridParts.question) ?? 0) > 1) {
+          const parts = grids.get(gridParts.question) ?? [];
+          parts.push({ column, row: gridParts.row });
+          grids.set(gridParts.question, parts);
+          continue;
+        }
+        if (column.role === "RATING") {
+          questions.push(ratingQuestion(column));
+          continue;
+        }
+        if (column.role === "TEXT") {
+          questions.push({ header: column.header, kind: "TEXT", answers: answersOf(column), average: null });
+          continue;
+        }
+        questions.push({
+          header: column.header,
+          kind: "CHOICE",
+          answers: answersOf(column),
+          average: null,
+          split: choiceSplit(answersOf(column), analysis.source),
+        });
+      }
+
+      for (const [question, parts] of grids) {
+        questions.push(gridQuestion(question, parts));
+      }
+
+      return { name: section.name.trim() || "-", questions };
+    })
     .filter((section) => section.questions.length > 0);
 
   const counts = new Map<string, number>();

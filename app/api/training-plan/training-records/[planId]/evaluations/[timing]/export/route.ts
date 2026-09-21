@@ -3,7 +3,6 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createProtectedRoute, type ProtectedRouteOptions } from "../../../../../../../lib/auth/guard";
-import { buildEvaluationSummaryWorkbook } from "../../../../../../../lib/evaluationSummaryWorkbook";
 import { buildSectionWorkbook } from "../../../../../../../lib/externalEvaluation/sectionWorkbook";
 import { buildAdvancedReport } from "../../../../../../../lib/trainingForms/advancedReport";
 import { trainingFormsService, type TrainingFormsService } from "../../../../../../../lib/trainingForms/service";
@@ -19,8 +18,7 @@ type RouteContext = { params: Promise<{ planId: string; timing: string }> };
 
 const options = (auth?: ProtectedRouteOptions) => ({ ...auth, allowedRoles: ["HRD_CENTER", "HRD_FACTORY"] as const });
 
-const TEMPLATE_PATH = path.join(process.cwd(), "app", "Excel", "Evaluation_Form_Tem.xlsx");
-/** `?layout=advanced`: the company's own evaluation workbook, laid out by the form's sections. */
+/** The company's own evaluation workbook, laid out by the form's sections. */
 const COMPANY_TEMPLATE_PATH = path.join(process.cwd(), "app", "Excel", "1. Evaluation Form.xlsx");
 
 /**
@@ -42,19 +40,16 @@ export const createExportEvaluationSummaryHandler = (dependencies: Dependencies 
     const companyId = principal.role === "HRD_FACTORY" ? principal.companyId : null;
 
     const summary = await service.readEvaluationSummary(planId, stage, companyId, respondents);
-    if (summary === null) {
+    // The workbook is written from the replies themselves, so both reads have to land.
+    const responses = summary === null ? null : await service.readEvaluationResponses(planId, stage, companyId, respondents);
+    if (summary === null || responses === null) {
       return NextResponse.json(
         { error: "หลักสูตรนี้ไม่ได้ตั้งแบบประเมินช่วงเวลานี้ไว้" },
         { status: 404 },
       );
     }
-    const responses = await service.readEvaluationResponses(planId, stage, companyId, respondents);
 
-    // The section layout is written from the replies themselves, so it needs them to exist.
-    const advanced = request.nextUrl.searchParams.get("layout") === "advanced" && responses !== null;
-    const workbook = advanced && responses
-      ? buildSectionWorkbook(await readFile(COMPANY_TEMPLATE_PATH), buildAdvancedReport(summary, responses))
-      : buildEvaluationSummaryWorkbook(await readFile(TEMPLATE_PATH), summary, responses);
+    const workbook = buildSectionWorkbook(await readFile(COMPANY_TEMPLATE_PATH), buildAdvancedReport(summary, responses));
 
     const fileName = `Evaluation ${summary.course.courseName} ${summary.course.planCode}.xlsx`;
     const encodedFileName = encodeURIComponent(fileName);

@@ -385,8 +385,6 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
   const router = useRouter();
 
   const [respondents, setRespondents] = useState<EvaluationRespondentGroup>("EMPLOYEE");
-  /** Standard: a chart per question. Advanced: a chart per section, one average bar per question. */
-  const [view, setView] = useState<"standard" | "advanced">("standard");
   const [timing, setTiming] = useState<EvaluationTimingStage>("EVALUATION");
   const [loaded, setLoaded] = useState<Record<
     EvaluationRespondentGroup,
@@ -608,22 +606,6 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                 </button>
               );
             })}
-            <span className={styles.filterDivider} />
-            {(
-              [
-                { mode: "standard", label: t("มุมมองปกติ", "Standard") },
-                { mode: "advanced", label: t("มุมมอง Advanced", "Advanced") },
-              ] as const
-            ).map((option) => (
-              <button
-                key={option.mode}
-                type="button"
-                className={view === option.mode ? styles.pillOn : styles.pill}
-                onClick={() => setView(option.mode)}
-              >
-                {option.label}
-              </button>
-            ))}
           </div>
 
           {!loaded ? (
@@ -673,7 +655,7 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                       )
                     : ""}
                 </p>
-              ) : view === "advanced" ? (
+              ) : (
                 <div className={styles.questions}>
                   <p className={styles.note}>
                     {t(
@@ -795,56 +777,6 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                     </article>
                   ))}
                 </div>
-              ) : (
-                <div className={styles.questions}>
-                  {questions.map((question, index) => {
-                    // A section break is a heading, not a question: it carries the name of the
-                    // branch the questions under it belong to, which is the only thing that
-                    // explains a question this audience was never shown.
-                    if (question.questionType === "SECTION_BREAK") {
-                      return (
-                        <h2 key={question.questionId} className={styles.sectionName}>
-                          {question.questionText}
-                        </h2>
-                      );
-                    }
-                    const previousSection = index > 0 ? questions[index - 1].sectionName : null;
-                    const startsSection =
-                      question.sectionName !== null && question.sectionName !== previousSection;
-                    return (
-                      <Fragment key={question.questionId}>
-                        {startsSection ? <h2 className={styles.sectionName}>{question.sectionName}</h2> : null}
-                        <article className={styles.questionCard}>
-                          <div className={styles.questionHead}>
-                            <strong>
-                              {question.questionOrder}. {question.questionText}
-                            </strong>
-                            {detailLink(question)}
-                          </div>
-                          <p className={styles.answeredBy}>
-                            {t(`ตอบ ${question.answeredBy} คน`, `${question.answeredBy} answered`)}
-                            {/* On a branching form, zero usually means this audience was routed
-                                down the other section and never saw the question at all. Saying so
-                                keeps it from reading as an answer that went missing. */}
-                            {question.answeredBy === 0 && hasSections
-                              ? t(
-                                  " · ผู้ตอบกลุ่มนี้ไม่ได้ถูกพามาที่ข้อนี้ (ฟอร์มแยกสายตามคำตอบข้อก่อนหน้า)",
-                                  " - this audience was routed past it; the form branches on an earlier answer",
-                                )
-                              : ""}
-                          </p>
-
-                          {question.ratingDistribution.length > 0 ? <RatingChart question={question} isThai={isThai} /> : null}
-                          {question.ratingDistribution.length === 0 && question.options.length > 0 ? (
-                            <ChoiceChart question={question} />
-                          ) : null}
-                          {question.gridRows.length > 0 ? <GridChart question={question} /> : null}
-                          <TextAnswers question={question} onOpen={() => void openDetail(question)} isThai={isThai} />
-                        </article>
-                      </Fragment>
-                    );
-                  })}
-                </div>
               )}
             </>
           )}
@@ -857,8 +789,9 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
             <p className={styles.insightLabel}>
               {t("วิเคราะห์และสำรวจผลลัพธ์ล่าสุดใน Excel", "Analyse the latest results in Excel")}
             </p>
-            {/* A plain link, not a fetch: the browser downloads it with the session cookie and
-                names the file from the header, which is the whole job. */}
+            {/* The company's own evaluation workbook, laid out by section. A plain link, not a
+                fetch: the browser downloads it with the session cookie and names the file from the
+                header, which is the whole job. */}
             <a
               className={styles.insightAction}
               href={`/api/training-plan/training-records/${planId}/evaluations/${shownTiming}/export?respondents=${respondents}`}
@@ -867,19 +800,8 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                 if (!summary || summary.submittedCount === 0) event.preventDefault();
               }}
             >
-              <FileSpreadsheet size={15} style={{ verticalAlign: "middle", marginRight: 6 }} />{t("ดาวน์โหลดเป็น Excel", "Download as Excel")}
-            </a>
-            {/* The same data in the company's own evaluation workbook, laid out by section. */}
-            <a
-              className={styles.insightAction}
-              href={`/api/training-plan/training-records/${planId}/evaluations/${shownTiming}/export?respondents=${respondents}&layout=advanced`}
-              aria-disabled={!summary || summary.submittedCount === 0}
-              onClick={(event) => {
-                if (!summary || summary.submittedCount === 0) event.preventDefault();
-              }}
-            >
               <FileSpreadsheet size={15} style={{ verticalAlign: "middle", marginRight: 6 }} />
-              {t("ดาวน์โหลด Excel แบบฟอร์มบริษัท", "Download company-layout Excel")}
+              {t("ดาวน์โหลดเป็น Excel ฟอร์มบริษัท", "Download as company-layout Excel")}
             </a>
           </div>
 

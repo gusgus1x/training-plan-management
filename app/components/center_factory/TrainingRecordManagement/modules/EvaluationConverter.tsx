@@ -5,8 +5,8 @@ import { useRouter } from "next/navigation";
 import {
   analyseSheet,
   COLUMN_ROLES,
-  convertSheet,
   QUESTION_ROLES,
+  ratingScale,
   type ColumnRole,
   type SheetAnalysis,
 } from "../../../../lib/externalEvaluation/convert";
@@ -18,9 +18,8 @@ import {
 import type { EvaluationCourseHeader } from "../../../../lib/trainingForms/types";
 import { useUiLanguage } from "../../../ThaiUiLocalization";
 import SearchableSelect from "../../../SearchableSelect";
-import { Clock, FileSpreadsheet, Lock, Upload, Users } from "../../../icons/LucideIcons";
+import { FileSpreadsheet, Lock, Upload, Users } from "../../../icons/LucideIcons";
 import { loadWorkflowRollingPlans, type RollingPlan } from "../../TrainingPlanManagement/modules/TrainingRolling";
-import { ChoiceChart, formatAnswerTime, RatingChart, TextAnswers } from "./EvaluationResultsPage";
 import results from "./EvaluationResultsPage.module.css";
 import styles from "./EvaluationConverter.module.css";
 
@@ -33,7 +32,7 @@ const ROLE_LABELS: Record<ColumnRole, { th: string; en: string }> = {
   LAST_NAME: { th: "นามสกุล", en: "Last name" },
   EMPLOYEE_CODE: { th: "รหัสพนักงาน", en: "Employee code" },
   COMPANY: { th: "บริษัท", en: "Company" },
-  RATING: { th: "คำถาม: คะแนน 1-5", en: "Question: rating 1-5" },
+  RATING: { th: "คำถาม: คะแนน", en: "Question: rating" },
   CHOICE: { th: "คำถาม: ตัวเลือก (ตอบได้ 1 ข้อ)", en: "Question: single choice" },
   MULTI_CHOICE: { th: "คำถาม: ตัวเลือก (ตอบได้หลายข้อ)", en: "Question: multiple choice" },
   TEXT: { th: "คำถาม: ข้อความ", en: "Question: written answer" },
@@ -63,8 +62,6 @@ export default function EvaluationConverter() {
   const [analysis, setAnalysis] = useState<SheetAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  /** Simple: one chart per question. Advanced: HRD's own sections, in the company workbook. */
-  const [mode, setMode] = useState<"simple" | "advanced">("simple");
   const [sections, setSections] = useState<ReportSection[]>([]);
   const [assignment, setAssignment] = useState<SectionAssignment>({});
 
@@ -117,20 +114,26 @@ export default function EvaluationConverter() {
   }), [header, chosenPlan]);
   const formName = fileName.replace(/\.(xlsx|csv)$/i, "");
 
-  // Recomputed on every column-type change; a few hundred rows is nothing to redo.
-  const converted = useMemo(
-    () => (analysis ? convertSheet(analysis, course, formName) : null),
-    [analysis, formName, course],
-  );
+  /** Nothing in the sheet could name anyone: the report then carries no names either. */
+  const isAnonymous = useMemo(() => {
+    if (!analysis) return false;
+    const naming = analysis.columns.filter((column) => ["FULL_NAME", "FIRST_NAME", "LAST_NAME", "EMPLOYEE_CODE"].includes(column.role));
+    return !analysis.rows.some((row) =>
+      naming.some((column) => {
+        const value = (row[column.index] ?? "").trim();
+        return value !== "" && value.toLowerCase() !== "anonymous";
+      }),
+    );
+  }, [analysis]);
   const questionCount = analysis?.columns.filter((column) => QUESTION_ROLES.includes(column.role)).length ?? 0;
   const sectionReport = useMemo(
-    () => (analysis && mode === "advanced" ? buildSectionReport(analysis, sections, assignment, course) : null),
-    [analysis, mode, sections, assignment, course],
+    () => (analysis ? buildSectionReport(analysis, sections, assignment, course) : null),
+    [analysis, sections, assignment, course],
   );
   const unassigned = analysis
     ? analysis.columns.filter((column) => QUESTION_ROLES.includes(column.role) && !sections.some((section) => section.id === assignment[column.index])).length
     : 0;
-  const canDownload = mode === "advanced" ? Boolean(sectionReport?.sections.length) : Boolean(converted && questionCount > 0);
+  const canDownload = Boolean(sectionReport?.sections.length);
 
   const upload = async (file: File | null) => {
     if (!file) return;
@@ -160,12 +163,15 @@ export default function EvaluationConverter() {
   };
 
   const setRole = (index: number, role: ColumnRole) =>
-    setAnalysis((current) =>
-      current && {
+    setAnalysis((current) => {
+      if (!current) return current;
+      // A column HRD turns into a rating gets its scale read from its own answers, not assumed.
+      const scale = role === "RATING" ? ratingScale(current.rows.map((row) => (row[index] ?? "").trim())) ?? 5 : undefined;
+      return {
         ...current,
-        columns: current.columns.map((column) => (column.index === index ? { ...column, role } : column)),
-      },
-    );
+        columns: current.columns.map((column) => (column.index === index ? { ...column, role, scale } : column)),
+      };
+    });
 
   const download = async () => {
     if (!canDownload) return;
@@ -175,7 +181,7 @@ export default function EvaluationConverter() {
       const response = await fetch("/api/training-plan/evaluation-converter/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(mode === "advanced" ? { mode, report: sectionReport } : converted),
+        body: JSON.stringify({ report: sectionReport }),
         credentials: "include",
       });
       if (!response.ok) {
@@ -202,7 +208,6 @@ export default function EvaluationConverter() {
     else router.push("/training-record/training-record");
   };
 
-  const summary = converted?.summary ?? null;
 
   return (
     <main className={results.page}>
@@ -225,7 +230,7 @@ export default function EvaluationConverter() {
                 )}
               </p>
             </div>
-            {summary?.isAnonymous ? (
+            {isAnonymous ? (
               <span className={results.anonymousTag}>
                 <Lock size={13} style={{ verticalAlign: "middle", marginRight: 4 }} />
                 {t("ไม่ระบุตัวตน", "Anonymous")}
@@ -233,20 +238,9 @@ export default function EvaluationConverter() {
             ) : null}
           </header>
 
-          <div className={styles.modeSwitch} role="radiogroup" aria-label={t("โหมด", "Mode")}>
-            <button type="button" role="radio" aria-checked={mode === "simple"} onClick={() => setMode("simple")}>
-              <strong>{t("โหมดธรรมดา", "Simple")}</strong>
-              <span>{t("กราฟข้อละ 1 กราฟ แสดงสัดส่วนคำตอบ", "One chart per question, answer split")}</span>
-            </button>
-            <button type="button" role="radio" aria-checked={mode === "advanced"} onClick={() => setMode("advanced")}>
-              <strong>{t("โหมด Advanced", "Advanced")}</strong>
-              <span>{t("กำหนด Section เอง · กราฟค่าเฉลี่ยตาม Section แบบฟอร์มบริษัท", "Your own sections · average per section, company layout")}</span>
-            </button>
-          </div>
 
-          {mode === "advanced" ? (
             <details className={styles.guide} open>
-              <summary>{t("วิธีใช้โหมด Advanced และข้อจำกัด", "How Advanced mode works, and its limits")}</summary>
+              <summary>{t("วิธีใช้และข้อจำกัด", "How it works, and its limits")}</summary>
               <p className={styles.guideHeading}>{t("ขั้นตอน", "Steps")}</p>
               <ul className={styles.guideSteps}>
                 <li>{t("อัปโหลดไฟล์คำตอบ .xlsx หรือ .csv ที่ export จาก Microsoft Forms หรือ Google Forms", "Upload the .xlsx or .csv response export from Microsoft Forms or Google Forms.")}</li>
@@ -259,16 +253,16 @@ export default function EvaluationConverter() {
               <ul className={styles.guideLimits}>
                 <li>{t("คำถามที่ไม่ได้เลือก Section จะไม่อยู่ในไฟล์ Excel เลย", "A question with no section is left out of the workbook entirely.")}</li>
                 <li>{t("จำนวน Section และจำนวนคำถามไม่จำกัด กราฟจะสูงตามจำนวนข้อ และขึ้นหน้าใหม่เองเมื่อหน้าเต็ม", "No limit on sections or questions: a chart grows with its question count and moves to a new page when the page is full.")}</li>
-                <li>{t("คำถามประเภทคะแนน: 1 Section ได้ 1 กราฟ แต่ละแท่งคือค่าเฉลี่ยของคำถาม 1 ข้อ (เต็ม 5) คำตอบที่ไม่ใช่ตัวเลขไม่นับในค่าเฉลี่ย", "Rating questions: one chart per section, one bar per question showing its average (out of 5). Non-numeric answers are not averaged.")}</li>
+                <li>{t("คำถามประเภทคะแนน: 1 Section ได้ 1 กราฟ แต่ละแท่งคือค่าเฉลี่ยของคำถาม 1 ข้อ เต็มตามสเกลที่พบในไฟล์ (เช่น 5 หรือ 10) คำตอบที่ไม่ใช่ตัวเลขไม่นับในค่าเฉลี่ย", "Rating questions: one chart per section, one bar per question showing its average, out of the scale found in the file (5 or 10). Non-numeric answers are not averaged.")}</li>
                 <li>{t("คำถามประเภทข้อความ: หน้ารายงานแสดงข้อละ 5 คำตอบแรก ตัดที่ 90 ตัวอักษร ส่วนคำตอบทั้งหมดอยู่ในชีต 02-Comment", "Written questions: the report page shows the first 5 answers per question, cut at 90 characters. Every answer is on the 02-Comment sheet.")}</li>
-                <li>{t("คำถามแบบตัวเลือก: ไม่มีกราฟในโหมดนี้ คำตอบอยู่แค่ในชีต 01-Database ถ้าต้องการกราฟสัดส่วนคำตอบ ให้ใช้โหมดธรรมดา", "Choice questions: no chart in this mode, answers only on 01-Database. Use Simple mode for an answer-split chart.")}</li>
+                <li>{t("คำถามแบบตัวเลือก: ได้กราฟโดนัทสัดส่วนคำตอบข้อละ 1 กราฟ", "Choice questions: one doughnut each, showing the answer split.")}</li>
+                <li>{t("คำถามแบบตาราง: ระบบรวมคอลัมน์ที่หัวคอลัมน์เป็นรูป \"คำถาม [ชื่อแถว]\" กลับเป็นตารางเดียว แล้ววาดเป็นกราฟแท่งต่อแถว", "Grid questions: columns headed \"question [row]\" are put back together as one grid and drawn as a bar per row.")}</li>
                 <li>{t("Section ที่มีแต่คำถามข้อความจะไม่มีกราฟ มีแค่ส่วนความคิดเห็น", "A section with only written questions gets no chart, only the comments block.")}</li>
                 <li>{t("ลำดับกราฟเป็นไปตามลำดับ Section ในข้อ 3 และลำดับคำถามใน Section เป็นไปตามลำดับคอลัมน์ในไฟล์", "Charts follow the section order in step 3; questions inside a section follow the file's column order.")}</li>
                 <li>{t("กราฟวงกลมนับตามคอลัมน์บริษัท", "The company doughnut counts the company column.")}</li>
                 <li>{t("ระบบไม่ได้บันทึกข้อมูลใดๆลงฐานข้อมูล", "Nothing is saved to the database.")}</li>
               </ul>
             </details>
-          ) : null}
 
           <div className={styles.step}>
             <h2>1. {t("ไฟล์คำตอบ", "Response file")}</h2>
@@ -318,7 +312,7 @@ export default function EvaluationConverter() {
                     <tr>
                       <th>{t("หัวคอลัมน์ในไฟล์", "Column in the file")}</th>
                       <th>{t("ใช้เป็น", "Use as")}</th>
-                      {mode === "advanced" ? <th>Section</th> : null}
+                      <th>Section</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -334,26 +328,24 @@ export default function EvaluationConverter() {
                             ))}
                           </select>
                         </td>
-                        {mode === "advanced" ? (
-                          <td>
-                            {QUESTION_ROLES.includes(column.role) ? (
-                              <select
-                                value={sections.some((section) => section.id === assignment[column.index]) ? assignment[column.index] : ""}
-                                data-missing={!sections.some((section) => section.id === assignment[column.index]) || undefined}
-                                onChange={(event) => assign(column.index, event.target.value)}
-                              >
-                                <option value="">{t("-- ยังไม่จัด --", "-- Not assigned --")}</option>
-                                {sections.map((section, index) => (
-                                  <option key={section.id} value={section.id}>
-                                    {section.name.trim() || t(`Section ${index + 1} (ยังไม่ตั้งชื่อ)`, `Section ${index + 1} (unnamed)`)}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <span className={styles.muted}>-</span>
-                            )}
-                          </td>
-                        ) : null}
+                        <td>
+                          {QUESTION_ROLES.includes(column.role) ? (
+                            <select
+                              value={sections.some((section) => section.id === assignment[column.index]) ? assignment[column.index] : ""}
+                              data-missing={!sections.some((section) => section.id === assignment[column.index]) || undefined}
+                              onChange={(event) => assign(column.index, event.target.value)}
+                            >
+                              <option value="">{t("-- ยังไม่จัด --", "-- Not assigned --")}</option>
+                              {sections.map((section, index) => (
+                                <option key={section.id} value={section.id}>
+                                  {section.name.trim() || t(`Section ${index + 1} (ยังไม่ตั้งชื่อ)`, `Section ${index + 1} (unnamed)`)}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span className={styles.muted}>-</span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -362,7 +354,7 @@ export default function EvaluationConverter() {
             </div>
           ) : null}
 
-          {analysis && mode === "advanced" ? (
+          {analysis ? (
             <div className={styles.step}>
               <h2>3. {t("กำหนด Section", "Sections")}</h2>
               <p className={results.note}>
@@ -473,55 +465,6 @@ export default function EvaluationConverter() {
               )}
             </div>
           ) : null}
-
-          {summary && mode === "simple" ? (
-            <div className={styles.step}>
-              <h2>3. {t("ตัวอย่างผลลัพธ์", "Preview")}</h2>
-              <div className={results.tiles}>
-                <article className={results.tile}>
-                  <div>
-                    <span>{t("การตอบกลับ", "Responses")}</span>
-                    <strong>{summary.submittedCount}</strong>
-                  </div>
-                  <Users size={26} className={results.tileIcon} />
-                </article>
-                <article className={results.tile}>
-                  <div>
-                    <span>{t("เวลาเฉลี่ยในการตอบ", "Average time to answer")}</span>
-                    <strong>{formatAnswerTime(summary.averageAnswerSeconds, t)}</strong>
-                  </div>
-                  <Clock size={26} className={results.tileIcon} />
-                </article>
-                <article className={results.tile}>
-                  <div>
-                    <span>{t("บริษัทที่ตอบ", "Companies")}</span>
-                    <strong>{summary.respondentsByCompany.length}</strong>
-                  </div>
-                  <FileSpreadsheet size={26} className={results.tileIcon} />
-                </article>
-              </div>
-
-              {questionCount === 0 ? (
-                <p className={results.note}>{t("ยังไม่มีคอลัมน์ที่เป็นคำถาม", "No column is set as a question yet")}</p>
-              ) : (
-                <div className={styles.questionStack}>
-                  {summary.questions.map((question) => (
-                    <article key={question.questionId} className={results.questionCard}>
-                      <div className={results.questionHead}>
-                        <strong>
-                          {question.questionOrder}. {question.questionText}
-                        </strong>
-                      </div>
-                      <p className={results.answeredBy}>{t(`ตอบ ${question.answeredBy} คน`, `${question.answeredBy} answered`)}</p>
-                      {question.questionType === "RATING" ? <RatingChart question={question} isThai={language === "th"} /> : null}
-                      {question.options.length > 0 ? <ChoiceChart question={question} /> : null}
-                      <TextAnswers question={question} onOpen={() => undefined} isThai={language === "th"} />
-                    </article>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : null}
         </section>
 
         <aside className={results.insights}>
@@ -578,9 +521,7 @@ export default function EvaluationConverter() {
               onClick={() => void download()}
             >
               <FileSpreadsheet size={15} style={{ verticalAlign: "middle", marginRight: 6 }} />
-              {mode === "advanced"
-                ? t("ดาวน์โหลด Excel แบบฟอร์มบริษัท", "Download company-layout workbook")
-                : t("ดาวน์โหลด Excel แบบกราฟ", "Download chart workbook")}
+              {t("ดาวน์โหลดเป็น Excel ฟอร์มบริษัท", "Download as company-layout Excel")}
             </button>
           </div>
         </aside>
