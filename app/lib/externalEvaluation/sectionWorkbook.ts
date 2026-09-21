@@ -52,7 +52,7 @@ const FIRST_QUESTION_COLUMN = 7; // G
 const BAND_ROW = 8;
 const HEADER_ROW = 9;
 const FIRST_DATA_ROW = 10;
-/** Formulas reach this far down so a reply typed in later still counts. */
+/** Formulas reach at least this far down so a reply typed in later still counts. */
 const LAST_FORMULA_ROW = 5000;
 const STYLE = {
   bandRating: "201",
@@ -69,7 +69,16 @@ const STYLE = {
 // 02-รายงานผลการจัดอบรม
 const COMPANY_FIRST_ROW = 3;
 const CHART_FIRST_ROW = 27;
-const CHART_ROWS = 16;
+/** The first row of the printed dashboard, which is where page one starts counting. */
+const PRINT_FIRST_ROW = 3;
+/** Rows one printed page holds at the template's own scale; the template's page one is 3..77. */
+const ROWS_PER_PAGE = 75;
+/**
+ * How tall one chart is drawn, in rows. A fixed height made every bar past about ten too thin to
+ * read and cut the labels off the legend, which is where the old "10 questions per section" limit
+ * came from; growing with the bar count removes it.
+ */
+const chartRows = (bars: number) => Math.max(16, 6 + Math.ceil(bars * 1.4));
 const COMMENT_FIRST_ROW = 28;
 const COMMENT_ANSWERS_PER_QUESTION = 5;
 const COMMENT_PREVIEW_LENGTH = 90;
@@ -141,8 +150,11 @@ export const buildSectionWorkbook = (template: Buffer, report: SectionReport): B
   const columnOf = new Map(questions.map((entry, index) => [entry.question, FIRST_QUESTION_COLUMN + index]));
   const lastColumn = Math.max(IDENTITY_LAST_COLUMN, FIRST_QUESTION_COLUMN + questions.length - 1);
   const lastDataRow = FIRST_DATA_ROW + report.respondents.length - 1;
+  // Room for replies typed in later, and never short of the replies already here: a fixed 5,000
+  // silently left every row past it out of the averages.
+  const lastFormulaRow = Math.max(LAST_FORMULA_ROW, lastDataRow + 1000);
   const rangeOf = (column: number) =>
-    `${DATABASE_SHEET}!$${columnLetter(column)}$${FIRST_DATA_ROW}:$${columnLetter(column)}$${LAST_FORMULA_ROW}`;
+    `${DATABASE_SHEET}!$${columnLetter(column)}$${FIRST_DATA_ROW}:$${columnLetter(column)}$${lastFormulaRow}`;
 
   // --- 01-Database -------------------------------------------------------------------------------
   edit(DATABASE, (xml) => {
@@ -240,8 +252,24 @@ export const buildSectionWorkbook = (template: Buffer, report: SectionReport): B
 
   // --- 02-รายงานผลการจัดอบรม: calculation block, counts, header ---------------------------------
   const companyLastRow = COMPANY_FIRST_ROW + Math.max(report.companies.length, 1) - 1;
-  type ChartRow = { row: number; question: (typeof questions)[number]["question"] };
-  const sectionRows: Array<{ name: string; rows: ChartRow[] }> = [];
+  /**
+   * One chart to draw. `entries` is one bar per row of the calculation block; `matrix` is a grid
+   * question, whose bars are its rows crossed with its columns.
+   */
+  type ChartSpec = {
+    title: string;
+    /** A choice question is read as slices of one question, the way the screen draws it. */
+    shape: "bar" | "doughnut";
+    /** Top of the value axis: the rating scale, or 100 for a chart of percentages. Bars only. */
+    max: number;
+    bars: number;
+    entries?: Array<{ row: number; label: string; value: number }>;
+    matrix?: { firstRow: number; lastRow: number; rowLabels: string[]; columns: string[]; values: number[][] };
+  };
+  const specs: ChartSpec[] = [];
+  /** Where each chart ends up, and the page breaks that keep them whole. */
+  const placed: Array<{ spec: ChartSpec; top: number; rows: number }> = [];
+  const breaks: number[] = [];
   edit(REPORT, (xml) => {
     let sheet = xml;
     sheet = setCell(sheet, "A2", "Company");
@@ -249,24 +277,85 @@ export const buildSectionWorkbook = (template: Buffer, report: SectionReport): B
     report.companies.forEach((company, index) => {
       const row = COMPANY_FIRST_ROW + index;
       sheet = setCell(sheet, `A${row}`, company.companyCode);
-      sheet = setFormula(sheet, `B${row}`, `COUNTIF(${DATABASE_SHEET}!$F$${FIRST_DATA_ROW}:$F$${LAST_FORMULA_ROW},A${row})`, company.count);
+      sheet = setFormula(sheet, `B${row}`, `COUNTIF(${DATABASE_SHEET}!$F$${FIRST_DATA_ROW}:$F$${lastFormulaRow},A${row})`, company.count);
     });
 
     let row = companyLastRow + 2;
     for (const section of report.sections) {
       const ratings = section.questions.filter((question) => question.kind === "RATING");
-      if (!ratings.length) continue;
-      sheet = setCell(sheet, `A${row}`, section.name);
-      row += 1;
-      const rows: ChartRow[] = [];
-      for (const question of ratings) {
-        sheet = setCell(sheet, `A${row}`, question.header);
-        sheet = setFormula(sheet, `B${row}`, `IFERROR(ROUND(AVERAGE(${rangeOf(columnOf.get(question)!)}),2),0)`, question.average ?? 0);
-        rows.push({ row, question });
+      // A grid row scored by column position has its own scale, so it cannot share an axis with the
+      // 1-5 questions: one chart per scale, named for the scale when it is not the usual five.
+      const scales = [...new Set(ratings.map((question) => question.outOf ?? 5))];
+      for (const scale of scales) {
+        const scored = ratings.filter((question) => (question.outOf ?? 5) === scale);
+        const title = scale === 5 ? section.name : `${section.name} (เต็ม ${scale})`;
+        sheet = setCell(sheet, `A${row}`, title);
+        row += 1;
+        const entries: NonNullable<ChartSpec["entries"]> = [];
+        for (const question of scored) {
+          sheet = setCell(sheet, `A${row}`, question.header);
+          sheet = setFormula(sheet, `B${row}`, `IFERROR(ROUND(AVERAGE(${rangeOf(columnOf.get(question)!)}),2),0)`, question.average ?? 0);
+          entries.push({ row, label: question.header, value: question.average ?? 0 });
+          row += 1;
+        }
+        specs.push({ title, shape: "bar", max: scale, bars: entries.length, entries });
         row += 1;
       }
-      sectionRows.push({ name: section.name, rows });
-      row += 1;
+
+      for (const question of section.questions.filter((item) => item.kind === "CHOICE")) {
+        const split = question.split ?? [];
+        if (!split.length) continue;
+        sheet = setCell(sheet, `A${row}`, question.header);
+        row += 1;
+        const entries: NonNullable<ChartSpec["entries"]> = [];
+        for (const option of split) {
+          sheet = setCell(sheet, `A${row}`, option.label);
+          // ponytail: a share, written as the number it was when the file was made. Editing
+          // 01-Database in Excel will not move it; swap in a COUNTIF when HRD asks for that.
+          sheet = setCell(sheet, `B${row}`, option.percent);
+          entries.push({ row, label: option.label, value: option.percent });
+          row += 1;
+        }
+        specs.push({ title: question.header, shape: "doughnut", max: 100, bars: entries.length, entries });
+        row += 1;
+      }
+
+      for (const question of section.questions.filter((item) => item.kind === "GRID")) {
+        const grid = question.gridSplit;
+        if (!grid?.rows.length || !grid.columns.length) continue;
+        sheet = setCell(sheet, `A${row}`, question.header);
+        row += 1;
+        const firstRow = row;
+        grid.rows.forEach((label, rowIndex) => {
+          sheet = setCell(sheet, `A${row}`, label);
+          grid.columns.forEach((_, columnIndex) => {
+            sheet = setCell(sheet, `${columnLetter(2 + columnIndex)}${row}`, grid.percent[rowIndex]?.[columnIndex] ?? 0);
+          });
+          row += 1;
+        });
+        specs.push({
+          title: `${question.header} (%)`,
+          shape: "bar",
+          max: 100,
+          bars: grid.rows.length * grid.columns.length,
+          matrix: { firstRow, lastRow: row - 1, rowLabels: grid.rows, columns: grid.columns, values: grid.percent },
+        });
+        row += 1;
+      }
+    }
+
+    // Charts stacked from CHART_FIRST_ROW, each as tall as it needs, starting a new page rather
+    // than crossing one.
+    let top = CHART_FIRST_ROW;
+    let pageStart = PRINT_FIRST_ROW;
+    for (const spec of specs) {
+      const rows = chartRows(spec.bars);
+      if (top + rows - pageStart > ROWS_PER_PAGE && top > pageStart) {
+        breaks.push(top);
+        pageStart = top;
+      }
+      placed.push({ spec, top, rows });
+      top += rows;
     }
 
     // A reply is a row with anything in it. Counting the timestamp column alone gave 0 for a file
@@ -315,8 +404,20 @@ export const buildSectionWorkbook = (template: Buffer, report: SectionReport): B
       return `<mergeCells count="${all.length}">${all.join("")}</mergeCells>`;
     });
 
-    const lastChartRow = CHART_FIRST_ROW + sectionRows.length * CHART_ROWS;
+    const lastChartRow = placed.length ? placed[placed.length - 1].top + placed[placed.length - 1].rows : CHART_FIRST_ROW;
     const printLast = Math.max(PRINT_LAST_ROW, lastChartRow + 1, commentRow);
+    // A manual break at the top of a chart that would straddle a page, so the print never cuts one
+    // in half. Without them the page fitted three charts and everything past that was the "limit".
+    sheet = sheet.replace(/<rowBreaks[\s\S]*?<\/rowBreaks>|<rowBreaks[^>]*\/>/, "");
+    if (breaks.length) {
+      // A drawing row is zero-based and `brk id` is the last row of the page, so the id is the
+      // chart's own top: one less split the chart above it across two pages.
+      const brk = breaks.map((top) => `<brk id="${top}" max="16383" man="1"/>`).join("");
+      sheet = sheet.replace(
+        /<drawing /,
+        `<rowBreaks count="${breaks.length}" manualBreakCount="${breaks.length}">${brk}</rowBreaks><drawing `,
+      );
+    }
     edit(WORKBOOK, (workbook) =>
       workbook
         .replace(/('02-รายงานผลการจัดอบรม'!\$AT\$3:\$BP\$)\d+/, `$1${printLast}`)
@@ -358,6 +459,14 @@ export const buildSectionWorkbook = (template: Buffer, report: SectionReport): B
     `<c:strCache><c:ptCount val="1"/><c:pt idx="0"><c:v>${escapeXlsxXml(value)}</c:v></c:pt></c:strCache>`;
   const cachedNumber = (value: number) =>
     `<c:numCache><c:formatCode>0.00</c:formatCode><c:ptCount val="1"/><c:pt idx="0"><c:v>${value}</c:v></c:pt></c:numCache>`;
+  const cachedStrings = (values: string[]) =>
+    `<c:strCache><c:ptCount val="${values.length}"/>` +
+    values.map((value, index) => `<c:pt idx="${index}"><c:v>${escapeXlsxXml(value)}</c:v></c:pt>`).join("") +
+    "</c:strCache>";
+  const cachedNumbers = (values: number[]) =>
+    `<c:numCache><c:formatCode>0.00</c:formatCode><c:ptCount val="${values.length}"/>` +
+    values.map((value, index) => `<c:pt idx="${index}"><c:v>${value}</c:v></c:pt>`).join("") +
+    "</c:numCache>";
 
   const barTemplate = read(BAR_TEMPLATE)
     .replace(/<c:pivotSource>[\s\S]*?<\/c:pivotSource>/, "")
@@ -367,28 +476,86 @@ export const buildSectionWorkbook = (template: Buffer, report: SectionReport): B
   const barRels = read(BAR_TEMPLATE_RELS);
   const chartEntry = find(BAR_TEMPLATE);
 
-  const barChart = (section: (typeof sectionRows)[number]) => {
-    const series = section.rows
-      .map(({ row, question }, index) =>
-        "<c:ser>" +
-        `<c:idx val="${index}"/><c:order val="${index}"/>` +
-        `<c:tx><c:strRef><c:f>${escapeXlsxXml(`${REPORT_SHEET}!$A$${row}`)}</c:f>${cachedString(question.header)}</c:strRef></c:tx>` +
-        `<c:spPr><a:solidFill><a:schemeClr val="${RATING_COLOURS[index % RATING_COLOURS.length]}"/></a:solidFill><a:ln><a:noFill/></a:ln><a:effectLst/></c:spPr>` +
-        '<c:invertIfNegative val="0"/>' +
-        seriesLabels +
-        `<c:val><c:numRef><c:f>${escapeXlsxXml(`${REPORT_SHEET}!$B$${row}`)}</c:f>${cachedNumber(question.average ?? 0)}</c:numRef></c:val>` +
-        "</c:ser>",
-      )
-      .join("");
+  const seriesXml = (index: number, title: string, body: string) =>
+    "<c:ser>" +
+    `<c:idx val="${index}"/><c:order val="${index}"/>${title}` +
+    `<c:spPr><a:solidFill><a:schemeClr val="${RATING_COLOURS[index % RATING_COLOURS.length]}"/></a:solidFill><a:ln><a:noFill/></a:ln><a:effectLst/></c:spPr>` +
+    '<c:invertIfNegative val="0"/>' +
+    seriesLabels +
+    body +
+    "</c:ser>";
+
+  const barChart = (spec: ChartSpec) => {
+    const series = spec.matrix
+      ? // One series per column of the grid, its bars the rows: the shape a grid question is read in.
+        spec.matrix.columns
+          .map((column, columnIndex) => {
+            const values = spec.matrix!.values.map((rowValues) => rowValues[columnIndex] ?? 0);
+            const letter = columnLetter(2 + columnIndex);
+            return seriesXml(
+              columnIndex,
+              `<c:tx><c:v>${escapeXlsxXml(column)}</c:v></c:tx>`,
+              `<c:cat><c:strRef><c:f>${escapeXlsxXml(`${REPORT_SHEET}!$A$${spec.matrix!.firstRow}:$A$${spec.matrix!.lastRow}`)}</c:f>${cachedStrings(spec.matrix!.rowLabels)}</c:strRef></c:cat>` +
+                `<c:val><c:numRef><c:f>${escapeXlsxXml(`${REPORT_SHEET}!$${letter}$${spec.matrix!.firstRow}:$${letter}$${spec.matrix!.lastRow}`)}</c:f>${cachedNumbers(values)}</c:numRef></c:val>`,
+            );
+          })
+          .join("")
+      : (spec.entries ?? [])
+          .map((entry, index) =>
+            seriesXml(
+              index,
+              `<c:tx><c:strRef><c:f>${escapeXlsxXml(`${REPORT_SHEET}!$A$${entry.row}`)}</c:f>${cachedString(entry.label)}</c:strRef></c:tx>`,
+              `<c:val><c:numRef><c:f>${escapeXlsxXml(`${REPORT_SHEET}!$B$${entry.row}`)}</c:f>${cachedNumber(entry.value)}</c:numRef></c:val>`,
+            ),
+          )
+          .join("");
     const firstIndex = barTemplate.indexOf("<c:ser>");
     const lastIndex = barTemplate.lastIndexOf("</c:ser>") + "</c:ser>".length;
     return (barTemplate.slice(0, firstIndex) + series + barTemplate.slice(lastIndex))
+      // The value axis is the one with a max; the category axis has none to replace.
+      .replace(/<c:max val="[\d.]+"\/>/, `<c:max val="${spec.max}"/>`)
+      // The template steps the axis by 1, which is right up to 5 and unreadable at 100: a hundred
+      // tick labels crushed into one strip under the bars.
+      .replace(/<c:majorUnit val="[\d.]+"\/>/, `<c:majorUnit val="${spec.max <= 10 ? 1 : Math.round(spec.max / 5)}"/>`)
+      // A grid's bars are its rows, so the category axis has to be readable. The template hides it
+      // because its own charts carry one bar per series and name them in the legend instead.
+      .replace(/<c:catAx>[\s\S]*?<\/c:catAx>/, (axis) =>
+        spec.matrix ? axis.replace(/<c:delete val="1"\/>/, '<c:delete val="0"/>') : axis,
+      )
       // The title is one run per edit HRD ever made to it; collapse to one run carrying the name.
       // Keeps the first run's formatting: without it the title falls back to white on a white chart.
       .replace(/(<c:title>[\s\S]*?<a:p>[\s\S]*?)((?:<a:r>[\s\S]*?<\/a:r>)+)/, (_, head: string, runs: string) => {
         // Self-closing, or with a body - never "up to the first />", which lands inside <a:srgbClr/>.
         const runProperties = runs.match(/<a:rPr\b[^>]*\/>|<a:rPr\b[^>]*>[\s\S]*?<\/a:rPr>/)?.[0] ?? "";
-        return `${head}<a:r>${runProperties}<a:t>${escapeXlsxXml(section.name)}</a:t></a:r>`;
+        return `${head}<a:r>${runProperties}<a:t>${escapeXlsxXml(spec.title)}</a:t></a:r>`;
+      });
+  };
+
+  /**
+   * A choice question as slices, cloned from the template's own company doughnut - same ring, same
+   * legend, same fonts. Its one series reads the option labels and their shares out of the
+   * calculation block.
+   */
+  const doughnutTemplate = read(DOUGHNUT);
+  const doughnutChart = (spec: ChartSpec) => {
+    const entries = spec.entries ?? [];
+    const firstRow = entries[0]?.row ?? 1;
+    const lastRow = entries[entries.length - 1]?.row ?? firstRow;
+    return doughnutTemplate
+      .replace(/<c:pivotSource>[\s\S]*?<\/c:pivotSource>/, "")
+      .replace(/<c:pivotFmts>[\s\S]*?<\/c:pivotFmts>/, "")
+      .replace(
+        /<c:cat>[\s\S]*?<\/c:cat>/,
+        `<c:cat><c:strRef><c:f>${escapeXlsxXml(`${REPORT_SHEET}!$A$${firstRow}:$A$${lastRow}`)}</c:f>${cachedStrings(entries.map((entry) => entry.label))}</c:strRef></c:cat>`,
+      )
+      .replace(
+        /<c:val>[\s\S]*?<\/c:val>/,
+        `<c:val><c:numRef><c:f>${escapeXlsxXml(`${REPORT_SHEET}!$B$${firstRow}:$B$${lastRow}`)}</c:f>${cachedNumbers(entries.map((entry) => entry.value))}</c:numRef></c:val>`,
+      )
+      // The title is rich text here rather than a formula; swap the runs for the question.
+      .replace(/(<c:title>[\s\S]*?<a:p>[\s\S]*?)((?:<a:r>[\s\S]*?<\/a:r>)+)/, (_, head: string, runs: string) => {
+        const runProperties = runs.match(/<a:rPr\b[^>]*\/>|<a:rPr\b[^>]*>[\s\S]*?<\/a:rPr>/)?.[0] ?? "";
+        return `${head}<a:r>${runProperties}<a:t>${escapeXlsxXml(spec.title)}</a:t></a:r>`;
       });
   };
 
@@ -398,19 +565,22 @@ export const buildSectionWorkbook = (template: Buffer, report: SectionReport): B
   }
   const chartStyle = read("xl/charts/style1.xml");
   const chartColours = read("xl/charts/colors1.xml");
-  const generated = sectionRows.map((section, index) => {
+  const generated = placed.map(({ spec }, index) => {
     const number = 101 + index;
-    add(`xl/charts/chart${number}.xml`, barChart(section), chartEntry);
-    // Every chart needs its own style and colour parts: two charts pointing at one style part is a
-    // workbook Excel refuses to open.
-    add(`xl/charts/style${number}.xml`, chartStyle, chartEntry);
-    add(`xl/charts/colors${number}.xml`, chartColours, chartEntry);
-    add(
-      `xl/charts/_rels/chart${number}.xml.rels`,
-      barRels.replace(/Target="style1\.xml"/, `Target="style${number}.xml"`).replace(/Target="colors1\.xml"/, `Target="colors${number}.xml"`),
-      chartEntry,
-    );
-    return { number, relationshipId: `rIdSection${index + 1}` };
+    const doughnut = spec.shape === "doughnut";
+    add(`xl/charts/chart${number}.xml`, doughnut ? doughnutChart(spec) : barChart(spec), chartEntry);
+    if (!doughnut) {
+      // Every bar chart needs its own style and colour parts: two charts pointing at one style part
+      // is a workbook Excel refuses to open. The template's doughnut carries neither.
+      add(`xl/charts/style${number}.xml`, chartStyle, chartEntry);
+      add(`xl/charts/colors${number}.xml`, chartColours, chartEntry);
+      add(
+        `xl/charts/_rels/chart${number}.xml.rels`,
+        barRels.replace(/Target="style1\.xml"/, `Target="style${number}.xml"`).replace(/Target="colors1\.xml"/, `Target="colors${number}.xml"`),
+        chartEntry,
+      );
+    }
+    return { number, relationshipId: `rIdSection${index + 1}`, doughnut };
   });
 
   // Doughnut: companies read from the calculation block.
@@ -441,10 +611,10 @@ export const buildSectionWorkbook = (template: Buffer, report: SectionReport): B
     }
     const added = generated
       .map(({ relationshipId }, index) => {
-        const top = CHART_FIRST_ROW + index * CHART_ROWS;
+        const { top, rows } = placed[index];
         return model
           .replace(/<xdr:from>([\s\S]*?)<xdr:row>\d+<\/xdr:row>/, `<xdr:from>$1<xdr:row>${top}</xdr:row>`)
-          .replace(/<xdr:to>([\s\S]*?)<xdr:row>\d+<\/xdr:row>/, `<xdr:to>$1<xdr:row>${top + CHART_ROWS - 1}</xdr:row>`)
+          .replace(/<xdr:to>([\s\S]*?)<xdr:row>\d+<\/xdr:row>/, `<xdr:to>$1<xdr:row>${top + rows - 1}</xdr:row>`)
           .replace(/<xdr:cNvPr id="\d+" name="[^"]*">/, `<xdr:cNvPr id="${900 + index}" name="Section chart ${index + 1}">`)
           .replace(/<a:extLst>[\s\S]*?<\/a:extLst>/, "")
           .replace(`r:id="${BAR_ANCHOR_RELATIONSHIP}"`, `r:id="${relationshipId}"`);
@@ -471,10 +641,12 @@ export const buildSectionWorkbook = (template: Buffer, report: SectionReport): B
     for (const number of TEMPLATE_BAR_CHARTS) types = types.replace(new RegExp(`<Override PartName="/xl/charts/chart${number}.xml"[^>]*/>`), "");
     const added = generated
       .map(
-        ({ number }) =>
+        ({ number, doughnut }) =>
           `<Override PartName="/xl/charts/chart${number}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/>` +
-          `<Override PartName="/xl/charts/style${number}.xml" ContentType="application/vnd.ms-office.chartstyle+xml"/>` +
-          `<Override PartName="/xl/charts/colors${number}.xml" ContentType="application/vnd.ms-office.chartcolorstyle+xml"/>`,
+          (doughnut
+            ? ""
+            : `<Override PartName="/xl/charts/style${number}.xml" ContentType="application/vnd.ms-office.chartstyle+xml"/>` +
+              `<Override PartName="/xl/charts/colors${number}.xml" ContentType="application/vnd.ms-office.chartcolorstyle+xml"/>`),
       )
       .join("");
     return types.replace("</Types>", `${added}</Types>`);

@@ -12,25 +12,14 @@ import { QUESTION_ROLES, type SheetAnalysis } from "./convert";
 
 export type ReportSection = { id: string; name: string };
 
-/** What the one-page company dashboard holds legibly: past these, a chart runs into the footer or its
- *  bars get too thin to read. Measured by opening generated workbooks in Excel. */
-export const LAYOUT_LIMITS = { chartSections: 3, ratingsPerSection: 10 };
-
-/** Where a report goes past LAYOUT_LIMITS: 0 and [] when it fits. */
-export const layoutWarnings = (report: SectionReport) => {
-  const charted = report.sections.filter((section) => section.questions.some((question) => question.kind === "RATING"));
-  return {
-    tooManySections: charted.length > LAYOUT_LIMITS.chartSections ? charted.length : 0,
-    crowdedSections: charted
-      .map((section) => ({ name: section.name, ratings: section.questions.filter((question) => question.kind === "RATING").length }))
-      .filter((section) => section.ratings > LAYOUT_LIMITS.ratingsPerSection),
-  };
-};
-
 /** columnIndex -> section id. A question with no entry is left out of the report. */
 export type SectionAssignment = Record<number, string>;
 
-export type SectionQuestionKind = "RATING" | "TEXT" | "OTHER";
+/**
+ * RATING carries one average bar; CHOICE the share of people per option; GRID one bar per row of a
+ * tick-many-per-row grid. TEXT is written answers, OTHER is data with no chart of its own.
+ */
+export type SectionQuestionKind = "RATING" | "CHOICE" | "GRID" | "TEXT" | "OTHER";
 
 export type SectionQuestion = {
   header: string;
@@ -39,6 +28,12 @@ export type SectionQuestion = {
   answers: Array<string | number | null>;
   /** Ratings only, to two decimals. Null when nobody answered. */
   average: number | null;
+  /** RATING only: the top of its scale. 5 unless a grid row is scored by its column position. */
+  outOf?: number;
+  /** CHOICE only: the share of the people who answered, per option. */
+  split?: Array<{ label: string; percent: number }>;
+  /** GRID only: one percentage per row per column. */
+  gridSplit?: { rows: string[]; columns: string[]; percent: number[][] };
 };
 
 export type SectionRespondent = {

@@ -1045,3 +1045,18 @@ a.insightAction[aria-disabled="true"] {
   font-weight: 400;
   color: var(--ui-30-ink-muted, #64748b);
 }
+
+/* Advanced view: the per-person link sits inline after a question's label. */
+.averageLabel .detailLink,
+.answeredBy .detailLink {
+  margin-left: 8px;
+}
+
+/* The standard view's own chart, opened under a question's average bar. */
+.spreadPanel {
+  margin: 2px 0 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--ui-30-border);
+  background: var(--ui-60-surface-soft, rgba(148, 163, 184, 0.08));
+  border-radius: 0 8px 8px 0;
+}

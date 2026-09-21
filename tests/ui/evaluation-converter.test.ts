@@ -4,7 +4,7 @@ import { analyseSheet, convertSheet } from "../../app/lib/externalEvaluation/con
 import { parseCsv, readResponseSheet } from "../../app/lib/externalEvaluation/readSheet";
 import { buildEvaluationSummaryWorkbook } from "../../app/lib/evaluationSummaryWorkbook";
 import { readXlsxEntries, setCell } from "../../app/lib/xlsxTemplate";
-import { buildSectionReport, layoutWarnings } from "../../app/lib/externalEvaluation/sections";
+import { buildSectionReport } from "../../app/lib/externalEvaluation/sections";
 import { buildSectionWorkbook } from "../../app/lib/externalEvaluation/sectionWorkbook";
 import type { EvaluationCourseHeader } from "../../app/lib/trainingForms/types";
 
@@ -148,14 +148,93 @@ describe("Advanced mode: sections", () => {
     expect(report.companies).toEqual([{ companyCode: "ATA", count: 2 }, { companyCode: "TEP", count: 1 }]);
   });
 
-  it("flags a report the one-page dashboard cannot hold legibly", () => {
-    const rating = { header: "q", kind: "RATING" as const, answers: [], average: null };
-    const section = (name: string, ratings: number) => ({ name, questions: Array.from({ length: ratings }, () => rating) });
-    const report = (sections: ReturnType<typeof section>[]) => ({ course, respondents: [], companies: [], sections });
-    expect(layoutWarnings(report([section("a", 10), section("b", 1), section("c", 1)]))).toEqual({ tooManySections: 0, crowdedSections: [] });
-    const over = layoutWarnings(report([section("a", 11), section("b", 1), section("c", 1), section("d", 1)]));
-    expect(over.tooManySections).toBe(4);
-    expect(over.crowdedSections).toEqual([{ name: "a", ratings: 11 }]);
+  it("draws every section, growing each chart with its questions and breaking the page between them", () => {
+    // What the old three-section, ten-question limit refused: five sections of fifteen ratings.
+    const section = (name: string, ratings: number) => ({
+      name,
+      questions: Array.from({ length: ratings }, (_, index) => ({
+        header: `q${index}`,
+        kind: "RATING" as const,
+        answers: [4],
+        average: 4,
+      })),
+    });
+    const report = {
+      course,
+      respondents: [{ timestamp: null, firstName: "a", lastName: "b", employeeCode: "1", companyCode: "ATA" }],
+      companies: [{ companyCode: "ATA", count: 1 }],
+      sections: Array.from({ length: 5 }, (_, index) => section(`Part ${index + 1}`, 15)),
+    };
+    const entries = readXlsxEntries(buildSectionWorkbook(template, report));
+    const text = (name: string) => entries.find((entry) => entry.name === name)?.data.toString("utf8") ?? "";
+    const charts = entries.filter((entry) => /^xl\/charts\/chart\d+\.xml$/.test(entry.name) && entry.data.toString("utf8").includes("<c:barChart>"));
+
+    expect(charts).toHaveLength(5);
+    // 15 bars: 6 + ceil(15 * 1.4) = 27 rows, so the second chart starts 27 rows below the first.
+    const drawing = text("xl/drawings/drawing2.xml");
+    const tops = [...drawing.matchAll(/<xdr:from><xdr:col>\d+<\/xdr:col>[\s\S]*?<xdr:row>(\d+)<\/xdr:row>/g)]
+      .map((match) => Number(match[1]))
+      .filter((row) => row >= 27);
+    expect(tops.slice(0, 2)).toEqual([27, 54]);
+    expect(text("xl/worksheets/sheet2.xml")).toContain("<rowBreaks count=");
+  });
+
+  it("writes a doughnut for a choice question and a bar chart for a grid, each on its own scale", () => {
+    const report = {
+      course,
+      respondents: [{ timestamp: null, firstName: "a", lastName: "b", employeeCode: "1", companyCode: "ATA" }],
+      companies: [{ companyCode: "ATA", count: 1 }],
+      sections: [
+        {
+          name: "Part 1",
+          questions: [
+            { header: "scale of 4", kind: "RATING" as const, answers: [3], average: 3, outOf: 4 },
+            {
+              header: "which topic",
+              kind: "CHOICE" as const,
+              answers: ["Excel"],
+              average: null,
+              split: [{ label: "Excel", percent: 100 }, { label: "Power BI", percent: 0 }],
+            },
+            {
+              header: "tick all that apply",
+              kind: "GRID" as const,
+              answers: ["row 1: yes"],
+              average: null,
+              gridSplit: { rows: ["row 1", "row 2"], columns: ["yes", "no"], percent: [[100, 0], [0, 100]] },
+            },
+          ],
+        },
+      ],
+    };
+    const entries = readXlsxEntries(buildSectionWorkbook(template, report));
+    const generated = entries
+      .filter((entry) => /^xl\/charts\/chart1\d\d\.xml$/.test(entry.name))
+      .map((entry) => entry.data.toString("utf8"));
+
+    expect(generated).toHaveLength(3);
+    const bars = generated.filter((chart) => chart.includes("<c:barChart>"));
+    expect(bars.find((chart) => chart.includes("Part 1 (เต็ม 4)"))).toContain('<c:max val="4"/>');
+
+    // A choice question is slices, like the screen and like the template's own company doughnut.
+    const choice = generated.find((chart) => chart.includes("<c:doughnutChart>"))!;
+    expect(choice).toContain("which topic");
+    expect(choice).toContain("<c:v>Excel</c:v>");
+    expect(choice).not.toContain("<c:barChart>");
+
+    // The grid chart reads rows as its categories and columns as its series.
+    const grid = bars.find((chart) => chart.includes("tick all that apply (%)"))!;
+    expect(grid).toContain("<c:v>yes</c:v>");
+    expect(grid).toContain("<c:v>row 1</c:v>");
+    expect(grid).toContain('<c:max val="100"/>');
+    // A 0-100 axis stepped by 1 drew a hundred tick labels crushed under the bars.
+    expect(grid).toContain('<c:majorUnit val="20"/>');
+    // The grid's bars are its rows, so its category axis is shown rather than hidden.
+    expect(/<c:catAx>[\s\S]*?<c:delete val="0"\/>/.test(grid)).toBe(true);
+    // A rating chart keeps the template's hidden category axis and its step of 1.
+    const rating = bars.find((chart) => chart.includes("Part 1 (เต็ม 4)"))!;
+    expect(rating).toContain('<c:majorUnit val="1"/>');
+    expect(/<c:catAx>[\s\S]*?<c:delete val="1"\/>/.test(rating)).toBe(true);
   });
 
   it("writes a company-layout workbook Excel can open: one chart per rating section, each with its own style part", () => {

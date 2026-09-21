@@ -339,6 +339,10 @@ const GridChart = ({ question }: { question: EvaluationSummaryQuestion }) => {
   );
 };
 
+/** Whether a question has anything to show per person: written answers, options or grid rows. */
+const hasDetail = (question: EvaluationSummaryQuestion) =>
+  question.textAnswers.length > 0 || question.gridRows.length > 0 || question.options.length > 0;
+
 /** The first few written answers, with the rest behind "รายละเอียดเพิ่มเติม". */
 export const TextAnswers = ({
   question,
@@ -445,6 +449,24 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
 
   const sectionGroups = useMemo(() => groupBySectionAverages(questions), [questions]);
 
+  /** The average bars of one section, kept in question order so a grid's rows stay together and the
+   *  question's own chart can open under the last of them. */
+  const averagesByQuestion = useMemo(
+    () =>
+      sectionGroups.map((group) =>
+        group.averages.reduce<Array<{ question: EvaluationSummaryQuestion; items: typeof group.averages }>>(
+          (blocks, item) => {
+            const last = blocks[blocks.length - 1];
+            if (last && last.question.questionId === item.question.questionId) last.items.push(item);
+            else blocks.push({ question: item.question, items: [item] });
+            return blocks;
+          },
+          [],
+        ),
+      ),
+    [sectionGroups],
+  );
+
   /** A form that branches. Only then is "nobody answered" ambiguous enough to need explaining. */
   const hasSections = useMemo(
     () => (summary?.questions ?? []).some((question) => question.questionType === "SECTION_BREAK"),
@@ -485,6 +507,37 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
     setDetail(question);
     await ensureResponses();
   };
+
+  /**
+   * Advanced view: which questions have their full chart open under the average bar.
+   *
+   * An average alone cannot say whether a 4.00 is everybody agreeing or half fives and half threes,
+   * so the standard view's own chart opens here rather than sending HRD to the other view.
+   */
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  const toggleExpanded = (questionId: string) =>
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (!next.delete(questionId)) next.add(questionId);
+      return next;
+    });
+
+  /** On a branching form a zero means this audience never saw the question, not a lost answer. */
+  const routedPast = (answeredBy: number) =>
+    answeredBy === 0 && hasSections
+      ? t(
+          " · ผู้ตอบกลุ่มนี้ไม่ได้ถูกพามาที่ข้อนี้ (ฟอร์มแยกสายตามคำตอบข้อก่อนหน้า)",
+          " - this audience was routed past it; the form branches on an earlier answer",
+        )
+      : "";
+
+  /** The per-person view, reachable from both views and from every question that has one. */
+  const detailLink = (question: EvaluationSummaryQuestion) =>
+    hasDetail(question) ? (
+      <button type="button" className={styles.detailLink} onClick={() => void openDetail(question)}>
+        {t("รายละเอียดเพิ่มเติม", "More details")}
+      </button>
+    ) : null;
 
   const openIndividual = async () => {
     const list = await ensureResponses();
@@ -639,28 +692,60 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                         <>
                           <p className={styles.sectionPart}>{t("คะแนนเฉลี่ย", "Average scores")}</p>
                           <div className={styles.averageBars}>
-                            {group.averages.map((item, index) => (
-                              <div key={item.key} className={styles.averageRow}>
-                                <span className={styles.averageLabel}>
-                                  {item.question.questionOrder}. {item.question.questionText}
-                                  {item.rowText ? ` - ${item.rowText}` : ""}
-                                  <small className={styles.averageCount}>{t(`ตอบ ${item.answeredBy} คน`, `${item.answeredBy} answered`)}</small>
-                                </span>
-                                <span className={styles.averageTrack}>
-                                  <span
-                                    className={styles.averageFill}
-                                    style={{
-                                      width: `${item.outOf > 0 ? ((item.average ?? 0) / item.outOf) * 100 : 0}%`,
-                                      background: colourAt(index),
-                                    }}
-                                  />
-                                </span>
-                                <strong>
-                                  {item.average?.toFixed(2) ?? "-"}
-                                  <small className={styles.averageCount}>/{item.outOf}</small>
-                                </strong>
-                              </div>
-                            ))}
+                            {averagesByQuestion[groupIndex].map((block, blockIndex) => {
+                              const isOpen = expanded.has(block.question.questionId);
+                              return (
+                                <Fragment key={block.question.questionId}>
+                                  {block.items.map((item, itemIndex) => (
+                                    <div key={item.key} className={styles.averageRow}>
+                                      <span className={styles.averageLabel}>
+                                        {item.question.questionOrder}. {item.question.questionText}
+                                        {item.rowText ? ` - ${item.rowText}` : ""}
+                                        <small className={styles.averageCount}>
+                                          {t(`ตอบ ${item.answeredBy} คน`, `${item.answeredBy} answered`)}
+                                          {routedPast(item.answeredBy)}
+                                        </small>
+                                        {/* One pair of links per question: a grid's rows all read the same replies. */}
+                                        {itemIndex === 0 ? (
+                                          <>
+                                            <button
+                                              type="button"
+                                              className={styles.detailLink}
+                                              aria-expanded={isOpen}
+                                              onClick={() => toggleExpanded(block.question.questionId)}
+                                            >
+                                              {isOpen ? t("ซ่อนการกระจายคำตอบ", "Hide the spread") : t("ดูการกระจายคำตอบ", "See the spread")}
+                                            </button>
+                                            {detailLink(item.question)}
+                                          </>
+                                        ) : null}
+                                      </span>
+                                      <span className={styles.averageTrack}>
+                                        <span
+                                          className={styles.averageFill}
+                                          style={{
+                                            width: `${item.outOf > 0 ? ((item.average ?? 0) / item.outOf) * 100 : 0}%`,
+                                            background: colourAt(blockIndex),
+                                          }}
+                                        />
+                                      </span>
+                                      <strong>
+                                        {item.average?.toFixed(2) ?? "-"}
+                                        <small className={styles.averageCount}>/{item.outOf}</small>
+                                      </strong>
+                                    </div>
+                                  ))}
+                                  {isOpen ? (
+                                    <div className={styles.spreadPanel}>
+                                      {block.question.ratingDistribution.length > 0 ? (
+                                        <RatingChart question={block.question} isThai={isThai} />
+                                      ) : null}
+                                      {block.question.gridRows.length > 0 ? <GridChart question={block.question} /> : null}
+                                    </div>
+                                  ) : null}
+                                </Fragment>
+                              );
+                            })}
                           </div>
                         </>
                       ) : null}
@@ -672,18 +757,10 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                             <div key={question.questionId} className={styles.sectionComment}>
                               <p className={styles.answeredBy}>
                                 {question.questionOrder}. {question.questionText} · {t(`ตอบ ${question.answeredBy} คน`, `${question.answeredBy} answered`)}
+                                {routedPast(question.answeredBy)}
+                                {detailLink(question)}
                               </p>
-                              <div className={styles.bars}>
-                                {question.options.map((option, index) => (
-                                  <Bar
-                                    key={option.optionId}
-                                    label={option.optionText}
-                                    count={option.count}
-                                    total={question.answeredBy}
-                                    colour={colourAt(index)}
-                                  />
-                                ))}
-                              </div>
+                              <ChoiceChart question={question} />
                             </div>
                           ))}
                         </>
@@ -692,7 +769,9 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                       {group.checkboxGrids.map((question) => (
                         <div key={question.questionId} className={styles.sectionComment}>
                           <p className={styles.answeredBy}>
-                            {question.questionOrder}. {question.questionText}
+                            {question.questionOrder}. {question.questionText} · {t(`ตอบ ${question.answeredBy} คน`, `${question.answeredBy} answered`)}
+                            {routedPast(question.answeredBy)}
+                            {detailLink(question)}
                           </p>
                           <GridChart question={question} />
                         </div>
@@ -704,7 +783,9 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                           {group.texts.map((question) => (
                             <div key={question.questionId} className={styles.sectionComment}>
                               <p className={styles.answeredBy}>
-                                {question.questionOrder}. {question.questionText}
+                                {question.questionOrder}. {question.questionText} · {t(`ตอบ ${question.answeredBy} คน`, `${question.answeredBy} answered`)}
+                                {routedPast(question.answeredBy)}
+                                {detailLink(question)}
                               </p>
                               <TextAnswers question={question} onOpen={() => void openDetail(question)} isThai={isThai} />
                             </div>
@@ -730,8 +811,6 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                     const previousSection = index > 0 ? questions[index - 1].sectionName : null;
                     const startsSection =
                       question.sectionName !== null && question.sectionName !== previousSection;
-                    const hasDetail =
-                      question.textAnswers.length > 0 || question.gridRows.length > 0 || question.options.length > 0;
                     return (
                       <Fragment key={question.questionId}>
                         {startsSection ? <h2 className={styles.sectionName}>{question.sectionName}</h2> : null}
@@ -740,11 +819,7 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
                             <strong>
                               {question.questionOrder}. {question.questionText}
                             </strong>
-                            {hasDetail ? (
-                              <button type="button" className={styles.detailLink} onClick={() => void openDetail(question)}>
-                                {t("รายละเอียดเพิ่มเติม", "More details")}
-                              </button>
-                            ) : null}
+                            {detailLink(question)}
                           </div>
                           <p className={styles.answeredBy}>
                             {t(`ตอบ ${question.answeredBy} คน`, `${question.answeredBy} answered`)}
@@ -793,6 +868,18 @@ export default function EvaluationResultsPage({ planId }: { planId: string }) {
               }}
             >
               <FileSpreadsheet size={15} style={{ verticalAlign: "middle", marginRight: 6 }} />{t("ดาวน์โหลดเป็น Excel", "Download as Excel")}
+            </a>
+            {/* The same data in the company's own evaluation workbook, laid out by section. */}
+            <a
+              className={styles.insightAction}
+              href={`/api/training-plan/training-records/${planId}/evaluations/${shownTiming}/export?respondents=${respondents}&layout=advanced`}
+              aria-disabled={!summary || summary.submittedCount === 0}
+              onClick={(event) => {
+                if (!summary || summary.submittedCount === 0) event.preventDefault();
+              }}
+            >
+              <FileSpreadsheet size={15} style={{ verticalAlign: "middle", marginRight: 6 }} />
+              {t("ดาวน์โหลด Excel แบบฟอร์มบริษัท", "Download company-layout Excel")}
             </a>
           </div>
 
