@@ -82,7 +82,8 @@ const chartRows = (bars: number) => Math.max(16, 6 + Math.ceil(bars * 1.4));
 const COMMENT_FIRST_ROW = 28;
 const COMMENT_ANSWERS_PER_QUESTION = 5;
 const COMMENT_PREVIEW_LENGTH = 90;
-const COMMENT_STYLE = { section: "98", question: "167", answer: "208" };
+// cellXfs ids in the template: re-saving it in Excel can renumber them, so re-check after editing it.
+const COMMENT_STYLE = { section: "98", question: "167", answer: "206" };
 const PRINT_LAST_ROW = 77;
 
 const RATING_COLOURS = ["accent1", "accent2", "accent3", "accent4", "accent5", "accent6"];
